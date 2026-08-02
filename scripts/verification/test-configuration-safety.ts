@@ -115,6 +115,7 @@ assert.equal(parseFunctionFeatureOverride(''), null);
 
 const {
     runEnvValidation,
+    validateEnvironment,
 } = require('../../src/lib/env/validateEnv') as typeof import('../../src/lib/env/validateEnv');
 const productionEnvKeys = ['NODE_ENV', 'VERCEL', 'VERCEL_ENV', 'NEXTAUTH_SECRET'] as const;
 const previousProductionEnv = Object.fromEntries(
@@ -143,5 +144,71 @@ try {
         else process.env[key] = value;
     });
 }
+
+const withCleanEnvironment = <T>(
+    overrides: Record<string, string>,
+    callback: () => T,
+): T => {
+    const previousEnvironment = { ...process.env };
+    try {
+        Object.keys(process.env).forEach((key) => delete process.env[key]);
+        Object.assign(process.env, overrides);
+        return callback();
+    } finally {
+        Object.keys(process.env).forEach((key) => delete process.env[key]);
+        Object.assign(process.env, previousEnvironment);
+    }
+};
+
+withCleanEnvironment({
+    NODE_ENV: 'production',
+    VERCEL: '1',
+    VERCEL_ENV: 'preview',
+    NEXT_PUBLIC_ENV: 'preview',
+    NEXT_PUBLIC_VERCEL_ENV: 'preview',
+    NEXT_PUBLIC_FIREBASE_API_KEY: 'menu-list-qa-api-key',
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'menulist-qa',
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'menulist-qa.firebasestorage.app',
+    NEXTAUTH_SECRET: 'test-nextauth-secret',
+    GOOGLE_CLIENT_ID: 'test-google-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-google-client-secret',
+    GEMINI_AI_KEY: 'test-gemini-key',
+    FIREBASE_PROJECT_ID: 'menulist-qa',
+    FIREBASE_CLIENT_EMAIL: 'firebase-adminsdk@menulist-qa.iam.gserviceaccount.com',
+    FIREBASE_PRIVATE_KEY: 'test-private-key',
+    NEXT_PUBLIC_PLATFORM_DOMAIN: 'menulist.digital',
+    NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES: 'menulist.digital,www.menulist.digital,app.menulist.digital',
+    NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN: 'menulist.digital',
+}, () => {
+    const menuListOnlyResult = validateEnvironment();
+    assert.deepEqual(
+        menuListOnlyResult.missing,
+        [],
+        `MenuList-only QA configuration must not require inactive sister-product or MyCodex values: ${menuListOnlyResult.missing.join('; ')}`,
+    );
+
+    process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID = 'menulist-signaldesk-qa';
+    const partialSignalDeskResult = validateEnvironment();
+    assert.ok(
+        partialSignalDeskResult.missing.some((message) => message.includes('SignalDesk')),
+        'Once any SignalDesk Firebase value is present, partial configuration must fail validation',
+    );
+
+    delete process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID;
+    process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID = 'campaigncue-qa';
+    const partialCampaignCueResult = validateEnvironment();
+    assert.ok(
+        partialCampaignCueResult.missing.some((message) => message.includes('CampaignCue')),
+        'Once any CampaignCue Firebase value is present, partial configuration must fail validation',
+    );
+
+    delete process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID;
+    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID = 'answerlattice-qa';
+    const partialAnswerlatticeResult = validateEnvironment();
+    assert.ok(
+        partialAnswerlatticeResult.missing.some((message) => message.includes('Answerlattice')),
+        'Once any Answerlattice Firebase value is present, partial configuration must fail validation',
+    );
+});
 
 console.log('Configuration safety behavior tests passed.');

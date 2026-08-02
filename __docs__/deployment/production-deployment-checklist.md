@@ -1,7 +1,7 @@
 # Production Deployment Checklist
 
 **Status:** Active handoff checklist
-**Last updated:** July 9, 2026
+**Last updated:** August 2, 2026
 **Primary runbook:** [External Certification Runbook](../production-readiness/external-certification-runbook.md)
 
 **Launch boundary:** Not current launch certification or deploy approval. This checklist is a handoff map for the External Certification Runbook; production deployment approval still requires current production-readiness audit evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, required provider/browser/device QA, and production-host smoke.
@@ -32,6 +32,37 @@ Stop and fix code/docs first if the local source gate fails.
 
 ---
 
+## 1.5. Durable Ownership And Configuration Gate
+
+Before production setup or deploy approval, confirm:
+
+- `admin@neelvara.com` is the recoverable break-glass Super Admin; a named
+  company operator performs daily work with least-required access.
+- Another trusted Super Admin is added when a second owner is available;
+  offline recovery codes and provider recovery ownership are recorded.
+- MenuList remains on the single current `us-central1` Firebase/Google Cloud
+  contract. No regional copies or third deployed environment are introduced.
+- Production secrets exist only in Vercel Production. QA Preview secrets remain
+  restricted to exact Git branch `staging`.
+- Every `menulist.digital` QA host remains noindex, serves `Disallow: /`, and
+  returns `404` for `/sitemap.xml` after the production deployment.
+- Domain auto-renew, backup payment, current DNS export, and account ownership
+  have been checked.
+- The production service-account decision is recorded: validated Vercel
+  OIDC/Workload Identity, or a static-key owner/date/rotation/revocation record.
+- The approved Firestore backup/PITR policy exists and a restore procedure has
+  been documented before accepting customer data.
+- App Check has valid QA monitoring evidence before enforcement.
+- Production email uses an approved transactional sender or controlled
+  Workspace relay, not a personal inbox password.
+- Monthly spend/alert review, quarterly IAM/secret review, and annual
+  domain/recovery/restore review have an owner and next due date.
+
+Stop if any item is unknown. Record the unresolved owner-side item instead of
+inventing a value or weakening a runtime guard.
+
+---
+
 ## 2. Firebase Functions Gate
 
 Use [External Certification Runbook Gate 1](../production-readiness/external-certification-runbook.md#gate-1-firebase-functions-deployment).
@@ -56,6 +87,12 @@ firebase deploy --project menulist-qa --config firebase.json --only functions:pr
 
 Stop and record the blocker if Firebase fails on Cloud Resource Manager, IAM, billing, Secret Manager, missing secrets, or project access after local checks pass. Production Function deployment requires QA evidence and explicit production deploy approval.
 
+Before any production Firebase Function deploy or paid production provider
+traffic, confirm Google Cloud Billing budget alerts exist for the production
+project. Alert-only budgets are notifications; configure the separate Preview
+Gemini API spend-cap budget and the app-local rolling ceiling too. Neither
+replaces rate limits, provider quotas, SAFE_MODE, or recovery drills.
+
 ---
 
 ## 3. Data And Storage Gates
@@ -78,7 +115,7 @@ Provider gates remain external proof, not local source proof.
 - Razorpay: run `npm run verify:billing-entitlement-boundary` before sandbox payment/webhook smoke.
 - WhatsApp and messaging onboarding: confirm staging secrets, webhook registration, and fail-closed feature flags before sending any message.
 - Cloud Tasks and batch image worker: run `npm run verify:agent-readiness` before queue/worker smoke.
-- AI providers: confirm staging keys, quota, budgets, and SAFE_MODE behavior before live provider calls.
+- AI providers: confirm staging keys, billing, alert-only budgets, Gemini API spend cap, app-local rolling ceiling, quota, and SAFE_MODE behavior before live provider calls.
 
 Stop if credentials are missing, dummy, expired, production-scoped by mistake, or tied to the wrong environment.
 

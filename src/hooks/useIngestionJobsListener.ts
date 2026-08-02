@@ -12,6 +12,8 @@ import { message } from 'antd';
 import { onSnapshot } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 
+// @firestore-collection-evidence DB_COLLECTIONS.KB_GENERATION_JOBS operations=read/query
+
 export type IngestionJobsScope = {
     tId?: number | string | null;
     sId?: number | string | null;

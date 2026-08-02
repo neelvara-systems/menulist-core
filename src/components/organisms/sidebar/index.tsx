@@ -2,7 +2,7 @@ import EcomsIconLogo from '@atoms/ecomsLogo';
 import EcomsHorizontalLogo from '@atoms/ecomsLogo/ecomsHorizontalLogo';
 import { FEATURE_FLAGS } from '@config/features';
 import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import DashboardSidebarShell, { DashboardSidebarShellItem } from '@/components/shared/dashboardShell/DashboardSidebarShell';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
@@ -112,7 +112,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
-                    && [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole);
+                    && [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole);
             }
             if (!navFeatureAllowed(nav)) {
                 return false;

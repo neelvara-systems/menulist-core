@@ -1,6 +1,6 @@
 import { SIGNALDESK_COLLECTIONS } from "@constant/signaldesk/database";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
-import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import { getCurrentUser } from "@lib/auth/currentPlatformUser";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
 import { signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
@@ -156,7 +156,7 @@ export async function getSignalDeskAccessContext(session: unknown): Promise<Sign
     const currentUser = await getCurrentUser(session);
     if (!currentUser) return null;
 
-    const isPlatformAdmin = currentUser.userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatformAdmin = currentUser.userData.platformRole === MENULIST_PLATFORM_USER_ROLE;
     if (isPlatformAdmin) {
         return {
             active: true,

@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import TextElement from "@antdComponent/textElement";
 import { PermissionKey } from "@constant/permissions";
 import { DEFAULT_ROLE_IDS } from "@data/defaultRoles";
@@ -38,6 +39,7 @@ function UserPermissionsPage() {
     const { token } = theme.useToken();
     const dispatch = useAppDispatch();
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const hasRoles = arrayNullCheck(storeDetails?.roles);
 
     useEffect(() => {
         setActiveRole(null);
@@ -116,51 +118,73 @@ function UserPermissionsPage() {
                     )}
                     <Flex vertical gap={10}>
                         <TextElement size={"medium"} text={"Available Roles"} />
-                        {arrayNullCheck(storeDetails?.roles) && <TextElement size={"small"} text={`Select a role to view its permissions`} />}
-                        <Flex wrap="wrap" gap={12}>
-                            {storeDetails?.roles?.map((role, index) => (
-                                <Card
-                                    key={index}
-                                    hoverable
-                                    style={{
-                                        background: activeRole?.id == role?.id ? token.colorPrimaryBg : token.colorBgContainer,
-                                        borderColor: activeRole?.id == role?.id ? token.colorPrimaryBorder : token.colorBorderSecondary,
-                                        width: 280,
-                                    }}
-                                    onClick={() => setActiveRole(role)}
-                                >
-                                    <Meta
-                                        title={<Flex align="center" gap={6} wrap="wrap">{role.name} {!role.active && <Tag color="warning">Inactive</Tag>}</Flex>}
-                                        description={role.description}
-                                    />
-                                </Card>
-                            ))}
+                        {hasRoles ? (
+                            <>
+                                <TextElement size={"small"} text="Select a role to view its permissions" />
+                                <Flex wrap="wrap" gap={12}>
+                                    {storeDetails?.roles?.map((role, index) => (
+                                        <Card
+                                            key={index}
+                                            hoverable
+                                            style={{
+                                                background: activeRole?.id == role?.id ? token.colorPrimaryBg : token.colorBgContainer,
+                                                borderColor: activeRole?.id == role?.id ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                                                width: 280,
+                                            }}
+                                            onClick={() => setActiveRole(role)}
+                                        >
+                                            <Meta
+                                                title={<Flex align="center" gap={6} wrap="wrap">{role.name} {!role.active && <Tag color="warning">Inactive</Tag>}</Flex>}
+                                                description={role.description}
+                                            />
+                                        </Card>
+                                    ))}
 
-                            <Card
-                                hoverable
-                                aria-disabled={!canAssignRoles}
-                                style={{
-                                    background: token.colorFillQuaternary,
-                                    borderColor: token.colorBorderSecondary,
-                                    cursor: canAssignRoles ? "pointer" : "not-allowed",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                    opacity: canAssignRoles ? 1 : 0.6,
-                                    width: 180,
-                                }}
-                                onClick={() => {
-                                    if (!canAssignRoles) return;
-                                    setActiveRole(null);
-                                    setShowDetailsModal({ active: true, data: null })
-                                }}
-                            >
-                                <Meta title="Add Custom Role" avatar={<LuPlus />} />
-                            </Card>
-                        </Flex>
+                                    <Card
+                                        hoverable
+                                        aria-disabled={!canAssignRoles}
+                                        style={{
+                                            background: token.colorFillQuaternary,
+                                            borderColor: token.colorBorderSecondary,
+                                            cursor: canAssignRoles ? "pointer" : "not-allowed",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            opacity: canAssignRoles ? 1 : 0.6,
+                                            width: 180,
+                                        }}
+                                        onClick={() => {
+                                            if (!canAssignRoles) return;
+                                            setActiveRole(null);
+                                            setShowDetailsModal({ active: true, data: null })
+                                        }}
+                                    >
+                                        <Meta title="Add Custom Role" avatar={<LuPlus />} />
+                                    </Card>
+                                </Flex>
+                            </>
+                        ) : (
+                            <Flex align="center" gap={12} style={{ paddingBlock: 24 }} vertical>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={112}
+                                    treatment="softHalo"
+                                    variant="roleStructureContext"
+                                />
+                                <TextElement text="No roles created yet" />
+                                <Button
+                                    disabled={!canAssignRoles}
+                                    icon={<LuPlus />}
+                                    onClick={() => setShowDetailsModal({ active: true, data: null })}
+                                    type="primary"
+                                >
+                                    Create Role
+                                </Button>
+                            </Flex>
+                        )}
                     </Flex>
 
-                    {!activeRole && (
+                    {hasRoles && !activeRole && (
                         <Empty description="Select a role to view permissions" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     )}
 

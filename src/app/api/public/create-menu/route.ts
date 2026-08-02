@@ -16,7 +16,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
-import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID } from '@constant/user';
+import { MENULIST_PLATFORM_STORE_ID, MENULIST_PLATFORM_TENANT_ID, MENULIST_PLATFORM_USER_ID } from '@constant/user';
 import {
     buildMenuExtractionRoutingFields,
     buildPublicDraftMenuExtractionDestination,
@@ -225,7 +225,7 @@ function hashClientIp(req: NextRequest): string {
 }
 
 function buildPublicDraftProjectId(draftToken: string): string {
-    return `${ECOMSAI_PLATFORM_TENANT_ID}-public-${draftToken}-${ECOMSAI_PLATFORM_STORE_ID}`;
+    return `${MENULIST_PLATFORM_TENANT_ID}-public-${draftToken}-${MENULIST_PLATFORM_STORE_ID}`;
 }
 
 function hashString(value: string): string {
@@ -405,10 +405,10 @@ async function runPublicDraftIdentityCheck(draftToken: string, projectId: string
         operation: {
             billingMode: 'public',
             projectId,
-            sId: ECOMSAI_PLATFORM_STORE_ID,
+            sId: MENULIST_PLATFORM_STORE_ID,
             source: 'public_menu_entry_identity',
-            tId: ECOMSAI_PLATFORM_TENANT_ID,
-            uId: String(ECOMSAI_PLATFORM_USER_ID),
+            tId: MENULIST_PLATFORM_TENANT_ID,
+            uId: String(MENULIST_PLATFORM_USER_ID),
         },
     });
 
@@ -450,7 +450,7 @@ async function createPublicDraftExtractionJob(
         jobMode: 'SINGLE_STORE',
         progress: 0,
         projectId,
-        sId: String(ECOMSAI_PLATFORM_STORE_ID),
+        sId: String(MENULIST_PLATFORM_STORE_ID),
         skipProjectSave: true,
         source: source.kind === 'menu_link_import'
             ? MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
@@ -472,9 +472,9 @@ async function createPublicDraftExtractionJob(
             storagePath: source.storagePath,
         },
         status: 'pending',
-        tId: String(ECOMSAI_PLATFORM_TENANT_ID),
+        tId: String(MENULIST_PLATFORM_TENANT_ID),
         targetLanguages: [{ code: 'en', name: 'English' }],
-        uId: String(ECOMSAI_PLATFORM_USER_ID),
+        uId: String(MENULIST_PLATFORM_USER_ID),
         updatedAt: now,
     });
     batch.create(draftRef, {

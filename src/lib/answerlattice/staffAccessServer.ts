@@ -3,7 +3,7 @@ import { ANSWERLATTICE_ALL_PERMISSIONS, ANSWERLATTICE_PERMISSION_KEYS, Answerlat
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { STAFF_EMAIL_DOMAIN } from '@constant/urls';
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE, } from '@constant/user';
+import { MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE, } from '@constant/user';
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { AuthUserIdentityConflictError, getAuthUserByEmail } from '@lib/auth/serverUserContext';
@@ -626,7 +626,7 @@ const revokeDefaultFirebaseRefreshTokens = async (
 
 const isPlatformRole = (value: unknown) => {
     const role = String(value || '').toUpperCase();
-    return role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    return role === MENULIST_PLATFORM_USER_ROLE || role === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
 };
 
 const buildAnswerlatticePermissionClaims = (

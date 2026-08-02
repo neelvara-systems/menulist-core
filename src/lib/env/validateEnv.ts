@@ -131,6 +131,30 @@ const MYCODEX_AUTH_VARS = [
     'MYCODEX_SESSION_SECRET',
 ] as const;
 
+const OPTIONAL_PRODUCT_FIREBASE_ENV_PREFIXES: Partial<Record<DeploymentProductId, readonly string[]>> = {
+    answerlattice: [
+        'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_',
+        'NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_',
+        'ANSWERLATTICE_FIREBASE_',
+        'ANSWERLATTICE_FIRESTORE_',
+        'ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS',
+    ],
+    campaigncue: [
+        'NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_',
+        'NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_',
+        'CAMPAIGNCUE_FIREBASE_',
+        'CAMPAIGNCUE_FIRESTORE_',
+        'CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS',
+    ],
+    signaldesk: [
+        'NEXT_PUBLIC_SIGNALDESK_FIREBASE_',
+        'NEXT_PUBLIC_SIGNALDESK_FIRESTORE_',
+        'SIGNALDESK_FIREBASE_',
+        'SIGNALDESK_FIRESTORE_',
+        'SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS',
+    ],
+} as const;
+
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
     if (productId === 'neelvara') return 'Neelvara';
@@ -141,6 +165,13 @@ const describeProduct = (productId: DeploymentProductId) => {
 };
 
 const getEnvValue = (varName: string) => process.env[varName]?.trim();
+const hasProductFirebaseConfiguration = (productId: DeploymentProductId): boolean => {
+    if (productId === 'menulist') return true;
+    const prefixes = OPTIONAL_PRODUCT_FIREBASE_ENV_PREFIXES[productId] || [];
+    return Object.entries(process.env).some(([varName, value]) => (
+        Boolean(value?.trim()) && prefixes.some((prefix) => varName.startsWith(prefix))
+    ));
+};
 const BOOLEAN_ENV_VALUES = new Set(['0', '1', 'false', 'no', 'off', 'on', 'true', 'yes']);
 const CAMPAIGNCUE_BOOLEAN_VARS = [
     'CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL',
@@ -257,6 +288,10 @@ export function validateEnvironment(): EnvValidationResult {
     }
 
     (['menulist', 'answerlattice', 'campaigncue', 'signaldesk'] as DeploymentProductId[]).forEach((productId) => {
+        // This repository is provisioned product by product. An absent sister-product
+        // configuration is valid; once any Firebase value is added, validate it fully.
+        if (!hasProductFirebaseConfiguration(productId)) return;
+
         const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
         PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
             const actualProjectId = getEnvValue(varName);
@@ -281,81 +316,85 @@ export function validateEnvironment(): EnvValidationResult {
         });
     });
 
-    const signalDeskDescription = describeProduct('signaldesk');
-    const addSignalDeskIssue = (detail: string) => {
-        addEnvironmentIssue(`${signalDeskDescription}: ${detail}`);
-    };
-    const signalDeskPrivateMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIREBASE_MODE)?.toLowerCase();
-    const signalDeskPublicMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIREBASE_MODE)?.toLowerCase();
-    if (!signalDeskPrivateMode || !signalDeskPublicMode) {
-        addSignalDeskIssue('private and public Firebase modes must both be set to separate');
-    } else if (
-        signalDeskPrivateMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
-        || signalDeskPublicMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
-        || signalDeskPrivateMode !== signalDeskPublicMode
-    ) {
-        addSignalDeskIssue('private and public Firebase modes must agree and equal separate');
-    }
-
-    const signalDeskPrivateDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIRESTORE_DATABASE_ID);
-    const signalDeskPublicDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIRESTORE_DATABASE_ID);
-    if (
-        signalDeskPrivateDatabaseId
-        && signalDeskPublicDatabaseId
-        && signalDeskPrivateDatabaseId !== signalDeskPublicDatabaseId
-    ) {
-        addSignalDeskIssue('private and public Firestore database IDs must agree');
-    } else if (
-        (signalDeskPrivateDatabaseId && signalDeskPrivateDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
-        || (signalDeskPublicDatabaseId && signalDeskPublicDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
-    ) {
-        addSignalDeskIssue('Firestore database must be the default database');
-    }
-
-    const rawSignalDeskPrivateBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.STORAGE_BUCKET);
-    const rawSignalDeskPublicBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET);
-    const signalDeskPrivateBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPrivateBucket);
-    const signalDeskPublicBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPublicBucket);
-    if (!rawSignalDeskPrivateBucket || !rawSignalDeskPublicBucket) {
-        addSignalDeskIssue('private and public Storage buckets are both required');
-    } else if (!signalDeskPrivateBucket || !signalDeskPublicBucket) {
-        addSignalDeskIssue('Storage buckets must be valid Firebase bucket names');
-    } else if (signalDeskPrivateBucket !== signalDeskPublicBucket) {
-        addSignalDeskIssue('private and public Storage buckets must agree');
-    } else if (!isSignalDeskProjectStorageBucket(signalDeskPrivateBucket, getExpectedFirebaseProjectId('signaldesk', stage))) {
-        addSignalDeskIssue('Storage bucket must be a project-owned default bucket for the active stage');
-    }
-
-    [
-        SIGNALDESK_FIREBASE_ENV.API_KEY,
-        SIGNALDESK_FIREBASE_ENV.APP_ID,
-        SIGNALDESK_FIREBASE_ENV.AUTH_DOMAIN,
-    ].forEach((varName) => {
-        if (!getEnvValue(varName)) {
-            addSignalDeskIssue(`${varName} is required for the dedicated Firebase client`);
+    if (hasProductFirebaseConfiguration('signaldesk')) {
+        const signalDeskDescription = describeProduct('signaldesk');
+        const addSignalDeskIssue = (detail: string) => {
+            addEnvironmentIssue(`${signalDeskDescription}: ${detail}`);
+        };
+        const signalDeskPrivateMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIREBASE_MODE)?.toLowerCase();
+        const signalDeskPublicMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIREBASE_MODE)?.toLowerCase();
+        if (!signalDeskPrivateMode || !signalDeskPublicMode) {
+            addSignalDeskIssue('private and public Firebase modes must both be set to separate');
+        } else if (
+            signalDeskPrivateMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
+            || signalDeskPublicMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
+            || signalDeskPrivateMode !== signalDeskPublicMode
+        ) {
+            addSignalDeskIssue('private and public Firebase modes must agree and equal separate');
         }
-    });
 
-    const signalDeskCredentialPath = getEnvValue(SIGNALDESK_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS);
-    const signalDeskClientEmail = getEnvValue(SIGNALDESK_FIREBASE_ENV.CLIENT_EMAIL);
-    const signalDeskPrivateKey = getEnvValue(SIGNALDESK_FIREBASE_ENV.PRIVATE_KEY);
-    if (!signalDeskCredentialPath && (!signalDeskClientEmail || !signalDeskPrivateKey)) {
-        addSignalDeskIssue('a complete Admin credential tuple or namespaced credential file is required');
-    } else if (
-        signalDeskCredentialPath
-        && Boolean(signalDeskClientEmail) !== Boolean(signalDeskPrivateKey)
-    ) {
-        addSignalDeskIssue('partial Admin credential tuples are not allowed when a credential file is configured');
+        const signalDeskPrivateDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIRESTORE_DATABASE_ID);
+        const signalDeskPublicDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIRESTORE_DATABASE_ID);
+        if (
+            signalDeskPrivateDatabaseId
+            && signalDeskPublicDatabaseId
+            && signalDeskPrivateDatabaseId !== signalDeskPublicDatabaseId
+        ) {
+            addSignalDeskIssue('private and public Firestore database IDs must agree');
+        } else if (
+            (signalDeskPrivateDatabaseId && signalDeskPrivateDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
+            || (signalDeskPublicDatabaseId && signalDeskPublicDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
+        ) {
+            addSignalDeskIssue('Firestore database must be the default database');
+        }
+
+        const rawSignalDeskPrivateBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.STORAGE_BUCKET);
+        const rawSignalDeskPublicBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET);
+        const signalDeskPrivateBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPrivateBucket);
+        const signalDeskPublicBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPublicBucket);
+        if (!rawSignalDeskPrivateBucket || !rawSignalDeskPublicBucket) {
+            addSignalDeskIssue('private and public Storage buckets are both required');
+        } else if (!signalDeskPrivateBucket || !signalDeskPublicBucket) {
+            addSignalDeskIssue('Storage buckets must be valid Firebase bucket names');
+        } else if (signalDeskPrivateBucket !== signalDeskPublicBucket) {
+            addSignalDeskIssue('private and public Storage buckets must agree');
+        } else if (!isSignalDeskProjectStorageBucket(signalDeskPrivateBucket, getExpectedFirebaseProjectId('signaldesk', stage))) {
+            addSignalDeskIssue('Storage bucket must be a project-owned default bucket for the active stage');
+        }
+
+        [
+            SIGNALDESK_FIREBASE_ENV.API_KEY,
+            SIGNALDESK_FIREBASE_ENV.APP_ID,
+            SIGNALDESK_FIREBASE_ENV.AUTH_DOMAIN,
+        ].forEach((varName) => {
+            if (!getEnvValue(varName)) {
+                addSignalDeskIssue(`${varName} is required for the dedicated Firebase client`);
+            }
+        });
+
+        const signalDeskCredentialPath = getEnvValue(SIGNALDESK_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS);
+        const signalDeskClientEmail = getEnvValue(SIGNALDESK_FIREBASE_ENV.CLIENT_EMAIL);
+        const signalDeskPrivateKey = getEnvValue(SIGNALDESK_FIREBASE_ENV.PRIVATE_KEY);
+        if (!signalDeskCredentialPath && (!signalDeskClientEmail || !signalDeskPrivateKey)) {
+            addSignalDeskIssue('a complete Admin credential tuple or namespaced credential file is required');
+        } else if (
+            signalDeskCredentialPath
+            && Boolean(signalDeskClientEmail) !== Boolean(signalDeskPrivateKey)
+        ) {
+            addSignalDeskIssue('partial Admin credential tuples are not allowed when a credential file is configured');
+        }
     }
 
-    const campaignCueAdminCredentialReady = Boolean(
-        getEnvValue(CAMPAIGNCUE_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS)
-        || CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS.every((key) => getEnvValue(key))
-    );
-    if (!campaignCueAdminCredentialReady) {
-        const message = 'CampaignCue Admin SDK credentials are missing — CampaignCue APIs cannot access the dedicated Firebase project';
-        if (isVercel) missing.push(message);
-        else warnings.push(message);
+    if (hasProductFirebaseConfiguration('campaigncue')) {
+        const campaignCueAdminCredentialReady = Boolean(
+            getEnvValue(CAMPAIGNCUE_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS)
+            || CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS.every((key) => getEnvValue(key))
+        );
+        if (!campaignCueAdminCredentialReady) {
+            const message = 'CampaignCue Admin SDK credentials are missing — CampaignCue APIs cannot access the dedicated Firebase project';
+            if (isVercel) missing.push(message);
+            else warnings.push(message);
+        }
     }
 
     const platformDomain = getEnvValue('NEXT_PUBLIC_PLATFORM_DOMAIN');
@@ -390,7 +429,8 @@ export function validateEnvironment(): EnvValidationResult {
         }
     }
 
-    if (isVercel && stage !== 'local') {
+    const myCodexHasActiveDomain = getProductDeploymentTarget('mycodex', stage).domains.length > 0;
+    if (isVercel && stage !== 'local' && myCodexHasActiveDomain) {
         const missingMyCodexAuth = MYCODEX_AUTH_VARS.filter((varName) => !getEnvValue(varName));
         if (missingMyCodexAuth.length > 0) {
             missing.push(`${missingMyCodexAuth.join(', ')} required for MyCodex access protection on Vercel`);

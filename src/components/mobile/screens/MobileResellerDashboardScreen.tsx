@@ -1,7 +1,7 @@
 'use client'
 
 import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
@@ -307,7 +307,7 @@ export default function MobileResellerDashboardScreen({
     const resellerId = session?.user?.id || '';
     const resellerEmail = session?.user?.email || '';
     const platformRole = session?.platformRole || session?.user?.platformRole;
-    const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatform = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const {
         profile,
         monthlySummary,

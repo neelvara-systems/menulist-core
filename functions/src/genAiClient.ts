@@ -24,5 +24,16 @@
 
 import { createAIGateway } from "./ai/aiGateway";
 import { keyManager } from "./ai/keyManager";
+import {
+    createFirestoreGeminiSpendAdmission,
+    getGeminiSpendLimitMicroUsd,
+} from "./sharedData/geminiSpendPolicy";
+import { firestoreAdmin } from "./firebaseAdmin";
 
-export const genAIClient = createAIGateway(keyManager);
+const menulistGeminiSpendAdmission = createFirestoreGeminiSpendAdmission({
+    getFirestore: () => firestoreAdmin,
+    limitMicroUsd: getGeminiSpendLimitMicroUsd('menulist', process.env),
+    product: 'menulist',
+});
+
+export const genAIClient = createAIGateway(keyManager, menulistGeminiSpendAdmission);

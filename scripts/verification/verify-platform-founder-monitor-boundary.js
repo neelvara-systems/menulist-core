@@ -636,7 +636,7 @@ function verifyMobileAndNavigation(mobileShell, mobileMore, mobileInternal, navC
 
   [
     'PLATFORM_FOUNDER_MONITOR: `/platform/founder-monitor`',
-    "{ label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] }",
+    "{ label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] }",
   ].forEach((token) => assertIncludes(navConstants, token, 'Founder Monitor navigation constants'));
 
   [

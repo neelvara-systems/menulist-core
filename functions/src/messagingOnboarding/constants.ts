@@ -301,6 +301,9 @@ export const MESSAGES = {
   EXISTING_STORE: (dashboardLink: string) =>
     `Your menu is already live. Manage here: ${dashboardLink}`,
 
+  EXISTING_STORE_NO_LINK:
+    "Your menu is already live. Open the MenuList app to manage it.",
+
   RATE_LIMITED:
     "Try again later.",
 

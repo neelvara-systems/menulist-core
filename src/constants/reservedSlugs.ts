@@ -93,7 +93,7 @@ export const RESERVED_SUBDOMAINS: readonly string[] = [
     'www', 'app', 'api', 'admin', 'dashboard', 'mail', 'blog',
     'help', 'support', 'status', 'menu', 'screen', 'feedback',
     'auth', 'login', 'signup', 'webhook', 'health', 'cdn',
-    'dev', 'staging', 'test', 'demo', 'docs', 'billing',
+    'dev', 'qa', 'staging', 'test', 'demo', 'docs', 'billing',
     'answerlattice',
     CAMPAIGNCUE_PRODUCT_SLUG,
     NEELVARA_PRODUCT_SLUG,

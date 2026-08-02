@@ -1,5 +1,7 @@
+import { SIGNIN_URL } from '@constant/urls';
+
 export const buildWebsiteSignInPath = (callbackUrl: string = '/dashboard') =>
-    `/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+    `${SIGNIN_URL}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
 export const buildCurrentWebsiteSignInPath = () => {
     if (typeof window === 'undefined') {

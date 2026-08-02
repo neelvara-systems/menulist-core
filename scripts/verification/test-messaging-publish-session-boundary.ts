@@ -280,7 +280,7 @@ function main(): void {
     publishedResult: {
       dashboardUrl: 'https://app.menulist.ai/signin',
       projectId: '1-default-2',
-      publicUrl: 'https://demo.menulist.online/menu',
+      publicUrl: 'https://sample-cafe.menulist.online/menu',
       storeId: 2,
       tenantId: 1,
       userId: 'owner-1',
@@ -305,7 +305,7 @@ function main(): void {
     publishedResult: {
       dashboardUrl: 'https://app.menulist.ai/signin',
       projectId: '9-default-8',
-      publicUrl: 'https://demo.menulist.online',
+      publicUrl: 'https://sample-cafe.menulist.online',
       storeId: 2,
       tenantId: 1,
       userId: 'owner-1',
@@ -316,7 +316,7 @@ function main(): void {
   assert.equal(normalizeMessagingPublishedResult({
     dashboardUrl: 'https://app.menulist.ai/signin',
     projectId: '9-default-8',
-    publicUrl: 'https://demo.menulist.online',
+    publicUrl: 'https://sample-cafe.menulist.online',
     storeId: 2,
     tenantId: 1,
     userId: 'owner-1',

@@ -41908,6 +41908,144 @@ This restart found a new verification defect and is not a clean full pass.
 `consecutiveCleanFullPasses` remains `0`; the production-readiness matrix must
 restart from check one.
 
+## August 2, 2026 incremental fingerprint closeout
+
+The quoted 129-file snapshot was stale when this closeout began. Regenerating
+the repository inventory at HEAD `8d3ad1ff519ea54541d20d5c17caea050cc4d19e`
+found 8,607 in-scope files: 8,326 reviewed, 277 fingerprint-reopened, and four
+new inventory-only files. All 281 pending files were current working-tree
+changes. The review covered their complete diffs and current contracts,
+including 92 documentation files, 55 locale/configuration files, Functions and
+Next.js entry points, shared runtime, API/DAL/auth code, UI consumers, and
+verifier/emulator registrations. Historical retired-domain strings remain only
+where explicitly labelled as historical, negative, or superseded evidence.
+Four additional first-party files appeared while the shared worktree was being
+reviewed. The final current-content inventory therefore contains 8,611
+in-scope files. At its widest point this incremental closeout covered 292
+reopened or inventory-only entries, including 94 documentation/contract files.
+Every one was inspected and assigned an exact current-content fingerprint; the
+final manifest has 8,611 reviewed entries and zero pending entries. The reverse
+Firestore catalog has 284 reviewed collection families and zero pending
+families.
+
+### AUDIT-PUBLISH-TENANT-DOMAIN-CONTRACT-001 - stale test env and cross-environment suffix were not rejected
+
+- **Finding ID/severity/status:** `AUDIT-PUBLISH-TENANT-DOMAIN-CONTRACT-001` /
+  P2 / Closed locally.
+- **File/function/flow/structure:** `package.json`,
+  `functions/src/config/menulistRuntimeUrls.ts`,
+  `functions/src/monitoring/publishVerification.ts`, and the publish-scope and
+  Functions-runtime URL regressions; Functions env -> canonical public menu
+  URL -> network verification -> store health/force-republish result.
+- **Observed/root cause:** publish verification correctly stopped deriving the
+  customer suffix from `NEXT_PUBLIC_APP_URL`, but its registered emulator
+  command still supplied only that retired variable and failed the canonical
+  hostname assertion. The new suffix parser was syntactic only, so a trusted
+  but cross-environment or unknown deploy value could generate and verify the
+  wrong public hostname.
+- **Expected/security/data/public/cache impact:** the Firebase project and
+  customer suffix must agree before network I/O or Admin health writes. This
+  was not client-controlled and did not prove cross-tenant access, but a deploy
+  misconfiguration could corrupt publication-health truth or force-republish
+  output. No cache-key or billing mutation was involved.
+- **Fix/backward compatibility:** one Functions runtime helper now admits only
+  `menulist.digital` and `menulist.online`, binds the former to `menulist-qa`
+  and the latter to `menulist`, and fails closed for unknown/cross-environment
+  values. Demo emulator projects must explicitly use one maintained suffix.
+  The package command now supplies the actual contract variable.
+- **Regression/validation:** Functions runtime URL tests cover both valid
+  project mappings, QA-to-production rejection, and unknown-domain rejection;
+  the full publish-verification Firestore emulator suite passes. The MenuList
+  API tenant-safety verifier now guards the centralized mapping.
+- **Re-audit closure:** closed during this incremental current-content pass;
+  convergence reset before the subsequent clean passes.
+
+### Incremental convergence and validation evidence
+
+- **Clean pass 1 - datastore/security first:** regenerated the full manifest
+  and 284-family reverse collection catalog, replayed the audit-tool integrity
+  gate, SecurityOS MenuList evidence registry, all 41 root MenuList
+  Firestore/Storage emulator rule commands, tenant/domain routing, publish
+  verification, API tenant-safety, and Gemini spend-window isolation. No new
+  confirmed defect was found.
+- **Clean pass 2 - type/publication/documentation first:** replayed exact root
+  TypeScript, ESLint, documentation links and package-command parity, global
+  localization, public-business truth, customer/app routing and PWA boundaries,
+  production build, and final diff hygiene against the settled working tree.
+  No new confirmed defect was found.
+- **Build evidence:** the first `npm run build` compiled and type-checked but
+  exited during page-data collection because the local shell had no
+  `NEXTAUTH_SECRET`. Repeating the same build with an ephemeral build-only
+  `NEXTAUTH_SECRET` completed all 441 static pages and exited zero. No env file
+  or deployed environment was changed. The existing Sass `@import`
+  deprecation notices and missing optional Gemini-key warnings remain
+  non-failing build diagnostics.
+- **Deployment boundary:** local Functions preflight/build passes. The exact
+  MenuList QA shared-Gemini target deployment already stopped before upload
+  with missing Firebase authentication, so no remote Function revision
+  changed. Vercel deployment was not authorized. Deployed-rule readback and
+  authenticated QA flow smoke remain external evidence, not local audit proof.
+- **Result:** this incremental current-content closeout has two consecutive
+  independent clean passes after the three repairs above. It closes the stale
+  fingerprint backlog; it does not convert undeployed QA behavior into
+  production certification.
+
+### AUDIT-GEMINI-CLIENT-SELECTION-RESERVATION-001 - unusable keys could consume rolling-spend capacity
+
+- **Finding ID/severity/status:**
+  `AUDIT-GEMINI-CLIENT-SELECTION-RESERVATION-001` / P2 / Closed locally.
+- **File/function/flow/structure:** all three Gemini gateway implementations
+  (root MenuList/SignalDesk server runtime, MenuList Functions, and
+  Answerlattice Functions); provider request -> key selection -> distributed
+  spend reservation -> provider attempt -> settlement/release.
+- **Observed/root cause:** each retry iteration reserved Firestore spend before
+  calling `KeyManager.getClient()`. Client selection sat outside the provider
+  `try`; when all keys were missing or unavailable it could throw after the
+  reservation, with no settlement/release path. Repeated calls could therefore
+  block valid work for the retained rolling-window duration without any billed
+  provider attempt.
+- **Expected/security/data/public/cache impact:** capacity is reserved only
+  after a usable client exists and immediately before provider I/O. Product
+  isolation and browser deny rules were intact; the defect affected
+  availability, Firestore spend-window truth, and retry behavior, not tenant
+  data or public DTOs.
+- **Fix/backward compatibility:** all gateway mirrors select the client first,
+  then reserve spend, while retaining fail-closed admission and conservative
+  settlement behavior. No provider request, key, prompt, or tenant data is
+  persisted.
+- **Regression/validation:** the Gemini migration verifier enforces ordering
+  in every gateway. Runtime compatibility, spend-policy behavior, all three
+  product-separated Firestore deny-rule emulator suites, and both Functions
+  TypeScript builds pass. Current official Google pricing and rolling
+  ten-minute spend-limit documentation were cross-checked on August 2, 2026.
+- **Re-audit closure:** closed during this incremental current-content pass;
+  convergence reset before the subsequent clean passes.
+
+### AUDIT-OWNER-LOCALE-DOMAIN-EVIDENCE-001 - locale evidence fingerprint was stale after domain correction
+
+- **Finding ID/severity/status:** `AUDIT-OWNER-LOCALE-DOMAIN-EVIDENCE-001` /
+  P3 / Closed locally.
+- **Files/flow:** all 52 MenuList locale packs and
+  `owner-locale-semantic-coverage.json`; authoritative en-US owner strings ->
+  mechanically domain-corrected translations -> checked-in semantic evidence
+  -> owner/localization release gate.
+- **Observed/root cause:** the customer-domain corrections were present and
+  JSON/namespace parity passed, but the saved en-US owner-source digest and
+  per-locale owner-subtree digests still described the pre-correction values.
+  The full localization verifier therefore failed before downstream locale
+  behavior tests.
+- **Impact:** no runtime translation or tenant data was wrong; stale evidence
+  prevented release proof and could have encouraged bypassing the semantic
+  gate. Public customer examples and owner settings had to remain synchronized
+  across all locale packs.
+- **Fix/regression:** regenerated only the deterministic source/per-locale
+  owner hashes and generation date from current checked-in locale content;
+  provider provenance, quality policy, translations, and quality-repair counts
+  were preserved. The complete global localization, public-customer bundle,
+  Ant Design theme, and mobile locale suites pass.
+- **Re-audit closure:** closed during this incremental current-content pass;
+  convergence reset before the subsequent clean passes.
+
 ## Restart 1609 addendum — owner metadata truth, analytics claims, and complete readiness convergence
 
 The forward owner-surface trace and the subsequent complete 179-gate readiness

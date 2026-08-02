@@ -8,5 +8,19 @@
 
 import { createAIGateway } from './ai/aiGateway';
 import { keyManager } from './ai/keyManager';
+import {
+    createFirestoreGeminiSpendAdmission,
+    getGeminiSpendLimitMicroUsd,
+} from './sharedData/geminiSpendPolicy';
+import { firestoreAdmin } from './firebaseAdmin';
 
-export const answerlatticeGenAIClient = createAIGateway(keyManager);
+const answerlatticeGeminiSpendAdmission = createFirestoreGeminiSpendAdmission({
+    getFirestore: () => firestoreAdmin,
+    limitMicroUsd: getGeminiSpendLimitMicroUsd('answerlattice', process.env),
+    product: 'answerlattice',
+});
+
+export const answerlatticeGenAIClient = createAIGateway(
+    keyManager,
+    answerlatticeGeminiSpendAdmission,
+);

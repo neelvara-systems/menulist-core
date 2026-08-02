@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
@@ -141,7 +141,7 @@ export function isCurrentPlatformUserRecordEligible(params: {
 }): boolean {
     return isCurrentUserRecordEligible(params)
         && isUnknownRecord(params.userData)
-        && params.userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+        && params.userData.platformRole === MENULIST_PLATFORM_USER_ROLE;
 }
 
 export async function getCurrentUser(session: unknown): Promise<{
@@ -177,7 +177,7 @@ export async function getCurrentPlatformUser(session: unknown): Promise<{
     userData: Record<string, unknown>;
 } | null> {
     const currentUser = await getCurrentUser(session);
-    if (!currentUser || currentUser.userData.platformRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+    if (!currentUser || currentUser.userData.platformRole !== MENULIST_PLATFORM_USER_ROLE) {
         return null;
     }
     return currentUser;

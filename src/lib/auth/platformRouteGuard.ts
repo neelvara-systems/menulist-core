@@ -1,4 +1,4 @@
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { authOptions } from '@lib/auth';
 import { getCurrentUser } from '@lib/auth/currentPlatformUser';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
@@ -27,5 +27,5 @@ export async function requirePlatformRoleRouteAccess(
 }
 
 export async function requirePlatformAdminRouteAccess(redirectPath = '/unauthorized') {
-    return requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);
+    return requirePlatformRoleRouteAccess([MENULIST_PLATFORM_USER_ROLE], redirectPath);
 }

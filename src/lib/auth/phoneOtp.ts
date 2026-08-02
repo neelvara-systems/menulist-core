@@ -3,8 +3,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import {
-    ECOMSAI_PLATFORM_STORE_ID,
-    ECOMSAI_PLATFORM_TENANT_ID,
+    MENULIST_PLATFORM_STORE_ID,
+    MENULIST_PLATFORM_TENANT_ID,
 } from '@constant/user';
 import { getGeneratedEmail } from '@constant/urls';
 import { normalizeLoginDigits } from '@lib/auth/loginIdentifiers';
@@ -551,8 +551,8 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         stores: [],
         pId: DEFAULT_PRODUCT_ID,
         productId: DEFAULT_PRODUCT_ID,
-        tId: ECOMSAI_PLATFORM_TENANT_ID,
-        sId: ECOMSAI_PLATFORM_STORE_ID,
+        tId: MENULIST_PLATFORM_TENANT_ID,
+        sId: MENULIST_PLATFORM_STORE_ID,
         uId: userId,
         phone: phone.e164,
         phoneNumber: phone.phoneNumber || phone.e164,

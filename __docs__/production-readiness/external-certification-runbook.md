@@ -118,6 +118,24 @@ Changed-function subset note: the July 2, 2026 source-file path hardening slice 
 firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:startGeneration,functions:embedArticleWorker,functions:regenerateEmbedding --non-interactive
 ```
 
+Changed-function subset note: the August 2, 2026 Gemini rolling-spend and
+retry boundary changes the shared gateway used by every listed MenuList AI
+consumer. After `npm run verify:functions-deploy-preflight`, use this complete
+affected subset and record it separately from unrelated Gate 1 blockers:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:startGeneration,functions:retryGeneration,functions:processMenuImagesJob,functions:processMenuImages,functions:embedArticleWorker,functions:regenerateEmbedding,functions:menulistMaintenanceScheduler,functions:mapsPlaceCheck,functions:messagingOnboarding,functions:triggerSchedulerManually,functions:triggerWeeklyNarrativeManually,functions:triggerCustomerAnalyticsManually,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --non-interactive
+```
+
+This target set activates the shared spend controller only for exports that can
+reach `genAIClient`. It does not deploy Firestore rules/indexes, Storage,
+hosting, unrelated Functions, or any Vercel surface.
+
+August 2 attempt: root Functions preflight passed, then this exact MenuList QA
+command stopped before predeploy/upload with
+`Error: Failed to authenticate, have you run firebase login?`. No Function
+revision changed.
+
 Changed-function subset note: the July 2, 2026 Founder Monitor scheduler slice changes `functions/src/schedulers/founderMonitorSnapshot.ts` and `functions/src/schedulers/menulistMaintenanceScheduler.ts`. If only this slice is being retried, deploy exactly the consolidated scheduler target and record the result separately from the broader blocked set:
 
 ```bash
@@ -327,7 +345,7 @@ npm run verify:public-truth-tools
 When the local tenant host, Chrome, and development server are available, run the maintained non-mutating customer-worker browser harness:
 
 ```bash
-CUSTOMER_PWA_QA_TENANT_HOST=habibis.qa.menulist.digital \
+CUSTOMER_PWA_QA_TENANT_HOST=habibis.menulist.digital \
 CUSTOMER_PWA_QA_UPSTREAM_URL=http://127.0.0.1:3000 \
 CUSTOMER_PWA_QA_OUTPUT_DIR=/tmp/menulist-customer-pwa-qa \
 npm run smoke:customer-pwa-offline
@@ -335,7 +353,7 @@ npm run smoke:customer-pwa-offline
 
 The harness uses a temporary Chrome profile and a harness-owned loopback tenant proxy. It loads the online tenant page, waits for development service-worker cleanup, manually registers `/sw-customer.js`, verifies Cache Storage contains exactly `customer-app-offline-v1` with only `/offline`, severs only the proxy's upstream connection, and fresh-navigates to the maintained offline screen. It fails if cached menu/runtime content appears, the offline reconnect copy is missing, or the online tenant title leaks into the fallback. It does not stop the shared development server or mutate Firebase, Storage, provider, or deployment state.
 
-Current local evidence, July 11, 2026: the command passed against `habibis.qa.menulist.digital` mapped to loopback with the development server on port 3000. The 390x844 offline capture rendered `You're offline` and `Reconnect to see the latest live menu.`; both online and offline cache inspection found only `/offline`, with `menuContentCached: false`. This proves the local loopback customer-worker contract only. Development intentionally unregisters service workers before the harness manually registers one, so this result does not prove production registration, installability, deployed worker scope, physical-device behavior, or production-host offline behavior.
+Historical local evidence, July 11, 2026: the command passed against the now-retired `habibis.qa.menulist.digital` host mapped to loopback. Current reruns must use `habibis.menulist.digital`. The 390x844 offline capture rendered `You're offline` and `Reconnect to see the latest live menu.`; both online and offline cache inspection found only `/offline`, with `menuContentCached: false`. This proves the local loopback customer-worker contract only. Development intentionally unregisters service workers before the harness manually registers one, so this result does not prove production registration, installability, deployed worker scope, physical-device behavior, or production-host offline behavior.
 
 Passing preflight proves the owner-mobile and mobile upload/extraction harnesses are syntactically valid, shell route targets are source-mapped, Staff/Roles mobile sub-screens keep their shared route/permission contract, customer app and public business truth source gates are intact, menu extraction intake still enforces source limits, and public truth tools remain browser-local/static-report surfaces. It does not prove real device rendering, authenticated owner-shell visual behavior, touch ergonomics, browser console cleanliness, or public route runtime rendering.
 

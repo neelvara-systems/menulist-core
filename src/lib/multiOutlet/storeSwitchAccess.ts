@@ -1,4 +1,4 @@
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 
 export type SessionStoreMapping = {
     storeId?: number | string | null;
@@ -61,7 +61,7 @@ export const getStoreSummaryId = (store: StoreSummary | null | undefined): numbe
 };
 
 export const isPlatformStoreAccessUser = (sessionUser: SessionUserWithStores | null | undefined): boolean => {
-    return sessionUser?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    return sessionUser?.platformRole === MENULIST_PLATFORM_USER_ROLE;
 };
 
 export const getMappedStoreIdsForUser = (

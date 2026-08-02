@@ -104,7 +104,7 @@ function storePublished(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const publicUrl = urlValue(meta.publicUrl);
-  const dashboardUrl = urlValue(meta.dashboardUrl) || 'https://app.menulist.ai';
+  const dashboardUrl = urlValue(meta.dashboardUrl);
   return {
     subject: `Your menu is now live — ${storeName}`,
     html: wrap(`
@@ -115,9 +115,9 @@ function storePublished(meta: Record<string, unknown>): EmailTemplate {
         <a href="${escapeHtml(publicUrl)}" style="${STYLES.link}">${escapeHtml(publicUrl)}</a>
       </div>` : ''}
       <p style="${STYLES.text}">Share this link with your customers, add it to your Google Business Profile, or generate a QR code from your dashboard.</p>
-      <p style="margin-top: 20px;">
+      ${dashboardUrl ? `<p style="margin-top: 20px;">
         <a href="${escapeHtml(dashboardUrl)}" style="${STYLES.button}">Open Dashboard</a>
-      </p>
+      </p>` : ''}
     `),
   };
 }

@@ -1,6 +1,7 @@
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Flex, Typography, theme } from 'antd';
-import { LuFolderOpen, LuPlus } from 'react-icons/lu';
+import { LuPlus } from 'react-icons/lu';
 
 interface EmptyProjectStateProps {
     onCreate: () => void;
@@ -14,16 +15,23 @@ export const EmptyProjectState = ({ onCreate }: EmptyProjectStateProps) => {
     return (
         <Flex vertical align="center" justify="center" style={{ padding: '60px 20px', height: '100%', width: '100%' }}>
             <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: token.colorFillSecondary,
-                display: 'flex',
                 alignItems: 'center',
+                background: token.colorPrimaryBg,
+                borderRadius: 24,
+                display: 'flex',
                 justifyContent: 'center',
-                marginBottom: '24px'
+                marginBottom: 24,
+                minHeight: 148,
+                padding: '16px 22px',
+                width: 176,
             }}>
-                <LuFolderOpen size={40} color={token.colorTextSecondary} />
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={132}
+                    style={{ opacity: 0.82 }}
+                    treatment="softHalo"
+                    variant="emptyWorkspace"
+                />
             </div>
             <Typography.Title level={3} style={{ margin: 0, marginBottom: '8px' }}>
                 No {labels.offeringPhrase} yet

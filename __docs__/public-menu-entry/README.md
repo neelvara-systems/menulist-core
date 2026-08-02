@@ -4,13 +4,13 @@
 **Feature flags:** `ENABLE_PUBLIC_MENU_ENTRY`; link intake also requires `ENABLE_MENU_LINK_IMPORT`
 **Last reviewed:** July 28, 2026
 
-> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 **Local result:** Local source complete. Preview polling runs every 5 seconds for at most 36 status reads before owner-visible retry. An expired claimed draft receipt is removed while its promoted source file is preserved. Approved app release, the scoped Firebase QA Function deployment, and hosted evidence remain pending.
 
 ## Current purpose
 
-`/create-menu` is a public website entry point for a business owner to sign in, submit one current menu photo or permission-confirmed public link, review the structured result, and create or add an owner-controlled menu. It is not an anonymous extraction endpoint.
+`/create-menu` is a publicly reachable owner-app entry point for a business owner to sign in, submit one current menu photo or permission-confirmed public link, review the structured result, and create or add an owner-controlled menu. Marketing CTAs use `app.menulist.digital/create-menu` in QA and `app.menulist.ai/create-menu` in production. It is not an anonymous extraction endpoint.
 
 ## End-to-end flow
 

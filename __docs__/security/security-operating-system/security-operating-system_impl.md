@@ -83,6 +83,7 @@ The evidence map points to existing scripts rather than duplicating their securi
 - MenuList input, file, server-network-target, webhook, security-event, and POS-secret boundaries;
 - Answerlattice repository security audit;
 - Answerlattice Storage, governance, public API, intake, integration, billing, chat-session, release, and ontology emulator tests;
+- product-separated MenuList, Answerlattice, and SignalDesk Gemini spend-window deny-rule emulator tests;
 - dependency-freeze validation.
 
 Registered-only products retain their own evidence commands without receiving a false completion status. Neelvara remains unknown.

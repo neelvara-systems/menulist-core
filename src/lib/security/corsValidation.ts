@@ -60,14 +60,9 @@ const isConfiguredOriginAllowed = (origin: string, allowedOrigin: string): boole
     const allowedUrl = parseOrigin(allowedOrigin);
     if (!originUrl || !allowedUrl) return false;
 
-    if (originUrl.origin === allowedUrl.origin) return true;
-
-    const sameProtocolAndPort = originUrl.protocol === allowedUrl.protocol && originUrl.port === allowedUrl.port;
-    const isHttpsSubdomain = originUrl.protocol === 'https:'
-        && allowedUrl.protocol === 'https:'
-        && originUrl.hostname.endsWith(`.${allowedUrl.hostname}`);
-
-    return sameProtocolAndPort && isHttpsSubdomain;
+    // Customer pages can share a registrable domain with the QA app. Admit
+    // only explicit website/app origins; never inherit trust to subdomains.
+    return originUrl.origin === allowedUrl.origin;
 };
 
 const getCorsOriginDiagnosticContext = (origin: string) => {

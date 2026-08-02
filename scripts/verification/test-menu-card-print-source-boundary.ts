@@ -27,7 +27,7 @@ const canonical = buildPrintSource({
         },
     },
     store: baseStore,
-    menuUrl: 'https://demo.menulist.online/menu',
+    menuUrl: 'https://sample-cafe.menulist.online/menu',
     settings,
 });
 assert.equal(canonical.tenantId, '101');
@@ -46,7 +46,7 @@ const fallbackDate = buildPrintSource({
         tId: '101',
         sId: '202',
     },
-    menuUrl: 'https://demo.menulist.online/menu',
+    menuUrl: 'https://sample-cafe.menulist.online/menu',
     settings,
 });
 assert.equal(fallbackDate.menu.updatedAt, '2026-07-28T09:30:00.000Z');
@@ -69,7 +69,7 @@ const malformed = buildPrintSource({
         tId: 999,
         sId: 202,
     },
-    menuUrl: 'https://demo.menulist.online/menu',
+    menuUrl: 'https://sample-cafe.menulist.online/menu',
     settings,
 });
 assert.equal(malformed.tenantId, undefined);

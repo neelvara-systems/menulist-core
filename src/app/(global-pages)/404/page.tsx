@@ -1,7 +1,8 @@
 'use client'
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorPageThemeWrapper from '@atoms/ErrorPageThemeWrapper';
 import { HOME_ROUTING } from '@constant/navigations';
-import { Button, Flex, Result, Typography } from 'antd';
+import { Button, Flex, Result, Typography, theme } from 'antd';
 import { useRouter } from 'next/navigation';
 import { LuArrowLeft, LuHome } from 'react-icons/lu';
 
@@ -9,11 +10,19 @@ const { Paragraph } = Typography;
 
 function NotFound() {
     const router = useRouter();
+    const { token } = theme.useToken();
 
     return (
         <ErrorPageThemeWrapper>
             <Flex vertical justify='center' align='center' style={{ minHeight: "100vh", padding: 24 }}>
                 <Result
+                    icon={(
+                        <ContextualStateIllustration
+                            color={token.colorTextQuaternary}
+                            size={192}
+                            variant="notFoundContext"
+                        />
+                    )}
                     status="404"
                     title="Page Not Found"
                     subTitle={

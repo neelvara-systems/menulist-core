@@ -159,7 +159,7 @@ assertOrder(route, [
 [
   'export function isCurrentPlatformUserRecordEligible',
   'export async function getCurrentPlatformUser',
-  "userData.platformRole !== ECOMSAI_PLATFORM_USER_ROLE",
+  "userData.platformRole !== MENULIST_PLATFORM_USER_ROLE",
   'userData.active !== true',
   'userData.isVerified !== true',
   'userData.authDisabled === true',

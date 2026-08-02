@@ -82,7 +82,7 @@ Practical consequences:
 - Owner naming "Menu" → `/menu` is their canonical URL. Owner naming "Food Menu" → `/food-menu` is canonical; `/menu` works as an alias only when that or another project is explicitly default.
 - `menu` is **not reserved** in `RESERVED_PROJECT_SLUGS`. Owners can claim it via project naming.
 - OBP's "View Menu" CTA links to the default project's **real canonical slug URL** — preserving canonical URL cleanliness. `/menu` alias exists for customer-typed URLs, printed QRs, voice ("go to mybrand.menulist.online slash menu"), and protocol-level muscle memory — not as the emitted URL.
-- Subdomain `menu.menulist.ai` stays blocked in `RESERVED_SUBDOMAINS` (platform-level infrastructure concern, unrelated to per-store project slugs).
+- Subdomain `menu.menulist.online` stays blocked in `RESERVED_SUBDOMAINS` (platform-level infrastructure concern, unrelated to per-store project slugs).
 
 ---
 

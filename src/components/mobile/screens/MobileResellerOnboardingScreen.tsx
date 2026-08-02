@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
@@ -352,6 +353,14 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                 <Flex gap={12} style={{ padding: 16 }} vertical>
                     <Card>
                         <Result
+                            icon={(
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={112}
+                                    treatment="softHalo"
+                                    variant="onboardingSuccessContext"
+                                />
+                            )}
                             status="success"
                             title="Client onboarded"
                             subTitle={`Store ${result.storeId} · ${result.status}${result.locationCount ? ` · ${result.locationCount} location${result.locationCount > 1 ? 's' : ''}` : ''}`}

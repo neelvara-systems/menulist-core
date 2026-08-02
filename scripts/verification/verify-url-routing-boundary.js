@@ -117,10 +117,16 @@ function withRoutingEnv(env, fn) {
 
 function verifyPackageScript() {
   const packageJson = JSON.parse(read('package.json'));
-  assert(
-    packageJson.scripts['verify:url-routing-boundary'] === 'node scripts/verification/verify-url-routing-boundary.js',
-    'package.json must expose verify:url-routing-boundary',
-  );
+  const routingScript = packageJson.scripts['verify:url-routing-boundary'] || '';
+  [
+    'node scripts/verification/verify-url-routing-boundary.js',
+    'npm run test:menulist-host-routing',
+    'npm run test:menulist-functions-runtime-urls',
+  ].forEach((command) => assertIncludes(
+    routingScript,
+    command,
+    'package.json verify:url-routing-boundary',
+  ));
 }
 
 function verifyResolverRuntimeBoundary() {
@@ -137,15 +143,15 @@ function verifyResolverRuntimeBoundary() {
     assert(localPlatform.type === 'platform', 'localhost must resolve as platform in local development');
     assert(localPlatform.isPlatform === true && localPlatform.isClient === false, 'localhost must not be tenant client traffic');
 
-    const localTenant = resolveDomain('mysalon.qa.menulist.digital:3000');
+    const localTenant = resolveDomain('mysalon.menulist.digital:3000');
     assert(localTenant.type === 'subdomain', 'local generated tenant host must resolve as subdomain');
     assert(localTenant.subdomain === 'mysalon', 'local generated tenant host must preserve tenant subdomain');
     assert(localTenant.isClient === true, 'local generated tenant host must be client traffic');
 
-    const reservedDashboard = resolveDomain('app.qa.menulist.digital');
+    const reservedDashboard = resolveDomain('app.menulist.digital');
     assert(reservedDashboard.type === 'platform', 'reserved app subdomain must not become tenant traffic');
 
-    const signalDeskHost = resolveDomain('signaldesk.qa.menulist.digital');
+    const signalDeskHost = resolveDomain('signaldesk.menulist.digital');
     assert(signalDeskHost.type === 'platform', 'reserved SignalDesk subdomain must not become tenant traffic');
 
     const vercelAlias = resolveDomain('menulist-preview.vercel.app');
@@ -155,7 +161,7 @@ function verifyResolverRuntimeBoundary() {
     assert(customDomain.type === 'custom', 'unknown non-platform host must resolve as custom domain');
     assert(customDomain.customDomain === 'customer-owned-domain.example', 'custom domain resolver must preserve normalized hostname');
 
-    const trailingDotTenant = resolveDomain('mysalon.qa.menulist.digital.');
+    const trailingDotTenant = resolveDomain('mysalon.menulist.digital.');
     assert(trailingDotTenant.type === 'subdomain', 'strict Host parsing must normalize trailing-dot tenant hostnames');
     assert(trailingDotTenant.subdomain === 'mysalon', 'trailing-dot tenant host must preserve tenant subdomain after normalization');
 
@@ -184,14 +190,14 @@ function verifyResolverRuntimeBoundary() {
     assert(!shouldBypassDomainRouting('/robots.txt'), 'tenant robots must not bypass middleware');
     assert(!shouldBypassDomainRouting('/sitemap.xml'), 'tenant sitemap must not bypass middleware');
 
-    const trustedTenant = resolveTenantRequestIdentity('mysalon.qa.menulist.digital:3000', {
+    const trustedTenant = resolveTenantRequestIdentity('mysalon.menulist.digital:3000', {
       subdomain: 'mysalon',
       tenantType: 'subdomain',
     });
     assert(trustedTenant?.subdomain === 'mysalon', 'matching middleware tenant claims must preserve Host-derived identity');
     assert(trustedTenant?.routingClaimsValid === true, 'matching middleware tenant claims must validate');
 
-    const forgedTenant = resolveTenantRequestIdentity('mysalon.qa.menulist.digital:3000', {
+    const forgedTenant = resolveTenantRequestIdentity('mysalon.menulist.digital:3000', {
       subdomain: 'another-store',
       tenantType: 'subdomain',
     });
@@ -266,12 +272,12 @@ function verifyResolverRuntimeBoundary() {
     resolveKnownProductIdByHostname,
     resolveProductSiteByHostname,
   }) => {
-    assert(resolveDomain('qa.menulist.digital').type === 'platform', 'preview MenuList host must resolve as platform');
-    assert(resolveDomain('menulist.digital').type === 'platform', 'preview MenuList apex redirect host must resolve as platform');
-    assert(resolveDomain('www.menulist.digital').type === 'platform', 'preview MenuList www redirect host must resolve as platform');
-    assert(resolveKnownProductIdByHostname('qa.menulist.digital') === 'menulist', 'preview MenuList QA host must resolve to MenuList');
-    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'preview MenuList apex redirect host must resolve to MenuList');
-    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'preview MenuList www redirect host must resolve to MenuList');
+    assert(resolveDomain('menulist.digital').type === 'platform', 'preview MenuList staging website apex must resolve as platform');
+    assert(resolveDomain('www.menulist.digital').type === 'platform', 'preview MenuList staging website www host must resolve as platform');
+    assert(resolveDomain('app.menulist.digital').type === 'platform', 'preview MenuList owner app host must resolve as platform');
+    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'preview MenuList staging website apex must resolve to MenuList');
+    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'preview MenuList staging website www host must resolve to MenuList');
+    assert(resolveKnownProductIdByHostname('app.menulist.digital') === 'menulist', 'preview MenuList owner app host must resolve to MenuList');
 
     const answerlattice = resolveDomain('answerlattice.menulist.online');
     assert(answerlattice.type === 'product', 'preview Answerlattice host must resolve as product');
@@ -288,7 +294,7 @@ function verifyResolverRuntimeBoundary() {
     const signaldesk = resolveDomain('signaldesk.menulist.online');
     assert(signaldesk.type !== 'subdomain', 'preview SignalDesk host must stay out of MenuList tenant subdomain routing before middleware app-host branch');
 
-    const tenant = resolveDomain('joespizza.qa.menulist.digital');
+    const tenant = resolveDomain('joespizza.menulist.digital');
     assert(tenant.type === 'subdomain' && tenant.subdomain === 'joespizza', 'preview tenant subdomain must resolve as client subdomain');
 
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.online') === 'signaldesk', 'known product host lookup must recognize preview SignalDesk');
@@ -345,11 +351,8 @@ function verifyResolverRuntimeBoundary() {
     const campaigncue = resolveDomain('campaigncue.ai');
     assert(campaigncue.type === 'product' && campaigncue.productSite?.id === 'campaigncue', 'production CampaignCue domain must resolve as product');
 
-    const digitalRedirectHost = resolveDomain('menulist.digital');
-    assert(digitalRedirectHost.type === 'platform', 'menulist.digital must resolve as a MenuList redirect/noindex platform host');
-    assert(resolveDomain('www.menulist.digital').type === 'platform', 'www.menulist.digital must resolve as a MenuList redirect/noindex platform host');
-    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'known product host lookup must reserve menulist.digital for MenuList redirect/noindex handling');
-    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'known product host lookup must reserve www.menulist.digital for MenuList redirect/noindex handling');
+    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'known product host lookup must reserve menulist.digital for MenuList staging website handling');
+    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'known product host lookup must reserve www.menulist.digital for MenuList staging website handling');
 
     const custom = resolveDomain('restaurant.example');
     assert(custom.type === 'custom' && custom.isClient === true, 'restaurant custom domain must resolve as tenant client traffic');
@@ -619,6 +622,24 @@ function verifyPublicPathSegmentBoundary() {
 function verifyMiddlewareBoundary() {
   const middleware = read('src/proxy.ts');
 
+  [
+    'function buildMenuListOwnerAppResponse(',
+    "const ownerAppDomain = target.ownerAppDomain;",
+    "'/create-menu',",
+    "'/invite',",
+    "'/msg-preview',",
+    "new NextResponse('User-agent: *\\nDisallow: /\\n'",
+    "request.nextUrl.pathname === '/sitemap.xml'",
+    "url.pathname = '/dashboard';",
+    "response.headers.set('X-Robots-Tag', 'noindex, nofollow');",
+  ].forEach((token) => assertIncludes(middleware, token, 'MenuList canonical owner-app host boundary'));
+  assertOrder(
+    middleware,
+    'const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);',
+    "if (\n        isLegacyAnswerlatticePublicHostname(hostname)",
+    'MenuList owner-app routing before product and tenant routing',
+  );
+
   assertOrder(
     middleware,
     "if (pathname === '/client' || pathname.startsWith('/client/'))",
@@ -677,6 +698,19 @@ function verifyMiddlewareBoundary() {
   assertIncludes(middleware, 'rewriteTenantResponse(request, url)', 'middleware tenant rewrite request-header boundary');
   assertIncludes(middleware, 'rewriteHostedHelpResponse(request, url, { domain: domainInfo.hostname })', 'middleware hosted-help rewrite request-header boundary');
   assertNotIncludes(middleware, "`/_client", 'middleware must not rewrite to retired _client namespace');
+}
+
+function verifyOwnerAppNavigationBoundary() {
+  const getStartedPage = read('src/components/website/get-started/GetStartedPage.tsx');
+  const websiteLink = read('src/components/website/shared/WebsiteLink.tsx');
+  const signInLinks = read('src/lib/website/signInLinks.ts');
+
+  assertIncludes(getStartedPage, "import { DASHBOARD_URL } from '@constant/urls';", 'Get Started canonical owner-app dashboard import');
+  assertIncludes(getStartedPage, 'window.location.replace(DASHBOARD_URL);', 'Get Started authenticated owner-app redirect');
+  assertNotIncludes(getStartedPage, "router.replace('/dashboard')", 'Get Started relative dashboard redirect');
+  assertIncludes(websiteLink, "import { OWNER_APP_URL } from '@constant/urls';", 'Website CTA canonical owner-app import');
+  assertIncludes(websiteLink, "href === '/create-menu'", 'Website create-menu app-host handoff');
+  assertIncludes(signInLinks, "import { SIGNIN_URL } from '@constant/urls';", 'Website sign-in canonical owner-app import');
 }
 
 function verifyDocsBoundary() {
@@ -892,6 +926,7 @@ function verifyUrlRoutingBoundary() {
   verifyResolverSourceBoundary();
   verifyPublicPathSegmentBoundary();
   verifyMiddlewareBoundary();
+  verifyOwnerAppNavigationBoundary();
   verifySubdomainClaimBoundary();
   verifyDocsBoundary();
 

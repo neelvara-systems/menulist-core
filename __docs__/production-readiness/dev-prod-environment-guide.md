@@ -1,7 +1,7 @@
 # Dev vs Prod Environment Guide — MenuList Production Readiness
 
 **Created:** March 22, 2026  
-**Last Updated:** July 11, 2026
+**Last Updated:** August 2, 2026
 **Source:** ChatGPT strategic session → Cascade full codebase audit + validation  
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
@@ -15,10 +15,18 @@ This is the current source-of-truth contract for the shared Vercel app. Code mir
 | Environment | Vercel env | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- | --- |
 | Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Staging / QA | Preview | `https://qa.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
-| Production | Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
+| Staging / QA | Preview | website `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
+| Production | Production | website `https://menulist.ai`; app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
+
+Keep the infrastructure model simple: select `us-central1` when Firestore asks for
+a location and use `us-central1` for MenuList Storage, Functions, and Cloud Tasks.
+Do not create regional copies or a third deployed environment. Use the Firebase
+Emulator Suite for destructive local tests. Every `menulist.digital` QA host must
+send `X-Robots-Tag: noindex, nofollow, noarchive`, serve a disallow-all
+`robots.txt`, and publish no sitemap. In Vercel, scope MenuList QA secrets to the
+Preview environment for the exact `staging` Git branch, not every Preview branch.
 
 Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
@@ -51,7 +59,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
 | 18  | Deployment safety checks                         | **ALREADY EXISTS** | `npm run verify:production-readiness-local`, `npm run verify:functions-deploy-preflight`, and `npm run verify:env-targets` provide source/preflight gates. They do not authorize deployment. |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
-| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `qa.menulist.digital` + `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
+| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: MenuList uses `menulist.digital`/`app.menulist.digital`/`*.menulist.digital`; Answerlattice uses `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
 | 22  | Failure playbook                                 | **RESOLVED**       | [MenuList Incident Response Runbook](./incident-response-runbook.md) defines severity, containment, SAFE_MODE limits, scoped rollback, recovery, communication, and durable evidence requirements; live drill evidence remains pending |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
@@ -128,15 +136,15 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_*`, optional `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 2A  | **Firebase (SignalDesk)** | Root app: modular `firebase-admin` v14.2.0; SignalDesk Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Private SignalDesk growth-control data | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `SIGNALDESK_FIREBASE_*` | Auto from the dedicated Functions project | Local/Preview: `menulist-signaldesk-qa` | Production: `menulist-signaldesk` |
 | 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
-| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
-| 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
+| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | MenuList QA key set            | Separate MenuList production key set |
+| 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | MenuList QA database           | Separate MenuList production database |
 | 6   | **Sentry**              | Root app: `@sentry/nextjs` v10.66.0; MenuList Functions: `@sentry/node` v10.68.0 | Error tracking                          | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`                                                             | `SENTRY_DSN`                             | Dev Sentry project             | Prod Sentry project         |
 | 7   | **NextAuth**            | `next-auth` v4.24.15                         | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
 | 8   | **Google Analytics**    | `@google-analytics/data` v5.1.0              | Server-side analytics reads             | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`                                               | N/A                                      | Same (OK for dev)              | Same                        |
-| 9   | **SMTP (Nodemailer)**   | Root runtime alias, MenuList Functions, and Answerlattice Functions: v9.0.3 | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Same secrets                             | Optional (skip in dev)         | Gmail SMTP or custom        |
-| 10  | **Telegram Bot**        | Raw HTTP fetch                               | Ops alerts                              | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`                                                           | Same secrets                             | Optional (skip in dev)         | Required                    |
+| 9   | **SMTP (Nodemailer)**   | Root runtime alias, MenuList Functions, and Answerlattice Functions: v9.0.3 | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Target-specific secrets                  | Approved QA test sender        | Approved production transactional sender |
+| 10  | **Telegram Bot**        | Raw HTTP fetch                               | Ops alerts                              | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`                                                           | Target-specific secrets                  | MenuList QA bot/chat           | Separate MenuList production bot/chat |
 | 11  | **Google Cloud Tasks**  | `@google-cloud/tasks` v6.1.0                 | Batch image generation queue            | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | N/A                                      | Skip in dev                    | Required                    |
-| 12  | **Vercel**              | Hosting platform                             | Deployment                              | `VERCEL`, `VERCEL_ENV` (auto-set)                                                                  | N/A                                      | Auto (`dev` branch)            | Auto (`main` branch)        |
+| 12  | **Vercel**              | Hosting platform                             | Deployment                              | `VERCEL`, `VERCEL_ENV` (auto-set)                                                                  | N/A                                      | Preview values restricted to `staging` | Production values on the production branch |
 | 13  | **WhatsApp Cloud API**  | Raw HTTP in CF                               | Messaging onboarding                    | N/A                                                                                                | `WHATSAPP_*` (4 secrets)                 | Not needed (flag OFF)          | When enabled                |
 
 ### Services That NEED Separate Dev/Prod Configuration
@@ -147,18 +155,18 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Configured through env; no DSNs in code |
-| **Upstash**             | Prevent dev rate limit data from affecting prod                    | Can share OR create separate DB        |
+| **Gemini AI**           | Separate budgets, restrictions, revocation, and incident response  | Use separate MenuList QA and production key sets |
+| **Upstash**             | Prevent QA rate-limit data and flushes from affecting production   | Use separate MenuList QA and production databases |
+| **SMTP**                | Test messages and credentials must not affect production delivery  | Use an approved QA sender and a production transactional sender |
+| **Telegram**            | Test alerts must not pollute or mute production alerts             | Use separate QA and production bots/chats |
+| **Google Cloud Tasks**  | Queues and workers belong to their target Firebase/GCP project     | Create target-scoped queues and worker secrets |
 
-### Services That CAN Share Dev/Prod
+### Accounts That May Share Ownership
 
-| Service                     | Why Sharing is OK                                                         |
-| --------------------------- | ------------------------------------------------------------------------- |
-| **Gemini AI**               | Same API, same pricing. Dev usage is minimal. Key rotation handles load   |
-| **NextAuth (Google OAuth)** | Same OAuth app works for all domains. Redirect URIs configured per domain |
-| **Google Analytics**        | Read-only access to same GA property                                      |
-| **SMTP**                    | Same Gmail account. Dev sends minimal emails                              |
-| **Telegram**                | Same bot for both envs (ops alerts are low volume)                        |
-| **Google Cloud Tasks**      | Not active in dev anyway                                                  |
+The company may own providers through one company account or organization. That
+does not mean QA and production should reuse secrets, databases, projects, bots,
+or sender credentials. Google OAuth may use one client only when every exact QA
+and production callback URI is registered and reviewed.
 
 ---
 
@@ -215,6 +223,7 @@ FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 
 # Auth
+NEXTAUTH_URL=
 NEXTAUTH_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -295,7 +304,6 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 # TRANSLATION_MODEL, DESCRIPTION_MODEL, IMAGE_PROCESSING_MODEL
 # GEMINI_EMBED_MODEL, GEMINI_CHAT_MODEL
 # GA_ID_TEST
-# NEXTAUTH_URL (auto-set by Vercel)
 # NEXT_PUBLIC_BASE_URL
 ```
 
@@ -309,7 +317,10 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 
 1. Local MenuList uses `http://localhost:3000/` and Firebase `menulist-qa`.
 2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `answerlattice-qa`.
-3. Vercel Preview MenuList uses `https://qa.menulist.digital` and Firebase `menulist-qa`; QA tenant links use `*.qa.menulist.digital`.
+3. Vercel Preview MenuList uses `https://menulist.digital` for the website,
+   `https://app.menulist.digital` for the owner app, `*.menulist.digital` for
+   customer links, and Firebase `menulist-qa`. Scope its QA env values to the
+   exact `staging` Git branch.
 4. Vercel Preview Answerlattice uses `https://answerlattice.menulist.online` and Firebase `answerlattice-qa`.
 
 **Step 2: Configure Local Development**
@@ -324,8 +335,12 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 2. Set all MenuList `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars to the production Firebase project `menulist`.
 3. Set all Answerlattice `ANSWERLATTICE_FIREBASE_*` and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` vars to the production Firebase project `answerlattice`.
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online` in Production.
-5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=qa.menulist.digital` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=qa.menulist.digital` in Preview.
-6. Run `npm run verify:env-targets` after env/documentation edits.
+5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital`,
+   `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.digital`, and
+   `NEXTAUTH_URL=https://app.menulist.digital` in Preview.
+6. Restrict every sensitive MenuList Preview variable to the exact `staging`
+   branch. Do not expose QA credentials to arbitrary pull-request previews.
+7. Run `npm run verify:env-targets` after env/documentation edits.
 
 **Step 4: Seed Non-Production QA Data**
 
@@ -499,15 +514,18 @@ These are mandatory before launch. Without them, core features break.
   1. Go to Environment Variables.
   2. Use `.env.production.example` as the Production key checklist and fill real production values in Vercel only.
   3. Use `.env.staging.example` as the Preview/local key checklist and fill QA values in Vercel only.
-  4. Treat existing `.env`, `.env.local`, or `.env.prod` files as legacy local files until rebuilt from the canonical templates in `__docs__/deployment/three-product-environment-setup.md`.
-  5. Redeploy only through the approved Vercel workflow for the active session.
+  4. Restrict every sensitive Preview variable to the exact `staging` Git branch.
+     Stop if a QA secret would be available to every Preview branch.
+  5. Treat existing `.env`, `.env.local`, or `.env.prod` files as legacy local files until rebuilt from the canonical templates in `__docs__/deployment/three-product-environment-setup.md`.
+  6. Redeploy only through the approved Vercel workflow for the active session.
 - **Cost:** Free tier sufficient for launch (100GB bandwidth, 10k serverless function invocations/day)
 
 ---
 
-### Tier 2: Required for Monitoring (P1 — Enable After Launch)
+### Tier 2: Required Production Monitoring (P1 — Verify Before Launch)
 
-These enable ops visibility and alerts. Launch without them is risky but possible.
+These provide production visibility and alerting. Configure and verify the
+required production monitors before launch; do not defer them to post-launch.
 
 #### 4. Sentry — Error Tracking
 
@@ -542,32 +560,34 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - **Setup Firebase Functions:** Set QA secrets first with `--project menulist-qa`; production secrets require QA evidence and explicit production secret approval.
 - **Feature flag:** `ENABLE_OPS_ALERTS: true`
 
-#### 6. Gmail SMTP — Lifecycle Emails
+#### 6. SMTP — Lifecycle Emails
 
-- **What to create:** App Password (not your Google password)
-- **Where:** Google Account → Security → 2-Step Verification → App Passwords
+- **QA:** A controlled Workspace SMTP relay or app password may be used for
+  low-volume delivery testing.
+- **Production:** Use an approved transactional sender or controlled Workspace
+  relay with a product sender such as `system@menulist.ai`. Do not use a personal
+  Gmail inbox or personal account password.
+- **Where:** Your approved SMTP provider or Google Workspace Admin
 - **Steps:**
-  1. Enable 2-Factor Authentication on Google account
-  2. Go to Security → 2-Step Verification → App Passwords
-  3. Select "Mail" and "Other (Custom name)"
-  4. Name it "MenuList Mailer"
-  5. **Copy the 16-character app password** (e.g., `abcd efgh ijkl mnop`)
-- **Env vars:** `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=your-email@gmail.com`, `SMTP_PASS=abcdefghijklmnop`
-- **Cost:** Free (500 emails/day personal, 2,000/day Google Workspace)
-- **Note:** Also add to Firebase Functions secrets for Cloud Functions email sending
+  1. Verify the sending domain's SPF, DKIM, and DMARC records.
+  2. Create separate QA and production credentials or provider streams.
+  3. Store the QA values in `menulist-qa` first and prove delivery.
+  4. Store production values only after QA evidence and explicit production approval.
+- **Env vars:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
+- **Note:** Add the target-specific values to Firebase Functions secrets for Cloud Functions email sending.
 - **Feature flag:** `ENABLE_LIFECYCLE_MESSAGING: true`
 
 #### 7. Upstash Redis — Rate Limiting (Already Have)
 
 - **What you have:** Database created, URL + token in .env files
-- **What to consider:** Separate DB for dev/prod (optional)
+- **Required structure:** One MenuList QA database and one separate MenuList production database.
 - **Where:** https://console.upstash.com
 - **Steps (if creating new):**
   1. Create new database
   2. Copy REST URL and REST Token
 - **Env vars:** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 - **Cost:** Free tier — 10,000 requests/day
-- **Note:** Can share same DB between dev/prod (keys don't collide)
+- **Note:** Do not share the database or token across QA and production.
 
 ---
 
@@ -704,8 +724,8 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 | 3   | Vercel               | Configure env scopes  | Free tier       | P0       | N/A                          |
 | 4   | Sentry               | Create 2 projects     | Free            | P1       | `ENABLE_SENTRY`              |
 | 5   | Telegram Bot         | Create via @BotFather | Free            | P1       | `ENABLE_OPS_ALERTS`          |
-| 6   | Gmail SMTP           | App Password          | Free            | P1       | `ENABLE_LIFECYCLE_MESSAGING` |
-| 7   | Upstash              | Already have          | Free            | P1       | `ENABLE_RATE_LIMITING`       |
+| 6   | SMTP                 | QA test sender + production transactional sender | Provider plan | P1 | `ENABLE_LIFECYCLE_MESSAGING` |
+| 7   | Upstash              | Separate QA and production databases | Provider plan | P1 | `ENABLE_RATE_LIMITING` |
 | 8   | UptimeRobot          | Sign up               | Free            | P2       | N/A                          |
 | 9   | reCAPTCHA v3         | Create site           | Free            | P2       | `ENABLE_APP_CHECK`           |
 | 10  | GA4 Service Account  | Verify access         | Free            | P2       | N/A                          |
@@ -725,13 +745,15 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - [ ] Configure Answerlattice production Firebase env vars for `answerlattice`
 - [ ] Confirm local/preview Firebase env vars for `menulist-qa` and `answerlattice-qa`
 - [ ] Get Razorpay live API keys
-- [ ] Configure Vercel env vars (Preview + Production)
+- [ ] Configure Vercel QA env vars only for Preview branch `staging`, and production vars only for Production
+- [ ] Confirm every `menulist.digital` host is `noindex`, serves disallow-all `robots.txt`, and publishes no sitemap
+- [ ] Create the maintenance calendar for monthly access/secret review, quarterly key revocation/rotation review, and annual domain/billing/recovery review
 
-**Week 1 After Launch (P1):**
+**Before Production Launch (P1):**
 
 - [ ] Create Sentry dev + prod projects
 - [ ] Create Telegram bot, get bot token + chat ID
-- [ ] Set Gmail App Password
+- [ ] Configure and verify the approved QA and production SMTP senders
 - [ ] Configure Firebase Functions secrets for Telegram + SMTP
 - [ ] Confirm monitoring feature flags and External Certification Runbook evidence (SAFE_MODE, Sentry, Ops Alerts, Health Monitor)
 
@@ -794,11 +816,14 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 
 ### Current Setup Handoff
 
-Use `__docs__/deployment/three-product-environment-setup.md` as the detailed setup runbook. This environment guide is a companion overview only.
+For the current work, follow `__docs__/deployment/menulist-staging-qa-setup.md`
+first. Use `__docs__/deployment/three-product-environment-setup.md` only as the
+shared portfolio reference. This environment guide is a companion overview.
 
 ### Vercel Env Handoff
 
-- Preview/local key checklist: `.env.staging.example`
+- Preview/local key checklist: `.env.staging.example`; Vercel QA values are
+  restricted to the exact `staging` Git branch
 - Production key checklist: `.env.production.example`
 - Do not copy `.env.local` or `.env.prod` wholesale into Vercel.
 - Vercel deploys still require explicit approval in the active session.

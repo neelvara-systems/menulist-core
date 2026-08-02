@@ -1,4 +1,4 @@
-import { getPublicBaseUrl } from '@constant/urls';
+import { OWNER_APP_URL } from '@constant/urls';
 import {
     OWNER_REFERRAL_REFERRED_CREDITS,
     OWNER_REFERRAL_REFERRER_CREDITS,
@@ -40,7 +40,7 @@ export const isOwnerReferralOwnerResponse = (value: unknown): value is OwnerRefe
     if (response.eligible !== true || typeof response.inviteUrl !== 'string') return false;
     try {
         const inviteUrl = new URL(response.inviteUrl);
-        const expectedOrigin = new URL(getPublicBaseUrl()).origin;
+        const expectedOrigin = new URL(OWNER_APP_URL).origin;
         const referralToken = new URLSearchParams(inviteUrl.hash.replace(/^#/, '')).get('r') || '';
         if (
             inviteUrl.origin !== expectedOrigin

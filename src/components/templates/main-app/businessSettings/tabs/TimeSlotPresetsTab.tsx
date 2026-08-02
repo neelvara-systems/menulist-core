@@ -1,3 +1,4 @@
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
@@ -277,7 +278,15 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
             {presets.length === 0 ? (
                 <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    image={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={104}
+                            treatment="softHalo"
+                            variant="scheduleContext"
+                        />
+                    )}
+                    imageStyle={{ height: 104 }}
                     description={t('noPresetsYet')}
                 >
                     <Button type="primary" onClick={openAddModal}>{t('createFirstPreset')}</Button>

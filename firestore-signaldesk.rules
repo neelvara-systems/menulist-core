@@ -407,5 +407,12 @@ service cloud.firestore {
     function canReadSignalDesk() {
       return isSignalDeskPlatformAdmin() && isSignalDeskResource();
     }
+
+    // Server-only rolling Gemini spend admission. Admin SDK callers use the
+    // fixed signaldesk document; browser clients must never read or mutate
+    // provider budget state.
+    match /geminiSpendWindows/{product} {
+      allow read, write: if false;
+    }
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import {
     ANSWERLATTICE_PERMISSION_KEYS,
     getAnswerlatticeRouteRequiredPermission,
@@ -17,7 +18,7 @@ import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebase
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
-import { Alert, Button, Card, Col, Empty, Flex, Grid, Row, Skeleton, Space, Statistic, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, Grid, Row, Skeleton, Space, Statistic, Tag, Typography, message, theme } from 'antd';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -96,6 +97,7 @@ const buildWeeklyDigestExport = (digest: AnswerlatticeWeeklySummary): string => 
 ].join('\n');
 
 export default function AnswerlatticeWeeklyDigest() {
+    const { token } = theme.useToken();
     const session = useClientAuthSession();
     const { access } = useAnswerlatticeAccess();
     const router = useRouter();
@@ -234,8 +236,16 @@ export default function AnswerlatticeWeeklyDigest() {
                     />
                 ) : null}
                 <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description="No completed weekly digest is available yet. Answerlattice prepares the first digest after conversation analytics settle and the Sunday UTC scheduler runs."
+                    image={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={isMobile ? 96 : 128}
+                            treatment="softHalo"
+                            variant="analyticsContext"
+                        />
+                    )}
+                    imageStyle={{ height: isMobile ? 96 : 128 }}
                 >
                     <Space wrap>
                         {canPrepareDigest ? (

@@ -3,7 +3,7 @@ import DrawerElement from '@antdComponent/drawerElement';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import Saperator from '@atoms/Saperator';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
-import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
+import { MENULIST_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { addTenant, assertTenantUpdateSucceeded, updateTenant } from '@database/tenants';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -87,7 +87,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
         let updatedChanges: TenantMutationDraft = { ...updatedTenant };
 
         try {
-            if (updatedTenant.tenantId || updatedTenant.tenantId == ECOMSAI_PLATFORM_TENANT_ID) {
+            if (updatedTenant.tenantId || updatedTenant.tenantId == MENULIST_PLATFORM_TENANT_ID) {
                 updatedChanges = getObjectDifferance(updatedTenant, modalData.data);
                 if (selectedFile.url) {
                     updatedChanges.imageToUpdate = selectedFile.url
@@ -190,7 +190,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     }
 
-    const isUpdateFlow = (Boolean(tenantData?.tenantId) || tenantData?.tenantId == ECOMSAI_PLATFORM_TENANT_ID);
+    const isUpdateFlow = (Boolean(tenantData?.tenantId) || tenantData?.tenantId == MENULIST_PLATFORM_TENANT_ID);
 
     return (
         <Flex style={{ overflowX: 'auto', width: '100%' }}>

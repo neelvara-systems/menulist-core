@@ -1035,7 +1035,7 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
   ].forEach((token) => assertIncludes(dashboard, token, 'Mobile reseller dashboard'));
 
   [
-    'platformRole === ECOMSAI_PLATFORM_USER_ROLE',
+    'platformRole === MENULIST_PLATFORM_USER_ROLE',
     'MOBILE_RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 64 * 1024',
     "fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY)",
     "fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY)",

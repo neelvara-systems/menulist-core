@@ -358,7 +358,7 @@ interface CandidateItem {
 // src/lib/utils/domainResolver.ts
 export function resolveDomain(hostname: string): DomainInfo {
   // Check if it is a configured MenuList tenant host:
-  // *.menulist.online in production or *.qa.menulist.digital in QA.
+  // *.menulist.online in production or *.menulist.digital in QA.
   if (hostname.endsWith(".menulist.online")) {
     const subdomain = hostname.replace(".menulist.online", "");
     return { type: "subdomain", subdomain, customDomain: null };

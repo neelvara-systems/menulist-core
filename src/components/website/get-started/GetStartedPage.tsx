@@ -2,10 +2,10 @@
 
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { LuCheckCircle, LuCreditCard, LuFileCheck, LuLogIn, LuShieldCheck } from 'react-icons/lu';
 import { buildWebsiteSignInPath } from '@/lib/website/signInLinks';
+import { DASHBOARD_URL } from '@constant/urls';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
@@ -18,7 +18,6 @@ const setupIcons = [LuFileCheck, LuShieldCheck, LuCreditCard];
 export default function GetStartedPage() {
   const t = useTranslations('Website');
   const { data: session, status } = useSession();
-  const router = useRouter();
   const proofItems = Array.from({ length: 3 }, (_, i) => t(`GetStarted.proof${i}`));
   const steps = setupIcons.map((icon, i) => ({
     icon,
@@ -28,9 +27,9 @@ export default function GetStartedPage() {
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
-      router.replace('/dashboard');
+      window.location.replace(DASHBOARD_URL);
     }
-  }, [status, session, router]);
+  }, [status, session]);
 
   return (
     <main>

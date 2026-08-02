@@ -13,6 +13,8 @@ import { onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/fire
 import { useContext, useEffect, useRef } from "react";
 import { BatchImageGenerationJobType, Project } from '../components/templates/main-app/projects/types';
 
+// @firestore-collection-evidence DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS operations=read/query
+
 function withSelectedGeneratedImages(job: BatchImageGenerationJobType): BatchImageGenerationJobType {
     return {
         ...job,

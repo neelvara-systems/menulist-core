@@ -12,6 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -759,7 +760,18 @@ export default function CanonicalAnswerEditor() {
                     scroll={{ x: 'max-content' }}
                     locale={{
                         emptyText: (
-                            <Empty description={requestedEntityId ? 'No canonical answers are linked to this product area' : 'No approved answers yet'}>
+                            <Empty
+                                description={requestedEntityId ? 'No canonical answers are linked to this product area' : 'No approved answers yet'}
+                                image={answers.length === 0 && !requestedEntityId ? (
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={96}
+                                        treatment="softHalo"
+                                        variant="feedbackContext"
+                                    />
+                                ) : Empty.PRESENTED_IMAGE_SIMPLE}
+                                imageStyle={{ height: 96 }}
+                            >
                                 <Space direction="vertical" size={8} align="center">
                                     <Text type="secondary">
                                         Start with one answer tied to a product entity, or generate drafts from Knowledge Intake first.

@@ -24,7 +24,7 @@ Start from what you already have, review the private customer version, and put o
 ## CTA
 
 - Display close: `MenuList` / `One approved customer link` / `menulist.ai`
-- Destination for linked placements: `https://menulist.ai/create-menu`
+- Destination for linked placements: `https://app.menulist.ai/create-menu`
 - Campaign identity: `owner_ease_v1_10_clean_close_30s_16x9`
 
 The MP4 contains no button-shaped CTA. Platform buttons, post copy, and linked placements carry the conversion action.

@@ -6,12 +6,13 @@
  *
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
- *   Local tenant URL host: qa.menulist.digital — local generated customer links mirror staging
+ *   Local tenant URL host: menulist.digital — local generated customer links mirror staging
  *   Local: /__neelvara       — Neelvara website
  *   Local: /__answerlattice        — Answerlattice website
  *   Local: /__campaigncue          — CampaignCue website
  *   Local: /signaldesk             — private MenuList SignalDesk app
- *   QA: qa.menulist.digital       — MenuList preview/staging
+ *   QA: menulist.digital + www    — MenuList staging main website
+ *   QA: app.menulist.digital      — MenuList owner/staff app
  *   QA: neelvara.menulist.online — Neelvara preview/staging
  *   QA: answerlattice.menulist.online — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
@@ -22,11 +23,11 @@
  *   Prod: campaigncue.ai      — CampaignCue production
  *   Prod: signaldesk.menulist.online — private SignalDesk app
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
- *   app.menulist.ai          — Owner/staff dashboard (authenticated)
- *   {subdomain}.qa.menulist.digital — Customer-facing digital menu in local/staging
+ *   app.menulist.ai               — Production owner/staff app
+ *   {subdomain}.menulist.digital  — Customer-facing digital menu in local/staging
  *   {subdomain}.menulist.online     — Customer-facing digital menu in production
  *   menulist.online + www          — Production redirect to menulist.ai
- *   menulist.digital + www         — Not product/public; redirect/noindex only
+ *   menulist.digital + www         — Staging main website; attach to Preview/Staging only
  *   help.menulist.ai         — Help center / knowledge base (future)
  *   support.menulist.ai      — Support portal (future)
  *   msg.menulist.ai          — Messaging-onboarding placeholder email domain
@@ -70,9 +71,11 @@ const activeExternalMenulistDomains = activeMenulistDomains.filter((domain) =>
 const activeMenulistRedirectDomains = getActiveRedirectDomains('menulist').map((domain) => sanitizeDomain(domain));
 const activeMenulistTenantDomains = getActiveTenantDomains('menulist').map((domain) => sanitizeDomain(domain));
 const activeExternalMenulistTenantDomains = activeMenulistTenantDomains.filter(Boolean);
-const localGeneratedTenantDomain = getProductDeploymentTarget('menulist', 'preview').tenantDomains?.[0] || 'qa.menulist.digital';
+const deploymentStage = getDeploymentStage();
+const activeMenulistTarget = getProductDeploymentTarget('menulist', deploymentStage);
+const localGeneratedTenantDomain = getProductDeploymentTarget('menulist', 'preview').tenantDomains?.[0] || 'menulist.digital';
 const defaultPlatformDomain = getDeploymentStage() === 'local'
-    ? getProductDeploymentTarget('menulist', 'preview').domains[0] || 'qa.menulist.digital'
+    ? getProductDeploymentTarget('menulist', 'preview').domains[0] || 'menulist.digital'
     : activeExternalMenulistDomains[0] || 'menulist.ai';
 
 const configuredPlatformDomain = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN);
@@ -99,9 +102,10 @@ export const MENULIST_PLATFORM_REDIRECT_DOMAINS = Array.from(new Set(activeMenul
 
 /**
  * Alias domains that behave identically to PLATFORM_DOMAIN for the active
- * runtime environment. Vercel preview should use qa.menulist.digital;
- * production should use menulist.ai. Non-local alias env values are filtered
- * to the active deployment's MenuList platform domains.
+ * runtime environment. Vercel preview should use menulist.digital plus its
+ * www and app hosts; production should use
+ * menulist.ai. Non-local alias env values are filtered to the active
+ * deployment's MenuList platform domains.
  */
 const envDomainAliases = (process.env.NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES || '')
     .split(',')
@@ -179,11 +183,14 @@ export const getPublicBaseUrl = (): string => {
 // Subdomains (Platform Services)
 // ═══════════════════════════════════════════════════════════════
 
-/** Dashboard subdomain — owner/staff authenticated app */
-export const DASHBOARD_SUBDOMAIN = 'app';
-export const DASHBOARD_URL = getDeploymentStage() === 'production'
-    ? `https://${DASHBOARD_SUBDOMAIN}.${PLATFORM_DOMAIN}`
-    : PLATFORM_URL;
+/** Canonical owner/staff authenticated app host */
+export const OWNER_APP_SUBDOMAIN = 'app';
+export const OWNER_APP_URL = deploymentStage === 'local'
+    ? 'http://localhost:3000'
+    : `https://${activeMenulistTarget.ownerAppDomain || `${OWNER_APP_SUBDOMAIN}.${PLATFORM_DOMAIN}`}`;
+
+/** Canonical owner dashboard route */
+export const DASHBOARD_URL = `${OWNER_APP_URL}/dashboard`;
 
 /** Help center subdomain */
 export const HELP_SUBDOMAIN = 'help';
@@ -204,7 +211,7 @@ export const STAFF_EMAIL_DOMAIN = `staff.${PLATFORM_DOMAIN}`;
 // ═══════════════════════════════════════════════════════════════
 
 /** Sign-in page URL */
-export const SIGNIN_URL = `${DASHBOARD_URL}/signin`;
+export const SIGNIN_URL = `${OWNER_APP_URL}/signin`;
 
 /** System email sender (no-reply) */
 export const SYSTEM_EMAIL_FROM = `MenuList <system@${PLATFORM_DOMAIN}>`;
@@ -263,7 +270,7 @@ export const getGeneratedEmail = (phone: string): string => {
 export const PLATFORM_DOMAINS = [
     PLATFORM_DOMAIN,
     `www.${PLATFORM_DOMAIN}`,
-    `${DASHBOARD_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
+    `${OWNER_APP_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
     'localhost',
     'localhost:3000',
     '127.0.0.1',

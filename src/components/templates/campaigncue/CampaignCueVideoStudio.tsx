@@ -1,5 +1,6 @@
 "use client";
 
+import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import { FEATURE_FLAGS } from "@config/features";
 import {
     CAMPAIGNCUE_VIDEO_ASPECT_PRESETS,
@@ -35,6 +36,7 @@ import type {
     CampaignCueVideoProjectMutationInput,
     CampaignCueVideoScene,
 } from "@type/campaigncueVideo";
+import { theme } from "antd";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
     LuArrowDown,
@@ -165,6 +167,7 @@ export default function CampaignCueVideoStudio({
     onNotice: (notice: string) => void;
     workspaceId: string;
 }) {
+    const { token } = theme.useToken();
     const [projects, setProjects] = useState<CampaignCueVideoProject[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState("");
     const [draft, setDraft] = useState<CampaignCueVideoProject | null>(null);
@@ -943,7 +946,17 @@ export default function CampaignCueVideoStudio({
                                 </button>
                             </article>
                         ))}
-                        {!videoOutputs.length ? <div className={styles.empty}><p>Create a campaign pack with a Reels output first.</p></div> : null}
+                        {!videoOutputs.length ? (
+                            <div className={styles.empty}>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={80}
+                                    treatment="softHalo"
+                                    variant="emptyWorkspace"
+                                />
+                                <p>Create a campaign pack with a Reels output first.</p>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             ) : (

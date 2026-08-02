@@ -24,6 +24,51 @@ for (const relativePath of sharedRuntimePaths.slice(1)) {
   );
 }
 
+const sharedSpendPolicyPaths = [
+  'src/data/shared/geminiSpendPolicy.ts',
+  'functions/src/sharedData/geminiSpendPolicy.ts',
+  'functions-answerlattice/src/sharedData/geminiSpendPolicy.ts',
+];
+const sharedSpendPolicy = read(sharedSpendPolicyPaths[0]);
+for (const relativePath of sharedSpendPolicyPaths.slice(1)) {
+  assert(
+    read(relativePath) === sharedSpendPolicy,
+    `${relativePath} must remain byte-identical to ${sharedSpendPolicyPaths[0]}`,
+  );
+}
+[
+  'GEMINI_SPEND_DEFAULT_LIMIT_MICRO_USD = 8_000_000',
+  'GEMINI_SPEND_WINDOW_MINUTES = 10',
+  'createFirestoreGeminiSpendAdmission',
+  'calculateGeminiResponseCostMicroUsd',
+  'reserveGeminiSpend',
+  'settleGeminiSpend',
+  "'gemini-3.6-flash'",
+  "'gemini-3.5-flash-lite'",
+  "'gemini-3.1-flash-image'",
+  "'gemini-3.1-flash-lite-image'",
+].forEach((needle) => assertIncludes(sharedSpendPolicy, needle, 'Shared Gemini spend policy'));
+
+[
+  'firestore.rules',
+  'firestore-answerlattice.rules',
+  'firestore-signaldesk.rules',
+].forEach((relativePath) => {
+  const rules = read(relativePath);
+  assertIncludes(rules, 'match /geminiSpendWindows/{product}', `${relativePath} spend-window rule`);
+  const spendWindowRule = rules.match(/match \/geminiSpendWindows\/\{product\} \{([\s\S]*?)\n\s*\}/);
+  assert(
+    spendWindowRule && spendWindowRule[1].includes('allow read, write: if false;'),
+    `${relativePath} must deny every browser spend-window read and write`,
+  );
+});
+const packageJsonSource = read('package.json');
+assertIncludes(
+  packageJsonSource,
+  '"test:gemini-spend-windows:rules"',
+  'Gemini spend-window aggregate emulator command',
+);
+
 [
   "TEXT_HIGH_THROUGHPUT: 'gemini-3.5-flash-lite'",
   "TEXT_COMPLEX: 'gemini-3.6-flash'",
@@ -72,6 +117,37 @@ for (const [relativePath, packageName, expectedVersion] of expectedPackages) {
       < gateway.lastIndexOf('generateContent'),
     `${relativePath} must compile requests before provider generation`,
   );
+  [
+    'GeminiSpendAdmissionController',
+    'reserveSpend(method, config)',
+    'settleSpend(spendReservation',
+    'getFullJitterDelayMs',
+    'getGeminiRetryAfterMs',
+    'retrying with jittered backoff',
+  ].forEach((needle) => assertIncludes(gateway, needle, `${relativePath} rolling-spend/retry boundary`));
+  const clientSelectionIndex = gateway.indexOf('const client = this.keyManager.getClient();');
+  const spendReservationIndex = gateway.indexOf('const spendReservation = await this.reserveSpend(method, config);');
+  assert(
+    clientSelectionIndex >= 0
+      && spendReservationIndex > clientSelectionIndex,
+    `${relativePath} must select a usable client before reserving spend`,
+  );
+  assert(
+    !gateway.includes('rotating to next key'),
+    `${relativePath} must not immediately rotate keys on project-level 429s`,
+  );
+});
+
+[
+  'src/lib/google/genAi/index.ts',
+  'src/lib/answerlattice/genAiClient.ts',
+  'src/lib/signaldesk/aiProvider.ts',
+  'functions/src/genAiClient.ts',
+  'functions-answerlattice/src/genAiClient.ts',
+].forEach((relativePath) => {
+  const client = read(relativePath);
+  assertIncludes(client, 'createFirestoreGeminiSpendAdmission', `${relativePath} spend admission wiring`);
+  assertIncludes(client, 'getGeminiSpendLimitMicroUsd', `${relativePath} product spend-limit wiring`);
 });
 
 const activeRoots = [
@@ -99,6 +175,9 @@ const walk = (directory) => {
     }
     if (/gemini-[A-Za-z0-9._-]*(?:latest|preview|experimental|exp)(?:\b|[-_.])/i.test(source)) {
       violations.push(`${path.relative(ROOT, absolutePath)} contains an unstable Gemini alias`);
+    }
+    if (/\b(?:new\s+)?ErrorFactory\b/.test(source)) {
+      violations.push(`${path.relative(ROOT, absolutePath)} must not construct Firebase ErrorFactory with application-controlled templates`);
     }
   }
 };

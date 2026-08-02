@@ -1,11 +1,11 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import {
-    ECOMSAI_PLATFORM_STORE_ID,
-    ECOMSAI_PLATFORM_TENANT_ID,
-    ECOMSAI_PLATFORM_USER_ID,
-    ECOMSAI_PLATFORM_USER_NAME,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_STORE_ID,
+    MENULIST_PLATFORM_TENANT_ID,
+    MENULIST_PLATFORM_USER_ID,
+    MENULIST_PLATFORM_USER_NAME,
+    MENULIST_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
@@ -152,13 +152,13 @@ export const addAuthPlatformUser = async (data: AuthBootstrapUserInput) => {
         ...data,
         email: normalizedEmail,
         pId: DEFAULT_PRODUCT_ID,
-        sId: ECOMSAI_PLATFORM_STORE_ID,
-        tId: ECOMSAI_PLATFORM_TENANT_ID,
-        role: ECOMSAI_PLATFORM_USER_ROLE,
-        uId: ECOMSAI_PLATFORM_USER_ID,
-        modifiedBy: ECOMSAI_PLATFORM_USER_NAME,
+        sId: MENULIST_PLATFORM_STORE_ID,
+        tId: MENULIST_PLATFORM_TENANT_ID,
+        role: MENULIST_PLATFORM_USER_ROLE,
+        uId: MENULIST_PLATFORM_USER_ID,
+        modifiedBy: MENULIST_PLATFORM_USER_NAME,
         modifiedOn: now,
-        createdBy: ECOMSAI_PLATFORM_USER_NAME,
+        createdBy: MENULIST_PLATFORM_USER_NAME,
         createdOn: now,
     });
 

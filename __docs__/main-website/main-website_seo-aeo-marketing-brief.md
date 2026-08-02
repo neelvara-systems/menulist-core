@@ -4,7 +4,7 @@
 **Date:** June 2, 2026  
 **Audience:** Marketing, content, founder, SEO/AEO reviewers  
 **Canonical host:** `https://menulist.ai`  
-**Preview/alias context:** `https://qa.menulist.digital`
+**Preview context:** `https://menulist.digital` (website), `https://app.menulist.digital` (owner app)
 
 ---
 

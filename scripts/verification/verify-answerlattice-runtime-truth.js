@@ -1668,7 +1668,7 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(staffAccessServer, 'Promise.allSettled(tasks.map(({ run }) => run()))', 'Answerlattice projection repair attempts every independent side effect');
   assertIncludes(staffAccessServer, 'STAFF_STORE_USER_QUERY_LIMIT + 1', 'Answerlattice staff listing detects rather than silently truncates overflow');
   assertIncludes(staffAccessServer, "'STAFF_LIST_LIMIT_EXCEEDED'", 'Answerlattice staff listing returns an explicit overflow state');
-  assertIncludes(staffAccessServer, 'role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE', 'Answerlattice claim repair preserves both platform authority classes');
+  assertIncludes(staffAccessServer, 'role === MENULIST_PLATFORM_USER_ROLE || role === MENULIST_PLATFORM_SUPPORT_USER_ROLE', 'Answerlattice claim repair preserves both platform authority classes');
   assertIncludes(staffAccessServer, 'const storeIsActive = storeSnapshot.exists && isAnswerlatticeActiveStoreInScope(', 'Answerlattice claim repair validates the canonical workspace before minting permissions');
   assertIncludes(staffAccessServer, 'buildAnswerlatticeStaffClaimAccessProjection({', 'Answerlattice claim repair fails closed for inactive accounts or invalid workspaces');
   assertIncludes(staffAccessServer, "throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID')", 'Answerlattice claim repair fails closed when persisted access state disappears or becomes malformed during synchronization');
@@ -3923,9 +3923,10 @@ function verifyAnswerlatticeAiCredentialIsolation() {
   assertIncludes(keyManager, 'constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES)', 'Shared app Gemini key manager scoped candidate support');
   assertIncludes(appAiClient, 'const answerlatticeKeyManager = new KeyManager([', 'Answerlattice app AI scoped key manager');
   assertIncludes(appAiClient, 'ANSWERLATTICE_AI_ENV.GEMINI_AI_KEY', 'Answerlattice app AI primary scoped key');
-  assertIncludes(appAiClient, 'createAIGateway(answerlatticeKeyManager)', 'Answerlattice app AI shared gateway');
+  assertIncludes(appAiClient, 'answerlatticeGeminiSpendAdmission', 'Answerlattice app AI rolling-spend admission');
+  assertIncludes(appAiClient, 'createAIGateway(', 'Answerlattice app AI shared gateway');
   assertNotIncludes(appAiClient, "from '@lib/google/genAi';", 'Answerlattice app AI must not import default MenuList client');
-  assertIncludes(defaultAiClient, 'createAIGateway(new KeyManager())', 'MenuList default AI client retains default key pool');
+  assertIncludes(defaultAiClient, 'createAIGateway(new KeyManager(), menulistGeminiSpendAdmission)', 'MenuList default AI client retains default key pool and spend admission');
 
   assertIncludes(vectorEmbeddings, "import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';", 'Answerlattice vector provider scoped client import');
   assert(

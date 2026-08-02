@@ -959,7 +959,7 @@ if (featureRegistry.includes('ENABLE_PDF_SURFACE')) {
 });
 const legacyMenuPdfQrBoundary = fs.readFileSync(path.join(root, 'scripts/verification/test-legacy-menu-pdf-qr-boundary.ts'), 'utf8');
 [
-  "resolveLegacyMenuPdfIncludeQr('https://demo.menulist.online/menu', undefined, true)",
+  "resolveLegacyMenuPdfIncludeQr('https://sample-cafe.menulist.online/menu', undefined, true)",
   "resolveLegacyMenuPdfIncludeQr(invalid, true, true), false",
 ].forEach((token) => {
   if (!legacyMenuPdfQrBoundary.includes(token)) failures.push(`Legacy Menu PDF QR regression missing token: ${token}`);

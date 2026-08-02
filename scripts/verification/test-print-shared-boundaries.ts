@@ -87,7 +87,7 @@ assert.equal(normalizedPrintableInput?.logoUrl, undefined);
 assert.equal(normalizedPrintableInput?.projectId, undefined);
 assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, assetTypeId: 'unknown' }), null);
 assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, templateFamilyId: 'unknown' }), null);
-assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, menuUrl: 'http://demo.menulist.online/menu' }), null);
+assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, menuUrl: 'http://sample-cafe.menulist.online/menu' }), null);
 assert.throws(
     () => admitPrintableAssetEditorDocument({
         ...printableDocument,

@@ -8,6 +8,8 @@ import {
 import { appendAnswerlatticeCompiledContextSourceChange } from './compiledSourceVersionsClient';
 import { readAnswerlatticeClientInvalidationOwnership } from './invalidationOwnershipClient';
 
+// @firestore-collection-evidence DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS operations=read/query|write|transaction/batch
+// @firestore-collection-evidence DB_COLLECTIONS.PLATFORM_SUMMARY operations=read/query|write|transaction/batch
 type CacheVersionBumpMetadata = {
     reason?: string;
     sourceId?: string;

@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { getEntities } from '@database/answerlattice/entities';
 import {
@@ -365,7 +366,19 @@ export default function AnswerlatticeFaqManagement() {
                     <Col xs={24} lg={8}>
                         <Card title="Answer directory" extra={<Tag>{faqs.length}</Tag>} styles={{ body: { padding: 0 } }}>
                             {faqs.length === 0 ? (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No FAQs yet" style={{ padding: 24 }} />
+                                <Empty
+                                    description="No FAQs yet"
+                                    image={(
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={96}
+                                            treatment="softHalo"
+                                            variant="feedbackContext"
+                                        />
+                                    )}
+                                    imageStyle={{ height: 96 }}
+                                    style={{ padding: 24 }}
+                                />
                             ) : (
                                 <List
                                     dataSource={faqs}

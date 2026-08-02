@@ -351,13 +351,6 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.8,
     },
     {
-        label: 'Create Menu',
-        path: '/create-menu',
-        description: 'Public menu creation entry point',
-        changeFrequency: 'monthly',
-        priority: 0.8,
-    },
-    {
         label: 'Restaurants',
         path: '/industries/restaurants',
         description: 'Official menu source layer for restaurants',

@@ -12,6 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { getTrustMetrics } from '@database/answerlattice/trustMetrics';
 import { loadRecentAnswerlatticeAnswerTraces } from '@lib/answerlattice/answerTraceClient';
 import type { AnswerlatticeAnswerTrace } from '@lib/answerlattice/answerTraceContracts';
@@ -165,6 +166,21 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 description={loadFailed
                     ? 'Could not load answer evidence metrics.'
                     : 'No complete answer-evidence window yet. Metrics will appear after the next nightly run.'}
+                image={loadFailed ? (
+                    <ContextualStateIllustration
+                        color={token.colorTextQuaternary}
+                        size={112}
+                        variant="warningContext"
+                    />
+                ) : (
+                    <ContextualStateIllustration
+                        color={token.colorPrimary}
+                        size={128}
+                        treatment="softHalo"
+                        variant="analyticsContext"
+                    />
+                )}
+                imageStyle={{ height: loadFailed ? 112 : 128 }}
                 style={{ padding: 48 }}
             />
         );

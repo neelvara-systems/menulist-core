@@ -6,6 +6,7 @@
  *
  * @see __docs__/special-menu-switching/special-menu-switching_impl.md
  */
+import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import { FEATURE_FLAGS } from "@config/features";
 import type { SpecialMenuListItem } from "@hook/useSpecialMenus";
 import { useSpecialMenus } from "@hook/useSpecialMenus";
@@ -114,6 +115,7 @@ export default function SpecialMenuCard({
     baseProjectLanguages,
     baseProjectName,
 }: SpecialMenuCardProps) {
+    const { token } = theme.useToken();
     const {
         specialMenus,
         activeMenu,
@@ -182,7 +184,15 @@ export default function SpecialMenuCard({
             >
                 {!hasAnyMenus && (
                     <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        image={(
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={96}
+                                treatment="softHalo"
+                                variant="scheduleContext"
+                            />
+                        )}
+                        imageStyle={{ height: 96 }}
                         description={
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 No special menus yet. Create one for festivals, events, or seasonal items.

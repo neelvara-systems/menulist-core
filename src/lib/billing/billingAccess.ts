@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ANSWERLATTICE_PERMISSION_KEYS } from "@constant/answerlattice/permissions";
-import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import {
     resolveExactSessionPlatformRole,
     resolveExactSessionStoreRole,
@@ -47,7 +47,7 @@ export const canManageBillingMutation = async (
     request: NextRequest,
     endpoint: string,
 ): Promise<boolean> => {
-    if (resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE) {
+    if (resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE) {
         const currentPlatformUser = await getCurrentPlatformUser(session);
         if (currentPlatformUser) {
             return true;

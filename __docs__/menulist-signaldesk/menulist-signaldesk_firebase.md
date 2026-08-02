@@ -2,11 +2,23 @@
 
 **Status:** Foundation config, governed workflow rails, investment controls, and bounded Revenue Operating Layer implemented and locally verified; cloud deploy remains owner-access blocked
 **Created:** June 23, 2026
-**Last Updated:** July 21, 2026
+**Last Updated:** August 2, 2026
 
 Feature 19 revalidation keeps the existing collections and indexes unchanged. Revenue list reads run in parallel and remain bounded; budget-policy rows are omitted for roles without configuration authority. Exact successful qualification/opportunity/offer/envelope/watch retries perform validation reads but no entity, summary, audit, timeline, or daily-cost write. No new Function, rule, index, listener, scheduler, or deployment target was added.
 **Cost impact now:** Local verification only; no deployed SignalDesk project or production data writes.
 **Runtime posture:** Dedicated SignalDesk Firebase projects are configured and enforced in code, but owner-side project access is still required before deployment.
+
+The August 2 shared Gemini gateway adds one server-only
+`geminiSpendWindows/signaldesk` document in the existing SignalDesk project.
+Each billed attempt performs one transaction read/write to reserve capacity and
+one transaction read/write to settle usage or release the reservation. The
+bounded record retains at most eleven minute buckets plus product, limit, and
+update metadata; it stores no target, contact, prompt, response, key, tenant, or
+user data. `SIGNALDESK_GEMINI_SPEND_LIMIT_USD_10M` defaults to USD 8. The
+separate SignalDesk ruleset now explicitly denies every browser read and write
+to `/geminiSpendWindows/{product}`, with anonymous, member, and platform
+contexts covered by the local emulator suite. No index, scheduler, Storage
+path, listener, or MenuList database write is added.
 
 ## Firebase Target Decision
 

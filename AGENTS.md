@@ -26,6 +26,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - **Mobile rules**: `.cascade/rules/MOBILE_SUPPORT_RULES.md` and `.codex/rules/MOBILE_SUPPORT_RULES.md`
 - **Documentation rules**: `.cascade/rules/DOCUMENTATION_ORGANIZATION_RULES.md` and `.codex/rules/DOCUMENTATION_ORGANIZATION_RULES.md`
 - **Answerlattice rules**: `.cascade/rules/ANSWERLATTICE_RULES.md` and `.codex/rules/ANSWERLATTICE_RULES.md`
+- **Contextual state illustration rules**: `.cascade/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md` and `.codex/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md`
 - **Master execution**: `.codex/rules/master-execution.md` and `.codex/workflows/master-execution.md`
 - **Tech stack memory**: `.windsurfrules`
 - **Windsurf workflows**: `.windsurf/workflows/`
@@ -35,7 +36,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 
 ### Mandatory Loading Behavior
 
-- Detect product context first: MenuList vs Answerlattice.
+- Detect product context first: MenuList, Answerlattice, CampaignCue, SignalDesk, or MyCodex.
 - Load context selectively based on the task. Do not load everything blindly, and do not skip relevant rule files.
 - Always treat `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md` as the development-law source when a task has feature, docs, implementation, audit, or workflow implications.
 - For MenuList work, load MenuList constitution and relevant `__docs__/[feature]/` docs when the task has lifecycle, governance, or feature-scope implications.
@@ -45,6 +46,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - For documentation work, read documentation organization rules before moving, creating, or restructuring docs.
 - For digital menu output work, read menu enforcement rules before editing customer-facing menu output.
 - For website work, load the website workflow and website/content-layer rules before editing `src/app/(website)/`, `src/components/website/`, or `public/locales/menulist.ai/` website copy.
+- For any new or changed empty, result, first-use, recovery, completion, or no-data state, read the contextual state illustration rules before choosing artwork or leaving the state plain.
 
 ### Proactive Default Execution Loop
 
@@ -117,8 +119,10 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 - **Product codes vs slugs are separate**: `ML`, `AL`, `CC`, and `MC` are internal product codes from `src/constants/product.ts`. Route/domain/session slugs stay full names such as `menulist`, `answerlattice`, `campaigncue`, and `mycodex`.
 - **Environment variables use full product names only**: Use keys such as `MENULIST_*`, `ANSWERLATTICE_*`, `CAMPAIGNCUE_*`, `SIGNALDESK_*`, and `MYCODEX_*`. Never introduce shorthand env prefixes such as `ML_*`, `AL_*`, `CC_*`, `MC_*`, `NEXT_PUBLIC_ML_*`, `NEXT_PUBLIC_AL_*`, `NEXT_PUBLIC_CC_*`, or `NEXT_PUBLIC_MC_*`.
+- **MenuList app and tenant host contract**: Use `menulist.digital`/`www.menulist.digital` for the QA website, `app.menulist.digital` for the single QA owner/staff app, and `*.menulist.digital` for QA customer links. Every `menulist.digital` QA host is `noindex`, serves a disallow-all `robots.txt`, and publishes no sitemap. Use `menulist.ai`/`www.menulist.ai` for the production website, `app.menulist.ai` for the single production owner/staff app, and `*.menulist.online` for production customer links. The owner app uses `/dashboard`; authenticated session scope selects the tenant/store. Sign-in, `/create-menu`, `/invite`, and owner routes stay on the canonical app host so host-only auth/referral cookies are never broadened to customer subdomains. Production app hosts are `noindex`, publish no sitemap, and use exact-origin CORS; tenant subdomains never inherit app/API CORS trust. Do not introduce `dashboard.menulist.*`, `app.menulist.online`, `qa.menulist.digital`, or `*.qa.menulist.digital` as active hosts.
+- **MenuList infrastructure setup contract**: Keep the current single-region setup at `us-central1` for MenuList Firestore, Storage, Firebase Functions, and Cloud Tasks. Firestore requires an explicit location choice; choose `us-central1` so it matches the existing Functions/runtime contract. Do not introduce regional stacks or a third deployed environment unless the user explicitly reopens that architecture decision. Vercel QA secrets must be Preview values restricted to the exact `staging` Git branch; routine destructive local work is emulator-first but still uses the same QA configuration family.
 - **Current product matrix is fixed unless deployment sources change**: MenuList uses `ML` with Firebase `menulist-qa` staging/local and `menulist` production; Answerlattice uses `AL` with `answerlattice-qa` and `answerlattice`; CampaignCue uses `CC` with `campaigncue-qa` and `campaigncue`; SignalDesk uses `SD` with Firebase `menulist-signaldesk-qa` staging/local and `menulist-signaldesk` production, but its env keys use `SIGNALDESK_*`; MyCodex uses reserved code `MC`, slug `mycodex`, no active public domain, and no Firebase project.
-- **MyCodex remains static/no DB and no active domain dependency**: Do not add MyCodex Firestore, Storage, Cloud Functions, billing plans, owner notifications, product `pId` writes, Firebase env keys, or any active domain dependency. `qa.menulist.digital` belongs to MenuList QA/staging tenant tests, and the `menulist.digital` apex/`www` are redirect/noindex only, not MyCodex. MyCodex Vercel env is limited to `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` unless the static-reader architecture is explicitly changed first.
+- **MyCodex remains static/no DB and no active domain dependency**: Do not add MyCodex Firestore, Storage, Cloud Functions, billing plans, owner notifications, product `pId` writes, Firebase env keys, or any active domain dependency. `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, and `*.menulist.digital` belong to MenuList QA/staging. MyCodex Vercel env is limited to `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` unless the static-reader architecture is explicitly changed first.
 
 ### Technology Stack Decisions
 
@@ -174,6 +178,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Development Gotchas
 
 - **Never Mix Icon Libraries**: Use react-icons/lu (Lucide) only
+- **Contextual Illustrations Are Not Icons**: Use the shared locally bundled contextual state illustration component only for eligible decorative states; keep Lucide on every interactive control, keep healthy/filter/loading/editor-output states plain, and update `verify:contextual-state-illustrations` whenever the empty-state inventory changes.
 - **No Version Drift**: 3-year freeze applies to all dependencies; declarations must stay exact and pass `npm run verify:dependency-freeze`
 - **Mobile Files**: Every feature needs `[feature-name]_mobile-support.md`
 - **Feature Flags**: Required in `src/config/features.ts` for all new features

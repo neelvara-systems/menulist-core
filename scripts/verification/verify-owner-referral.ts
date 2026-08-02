@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FEATURE_FLAGS } from '../../src/config/features';
+import { OWNER_APP_URL } from '../../src/constants/urls';
 import { getContentCreditOutcomeExamples } from '../../src/data/shared/contentCreditPolicy';
 import {
     isOwnerReferralAcquisitionEnabled,
@@ -137,11 +138,9 @@ const verifyContentCreditExamples = (): void => {
 };
 
 const verifyOwnerReferralResponseBoundary = (): void => {
-    const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
-    process.env.NEXT_PUBLIC_APP_URL = 'https://menulist.example';
     const valid = {
         eligible: true,
-        inviteUrl: `https://menulist.example/invite#r=${'x'.repeat(32)}`,
+        inviteUrl: `${OWNER_APP_URL}/invite#r=${'x'.repeat(32)}`,
         policy: {
             referrerCredits: 100,
             referredCredits: 50,
@@ -154,40 +153,35 @@ const verifyOwnerReferralResponseBoundary = (): void => {
             date: '2026-07-11T04:30:00.000Z',
         }],
     };
-    try {
-        assert(isOwnerReferralOwnerResponse(valid), 'Canonical owner referral response must pass');
-        assert(
-            !isOwnerReferralOwnerResponse({
-                ...valid,
-                inviteUrl: `https://phishing.example/invite#r=${'x'.repeat(32)}`,
-            }),
-            'Cross-origin invite URL must fail',
-        );
-        assert(
-            !isOwnerReferralOwnerResponse({
-                ...valid,
-                policy: { ...valid.policy, referredCredits: 500 },
-            }),
-            'Policy drift must fail',
-        );
-        assert(
-            !isOwnerReferralOwnerResponse({
-                ...valid,
-                recent: [{ ...valid.recent[0], date: 'July 11, 2026' }],
-            }),
-            'Non-canonical dates must fail',
-        );
-        assert(
-            !isOwnerReferralOwnerResponse({
-                ...valid,
-                recent: [{ ...valid.recent[0], businessName: '   ' }],
-            }),
-            'Blank business names must fail',
-        );
-    } finally {
-        if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
-        else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
-    }
+    assert(isOwnerReferralOwnerResponse(valid), 'Canonical owner referral response must pass');
+    assert(
+        !isOwnerReferralOwnerResponse({
+            ...valid,
+            inviteUrl: `https://phishing.example/invite#r=${'x'.repeat(32)}`,
+        }),
+        'Cross-origin invite URL must fail',
+    );
+    assert(
+        !isOwnerReferralOwnerResponse({
+            ...valid,
+            policy: { ...valid.policy, referredCredits: 500 },
+        }),
+        'Policy drift must fail',
+    );
+    assert(
+        !isOwnerReferralOwnerResponse({
+            ...valid,
+            recent: [{ ...valid.recent[0], date: 'July 11, 2026' }],
+        }),
+        'Non-canonical dates must fail',
+    );
+    assert(
+        !isOwnerReferralOwnerResponse({
+            ...valid,
+            recent: [{ ...valid.recent[0], businessName: '   ' }],
+        }),
+        'Blank business names must fail',
+    );
 };
 
 const verifyOwnerReferral = (): void => {
@@ -345,12 +339,12 @@ const verifyOwnerReferral = (): void => {
     order(invitePage, "window.location.hash", "window.history.replaceState", 'invite fragment removal');
     includes(invitePage, "onClick={() => void capture()}", 'explicit invite capture CTA');
     order(invitePage, "{t('privacy')}", "onClick={() => void capture()}", 'pre-capture privacy disclosure');
-    order(invitePage, "fetch('/api/public/owner-referrals/capture'", "router.push('/create-menu')", 'capture-before-setup navigation');
+    order(invitePage, "fetch('/api/public/owner-referrals/capture'", "window.location.assign(`${OWNER_APP_URL}/create-menu`)", 'capture-before-setup navigation');
     includes(invitePage, 'readJsonResponseWithLimit<unknown>', 'public invite bounded capture response');
     excludes(invitePage, 'response.json()', 'public invite direct response parsing');
     includes(invitePage, "postReferralChoice({ action: 'decline' })", 'normal non-referral cookie-clear path');
     const declineFlow = invitePage.slice(invitePage.indexOf('const continueWithoutReferral'));
-    order(declineFlow, "postReferralChoice({ action: 'decline' })", "router.push('/create-menu')", 'decline-before-setup navigation');
+    order(declineFlow, "postReferralChoice({ action: 'decline' })", "window.location.assign(`${OWNER_APP_URL}/create-menu`)", 'decline-before-setup navigation');
     includes(referralClient, 'readJsonResponseWithLimit<unknown>', 'owner referral bounded response');
     includes(referralClient, 'Record<string, unknown>', 'owner referral unknown runtime validation');
     excludes(referralClient, 'response.json()', 'owner referral direct response parsing');
@@ -359,7 +353,7 @@ const verifyOwnerReferral = (): void => {
     excludes(ownerApi, 'return new Date().toISOString()', 'owner referral invented malformed timestamp');
     [
         "title: 'Business owner invitation - MenuList'",
-        "alternates: { canonical: '/create-menu' }",
+        'alternates: { canonical: `${OWNER_APP_URL}/create-menu` }',
         'robots: { index: false, follow: false, nocache: true }',
     ].forEach((token) => includes(invitePageMetadata, token, 'invite metadata'));
 

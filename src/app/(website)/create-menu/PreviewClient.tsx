@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
+import { buildWebsiteSignInPath } from '@/lib/website/signInLinks';
 import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import type {
     PublicMenuDraftExtractedData,
@@ -235,7 +236,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const createMenuSuccessPath = useWebsitePath('/create-menu/success');
     const previewCallbackUrl = useWebsitePath(`/create-menu/preview/${draftId}${isClaimMode ? '?claim=true' : ''}`);
     const previewClaimPath = useWebsitePath(`/create-menu/preview/${draftId}?claim=true`);
-    const signInUrl = `/signin?callbackUrl=${encodeURIComponent(previewCallbackUrl)}`;
+    const signInUrl = buildWebsiteSignInPath(previewCallbackUrl);
 
     const [draft, setDraft] = useState<DraftData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -256,7 +257,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const handlePreviewDraftResponseStatus = useCallback((res: Response, signal: AbortSignal) => {
         if (signal.aborted) return 'cancelled';
         if (res.status === 401) {
-            router.replace(signInUrl);
+            window.location.replace(signInUrl);
             return 'auth_required';
         }
 
@@ -279,7 +280,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         }
 
         return null;
-    }, [router, signInUrl, t]);
+    }, [signInUrl, t]);
 
     const fetchDraft = useCallback(async (signal: AbortSignal, statusOnly = true) => {
         if (sessionStatus !== 'authenticated') {
@@ -359,7 +360,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     // Poll for extraction completion
     useEffect(() => {
         if (sessionStatus === 'unauthenticated') {
-            router.replace(signInUrl);
+            window.location.replace(signInUrl);
             return;
         }
 
@@ -403,8 +404,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             return;
         }
 
-        const callbackUrl = encodeURIComponent(previewClaimPath);
-        router.push(`/signin?callbackUrl=${callbackUrl}`);
+        window.location.assign(buildWebsiteSignInPath(previewClaimPath));
     };
 
     const handleClaim = async () => {

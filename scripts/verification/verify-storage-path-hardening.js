@@ -329,8 +329,8 @@ assert(
   assert(storagePathGenerator.includes(token), `shared Storage path generator fails closed with token ${token}`);
 });
 [
-  'ECOMSAI_PLATFORM_TENANT_ID',
-  'ECOMSAI_PLATFORM_STORE_ID',
+  'MENULIST_PLATFORM_TENANT_ID',
+  'MENULIST_PLATFORM_STORE_ID',
   'useDefaults',
   "tenantId = 'unknown'",
   "storeId = 'default'",

@@ -10,6 +10,10 @@
 
 Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current allowed-origin review, target-domain browser/API smoke, CORS failure-mode evidence, and deploy evidence for the target environment. This historical completion note is not production-launch approval.
 
+Current runtime admission is exact-origin only. MenuList website and owner-app
+origins are listed separately; customer subdomains under `menulist.digital` or
+`menulist.online` do not inherit CORS access from either origin.
+
 ---
 
 ## 📋 Summary

@@ -2,7 +2,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { ALL_PERMISSIONS, PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { STAFF_EMAIL_DOMAIN } from "@constant/urls";
-import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { createDefaultRoles, DEFAULT_ROLE_IDS, DEFAULT_ROLE_METADATA, generateCustomRoleId } from "@data/shared/defaultRoles";
@@ -176,7 +176,7 @@ export const DeleteRoleSchema = z.object({
 });
 
 const isPlatformSession = (session: any) => (
-    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE
 );
 
 const isPositiveId = (value: unknown): value is number => (

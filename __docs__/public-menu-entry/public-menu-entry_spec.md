@@ -3,7 +3,7 @@
 **Status:** Local source complete; external release evidence pending
 **Last reviewed:** July 28, 2026
 
-> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 **Local result:** Local source complete. Preview polling is 5 seconds apart and capped at 36 reads. Expired claimed draft receipts are cleaned without deleting promoted project sources. Approved app release and hosted evidence remain pending.
 
@@ -15,7 +15,7 @@ Let a non-technical owner move from one current menu source to an owner-reviewab
 
 | Requirement | Current contract |
 | --- | --- |
-| Public discovery | `/create-menu` is reachable without auth; processing controls require sign-in. |
+| Owner onboarding entry | `/create-menu` is reachable without auth on the canonical app host, is `noindex`, and requires sign-in before processing. |
 | Sign-in | Inline Google/OTP paths may return to the flow; password fallback uses the normal sign-in route. |
 | Inputs | One JPEG, PNG, or WebP up to the route cap, or a public page/PDF/image link with permission confirmation. |
 | Admission | Feature flags, fail-closed burst limiter, complete account scope, existing-store extraction permission, SAFE_MODE, bounded body/file validation, dedupe, then daily new-source quota. |

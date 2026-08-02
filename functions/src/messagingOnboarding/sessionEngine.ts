@@ -10,6 +10,7 @@
 import * as crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
+import { resolveMenuListOwnerSignInUrl } from "../config/menulistRuntimeUrls";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin, storageAdmin } from "../firebaseAdmin";
 import {
@@ -1768,7 +1769,13 @@ export async function handleMessage(
       userIdMasked: maskUserId(msg.userId),
       metadata: { storeId: existingStore.storeId },
     });
-    const dashboardUrl = "https://app.menulist.ai/signin";
+    const dashboardUrl = resolveMenuListOwnerSignInUrl();
+    if (!dashboardUrl) {
+      logger.error("[SessionEngine] Owner app URL is unavailable", {
+        failureCode: "MESSAGING_OWNER_APP_URL_UNAVAILABLE",
+      });
+      return MESSAGES.EXISTING_STORE_NO_LINK;
+    }
     return MESSAGES.EXISTING_STORE(dashboardUrl);
   }
 

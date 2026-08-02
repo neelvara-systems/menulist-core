@@ -4,7 +4,7 @@
  *
  * Purpose:
  *   PWA install reliability + branded offline fallback for customer
- *   tenant origins ({subdomain}.menulist.ai, verified custom domains).
+ *   tenant origins ({subdomain}.menulist.online, verified custom domains).
  *
  * Frozen Policy (customer-app_spec.md § Plugin Governance Rule):
  *   - NO menu content caching

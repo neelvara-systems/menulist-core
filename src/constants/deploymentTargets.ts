@@ -17,6 +17,7 @@ export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
     url: string;
     domains: readonly string[];
+    ownerAppDomain?: string;
     tenantDomains?: readonly string[];
     redirectDomains?: readonly string[];
     devPathPrefix: string;
@@ -103,10 +104,10 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
     preview: {
         menulist: {
             productId: 'menulist',
-            url: 'https://qa.menulist.digital',
-            domains: ['qa.menulist.digital'],
-            tenantDomains: ['qa.menulist.digital'],
-            redirectDomains: ['menulist.digital', 'www.menulist.digital'],
+            url: 'https://menulist.digital',
+            domains: ['menulist.digital', 'www.menulist.digital', 'app.menulist.digital'],
+            ownerAppDomain: 'app.menulist.digital',
+            tenantDomains: ['menulist.digital'],
             devPathPrefix: '',
             firebaseProjectId: 'menulist-qa',
         },
@@ -151,8 +152,9 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             productId: 'menulist',
             url: 'https://menulist.ai',
             domains: ['menulist.ai', 'www.menulist.ai', 'app.menulist.ai'],
+            ownerAppDomain: 'app.menulist.ai',
             tenantDomains: ['menulist.online'],
-            redirectDomains: ['menulist.online', 'www.menulist.online', 'menulist.digital', 'www.menulist.digital'],
+            redirectDomains: ['menulist.online', 'www.menulist.online'],
             devPathPrefix: '',
             firebaseProjectId: 'menulist',
         },

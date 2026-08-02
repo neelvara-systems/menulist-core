@@ -1,8 +1,8 @@
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import {
-    ECOMSAI_PLATFORM_USER_ID,
-    ECOMSAI_PLATFORM_USER_NAME,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_USER_ID,
+    MENULIST_PLATFORM_USER_NAME,
+    MENULIST_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
@@ -81,7 +81,7 @@ const composeServerSubscriptionPayload = (
     if ((hasSuppliedScope || options.isNew) && !scope) {
         throw new Error('MenuList subscription tenant/store identity is invalid.');
     }
-    const userId = data.uId ?? data.userId ?? (options.isNew ? ECOMSAI_PLATFORM_USER_ID : undefined);
+    const userId = data.uId ?? data.userId ?? (options.isNew ? MENULIST_PLATFORM_USER_ID : undefined);
     const {
         pId: _pId,
         productId: _productId,
@@ -97,12 +97,12 @@ const composeServerSubscriptionPayload = (
         pId: productId,
         ...(scope ? { sId: scope.storeId, storeId: scope.storeId } : {}),
         ...(scope ? { tId: scope.tenantId, tenantId: scope.tenantId } : {}),
-        ...(data.role || options.isNew ? { role: data.role ?? ECOMSAI_PLATFORM_USER_ROLE } : {}),
+        ...(data.role || options.isNew ? { role: data.role ?? MENULIST_PLATFORM_USER_ROLE } : {}),
         ...(userId !== undefined ? { uId: userId } : {}),
-        modifiedBy: data.modifiedBy ?? ECOMSAI_PLATFORM_USER_NAME,
+        modifiedBy: data.modifiedBy ?? MENULIST_PLATFORM_USER_NAME,
         modifiedOn: now,
         ...(options.isNew && !data.createdOn ? { createdOn: now } : {}),
-        ...(options.isNew && !data.createdBy ? { createdBy: ECOMSAI_PLATFORM_USER_NAME } : {}),
+        ...(options.isNew && !data.createdBy ? { createdBy: MENULIST_PLATFORM_USER_NAME } : {}),
     });
 
     return payload;

@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
@@ -657,9 +658,16 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             </Flex>
                         ) : (
                             <div className="mobile-slide-empty">
-                                <Flex gap={6} vertical>
+                                <Flex align="center" gap={8} vertical>
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={80}
+                                        style={{ opacity: 0.78 }}
+                                        treatment="softHalo"
+                                        variant="uploadContext"
+                                    />
                                     <Text strong>No custom slides yet</Text>
-                                    <Text type="secondary">
+                                    <Text type="secondary" style={{ textAlign: 'center' }}>
                                         Upload posters, offers, or brand slides. They will also appear in Highlights automatically.
                                     </Text>
                                 </Flex>

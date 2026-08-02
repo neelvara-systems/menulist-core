@@ -12,7 +12,7 @@ import {
   getAnalyticsIdContext,
 } from '../analytics/analyticsDiagnostics';
 import { FUNCTION_MAX_INSTANCES } from '../config/secrets';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '../constants/user';
 
 const LEGACY_ANALYTICS_RETIRED_CODE = 'LEGACY_HELP_CENTER_ANALYTICS_MOVED_TO_ANSWERLATTICE';
 const LEGACY_ANALYTICS_RETIRED_MESSAGE = 'Help-center analytics now run in the Answerlattice workspace.';
@@ -23,7 +23,7 @@ function assertPlatformOwner(request: { auth?: { token?: Record<string, unknown>
   }
 
   const requesterRole = String(request.auth.token?.platformRole || request.auth.token?.role || '');
-  if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+  if (requesterRole !== MENULIST_PLATFORM_USER_ROLE) {
     throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
   }
 }

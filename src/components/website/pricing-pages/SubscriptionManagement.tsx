@@ -10,6 +10,7 @@ import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { formatDateTime } from "@util/dateTime";
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { getBoundedPaymentStringContext, logPaymentFailure } from "@hook/paymentDiagnostics";
+import { DASHBOARD_URL, OWNER_APP_URL } from "@constant/urls";
 import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { useFormatter } from "next-intl";
@@ -133,7 +134,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
         return <div style={{ padding: '12px 16px', backgroundColor: 'var(--ws-bg-danger-soft)', border: '1px solid var(--ws-error)', borderRadius: '6px', color: 'var(--ws-error-text)', fontSize: '14px' }}>
             <strong>⚠️ Payment failed.</strong> {gracePeriodDisplay.hasKnownGracePeriod
                 ? `Complete the payment update within ${gracePeriodDisplay.dayLabel} to avoid service interruption.`
-                : 'Grace-period details are unavailable. Open Billing to recover the subscription.'} <a href="/billing" style={{ color: 'var(--ws-error-text)', textDecoration: 'underline' }}>Go to Billing</a>.
+                : 'Grace-period details are unavailable. Open Billing to recover the subscription.'} <a href={`${OWNER_APP_URL}/billing`} style={{ color: 'var(--ws-error-text)', textDecoration: 'underline' }}>Go to Billing</a>.
         </div>
     }
 
@@ -204,10 +205,10 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                                 {pendingCheckoutUrl ? 'Complete payment' : 'Open Billing'}
                             </Button>
                         ) : null}
-                        <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
+                        <Button variant="outline" size="sm" onClick={() => window.location.assign(DASHBOARD_URL)} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuLayoutDashboard size={16} style={{ marginRight: '8px' }} /> Dashboard
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => router.push("/billing")} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
+                        <Button variant="outline" size="sm" onClick={() => window.location.assign(`${OWNER_APP_URL}/billing`)} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuTimer size={16} style={{ marginRight: '8px' }} /> Billing History
                         </Button>
                     </CardFooter>

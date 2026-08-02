@@ -1753,7 +1753,7 @@ assertIncludes(testSentryPage, 'If `ENABLE_SENTRY` and a dev DSN are configured'
 assertIncludes(testSentryRoute, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Sentry test route must use the shared platform route guard.');
 assertIncludes(testSentryRoute, 'await requirePlatformAdminRouteAccess();', 'Sentry test route must check platform admin access before rendering diagnostics.');
 assert(!testSentryRoute.includes('Access: Requires authentication (platform routes)'), 'Sentry test route docs must not imply generic authentication is sufficient.');
-assertIncludes(platformRouteGuard, "import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';", 'Platform route guard must use the canonical platform role constant.');
+assertIncludes(platformRouteGuard, "import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';", 'Platform route guard must use the canonical platform role constant.');
 assertIncludes(platformRouteGuard, "import { authOptions } from '@lib/auth';", 'Platform route guard must use the shared NextAuth options.');
 assertIncludes(platformRouteGuard, 'getServerSession(authOptions)', 'Platform route guard must check the server session before rendering internal routes.');
 assertIncludes(platformRouteGuard, 'allowedPlatformRoles: readonly string[]', 'Platform route guard must accept an explicit platform-role allowlist.');
@@ -1761,7 +1761,7 @@ assertIncludes(platformRouteGuard, '!sessionPlatformRole || !allowedPlatformRole
 assertIncludes(platformRouteGuard, 'redirect(redirectPath)', 'Platform route guard must redirect rejected sessions through the selected route boundary.');
 assertIncludes(platformRouteGuard, 'const currentUser = await getCurrentUser(session);', 'Every platform-role route must re-read current persisted authority.');
 assertIncludes(platformRouteGuard, 'currentUser.userData.platformRole !== sessionPlatformRole', 'Every platform-role route must reject stale or demoted persisted role authority.');
-assertIncludes(platformRouteGuard, 'return requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);', 'Platform admin route guard must keep the full PLATFORM role admission.');
+assertIncludes(platformRouteGuard, 'return requirePlatformRoleRouteAccess([MENULIST_PLATFORM_USER_ROLE], redirectPath);', 'Platform admin route guard must keep the full PLATFORM role admission.');
 assert(!platformRouteGuard.includes('session: any'), 'Platform route guard must retain the typed NextAuth session contract.');
 assert(!platformRouteGuard.includes('as any'), 'Platform route guard must not erase the typed NextAuth role contract.');
 assertIncludes(platformLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Platform layout must use the shared platform route guard.');
@@ -1769,9 +1769,9 @@ assertIncludes(platformLayout, 'await requirePlatformAdminRouteAccess();', 'Plat
 assertIncludes(opsLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Ops layout must use the shared platform route guard.');
 assertIncludes(opsLayout, 'await requirePlatformAdminRouteAccess();', 'Ops layout must guard legacy /ops routes before rendering.');
 assertIncludes(resellerLayout, "import { FEATURE_FLAGS } from '@config/features';", 'Reseller layout must respect the reseller dashboard feature flag before rendering.');
-assertIncludes(resellerLayout, 'ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE', 'Reseller layout must use the canonical platform and reseller role constants.');
+assertIncludes(resellerLayout, 'MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE', 'Reseller layout must use the canonical platform and reseller role constants.');
 assertIncludes(resellerLayout, '!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD', 'Reseller layout must stop route rendering when the reseller dashboard flag is off.');
-assertIncludes(resellerLayout, 'requirePlatformRoleRouteAccess(\n        [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE]', 'Reseller layout must allow only platform and reseller sessions.');
+assertIncludes(resellerLayout, 'requirePlatformRoleRouteAccess(\n        [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE]', 'Reseller layout must allow only platform and reseller sessions.');
 assertIncludes(resellerLayout, "'/dashboard'", 'Reseller layout must preserve the dashboard redirect boundary for non-reseller sessions.');
 assertIncludes(resellerManageLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Reseller management layout must use the shared platform admin route guard.');
 assertIncludes(resellerManageLayout, "await requirePlatformAdminRouteAccess('/dashboard');", 'Reseller management layout must stay platform-admin only before rendering.');
@@ -1779,8 +1779,8 @@ for (const resellerRoute of [resellerPage, resellerManagePage, resellerOnboardPa
     assert(!resellerRoute.includes('session as any'), 'Reseller route must retain the typed NextAuth session contract.');
     assert(!resellerRoute.includes('session?.user as any'), 'Reseller route user must retain the typed NextAuth session contract.');
 }
-assertIncludes(navigationConstants, 'allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE],\n        subNav: [', 'Desktop Platform navigation must stay hidden from non-platform sessions.');
-assertIncludes(navigationConstants, 'allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE],\n        subNav: [', 'Desktop Reseller navigation must stay hidden from non-reseller and non-platform sessions.');
+assertIncludes(navigationConstants, 'allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE],\n        subNav: [', 'Desktop Platform navigation must stay hidden from non-platform sessions.');
+assertIncludes(navigationConstants, 'allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE],\n        subNav: [', 'Desktop Reseller navigation must stay hidden from non-reseller and non-platform sessions.');
 assertIncludes(permissionRequirements, 'pathname === "/dashboard" || pathname === "/business-health"', 'Business Health owner route must require analytics permission.');
 assertIncludes(permissionRequirements, 'pathname === "/assets"', 'Dedicated Assets route must have an owner permission requirement.');
 assertIncludes(permissionRequirements, 'pathname === "/use-menulist/print-assets"', 'Print Assets compatibility route must have an owner permission requirement.');
@@ -4253,6 +4253,7 @@ assert(
     "import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';",
     "const requestAuthority = normalizeRequestAuthority(request.headers.get('host'));",
     'const requestHostOrigin = getRequestHostOrigin(request);',
+    'return originUrl.origin === allowedUrl.origin;',
 ].forEach((token) => {
     assertIncludes(corsValidation, token, `CORS validation must keep production-localhost allowlist boundary token ${token}.`);
 });
@@ -4263,6 +4264,7 @@ assert(
 assert(!corsValidation.includes("secureLog('[CORS] Blocked request from unauthorized origin'"), 'CORS validation must not raw-log blocked origins.');
 assert(!corsValidation.includes('origin,\n            allowedOrigins: ALLOWED_ORIGINS'), 'CORS validation must not log raw origin or allowed origins.');
 assert(!corsValidation.includes("requestHeaders.get('x-forwarded-host')"), 'CORS same-origin fallback must not trust forwarded-host.');
+assert(!corsValidation.includes('originUrl.hostname.endsWith'), 'CORS allowlist must not extend website/app trust to tenant subdomains.');
 [
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS production localhost allowlist checkpoint'],
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS blocked-origin diagnostics checkpoint'],

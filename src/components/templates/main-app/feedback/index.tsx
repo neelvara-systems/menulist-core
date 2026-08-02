@@ -18,6 +18,7 @@ import {
     updateFeedbackStatus,
     type GuestFeedbackExpectedScope,
 } from '@database/guestFeedback';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -277,6 +278,14 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                         </div>
                     ) : feedbackItems.length === 0 ? (
                         <Empty
+                            image={filter === 'all' ? (
+                                <ContextualStateIllustration
+                                    color={token.colorTextQuaternary}
+                                    size={112}
+                                    variant="feedbackContext"
+                                />
+                            ) : Empty.PRESENTED_IMAGE_SIMPLE}
+                            imageStyle={{ height: filter === 'all' ? 112 : 60 }}
                             description={
                                 filter === 'all'
                                     ? 'No feedback yet'

@@ -18,6 +18,7 @@ import {
     OVERVIEW_GUARDRAILS,
     OverviewData,
 } from '@template/main-app/projects/types';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { formatNumber } from '@util/formatters';
 import { Card, Col, Empty, Progress, Row, Tag, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -50,6 +51,15 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
             <div className={styles.overviewView}>
                 <Card className={styles.emptyCard}>
                     <Empty
+                        image={(
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={112}
+                                treatment="softHalo"
+                                variant="analyticsContext"
+                            />
+                        )}
+                        imageStyle={{ height: 112 }}
                         description={
                             <Text type="secondary">
                                 {t('empty.noAnalyticsYet')}

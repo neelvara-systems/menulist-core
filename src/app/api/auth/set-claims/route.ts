@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import { ANSWERLATTICE_ALL_PERMISSIONS, type AnswerlatticePermissionKey, DEFAULT_ANSWERLATTICE_ROLE_IDS, DEFAULT_ANSWERLATTICE_ROLE_METADATA, normalizeAnswerlatticeRolePermissions, } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
@@ -275,7 +275,7 @@ const normalizeProductId = (value: unknown): ProductId => {
 
 const isPlatformSupportRole = (value: unknown): boolean => {
     const normalized = String(value || '').toUpperCase();
-    return normalized === ECOMSAI_PLATFORM_USER_ROLE || normalized === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    return normalized === MENULIST_PLATFORM_USER_ROLE || normalized === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {

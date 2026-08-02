@@ -10,7 +10,7 @@ function isKnownLocalDevelopmentHost(url: URL) {
         || host === '0.0.0.0'
         || host.startsWith('127.')
         || host === '::1'
-        || host.endsWith('.qa.menulist.digital')
+        || host.endsWith('.menulist.digital')
         || host.endsWith('.menulist.online');
 }
 

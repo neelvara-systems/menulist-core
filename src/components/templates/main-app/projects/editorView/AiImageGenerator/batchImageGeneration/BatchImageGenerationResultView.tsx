@@ -1,3 +1,4 @@
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS, type BatchImageGenerationJobStatusType } from '@constant/AI';
 import { assertImageBatchJobUpdateSucceeded, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import useDeviceType from '@hook/useDeviceType';
@@ -12,7 +13,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
 import { getISOStringDate, toDate, type DateLike } from '@util/dateTime';
 import { useDateFormatters } from '@util/formatters';
-import { Alert, Button, Card, Checkbox, Divider, Flex, Image, message, Modal, Result, Spin, Tag, theme, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Flex, Image, message, Modal, Result, Tag, theme, Typography } from 'antd';
 import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuEye, LuLoader, LuRefreshCcw, LuTrash, LuUploadCloud, LuX } from 'react-icons/lu';
 import styles from './BatchImageGenerationResultView.module.scss';
@@ -355,6 +356,14 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                             {activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED && (
                                 <Result
                                     className={styles.queuedBackground}
+                                    icon={(
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={96}
+                                            treatment="softHalo"
+                                            variant="photoLoadingContext"
+                                        />
+                                    )}
                                     style={{ padding: "20px 0" }} // Added some padding for better visual
                                     status="info"
                                     title={<Flex align="center" gap={8} vertical>
@@ -366,7 +375,14 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                             {activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING && (
                                 <Result
                                     className={styles.processingBackground}
-                                    icon={<Spin size="large" />}
+                                    icon={(
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={96}
+                                            treatment="softHalo"
+                                            variant="photoLoadingContext"
+                                        />
+                                    )}
                                     style={{ padding: "20px 0" }}
                                     title={<Flex align="center" gap={8} vertical>
                                         <Text strong style={{ fontSize: 20, color: "black" }}>Batch Job Processing...</Text>
@@ -376,6 +392,14 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                             )}
                             {activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED && (
                                 <Result
+                                    icon={(
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={96}
+                                            treatment="softHalo"
+                                            variant="photoSuccessContext"
+                                        />
+                                    )}
                                     rootClassName={styles.completedBackground}
                                     style={{ padding: "20px 0" }} // Added some padding for better visual
                                     status="success"
@@ -388,6 +412,13 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                             {activeJobData.status === BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED && (
                                 <Result
                                     className={styles.failedBackground}
+                                    icon={(
+                                        <ContextualStateIllustration
+                                            color={token.colorTextQuaternary}
+                                            size={96}
+                                            variant="photoErrorContext"
+                                        />
+                                    )}
                                     style={{ padding: "20px 0" }} // Added some padding for better visual
                                     status="error"
                                     title={<Flex align="center" gap={8} vertical>

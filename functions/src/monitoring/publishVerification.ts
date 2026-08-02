@@ -25,6 +25,7 @@ import {
 import { validateNetworkTargetUrl } from '../utils/networkTarget';
 import { createAlert } from './alerts';
 import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import { resolveMenuListTenantBaseDomain } from '../config/menulistRuntimeUrls';
 
 const logger = functions.logger;
 const PUBLISH_VERIFICATION_FAILED_ALERT_MESSAGE = 'A published menu failed health verification. Review the store health record and bounded verification metadata.';
@@ -97,18 +98,7 @@ function getBoundedPublishVerificationStringContext(label: string, value: unknow
 }
 
 export function getPublishVerificationPublicBaseDomain(): string | null {
-  const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();
-  if (!appUrl) return null;
-
-  try {
-    const parsed = new URL(appUrl);
-    if (parsed.protocol !== 'https:') return null;
-    const hostname = parsed.hostname.toLowerCase();
-    if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') return null;
-    return hostname.startsWith('app.') ? hostname.slice(4) : hostname;
-  } catch {
-    return null;
-  }
+  return resolveMenuListTenantBaseDomain();
 }
 
 function getConfiguredHostname(value: unknown): string | null {

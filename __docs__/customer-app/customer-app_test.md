@@ -212,7 +212,7 @@ This script verifies:
 With Chrome and the local development server available, run:
 
 ```bash
-CUSTOMER_PWA_QA_TENANT_HOST=habibis.qa.menulist.digital \
+CUSTOMER_PWA_QA_TENANT_HOST=habibis.menulist.digital \
 CUSTOMER_PWA_QA_UPSTREAM_URL=http://127.0.0.1:3000 \
 CUSTOMER_PWA_QA_OUTPUT_DIR=/tmp/menulist-customer-pwa-qa \
 npm run smoke:customer-pwa-offline
@@ -323,7 +323,7 @@ The middleware and manifest route read the request `Host`, so you can simulate a
 Add a hosts entry:
 
 ```txt
-127.0.0.1 demo.qa.menulist.digital
+127.0.0.1 qa-cafe.menulist.digital
 127.0.0.1 app.menulist.ai
 ```
 
@@ -333,8 +333,8 @@ Then run:
 
 Open:
 
-- `http://demo.qa.menulist.digital:3000/`
-- `http://demo.qa.menulist.digital:3000/manifest.webmanifest`
+- `http://qa-cafe.menulist.digital:3000/`
+- `http://qa-cafe.menulist.digital:3000/manifest.webmanifest`
 - `http://app.menulist.ai:3000/`
 
 This lets you test:
@@ -352,9 +352,9 @@ Useful when you want to inspect responses without editing `/etc/hosts`.
 Examples:
 
 ```bash
-curl -H "Host: demo.qa.menulist.digital:3000" http://127.0.0.1:3000/manifest.webmanifest
-curl -I -H "Host: demo.qa.menulist.digital:3000" http://127.0.0.1:3000/
-curl -I -H "Host: demo.qa.menulist.digital:3000" http://127.0.0.1:3000/sw-customer.js
+curl -H "Host: qa-cafe.menulist.digital:3000" http://127.0.0.1:3000/manifest.webmanifest
+curl -I -H "Host: qa-cafe.menulist.digital:3000" http://127.0.0.1:3000/
+curl -I -H "Host: qa-cafe.menulist.digital:3000" http://127.0.0.1:3000/sw-customer.js
 curl -I -H "Host: app.menulist.ai:3000" http://127.0.0.1:3000/sw.js
 ```
 
@@ -386,7 +386,7 @@ This is useful for:
 But there is an important limit:
 
 - `https://localhost:3000` is still **not** a true tenant origin
-- `npm run devhttps` gives you HTTPS for `localhost`, not for `demo.qa.menulist.digital`
+- `npm run devhttps` gives you HTTPS for `localhost`, not for `qa-cafe.menulist.digital`
 
 So it is **not enough** for final Customer App install validation.
 
@@ -399,7 +399,7 @@ If you want near-production local testing, set up:
 
 Example target hostnames:
 
-- `demo.qa.menulist.digital`
+- `qa-cafe.menulist.digital`
 - `app.menulist.ai`
 
 Typical tools:
@@ -480,7 +480,7 @@ The following items are still required before this can clear the 3-year freeze p
 
 ### C. Tenant-Origin PWA Verification
 
-Perform these checks on a real tenant origin such as `https://demo.qa.menulist.digital/` or a verified custom domain.
+Perform these checks on a real tenant origin such as `https://qa-cafe.menulist.digital/` or a verified custom domain.
 
 - [ ] `GET /manifest.webmanifest` returns `200`
 - [ ] Manifest is store-specific, not platform-generic

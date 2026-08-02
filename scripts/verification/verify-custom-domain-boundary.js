@@ -254,9 +254,10 @@ requires(emulatorTest, [
   "isReservedCustomDomainClaimCandidate('menulist.ai')",
   "isReservedCustomDomainClaimCandidate('app.menulist.ai')",
   "isReservedCustomDomainClaimCandidate('menulist.online')",
-  "isReservedCustomDomainClaimCandidate('demo.menulist.online')",
-  "isReservedCustomDomainClaimCandidate('qa.menulist.digital')",
-  "isReservedCustomDomainClaimCandidate('demo.qa.menulist.digital')",
+  "isReservedCustomDomainClaimCandidate('sample-cafe.menulist.online')",
+  "isReservedCustomDomainClaimCandidate('menulist.digital')",
+  "isReservedCustomDomainClaimCandidate('app.menulist.digital')",
+  "isReservedCustomDomainClaimCandidate('qa-cafe.menulist.digital')",
   "isReservedCustomDomainClaimCandidate('surfaceos.app')",
   "!isReservedCustomDomainClaimCandidate('owner.example.com')",
 ], 'custom-domain emulator regression');

@@ -2,7 +2,7 @@
 
 import { updatePlatformEntityBlockState } from '@database/platformEntityBlocks';
 import { FEATURE_FLAGS } from '@config/features';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { getStoresSummary } from '@database/platformSummary';
 import { getStoreById } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
@@ -54,7 +54,7 @@ export default function EntityBlockSettings() {
     const [entityId, setEntityId] = useState<string | number | null>(null);
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
-    const canManageEntityBlocks = FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS && session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const canManageEntityBlocks = FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS && session?.platformRole === MENULIST_PLATFORM_USER_ROLE;
 
     useEffect(() => {
         if (!canManageEntityBlocks) return;

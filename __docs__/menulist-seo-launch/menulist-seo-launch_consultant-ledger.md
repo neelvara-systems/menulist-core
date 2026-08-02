@@ -146,7 +146,7 @@ Keep implementation details in the source docs. This ledger records the consulta
 **Evidence checked:**
 
 - Historical live `curl -I` on the then-current `menulist.online` preview paths plus `menulist.ai`, `www.menulist.ai`, `/signin`, and `/create-menu`.
-- Current contract supersedes that preview evidence: `src/constants/deploymentTargets.ts` keeps production website on `menulist.ai`, production customer tenants on `*.menulist.online`, exact `menulist.online`/`www.menulist.online` redirects to `menulist.ai`, and MenuList QA on `qa.menulist.digital` plus `*.qa.menulist.digital`.
+- Current contract supersedes that preview evidence: production uses `menulist.ai`/`www` for the website, `app.menulist.ai` for the owner app, and `*.menulist.online` for customer pages; QA uses `menulist.digital`/`www` for the website, `app.menulist.digital` for the owner app, and `*.menulist.digital` for customer tests.
 - `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts`, `public/robots.txt`, and website metadata currently target the production canonical domain.
 
 **Follow-up:** Founder must align production DNS/hosting for the chosen canonical host before Search Console. Do not submit `menulist.ai` while it serves a `/lander` shell. This pass did not resolve stale public menu fallback indexing; the later June 23 stale-public-menu entry records that fix.

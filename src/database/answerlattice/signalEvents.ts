@@ -15,7 +15,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from '@constant/product';
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeEntityId, normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
@@ -47,7 +47,7 @@ const clampPositiveInt = (value: number, fallback: number, max: number) => {
 
 const isPlatformSession = (session: unknown): boolean => {
     const role = resolveExactSessionPlatformRole(session);
-    return role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    return role === MENULIST_PLATFORM_USER_ROLE || role === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
 };
 
 const requireSignalScope = async (tIdValue: unknown, sIdValue: unknown) => {

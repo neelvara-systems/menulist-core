@@ -1,7 +1,7 @@
 'use client'
 import DrawerElement from '@antdComponent/drawerElement';
 import Saperator from '@atoms/Saperator';
-import { CRAFT_BUILDER_MAINTAINER_USER_ROLE, ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { CRAFT_BUILDER_MAINTAINER_USER_ROLE, MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAllStoresByTenantId } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
 import { assertUserUpdateSucceeded, getUserByTenantId, updatePlatformUser, type PlatformUserRecord } from '@database/users';
@@ -414,8 +414,8 @@ function PlatformUsers() {
                             placeholder="Select Role"
                             onChange={(value) => onChangeValue('platformRole', value)}
                             options={[
-                                { label: ECOMSAI_PLATFORM_USER_ROLE, value: ECOMSAI_PLATFORM_USER_ROLE },
-                                { label: ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, value: ECOMSAI_PLATFORM_SUPPORT_USER_ROLE },
+                                { label: MENULIST_PLATFORM_USER_ROLE, value: MENULIST_PLATFORM_USER_ROLE },
+                                { label: MENULIST_PLATFORM_SUPPORT_USER_ROLE, value: MENULIST_PLATFORM_SUPPORT_USER_ROLE },
                                 { label: CRAFT_BUILDER_MAINTAINER_USER_ROLE, value: CRAFT_BUILDER_MAINTAINER_USER_ROLE },
                             ]}
                         />

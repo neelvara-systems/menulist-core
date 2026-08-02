@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** July 26, 2026
+**Last Updated:** August 2, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -15,7 +15,7 @@ The AI System Layer is a centralized infrastructure that governs AI operations a
 
 **Core principle:** AI is an expensive, rate-limited external resource. Treat it like a database — centralize access, control cost, and monitor health.
 
-Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, and provider health checks.
+Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate and spend limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, provider health checks, the shared rolling-spend admission controller, and a provider-side Gemini API spend cap.
 
 ### 2026 provider migration register
 
@@ -103,9 +103,10 @@ All AI Features (17 files import genAIClient)
 genAIClient (transparent proxy — same interface as GoogleGenAI)
      ↓
 AI Gateway (aiGateway.ts)
-  ├── On 429 → Key Manager rotates to next key → immediate retry
-  ├── On 5xx → Exponential backoff → retry same key
-  └── On 4xx → Fail immediately (no retry)
+  ├── Before billed attempt → reserve project/product rolling spend
+  ├── On 429 → key cooldown + structured Retry-After + full jitter
+  ├── On 5xx → full-jitter exponential backoff
+  └── On 4xx / hard quota → fail immediately
      ↓
 Key Manager (keyManager.ts)
   ├── Pool of 1-4 GoogleGenAI clients
@@ -129,6 +130,8 @@ Gemini API (via @google/genai SDK)
 | Proxy approach        | Transparent (same interface)     | Zero changes to 19 call sites                               |
 | Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
 | Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
+| Rolling spend policy  | Firestore transaction per billed attempt | Default USD 8/10m per product project; reserve before I/O, settle from usage, fail closed |
+| Provider spend cap    | One project + Gemini API service  | Preview monthly backstop; keep below the owner's absolute budget because enforcement is not instant |
 | Model names           | Stable names only for production | No `latest`, preview, or experimental aliases in active prod paths |
 | Answerlattice embeddings | `gemini-embedding-2` on `embedding` | Registry-locked query/document formatting and cache key `gemini-embedding-2:768:v1`; the pre-launch codebase has no alternate vector space or backfill path |
 | Answerlattice Functions provider | `@google/genai` API-key gateway | Same SDK/gateway pattern as MenuList while preserving Answerlattice credential and billing isolation |
@@ -157,7 +160,8 @@ Gemini API (via @google/genai SDK)
 | File                                 | Purpose                                       |
 | ------------------------------------ | --------------------------------------------- |
 | `src/lib/google/genAi/index.ts`      | Entry point — exports `genAIClient` (gateway) |
-| `src/lib/google/genAi/aiGateway.ts`  | AI Gateway — retry + key rotation proxy with bounded diagnostics |
+| `src/lib/google/genAi/aiGateway.ts`  | AI Gateway — rolling-spend admission, bounded retry, key health, and diagnostics |
+| `src/data/shared/geminiSpendPolicy.ts` | Model prices, rolling-window state machine, Firestore adapter, and structured retry timing |
 | `src/lib/google/genAi/diagnostics.ts` | Shared route diagnostics with bounded provider and security metadata |
 | `src/lib/google/genAi/keyManager.ts` | Key Manager — pool + health tracking          |
 | `src/lib/ai/providerErrors.ts`       | Shared app-route provider rate-limit/retry helper with structured indicators |
@@ -169,7 +173,8 @@ Gemini API (via @google/genai SDK)
 | File                              | Purpose                                       |
 | --------------------------------- | --------------------------------------------- |
 | `functions/src/genAiClient.ts`    | Entry point — exports `genAIClient` (gateway) |
-| `functions/src/ai/aiGateway.ts`   | AI Gateway — retry + key rotation proxy with bounded diagnostics |
+| `functions/src/ai/aiGateway.ts`   | AI Gateway — rolling-spend admission, bounded retry, key health, and diagnostics |
+| `functions/src/sharedData/geminiSpendPolicy.ts` | Byte-identical spend/pricing policy mirror |
 | `functions/src/ai/keyManager.ts`  | Key Manager — pool + health tracking          |
 | `functions/src/config/secrets.ts` | Secret names + groups (4 AI key slots)        |
 | `functions/src/constants/ai.ts`   | Cloud Functions AI model constants            |
@@ -180,7 +185,8 @@ Gemini API (via @google/genai SDK)
 | File | Purpose |
 | --- | --- |
 | `functions-answerlattice/src/genAiClient.ts` | Entry point — exports `answerlatticeGenAIClient` (gateway) |
-| `functions-answerlattice/src/ai/aiGateway.ts` | Answerlattice AI Gateway — retry + key rotation proxy with bounded diagnostics |
+| `functions-answerlattice/src/ai/aiGateway.ts` | Answerlattice AI Gateway — rolling-spend admission, bounded retry, key health, and diagnostics |
+| `functions-answerlattice/src/sharedData/geminiSpendPolicy.ts` | Byte-identical spend/pricing policy mirror |
 | `functions-answerlattice/src/ai/keyManager.ts` | Answerlattice Key Manager — product-scoped key pool + health tracking |
 | `functions-answerlattice/src/config/secrets.ts` | Answerlattice secret names + groups (cron + 4 AI key slots) |
 | `functions-answerlattice/src/constants/ai.ts` | Answerlattice Functions AI model constants |

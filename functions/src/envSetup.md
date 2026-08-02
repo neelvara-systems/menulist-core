@@ -8,6 +8,12 @@
 This file documents the Firebase Functions secrets that are actually declared by
 the current code. Do not print, commit, or paste secret values in logs or docs.
 
+Budget setup note: create alert-only budgets and a separate Preview Gemini API
+spend-cap budget for the matching Firebase/GCP project before deploying paid
+Functions paths or enabling paid Gemini usage. `GCP_BUDGET_WEBHOOK_SECRET` only
+authenticates the optional alert webhook; it does not create either budget or
+enable spend-cap enforcement.
+
 ## Current Secret Sources
 
 - MenuList Functions secret declarations: `functions/src/config/secrets.ts`
@@ -16,6 +22,13 @@ the current code. Do not print, commit, or paste secret values in logs or docs.
 - SignalDesk Functions codebase: `functions-signaldesk/src`
 - Full product setup runbook:
   `__docs__/deployment/three-product-environment-setup.md`
+- Current MenuList QA checklist:
+  `__docs__/deployment/menulist-staging-qa-setup.md`
+
+MenuList currently uses one runtime location: `us-central1`. Select it when
+Firestore asks for a location and keep Storage, Functions, and Cloud Tasks in
+the same location. Do not create regional copies or a third deployed
+environment. Local destructive and rule testing is emulator-first.
 
 ## MenuList Function Secrets
 
@@ -24,7 +37,8 @@ Set these in both MenuList Firebase projects:
 - staging/local Firebase project: `menulist-qa`
 - production Firebase project: `menulist`
 
-Required or declared MenuList secrets:
+Declared MenuList secret registry. A secret becomes deploy-required when a
+selected Function binds it through its `secrets` option:
 
 ```text
 GEMINI_AI_KEY
@@ -50,7 +64,8 @@ GCP_BUDGET_WEBHOOK_SECRET
 REVALIDATION_SECRET
 ```
 
-Set staging secrets:
+Set these staging secrets before using the maintained full MenuList QA Functions
+target list:
 
 ```bash
 firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
@@ -63,26 +78,41 @@ firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa
 firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project menulist-qa
 firebase functions:secrets:set WHATSAPP_APP_SECRET --project menulist-qa
 firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project menulist-qa
+firebase functions:secrets:set RAZORPAY_KEY_ID --project menulist-qa
+firebase functions:secrets:set RAZORPAY_KEY_SECRET --project menulist-qa
+firebase functions:secrets:set SENTRY_DSN --project menulist-qa
+firebase functions:secrets:set REVALIDATION_SECRET --project menulist-qa
+```
+
+Set these only when the corresponding separately selected Function/provider is
+being deployed:
+
+```bash
 firebase functions:secrets:set SMTP_HOST --project menulist-qa
 firebase functions:secrets:set SMTP_PORT --project menulist-qa
 firebase functions:secrets:set SMTP_USER --project menulist-qa
 firebase functions:secrets:set SMTP_PASS --project menulist-qa
-firebase functions:secrets:set RAZORPAY_KEY_ID --project menulist-qa
-firebase functions:secrets:set RAZORPAY_KEY_SECRET --project menulist-qa
-firebase functions:secrets:set SENTRY_DSN --project menulist-qa
 firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
 firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
 firebase functions:secrets:set GCP_BUDGET_WEBHOOK_SECRET --project menulist-qa
-firebase functions:secrets:set REVALIDATION_SECRET --project menulist-qa
 ```
 
-`SENTRY_DSN` is required only when Functions Sentry is enabled. Functions do
-not embed a fallback Sentry project DSN; if the secret/env value is missing,
-Sentry initialization is skipped and Firebase logs remain active. For local
-emulator-only server error routing, set `SENTRY_DEV_DSN` in the local Functions
-env file instead of adding another deployed secret.
+Secret Manager bindings are evaluated per selected deploy target. The maintained
+full MenuList QA target list includes Functions that bind `SENTRY_DSN` and the
+four WhatsApp secret names, so real QA secret versions must exist before that
+bundle is deployed even while `ENABLE_MESSAGING_ONBOARDING=false`. Runtime
+feature disablement does not remove a target's deploy-time secret binding. To
+defer one of those providers, stop before Functions deployment and use only a
+separately reviewed reduced target list; never create fake secret values.
 
-Set production secrets by repeating the same commands with:
+Functions do not embed a fallback Sentry project DSN. A target that does not
+bind or receive a Sentry DSN skips Sentry initialization and keeps Firebase
+logging active. For local emulator-only server error routing, set
+`SENTRY_DEV_DSN` in the local Functions env file instead of adding another
+deployed secret.
+
+For a later production setup, repeat only the commands required by the reviewed
+production target list with:
 
 ```bash
 --project menulist
@@ -90,6 +120,11 @@ Set production secrets by repeating the same commands with:
 
 Use production values for production. Do not copy staging/test provider values
 into `menulist`.
+
+Record each created secret's owner and creation date in the company vault.
+Quarterly, review whether old versions or replaced credentials can be revoked.
+Do not rotate a working credential without a tested replacement and rollback
+path.
 
 ## MenuList Function Runtime Env
 
@@ -108,10 +143,37 @@ MESSAGING_ONBOARDING_PROVIDERS=whatsapp
 ENABLE_MESSAGING_ONBOARDING_TRACKING=true
 ```
 
-`NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` must be the site host only. Use
-`https://qa.menulist.digital` for QA/staging and `https://menulist.ai` for
-production unless a later approved preview host changes it. The extraction
-watcher appends `/msg-preview/{sessionId}` when it builds the preview link.
+Keep owner-app and customer-host values separate:
+
+```text
+# menulist-qa
+NEXT_PUBLIC_APP_URL=https://app.menulist.digital
+MENULIST_TENANT_BASE_DOMAIN=menulist.digital
+
+# menulist
+NEXT_PUBLIC_APP_URL=https://app.menulist.ai
+MENULIST_TENANT_BASE_DOMAIN=menulist.online
+```
+
+`NEXT_PUBLIC_APP_URL` is the Next.js app/API origin used for cache
+revalidation. `MENULIST_TENANT_BASE_DOMAIN` is the customer-link suffix used
+for publish verification. Never derive one from the other.
+
+MenuList Functions validate the owner app origin against the active Firebase
+project when `GCLOUD_PROJECT` is available. `menulist-qa` accepts only
+`https://app.menulist.digital`; `menulist` accepts only
+`https://app.menulist.ai`. Invalid or cross-environment values fail closed and
+must never fall back from QA to a production owner link.
+
+The customer-domain suffix has the same project boundary. `menulist-qa`
+accepts only `menulist.digital`, `menulist` accepts only `menulist.online`, and
+unknown suffixes fail closed. Emulator tests may use a demo project ID, but
+must still choose one of those two maintained suffixes explicitly.
+
+`NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` must be the owner-app host only. Use
+`https://app.menulist.digital` for QA/staging and `https://app.menulist.ai`
+for production. The extraction watcher appends `/msg-preview/{sessionId}`
+when it builds the preview link.
 
 ## Answerlattice Function Secrets
 
@@ -204,12 +266,18 @@ Example shape:
 
 ```env
 FUNCTIONS_EMULATOR=true
-GEMINI_AI_KEY=<local-or-staging-gemini-key>
-UPSTASH_REDIS_REST_URL=<local-or-staging-upstash-rest-url>
-UPSTASH_REDIS_REST_TOKEN=<local-or-staging-upstash-rest-token>
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+
+# Add only when the selected local test intentionally calls the paid provider.
+GEMINI_AI_KEY=<menulist-qa-gemini-key>
+UPSTASH_REDIS_REST_URL=<menulist-qa-upstash-rest-url>
+UPSTASH_REDIS_REST_TOKEN=<menulist-qa-upstash-rest-token>
 ```
 
-Only add the local secrets needed for the function being tested.
+Only add the local secrets needed for the function being tested. Never place
+production secrets in the local emulator file.
 
 ## Checking Secret Metadata Safely
 
@@ -263,8 +331,9 @@ Gemini keys in browser code, mobile apps, widgets, Firestore, or logs.
 The extra key slots are for credential rotation, leak response, and transient
 failover. They do not create unlimited capacity when they belong to the same
 Google project because Gemini quotas are enforced at the project/model tier.
-For production scaling, use billing, quota monitoring, budget alerts, and
-quota increase requests.
+For production scaling, use billing, quota monitoring, alert-only budgets, the
+Gemini API spend-cap budget, the app-local rolling ceiling, and quota increase
+requests.
 
 Daily provider health records:
 

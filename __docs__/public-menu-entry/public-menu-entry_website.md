@@ -3,7 +3,7 @@
 **Status:** Local source complete; release evidence pending
 **Last reviewed:** July 16, 2026
 
-> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 **Local result:** Local source complete. Preview status checks are 5 seconds apart, capped at 36, and end in an explicit retry state. Cleanup preserves the source attached to an expired claimed draft. Approved app release remains pending.
 
@@ -11,7 +11,7 @@
 
 - **Title:** Create Your Digital Menu | MenuList
 - **Description:** Sign in, add a current menu photo or supported public link, review the prepared menu, and create one owner-controlled public link.
-- **Canonical:** `/create-menu`
+- **Canonical:** `https://app.menulist.ai/create-menu` in production and `https://app.menulist.digital/create-menu` in QA; both are `noindex`
 
 ## Hero
 
@@ -30,7 +30,7 @@ The customer link reflects the version the owner approved and published. For lat
 ## FAQ
 
 **Do I need an account?**
-The page is public, but upload, link acquisition, extraction, preview polling, claim, and publish require sign-in.
+The owner-app page is reachable before sign-in, but upload, link acquisition, extraction, preview polling, claim, and publish require sign-in.
 
 **Does this start a paid plan?**
 No. The setup preview and claim do not start Razorpay checkout. Plan selection remains in Billing.

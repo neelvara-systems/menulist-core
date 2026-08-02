@@ -9,7 +9,7 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
-    
+
     // ═══════════════════════════════════════════════════════════
     // TENANT MULTI-TENANCY RULES
     // ═══════════════════════════════════════════════════════════
@@ -4639,6 +4639,13 @@ service cloud.firestore {
         && masterIdUnchanged
         && !willSoftDelete
         && !isLinkedToMaster;
+    }
+
+    // Server-only rolling Gemini spend admission. Admin SDK callers use one
+    // fixed product document; no browser role may observe or mutate provider
+    // budget state.
+    match /geminiSpendWindows/{product} {
+      allow read, write: if false;
     }
   }
 }

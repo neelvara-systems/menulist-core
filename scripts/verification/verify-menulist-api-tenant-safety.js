@@ -6931,6 +6931,7 @@ function verifyOwnerUtilitySecureLogging() {
     const sharedTriggers = read('functions/src/triggers/shared.ts');
     const callableScopeAccess = read('functions/src/utils/callableScopeAccess.ts');
     const publishVerification = read('functions/src/monitoring/publishVerification.ts');
+    const menulistRuntimeUrls = read('functions/src/config/menulistRuntimeUrls.ts');
     [
       'normalizeOwnerNotificationNumericScopeAliases([',
       'token.tenantId,',
@@ -7034,9 +7035,7 @@ function verifyOwnerUtilitySecureLogging() {
       'const userDoc = await transaction.get(userRef);',
       'isPublicMenuUrlInStoreScope(storeData, options.publicMenuUrl)',
       'getPublishVerificationPublicBaseDomain()',
-      "const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();",
-      'if (!appUrl) return null;',
-      "if (parsed.protocol !== 'https:') return null;",
+      'return resolveMenuListTenantBaseDomain();',
       'hostname === `${subdomain}.${baseDomain}`',
       "if (currentPlatformRole === 'PLATFORM') return true;",
       'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)?.documentId !== tenantId',
@@ -7047,6 +7046,15 @@ function verifyOwnerUtilitySecureLogging() {
     ].forEach((token) => assert(
       publishVerification.includes(token),
       `publish verification scope boundary must include ${token}`,
+    ));
+    [
+      'MENULIST_TENANT_BASE_DOMAINS_BY_PROJECT',
+      'configuredValue = options.configuredDomain ?? process.env.MENULIST_TENANT_BASE_DOMAIN',
+      '!Object.values(MENULIST_TENANT_BASE_DOMAINS_BY_PROJECT).includes(configuredDomain)',
+      'if (expectedDomain && configuredDomain !== expectedDomain) return null;',
+    ].forEach((token) => assert(
+      menulistRuntimeUrls.includes(token),
+      `MenuList Functions tenant-domain boundary must include ${token}`,
     ));
     assert(
       !publishVerification.includes('storeDoc.data()?.health as StoreHealth'),

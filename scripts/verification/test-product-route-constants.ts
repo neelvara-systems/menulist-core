@@ -7,10 +7,10 @@ import {
 import { buildCampaignCueAuthLaunchUrl } from '../../src/constants/campaigncue/routes';
 
 const authUrl = new URL(buildCampaignCueAuthLaunchUrl(
-    'https://menulist.ai/signin',
+    'https://app.menulist.ai/signin',
     'https://campaigncue.com/app?tab=assets&filter=ready',
 ));
-assert.equal(authUrl.origin, 'https://menulist.ai');
+assert.equal(authUrl.origin, 'https://app.menulist.ai');
 assert.equal(authUrl.pathname, '/signin');
 assert.equal(authUrl.searchParams.get('product'), 'campaigncue');
 assert.equal(
@@ -19,7 +19,7 @@ assert.equal(
 );
 
 const authUrlWithExistingQuery = new URL(buildCampaignCueAuthLaunchUrl(
-    'https://menulist.ai/signin?source=campaign',
+    'https://app.menulist.ai/signin?source=campaign',
     '/campaigncue/app',
 ));
 assert.equal(authUrlWithExistingQuery.searchParams.get('source'), 'campaign');

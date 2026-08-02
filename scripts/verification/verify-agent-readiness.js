@@ -391,7 +391,10 @@ function verifyEnvironmentTargets() {
   const functionsQaEnvExample = read('functions/.env.menulist-qa.example');
   const functionsProductionEnvExample = read('functions/.env.menulist.example');
   const productSetupDoc = read('__docs__/deployment/three-product-environment-setup.md');
+  const menulistStagingQaSetup = read('__docs__/deployment/menulist-staging-qa-setup.md');
+  const initialAccountSetupGuide = read('__docs__/deployment/initial-account-domain-firebase-setup-guide.md');
   const deploymentReadme = read('__docs__/deployment/README.md');
+  const menulistRulesPredeployRunner = read('scripts/verification/run-menulist-firebase-rules-predeploy.mjs');
   const urlRoutingArchitecture = read('__docs__/url-routing-architecture/url-routing-architecture_impl.md');
   const productionDeploymentChecklist = read('__docs__/deployment/production-deployment-checklist.md');
   const launchPrerequisites = read('__docs__/production-readiness/launch-prerequisites.md');
@@ -656,9 +659,12 @@ function verifyEnvironmentTargets() {
   assert(getExpectedFirebaseProjectId('campaigncue', 'local') === 'campaigncue-qa', 'Local CampaignCue Firebase project must be campaigncue-qa');
   assert(getExpectedFirebaseProjectId('mycodex', 'local') === '', 'Local MyCodex must not require a Firebase project');
 
-  assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('qa.menulist.digital'), 'Preview MenuList domain must include qa.menulist.digital');
-  assert(DEPLOYMENT_TARGETS.preview.menulist.tenantDomains.includes('qa.menulist.digital'), 'Preview MenuList tenant domain must use qa.menulist.digital');
-  assert(DEPLOYMENT_TARGETS.preview.menulist.redirectDomains.includes('menulist.digital'), 'Preview MenuList apex digital redirect domain');
+  assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.digital'), 'Preview MenuList domain must include menulist.digital staging website apex');
+  assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('www.menulist.digital'), 'Preview MenuList domain must include www.menulist.digital staging website alias');
+  assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('app.menulist.digital'), 'Preview MenuList domain must include app.menulist.digital owner app');
+  assert(DEPLOYMENT_TARGETS.preview.menulist.ownerAppDomain === 'app.menulist.digital', 'Preview MenuList owner app must use app.menulist.digital');
+  assert(DEPLOYMENT_TARGETS.preview.menulist.tenantDomains.includes('menulist.digital'), 'Preview MenuList tenant domain must use menulist.digital');
+  assert(!(DEPLOYMENT_TARGETS.preview.menulist.redirectDomains || []).includes('menulist.digital'), 'Preview MenuList digital apex must be a staging website alias, not a redirect domain');
   assert(DEPLOYMENT_TARGETS.preview.neelvara.domains.includes('neelvara.menulist.online'), 'Preview Neelvara domain must include neelvara.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('answerlattice.menulist.online'), 'Preview Answerlattice domain must include answerlattice.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
@@ -672,9 +678,10 @@ function verifyEnvironmentTargets() {
 
   assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('menulist.ai'), 'Production MenuList domain must include menulist.ai');
   assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('app.menulist.ai'), 'Production MenuList owner app domain must include app.menulist.ai');
+  assert(DEPLOYMENT_TARGETS.production.menulist.ownerAppDomain === 'app.menulist.ai', 'Production MenuList owner app must use app.menulist.ai');
   assert(DEPLOYMENT_TARGETS.production.menulist.tenantDomains.includes('menulist.online'), 'Production MenuList tenant domain must use menulist.online');
   assert(DEPLOYMENT_TARGETS.production.menulist.redirectDomains.includes('menulist.online'), 'Production MenuList online apex redirect domain');
-  assert(DEPLOYMENT_TARGETS.production.menulist.redirectDomains.includes('menulist.digital'), 'Production MenuList digital apex redirect domain');
+  assert(!DEPLOYMENT_TARGETS.production.menulist.redirectDomains.includes('menulist.digital'), 'Production MenuList must not use menulist.digital as a redirect domain');
   assert(DEPLOYMENT_TARGETS.production.neelvara.domains.includes('neelvara.com'), 'Production Neelvara domain must include neelvara.com');
   assert(DEPLOYMENT_TARGETS.production.answerlattice.domains.includes('answerlattice.com'), 'Production Answerlattice domain must include answerlattice.com');
   assert(DEPLOYMENT_TARGETS.production.campaigncue.domains.includes('campaigncue.ai'), 'Production CampaignCue domain must include campaigncue.ai');
@@ -700,8 +707,9 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(myCodexAuth, 'product: MYCODEX_PRODUCT_CODE', 'MyCodex session must not use pId code');
   assertNotIncludes(myCodexDocs, 'firebase', 'MyCodex docs loader must not import Firebase');
   assertNotIncludes(myCodexDocs, 'firestore', 'MyCodex docs loader must not import Firestore');
-  assertIncludes(urls, 'QA: qa.menulist.digital', 'Platform URL domain contract');
-  assertIncludes(urls, '{subdomain}.qa.menulist.digital', 'MenuList QA tenant URL domain contract');
+  assertIncludes(urls, 'QA: menulist.digital + www', 'Platform URL staging website contract');
+  assertIncludes(urls, 'QA: app.menulist.digital', 'Platform URL staging owner app contract');
+  assertIncludes(urls, '{subdomain}.menulist.digital', 'MenuList QA tenant URL domain contract');
   assertIncludes(urls, '{subdomain}.menulist.online', 'MenuList production tenant URL domain contract');
   assertIncludes(urls, 'QA: answerlattice.menulist.online', 'Platform URL domain contract');
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
@@ -745,6 +753,7 @@ function verifyEnvironmentTargets() {
     ['Production env template', envProductionExample],
   ]) {
     assertIncludes(content, 'MENULIST_FIREBASE_PROJECT_ID', `${label} canonical MenuList Firebase env naming`);
+    assertIncludes(content, 'MENULIST_FIREBASE_API_KEY=', `${label} canonical MenuList server Firebase API key`);
     assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', `${label} canonical public MenuList Firebase env naming`);
     assertIncludes(content, 'MENULIST_GEMINI_AI_KEY', `${label} canonical MenuList Gemini env naming`);
     assertIncludes(content, 'MENULIST_RAZORPAY_KEY_ID', `${label} canonical MenuList Razorpay env naming`);
@@ -757,6 +766,7 @@ function verifyEnvironmentTargets() {
     assertIncludes(content, 'MYCODEX_SESSION_SECRET', `${label} MyCodex static auth env`);
     assertIncludes(content, 'WHATSAPP_ACCESS_TOKEN', `${label} WhatsApp provider env naming`);
     assertIncludes(content, 'FIREBASE_PROJECT_ID=', `${label} Cloud Tasks project id prerequisite`);
+    assertIncludes(content, 'FIREBASE_API_KEY=', `${label} current MenuList server Firebase API key alias`);
     assertIncludes(content, 'FIREBASE_PROJECT_LOCATION=us-central1', `${label} Cloud Tasks queue location prerequisite`);
     assertIncludes(content, 'Uses FIREBASE_PROJECT_ID and FIREBASE_PROJECT_LOCATION above to build the queue path.', `${label} Cloud Tasks project/location note`);
     assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_URL', `${label} Cloud Tasks worker URL prerequisite`);
@@ -776,6 +786,27 @@ function verifyEnvironmentTargets() {
     assertNotIncludes(content, 'MC_FIREBASE_PROJECT_ID', `${label} must not use shorthand MyCodex env keys`);
   }
   assertIncludes(productSetupDoc, 'Use full product names in environment variable keys', 'Product setup doc env-key naming contract');
+  assert(rootPackageJson.scripts['verify:menulist-firebase-rules-predeploy'] === 'node scripts/verification/run-menulist-firebase-rules-predeploy.mjs', 'Root package must expose the MenuList Firebase rules predeploy gate');
+  assertIncludes(menulistRulesPredeployRunner, "name.includes('rules')", 'MenuList Firebase rules predeploy direct rule-script discovery');
+  assertIncludes(menulistRulesPredeployRunner, "command.includes('firebase emulators:exec')", 'MenuList Firebase rules predeploy emulator boundary');
+  assertIncludes(menulistRulesPredeployRunner, "command.includes('--project demo-')", 'MenuList Firebase rules predeploy demo-project boundary');
+  assertIncludes(menulistRulesPredeployRunner, "'firestore.rules': config.firestore?.rules", 'MenuList Firebase rules predeploy Firestore source wiring');
+  assertIncludes(menulistRulesPredeployRunner, "'firestore.indexes.json': config.firestore?.indexes", 'MenuList Firebase rules predeploy index source wiring');
+  assertIncludes(menulistRulesPredeployRunner, "'storage.rules': config.storage?.rules", 'MenuList Firebase rules predeploy Storage source wiring');
+  assertIncludes(menulistStagingQaSetup, 'npm run verify:menulist-firebase-rules-predeploy', 'MenuList QA setup local rules predeploy gate');
+  assertIncludes(menulistStagingQaSetup, 'firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'MenuList QA setup fresh rules/indexes/Storage deploy');
+  assertIncludes(menulistStagingQaSetup, "firebase firestore:indexes --project menulist-qa --database '(default)'", 'MenuList QA setup deployed index readback');
+  assertIncludes(menulistStagingQaSetup, 'Do not use Admin SDK,', 'MenuList QA setup Admin SDK rule-proof rejection');
+  assertIncludes(menulistStagingQaSetup, 'Hard stop if any prohibited operation succeeds or any expected own-tenant', 'MenuList QA setup deployed rule-smoke stop condition');
+  assertIncludes(menulistStagingQaSetup, 'Browser access to `geminiSpendWindows/menulist`', 'MenuList QA setup server-only spend-window smoke');
+  assertIncludes(menulistStagingQaSetup, 'The maintained apex-wildcard setup uses Vercel nameservers.', 'MenuList QA setup wildcard DNS authority');
+  assertIncludes(menulistStagingQaSetup, 'Assign every entry to the exact Git branch `staging`', 'MenuList QA setup exact Vercel staging branch');
+  assertIncludes(menulistStagingQaSetup, 'Firestore and Storage both report `us-central1`', 'MenuList QA setup immutable Firebase resource locations');
+  assertIncludes(menulistStagingQaSetup, 'never create fake secret values', 'MenuList QA setup declared Function secret binding guard');
+  assertIncludes(menulistStagingQaSetup, 'No deployable env contains a template marker', 'MenuList QA setup unresolved env placeholder guard');
+  assertIncludes(initialAccountSetupGuide, 'A `firestore:rules`-only command from a', 'Initial account setup fresh-project Firebase rule boundary');
+  assertIncludes(productSetupDoc, 'Every product/environment must complete this lifecycle independently:', 'Product setup independent Firebase rule lifecycle');
+  assertIncludes(deploymentReadme, 'Firebase rule emulator/deploy/readback/authenticated-smoke gates', 'Deployment README MenuList QA rule-gate summary');
   assertIncludes(deploymentReadme, '**Launch boundary:** Not current launch certification or deploy approval.', 'Deployment README top launch/deploy boundary');
   assertIncludes(deploymentReadme, 'current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.', 'Deployment README current release approval evidence boundary');
   assertIncludes(productSetupDoc, 'Launch boundary: not current launch certification or deploy approval.', 'Product setup doc top launch/deploy boundary');
@@ -787,7 +818,7 @@ function verifyEnvironmentTargets() {
     'Product setup doc environment variable table must stay contiguous before diagnostic notes',
   );
   assertIncludes(productSetupDoc, '| Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |', 'Product setup doc Cloud Tasks readiness variables');
-  assertIncludes(productSetupDoc, 'Do not substitute `ecomsai`, `menulist-ai`, `canonica-qa`, or a sample project.', 'Product setup doc active Firebase target guard');
+  assertIncludes(productSetupDoc, 'Do not substitute a retired legacy MenuList project', 'Product setup doc active Firebase target guard');
   assertIncludes(productSetupDoc, 'Do not reuse the older command shape from that attempt; the current scoped retry command is listed in the owner action register below.', 'Product setup doc historical MenuList QA deploy boundary');
   assertIncludes(productSetupDoc, 'npm --prefix functions run deploy:menulist-qa', 'Product setup doc latest MenuList QA function deploy command');
   assertIncludes(productSetupDoc, 'HTTP Error: 403, The caller does not have permission.', 'Product setup doc latest Cloud Resource Manager blocker');
@@ -862,7 +893,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(changelog, 'External Certification Ledger Baseline Refresh', 'Changelog external certification ledger refresh');
   assertIncludes(productionReadinessAudit, 'The latest `npm run docs:check-links` run passed with 0 broken links and 0 naming violations.', 'Production readiness audit latest docs health evidence');
   assertIncludes(verificationReadme, 'npm run verify:production-readiness-local -- --list', 'Verification README must document local readiness list mode');
-  assertIncludes(urlRoutingArchitecture, '| Preview     | `https://qa.menulist.digital`', 'URL routing architecture current MenuList preview URL');
+  assertIncludes(urlRoutingArchitecture, '| Preview     | `https://menulist.digital`', 'URL routing architecture current MenuList preview URL');
+  assertIncludes(urlRoutingArchitecture, '`menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, `*.menulist.digital`', 'URL routing architecture current MenuList staging domains');
   assertNotIncludes(urlRoutingArchitecture, '| Preview     | `https://menulist-ai.vercel.app`', 'URL routing architecture stale MenuList preview Vercel URL');
   assertIncludes(productionReadinessReadme, 'External Certification Runbook', 'Production readiness checklist external certification link');
   assertIncludes(productionReadinessReadme, '[MenuList Incident Response Runbook](./incident-response-runbook.md)', 'Production readiness checklist incident response runbook link');
@@ -913,7 +945,7 @@ function verifyEnvironmentTargets() {
     'Root package must expose the customer PWA offline browser smoke',
   );
   [
-    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.qa.menulist.digital';",
+    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.menulist.digital';",
     "const upstreamUrl = new URL(process.env.CUSTOMER_PWA_QA_UPSTREAM_URL || 'http://127.0.0.1:3000');",
     'function createLoopbackTenantProxy()',
     'tenantProxy.setOffline(true);',
@@ -2096,8 +2128,8 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_3\n', 'Owner action items unscoped Gemini rotation key 3 command');
   assertNotIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_4\n', 'Owner action items unscoped Gemini rotation key 4 command');
   assertNotIncludes(ownerActionItems, '# 4. Redeploy CF + Vercel', 'Owner action items stale broad deploy instruction');
-  assertIncludes(menulistSignalDeskValidation, 'Legacy local `.env` values can still point the default MenuList Firebase project at `ecomsai`', 'SignalDesk validation legacy local env warning');
-  assertIncludes(menulistSignalDeskValidation, 'Current tracked templates and deployment constants keep MenuList local/preview on `menulist-qa`', 'SignalDesk validation current MenuList QA target');
+  assertIncludes(menulistSignalDeskValidation, 'Local ignored MenuList env files are sanitized to the current `menulist-qa` project contract', 'SignalDesk validation current MenuList QA target');
+  assertIncludes(menulistSignalDeskValidation, 'must never point to a retired Firebase project', 'SignalDesk validation retired project guard');
   assertNotIncludes(menulistSignalDeskValidation, 'Current `.env` points the default Firebase project at `ecomsai`', 'SignalDesk validation stale current env wording');
   for (const [label, content] of [
     ['Nightly scheduler architecture', nightlySchedulerArchitecture],
@@ -2922,10 +2954,18 @@ function verifyMenuListDiscovery() {
     'Changelog Agent Readiness external claim checkpoint',
   );
   if (exists('.env')) {
-    assertIncludes(read('.env'), 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Local platform domain config');
+    const localEnv = read('.env');
+    assertIncludes(localEnv, 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital', 'Local/QA platform domain config');
+    assertIncludes(localEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist-qa', 'Local/QA public MenuList Firebase project');
+    assertIncludes(localEnv, 'MENULIST_FIREBASE_PROJECT_ID=menulist-qa', 'Local/QA server MenuList Firebase project');
+    assertNotIncludes(localEnv.toLowerCase(), 'ecomsai', 'Local/QA ignored env retired project');
   }
   if (exists('.env.prod')) {
-    assertIncludes(read('.env.prod'), 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Production platform domain config');
+    const productionEnv = read('.env.prod');
+    assertIncludes(productionEnv, 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Production platform domain config');
+    assertIncludes(productionEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist', 'Production public MenuList Firebase project');
+    assertIncludes(productionEnv, 'MENULIST_FIREBASE_PROJECT_ID=menulist', 'Production server MenuList Firebase project');
+    assertNotIncludes(productionEnv.toLowerCase(), 'ecomsai', 'Production ignored env retired project');
   }
   assert(getPlatformDiscoveryBaseUrl() === 'https://menulist.ai', 'MenuList discovery base URL must default to https://menulist.ai');
   assertIncludes(menulistWebsiteConstants, 'getProductDeploymentTarget("menulist", "production").url', 'MenuList website canonical URL constant');

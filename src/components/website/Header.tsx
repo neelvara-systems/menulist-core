@@ -26,6 +26,7 @@ import BrandWordmark from "./shared/BrandWordmark";
 import Link from "./shared/WebsiteLink";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
+import { DASHBOARD_URL } from "@constant/urls";
 import { websiteFeatureNavGroups } from "./features/featureNavigation";
 import {
   useWebsiteBasePath,
@@ -457,7 +458,7 @@ export default function Header() {
             {status === "authenticated" && session?.user ? (
               <>
                 <Link
-                  href="/dashboard"
+                  href={DASHBOARD_URL}
                   className="ws-btn ws-btn--secondary"
                   style={{
                     padding: "0.625rem 1.25rem",
@@ -815,7 +816,7 @@ export default function Header() {
               {status === "authenticated" && session?.user ? (
                 <>
                   <Link
-                    href="/dashboard"
+                    href={DASHBOARD_URL}
                     onClick={closeDrawer}
                     style={{
                       display: "flex",

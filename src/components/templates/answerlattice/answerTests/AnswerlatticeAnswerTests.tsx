@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
 import { getAnswerVersionHistory } from '@database/answerlattice/auditLogs';
@@ -922,6 +923,21 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         },
     ], [deleteCase, openEdit]);
 
+    const answerTestCaseEmptyState = (
+        <Empty
+            description="Add the questions that must keep working after every release."
+            image={(
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={isMobile ? 88 : 96}
+                    treatment="softHalo"
+                    variant="feedbackContext"
+                />
+            )}
+            imageStyle={{ height: isMobile ? 88 : 96 }}
+        />
+    );
+
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) return null;
 
     return (
@@ -1132,7 +1148,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                     <List
                         loading={loading}
                         dataSource={summary.cases}
-                        locale={{ emptyText: <Empty description="Add the questions that must keep working after every release." /> }}
+                        locale={{ emptyText: answerTestCaseEmptyState }}
                         renderItem={testCase => (
                             <List.Item>
                                 <Flex vertical gap={10} style={{ width: '100%' }}>
@@ -1184,7 +1200,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                             onChange: keys => updateSelectedIds(keys.map(String)),
                             getCheckboxProps: testCase => ({ disabled: !testCase.active }),
                         }}
-                        locale={{ emptyText: <Empty description="Add the questions that must keep working after every release." /> }}
+                        locale={{ emptyText: answerTestCaseEmptyState }}
                         scroll={{ x: 850 }}
                     />
                 )}
@@ -1192,7 +1208,18 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
 
             <Card title="Latest result">
                 {!latestRun ? (
-                    <Empty description="Run the active tests to create the first result." />
+                    <Empty
+                        description="Run the active tests to create the first result."
+                        image={(
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={96}
+                                treatment="softHalo"
+                                variant="analyticsContext"
+                            />
+                        )}
+                        imageStyle={{ height: 96 }}
+                    />
                 ) : (
                     <Flex vertical gap={16}>
                         <Flex gap={8} wrap="wrap">

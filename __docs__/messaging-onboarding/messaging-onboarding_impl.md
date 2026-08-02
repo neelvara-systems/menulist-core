@@ -1105,7 +1105,7 @@ const generatedEmail = `${providerDisplayId.replace("+", "")}@msg.menulist.ai`;
 
 **Solution:** Claim link with three setup choices:
 
-1. WhatsApp publish confirmation includes a dashboard claim URL: `menulist.ai/signin?claim={claimToken}`
+1. WhatsApp publish confirmation includes a dashboard claim URL: `app.menulist.ai/signin?claim={claimToken}`
 2. Owner opens the claim URL and sees the business name plus masked WhatsApp number
 3. Owner can claim with Google, email/password, or WhatsApp number/passcode
 4. WhatsApp number/passcode keeps the generated `@msg.menulist.ai` email as the Firebase Auth email and stores `phoneUsername` as the owner-facing login alias
@@ -1465,7 +1465,7 @@ Do not use dummy WhatsApp secrets. Missing real provider credentials are an oper
 
 | Variable                           | Purpose                    | Where  |
 | ---------------------------------- | -------------------------- | ------ |
-| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Required base URL for preview pages. Dev/staging uses `https://qa.menulist.digital`; production uses `https://menulist.ai` unless a later approved preview host changes it. | Function runtime env |
+| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Required base URL for preview pages. QA/staging uses `https://app.menulist.digital`; production uses `https://app.menulist.ai`. | Function runtime env |
 
 ---
 

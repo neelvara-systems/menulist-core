@@ -2475,5 +2475,12 @@ service cloud.firestore {
           || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission())
         );
     }
+
+    // Server-only rolling Gemini spend admission. Admin SDK callers use the
+    // fixed answerlattice document; browser clients must never read or mutate
+    // provider budget state.
+    match /geminiSpendWindows/{product} {
+      allow read, write: if false;
+    }
   }
 }

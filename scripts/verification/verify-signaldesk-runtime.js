@@ -633,7 +633,7 @@ function verifyApiSecurityAndActions() {
   assertIncludes(accessBoundaryTests, "Team-member refresh retained stale access fields", "Team-member exact replacement has access-emulator coverage");
   assertIncludes(access, "const currentUser = await getCurrentUser(session);", "SignalDesk access revalidates the current MenuList user");
   assertIncludes(access, "if (!currentUser) return null;", "SignalDesk access fails closed for revoked or blocked current users");
-  assertIncludes(access, "currentUser.userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE", "Platform authority comes from current user truth instead of a stale session role");
+  assertIncludes(access, "currentUser.userData.platformRole === MENULIST_PLATFORM_USER_ROLE", "Platform authority comes from current user truth instead of a stale session role");
   assertIncludes(access, "isSignalDeskHumanRole", "SignalDesk membership access rejects system-worker as a human role");
   assertIncludes(accessContracts, "SIGNALDESK_HUMAN_ROLES", "SignalDesk human-role authority lives in a pure shared contract");
   assertNotIncludes(accessContracts, "firebase", "SignalDesk role and permission validation does not initialize Firebase");
@@ -2102,10 +2102,11 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(keyManager, "export type GeminiKeyEnvVarCandidates", "Gemini key manager exposes scoped candidate type");
   assertIncludes(keyManager, "constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES)", "Gemini key manager accepts scoped env candidates");
   assertIncludes(keyManager, "this.keyEnvVarCandidates = keyEnvVarCandidates", "Gemini key manager stores scoped env candidates");
-  assertIncludes(defaultAiClient, "createAIGateway(new KeyManager())", "MenuList default AI client retains default key pool");
+  assertIncludes(defaultAiClient, "createAIGateway(new KeyManager(), menulistGeminiSpendAdmission)", "MenuList default AI client retains default key pool and spend admission");
   assertNotIncludes(keyManager, "export const keyManager = new KeyManager()", "Gemini key manager module has no eager default singleton");
   assertIncludes(aiProvider, "const signalDeskKeyManager = new KeyManager([", "SignalDesk AI provider creates scoped key manager");
-  assertIncludes(aiProvider, "const signalDeskGenAIClient = createAIGateway(signalDeskKeyManager)", "SignalDesk AI provider reuses shared gateway with scoped key manager");
+  assertIncludes(aiProvider, "signalDeskGeminiSpendAdmission", "SignalDesk AI provider configures rolling-spend admission");
+  assertIncludes(aiProvider, "const signalDeskGenAIClient = createAIGateway(", "SignalDesk AI provider reuses shared gateway with scoped key manager");
   assertIncludes(aiProvider, "signalDeskGenAIClient.models.generateContent", "SignalDesk AI provider calls scoped gateway");
   assertIncludes(aiProvider, "signalDeskKeyManager.hasConfiguredKeys()", "SignalDesk AI provider checks scoped key readiness");
   assertNotIncludes(aiProvider, 'from "@lib/google/genAi"', "SignalDesk AI provider does not import default MenuList AI client");

@@ -1,8 +1,8 @@
 /**
  * AI Gateway — Transparent proxy for Gemini API with key rotation + retry
  *
- * Wraps GoogleGenAI with automatic key rotation on rate limits (429) and
- * exponential backoff retry for transient failures. Drop-in replacement
+ * Wraps GoogleGenAI with rolling-spend admission, bounded key failover, and
+ * jittered exponential backoff for transient failures. Drop-in replacement
  * for the raw GoogleGenAI client — same interface, zero call-site changes.
  *
  * Proxied methods:
@@ -13,8 +13,9 @@
  * - files.delete()
  *
  * Behavior:
- * - On 429 (rate limit): rotate to next key, retry immediately
- * - On 5xx (server error): exponential backoff retry
+ * - Before billable calls: reserve from the product/project rolling-spend window
+ * - On 429 (rate limit): cool down the key, then retry with full jitter
+ * - On 5xx (server error): full-jitter exponential backoff retry
  * - On 4xx (client error, non-429): fail immediately (no retry)
  * - All keys exhausted: throw the last error
  *
@@ -25,6 +26,13 @@ import { logger } from "@lib/monitoring/logger";
 import { AI_PROVIDER_CONFIG_MISSING_CODE, KeyManager } from "./keyManager";
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { compileGeminiGenerateContentRequest } from '@data/shared/geminiRuntime';
+import {
+    GEMINI_SPEND_ADMISSION_ERROR_CODES,
+    GeminiSpendAdmissionController,
+    GeminiSpendReservation,
+    getFullJitterDelayMs,
+    getGeminiRetryAfterMs,
+} from '@data/shared/geminiSpendPolicy';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -187,9 +195,11 @@ function getProviderErrorLogContext(error: any) {
 
 export class AIGateway {
     private keyManager: KeyManager;
+    private readonly spendAdmission?: GeminiSpendAdmissionController;
 
-    constructor(keyManager: KeyManager) {
+    constructor(keyManager: KeyManager, spendAdmission?: GeminiSpendAdmissionController) {
         this.keyManager = keyManager;
+        this.spendAdmission = spendAdmission;
     }
 
     /**
@@ -226,8 +236,9 @@ export class AIGateway {
      *
      * Strategy:
      * 1. Try current key
-     * 2. On 429 → rotate key, retry immediately (no backoff)
-     * 3. On 5xx → exponential backoff, same key
+     * 2. Reserve distributed rolling-spend capacity before provider I/O
+     * 3. On 429 → cool down the key and retry with jittered backoff
+     * 4. On 5xx → jittered exponential backoff
      * 4. On 4xx (non-429) → fail immediately
      * 5. After MAX_RETRY_ATTEMPTS → throw last error
      */
@@ -248,6 +259,7 @@ export class AIGateway {
 
         for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
             const client = this.keyManager.getClient();
+            const spendReservation = await this.reserveSpend(method, config);
 
             try {
                 let result: any;
@@ -260,21 +272,23 @@ export class AIGateway {
                     result = await (client.models as any)[method](config);
                 }
 
+                await this.settleSpend(spendReservation, result, method);
                 // Success — reset key health
                 this.keyManager.markKeySuccess(client);
                 return result;
 
             } catch (error: any) {
                 lastError = error;
+                await this.settleSpend(spendReservation, undefined, method);
 
-                // ── Rate Limit (429) → Rotate key, retry immediately ──
+                // ── Rate Limit (429) → Key cooldown + jittered backoff ──
                 if (isRateLimitError(error)) {
                     const hardQuota = isHardQuotaError(error);
                     this.keyManager.markKeyRateLimited(client);
 
-                    if (this.keyManager.totalKeys > 1) {
+                    if (hardQuota) {
                         logger.warn(
-                            '[AIGateway] Rate limit hit; rotating to next key',
+                            '[AIGateway] Non-transient project quota hit; failing fast',
                             {
                                 method,
                                 attempt: attempt + 1,
@@ -283,52 +297,50 @@ export class AIGateway {
                                 ...getProviderErrorLogContext(error),
                             }
                         );
-                        // Immediate retry with next key (no backoff)
-                        continue;
-                    } else if (hardQuota) {
-                        logger.warn(
-                            '[AIGateway] Hard quota hit in single key mode; failing fast',
-                            {
-                                method,
-                                attempt: attempt + 1,
-                                maxRetryAttempts: MAX_RETRY_ATTEMPTS,
-                                ...getProviderErrorLogContext(error),
-                            }
-                        );
                         throw error;
-                    } else {
-                        // Single key — apply backoff before retry
-                        backoffRetries++;
-                        const delay = Math.min(
-                            BASE_BACKOFF_DELAY_MS * Math.pow(2, backoffRetries),
-                            MAX_BACKOFF_DELAY_MS
-                        );
-                        logger.warn(
-                            '[AIGateway] Rate limit hit in single key mode; retrying with backoff',
-                            {
-                                method,
-                                attempt: attempt + 1,
-                                maxRetryAttempts: MAX_RETRY_ATTEMPTS,
-                                delayMs: delay,
-                                ...getProviderErrorLogContext(error),
-                            }
-                        );
-                        await this.delay(delay);
-                        continue;
                     }
+
+                    const providerRetryAfterMs = getGeminiRetryAfterMs(error);
+                    if (providerRetryAfterMs !== null && providerRetryAfterMs > MAX_BACKOFF_DELAY_MS) {
+                        logger.warn('[AIGateway] Provider retry window exceeds inline retry budget; failing fast', {
+                            method,
+                            attempt: attempt + 1,
+                            maxRetryAttempts: MAX_RETRY_ATTEMPTS,
+                            retryAfterMs: providerRetryAfterMs,
+                            ...getProviderErrorLogContext(error),
+                        });
+                        throw error;
+                    }
+                    if (attempt >= MAX_RETRY_ATTEMPTS - 1) throw error;
+                    backoffRetries++;
+                    const delay = Math.max(
+                        providerRetryAfterMs ?? 0,
+                        getFullJitterDelayMs(backoffRetries, BASE_BACKOFF_DELAY_MS, MAX_BACKOFF_DELAY_MS),
+                    );
+                    logger.warn('[AIGateway] Rate limit hit; retrying with jittered backoff', {
+                        method,
+                        attempt: attempt + 1,
+                        maxRetryAttempts: MAX_RETRY_ATTEMPTS,
+                        delayMs: delay,
+                        totalKeys: this.keyManager.totalKeys,
+                        ...getProviderErrorLogContext(error),
+                    });
+                    await this.delay(delay);
+                    continue;
                 }
 
                 // ── Retryable Server Error (5xx) → Backoff + retry ──
                 if (isRetryableError(error)) {
                     backoffRetries++;
-                    const delay = Math.min(
-                        BASE_BACKOFF_DELAY_MS * Math.pow(2, backoffRetries),
-                        MAX_BACKOFF_DELAY_MS
+                    const delay = getFullJitterDelayMs(
+                        backoffRetries,
+                        BASE_BACKOFF_DELAY_MS,
+                        MAX_BACKOFF_DELAY_MS,
                     );
 
                     if (attempt < MAX_RETRY_ATTEMPTS - 1) {
                         logger.warn(
-                            '[AIGateway] Retryable provider error; retrying with backoff',
+                            '[AIGateway] Retryable provider error; retrying with jittered backoff',
                             {
                                 method,
                                 attempt: attempt + 1,
@@ -367,6 +379,46 @@ export class AIGateway {
         return this.keyManager.getStats();
     }
 
+    private async reserveSpend(method: string, config: any): Promise<GeminiSpendReservation | null> {
+        if (!this.spendAdmission) return null;
+        try {
+            return await this.spendAdmission.reserve(method, config);
+        } catch (error: any) {
+            logger.warn('[AIGateway] Gemini spend admission blocked provider call', {
+                method,
+                failureCode: typeof error?.code === 'string'
+                    ? error.code
+                    : GEMINI_SPEND_ADMISSION_ERROR_CODES.STORE_UNAVAILABLE,
+                retryAfterSeconds: typeof error?.retryAfterSeconds === 'number'
+                    ? error.retryAfterSeconds
+                    : undefined,
+            });
+            throw error;
+        }
+    }
+
+    private async settleSpend(
+        reservation: GeminiSpendReservation | null,
+        response: unknown,
+        method: string,
+    ): Promise<void> {
+        if (!reservation || !this.spendAdmission) return;
+        try {
+            await this.spendAdmission.settle(reservation, response);
+        } catch (error: any) {
+            logger.error(
+                '[AIGateway] Gemini spend settlement failed; reservation remains conservative',
+                error,
+                {
+                    method,
+                    failureCode: typeof error?.code === 'string'
+                        ? error.code
+                        : GEMINI_SPEND_ADMISSION_ERROR_CODES.STORE_UNAVAILABLE,
+                },
+            );
+        }
+    }
+
     private delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -380,6 +432,9 @@ export class AIGateway {
  * Create an AI Gateway instance with a Key Manager.
  * Returns an object with the same interface as GoogleGenAI.
  */
-export function createAIGateway(keyManager: KeyManager): AIGateway {
-    return new AIGateway(keyManager);
+export function createAIGateway(
+    keyManager: KeyManager,
+    spendAdmission?: GeminiSpendAdmissionController,
+): AIGateway {
+    return new AIGateway(keyManager, spendAdmission);
 }

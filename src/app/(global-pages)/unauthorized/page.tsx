@@ -1,7 +1,8 @@
 'use client'
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorPageThemeWrapper from '@atoms/ErrorPageThemeWrapper';
 import { HOME_ROUTING, NAVIGARIONS_ROUTINGS } from '@constant/navigations';
-import { Button, Flex, Result, Typography } from 'antd';
+import { Button, Flex, Result, Typography, theme } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LuHome, LuMail } from 'react-icons/lu';
 
@@ -10,6 +11,7 @@ const { Paragraph } = Typography;
 function UnAuthorized() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { token } = theme.useToken();
 
     // Get error message from query parameter
     const errorParam = searchParams?.get('error') || '';
@@ -37,6 +39,13 @@ function UnAuthorized() {
         <ErrorPageThemeWrapper>
             <Flex vertical justify='center' align='center' style={{ minHeight: "100vh", padding: 24 }}>
                 <Result
+                    icon={(
+                        <ContextualStateIllustration
+                            color={token.colorTextQuaternary}
+                            size={192}
+                            variant={isEmailError ? 'warningContext' : 'accessDeniedContext'}
+                        />
+                    )}
                     status={isEmailError ? 'warning' : '403'}
                     title={title}
                     subTitle={

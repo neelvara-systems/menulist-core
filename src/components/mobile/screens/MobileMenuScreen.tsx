@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
@@ -61,7 +62,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuCheck, LuFileText, LuFilter, LuInfo, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
+import { LuCheck, LuFileText, LuFilter, LuInfo, LuLanguages, LuPencil, LuSettings2, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { associateItemImagesWithProject } from '../../templates/main-app/projects/editorView/utils/associateItemImages';
 import { createNewCategory, createNewItem, deleteCategory } from '../../templates/main-app/projects/editorView/utils/editorOperations';
@@ -3544,14 +3545,24 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         !searchQuery && !menuData ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
-                                    <Card
-                                        size="small"
-                                        style={{ backgroundColor: token.colorPrimaryBg, borderRadius: 999, height: 80, width: 80 }}
-                                    >
-                                        <Flex align="center" justify="center" style={{ height: '100%' }}>
-                                            <LuCamera color={token.colorPrimary} size={36} />
-                                        </Flex>
-                                    </Card>
+                                    <div style={{
+                                        alignItems: 'center',
+                                        backgroundColor: token.colorPrimaryBg,
+                                        borderRadius: 20,
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        minHeight: 116,
+                                        padding: 12,
+                                        width: 132,
+                                    }}>
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={96}
+                                            style={{ opacity: 0.84 }}
+                                            treatment="softHalo"
+                                            variant="uploadContext"
+                                        />
+                                    </div>
                                     <Title level={4} style={{ margin: 0 }}>
                                         {t('createYourMenu', { offering: labels.offeringTitle })}
                                     </Title>
@@ -3861,6 +3872,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             >
                 <Flex gap={12} style={{ paddingBottom: 16 }} vertical>
                     <Result
+                        icon={(
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={112}
+                                treatment="softHalo"
+                                variant="photoSuccessContext"
+                            />
+                        )}
                         extra={[
                             <Button
                                 block
@@ -3915,6 +3934,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 visible={showFailureState}
             >
                 <Result
+                    icon={(
+                        <ContextualStateIllustration
+                            color={token.colorTextQuaternary}
+                            size={112}
+                            variant="photoErrorContext"
+                        />
+                    )}
                     extra={[
                         <Button block color="primary" key="retry" onClick={() => setShowFailureState(false)} size="large">
                             {t('tryAgain')}

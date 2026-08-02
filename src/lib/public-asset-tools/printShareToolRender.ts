@@ -158,7 +158,7 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 export async function renderPrintShareToolAsset(report: PrintShareToolReport): Promise<PrintShareToolRenderedAsset> {
-  const qrValue = report.customerLink || 'https://menulist.ai/create-menu';
+  const qrValue = report.customerLink || 'https://app.menulist.ai/create-menu';
   const qrDataUrl = await generateQrCodeDataUrl(qrValue, {
     darkColor: '#16231f',
     lightColor: '#ffffff',

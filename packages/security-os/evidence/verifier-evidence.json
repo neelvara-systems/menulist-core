@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-07-29",
+  "updatedAt": "2026-08-02",
   "evidence": [
     {
       "id": "repository.security-policy",
@@ -69,6 +69,17 @@
       "description": "Exercises MenuList Firestore tenant/store rules against a demo emulator project."
     },
     {
+      "id": "menulist.gemini-spend-window-rules",
+      "kind": "emulator-test",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-gemini-spend-window-rules.ts",
+      "command": "npm run test:gemini-spend-windows:menulist-rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Proves MenuList browser identities cannot read, list, or mutate the server-only Gemini spend window."
+    },
+    {
       "id": "menulist.storage-paths",
       "kind": "verifier",
       "products": ["menulist"],
@@ -124,6 +135,17 @@
       "description": "Exercises Answerlattice governance authorization against local emulators."
     },
     {
+      "id": "answerlattice.gemini-spend-window-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-gemini-spend-window-rules.ts",
+      "command": "npm run test:gemini-spend-windows:answerlattice-rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Proves Answerlattice browser identities cannot read, list, or mutate the server-only Gemini spend window."
+    },
+    {
       "id": "answerlattice.core-doctrine",
       "kind": "policy",
       "products": ["answerlattice"],
@@ -166,6 +188,17 @@
       "networkPolicy": "local-emulator-only",
       "writesProductionData": false,
       "description": "Registered SignalDesk rule evidence for a later product audit."
+    },
+    {
+      "id": "signaldesk.gemini-spend-window-rules",
+      "kind": "emulator-test",
+      "products": ["signaldesk"],
+      "path": "scripts/verification/test-gemini-spend-window-rules.ts",
+      "command": "npm run test:gemini-spend-windows:signaldesk-rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Proves SignalDesk browser identities cannot read, list, or mutate the server-only Gemini spend window."
     },
     {
       "id": "mycodex.auth-boundary",
@@ -455,6 +488,7 @@
         "menulist.auth-security-failure-matrix",
         "menulist.api-tenant-safety",
         "menulist.tenant-store-rules",
+        "menulist.gemini-spend-window-rules",
         "menulist.account-tenant-lifecycle",
         "menulist.tenant-dal-boundary",
         "menulist.auth-security-events-emulator",
@@ -487,6 +521,7 @@
         "answerlattice.security-audit",
         "answerlattice.storage-rules",
         "answerlattice.governance-rules",
+        "answerlattice.gemini-spend-window-rules",
         "answerlattice.core-doctrine",
         "answerlattice.public-api-rules",
         "answerlattice.knowledge-intake-rules",
@@ -519,7 +554,8 @@
       "products": ["signaldesk"],
       "evidenceIds": [
         "signaldesk.runtime-verification",
-        "signaldesk.security-rules"
+        "signaldesk.security-rules",
+        "signaldesk.gemini-spend-window-rules"
       ],
       "selectionMode": "manual-selective",
       "description": "Groups registered SignalDesk verification evidence without claiming that the product has been audited."

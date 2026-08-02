@@ -2064,7 +2064,7 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
     [
       'Launch boundary:** Not current launch certification or deploy approval',
       'source-gated Public Menu Entry evidence only',
-      'The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner.',
+      'The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner.',
       'active production-readiness audit',
       'External Certification Runbook evidence',
       '`npm run verify:production-readiness-local`',
@@ -2097,7 +2097,7 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   );
   assertIncludes(
     publicEntryDocs.mobile,
-    'this is a public website route before dashboard entry; all source-processing controls remain owner-authenticated',
+    'the route is reachable before sign-in on the canonical app host, while all source-processing controls remain owner-authenticated',
     'Public Menu Entry mobile page-versus-processing auth boundary',
   );
   assertNotIncludes(publicEntryDocs.mobile, 'this is pre-auth, not part of the dashboard', 'Public Menu Entry stale mobile pre-auth boundary');

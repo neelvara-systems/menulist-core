@@ -36,7 +36,7 @@ Instagram Reels, YouTube Shorts, TikTok, mobile WhatsApp sales sharing, and vert
 - Existing MenuList product claims and proof order.
 - Original logo geometry and final logo animation.
 - Final lockup: MenuList, One approved customer link, menulist.ai.
-- Linked destination: `https://menulist.ai/create-menu`.
+- Linked destination: `https://app.menulist.ai/create-menu`.
 
 ## Exclusions
 

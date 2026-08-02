@@ -43,6 +43,7 @@ const claimRoute = read('src/app/api/public/create-menu/claim/route.ts');
 const claimUserAuthority = read('src/lib/public-menu-entry/claimUserAuthority.ts');
 const priceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const slugBoundary = read('src/lib/public-menu-entry/claimProjectSlug.ts');
+const createPage = read('src/app/(website)/create-menu/page.tsx');
 const createClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
 const publicDraftId = read('src/lib/public-menu-entry/publicDraftId.ts');
 const previewPage = read('src/app/(website)/create-menu/preview/[draftId]/page.tsx');
@@ -206,11 +207,21 @@ requireOrder(claimRoute, [
 ].forEach((token) => requireToken(slugBoundary, token, 'Public Menu Entry project slug boundary'));
 
 [
+  'OWNER_APP_URL',
+  'canonical: `${OWNER_APP_URL}/create-menu`',
+  'index: false',
+  'follow: false',
+  'nocache: true',
+].forEach((token) => requireToken(createPage, token, 'Public Menu Entry canonical owner-app metadata'));
+forbidToken(createPage, 'WebsitePageStructuredData', 'Public Menu Entry noindex owner-app metadata');
+
+[
   'event.currentTarget.value = \'\';',
   'accept="image/jpeg,image/png,image/webp"',
   'submissionInFlightRef.current',
   'normalizePublicMenuDraftId(payload?.draftId)',
   'public_create_menu_request_failed',
+  'buildWebsiteSignInPath(createMenuPath)',
 ].forEach((token) => requireToken(createClient, token, 'Public Menu Entry source chooser'));
 forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source chooser');
 forbidToken(createClient, 'isNonEmptyString(payload?.draftId)', 'Public Menu Entry draft response boundary');

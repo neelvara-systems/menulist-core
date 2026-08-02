@@ -21,7 +21,7 @@ function buildSession(now: FirebaseFirestore.Timestamp) {
     createdAt: entered,
     expiresAt: Timestamp.fromMillis(now.toMillis() + 60_000),
     previewToken: TOKEN,
-    previewUrl: `https://menulist.ai/msg-preview/${SESSION_ID}?token=${TOKEN}`,
+    previewUrl: `https://app.menulist.ai/msg-preview/${SESSION_ID}?token=${TOKEN}`,
     provider: "whatsapp",
     providerUserId: "919800000000",
     reminderMessageLeaseToken: null,

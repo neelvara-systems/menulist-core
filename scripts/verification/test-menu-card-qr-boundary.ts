@@ -15,19 +15,19 @@ const settings = {
 
 const source = {
     qr: {
-        destinationUrl: 'https://demo.menulist.online/menu',
+        destinationUrl: 'https://sample-cafe.menulist.online/menu',
     },
 } as MenuCardPrintSource;
 
 assert.equal(
-    buildQrDestination('https://demo.menulist.online/menu', 'home_print'),
-    'https://demo.menulist.online/menu?entry_source=qr',
+    buildQrDestination('https://sample-cafe.menulist.online/menu', 'home_print'),
+    'https://sample-cafe.menulist.online/menu?entry_source=qr',
 );
 assert.equal(
-    buildQrDestination('https://demo.menulist.online/menu?lang=en#items', 'whatsapp'),
-    'https://demo.menulist.online/menu?lang=en&entry_source=whatsapp#items',
+    buildQrDestination('https://sample-cafe.menulist.online/menu?lang=en#items', 'whatsapp'),
+    'https://sample-cafe.menulist.online/menu?lang=en&entry_source=whatsapp#items',
 );
-assert.equal(buildShortUrl('https://demo.menulist.online/menu?lang=en'), 'demo.menulist.online/menu?lang=en');
+assert.equal(buildShortUrl('https://sample-cafe.menulist.online/menu?lang=en'), 'sample-cafe.menulist.online/menu?lang=en');
 
 [
     '',
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
         /Invalid QR destination URL/,
     );
 
-    const rendered = await renderQr('https://demo.menulist.online/menu');
+    const rendered = await renderQr('https://sample-cafe.menulist.online/menu');
     assert.equal(rendered.startsWith('data:image/png;base64,'), true);
 
     console.log('Menu Card Export QR boundary tests passed.');

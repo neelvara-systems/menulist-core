@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import {
     getCurrentPlatformUser,
     resolveCurrentSessionUserDocumentId,
@@ -59,7 +59,7 @@ const schema = z.object({
 }).strict();
 
 const isPlatformSession = (session: any): boolean => (
-    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE
 );
 
 export const POST = withAuth(async (request, session) => {

@@ -1,5 +1,76 @@
 # MenuList — Changelog
 
+## August 2, 2026 - MenuList QA Setup Operator Cross-Check
+
+- The first-run QA guide now preserves the existing DNS zone before moving the
+  apex wildcard to Vercel nameservers, pins every QA hostname to the exact
+  `staging` Git branch, and requires a fresh branch deployment after assignment.
+- Firestore and Storage now explicitly use immutable `us-central1` locations,
+  with a hard stop instead of deletion when an existing resource differs.
+- Sentry and non-production WhatsApp credentials are required before the
+  maintained full Functions bundle because selected targets bind those Secret
+  Manager names even while provider processing remains disabled.
+- Actual local/Vercel env values must omit unrelated product rows and reject all
+  literal template placeholders; checked-in examples remain inventories only.
+
+## August 2, 2026 - MenuList QA Firebase Rules Deployment Gate
+
+- The dedicated MenuList QA setup now requires pinned Node, the complete root
+  Firebase emulator rule suite, explicit fresh-project rules/indexes/Storage
+  deployment, deployed-source/index readback, propagation wait, and real-auth
+  allow/deny smoke before Functions deployment.
+- `npm run verify:menulist-firebase-rules-predeploy` auto-discovers direct root
+  Firestore/Storage emulator rule scripts, admits only `demo-*` projects, and
+  stops at the first failure without cloud reads, writes, or deploys.
+- The runbooks distinguish an incremental `firestore:rules`-only deploy from a
+  fresh-project baseline, reject Admin SDK as Security Rules evidence, and add
+  durable evidence fields and hard stop conditions before production.
+
+## August 2, 2026 - Canonical MenuList App And Customer Hosts
+
+- MenuList QA now uses `menulist.digital`/`www` for the staging website,
+  `app.menulist.digital` for the owner app, and `*.menulist.digital` for
+  customer tests. Production keeps `menulist.ai`/`www` for marketing,
+  `app.menulist.ai` for the owner app, and `*.menulist.online` for customers.
+- `/dashboard` is the single owner entry route; auth session scope selects the
+  tenant/store. Sign-in, Public Menu Entry, and referral capture stay on the
+  canonical app host with host-only cookies, app-wide `noindex`, no app
+  sitemap, and exact-origin CORS that excludes customer subdomains.
+- MenuList Functions now receive the app/API origin and customer tenant suffix
+  separately, validate owner-app links against `menulist-qa`/`menulist`, and
+  fail closed instead of leaking production links into QA. Setup templates and
+  the dedicated QA checklist use the same domain contract.
+- Public discovery files and all 52 MenuList locale catalogs now use
+  `<slug>.menulist.online` for customer examples. Maintained routing tests pin
+  preview/production host behavior and reject future customer-link drift.
+- Tokenized messaging previews, batch-image Cloud Tasks workers, provider
+  webhooks, and campaign onboarding links use the canonical owner-app host;
+  customer-facing video sources use `<slug>.menulist.online`.
+- Active platform-authority constant names now use the `MENULIST_*` namespace
+  while preserving the existing stored role values and access behavior. Local
+  ignored env files are sanitized to the current MenuList project ids, and the
+  setup checklist requires revoking any retired service-account keys.
+- QA and production tenant examples now use non-reserved slugs. The prior
+  `demo.*` examples conflicted with the router's reserved platform labels and
+  could not serve as valid customer-host smoke tests.
+
+## August 2, 2026 - Gemini Rolling Spend And Retry Admission
+
+- MenuList, Answerlattice, and SignalDesk Gemini gateways now reserve a
+  product/project rolling ten-minute spend window before billed provider work,
+  settle against usage metadata, and fail closed when the admission store is
+  unavailable. The default USD 8 ceiling is configurable per product.
+- Gemini `429` handling now uses key cooldown, structured retry timing, and
+  bounded full jitter instead of immediate multi-key hopping. Hard quota and
+  long retry windows fail fast.
+- Internal cost accounting now prefers active-model token usage, the weekly
+  readiness record distinguishes Gemini API spend caps from outage-producing
+  Cloud Run caps, and Firebase 12.17 is tracked without violating the current
+  major-version freeze.
+- MenuList, Answerlattice, and SignalDesk Firestore rules explicitly deny all
+  browser access to their server-only Gemini spend documents, with separate
+  local-emulator evidence registered for each product.
+
 ## August 1, 2026 - Exact Audit Category Fingerprints
 
 - Reviewed documentation and asset categories can now be recorded with guarded

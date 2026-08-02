@@ -4,6 +4,7 @@ import {
     SecurityOsEvidenceMapSchema,
     SecurityOsManifestSchema,
 } from '../../packages/security-os/schemas/security-os-schema';
+import type { SecurityOsEvidenceEntry } from '../../packages/security-os/schemas/security-os-schema';
 import {
     isContainedSecurityOsRepoPath,
     isSecurityOsIsoDate,
@@ -41,6 +42,17 @@ assert.equal(
     evidenceResult.data.evidence.find((entry) => entry.id === 'answerlattice.security-audit')?.networkPolicy,
     'package-registry-read-only',
 );
+for (const evidenceId of [
+    'menulist.gemini-spend-window-rules',
+    'answerlattice.gemini-spend-window-rules',
+    'signaldesk.gemini-spend-window-rules',
+]) {
+    const spendWindowEvidence: SecurityOsEvidenceEntry | undefined = evidenceResult.data.evidence
+        .find((candidate) => candidate.id === evidenceId);
+    assert.equal(spendWindowEvidence?.executionMode, 'firebase-emulator');
+    assert.equal(spendWindowEvidence?.networkPolicy, 'local-emulator-only');
+    assert.equal(spendWindowEvidence?.writesProductionData, false);
+}
 assert.equal(evidenceResult.data.bundles.length, 7);
 assert.equal(
     evidenceResult.data.bundles.every((bundle) => bundle.selectionMode === 'manual-selective'),
@@ -74,7 +86,7 @@ assert.equal(SecurityOsEvidenceMapSchema.safeParse(invalidEvidence).success, fal
 
 const result = runSecurityOsAudit();
 assert.deepEqual(result.errors, []);
-assert.equal(result.evidenceCount, 39);
+assert.equal(result.evidenceCount, 42);
 assert.equal(result.bundleCount, 7);
 assert.equal(result.surfaceCount, 20);
 

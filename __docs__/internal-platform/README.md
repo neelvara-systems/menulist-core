@@ -27,21 +27,21 @@ Internal platform roles are **separate from customer RBAC**. They are set direct
 
 | Role | Constant | Purpose |
 |------|----------|---------|
-| **PLATFORM** | `ECOMSAI_PLATFORM_USER_ROLE` | Full system access - founders, core team |
-| **PLATFORM_SUPPORT** | `ECOMSAI_PLATFORM_SUPPORT_USER_ROLE` | Support operations - customer issues |
+| **PLATFORM** | `MENULIST_PLATFORM_USER_ROLE` | Full system access - founders, core team |
+| **PLATFORM_SUPPORT** | `MENULIST_PLATFORM_SUPPORT_USER_ROLE` | Support operations - customer issues |
 | **CRAFT_BUILDER_MAINTAINER** | `CRAFT_BUILDER_MAINTAINER_USER_ROLE` | Template builders - design team |
 
 ### Location
 
 ```typescript
 // src/constants/user.ts
-export const ECOMSAI_PLATFORM_USER_ROLE = "PLATFORM"
-export const ECOMSAI_PLATFORM_USER_ID = 0
-export const ECOMSAI_PLATFORM_TENANT_ID = 0
-export const ECOMSAI_PLATFORM_STORE_ID = 0
-export const ECOMSAI_PLATFORM_USER_NAME = "ECOMSAI"
+export const MENULIST_PLATFORM_USER_ROLE = "PLATFORM"
+export const MENULIST_PLATFORM_USER_ID = 0
+export const MENULIST_PLATFORM_TENANT_ID = 0
+export const MENULIST_PLATFORM_STORE_ID = 0
+export const MENULIST_PLATFORM_USER_NAME = "MENULIST"
 
-export const ECOMSAI_PLATFORM_SUPPORT_USER_ROLE = "PLATFORM_SUPPORT"
+export const MENULIST_PLATFORM_SUPPORT_USER_ROLE = "PLATFORM_SUPPORT"
 export const CRAFT_BUILDER_MAINTAINER_USER_ROLE = "CRAFT_BUILDER_MAINTAINER"
 ```
 

@@ -360,7 +360,7 @@ This does not add Firestore operations. It only prevents local UI success after 
 ```typescript
 // Determines create vs update mode
 const isUpdateMode = Boolean(storeDetails?.storeId) ||
-                     storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID;
+                     storeDetails?.storeId == MENULIST_PLATFORM_STORE_ID;
 
 // Form submission handler
 const addUpdateDetails = async (changesToUpload) => {

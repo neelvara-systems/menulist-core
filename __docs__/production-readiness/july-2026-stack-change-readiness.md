@@ -1,7 +1,7 @@
 # July 2026 Stack Change Readiness
 
-**Status:** Source implemented; provider, Firebase IAM, and target deploy evidence pending
-**Last updated:** July 26, 2026
+**Status:** August 2 source reconciliation implemented; provider controls, Firebase IAM, and target deploy evidence pending
+**Last updated:** August 2, 2026
 **Scope:** Gemini, Firebase Functions/CLI, Firebase Extensions, Upstash, Cloud Storage lifecycle, and dependency audit
 
 ## Repository decisions
@@ -19,10 +19,64 @@
 - Mature operations remain on `generateContent`. The Interactions API is not a blanket transport replacement; adopt it only for a workload that benefits from server-managed interaction state after measuring tool-loop behavior, latency, retries, schema success, and full request cost.
 - Retired Gemini 2.5 IDs remain only in SignalDesk's explicit persisted-route migration registry. Exact untouched legacy seeds migrate to current defaults. Owner-modified routes are preserved but cannot reach Gemini until they use a supported model.
 
+#### August 2 rolling-spend and retry boundary
+
+- Gemini's provider spend limit is enforced per Google Cloud project, not per API
+  key. MenuList, Answerlattice, and SignalDesk therefore keep separate
+  project/product spend windows; extra keys remain credential failover only.
+- Every billed gateway attempt now reserves conservative capacity in the
+  Admin-only `geminiSpendWindows/{product}` document before provider I/O and
+  settles that reservation from Gemini usage metadata after the response. A
+  failed attempt releases the reservation. Store failure fails closed before a
+  paid call; settlement failure retains the conservative reservation.
+- The default local ceiling is USD 8 per rolling ten-minute window, leaving
+  headroom below the current Tier 1 provider ceiling. Override it only with the
+  matching non-secret product variable:
+  `MENULIST_GEMINI_SPEND_LIMIT_USD_10M`,
+  `ANSWERLATTICE_GEMINI_SPEND_LIMIT_USD_10M`, or
+  `SIGNALDESK_GEMINI_SPEND_LIMIT_USD_10M`. The source boundary admits USD 0.10
+  through USD 190; the configured value must remain below the target project's
+  active AI Studio ceiling.
+- Ordinary `429` responses no longer hop to another key immediately. The
+  affected key enters cooldown and the gateway uses bounded full-jitter
+  backoff, honoring structured `RetryInfo`/`Retry-After` metadata. Hard project
+  quota failures and retry windows beyond the 16-second inline budget fail
+  fast. Provider message text is not used for retry classification.
+- Internal real-cost accounting uses the actual admitted model and token usage
+  when present. Image/non-token and legacy call sites retain current bounded
+  fallback costs. Pricing changes must update the shared price registry, its
+  byte-identical Functions mirrors, and the focused verifier together.
+
+The rolling document contains only product, time buckets, micro-USD totals,
+limit, and update time. It stores no prompt, response, key, tenant, store, or
+user data. Each billed provider attempt adds one Firestore transaction read and
+write for reservation and one transaction read and write for settlement or
+release. MenuList, Answerlattice, and SignalDesk now carry explicit
+server-only deny branches for `/geminiSpendWindows/{product}`; the emulator
+matrix proves anonymous, product-member/owner, and platform browser access is
+denied in all three projects. No index, scheduler, Storage, listener, or public
+browser-access path is added.
+
+#### Provider spend-cap operator decision
+
+Create a separate **Spend cap enforcement** budget for the **Gemini API** in
+each QA project before live smoke, then repeat for production only after the
+owner chooses the monthly amount. This Preview control is project-and-service
+scoped, blocks new Gemini usage when enforced, requires manual lifting, and is
+not instantaneous; keep the app-local rolling guard and alert-only budgets too.
+
+Do not enable a **Cloud Run** spend cap on a shared product project merely
+because the feature exists. A Cloud Run cap pauses all Cloud Run services,
+jobs, and worker pools in that project: services return `5xx`, jobs stop, and
+worker pools stop processing. Adoption requires an explicit monthly amount,
+outage/restore runbook, project-isolation decision, and QA drill. No repository
+or console change is justified in this weekly pass.
+
 Run:
 
 ```bash
 npm run verify:gemini-runtime-migration
+npm run test:gemini-spend-windows:rules
 ```
 
 Provider smoke remains required in QA because local compilation cannot prove target keys, quota, region, billing, latency, or output quality.
@@ -33,6 +87,28 @@ Provider smoke remains required in QA because local compilation cannot prove tar
 - No `7.3.2` release candidate is allowed.
 - Answerlattice CI pins Firebase CLI 15.24.0 without adding the CLI to the root production dependency tree.
 - Package builds and manifest/deploy preflight must run under Node 22.23.1 before a scoped QA deploy.
+- The current task queue call is `getFunctions().taskQueue('embedArticleWorker')`.
+  It does not use an Extensions `extensionId` or `FunctionScope`; the reported
+  `taskQueue()` deprecation shape therefore requires no source change.
+
+### Firebase JavaScript SDK applicability
+
+- The root remains frozen on Firebase JS 11.7.3. Its resolved
+  `@firebase/util` 1.11.3 contains the older regex-based error-template
+  replacement, while Firebase 12.17.0 resolves the rewritten utility.
+- Repository code does not import or construct `ErrorFactory`; Firebase-owned
+  static templates are not derived from request/user input. The Stack Change
+  claim is therefore dependency debt, not evidence of a reachable
+  application-controlled ReDoS path in this codebase.
+- `verify:gemini-runtime-migration` now fails if application source introduces
+  `ErrorFactory`. Do not perform a blind Firebase 11-to-12 major upgrade under
+  the three-year freeze. A future upgrade needs explicit migration scope plus
+  Auth, Firestore, Storage, App Check, PWA, emulator, type, lint, and browser
+  evidence before the freeze changes.
+- Firebase AI Logic, mobile SDK, on-device model, and automatic App Check
+  initialization notes do not change this server-mediated Gemini architecture.
+  App Check remains explicitly configured through the existing product site-key
+  contract.
 
 ### Firebase Extensions
 
@@ -91,6 +167,11 @@ No new size-aware rule is justified by current repository evidence.
 
 - [Google Gemini latest-model migration contract](https://ai.google.dev/gemini-api/docs/latest-model)
 - [Google Gemini API release notes](https://ai.google.dev/gemini-api/docs/changelog)
+- [Google Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing)
+- [Google Gemini rate and spend limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+- [Google Cloud Billing spend-cap budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps)
+- [Cloud Run billing settings and spend-cap effects](https://docs.cloud.google.com/run/docs/configuring/billing-settings)
+- [Firebase JavaScript SDK release notes](https://firebase.google.com/support/release-notes/js)
 - [Firebase Extensions deprecation FAQ](https://firebase.google.com/docs/extensions/faq-and-troubleshooting)
 - [Firebase CLI Extension commands](https://firebase.google.com/docs/cli)
 - [Cloud Storage lifecycle release notes](https://cloud.google.com/storage/docs/release-notes)
@@ -99,16 +180,23 @@ No new size-aware rule is justified by current repository evidence.
 
 ## Local verification evidence
 
-On July 26, 2026, under the pinned Node 22.23.1 runtime:
+On August 2, 2026, under the pinned Node 22.23.1 runtime:
 
-- `npm run verify:stack-change-readiness` passed the dependency freeze, Gemini compatibility, provider-resilience, and storage-lifecycle gates.
-- Root typecheck and zero-warning lint passed.
-- MenuList, Answerlattice, and SignalDesk Functions builds passed.
-- `npm run build:vercel` generated all 439 pages and isolated-loaded the traced website, sign-in, and NextAuth API bundles.
-- The exact production start returned HTTP 200 for `/`, `/signin?callbackUrl=%2Fdashboard`, and `/api/auth/session`; the sign-in response contained the expected authentication content and no Firebase Admin/JWKS ESM error.
-- Chrome followed the desktop homepage Login link to the “Welcome back” authentication screen with no browser console error.
-- The security gate accepted only the governed root Next/PostCSS production chain and the exact development-only lint chains; all three Functions production audits were clean.
-- `git diff --check` passed.
+- `npm run verify:gemini-runtime-migration` passed the model compiler,
+  byte-identical spend policy, rolling-window tests, pricing tests, and structured
+  retry tests.
+- `npm run verify:provider-resilience` passed, including Functions key
+  attribution.
+- Answerlattice and SignalDesk runtime source verifiers passed after admitting
+  their product-scoped spend controllers.
+- Root typecheck and MenuList/Answerlattice Functions builds passed during the
+  implementation loop. The final aggregate gate and lint result are recorded in
+  the session handoff rather than inferred here.
+- `npm run verify:functions-deploy-preflight` passed. The exact scoped
+  MenuList QA and Answerlattice QA Gemini-consumer deploy commands were then
+  attempted; both stopped before predeploy/upload with
+  `Error: Failed to authenticate, have you run firebase login?`. No QA or
+  production Function revision changed.
 
 ## Release boundary
 
@@ -118,4 +206,6 @@ Source gates do not prove a deployed release. Remaining external evidence:
 - QA Functions deploy and provider smoke;
 - target Upstash reachability and marketplace-origin confirmation;
 - target-specific Gemini key/quota/billing/model smoke and workload benchmark;
+- real QA/production spend-limit values plus Gemini API spend-cap budget
+  evidence from the matching Google Cloud project;
 - Vercel deployment and production-host smoke only after explicit deployment authorization.

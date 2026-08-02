@@ -12,10 +12,11 @@
  * - AI summary max 3 bullets (calm, reassuring)
  */
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, MonthlyViewData } from '@template/main-app/projects/types';
 import { formatDateKey } from '@util/dateTime';
-import { Card, Col, Empty, Row, Statistic, Typography } from 'antd';
+import { Card, Col, Empty, Row, Statistic, Typography, theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
@@ -34,11 +35,21 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
     const formatter = useFormatter();
     const t = useTranslations('Dashboard.owner');
+    const { token } = theme.useToken();
 
     if (!data) {
         return (
             <Card className={styles.emptyCard}>
                 <Empty
+                    image={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={112}
+                            treatment="softHalo"
+                            variant="analyticsContext"
+                        />
+                    )}
+                    imageStyle={{ height: 112 }}
                     description={
                         <Text type="secondary">
                             {EMPTY_STATE_MESSAGES.noMonthlyData.description}

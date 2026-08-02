@@ -1375,7 +1375,7 @@ assert(localActionUrl.includes('AI_MENU_MANAGER_LOCAL_ACTION_URL_INVALID'), 'AMM
 assert(localActionUrl.includes("url.protocol === 'https:'"), 'AMM local-action URL helper must allow HTTPS URLs');
 assert(localActionUrl.includes("url.protocol === 'http:' && isKnownLocalDevelopmentHost(url)"), 'AMM local-action URL helper must allow known local-dev HTTP URLs only');
 assert(localActionUrl.includes('url.username || url.password'), 'AMM local-action URL helper must reject credentialed URLs');
-assert(localActionUrl.includes("host.endsWith('.qa.menulist.digital')"), 'AMM local-action URL helper must preserve QA tenant-host testing support');
+assert(localActionUrl.includes("host.endsWith('.menulist.digital')"), 'AMM local-action URL helper must preserve QA tenant-host testing support');
 assert(!localActionUrl.includes("host.endsWith('.menulist.ai')"), 'AMM local-action URL helper must not preserve legacy .ai tenant-host testing');
 assert(desktopProposalCard.includes("action.type === 'copy_url'"), 'Desktop AMM cards must support copy_url local actions');
 assert(desktopProposalCard.includes("action.type === 'copy_text'"), 'Desktop AMM cards must support copy_text local actions');

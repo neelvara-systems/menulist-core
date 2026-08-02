@@ -1,17 +1,19 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { CONTENT_CREDIT_OPERATION_COSTS } from "@data/shared/contentCreditPolicy";
+import { calculateGeminiResponseCostMicroUsd } from "@data/shared/geminiSpendPolicy";
 
 // ═══════════════════════════════════════════════════════════════
 // USD → INR CONVERSION (update periodically)
 // ═══════════════════════════════════════════════════════════════
-export const USD_TO_INR = 94.87; // As of May 2026, update periodically for internal margin tracking.
+export const USD_TO_INR = 96.1856; // RBI/FBIL reference rate available July 27, 2026; update periodically.
 
 // ═══════════════════════════════════════════════════════════════
-// REAL GOOGLE COST PER OPERATION (in USD)
-// Source: https://ai.google.dev/gemini-api/docs/pricing (May 2026)
+// FALLBACK GOOGLE COST PER OPERATION (in USD)
+// Source: https://ai.google.dev/gemini-api/docs/pricing (August 2026)
 //
-// Gemini 2.5 Flash:  Input $0.30/1M tokens, Output $2.50/1M tokens
-// Gemini 2.5 Flash Image: $0.039/image (1290 output tokens)
+// Exact provider-backed operation logs use model + usage metadata. This table
+// remains the bounded fallback for non-token responses and legacy call sites.
+// Active standard prices are maintained in geminiSpendPolicy.ts.
 //
 // INTERNAL ONLY — never expose to customers.
 // ═══════════════════════════════════════════════════════════════
@@ -50,12 +52,12 @@ export const GEMINI_COST_USD: Record<string, number> = {
     // Paid operations
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 0.0008, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
-    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0400, // Gemini 2.5 Flash Image: approx $0.039/image
-    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0400, // Per image
+    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0336, // Gemini 3.1 Flash-Lite Image: 1K output
+    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0336, // Per 1K image
     [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 0.0044, // ~2K input + ~1.5K output tokens
     [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: 0.0004, // ~200 input + ~150 output tokens
     [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: 0.0450, // OCR + translation + regen
-    [AI_ACTIONS_TYPES.IMAGE_EDITING]: 0.0400, // Same as image generation
+    [AI_ACTIONS_TYPES.IMAGE_EDITING]: 0.0670, // Gemini 3.1 Flash Image: 1K output
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -161,8 +163,27 @@ export function getUnitCost(actionType: string): number {
  * Get the estimated real Google cost for an operation (in INR paise)
  * Used for internal margin tracking in transaction logs.
  */
-export function getRealCostPaise(actionType: string): number {
+export type GeminiRealCostUsage = {
+    candidatesTokenCount?: number;
+    model?: string;
+    promptTokenCount?: number;
+    totalTokenCount?: number;
+};
+
+export function getRealCostPaise(actionType: string, usage?: GeminiRealCostUsage): number {
     assertKnownAiAction(actionType);
+    if (usage?.model) {
+        const costMicroUsd = calculateGeminiResponseCostMicroUsd(usage.model, {
+            usageMetadata: {
+                candidatesTokenCount: usage.candidatesTokenCount ?? 0,
+                promptTokenCount: usage.promptTokenCount ?? 0,
+                totalTokenCount: usage.totalTokenCount ?? 0,
+            },
+        });
+        if (costMicroUsd !== null) {
+            return Math.max(1, Math.round((costMicroUsd / 1_000_000) * USD_TO_INR * 100));
+        }
+    }
     const costUSD = GEMINI_COST_USD[actionType];
     return Math.round(costUSD * USD_TO_INR * 100); // Convert to paise
 }

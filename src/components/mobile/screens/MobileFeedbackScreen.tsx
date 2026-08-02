@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import {
     assertFeedbackListLoadSucceeded,
     getFeedbackList,
@@ -450,7 +451,17 @@ function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
                         </Tabs>
                         <PullToRefresh onRefresh={() => fetchFeedback(filter, false, null)}>
                             {feedbackList.length === 0 ? (
-                                <Empty description={t('noFeedback')} />
+                                <Empty
+                                    description={t('noFeedback')}
+                                    image={filter === 'all' ? (
+                                        <ContextualStateIllustration
+                                            color={token.colorTextQuaternary}
+                                            size={88}
+                                            variant="feedbackContext"
+                                        />
+                                    ) : Empty.PRESENTED_IMAGE_SIMPLE}
+                                    imageStyle={{ height: filter === 'all' ? 88 : 60 }}
+                                />
                             ) : (
                                 <List>
                                     {feedbackList.map((feedback) => (

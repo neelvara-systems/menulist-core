@@ -14,6 +14,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -293,7 +294,22 @@ export default function AnswerUsageAnalytics() {
                     pagination={{ pageSize: 15, showSizeChanger: false }}
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <Empty description="No answer usage data yet" /> }}
+                    locale={{
+                        emptyText: (
+                            <Empty
+                                description="No answer usage data yet"
+                                image={(
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="analyticsContext"
+                                    />
+                                )}
+                                imageStyle={{ height: 88 }}
+                            />
+                        ),
+                    }}
                 />
             </Card>
         </Flex>

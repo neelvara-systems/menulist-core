@@ -10,8 +10,8 @@ import {
     type AnswerlatticePermissionKey,
 } from '@constant/answerlattice/permissions';
 import {
-    ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_SUPPORT_USER_ROLE,
+    MENULIST_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 
@@ -37,7 +37,7 @@ export const getAnswerlatticeStaffClaimStoreIds = (
 
 export const normalizeAnswerlatticeStaffClaimPlatformRole = (value: unknown): string => {
     const role = typeof value === 'string' ? value : '';
-    if (role === ECOMSAI_PLATFORM_USER_ROLE || role === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE) {
+    if (role === MENULIST_PLATFORM_USER_ROLE || role === MENULIST_PLATFORM_SUPPORT_USER_ROLE) {
         return role;
     }
     return 'USER';
@@ -106,8 +106,8 @@ export const hasAnswerlatticeTenantAdminClaim = (
 ): boolean => {
     const normalizedRole = String(role || '').toLowerCase();
     const normalizedPlatformRole = normalizeAnswerlatticeStaffClaimPlatformRole(platformRole);
-    return normalizedPlatformRole === ECOMSAI_PLATFORM_USER_ROLE
-        || normalizedPlatformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE
+    return normalizedPlatformRole === MENULIST_PLATFORM_USER_ROLE
+        || normalizedPlatformRole === MENULIST_PLATFORM_SUPPORT_USER_ROLE
         || normalizedRole === 'platform'
         || normalizedRole === 'owner';
 };

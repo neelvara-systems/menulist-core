@@ -11,9 +11,10 @@
  * - Smart Picks performance
  */
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, WeeklyViewData } from '@template/main-app/projects/types';
-import { Card, Col, Empty, Row, Typography } from 'antd';
+import { Card, Col, Empty, Row, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuEye, LuFlame, LuSmartphone, LuZap } from 'react-icons/lu';
@@ -31,11 +32,21 @@ interface WeeklyViewProps {
 const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
     const t = useTranslations('Dashboard.owner');
+    const { token } = theme.useToken();
 
     if (!data) {
         return (
             <Card className={styles.emptyCard}>
                 <Empty
+                    image={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={112}
+                            treatment="softHalo"
+                            variant="analyticsContext"
+                        />
+                    )}
+                    imageStyle={{ height: 112 }}
                     description={
                         <Text type="secondary">
                             {EMPTY_STATE_MESSAGES.noWeeklyData.description}

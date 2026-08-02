@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { reconcileTimeSlotPresetCascade } from '@lib/menu/reconcileTimeSlotPresetCascade';
@@ -325,7 +326,18 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                 {presets.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <Empty description={t('noTimeSlotsYet')} />
+                            <Empty
+                                description={t('noTimeSlotsYet')}
+                                image={(
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="scheduleContext"
+                                    />
+                                )}
+                                imageStyle={{ height: 88 }}
+                            />
                             <Button onClick={openAdd}><Flex align="center" gap={6}><LuPlus size={16} /><Text>{t('createFirstSlot')}</Text></Flex></Button>
                         </Flex>
                     </Card>

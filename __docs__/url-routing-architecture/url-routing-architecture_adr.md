@@ -203,12 +203,19 @@ flag-off path that can silently revert public URLs to name-derived slugs.
 
 ## ADR-12: MyCodex Has No Active Public Domain
 
-**Decision:** MyCodex currently has no active public product domain. It does not use `menulist.digital`. MenuList QA now uses `qa.menulist.digital` and `*.qa.menulist.digital`; the `menulist.digital` apex and `www` host are redirect/noindex targets only. MyCodex remains a static/internal reader reached locally through `/__mycodex`; any future private host must be approved and added back to `src/constants/deploymentTargets.ts` before DNS or Vercel setup.
+**Decision:** MyCodex currently has no active public product domain. It does not use `menulist.digital`. MenuList QA uses `menulist.digital` plus `www.menulist.digital` for the website, `app.menulist.digital` for the single owner/staff app, and `*.menulist.digital` for QA customer tests. MyCodex remains a static/internal reader reached locally through `/__mycodex`; any future private host must be approved and added back to `src/constants/deploymentTargets.ts` before DNS or Vercel setup.
+
+**MenuList owner-app boundary:** `/dashboard` is the single owner entry route and
+session scope selects the tenant/store. Sign-in and owner onboarding
+(`/create-menu`, `/invite`) use the same `app` host. The app host is `noindex`,
+has no sitemap, and does not share cookie or CORS scope with customer hosts.
+Marketing-host owner paths and retired `dashboard.*`/`app.menulist.online`
+aliases redirect to the active app host.
 
 **Why:**
 
-- The active domain/account plan assigns only `qa.menulist.digital` and `*.qa.menulist.digital` to MenuList QA.
-- MyCodex has no claim on `menulist.digital`, and the apex is not a public product host.
+- The active domain/account plan assigns `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, and `*.menulist.digital` to MenuList QA/staging.
+- MyCodex has no claim on `menulist.digital`; the apex and `www` alias belong to the MenuList staging website.
 - MyCodex is static/no DB and does not require Firebase, Storage, Functions, or a public domain.
 - Unknown production hosts should not be preserved as implicit product carve-outs.
 - If a private MyCodex host is approved later, it must fail closed behind the existing MyCodex login/session cookie.

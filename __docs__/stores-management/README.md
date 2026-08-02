@@ -23,7 +23,7 @@
 ### Current State
 
 - **Internal admin tool** for platform operators to manually create tenants and stores
-- Access restricted to users with `ECOMSAI_PLATFORM_USER_ROLE`
+- Access restricted to users with `MENULIST_PLATFORM_USER_ROLE`
 - Entry points: desktop Platform settings plus mobile More → Platform for Entity Blocks, Tenants, Stores, and Users management
 - Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; public menu/OBP lookup rejects the store mirror and independently reads the canonical tenant on a cold cache fill, so a missing/stale denormalized `tenantBlocked` value cannot bypass tenant state. User blocks commit Firestore-authoritative access and a durable Auth-sync revision before Firebase Auth disable/token-revoke work, then acknowledge only after bounded reconciliation of the current revision. Browser acknowledgements are capped and must echo the requested entity ID plus blocked state before desktop or mobile local state shows success.
 - Platform tenant create/update actions in `TenantDetailsModal` require tenant DAL acknowledgement before the drawer closes. DAL fallback values keep the drawer open, log `platform_tenant_save_failed`, and show fixed failure copy.

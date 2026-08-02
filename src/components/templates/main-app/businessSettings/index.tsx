@@ -2,7 +2,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { PERMISSIONS } from "@constant/permissions";
-import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
+import { MENULIST_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
 import { addStore, assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
@@ -1438,7 +1438,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         }
         if (
             Boolean(storeDetails?.storeId) ||
-            storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID
+            storeDetails?.storeId == MENULIST_PLATFORM_STORE_ID
         ) {
             const businessCopyFieldKeys = getBusinessCopyFieldKeysFromUpdate(changesToUpload);
             if (businessCopyFieldKeys.length > 0) {

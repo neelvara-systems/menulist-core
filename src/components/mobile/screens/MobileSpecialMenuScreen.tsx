@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 /**
  * MobileSpecialMenuScreen — Mobile screen for managing and creating special menus.
  *
@@ -28,7 +29,7 @@ import {
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
+import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -1492,8 +1493,18 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
                 {!isLoading && !hasAny ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuSparkles color={token.colorTextQuaternary} size={32} />
-                            <Empty description={t('noSpecialMenus')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            <Empty
+                                description={t('noSpecialMenus')}
+                                image={(
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="scheduleContext"
+                                    />
+                                )}
+                                imageStyle={{ height: 88 }}
+                            />
                             <Text type="secondary" style={{ textAlign: 'center' }}>
                                 {t('createFirstHelp')}
                             </Text>

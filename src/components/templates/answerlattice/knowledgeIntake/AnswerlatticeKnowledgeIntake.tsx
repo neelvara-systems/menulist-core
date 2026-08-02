@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
 import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
@@ -907,7 +908,18 @@ export default function AnswerlatticeKnowledgeIntake() {
                                 )}
                             />
                         ) : (
-                            <Empty description="No intake job yet">
+                            <Empty
+                                description="No intake job yet"
+                                image={(
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={isMobile ? 88 : 104}
+                                        treatment="softHalo"
+                                        variant="uploadContext"
+                                    />
+                                )}
+                                imageStyle={{ height: isMobile ? 88 : 104 }}
+                            >
                                 <Button type="primary" onClick={() => setCreateOpen(true)}>Create first intake</Button>
                             </Empty>
                         )}

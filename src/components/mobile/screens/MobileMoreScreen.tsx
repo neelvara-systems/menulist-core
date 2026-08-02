@@ -3,7 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { signOutSession } from '@lib/auth/client';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
@@ -324,7 +324,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const profileDialCode = profileOverrides.dialCode ?? sessionUser.dialCode ?? '';
     const profileCountryCode = profileOverrides.countryCode ?? sessionUser.countryCode ?? '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatformAdmin = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const canUseResellerScreens = isPlatformAdmin || isResellerAccount;
     const canViewAnalytics = hasAnyPermission(userPermissions, [PERMISSIONS.VIEW_ANALYTICS]);

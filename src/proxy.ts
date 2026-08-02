@@ -7,7 +7,7 @@
  *    product owner app paths rewrite to the product route group when configured.
  * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice,
  *    /__campaigncue/app(/...) → /campaigncue/app(/...)) — local dev only
- * 3. Client tenant domains (*.menulist.online or *.qa.menulist.digital → /client)
+ * 3. Client tenant domains (*.menulist.online or *.menulist.digital → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
  * OWASP Compliance:
@@ -90,6 +90,24 @@ function shouldApplyNoindexHeader(pathname: string): boolean {
     return NOINDEX_PATH_PREFIXES.some((prefix) =>
         pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
+}
+
+function isActiveMenuListOwnerAppHost(hostname: string | null): boolean {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    const ownerAppDomain = getProductDeploymentTarget('menulist').ownerAppDomain;
+    return Boolean(normalizedHost && ownerAppDomain && normalizedHost === ownerAppDomain);
+}
+
+function isMenuListQaHost(hostname: string | null): boolean {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return false;
+
+    const qaTarget = getProductDeploymentTarget('menulist', 'preview');
+    if (qaTarget.domains.includes(normalizedHost)) return true;
+
+    return (qaTarget.tenantDomains || []).some((domain) => (
+        normalizedHost === domain || normalizedHost.endsWith(`.${domain}`)
+    ));
 }
 
 function applySecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
@@ -200,8 +218,17 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     response.headers.delete('X-Powered-By');
     response.headers.delete('Server');
 
-    if (shouldApplyNoindexHeader(request.nextUrl.pathname)) {
-        response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    if (
+        shouldApplyNoindexHeader(request.nextUrl.pathname)
+        || isActiveMenuListOwnerAppHost(request.headers.get('host'))
+        || isMenuListQaHost(request.headers.get('host'))
+    ) {
+        response.headers.set(
+            'X-Robots-Tag',
+            isMenuListQaHost(request.headers.get('host'))
+                ? 'noindex, nofollow, noarchive'
+                : 'noindex, nofollow',
+        );
     }
 
     return response;
@@ -589,6 +616,86 @@ function buildMenuListRedirectDomainResponse(hostname: string | null, request: N
     return NextResponse.redirect(url, 301);
 }
 
+const MENULIST_OWNER_APP_PATH_PREFIXES = [
+    '/signin',
+    '/forgot-password',
+    '/unauthorized',
+    '/assets',
+    '/billing',
+    '/business-health',
+    '/business-settings',
+    '/create-menu',
+    '/dashboard',
+    '/growth-kits',
+    '/help-center',
+    '/invite',
+    '/locations',
+    '/menu-manager',
+    '/msg-preview',
+    '/ops',
+    '/platform',
+    '/projects',
+    '/qr-code',
+    '/qrCode',
+    '/reseller',
+    '/today',
+    '/transactions',
+    '/use-menulist',
+    '/users',
+] as const;
+
+function isMenuListOwnerAppPath(pathname: string): boolean {
+    if (pathname === '/feedback') return true;
+    return MENULIST_OWNER_APP_PATH_PREFIXES.some((prefix) => (
+        pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ));
+}
+
+function buildMenuListOwnerAppResponse(
+    hostname: string | null,
+    request: NextRequest,
+): NextResponse | null {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost || isLocalDevelopmentHost(normalizedHost)) return null;
+
+    const target = getProductDeploymentTarget('menulist');
+    const ownerAppDomain = target.ownerAppDomain;
+    if (!ownerAppDomain) return null;
+
+    if (normalizedHost === ownerAppDomain) {
+        if (request.nextUrl.pathname === '/robots.txt') {
+            return new NextResponse('User-agent: *\nDisallow: /\n', {
+                status: 200,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            });
+        }
+        if (request.nextUrl.pathname === '/sitemap.xml') {
+            return new NextResponse(null, { status: 404 });
+        }
+        if (request.nextUrl.pathname !== '/') return null;
+
+        const url = buildOriginPinnedRedirectUrl(`https://${ownerAppDomain}`, request);
+        url.pathname = '/dashboard';
+        return NextResponse.redirect(url, 308);
+    }
+
+    const websiteDomain = target.domains.includes(normalizedHost);
+    const deprecatedAppAlias = [
+        ...target.domains.map((domain) => `dashboard.${domain.replace(/^www\./, '')}`),
+        ...(target.tenantDomains || []).flatMap((domain) => [
+            `app.${domain}`,
+            `dashboard.${domain}`,
+        ]),
+    ].includes(normalizedHost);
+
+    if (!deprecatedAppAlias && (!websiteDomain || !isMenuListOwnerAppPath(request.nextUrl.pathname))) {
+        return null;
+    }
+
+    const url = buildOriginPinnedRedirectUrl(`https://${ownerAppDomain}`, request);
+    return NextResponse.redirect(url, 308);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Main Proxy
 // ═══════════════════════════════════════════════════════════════
@@ -599,9 +706,25 @@ export async function proxy(request: NextRequest) {
     const domainInfo = resolveDomain(hostname);
     const knownProductId = resolveKnownProductIdByHostname(hostname);
 
+    if (isMenuListQaHost(hostname) && pathname === '/robots.txt') {
+        return applySecurityHeaders(request, new NextResponse('User-agent: *\nDisallow: /\n', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }));
+    }
+
+    if (isMenuListQaHost(hostname) && pathname === '/sitemap.xml') {
+        return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
+    }
+
     const menulistRedirectResponse = buildMenuListRedirectDomainResponse(hostname, request);
     if (menulistRedirectResponse) {
         return applySecurityHeaders(request, menulistRedirectResponse);
+    }
+
+    const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);
+    if (menulistOwnerAppResponse) {
+        return applySecurityHeaders(request, menulistOwnerAppResponse);
     }
 
     if (

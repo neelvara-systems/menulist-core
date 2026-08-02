@@ -2,7 +2,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
-import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID, ECOMSAI_PLATFORM_USER_NAME } from "@constant/user";
+import { MENULIST_PLATFORM_STORE_ID, MENULIST_PLATFORM_TENANT_ID, MENULIST_PLATFORM_USER_ID, MENULIST_PLATFORM_USER_NAME } from "@constant/user";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
@@ -109,15 +109,15 @@ export function normalizeAiOperationWriteScope(
     if (hasTenantId !== hasStoreId) return null;
 
     const tenant = normalizeAiOperationScopeId(
-        hasTenantId ? input.tId : ECOMSAI_PLATFORM_TENANT_ID,
+        hasTenantId ? input.tId : MENULIST_PLATFORM_TENANT_ID,
     );
     const store = normalizeAiOperationScopeId(
-        hasStoreId ? input.sId : ECOMSAI_PLATFORM_STORE_ID,
+        hasStoreId ? input.sId : MENULIST_PLATFORM_STORE_ID,
     );
     if (!tenant || !store) return null;
 
-    const isPlatformScope = tenant.numericId === ECOMSAI_PLATFORM_TENANT_ID
-        && store.numericId === ECOMSAI_PLATFORM_STORE_ID;
+    const isPlatformScope = tenant.numericId === MENULIST_PLATFORM_TENANT_ID
+        && store.numericId === MENULIST_PLATFORM_STORE_ID;
     const isTenantScope = tenant.numericId > 0 && store.numericId > 0;
     if (productId === PRODUCT_IDS.ANSWERLATTICE ? !isTenantScope : (!isPlatformScope && !isTenantScope)) {
         return null;
@@ -509,7 +509,12 @@ export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLog 
     const totalCredits = requireNonNegativeFiniteNumber(input.totalCredits ?? (totalTokenCount / tokenPerCredit), 'total credits');
     const unitsConsumed = requireNonNegativeSafeInteger(input.unitsConsumed ?? getUnitCost(input.action), 'units consumed');
     const totalCharge = requireNonNegativeFiniteNumber(input.totalCharge ?? chargePerCredit * totalCredits, 'total charge');
-    const realCostPaise = requireNonNegativeSafeInteger(input.realCostPaise ?? getRealCostPaise(input.action), 'real cost');
+    const realCostPaise = requireNonNegativeSafeInteger(input.realCostPaise ?? getRealCostPaise(input.action, {
+        candidatesTokenCount,
+        model: input.model,
+        promptTokenCount,
+        totalTokenCount,
+    }), 'real cost');
     const ourChargePaise = requireNonNegativeSafeInteger(input.ourChargePaise ?? getOurChargePaise(input.action), 'owner charge');
 
     const detailed = shouldStoreDetailedAiOperation();
@@ -567,9 +572,9 @@ export function buildAiOperationDocument(input: AiOperationLogInput) {
         pId: scope.productId,
         tId: scope.tenantId,
         sId: scope.storeId,
-        uId: operation.uId || ECOMSAI_PLATFORM_USER_ID,
-        createdBy: operation.createdBy || operation.modifiedBy || ECOMSAI_PLATFORM_USER_NAME,
-        modifiedBy: operation.modifiedBy || operation.createdBy || ECOMSAI_PLATFORM_USER_NAME,
+        uId: operation.uId || MENULIST_PLATFORM_USER_ID,
+        createdBy: operation.createdBy || operation.modifiedBy || MENULIST_PLATFORM_USER_NAME,
+        modifiedBy: operation.modifiedBy || operation.createdBy || MENULIST_PLATFORM_USER_NAME,
         createdOn: now,
         ...(detailed ? {
             detailExpiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + detailRetentionDays * 24 * 60 * 60 * 1000),

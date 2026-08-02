@@ -637,7 +637,7 @@ for (const route of billableRoutes) {
     'sourceErrorName',
     'sourceErrorCode',
     'sourceStatusCode',
-    '[AIGateway] Retryable provider error; retrying with backoff',
+    '[AIGateway] Retryable provider error; retrying with jittered backoff',
     '[AIGateway] Provider attempts exhausted',
   ].forEach((token) => {
     assert(source.includes(token), `${label} includes bounded gateway diagnostic token ${token}`);

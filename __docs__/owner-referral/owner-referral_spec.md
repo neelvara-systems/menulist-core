@@ -159,7 +159,7 @@ MenuList does not import contacts, choose a recipient, or store who received the
 3. The page explains the 100/50 rewards and payment-only rule.
 4. The page explains that the referrer can see the business display name and a general referral status.
 5. The invited owner selects `Create my customer link`.
-6. MenuList first keeps the referral journey on the canonical public MenuList host, then validates the token and stores it in a host-only HttpOnly cookie.
+6. MenuList first keeps the referral journey on the canonical MenuList owner-app host, then validates the token and stores it in a host-only HttpOnly cookie.
 7. The owner may create a new business or continue with an existing unpaid MenuList business.
 8. The shared server attribution helper binds the referral before the business's first paid subscription.
 
@@ -202,7 +202,7 @@ The token may be used by multiple invited businesses until expiry. Each referred
 
 ### FR-3: Consent-Bound Capture
 
-Page load never sets the cookie. Only the explicit referral CTA captures a token through the same-origin endpoint. The normal setup CTA sends an explicit decline through that endpoint so a previously saved invitation cannot leak into an unrelated setup journey. The invite page, sign-in/setup continuation, and payment-start request remain on the canonical public MenuList host so the host-only cookie is not lost across `www`, dashboard, tenant, or custom-domain hosts. The cookie is host-only, HttpOnly, Secure outside local development, SameSite=Lax, Path `/`, and valid for 30 days.
+Page load never sets the cookie. Only the explicit referral CTA captures a token through the same-origin endpoint. The normal setup CTA sends an explicit decline through that endpoint so a previously saved invitation cannot leak into an unrelated setup journey. The invite page, sign-in/setup continuation, and payment-start request remain on the canonical MenuList owner-app host so the host-only cookie is not lost across website, tenant, or custom-domain hosts. The cookie is host-only, HttpOnly, Secure outside local development, SameSite=Lax, Path `/`, and valid for 30 days.
 
 ### FR-4: Pre-Payment Attribution
 

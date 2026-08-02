@@ -10,6 +10,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import {
@@ -403,7 +404,22 @@ export default function EntityManagementDashboard() {
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <Empty description="No entities yet. Create your first product entity." /> }}
+                    locale={{
+                        emptyText: (
+                            <Empty
+                                description="No entities yet. Create your first product entity."
+                                image={entities.length === 0 && !searchText ? (
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={96}
+                                        treatment="softHalo"
+                                        variant="roleStructureContext"
+                                    />
+                                ) : Empty.PRESENTED_IMAGE_SIMPLE}
+                                imageStyle={{ height: 96 }}
+                            />
+                        ),
+                    }}
                 />
             </Card>
 

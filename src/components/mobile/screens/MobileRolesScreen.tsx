@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { PermissionKey } from '@constant/permissions';
 import { DEFAULT_ROLE_IDS } from '@data/defaultRoles';
 import RolesPermissionInitialData, { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData';
@@ -389,8 +390,18 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                 {roles.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuShield color={token.colorTextTertiary} size={40} />
-                            <Empty description={t('noRolesYet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            <Empty
+                                description={t('noRolesYet')}
+                                image={(
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="roleStructureContext"
+                                    />
+                                )}
+                                imageStyle={{ height: 88 }}
+                            />
                             <Button color="primary" disabled={!canAssignRoles} onClick={handleAddRole} size="large">
                                 <Flex align="center" gap={6}>
                                     <LuPlus size={16} />

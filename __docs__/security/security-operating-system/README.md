@@ -2,7 +2,7 @@
 
 > Status: Version 1.1 implemented
 > Scope: internal repository security evidence and audit orchestration
-> Last reviewed: July 29, 2026
+> Last reviewed: August 2, 2026
 
 SecurityOS is the portfolio-wide internal contract for answering three questions:
 
@@ -16,7 +16,7 @@ It follows the useful operating shape of Website Asset Operating System: governe
 
 - MenuList and Answerlattice have detailed surface maps and grouped evidence-selection paths.
 - CampaignCue, SignalDesk, and MyCodex have registered-only bundles; Neelvara remains explicitly unknown rather than being claimed as audited.
-- 39 existing policies, verifiers, and local emulator tests are mapped into 7 manually selectable bundles.
+- 42 existing policies, verifiers, and local emulator tests are mapped into 7 manually selectable bundles.
 - `npm run security-os:audit` validates registry integrity without executing every mapped check.
 - `npm run security-os:plan` lists bundles and prints a selected bundle's execution/network policies without executing evidence.
 - `npm run verify:security-os` verifies the package, docs, skill, feature flag, and prohibited-integration boundary.

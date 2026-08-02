@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -23,7 +23,7 @@ export type GoogleAnalyticsScopeDocumentId = {
 };
 
 function isPlatformSession(session: any): boolean {
-    return resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE;
+    return resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE;
 }
 
 export function normalizeGoogleAnalyticsPropertyId(rawPropertyId: string | null | undefined): string | null {

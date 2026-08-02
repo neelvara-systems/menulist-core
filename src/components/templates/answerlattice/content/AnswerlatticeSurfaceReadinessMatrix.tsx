@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import type { AnswerlatticeActivationSummary, AnswerlatticeSurfaceReadinessItem } from '@type/answerlattice';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
 import { Button, Card, Empty, Flex, List, Space, Tag, Typography, theme } from 'antd';
@@ -75,8 +76,16 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
 
                 {surfaces.length === 0 ? (
                     <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description="No product surfaces are mapped yet."
+                        image={(
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={isMobile ? 88 : 112}
+                                treatment="softHalo"
+                                variant="roleStructureContext"
+                            />
+                        )}
+                        imageStyle={{ height: isMobile ? 88 : 112 }}
                     >
                         <Button
                             type="primary"

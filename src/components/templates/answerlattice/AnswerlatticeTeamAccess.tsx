@@ -35,6 +35,7 @@ import {
     updateAnswerlatticeStaffUser,
 } from '@lib/answerlattice/staffAccessClient';
 import PhoneNumberInput from '@atoms/phoneNumberInput';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import StaffLoginDetailsContent from '@template/main-app/users/StaffLoginDetailsContent';
 import {
     Alert,
@@ -558,10 +559,39 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
         },
     ];
 
+    const teamEmptyState = (
+        <Empty
+            description="No team members yet"
+            image={(
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={isMobile ? 88 : 104}
+                    treatment="softHalo"
+                    variant="teamContext"
+                />
+            )}
+            imageStyle={{ height: isMobile ? 88 : 104 }}
+        />
+    );
+    const roleEmptyState = (
+        <Empty
+            description="No roles found"
+            image={(
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={isMobile ? 88 : 104}
+                    treatment="softHalo"
+                    variant="roleStructureContext"
+                />
+            )}
+            imageStyle={{ height: isMobile ? 88 : 104 }}
+        />
+    );
+
     const staffList = isMobile ? (
         <List
             dataSource={users}
-            locale={{ emptyText: <Empty description="No team members yet" /> }}
+            locale={{ emptyText: teamEmptyState }}
             renderItem={(user) => (
                 <List.Item>
                     <Card size="small" style={{ width: '100%' }}>
@@ -589,6 +619,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             pagination={false}
             rowKey="id"
             scroll={{ x: 820 }}
+            locale={{ emptyText: teamEmptyState }}
         />
     );
 
@@ -622,7 +653,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                         </Flex>
                     </Card>
                 );
-            }) : <Empty description="No roles found" />}
+            }) : roleEmptyState}
         </Flex>
     );
 

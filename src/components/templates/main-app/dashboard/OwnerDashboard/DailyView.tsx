@@ -13,10 +13,11 @@
  * - "Low activity" message if < 20 views
  */
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData, EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
 import { formatDateKey } from '@util/dateTime';
-import { Alert, Card, Col, Empty, Row, Typography } from 'antd';
+import { Alert, Card, Col, Empty, Row, Typography, theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuInfo } from 'react-icons/lu';
@@ -35,11 +36,21 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
     const formatter = useFormatter();
     const t = useTranslations('Dashboard.owner');
+    const { token } = theme.useToken();
 
     if (!data) {
         return (
             <Card className={styles.emptyCard}>
                 <Empty
+                    image={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={112}
+                            treatment="softHalo"
+                            variant="analyticsContext"
+                        />
+                    )}
+                    imageStyle={{ height: 112 }}
                     description={
                         <Text type="secondary">
                             {t('empty.noActivityYesterday')}

@@ -19,7 +19,7 @@ import {
     MonthlyDashboardMetrics,
     OwnerDashboardMetrics
 } from './services/gemini/ownerDashboardSummary';
-import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
+import { MENULIST_PLATFORM_USER_ROLE } from './constants/user';
 import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import {
     normalizeOwnerNotificationDocumentId,
@@ -1826,8 +1826,8 @@ export async function assertCurrentPlatformAnalyticsAuthority(
     const userData = userSnap.exists ? userSnap.data() : undefined;
     const currentRole = String(userData?.platformRole || userData?.role || '');
     if (
-        tokenRole !== ECOMSAI_PLATFORM_USER_ROLE
-        || currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        tokenRole !== MENULIST_PLATFORM_USER_ROLE
+        || currentRole !== MENULIST_PLATFORM_USER_ROLE
         || userData?.active === false
         || userData?.deleted === true
         || userData?.authDisabled === true
@@ -1859,7 +1859,7 @@ export const triggerCustomerAnalyticsManually = onCall({
     }
 
     await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, request.auth);
-    const requesterRole = ECOMSAI_PLATFORM_USER_ROLE;
+    const requesterRole = MENULIST_PLATFORM_USER_ROLE;
 
     const { tId, sId, projectId, forceWeekly, forceMonthly } = request.data || {};
     const tenantId = normalizeStoreSummaryNumericDocumentId(tId);

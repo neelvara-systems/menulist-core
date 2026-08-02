@@ -1,6 +1,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
@@ -109,7 +109,7 @@ const HorizontalSidebarComponent = () => {
                 }
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
-                if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD || ![ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole)) {
+                if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD || ![MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole)) {
                     return;
                 }
             }

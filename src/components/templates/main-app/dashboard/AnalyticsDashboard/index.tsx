@@ -1,11 +1,12 @@
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
-import { ECOMSAI_PLATFORM_STORE_ID } from '@constant/user';
+import { MENULIST_PLATFORM_STORE_ID } from '@constant/user';
 import useAnalyticsData from '@hook/useAnalyticsData';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import DashboardProjectSelector from '@template/main-app/dashboard/OwnerDashboard/DashboardProjectSelector';
-import { Alert, Card, Col, DatePicker, Empty, Row, Space, Spin, Typography } from 'antd';
+import { Alert, Card, Col, DatePicker, Empty, Row, Space, Spin, Typography, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -29,6 +30,7 @@ const { RangePicker } = DatePicker;
 
 function AnalyticsDashboard() {
     const t = useTranslations('Dashboard');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
         return getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId);
@@ -53,7 +55,7 @@ function AnalyticsDashboard() {
         }
     };
 
-    if (!(storeDetails?.storeId || storeDetails?.tenantId === ECOMSAI_PLATFORM_STORE_ID)) {
+    if (!(storeDetails?.storeId || storeDetails?.tenantId === MENULIST_PLATFORM_STORE_ID)) {
         return (
             <Card>
                 <Empty description={t('noStoreSelected' as any)} />
@@ -106,6 +108,21 @@ function AnalyticsDashboard() {
                             description="Try again later."
                             type="error"
                             showIcon
+                        />
+                    </Card>
+                ) : !data ? (
+                    <Card>
+                        <Empty
+                            description={t('owner.empty.noAnalyticsYet')}
+                            image={(
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={128}
+                                    treatment="softHalo"
+                                    variant="analyticsContext"
+                                />
+                            )}
+                            imageStyle={{ height: 128 }}
                         />
                     </Card>
                 ) : (

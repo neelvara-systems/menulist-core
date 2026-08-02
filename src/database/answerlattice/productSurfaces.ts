@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { appendAnswerlatticeCompiledContextSourceChange } from '@lib/answerlattice/compiledSourceVersionsClient';
@@ -171,8 +171,8 @@ const requireScope = async (scopeOverride?: unknown) => {
             throw new Error('Answerlattice workspace is not available.');
         }
         const platformRole = resolveExactSessionPlatformRole(session);
-        const hasPlatformScope = platformRole === ECOMSAI_PLATFORM_USER_ROLE
-            || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+        const hasPlatformScope = platformRole === MENULIST_PLATFORM_USER_ROLE
+            || platformRole === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
         if (!hasPlatformScope && (
             !sessionScope
             || sessionScope.tenantId !== overrideScope.tId

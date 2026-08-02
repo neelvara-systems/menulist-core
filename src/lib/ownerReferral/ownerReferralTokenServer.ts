@@ -1,4 +1,4 @@
-import { appendPublicPath, getPublicBaseUrl } from '@constant/urls';
+import { appendPublicPath, OWNER_APP_URL } from '@constant/urls';
 import {
     OWNER_REFERRAL_PROGRAM_VERSION,
     OWNER_REFERRAL_TOKEN_TTL_DAYS,
@@ -157,7 +157,7 @@ export const validateOwnerReferralToken = (value: unknown): OwnerReferralTokenPa
 };
 
 export const buildOwnerReferralInviteUrl = (token: string): string => (
-    `${appendPublicPath(getPublicBaseUrl(), 'invite')}#r=${encodeURIComponent(token)}`
+    `${appendPublicPath(OWNER_APP_URL, 'invite')}#r=${encodeURIComponent(token)}`
 );
 
 export const hashOwnerReferralEvidence = (value: string): string => (

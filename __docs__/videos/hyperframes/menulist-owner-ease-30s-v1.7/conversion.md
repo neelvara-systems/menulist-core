@@ -24,7 +24,7 @@ Start from what you already have, review the private customer version, and put o
 ## CTA
 
 - Display close: `Create customer link`
-- Destination: `https://menulist.online/create-menu`
+- Destination: `https://app.menulist.ai/create-menu`
 - Campaign identity: `owner_ease_v1_7_no_retyping_30s_16x9`
 
 ## Primary Metric

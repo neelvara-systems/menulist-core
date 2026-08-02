@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, assertProjectUpdateSucceeded, uploadFile } from '@database/projects';
@@ -1151,6 +1152,13 @@ export default function MenuUploadSheet({
 
                     {step === 'error' ? (
                         <Result
+                            icon={(
+                                <ContextualStateIllustration
+                                    color={token.colorTextQuaternary}
+                                    size={112}
+                                    variant="photoErrorContext"
+                                />
+                            )}
                             extra={[
                                 <Button key="cancel" block fill="outline" onClick={onClose} size="large">
                                     {t('cancel')}

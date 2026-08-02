@@ -1,8 +1,8 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Modal, Result, theme } from 'antd';
-import { LuXCircle } from 'react-icons/lu';
 import {
     MENULIST_ANSWERLATTICE_TARGETS,
     getMenuListAnswerlatticeTargetProps,
@@ -39,7 +39,13 @@ export default function ExtractionJobFailureModal({
             width={480}
         >
             <Result
-                icon={<LuXCircle size={64} style={{ color: token.colorError }} />}
+                icon={(
+                    <ContextualStateIllustration
+                        color={token.colorTextQuaternary}
+                        size={112}
+                        variant="photoErrorContext"
+                    />
+                )}
                 status="error"
                 title="Processing Failed"
                 subTitle={message || `An error occurred while processing your ${labels.offeringLower} files. Please try again.`}

@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
@@ -245,7 +246,12 @@ export default function MobileDashboardScreen({
                     title={t('title')}
                 />
                 <Flex align="center" gap={12} justify="center" style={{ flex: 1 }} vertical>
-                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                    <ContextualStateIllustration
+                        color={token.colorPrimary}
+                        size={96}
+                        treatment="softHalo"
+                        variant="analyticsContext"
+                    />
                     <Text type="secondary" style={{ textAlign: 'center' }}>
                         {t('noProjects', { offering: labels.offeringLower })}
                     </Text>
@@ -859,7 +865,12 @@ export default function MobileDashboardScreen({
                         {!overall && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
-                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="analyticsContext"
+                                    />
                                     <Text type="secondary" style={{ textAlign: 'center' }}>
                                         {t('noAnalyticsYet', { offering: labels.offeringLower })}
                                     </Text>
@@ -882,7 +893,12 @@ export default function MobileDashboardScreen({
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
-                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="analyticsContext"
+                                    />
                                     <Text type="secondary" style={{ textAlign: 'center' }}>
                                         {t('noAnalyticsYet', { offering: labels.offeringLower })}
                                     </Text>
@@ -1002,7 +1018,12 @@ export default function MobileDashboardScreen({
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>
-                                    <LuBarChart3 color={token.colorTextQuaternary} size={36} />
+                                    <ContextualStateIllustration
+                                        color={token.colorPrimary}
+                                        size={88}
+                                        treatment="softHalo"
+                                        variant="analyticsContext"
+                                    />
                                     <Text type="secondary" style={{ textAlign: 'center' }}>
                                         {t('noAnalyticsYet', { offering: labels.offeringLower })}
                                     </Text>

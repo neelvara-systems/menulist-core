@@ -9,7 +9,7 @@ import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetric
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS } from './constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from './constants/features';
-import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
+import { MENULIST_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { flush as flushSentry, initSentry } from './lib/sentry';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from './sharedData/platformNotificationRegistry';
@@ -1001,8 +1001,8 @@ async function assertCurrentPlatformOwner(
     const tokenRole = String(auth.token.platformRole || auth.token.role || '');
     const currentRole = String(userData?.platformRole || userData?.role || '');
     if (
-        tokenRole !== ECOMSAI_PLATFORM_USER_ROLE
-        || currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        tokenRole !== MENULIST_PLATFORM_USER_ROLE
+        || currentRole !== MENULIST_PLATFORM_USER_ROLE
         || userData?.active === false
         || userData?.deleted === true
         || userData?.authDisabled === true

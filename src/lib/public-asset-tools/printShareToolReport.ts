@@ -194,10 +194,10 @@ function buildTemplateDocument(params: {
       y: Math.round(params.height * 0.44),
     },
     {
-      ...buildCreativeEditorQrElement(params.customerLink || 'https://menulist.ai/create-menu'),
+      ...buildCreativeEditorQrElement(params.customerLink || 'https://app.menulist.ai/create-menu'),
       height: Math.round(Math.min(params.width, params.height) * 0.28),
       name: 'QR code',
-      value: params.customerLink || 'https://menulist.ai/create-menu',
+      value: params.customerLink || 'https://app.menulist.ai/create-menu',
       width: Math.round(Math.min(params.width, params.height) * 0.28),
       x: Math.round(params.width * 0.58),
       y: Math.round(params.height * 0.58),

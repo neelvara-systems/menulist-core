@@ -1,5 +1,5 @@
 import { LuActivity, LuBarChart3, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuSettings, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
 
 
 export const HOME_ROUTING = `/`;
@@ -124,31 +124,31 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
         route: NAVIGARIONS_ROUTINGS.PLATFORM,
         icon: LuSettings,
         sectionLabel: 'Internal tools',
-        allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE],
+        allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE],
         subNav: [
             { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: LuLayoutDashboard },
-            { label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
             { label: 'Ops Control Room', route: NAVIGARIONS_ROUTINGS.OPS_CONTROL_ROOM, icon: LuActivity },
             { label: 'Scheduler Monitor', route: NAVIGARIONS_ROUTINGS.OPS_SCHEDULER_MONITOR, icon: LuClock3 },
             { label: 'Extraction Monitor', route: NAVIGARIONS_ROUTINGS.OPS_EXTRACTION_MONITOR, icon: LuSparkles },
             { label: 'Answerlattice Intake', route: NAVIGARIONS_ROUTINGS.OPS_ANSWERLATTICE_INTAKE_MONITOR, icon: LuBookOpen },
-            { label: 'Business Health Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_OWNER_BUSINESS_ASSISTANT, icon: LuActivity, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
-            { label: 'Cost Posture', route: NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE, icon: LuDollarSign, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Business Health Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_OWNER_BUSINESS_ASSISTANT, icon: LuActivity, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
+            { label: 'Cost Posture', route: NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE, icon: LuDollarSign, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
             { label: 'Entity Blocks', route: NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS, icon: LuShieldOff },
-            { label: 'Asset Templates', route: NAVIGARIONS_ROUTINGS.PLATFORM_ASSET_TEMPLATES, icon: LuLayoutTemplate, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Asset Templates', route: NAVIGARIONS_ROUTINGS.PLATFORM_ASSET_TEMPLATES, icon: LuLayoutTemplate, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
             { label: 'Tenants', route: NAVIGARIONS_ROUTINGS.PLATFORM_TENANTS, icon: LuBuilding2 },
             { label: 'Stores', route: NAVIGARIONS_ROUTINGS.PLATFORM_STORES, icon: LuMapPin },
             { label: 'Platform Users', route: NAVIGARIONS_ROUTINGS.PLATFORM_USERS, icon: LuUsers },
-            { label: 'Pricing Plans', route: NAVIGARIONS_ROUTINGS.PLATFORM_PRICING_PLANS, icon: LuDollarSign, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Pricing Plans', route: NAVIGARIONS_ROUTINGS.PLATFORM_PRICING_PLANS, icon: LuDollarSign, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
         ]
     },
     {
         label: 'Reseller', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuBuilding2,
-        allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE],
+        allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE],
         subNav: [
-            { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuLayoutDashboard, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
-            { label: 'Onboard Client', route: NAVIGARIONS_ROUTINGS.RESELLER_ONBOARD, icon: LuSparkles, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
-            { label: 'Reseller Management', route: NAVIGARIONS_ROUTINGS.RESELLER_MANAGE, icon: LuUsers, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuLayoutDashboard, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
+            { label: 'Onboard Client', route: NAVIGARIONS_ROUTINGS.RESELLER_ONBOARD, icon: LuSparkles, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
+            { label: 'Reseller Management', route: NAVIGARIONS_ROUTINGS.RESELLER_MANAGE, icon: LuUsers, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] },
         ]
     },
 ]

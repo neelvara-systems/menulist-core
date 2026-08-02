@@ -284,7 +284,7 @@ function verifyMobileAndNavigation(mobileShell, mobileMore, mobileInternal, navC
 
   [
     'PLATFORM_COST_POSTURE: `/platform/cost-posture`',
-    "{ label: 'Cost Posture', route: NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE, icon: LuDollarSign, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] }",
+    "{ label: 'Cost Posture', route: NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE, icon: LuDollarSign, allowedPlatformRoles: [MENULIST_PLATFORM_USER_ROLE] }",
   ].forEach((token) => assertIncludes(navConstants, token, 'Platform Cost Posture navigation constants'));
 
   [

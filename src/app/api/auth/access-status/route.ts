@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import {
     isAccessStatusEntityIdentityConsistent,
     isAccessStatusStoreOwnedByTenant,
@@ -58,8 +58,8 @@ const normalizeOptionalDocumentId = (value?: string | number | null): string | n
 };
 
 const isPlatformAccessSession = (session: any, userData: Record<string, any>): boolean => (
-    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
-    && userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE
+    && userData.platformRole === MENULIST_PLATFORM_USER_ROLE
 );
 
 const getCurrentUserSnapshot = async (session: any) => {
@@ -96,7 +96,7 @@ const checkAccessStatusRateLimit = async (request: NextRequest, session: any) =>
     const rateLimitConfig = getRateLimitForFeature("DATA_READ");
     const userId = resolveCurrentSessionUserDocumentId(session);
     const platformRole = resolveExactSessionPlatformRole(session);
-    const platformSession = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const platformSession = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const sessionScope = resolveStorePermissionSessionScope(session);
     if (!userId || platformRole === null || (!platformSession && !sessionScope)) {
         return noStoreJson({ error: "Forbidden" }, 403);

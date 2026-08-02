@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_SUPPORT_USER_ROLE, MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, Timestamp, where, type DocumentData, type QueryConstraint, type UpdateData } from "@firebase/firestore";
@@ -205,7 +205,7 @@ const isPlatformTicketSession = (session: LoginUserType | null): boolean => {
         || session?.user?.role
         || ''
     ).toUpperCase();
-    return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    return platformRole === MENULIST_PLATFORM_USER_ROLE || platformRole === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
 };
 
 const isPlatformTicketAdminSession = (session: LoginUserType | null): boolean => {
@@ -216,7 +216,7 @@ const isPlatformTicketAdminSession = (session: LoginUserType | null): boolean =>
         || session?.user?.role
         || ''
     ).toUpperCase();
-    return platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    return platformRole === MENULIST_PLATFORM_USER_ROLE;
 };
 
 const getSessionSupportTicketScope = (session: LoginUserType | null): NormalizedSupportTicketScope | undefined => {

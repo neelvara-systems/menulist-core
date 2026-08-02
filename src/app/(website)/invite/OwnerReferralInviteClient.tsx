@@ -1,6 +1,6 @@
 'use client';
 
-import { getPublicBaseUrl } from '@constant/urls';
+import { OWNER_APP_URL } from '@constant/urls';
 import {
     OWNER_REFERRAL_REFERRED_CREDITS,
     OWNER_REFERRAL_REFERRER_CREDITS,
@@ -9,7 +9,6 @@ import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolic
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuGift, LuShieldCheck, LuSparkles } from 'react-icons/lu';
 
@@ -23,11 +22,10 @@ const isSuccessfulCaptureResponse = (value: unknown): boolean => {
 };
 
 export default function OwnerReferralInviteClient({ enabled }: { enabled: boolean }) {
-    const router = useRouter();
     const t = useTranslations('OwnerReferral.invite');
     const [state, setState] = useState<InviteState>('loading');
     const [token, setToken] = useState('');
-    const canonicalInviteUrl = useMemo(() => `${getPublicBaseUrl().replace(/\/$/, '')}/invite`, []);
+    const canonicalInviteUrl = useMemo(() => `${OWNER_APP_URL}/invite`, []);
     const referredExamples = getContentCreditOutcomeExamples(OWNER_REFERRAL_REFERRED_CREDITS);
 
     useEffect(() => {
@@ -78,7 +76,7 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                 return;
             }
             setToken('');
-            router.push('/create-menu');
+            window.location.assign(`${OWNER_APP_URL}/create-menu`);
         } catch {
             setState('error');
         }
@@ -94,7 +92,7 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                 return;
             }
             setToken('');
-            router.push('/create-menu');
+            window.location.assign(`${OWNER_APP_URL}/create-menu`);
         } catch {
             setState('error');
         }

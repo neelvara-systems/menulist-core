@@ -2,13 +2,14 @@ import type { StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/ty
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { Button, Flex, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Fragment, memo, useContext } from "react";
+import { memo, useContext, type ReactNode } from "react";
 import { LuEye, LuKeyRound, LuLogOut, LuPen, LuTrash2, LuUser } from "react-icons/lu";
 const { Text } = Typography;
 
 type UsersListTableProps = {
     canManageTarget: (user: StaffUserSummary) => boolean;
     canManageUsers: boolean;
+    emptyText: ReactNode;
     onClickUserDetails: (user: StaffUserSummary) => void;
     onDeleteUser: (user: StaffUserSummary) => void | Promise<void>;
     onEditUser: (user: StaffUserSummary) => void;
@@ -19,7 +20,7 @@ type UsersListTableProps = {
     usersList: StaffUserSummary[];
 };
 
-function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, pendingStaffUserId, staffStores = [], usersList }: UsersListTableProps) {
+function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, pendingStaffUserId, staffStores = [], usersList }: UsersListTableProps) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const safeUsersList = Array.isArray(usersList) ? usersList : [];
@@ -69,17 +70,17 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
             title: 'Role',
             dataIndex: 'role',
             key: 'role',
-            render: (_, record) => (
-                <>
-                    {(Array.isArray(record.stores) ? record.stores : []).map((store, i) => {
-                        if (store.storeId != storeDetails?.storeId) return null;
-                        const roleData = getRolesForStore(store.storeId).find((role) => role.id === store.role);
-                        return <Fragment key={i}>
-                            <Tag>{roleData?.name || store.role}</Tag>
-                        </Fragment>
-                    })}
-                </>
-            ),
+            render: (_, record) => {
+                const currentStoreMapping = (Array.isArray(record.stores) ? record.stores : [])
+                    .find((store) => store.storeId == storeDetails?.storeId);
+                if (!currentStoreMapping?.role) {
+                    return <Tag color="warning">No role</Tag>;
+                }
+
+                const roleData = getRolesForStore(currentStoreMapping.storeId)
+                    .find((role) => role.id === currentStoreMapping.role);
+                return <Tag>{roleData?.name || currentStoreMapping.role}</Tag>;
+            },
         },
         {
             title: 'Status',
@@ -173,6 +174,7 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
                 pagination={false}
                 dataSource={safeUsersList}
                 columns={columns}
+                locale={{ emptyText }}
                 rowKey={(record) => record.id || record.email}
                 onRow={(record) => ({
                     onClick: () => onClickUserDetails(record), // Handle row click

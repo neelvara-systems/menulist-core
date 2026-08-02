@@ -5,7 +5,7 @@
     "indexStatus": "Current evidence contains no query requiring an additional composite index; exact-document or write-only access uses Firestore native document addressing. Any future list/query consumer must add a bounded query and explicit index review.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "15e67323767d17b745ad0b53cc8ce1d6a4bb73f6208b98e8c74d8437d92bffd0"
+    "reviewedEvidenceSha256": "17c16dd98cfaf036a9a7f6e10ca58c70149e0bd553f9d54b745c452bdaaf4b6f"
   },
   "_health": {
     "reviewStatus": "reviewed",
@@ -20,7 +20,7 @@
   },
   "_system": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5b78330d02901fb8988dfca8c283c13d0d8fcdf926f32838a3763b86a678b626",
+    "reviewedEvidenceSha256": "682315ae265c7c60e65b48eafa4fab4494ae6dbddc172215b3ce4e3a07264f3e",
     "ownershipModel": "Separate Admin-only coordination families in the MenuList and SignalDesk Firebase projects. MenuList owns per-task maintenance leases/state, one platform-daily lease and one paged subscription-reconciliation cursor. SignalDesk owns product-bound scheduler leases/state plus transactional target-lifecycle and AI-detail backfill cursors; SignalDesk rows require pId SD",
     "rulesStatus": "No explicit client path in either product ruleset; unmatched browser reads/writes are denied. Every observed producer/consumer uses its product-local Admin SDK",
     "indexStatus": "Every _system operation is an exact document read/write/delete or transaction; no query, composite index, single-field exemption or TTL policy is required",
@@ -48,7 +48,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "40b5c29a461842092ccd4d07f6a3fcc75b5a28cff1addddcedb581aa5ad0a927"
+    "reviewedEvidenceSha256": "5cff39d31e856ba5c7005da727c7f947c26d1bbfed7f9377487f4c862ff8785c"
   },
   "aiCreditTransactions": {
     "reviewStatus": "reviewed",
@@ -60,7 +60,7 @@
   },
   "aiHelpCenterFeedback": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e1974b18ddcf102893c6dd2d9eb55b85539cb5965d2fed58dd9531bd3dd182e8",
+    "reviewedEvidenceSha256": "599482cf9ccd65e6baf58d6c405f9aaa06eadc6eb3dfeda425060233bf84cbb7",
     "ownershipModel": "Reserved dormant MenuList help-feedback collection name only; no active application reader, writer, query, route, job, retention owner or persisted contract exists",
     "rulesStatus": "The dedicated Firestore rule now denies every client read and write. Any future activation requires an explicit tenant/store ownership contract, validated producer and consumer, retention policy and emulator coverage",
     "indexStatus": "No active query or retention path exists; no composite index, field exemption or TTL policy is justified",
@@ -70,7 +70,7 @@
   },
   "aiImagePromptCache": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f770d48b9db9f89abd611002376bef8e892acb6a96b5f48d82130bf904130dfc",
+    "reviewedEvidenceSha256": "95a97c70006413cfab075f435b8129428cb2fed8f9e8979f7d8f55e3f8bf5572",
     "ownershipModel": "MenuList global server-only content-addressed image cache. The batch image route derives the SHA-256 key from exact model, normalized non-reference one-image generation config, schema version and raw prompt but persists only bounded prompt length and generated-media metadata. Fresh hits validate version/path/MIME/size/magic bytes, then copy bytes into a new requesting tenant/store-owned media object; they never reuse another store's URL. Writes use immutable versioned cache source objects plus one transaction-serialized active document. No browser, public DTO, Redux, SWR or local-storage consumer can address the cache directly.",
     "rulesStatus": "No explicit Firestore or Storage cache match exists, so both root default-deny rules block every browser read/write. The Next.js server route uses Admin SDK after the owning batch-generation auth/scope pipeline; the maintenance Function uses Admin SDK only. Raw prompts are never persisted.",
     "indexStatus": "Exact SHA-256 document reads/writes use no composite. The hourly cleanup performs one bounded `expiresAt <= now` ordered query using the automatic single-field index, probes at most 26 rows, deletes at most 25 exact immutable source objects and conditionally deletes transaction-current matching expired documents. Coordinated deletion intentionally replaces Firestore TTL because Storage bytes must be removed first.",
@@ -90,11 +90,11 @@
       "AUDIT-AI-MENU-COMMAND-RETRY-IDENTITY-001",
       "AUDIT-AI-MENU-PROPOSAL-RUNTIME-SHAPE-001"
     ],
-    "reviewedEvidenceSha256": "7e17501cc128d4de083e74603a6e7ba0b860702739a8986e3ac56bd37cb61d84"
+    "reviewedEvidenceSha256": "3f0add29ef980ca9e9e0af76404895a8fceb19f10619de4db0de739573999de2"
   },
   "aiMenuManagerRules": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "52d96f0d1eedda5da8c990be5c9ed930a549eca2a443666620aaf09edb5950b5",
+    "reviewedEvidenceSha256": "e65010488f837f9b72bc2e3c47890944bbd253513f34aa3d6c3dd797e67307d6",
     "ownershipModel": "Reserved MenuList server/Admin-only AI Menu Manager rule-ledger namespace. No active reader, writer, query, route, job, DTO or retention owner exists; current AI Menu Manager runtime uses compact sessions and server-backed proposals instead",
     "rulesStatus": "The dedicated rule path denies every client read and write. The authenticated rules emulator proves a valid current owner cannot create or read a rule-ledger document",
     "indexStatus": "No active query or retention path exists, so no composite index, field exemption or TTL policy is justified",
@@ -113,7 +113,7 @@
       "AUDIT-AI-MENU-SESSION-RUNTIME-SHAPE-001",
       "AUDIT-AI-MENU-CLIENT-TERMINAL-RETRY-001"
     ],
-    "reviewedEvidenceSha256": "255d923b9aaeeef0120c2c38ad33007b39c202ecde3493105b73dbf1b22b2e6d"
+    "reviewedEvidenceSha256": "0248867cd852208bf860e7bcebddbc8c5f304e2f0c0beb7ae2bffc61bfe3ff17"
   },
   "aiSearchHistory": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 31 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -121,7 +121,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a3a0bbd2f5e4b07864c032da95134af27f0b25a75a0e2f0589a24b22204ce472"
+    "reviewedEvidenceSha256": "8d36bd11247df1fd2b9d3c1165e793575079e185ea45ca496ef1255c712358ff"
   },
   "analytics": {
     "reviewStatus": "reviewed",
@@ -135,7 +135,7 @@
       "AUDIT-OWNER-ANALYTICS-SOURCE-SCOPE-001",
       "AUDIT-MANUAL-ANALYTICS-STALE-PLATFORM-AUTHORITY-001"
     ],
-    "reviewedEvidenceSha256": "868a70b84a9b68842c17a211458ea9a02c6b925c2068e04582ff52379762f780"
+    "reviewedEvidenceSha256": "8ea341ece04a810343981ce0ddf6c56fb09dae7b2d68a42eee5ce6afd8e3c754"
   },
   "analyticsDeliveryReceipts": {
     "reviewStatus": "reviewed",
@@ -147,7 +147,7 @@
       "AUDIT-ANALYTICS-INFLIGHT-ACK-LOSS-001",
       "AUDIT-ANALYTICS-LIVE-QUEUE-FIELD-CAP-001"
     ],
-    "reviewedEvidenceSha256": "cb47340ad1248a2f116e6c52313705fd1e8841097363e1047df585996bfe9522"
+    "reviewedEvidenceSha256": "583b4d70592b36a2f9707780fd4f8530e2fd4e6bd41379d2ba574e83ea236033"
   },
   "analyticsSummaries": {
     "reviewStatus": "reviewed",
@@ -164,7 +164,7 @@
   },
   "answerlattice_aiCapacityReservations": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0f385e02932f96b2992648df570d22fbcb0200bacbed86a9db2d785574d22344",
+    "reviewedEvidenceSha256": "006b2c5729173050b8a4b54804b9c60ecfc10202e49ea9e6ffa5c108b3145e4a",
     "ownershipModel": "Answerlattice server/Admin-only root recovery pointer for a deterministic nested reserved AI operation. The app transaction writes exact AL product, positive numeric tenant/store scope, canonical operation ID/hash, exact subscription ID/action/units and a bounded recovery timestamp only after atomically debiting the exact subscription buckets. The existing hourly Answerlattice master scheduler re-reads current pointer, nested operation and subscription evidence in one transaction, restores exact credits within the same billing period and ceiling, marks the nested operation refunded and deletes the pointer. Settlement and request failure delete the pointer transactionally; malformed or conflicting evidence remains fail-closed for operator repair",
     "rulesStatus": "Dedicated and shared Answerlattice Firestore rules provide no client match, so root default deny protects reads, queries and writes. Focused emulator tests prove billing users, owners, managers and foreign-tenant users cannot access the collection; only trusted Admin app/Functions code participates",
     "indexStatus": "Recovery uses the automatic single-field recoveryAt index with a due-time inequality, limit 50 and transaction-current due-time recheck. No composite index is required; remote deployment of the new Function remains blocked by Firebase CLI authentication",
@@ -176,7 +176,7 @@
   },
   "answerlattice_aiOperations": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "469af11d282cf0d904f35363ebb82563388879a690315fbf7b81ea0c1b0e29f8",
+    "reviewedEvidenceSha256": "3c53f36926e2c7da9d377750709719fee636febf409e6e97181b13ec004fa1fb",
     "ownershipModel": "Answerlattice-only positive tenant/workspace-scoped server/Admin AI operation ledger. App accounting uses exact product-local Admin selection, canonical path construction, agreement-based session identity, safe-integer credit/unit arithmetic, deterministic reservation identity, closed compact response projection and writer-owned timestamps. Support search creates a reserved shell before provider work and transactionally settles success/refund; Functions producers use the same exact scope/scalar and action-specific response admission. Owner/platform history and workspace erasure are the only readers/deleter and both revalidate exact product/workspace ownership.",
     "rulesStatus": "Both shared and separate Answerlattice rules expose platform-admin read only and deny client writes. Server/Admin producers bypass rules but select the exact Answerlattice datastore and persist pId/tId/sId. The protected history route independently authorizes the current workspace and projects explicit owner/platform allowlists.",
     "indexStatus": "Protected history uses exact pId/tId/sId plus bounded createdOn ordering, optional action/date filters and persisted-cursor corroboration. Capacity recovery uses the reviewed reservation-recovery index; workspace erasure uses bounded exact-scope queries. No unbounded reader or undocumented client query remains in the complete 14-file evidence set, including the generic shared operation logger and its exact product-scope regression.",
@@ -197,7 +197,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "709d81a2d79d15ffacb019451d58a00021f2f49c9f9e860e5ce219849caeb9bf"
+    "reviewedEvidenceSha256": "22414eea13d9aedefeef5e6b1f45cd3ce649e12b65752cccf725e001a29cdf42"
   },
   "answerlattice_cacheVersions": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 19 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -205,7 +205,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "497c72b035ef9b736a3917af173f5d695877d490bd92be88dab84ab9c8b62bfd"
+    "reviewedEvidenceSha256": "aaf467771a8db1e945b1c48db09714941f4aaf852ff314342fae2c4cc9438f11"
   },
   "answerlattice_canonicalAnswers": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 36 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -213,7 +213,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "7450aa65fa78bc8e53df20be28a715b6debada3317505d26637bc1c6696b053e"
+    "reviewedEvidenceSha256": "3a3de4fd90257253116885ab3905d564fe579b3be4c0758259a079e14f4ad2b8"
   },
   "answerlattice_changelogEntryIndex": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 13 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -221,7 +221,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "32e2da806c1e9c6642386b42ca982400d4dadbb387062093339f142d9e89208e"
+    "reviewedEvidenceSha256": "47884f2fe47e663f52ccd1c70f3d33a996a689492b709fa043df71eda7a62143"
   },
   "answerlattice_contactEnquiries": {
     "reviewStatus": "reviewed",
@@ -231,7 +231,7 @@
     "findings": [
       "AUDIT-AL-CONTACT-LOCATION-METADATA-001"
     ],
-    "reviewedEvidenceSha256": "c1dcd1071f4a480e285017cfe37ea9c84441b061855850bcd01a11d00fb51de2"
+    "reviewedEvidenceSha256": "ef1baeb95e1bd139d4a200c812af42337e603edaa8fe0a5a93732798ab7fa3bf"
   },
   "answerlattice_entities": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 34 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -239,7 +239,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a697550389495b346a159b5c58d5aeefe2e03858b87c054c335b00c52a650923"
+    "reviewedEvidenceSha256": "23cf9a69e58f51059a1547b15b6b8d2e6bd52dd1424bca2c5fbd5d693023b4f7"
   },
   "answerlattice_entityCandidates": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 15 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -247,7 +247,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e61089d64e3b2daa07e958cb411095b2ea1fe651c5dfac81ff1b01f51f0ff793"
+    "reviewedEvidenceSha256": "98b2a9d75e2eacfa80458d35b88f564f44864188209378034444bacf12c1fe49"
   },
   "answerlattice_entityRelations": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 20 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -255,7 +255,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e0e2c8774901875330e334c01073e815a7a4d1a66fb139aef88d23e12c995cb4"
+    "reviewedEvidenceSha256": "03ff7ee0f7c8118b3ca57be16012364e709882ad5a4945042efff07846f3a4ac"
   },
   "answerlattice_entitySearchIndex": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 22 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -263,7 +263,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "d21e9b20b2d818951e74d6a886313cdff02b1bfe729a79806e25f4156c99a7b2"
+    "reviewedEvidenceSha256": "ef1aeeb14ab3471573e590303fcdcfc20a412c3f917b663eceaae1d415319940"
   },
   "answerlattice_entitySlugIndex": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 11 first-party source files and the observed operation set [constant definition | delete | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -271,7 +271,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "2e88dd962ede3c3cc37318a378025fd47ff87d709626ca57289f6d27d1e0d89f"
+    "reviewedEvidenceSha256": "de9c43afc2fcaa17ef2905646c46bdd13b85c883af18b607350f9b53d56b1694"
   },
   "answerlattice_faqs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 32 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -279,7 +279,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "9941e8fc12d95e10a9011bfc615caa8634ec8c826b2d46fb0de6ec6b8cecbbce"
+    "reviewedEvidenceSha256": "4d8151e7b9a18a042765d3e275dad736d2ac0f14cbd4207f14e15d8e7e65f005"
   },
   "answerlattice_frictionDailyStats": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 12 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -287,7 +287,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "c4bab326bf2891b48c63a0f0cfc4a39c79c05ee14e61ba259048eea812f051f5"
+    "reviewedEvidenceSha256": "5286c18bebe5269133d0129e918ea76b92a96350d180a14c94b52b14d238341e"
   },
   "answerlattice_intakeReviewItems": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 15 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -295,7 +295,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "d76bb7e58aa21261ec36ff53612426ff590e87b83af12b0b56dc26d13914a972"
+    "reviewedEvidenceSha256": "9eaff58b6e6482f25d60ca20cc615beaa33bfbec1b2c5a08377735484ad8d45c"
   },
   "answerlattice_intakeUsageLedger": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 14 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -303,7 +303,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "349de7944e1f00b2eed7a69dd20e276c1d1ba223ecfa90a0f47e69f13febd995"
+    "reviewedEvidenceSha256": "7168524995dec8c47d6630280b680210981f5f1b5910b0463549b23cf67f5c07"
   },
   "answerlattice_integrationDeliveryLogs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 13 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -311,7 +311,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0eefb0d723a461e3e9cf77acd8ff42f37e58a82fdf33016c0145e661eac49359"
+    "reviewedEvidenceSha256": "27e4295f4f3d9132fdd3592a7020c2800bb84332f8c6be61485c2672e6a22654"
   },
   "answerlattice_integrationEvents": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 16 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -319,7 +319,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5e8e1b7e0a91ab87d41830d5f086955e319c2e08ce763df3fac77970c227ad7c"
+    "reviewedEvidenceSha256": "18ae12aee636b7fb83c2d0bc075d9e8116267bd05b776afa9e9643396c65ea93"
   },
   "answerlattice_integrationRateLimits": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 11 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -327,7 +327,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "70ad3622079f9a45b86a911cd1a5407523f359029fd9670268665019fbc6cfcc"
+    "reviewedEvidenceSha256": "8b52701fe4da226f0b8fde29fa5169a056366b22e85a7501f1aaf80d69340386"
   },
   "answerlattice_knowledgeIntakeJobs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 18 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -335,7 +335,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4af0935ecb90033d9d3fc0780e229a0cf6a981ab0ece2d020fd75d3e23263878"
+    "reviewedEvidenceSha256": "225ad03c881bf2e446c039857f9c843a4bf4b074bab45d4cc6002e4406c2d5de"
   },
   "answerlattice_knowledgeSources": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 15 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -343,7 +343,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "b88110746a0196056b5caa2f9d449b8e7dadc6785365609e6bbe6eb399de984d"
+    "reviewedEvidenceSha256": "1b1388ab186c53037d44acc4422959c91a136db77b1c83421187a353c3a0110a"
   },
   "answerlattice_mutationProposals": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 25 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -351,7 +351,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "b1320f0f578c84a9cf58f2e305a12dfbe3ca29c9dbe00f8fad9a92d83e722f6f"
+    "reviewedEvidenceSha256": "a99d46f0b9c31ad8ddc6f739c3c1cd23027aee4b58ab6f84910195a945c8198d"
   },
   "answerlattice_notificationLogs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 13 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -359,7 +359,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "c1890026313ebf2694f7c3410cdfd416dcfe48faa9e9ba54b3ee5e18c5f86031"
+    "reviewedEvidenceSha256": "a9d56a488885b761008fdbec9acd0ac42f00fb0c6358ba3103e632a000cf6cf7"
   },
   "answerlattice_predictiveTriggers": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 14 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -367,7 +367,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "6a73e8f951ae38e5cb2c78dee03e798c8a4ced9a9e40c32100ee8772f4492d63"
+    "reviewedEvidenceSha256": "795ea3894625e7145c8ec40c9596dc2dc8b0fc08165a66d50185b6ea4e67fa6f"
   },
   "answerlattice_productSurfaces": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 23 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -375,11 +375,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0b33d383a166da463d66daa5211d30f2f708e835e912791a7c2528bd10ac20c3"
+    "reviewedEvidenceSha256": "b5f8b49c16df800273c9036befb08205e3a7ad341a1482b3d1410e19f27273da"
   },
   "answerlattice_publicHelpSites": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ffa569332aafc70837ad65ea11b8d9421b780363fa9dfeb2e5ea5e193cb22e25",
+    "reviewedEvidenceSha256": "fff06db967b1565e21775493efcbb436f916f5c0e5c0e00af55a6c7ac447c756",
     "ownershipModel": "Dedicated Answerlattice public-domain registry keyed by normalized hostname. Authenticated hosted-help settings require current workspace permission and exact store/product scope, reject reserved/unsupported or already-owned domains, reconcile the external provider, and transactionally write exact AL tenant/workspace/config/status truth. Anonymous resolution is a direct cached document read projected through exact product, alias, document-domain, enabled and config-domain checks. Workspace erasure performs bounded dual-alias queries, classifies every row as exact and deletes only admitted registry documents.",
     "rulesStatus": "No browser DAL accesses this dedicated Admin registry; settings, anonymous public resolution and lifecycle cleanup use the Answerlattice Admin SDK. Dedicated and shared Firestore rules fall through to default deny for direct clients. The public page receives only the closed hosted-help site projection.",
     "indexStatus": "Owner/public reads are exact hostname document reads. Workspace erasure uses two bounded single-field `in` queries on sId/storeId, covered by automatic single-field indexes; no composite index or unbounded scan is required.",
@@ -399,7 +399,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e8bbaa115e1dec568a5e95034bc0063b372399432baa6ea0659ae4e37d339f36"
+    "reviewedEvidenceSha256": "f13ecf7d6882ace53406d4e1cd34218446cb94caa5bc72b4954b07ac60620700"
   },
   "answerlattice_schedulerRunLogs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 15 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -407,7 +407,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8eb1cf2d3732cf2e5d87aa8c0238c8861da2ec4125482bfba4cc5c81bbcaa2cd"
+    "reviewedEvidenceSha256": "2806c0f1298a276101c0f434534f0f9d3ad7f4a538f3f6b5335e488616ff4777"
   },
   "answerlattice_signalEvents": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 28 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -415,7 +415,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "839f927a7fec748dba39ae9565f618cf900318d0032d05628904d12f3ce26a48"
+    "reviewedEvidenceSha256": "dae2ddc6838f6c1ba7c68e4e85b665eb66de504eaa9042ed5eb6841967cd7bfc"
   },
   "answerlattice_supportBoardCards": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 17 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -423,11 +423,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "06e9a3ad0db5deb38731d847bac61405ba617f4c898c70356b39923bdf248959"
+    "reviewedEvidenceSha256": "688ed66d197e54d6f5376eaa6c5c430c90ea4e76f68d6d72f25cc29e361fec26"
   },
   "applicationLogs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "117d6125a433ef8e5c28ed3743f6aaddaa04a87c25d68b052e201be0e3097246",
+    "reviewedEvidenceSha256": "4a7b5c922d67a1f9f0a8c314e424746cd662dff9d0b524df2c3007c34ccc5e28",
     "ownershipModel": "Reserved MenuList Firestore operational-log namespace. No first-party Firestore producer or consumer exists; similarly named dormant browser DAL exports use Firebase Realtime Database and are deliberately outside this Firestore row.",
     "rulesStatus": "Shared Firestore rules deny every browser read and write. The tenant/store rules emulator proves an authenticated store owner cannot create a document; any future Firestore activation requires a server-only schema, retention, privacy and cost contract.",
     "indexStatus": "No Firestore query, index, TTL field or cache is active. A legacy setup script mentions TTL by collection name, but no current Firestore writer exists.",
@@ -454,7 +454,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "284eabe37103bda854888b44b45390f89a5cc0817b0638cd9e49290337c0fe46"
+    "reviewedEvidenceSha256": "9ce8a1930868a1ab0317055a1d42657efccb196a2068d825f17c6f70f9f7915c"
   },
   "assets": {
     "reviewStatus": "reviewed",
@@ -477,7 +477,7 @@
   },
   "authPhoneOtpChallenges": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "65a4800007a3028094f651f8b7e9ec2ff2f1e95617f0b006233bc13a8e5f9799",
+    "reviewedEvidenceSha256": "9e4d01ddde989175de7c1016d4cc71567c84f4d2e5ba2606b5d3296e500919c5",
     "ownershipModel": "MenuList global server-only, unauthenticated-entry challenge namespace. The public start route validates and fail-closed rate-limits IP and normalized phone before Admin creation; the verify route rate-limits IP/challenge before one exact-ID transaction. Runtime projection requires exact status, safe attempt count, Firestore expiry, HMAC, bounded phone metadata and coherent reservation evidence before verification can reserve, resolve/create a user or finalize a one-time login token.",
     "rulesStatus": "No explicit browser match exists, so the root Firestore default deny blocks every client read, query and write. Only Node/Admin auth helpers access the collection. It contains no tenant/store selector and never accepts client tenant headers; the challenge binds one normalized phone/HMAC and exposes only fixed response fields.",
     "indexStatus": "All reads and writes use exact auto-ID document references and transactions; no composite index, list query, cache, Redux, SWR or public DTO exists. The existing expiresAt Timestamp is now in the guarded MenuList TTL setup, but QA/production field-policy activation remains operator-controlled and was not remotely verified.",
@@ -491,7 +491,7 @@
   },
   "authPhoneOtpLoginTokens": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5161d1b62cc30a0ea32e9581d56ce0d0a0e6f6310fd6e77fce41463655331899",
+    "reviewedEvidenceSha256": "f9c60b22cff720ed2b1bdda6bf50d493db6ea9d7aeca9b87bebfdafc8ec4c8d2",
     "ownershipModel": "MenuList global server-only one-time credential bridge. Successful challenge finalization creates one HMAC-keyed token in the same transaction that marks the exact reservation verified. NextAuth consumes only an exact 43-character base64url secret after transaction-current projection proves active status, Firestore expiry, normalized user document ID and canonical non-empty email, then reads that exact user and atomically marks the token consumed.",
     "rulesStatus": "No explicit browser match exists, so root default deny blocks every client read, query and write. Creation and consumption use trusted Admin SDK transactions only. The token stores no caller-supplied tenant/store scope and cannot choose a user independently of the verified challenge/user-resolution flow; malformed identity evidence fails before consumption.",
     "indexStatus": "The HMAC document key supports exact transactional create/read/update; no query, composite index, cache, Redux, SWR or public DTO applies. The existing expiresAt Timestamp is now in the guarded MenuList TTL setup, but QA/production field-policy activation remains operator-controlled and was not remotely verified.",
@@ -505,7 +505,7 @@
   },
   "authSecurityEvents": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8b90374314ba195d576be5fa6039864548497807cae863ab148556571573cdce",
+    "reviewedEvidenceSha256": "cbfde17ec709404ade508ca0c999c26b12f0d00df7fbfb812541dcc255ff3c82",
     "ownershipModel": "MenuList global server-only authentication security ledger keyed by normalized login identity rather than tenant/store. NextAuth credential admission checks exact recent lock/failure events before password verification; failed attempts transactionally append one event and the fifth creates one lock. Successful Google/credential/phone authentication appends an observable best-effort success event. A dormant Admin summary reads at most 1,001 retained events and admits 1,000 exact-shaped rows.",
     "rulesStatus": "The explicit /authSecurityEvents/{docId} rule denies all browser reads and writes. Focused emulator coverage proves denial for anonymous, tenant-owner and platform identities. Only Node/Admin auth code accesses the collection; lock/provider/schema failure denies credential admission rather than treating the account as unlocked.",
     "indexStatus": "The maintained email/eventType/timestamp-desc composite exactly supports failed/lock queries; single-field timestamp ordering supports the bounded summary. Failed-attempt transaction reads cap at five and the summary clamps to the 90-day retention window with a 1,001-row overflow probe. Existing expiresAt writes and guarded TTL setup provide the source contract, but remote QA/production TTL activation remains operator-verification evidence.",
@@ -525,7 +525,7 @@
   },
   "billingCheckoutLeases": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5b670065fec182ce844e978b6cc4b3f5dfeed56e336e47d572bbe9029a234fdf",
+    "reviewedEvidenceSha256": "e31b94376b8af7c8bfa37db9a2bdc7580510e31ae74bc5786ba607f8c57b94b8",
     "ownershipModel": "Central MenuList Admin-only checkout coordination shared by MenuList and Answerlattice because both use one Razorpay provider namespace; one actor/request-bound document per product/tenant/store/kind versions and fences pre-provider, provider-ambiguous, exact-provider and short completed-replay state",
     "rulesStatus": "Explicit client rule path denies every authenticated and unauthenticated browser read/write; emulator verified. All writers/readers use server Admin SDK after current product tenant/store billing authorization",
     "indexStatus": "Exact document transactions own every state transition; daily health uses the declared status/expiresAt composite for separately capped processing, provider_creating and provider_created queries; no TTL policy applies because recovery state must not disappear automatically",
@@ -536,7 +536,7 @@
   },
   "billingProviderPlans": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5605e80d4c847ca4ff7d1e462ed285a38f7b345ab15ed326c76238c51ab6ce5c",
+    "reviewedEvidenceSha256": "6118ecdc35627c6c0c701ef838f754741c28978a33381cc39879a8142e0237e3",
     "ownershipModel": "Central MenuList Admin-only Razorpay plan registry shared by MenuList and Answerlattice because both use one provider account; one SHA-256 exact product/user-type/plan/interval/currency/amount key owns versioned pre-provider, provider-ambiguous and immutable ready identity",
     "rulesStatus": "Explicit client rule path denies every authenticated and unauthenticated browser read/write; emulator verified. Server callers derive plan facts from maintained MenuList, Answerlattice or reseller pricing after their own auth/scope admission",
     "indexStatus": "Registry mutations/readiness use exact documents; daily recovery health uses the declared status/leaseExpiresAt composite for separately capped processing and provider_creating queries; provider scans are bounded external API pages and no TTL policy applies",
@@ -546,7 +546,7 @@
   },
   "blogs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "d2a4e99ad663c2874bd6642313801274fcd78412abc1e95ff45a4f6fc650faea",
+    "reviewedEvidenceSha256": "3b43e63d2a78e7f2d3ead42b02d8d8b8babebcc0178b30477106a45878cd18f7",
     "ownershipModel": "Dormant MenuList platform-content namespace. The generic request composer persists actor, role and workspace metadata, so records are platform-private and not public DTOs. Browser read/write authority is restricted to authenticated platform administrators. No active route, component, job or cache consumer invokes the DAL, and MenuList governance does not define a public blog product surface.",
     "rulesStatus": "Firestore rules deny unauthenticated and ordinary owner reads/writes and require authenticated platform-admin claims for both. A future public blog surface must introduce an allowlisted server projection instead of reopening raw document reads. The DAL independently validates document/store identities, caps list queries at 100 admitted rows, projects document IDs, admits only HTTP(S) image URLs and uses ambiguity-safe immutable Storage upload handling.",
     "indexStatus": "The complete list uses a bounded default collection query. Store filtering is equality-only with a hard 101-row overflow probe and requires only the default single-field storeId index. No pagination cursor, composite index, TTL, active cache, public blog route or deletion lifecycle exists; activation beyond 100 rows requires an explicit pagination and retention contract.",
@@ -591,7 +591,7 @@
   },
   "campaignExports": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ae25dfc9ce75faa1dd11b8a025690a6b61b937ae01615c0ed67f9a49024db9f2",
+    "reviewedEvidenceSha256": "6792553eae5a920f6637a33e77ce25b1276ca215fdf480eedcbaea18dab36c8a",
     "ownershipModel": "MenuList tenant/store-scoped campaign action ledger at campaignExports/{tId}/{sId}/{exportId}. Completion derives exact scope from the authenticated session, validates campaign/project/surface/method identity, and creates one deterministic complete_{campaignId} marker in the same transaction as campaign status and Today-summary state. Replay succeeds only when the complete persisted marker exactly matches every expected identity and timestamp field.",
     "rulesStatus": "Authenticated reads require current exact tenant/store membership and writes require tenant-admin authority. The DAL independently projects every persisted marker and refuses coercible, foreign, malformed or conflicting scope; the tenant/store rules emulator proves same-store admission and cross-store/cross-tenant denial.",
     "indexStatus": "Active completion and replay use one deterministic exact document reference inside a Firestore transaction; there is no list query, composite index or TTL policy. A mismatched or missing marker fails closed for reconciliation rather than incrementing counters or reporting false success.",
@@ -633,7 +633,7 @@
   },
   "campaigns": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "3764d73a86c0de0fcbc5ac93d323e928fb71069cdfb810902524873541a2e6c9",
+    "reviewedEvidenceSha256": "f10ce8de19060f2506d0309bf9bd8cd024fdf49491d4561c614cad374d63d979",
     "ownershipModel": "Mixed-name, product-separated campaign truth. MenuList stores exact tenant/store child campaigns at campaigns/{tId}/{sId}/{campaignId}; the client DAL derives scope only from the authenticated session, validates every persisted campaign before owner use, and transactionally couples completion or skip with the same-store Today summary and deterministic export marker. CampaignCue stores strict projected campaign decisions beneath one exact workspace; every server mutation rechecks current exact CC membership and coherent authority inside the committing transaction, while browser consumers remain read-only.",
     "rulesStatus": "MenuList rules require authenticated current tenant/store membership for reads and tenant-admin authority for writes; runtime projectors still reject malformed or conflicting embedded scope. CampaignCue rules require current active exact-CC workspace membership for reads and deny all browser writes. The shared and CampaignCue emulator suites cover same-store, multi-store, foreign-tenant, exact-product membership and write-denial behavior.",
     "indexStatus": "MenuList history queries remain beneath an exact tenant/store collection with a hard 100-row limit, optional exact project predicate and updatedAt descending order; action/replay paths use exact documents and transactions. CampaignCue queries remain bounded beneath one workspace and use the maintained CampaignCue index contract. No cross-product collection or cache key is shared.",
@@ -652,11 +652,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8ac90ca5109d5ed6a060586da54513886b6cf9a3a59484c495f846a6ab135cc7"
+    "reviewedEvidenceSha256": "3b03ac973bd84b083e480bccbba083d63e3e68b3c3cc34a50a145258dc005a84"
   },
   "changelogPages": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "77c170f459d5d0bba2c1b799716c2a287c1f1ac99bbfb2b3163cf4db2a8022d9",
+    "reviewedEvidenceSha256": "ede668cdb49b953fcc6948aad361935ebe80a1a46b904b3e2d28fd87499505d8",
     "ownershipModel": "Dormant MenuList tenant/store-scoped changelog-page namespace; no active application reader or writer remains, while the maintained rules emulator retains compatibility coverage",
     "rulesStatus": "Authenticated users need exact tenant and assigned-store membership to read; exact store owner/manager authority is required to write. Own, mapped-store and cross-tenant behavior is emulator verified",
     "indexStatus": "No active query or retention path exists and no composite index or TTL policy is declared or required",
@@ -668,7 +668,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ba2406f9a44c848b572e9df5dfcbb2a821852585dfa43ed9d6a7c56353696428"
+    "reviewedEvidenceSha256": "a044377094bf27599b5587ddafd4aebe3c0aa8388c40bb84eed749fd2c68cf58"
   },
   "chatAnalytics": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 21 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -676,7 +676,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "9cd76d611dd87181fc7c69f16ea2e5f875663cfc342bbc100096883285afbdaa"
+    "reviewedEvidenceSha256": "dbca505e2cd03cfb3a1db81883a2e33550024f42fb29e298c5e2f72c062b54af"
   },
   "chatSessions": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 19 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -684,7 +684,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f68e9af0658872723d3034e38d4fa1a2d8906b9a7145a8e306e31d7ab3818c98"
+    "reviewedEvidenceSha256": "60c926034fec1c4da9bbe74d072011b4ae5edcd1b86def3a600793e50e003dc6"
   },
   "common": {
     "reviewStatus": "reviewed",
@@ -698,7 +698,7 @@
       "AUDIT-COMMON-ASSET-SCHEMA-BOUNDARY-001",
       "AUDIT-PLATFORM-ASSET-LOCAL-RECONCILIATION-001"
     ],
-    "reviewedEvidenceSha256": "3bcf810cdf0394cae2f42ef3e91d994034877e026177fc58be88479b883b5781"
+    "reviewedEvidenceSha256": "589289ba880fce3a0450269d42983aa53e2fd70dafe325fff66dde02184a421b"
   },
   "compliancePages": {
     "reviewStatus": "reviewed",
@@ -710,7 +710,7 @@
       "AUDIT-COMPLIANCE-DIRECT-READ-001",
       "AUDIT-COMPLIANCE-PERSISTED-SCOPE-001"
     ],
-    "reviewedEvidenceSha256": "8b419f84168421e54e731f1c30c7ce490742db104bcb7f240f7b9bc9e29b4a99"
+    "reviewedEvidenceSha256": "0a378fb3d34e664522b931eb560ffec0a5ae56a29d71a0da761e1bffab048986"
   },
   "cueLayerCorrectionEvents": {
     "reviewStatus": "reviewed",
@@ -831,7 +831,7 @@
   },
   "errorLogs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f97683cc1887ea77e085928dc152c9d5be03b86e4ca2687110f266ee01602d63",
+    "reviewedEvidenceSha256": "f77c803650cdc02b5ebc094a0e1828fd0d25cbd9b6e2608de11502e0fc29b501",
     "ownershipModel": "Reserved MenuList Firestore error-log namespace. No first-party Firestore producer or consumer exists; similarly named dormant browser DAL exports use Firebase Realtime Database and are deliberately outside this Firestore row.",
     "rulesStatus": "Shared Firestore rules deny every browser read and write. The tenant/store rules emulator proves an authenticated store owner cannot create a document; any future Firestore activation requires a server-only schema, retention, privacy and cost contract.",
     "indexStatus": "No Firestore query, index, TTL field or cache is active. A legacy setup script mentions TTL by collection name, but no current Firestore writer exists.",
@@ -858,7 +858,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5ae80c3fb74261ec833d8b101d9675fc450e34cce1631cb4074050ff3c8eb69b"
+    "reviewedEvidenceSha256": "5c3045b952292c1e1aac4a3a9523789bdec5726368aabfcffc62cc7d5417ab38"
   },
   "feedback": {
     "reviewStatus": "reviewed",
@@ -873,11 +873,11 @@
       "AUDIT-ANSWERLATTICE-GENERAL-FEEDBACK-SCOPE-COERCION-001",
       "AUDIT-ANSWERLATTICE-FEEDBACK-SURFACE-ATTRIBUTION-001"
     ],
-    "reviewedEvidenceSha256": "f8cc9ebb38a53710f37b3550033a7cf6e18d42b10c32454e99fa71dc0a59ada9"
+    "reviewedEvidenceSha256": "0ed902a0f54d7988aa25f8950b5593060e51cb97edec07047808310a81a2d514"
   },
   "feedbackEvents": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "cbefcd17cfb2ede3f78bcb46dfb6a5bdf8de01e2e6306a839e93956bbee2231b",
+    "reviewedEvidenceSha256": "a001c9b4817d63435a08c53cd16db8aba1f4e45da37f5dd3b6df20b7a5de7d4f",
     "ownershipModel": "MenuList compact non-PII tenant/store/project feedback event ledger; validated Admin submit helper is the only active writer, every client read/write is denied, and the leased maintenance scheduler owns bounded current/legacy retention",
     "rulesStatus": "Explicit server-only rule path denies every client read and write; forged anonymous and authenticated events are emulator-verified denied",
     "indexStatus": "Admin writes use deterministic create-only submission IDs; bounded expiry and legacy timestamp range cleanup use automatic single-field indexes and require no composite index",
@@ -887,7 +887,7 @@
   },
   "fontPreset": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0ea9902fc9575f7e7a5a60697074789eed019032c8567f796a7d7ad4246accf9",
+    "reviewedEvidenceSha256": "4cc95f1ab424cb3e3831f18e16424cdbdb587925bacbbbae555d5e4a02a17b2b",
     "ownershipModel": "MenuList global platform-managed font preset subcollection at common/assets/fontPreset. The platform Font Presets surface is the only active consumer; its client DAL validates persisted shape and document IDs, uploads attempt-unique immutable font objects, creates/updates/deletes presets, performs exact-set batch ordering, and retains prior persisted Storage references because global exclusivity is not proven.",
     "rulesStatus": "The active nested match /common/assets/{assetType}/{docId} permits authenticated reads for owner editing tools. Create/update require an exact platform-admin claim and the closed bounded font schema; delete is platform-admin-only. No public unauthenticated, Answerlattice, CampaignCue or SignalDesk client receives access. The DAL independently projects persisted values because privileged or legacy data is still runtime input.",
     "indexStatus": "Reads use a 501-row overflow probe for the 500-preset/index contract and sorting uses an exact-set batch; no filtered or ordered Firestore query and no composite index or TTL policy applies. Storage objects use immutable cache control and deletion of prior persisted references is intentionally deferred. Restart 781 verified the scalar collection constant is traced into this DAL.",
@@ -900,7 +900,7 @@
   },
   "founderOnboardingTransitions": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8f381e6b32039ff35c59a70a9c0aa8dde20a1e40041125c5c637c271d512b795",
+    "reviewedEvidenceSha256": "62ca3975fe76a75309aa1840841ce5d3e06db67c8a157413ae6c827a8da76326",
     "ownershipModel": "MenuList platform-private payment-to-first-live evidence at founderOnboardingTransitions/{numericStoreId}. Required runtime and guarded backfill transactions seed exact store/tenant/subscription payment evidence for one deterministic store row. The 30-minute Founder Monitor scheduler admits exact document/store/tenant scope and completes observed published-store rows against transaction-current truth. Precomputed platformSummary founder-monitor documents consume only the bounded admitted projection; no owner/public DTO, menu cache, Redux, SWR or local-storage consumer exists.",
     "rulesStatus": "No explicit browser rule path exists, so the root default deny blocks every client read, query and write. Runtime/backfill/scheduler producers use the Admin SDK after exact MenuList product and numeric tenant/store scope admission. Scheduler completion re-reads selected rows in one transaction, refuses conflicting current scope, preserves current timestamps and treats a capped/unavailable query omission as unknown rather than writable absence.",
     "indexStatus": "Runtime and backfill use one deterministic point read/write in the coupled revenue transaction. The scheduler performs one capped 500-row collection read, then at most 50 point reads and conditional merge writes in one transaction; capped/unavailable source truth is surfaced as a data gap and cannot authorize inferred-missing writes. No composite index, TTL, public cache invalidation, queue, webhook effect or additional scheduled Function applies.",
@@ -911,7 +911,7 @@
   },
   "founderRevenueMovements": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "30ac2d47223c02791a4e390e253228502fefc942dfbb1e695650c2a104374f13",
+    "reviewedEvidenceSha256": "e6c1818d07f12e1233b504c70e285e39f91a8e15a0280b4328065f5cdb54818d",
     "ownershipModel": "MenuList Admin-only deterministic revenue movement ledger. Signed Razorpay webhook and authenticated verification routes are required financial producers: explicit dual-ML product, exact subscription ownership, exact paired workspace scope and exact provider/financial scalars are admitted before durable writes. Subscription attribution comes from a current exact stored subscription, while order cash requires immutable top-up settlement. Required failure rejects for provider/app replay; deterministic movement IDs make replay idempotent. One transaction creates the movement and updates lifetime/India-day summaries and first-payment onboarding truth. The guarded backfill uses closed project/scalar/time/paging admission. The 30-minute reconciliation and protected platform route independently reproject exact product/day/kind/amount/time/text/scope state through the byte-identical persisted boundary; malformed rows are excluded with bounded diagnostics/data-gap evidence rather than coerced",
     "rulesStatus": "No browser reader or writer is certified; Admin SDK producers and platform-only summary consumers own the active flow, with root default deny protecting direct client access",
     "indexStatus": "Direct deterministic writes need no composite index. Founder Monitor uses the maintained occurredAt-desc capped read plus businessDayKey equality reconciliation; both are bounded and strict projection prevents query-matching malformed rows from becoming financial truth",
@@ -927,6 +927,14 @@
       "AUDIT-FOUNDER-MONITOR-PERSISTED-REVENUE-BOUNDARY-001"
     ]
   },
+  "geminiSpendWindows": {
+    "reviewStatus": "reviewed",
+    "reviewedEvidenceSha256": "a6f6962630cf1536e2f1ca203872969f752dad24b7caf2034a322b31261aefde",
+    "ownershipModel": "Product-local Admin-only singleton spend ledgers at geminiSpendWindows/{product}. MenuList, Answerlattice and SignalDesk each use their own Firebase project and fixed product document ID; the documents contain bounded aggregate spend-window counters and never prompts, API keys, user content or tenant data.",
+    "rulesStatus": "The MenuList, Answerlattice and SignalDesk Firestore rulesets each explicitly deny every client read, list, create, update and delete. The focused emulator suite verifies anonymous, owner/member and platform-shaped clients cannot access the collection; trusted gateway callers use the product-local Admin SDK after the shared spend-policy boundary selects the exact product document.",
+    "indexStatus": "Reserve and settle use exact singleton document transactions only. No collection query, listener, composite index, TTL policy, Storage object, public cache or scheduled function applies.",
+    "findings": []
+  },
   "graphics": {
     "reviewStatus": "reviewed",
     "ownershipModel": "MenuList global platform-managed graphics category collection at common/assets/graphics. Authenticated owner editor surfaces consume bounded normalized category trees; exact platform administrators create, patch or transactionally mutate categories, nested subcategories and items while immutable preview objects remain in the matching Storage path.",
@@ -939,7 +947,7 @@
       "AUDIT-COMMON-ASSET-SCHEMA-BOUNDARY-001",
       "AUDIT-COLLECTION-CATALOG-DYNAMIC-ASSET-FAMILY-001"
     ],
-    "reviewedEvidenceSha256": "b299dc4891f3bff19a6129b98e88cb279cf62159d8988d9b9860a3ef6fd27b30"
+    "reviewedEvidenceSha256": "ff5da3ef5eaecfc8e07b512c7deb1e4f93fd19a2af266da6a5ee930df17cfe58"
   },
   "growthosExports": {
     "reviewStatus": "reviewed",
@@ -949,7 +957,7 @@
     "findings": [
       "AUDIT-GROWTHOS-BROWSER-ENTITLEMENT-BYPASS-001"
     ],
-    "reviewedEvidenceSha256": "cf67ffe917f79acadd96c6ed200b20119da4dc5ebc1343acf8f3b77fbe5f3c3f"
+    "reviewedEvidenceSha256": "ee81955a0a1ffda0c185b3022d8cb787979086de81e987099b3af8b3f18187a0"
   },
   "growthosKits": {
     "reviewStatus": "reviewed",
@@ -959,11 +967,11 @@
     "findings": [
       "AUDIT-GROWTHOS-BROWSER-ENTITLEMENT-BYPASS-001"
     ],
-    "reviewedEvidenceSha256": "10fe427ed5935630725c5df80699694d8bf89dc4c3a9b5770105c19e2e513e9f"
+    "reviewedEvidenceSha256": "6d0a5bda69a5c5278af030fea635dbd3f09dec20c934fb15ccd678a00c608c64"
   },
   "guestFeedback": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e70db134a340acf875fd63708a809d6ce3abaf44d5542e9c7088018115bca85b",
+    "reviewedEvidenceSha256": "c2d81909ada35df60a050b4f504f2491544ad88c2fcd8a7a5e4b527e27178235",
     "ownershipModel": "MenuList private tenant/store feedback with optional guest contact/message fields; validated public Admin route creates idempotently, exact assigned-store owner/manager clients read and transactionally resolve/reopen, owner-health Functions reads scoped windows, and Admin retention deletes expired raw rows",
     "rulesStatus": "Client create/delete denied; exact tenant/store membership plus write role, allowlisted status fields, actor identity, attention invariant and Firestore request-time modification authority; emulator verified locally",
     "indexStatus": "Store-scoped newest/status/needs-attention reads use declared composites, direct feedback reads use document identity, aggregate counts reuse scoped indexes, and bounded expiresOn retention uses its automatic single-field index",
@@ -998,7 +1006,7 @@
       "AUDIT-COMMON-ASSET-SCHEMA-BOUNDARY-001",
       "AUDIT-COLLECTION-CATALOG-DYNAMIC-ASSET-FAMILY-001"
     ],
-    "reviewedEvidenceSha256": "412c72e5328223d5228648a339ec29bb8c99bc7652e261f465eaf02dd60f6718"
+    "reviewedEvidenceSha256": "7db4f88cc1b78e176e0479d8f75792f48e58b45334b83a246017ee4bc7d4d125"
   },
   "imageBatchProcessingJobs": {
     "reviewStatus": "reviewed",
@@ -1013,7 +1021,7 @@
       "AUDIT-IMAGE-BATCH-TERMINAL-CONVERGENCE-001",
       "AUDIT-IMAGE-BATCH-OVERLAP-VISIBILITY-001"
     ],
-    "reviewedEvidenceSha256": "c4c693e5294528157cffcb99fc08a3a3a2021527475c9b148e654b7fdaa72efb"
+    "reviewedEvidenceSha256": "d150f79c7c6f2be6c9ba10c64336305d6439e75bbbc08737b7e802614a46663e"
   },
   "imageCompression": {
     "reviewStatus": "reviewed",
@@ -1051,7 +1059,7 @@
       "AUDIT-COMMON-ASSET-SCHEMA-BOUNDARY-001",
       "AUDIT-COLLECTION-CATALOG-DYNAMIC-ASSET-FAMILY-001"
     ],
-    "reviewedEvidenceSha256": "684394bc7f8119fb1008b7f345c2b783f2acff70e6eddec77126874ff024cd3d"
+    "reviewedEvidenceSha256": "86810cb2cf08e90fc4076e0ff90cf6ab517919e48d16fbf6dd83f22d636de846"
   },
   "insights": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 17 first-party source files and the observed operation set [constant definition | read/query | reference | security-rule | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1059,7 +1067,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "925008c2a5e106a40e2125036cb535ff5328dd669f6c0848b90a1afdb0b96f5d"
+    "reviewedEvidenceSha256": "76733901caded88a77721a46c6efe254977bdfa43846e13e872ec9873a3c24cd"
   },
   "integrations": {
     "reviewStatus": "reviewed",
@@ -1071,7 +1079,7 @@
   },
   "kb_ai_runs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "aec69e74f1494ba113b400944824459b10f9c2b073524f638550339ae13a6061",
+    "reviewedEvidenceSha256": "ee9c4826504ee02abf54052594aacf2033f0038b7f1dd5a1d6d2ae1ef3473693",
     "ownershipModel": "Legacy Answerlattice workspace-scoped AI-run namespace with no current producer or ordinary reader. The only active contract is platform-authorized workspace erasure, which queries both sId and storeId aliases in bounded pages and deletes only records with exact tenant/store aliases and explicit AL product identity; ambiguous rows stop erasure for operator repair",
     "rulesStatus": "Neither shared nor dedicated Answerlattice rules declares a client path, so root default deny blocks browser reads and writes. The lifecycle route and worker use the dedicated Admin SDK after platform-operator, workspace-state, billing, recovery-window, legal-hold and export admission",
     "indexStatus": "Erasure uses two bounded single-field `in` queries on sId/storeId with limit 201 and batch deletion capped at 200. Automatic single-field indexes suffice; no composite index or TTL policy exists",
@@ -1085,7 +1093,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "fe46eb7eea5f96eea0b0066d4c4f3767b0628461a4737967cce0ec0a62dd69f2"
+    "reviewedEvidenceSha256": "4ff5b037d989cd70a6ae3dd3c524d28da6d37588b8dfe980ba2f96b035d687e0"
   },
   "kb_categories": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 17 first-party source files and the observed operation set [constant definition | delete | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1093,7 +1101,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a2a27c26b60fcc3210cbb50bc4ec60fae84ee840686b6297256fcc18f5549def"
+    "reviewedEvidenceSha256": "0635fbcee0ae96d7b18fe16e9b785c0609ebc2fd2c5fa2d5546b5a4d44cbe773"
   },
   "kb_generation_jobs": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 20 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1101,11 +1109,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "772b9e34ada29022bdef7f55631414b914a725cac1c850dcc23ec878d9218dfe"
+    "reviewedEvidenceSha256": "d39b37d52bcfa70d3928b775a47dca430baec50394548308279f4baff559149d"
   },
   "kb_review_tasks": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ec54ec312f091632e8fb1649760982f8ba3d590b8687dbb70050b9b09ee9ea50",
+    "reviewedEvidenceSha256": "8dae3aad9d6794fcf621264452bbd5d76f6280ea9962c713f9fca607d1a121ce",
     "ownershipModel": "Legacy Answerlattice workspace-scoped review-task namespace with no current producer or ordinary reader. The only active contract is platform-authorized workspace erasure, which queries both sId and storeId aliases in bounded pages and deletes only records with exact tenant/store aliases and explicit AL product identity; ambiguous rows stop erasure for operator repair",
     "rulesStatus": "Neither shared nor dedicated Answerlattice rules declares a client path, so root default deny blocks browser reads and writes. The lifecycle route and worker use the dedicated Admin SDK after platform-operator, workspace-state, billing, recovery-window, legal-hold and export admission",
     "indexStatus": "Erasure uses two bounded single-field `in` queries on sId/storeId with limit 201 and batch deletion capped at 200. Automatic single-field indexes suffice; no composite index or TTL policy exists",
@@ -1119,7 +1127,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "3be616a303e0f199616c3a4bea4c70f8484df56588e9f3b72132e825f92e96e4"
+    "reviewedEvidenceSha256": "c8049d8012b27464966b6c9f8f125e6bf577f181c57277554a2fe88036ca1a42"
   },
   "kb_staging_chunks": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | delete | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1127,7 +1135,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "649ee7b73bad818826fae2adae86c3aaf6110da76ce0bfbab17113720033f355"
+    "reviewedEvidenceSha256": "9474841cda60f473f39a0de18e68c2e1b0b3a71bc880ae89039946574cc2c4bb"
   },
   "kb_staging_sections": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | delete | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1135,7 +1143,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "6614344c7ccf598b64181dfbc37cd9367cb9794dcf90a418bcde45f56861792e"
+    "reviewedEvidenceSha256": "734a8242de9d923cf42da737a894de9891dba09890195e93d80a3b01a1659ec8"
   },
   "landingPageEnquiries": {
     "reviewStatus": "reviewed",
@@ -1143,7 +1151,7 @@
     "rulesStatus": "Direct browser create/read/update is restricted to authenticated platform administrators and delete is denied. Normal anonymous creation uses the rate-limited, captcha-verified Admin route; operations reads repeat server-side platform authorization rather than relying on Firestore rules. Public consumers receive only a fixed accepted/error response and never a stored row.",
     "indexStatus": "The general operations route uses the automatic createdOn descending index with a maximum 120-row scan. Report-lead reads use the declared sourceKind plus createdOn descending composite. There is no realtime listener, client cache, Redux/SWR persistence, public cache or automatic deletion path; retention remains an operational policy gap rather than an inferred destructive cleanup.",
     "findings": [],
-    "reviewedEvidenceSha256": "e3abc77b94a71a251fc220ed6b2ca4b775b80344958ed4c4ef0a2a86ecd428fa"
+    "reviewedEvidenceSha256": "8d50b4f23a10b09640aae4d70f970b4fefb4b096767764751fafbb970edbb6cb"
   },
   "languageTranslation": {
     "reviewStatus": "reviewed",
@@ -1167,7 +1175,7 @@
   },
   "masterOperationalState": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "aa165455886c6695d289d74ae59f868aa6dc43403e61d47815928afa06b76755",
+    "reviewedEvidenceSha256": "a7402600bf4049c6e531c76b1b1f042a7ee074d084de23a113f1c86d33865737",
     "ownershipModel": "MenuList project-scoped signal; tenant members may read same-tenant state, while only platform or current master-store owner/manager authority may create or advance the exact signal",
     "rulesStatus": "rule path observed; exact project tenant/store ID binding, create-at-1, update-at-current+1, server timestamp, immutable two-field shape, delete denied; emulator verified locally",
     "indexStatus": "Direct document reads only; no composite index required",
@@ -1180,7 +1188,7 @@
   },
   "menuChangeLog": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ec8a395f9811afd59cc29518915b8ad7a3d41d4f5adc11ea247d6a522055f983",
+    "reviewedEvidenceSha256": "cfcd4a4f663c338a1bd94aebe4acfe3713416b45eed47d08f9a51a593285f0dd",
     "ownershipModel": "MenuList tenant/store/project private immutable event ledger; owner/manager exact-scope canonical browser writer plus supported legacy exact-scope shape, Admin nightly readers and assigned-store/platform private readers",
     "rulesStatus": "Exact tenant/store membership, write role, path-payload scope, existing project, strict allowlisted shape and Firestore request-time create authority; client update/delete denied; emulator verified locally",
     "indexStatus": "Dynamic store subcollections use automatic timestamp plus document-ID ordered bounded pagination with one lower and one upper timestamp range; no composite index required",
@@ -1202,11 +1210,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "281a74dec0640e70a01f820d5d2e7ac08f5e4cafc683062e5fd490c332ecff3f"
+    "reviewedEvidenceSha256": "d2c189950ad0a839602046c13dce975655b4a5d7c59683a2b3916ce5b7f0fe07"
   },
   "menuIntelligence": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "3288f86fa76150a5f3c4e30f7dd3a764165bac8399cfb62e17e78bf44d82f48b",
+    "reviewedEvidenceSha256": "c93e7cf3e43cafa28507282dcca0a296838bb4213f81d93d84b634db2a8698d4",
     "ownershipModel": "MenuList tenant/store/project private derived projection; Admin scheduler writer, strict Admin reader and separately authorized platform-only diagnostics; no owner/staff/public app reader",
     "rulesStatus": "rule path observed; authenticated platform-only direct read, every client write denied; emulator verified locally",
     "indexStatus": "Exact document access only; six high-cardinality map/audit fields have explicit single-field index exemptions, validUntil is an unindexed TTL field, and no composite index is required",
@@ -1255,7 +1263,7 @@
   },
   "menuSnapshots": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8a83197179bfb2f17c8719f53f60946b0f687aa2b115ff506537da15565ddfd9",
+    "reviewedEvidenceSha256": "2be5e74182003bcc0980c2e8bd4e39fd424ffbe46ffc210a57625e9a0d7acf43",
     "ownershipModel": "MenuList tenant/store/project private immutable publish-time proof snapshot; owner/manager exact-scope browser writer, assigned-store/platform private reader and leased Admin expiry cleanup",
     "rulesStatus": "Exact tenant/store membership, write role, existing project, bounded count-consistent shape, Firestore request-time creation, exact 90-day marker and bounded expiry; client update/delete denied; emulator verified locally",
     "indexStatus": "Direct private reads plus per-store automatic expiresAt range cleanup; dynamic store collection names preclude one collection-group TTL policy and require no composite index",
@@ -1267,7 +1275,7 @@
   },
   "menulistAiOperations": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "2f9a976e5637b61c6853e7da68419c298fe89989b56496d189bf38cce7d6e912",
+    "reviewedEvidenceSha256": "ea7315be098c8f60036a9be727e9a2fb4ae86508c09ef9b64a904bf385ff0289",
     "ownershipModel": "MenuList-only tenant/store-scoped server/Admin AI operation ledger. Paid routes reserve exact safe-integer credits before provider work, settle the same deterministic operation shell after valid output, or refund the evidenced buckets once. Interactive shells use bounded maintenance recovery; durable batch shells remain retry-owned. Free owner extraction mirrors only authenticated project uploads/link imports with exact tenant/store/user scope and preserved source identities. The protected history route revalidates current billing permission and returns explicit owner/platform allowlists.",
     "rulesStatus": "Current exact MenuList tenant/store members reach the ledger only through the protected server projection; Firestore rules reserve full rows for platform reads and deny every browser write. Server/Admin writers use canonical tenant/store subcollection paths and exact session/persisted scope projection.",
     "indexStatus": "Owner history uses bounded createdOn ordering with action/date filtering and persisted-cursor corroboration. Pending reservation shells use the reviewed reservationRecoveryAt collection-group index and bounded per-store recovery; refunded shells retain replay evidence for fourteen days before reviewed maintenance deletion. No unbounded reader remains in the complete 11-file evidence set.",
@@ -1294,7 +1302,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "eae78921c5c12bdd93e4110b3009b24f6a0d5e8cc5bc94562796e624a193166d"
+    "reviewedEvidenceSha256": "6c39f57d9ec585b296261c201c2af4014a39f5bef369cc0be89e13edfc2ac5ae"
   },
   "messagingOnboardingEvents": {
     "ownershipModel": "MenuList/shared collection family. Current reverse evidence records 11 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1302,7 +1310,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a41e312fcd08931ab0fc84ee8bf782ce5a2295b8dda999751b11c07ba964fe2d"
+    "reviewedEvidenceSha256": "481495a20f993ff5265dbf0bf77d731f99e737887f13618def9a54291ad6d51a"
   },
   "messagingOnboardingInboundMessages": {
     "reviewStatus": "reviewed",
@@ -1312,11 +1320,11 @@
     "findings": [
       "AUDIT-MESSAGING-CLEANUP-FEATURE-GATE-001"
     ],
-    "reviewedEvidenceSha256": "9af86311f5de940a1ae38dc01f0012479c671de09455bb46105b486137106e17"
+    "reviewedEvidenceSha256": "d0cabde77471b55fbf99de34f44cfcbca625a292c20113dde177a217d5b87ae3"
   },
   "messagingOnboardingRateLimits": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "1ba54160c5027bcdcb6b3792362774729147c644381279934e6da2aa7995571f",
+    "reviewedEvidenceSha256": "bf84d8b7c453cf855d74950dd20099767a19d742caff7c83ff69f603b98b7424",
     "ownershipModel": "MenuList provider/user-private abuse-control state at messagingOnboardingRateLimits/{sha256(provider:userId)}. Session admission owns exact daily/weekly/cooldown and active-session settlement; extraction enqueue atomically consumes weekly processing quota; invalid-upload settlement atomically applies cooldown. Every admitted mutation refreshes a 90-day expiry. No raw provider identity, tenant/store selector, browser/public DTO, cache, Redux, SWR, local-storage, billing, queue or webhook payload consumer can address the row.",
     "rulesStatus": "The explicit Firestore rule denies every browser read and write. Current producers/consumers use MenuList Functions Admin SDK and derive the opaque deterministic key from normalized provider runtime identity. Existing rows must match their exact hash and bounded counter/timestamp shapes before use; malformed truth fails closed. The shared ruleset and large runtime modules retain conservative partial current review evidence.",
     "indexStatus": "All runtime access is one deterministic point read inside the owning transaction or one diagnostic precheck; no composite index applies. The guarded MenuList TTL setup includes expiresAt and removes rows after 90 inactive days, longer than every enforced daily/weekly/48-hour/session window. Functions QA deployment is authentication-blocked and TTL policy inspection/application is gcloud-blocked, so remote retention remains unverified.",
@@ -1330,7 +1338,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0ffe67bdd5bca0878be010cd129b081b8f72ff096992f99dae965e473fd46aa7"
+    "reviewedEvidenceSha256": "60008053495345a0603f295d0b460feff20d65846cdca1caab41a8fecb52f024"
   },
   "metrics": {
     "reviewStatus": "reviewed",
@@ -1347,7 +1355,7 @@
   },
   "negativeFeedbackAlerts": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "80e1bda82aa392a8c0bb57069b701a818cd3e51a1d026fe0d25f6dd2ef222b9c",
+    "reviewedEvidenceSha256": "c2658d49e21bff44834275a9e997db68c0cf010a5cea70742dd6be0b5a1d150a",
     "ownershipModel": "Retired MenuList global server-only compatibility collection. No current first-party producer, reader, updater, deleter, queue, webhook, cache, Redux, SWR, local-storage or public-output consumer exists. The former unexported pre-separation trigger was removed in restart 903; current support feedback, escalation and notification truth belongs to the dedicated Answerlattice runtime.",
     "rulesStatus": "The explicit /negativeFeedbackAlerts/{docId} match denies all browser reads, queries and writes. The root default deny provides the same fallback. No Admin SDK writer remains; historical rows, if any, are contained and inaccessible to owner, platform or public clients.",
     "indexStatus": "No current query or write exists, so no composite, single-field override, TTL or cache invalidation contract applies. Historical retention remains unchanged because no verified product/legal retention authority permits deletion during this audit.",
@@ -1357,7 +1365,7 @@
   },
   "notes": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "c48d844a1c6497cfbc49279a1b351cb7b992d274243fcd8eeb73370e351fd3c7",
+    "reviewedEvidenceSha256": "70909a8b9b2c1bf8737cd87c02db4c2a58b13ef72c62c2324bce7dbfa5d464c6",
     "ownershipModel": "Retired MenuList tenant/store-private compatibility collection at notes/{tId}/{sId}/{docId}. No current first-party producer, updater, deleter, list/detail reader, UI, hook, reducer, cache, queue, webhook or public-output consumer exists after restart 905 removed the orphan DAL. Historical rows remain scoped-readable for recovery only.",
     "rulesStatus": "Authenticated clients may read only when both tenant and store claims match the path. All browser create, update and delete operations are denied. The tenant/store emulator proves own-store read compatibility, mapped-store isolation, foreign-tenant denial and owner create/update/delete refusal.",
     "indexStatus": "No active query remains and no composite index or TTL policy applies. The removed DAL's unbounded uId query is no longer executable. Historical retention is unchanged because no verified authority permits bulk deletion.",
@@ -1367,7 +1375,7 @@
   },
   "notesMetadata": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5c8004124c8c43f52edcd6bc990249b7dc2b0b3174f4d92d3c2d5aa29eec3f2a",
+    "reviewedEvidenceSha256": "8aac03519962e381182d44bdaf5c244d401789c77ff37478e39424ad84c04ec0",
     "ownershipModel": "Retired MenuList tenant/store-private compatibility configuration at notesMetadata/data/{tId}/{sId}. No current first-party producer or consumer exists after removal of the orphan generic Notes DAL. Historical category/tag rows remain scoped-readable for recovery and are not active application configuration.",
     "rulesStatus": "Authenticated clients may read only when both tenant and store claims match the path. All browser create, update and delete operations are denied. The tenant/store emulator proves scoped reads and owner write/delete refusal.",
     "indexStatus": "Access was one exact document and required no index; no active access now exists. No cache, Redux, SWR, local-storage, TTL or public-output contract applies.",
@@ -1404,7 +1412,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a96f6c444f684ded87f61f6c1d6aea7921d148fae8b98970c8e79fce3fada2c2"
+    "reviewedEvidenceSha256": "4eb9a1cee307d628da1ab062c97f25bf2f406d6dcb75337352e8ba1861b73d55"
   },
   "ownerBusinessAssistantAnswerEvents": {
     "reviewStatus": "reviewed",
@@ -1415,11 +1423,11 @@
       "AUDIT-OBA-SESSION-ALIAS-001",
       "AUDIT-OBA-RETENTION-FEATURE-GATE-001"
     ],
-    "reviewedEvidenceSha256": "65c13f31dbb1b8a2a95c63c2accc49a55b9d5a8deb15ccbff29112b712a12e89"
+    "reviewedEvidenceSha256": "fb9ff02977312fe0e167ea96c08ea3a008029ea99c8e53401468ca3a7ff0a8de"
   },
   "ownerBusinessAssistantFeedback": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4f58d23403c482b77fe734b1d0cc8852c90d3d7938441efbedd41656a2028f6c",
+    "reviewedEvidenceSha256": "56e67f216a043e538e03c15075d89e336afb6a4727e94278ed007b49623e5e8b",
     "ownershipModel": "MenuList tenant/store/user-private Business Health quality evidence at ownerBusinessAssistantFeedback/{answerId_userId}. The protected owner route is the sole content producer: it derives exact selected-store scope from the authenticated session, verifies VIEW_ANALYTICS and exact-replaces one closed current-feedback record with a 90-day expiry. The platform-only monitor reads the latest 30 rows and emits only hashed/length/rating/timestamp summaries. The maintenance scheduler deletes expired rows; no owner readback, public DTO, menu cache, Redux, SWR, local-storage, queue, webhook or billing consumer exists.",
     "rulesStatus": "The explicit collection rule denies every browser read and write. The owner write and platform monitor use Node/Admin SDK only after protected-route authorization; the writer does not accept tenant/user identity from the request. The complete focused route and monitor are reviewed, while the shared 4,500-line ruleset remains conservatively in-progress.",
     "indexStatus": "Accepted submissions cost one exact deterministic replacement write. Platform monitoring uses createdAt descending limit 30 through the automatic single-field index. Maintenance uses expiresAt <= now limit 50 and a batch delete through the automatic single-field index. The current route/verifier evidence is reviewed; the large shared maintenance scheduler remains range-reviewed, so the collection cannot yet be marked fully reviewed.",
@@ -1431,7 +1439,7 @@
   },
   "ownerBusinessAssistantMessages": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "0b17431bacc8898a18dbd9205bb4e9c00ff150c1cd0a0788067a1c8ae718c846",
+    "reviewedEvidenceSha256": "6bddda93527598909dc17dbf1fca9d121bfa7448ee35925944789e6f3210179e",
     "ownershipModel": "Retired MenuList Owner Business Assistant message namespace; current conversation history persists inside the server-owned thread document and no runtime reader, writer, query, route or job uses this collection",
     "rulesStatus": "Explicit server-only rule denies every browser read and write. No Admin producer remains; future reactivation requires a new compact-storage and retention review",
     "indexStatus": "The stale message index was previously removed; no active query, index or TTL policy applies",
@@ -1448,11 +1456,11 @@
       "AUDIT-OBA-SESSION-ALIAS-001",
       "AUDIT-OBA-RETENTION-FEATURE-GATE-001"
     ],
-    "reviewedEvidenceSha256": "f1281d938a3e415aaea31476bfa64204ac9ad635225019931e3a1d9b83c13cd8"
+    "reviewedEvidenceSha256": "221933ee70c746661c9634207a085e799fc35945350e1d396b6cb0be550e7f25"
   },
   "ownerControlUsage": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "b5237dd050eb7bc0e25f9e60b99c5865aecf37824f3d2a8ff94db46c6f9a6ab8",
+    "reviewedEvidenceSha256": "4bf12e9ee3e121606507d7de1279ae94109508c9a29211a69de027c70aa34fbc",
     "ownershipModel": "MenuList tenant/store aggregate produced by confirmed owner controls; exact owner/manager scope writes and same-store reads, with Admin-only nightly platform aggregation",
     "rulesStatus": "rule path observed; exact tenant/store document binding, create-at-one or one-control increment, current UTC month and server timestamps, staff/cross-scope/arbitrary rewrites/delete denied; emulator verified locally",
     "indexStatus": "Direct document read plus Admin document-ID pagination; no composite index required",
@@ -1470,7 +1478,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4b9eacaa163a762128da65d1ad3ff0a7cdd786c3e522a8178ab9ace0b25d594e"
+    "reviewedEvidenceSha256": "f6e41dd7470ce74da0ad7a711e3b2dadfe72026629f024b0911a7b5df660a3c2"
   },
   "ownerNotificationEvents": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 18 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1478,7 +1486,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e401766f2d9e3683a5f8aa6a918ed9597b7849b67eca664891aff6e51973f3da"
+    "reviewedEvidenceSha256": "ae86b12acd4365a68cb7a7fb2dc515dd003464fde7548be164f9d850128e909e"
   },
   "ownerNotificationRateLimits": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 16 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1486,7 +1494,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "09b1ff62eb6c558519fa6f297d157056a191e030a73d277f9fcc011e4f78aacf"
+    "reviewedEvidenceSha256": "61ec5004620ee08e97918ad83e61e33f209dbe16f22c6ac6ddd8b05abf299cc5"
   },
   "ownerReferrals": {
     "reviewStatus": "reviewed",
@@ -1494,7 +1502,7 @@
     "rulesStatus": "The exact ownerReferrals rule denies every browser read and write. Attribution, payment repair, reward issuance and owner projection use the Admin SDK only after their own token/session/store/payment boundaries. The real emulator proves owner direct read/write denial and the adjacent payment-transaction client-write denial. The complete shared rules file remains ranged-reviewed, so this collection cannot yet be marked reviewed.",
     "indexStatus": "Two composites are exact and exclusive: referrerTenantId/referrerStoreId/createdAt-desc for the owner limit-10 recent projection, and referrerTenantId/referrerStoreId/status/referredFirstPaidAt-asc for one limit-26 pending-repair lookahead that processes at most 25. Direct referred lookup is one deterministic point read. Reward issue and both payment ledger IDs are deterministic; one transaction rechecks referral, both subscriptions and both stores, increments both wallets and creates both ledger rows exactly once. No TTL, scheduler, cap, publication invalidation or extra read model applies under the explicit payment-only policy. The complete shared index file remains a whole-file evidence blocker.",
     "findings": [],
-    "reviewedEvidenceSha256": "6dc02c1ef6da39b57b134c07e353e2972cd99db0deb4a82064567ac014c6ecae"
+    "reviewedEvidenceSha256": "84139a9ecabbb436c330e7582f47c2e1ddfa670d719a295a0553c93f064402eb"
   },
   "packTemplateIndexes": {
     "reviewStatus": "reviewed",
@@ -1510,7 +1518,7 @@
   },
   "payment_transactions": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "3584439b6285f38079c865c98255ba951dc756090bb876070207733997ffa08e",
+    "reviewedEvidenceSha256": "a0df93089cb31c85f015461f757adabe8f683e90318db40ed31f031c80482267",
     "ownershipModel": "Product-local server-owned immutable/deterministic billing ledger. Subscription-bearing signed webhooks establish one exact subscription ID and one unique persisted product owner before selecting this ledger. Event-key audits then require exact dual product plus either no scope or complete agreeing numeric tenant/store aliases; product, workspace, event/type, provider entity IDs, amount, currency and provider time are immutable on replay. Top-up history is written only after immutable settlement supplies canonical billing scope/value, while unknown orders remain unscoped. Deterministic owner-referral reward rows retain their separate exact scoped contract. MenuList and Answerlattice owner histories are read-only, bounded and require all identity aliases; Founder Monitor reads only the shared MenuList project through an explicitly guarded maintenance backfill",
     "rulesStatus": "Shared rules admit payment rows only with exact ML or AL product aliases plus present, agreeing tenant/store aliases and the current authorized workspace; dedicated Answerlattice rules enforce the same AL contract. Both deny all browser writes. Emulator coverage rejects conflicting direct rows and list queries that omit either compatibility alias before browser disclosure",
     "indexStatus": "Both product composites cover pId + productId + event + tenantId + storeId + tId + sId + created_at desc. Writes use deterministic exact-document transactions and need no TTL. The guarded MenuList compatibility migration pages by document ID and repairs only explicit single-ML-alias legacy rows; alias-less/conflicting ownership remains quarantined",
@@ -1526,7 +1534,7 @@
   },
   "platformAssetTemplates": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e19a9b10ac3e89c3529f94d96e543a5d60adadf7de04ca8a910b9c2c2fb26763",
+    "reviewedEvidenceSha256": "181844588fa578ea2c131e8cc173c729bef5cb306765f0d7cfc320a4698a1ec4",
     "ownershipModel": "MenuList global authenticated-owner-readable, platform-admin-managed creative-template metadata at platformAssetTemplates/{businessCategory}. One bounded category document carries at most 200 summary records for local product/source/asset filtering; editor document and preview bytes live in versioned platform Storage paths. Generic templates are mirrored transactionally to every supported business category. Only published rows are selected by owner list/open flows; platform management may inspect drafts and archives.",
     "rulesStatus": "Authenticated clients can read category catalogs. Create/update require exact platform-admin claims and the bounded outer catalog shape; delete is platform-admin-only. The client DAL applies product/source/status filtering, runtime editor-document validation and exact category/template Storage-path ownership before owner consumption. Platform Storage writes/deletes remain platform-only and reads require authentication.",
     "indexStatus": "One exact category document read serves each list/open. Platform save/update/delete uses one transaction across the source category and, for generic templates, every finite category mirror; arrays cap at 200. No collection query/composite index, cache, Redux, SWR or local-storage layer applies.",
@@ -1545,11 +1553,11 @@
       "AUDIT-OPERATIONS-STALE-PLATFORM-AUTHORITY-001",
       "AUDIT-STORES-SUMMARY-BACKFILL-MERGE-RACE-001"
     ],
-    "reviewedEvidenceSha256": "63a7684cf123810191b5f7a17bf62e9f41f37b50bad3257ec8ed7816457c6fa4"
+    "reviewedEvidenceSha256": "d9136203ed1db8f4153037061fe5049b160004ec68343aa861eef0ec1c09340f"
   },
   "posDeliveryLogs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "cd620125b11c2e2af75fffaaac4e1fef2343b4b4c1e2d0f4735bfb269e0a8819",
+    "reviewedEvidenceSha256": "c9fd3b3431499a275266caeeed4d41871bfcd80efd0485fd0248c9b471bf3178",
     "ownershipModel": "MenuList nested store delivery history; server/Functions producers only, exact parent tenant/store owner reader, no client writer",
     "rulesStatus": "rule path observed; nested exact parent tenant/store read path with client create/update/delete denied; emulator verified locally",
     "indexStatus": "Nested ordered read uses the existing single-field timestamp index; no composite index required",
@@ -1561,7 +1569,7 @@
   },
   "posSyncSecrets": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "133bda047945e9f7e79e822ef20eb94f7a9343541606c86bdf074d22db148eda",
+    "reviewedEvidenceSha256": "cad5d7b313f75ef5446dc9b9a6c396ea1e3c2752d1a94da76c6a8a5b2d79d077",
     "ownershipModel": "MenuList server-owned per-tenant/store HMAC secret at deterministic posSyncSecrets/{numericTenantDocumentId}_{numericStoreDocumentId}. Protected no-store routes first reconcile exact session/request scope, transaction-read current tenant/store lifecycle and require integration-management permission. The private row is then projected through exact MenuList product, numeric tenant/store identity, positive safe-integer version and bounded secret before reveal, test signing or delivery signing. Identity-less legacy rows are compatibility input only and exact-rewrite on migration-capable reads; contradictory identity fails closed. Store truth retains a non-secret version marker and legacy store secrets are transactionally deleted.",
     "rulesStatus": "The explicit /posSyncSecrets/{docId} rule denies every browser read and write, including owner, staff, platform and anonymous identities; the focused real emulator proves denial. Store rules separately prevent clients from adding/changing/deleting a legacy posSync.webhookSecret. All canonical access uses authenticated Node/Admin routes after independent current scope and permission checks. The complete shared rules file remains in-progress, so this collection cannot yet be marked reviewed.",
     "indexStatus": "All secret access uses one exact deterministic document in the same transaction as current tenant/store state. No collection query, composite index, TTL, cache, Redux, SWR, local-storage or public DTO applies. Migration/rotation exact-replace the private row and couple the store version/legacy deletion in one transaction; no orphan or partial cross-document state is committed.",
@@ -1572,7 +1580,7 @@
   },
   "pricingPlans": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "03ea7d2621496c96870d2f334e16de9fd39ceeeb0c1e5fbb5f409d08084428ce",
+    "reviewedEvidenceSha256": "7fa9ee499d5424d3de48449788f780fc665655ba3884a69867bae8bbec35a24f",
     "ownershipModel": "MenuList global platform billing-catalog namespace, not tenant-owned subscription truth. Anonymous clients may directly get only strict-shaped active plans and may list only active records carrying the platform-write-only publicSafe marker with an explicit 101-row overflow limit. Authenticated platform administrators can read legacy rows for repair and are the only browser writers.",
     "rulesStatus": "Direct public get requires the complete public field allowlist and active state. Public list requires active plus publicSafe and a query limit no greater than 101; new/updated rows require exact public shape and publicSafe. Platform writes are create/update only and the DAL uses exact-replacement transactions so legacy internal fields are actually removed. Owner writes and every delete are denied.",
     "indexStatus": "DAL list admission is at most 100 rows after a 101-row overflow probe. Active public listing uses equality predicates on active/publicSafe plus a limit and relies on Firestore single-field index merging; no ordering or composite index is currently required. Existing strict legacy rows without publicSafe remain direct-get compatible but are intentionally absent from lists until exact rewrite; active legacy-private live rows require owner inspection because rules are not filters.",
@@ -1600,7 +1608,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "1905f4ff88e2c3c5c464afa8307e4667c6209ff9f2d8e6b24edf3e700e0f0123"
+    "reviewedEvidenceSha256": "7178422d1fccf7a834841d5b2598173270b1899e665b2de6b7fe5891d1ee422d"
   },
   "projectsData": {
     "reviewStatus": "reviewed",
@@ -1610,7 +1618,7 @@
     "findings": [
       "AUDIT-RETIRED-PROJECT-ALIAS-STORE-READ-001"
     ],
-    "reviewedEvidenceSha256": "c5e1b2a9c942dd366a55966829b62d1206ea6883758c8d6e89d140a07270a927"
+    "reviewedEvidenceSha256": "07ad10d3cca8f54f416f55834f6be8b958662a51f309eb3e7fa1a940332b8900"
   },
   "projectsMetadata": {
     "reviewStatus": "reviewed",
@@ -1620,7 +1628,7 @@
     "findings": [
       "AUDIT-RETIRED-PROJECT-ALIAS-STORE-READ-001"
     ],
-    "reviewedEvidenceSha256": "9940ce0b3a687ee0cfcf1fa512d3986e89c7284ee6ee5842f4da438d9cada196"
+    "reviewedEvidenceSha256": "51202e5354c7ac1c055948e5962b30bce8889b5206127feaf3142dec9a116aed"
   },
   "providerConnections": {
     "reviewStatus": "reviewed",
@@ -1641,7 +1649,7 @@
     "findings": [
       "AUDIT-PUBLIC-MENU-DRAFT-FLAGGED-RETENTION-001"
     ],
-    "reviewedEvidenceSha256": "71d78737acfec09579f0611bbbf48b36734c5150f83ad25da97a67c60d9bd04b"
+    "reviewedEvidenceSha256": "761cbe6cc92bca5733af0dfc03acd80d7aa897fdeaf70d865d87d94537020a73"
   },
   "queryEmbeddings": {
     "ownershipModel": "Answerlattice | MenuList/shared collection family. Current reverse evidence records 15 first-party source files and the observed operation set [cache/derived-state | constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1649,11 +1657,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "662fee179c271a1ffc72f4fea187fee3da5b29800a33517adaa705b1eba8e7df"
+    "reviewedEvidenceSha256": "d95049829b9fd90e21e6f7312c13e9baa1f9514e59355187b47adbb1568a7ea7"
   },
   "razorpayWebhookEvents": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e865c0fc476b2db625b42044f1ccf7f8cac46ff12adc364a7cbe7d202100c42e",
+    "reviewedEvidenceSha256": "eba8c0d808a69264539fded978143275d1de72c196befcedcd3c0f6107e28d54",
     "ownershipModel": "Central MenuList Admin-only signed Razorpay idempotency ledger shared by MenuList and Answerlattice; exact agreeing provider product and subscription-ID declarations plus exactly one persisted cross-product subscription owner select product ownership before claim. Zero matches/read failures retry without a claim, while dual matches, declaration mismatch, conflicting IDs and unknown declarations persist nothing. One bounded deterministic provider event key owns a strictly admitted version/key/UUID/timestamp/retry/provider/state/lease record, attempt-fenced exact terminal state and bounded product/scope diagnostics. Malformed persisted rows fail retryably and cannot acknowledge duplicate work. The existing maintenance scheduler observes failed/expired work and deletes terminal/stale-processing rows older than 90 days",
     "rulesStatus": "Explicit universal client read/write deny is emulator-covered. The public route writes only after body caps, rate limiting, signature validation and event-envelope admission; every mutation uses Admin SDK transactions",
     "indexStatus": "Exact document transactions own claim and attempt-fenced terminal state; daily health uses the declared status/processingExpiresAt composite and retention uses the automatic updatedAt range index. No TTL policy applies because cleanup deliberately coordinates active/terminal status",
@@ -1670,7 +1678,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "7aebc2e0fd7680b2e1949594d88dab9caf95f20b84506d097ed16b3d83c53b4a"
+    "reviewedEvidenceSha256": "faad3239ca3afbd10d037279a5ac3630e4c75066df42207fb9c9be4fce55f9bd"
   },
   "resellerTransactions": {
     "ownershipModel": "MenuList/shared collection family. Current reverse evidence records 14 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -1678,11 +1686,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ee8262667b11ed842f628b43fb715aec6b289edcc5f0723c4f7aa7b8a9d4c95e"
+    "reviewedEvidenceSha256": "c2d5ac5091425cd76fc37f8602f8269f4bec575efcc4749f9022ade8788485cb"
   },
   "reviews": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4c330c1c86ef94e0ecf45887d36072bd5efb335c49ff94d5960a6769d438f022",
+    "reviewedEvidenceSha256": "e39ba424e05d6bed251f11e1220a0c68ab153e6546765480f3847fa0f95f0db9",
     "ownershipModel": "Reserved dormant MenuList tenant/store raw-review namespace at reviews/{tId}/{sId}/{reviewId}. No ingestion function, DAL, route, component consumer, scheduler, writer, runtime persisted-shape projector, cache, Redux, SWR, local-storage or public DTO exists. The only SDK operations are security-test fixtures proving denial. Constants and planned docs reserve the future path but do not activate it.",
     "rulesStatus": "The exact nested rule now denies every browser read and write, including authenticated owner, mapped multi-store, foreign-tenant and platform-client identities. The tenant/store emulator also proves delete denial. Any future activation must add a dedicated runtime schema, private/public field contract, server writer, owner authorization tests and retention model before weakening this deny. The complete shared rules file and an aggregate verifier that uses this path only as a neighboring delimiter remain in-progress, so the catalog row cannot yet be marked reviewed.",
     "indexStatus": "No active query, writer or reader exists, so no single-field/composite index or TTL applies. The namespace has no confirmed current data and no migration/delete was performed. Future provider ingestion must define ordering, pagination, deduplication, idempotency and retention before any index is added.",
@@ -1698,7 +1706,7 @@
     "findings": [
       "AUDIT-REVIEWS-STATE-PRIVATE-FIELD-BYPASS-001"
     ],
-    "reviewedEvidenceSha256": "145e44b55814bb280a7041ff1a6fc6ccda29e25317ddb788143d977e3d0e3096"
+    "reviewedEvidenceSha256": "f45a2e0bedf9bc1a81bfe969bfbeda081500aef8eae86973c44e8346cca4184a"
   },
   "schedulerRunLogs": {
     "reviewStatus": "reviewed",
@@ -1708,7 +1716,7 @@
     "findings": [
       "AUDIT-SCHEDULER-RUN-LOG-CONTRACT-001"
     ],
-    "reviewedEvidenceSha256": "40ee7a508e00405f589aaaad077a018aa9201d84aa6197497c0244271acfbbd9"
+    "reviewedEvidenceSha256": "6e3bf9e7cbb15c70cd9f56e2f191de471a27ac277d2e6e732c9fb04cd46f229e"
   },
   "schedules": {
     "reviewStatus": "reviewed",
@@ -1737,11 +1745,11 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to authenticated platform identity and only for rows with pId=SD; every browser write is denied. The server derives deterministic watch/account/opportunity identities from the admitted target rather than client scope, strict-projects every current row, and treats verified two-surface outcome event/summary coupling as the sole activation/win authority. Auto-sync failure leaves the already-accepted outcome durable, returns pending and emits bounded diagnostics for explicit recovery.",
     "indexStatus": "The watch itself uses deterministic point reads/writes; workspace listing orders by updatedAt. The maintained status+updatedAt and targetId+updatedAt composites support operational filtering. Outcome derivation fills through at most four 30-row pages, separately queries verified terminal activation so long history cannot hide it, and takes qualification timing from canonical target/outcome truth. Same projected truth ignores updatedAt and performs no repeat write/audit/cost effect. Focused workspace, fresh-lineage and outcome emulators pass; shared aggregate sources retain ranged evidence, so the family remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "516e6c0fa318efe55bce25a964abacea5092d264c48b001b9efd9eff2a2b6f8c"
+    "reviewedEvidenceSha256": "17fd7fa5ddd13aa8a07f120d31c2b73b1ee9f29311f4281f411d00d50e55272c"
   },
   "signaldeskAiEvalSummaries": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "57797f99b2f307bebe86dfc2ae8e93d91b064d2cb0a7b70dab15543e9bfdb698",
+    "reviewedEvidenceSha256": "d043b3b8b634c1aa299cf46f7cd37bcdc01e9e09439e81d03223bf37a4e574ee",
     "ownershipModel": "Reserved dedicated SignalDesk AI-evaluation summary namespace. No current first-party runtime producer, reader, query, DTO, route, job or retention owner exists; only the product constant, explicit read rule and security emulator fixture remain",
     "rulesStatus": "Direct reads require an authenticated PLATFORM claim and an existing resource with exact pId SD. Every client write is denied. The emulator proves an ordinary active member cannot read, a platform operator can read the exact-product fixture, and even that operator cannot write",
     "indexStatus": "No active query, persistence or retention path exists; no composite index, field exemption or TTL policy is justified",
@@ -1756,7 +1764,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to an authenticated platform identity and only for an SD-bound persisted row; every browser identity, including platform administrators, is denied writes. Both Admin producers derive target and actor context from protected SignalDesk server flows and persist pId=SD. The real rules emulator proves active members cannot read, platform administrators can read SD rows, and neither can write.",
     "indexStatus": "There is no collection query or index dependency. Target scoring uses one deterministic point create coupled to the deterministic worker result, making concurrent replay single-effect. AI assist allocates the ledger reference before provider work but writes it only in the transaction that validates the durable idempotency claim, transaction-current provider reservation and source authority; exact retry returns the worker result without another ledger. Compact rows contain bounded operation/cost/model/count/status identifiers and are retained as internal audit evidence. The large workflow/E2E sources retain ranged evidence, so the family remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "270d119873845aaa3f7febd0b62a6a2c21fc2fb9f8c376459d52ef4b54af36d6"
+    "reviewedEvidenceSha256": "25fcdd98b97052398c8250b1c2be7253bec701a5d163e26bdf95ad08842605e1"
   },
   "signaldeskAiWorkerRuns": {
     "reviewStatus": "reviewed",
@@ -1776,7 +1784,7 @@
     "findings": [
       "AUDIT-SD-APPROVAL-PACKET-REPLACEMENT-001"
     ],
-    "reviewedEvidenceSha256": "72b4cdc210d5094c1481c5f280dc721402ba26268351cd81d76329b39d86bb48"
+    "reviewedEvidenceSha256": "02953e868c797ff83fa72e22794774927c82b2493322c609548c08cae3c3bfd1"
   },
   "signaldeskApprovalQueue": {
     "reviewStatus": "reviewed",
@@ -1786,7 +1794,7 @@
     "findings": [
       "AUDIT-SD-APPROVAL-OUTBOUND-AUTHORITY-001"
     ],
-    "reviewedEvidenceSha256": "c1f655697596cb1506a79d348d7b92ede3a603b6d86c870ff7c313c44dcb33d3"
+    "reviewedEvidenceSha256": "bbce49a15f1c778f3534722ebc8373ca1f2da2aca904d7739035ffabada6f167"
   },
   "signaldeskAttributionTouches": {
     "reviewStatus": "reviewed",
@@ -1794,7 +1802,7 @@
     "rulesStatus": "No explicit collection match exists in the separate SignalDesk ruleset, so the recursive default-deny branch rejects all browser reads, queries and writes, including platform administrators. The sole producer is the authenticated Admin outcome transaction after source-policy, target/evidence, demand-event or signed-route authority checks. Every row is pId=SD and carries no contact value, route secret, evidence payload or owner PII.",
     "indexStatus": "The writer uses one deterministic point create in the same transaction as the outcome event and idempotency claim; exact retry resolves the durable outcome through the claim and performs no second touch. There is no query or index dependency. The strict contract fixes the complete field set, timestamp, product, touch identity, event identity, direct weight and source-specific method/action coupling. The complete source set includes the indirect parser/coupling contract not discovered by collection-string inventory; large workflow/E2E sources retain ranged evidence, so the family remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "e980543f7eaf592ba55ba7876008dd7a262a65891d18902950ed1c731bff3f38"
+    "reviewedEvidenceSha256": "1021be5f62447ef68a5192497acdc25469813143e9843b73bdef34692e3968f4"
   },
   "signaldeskAudienceSegments": {
     "reviewStatus": "reviewed",
@@ -1804,7 +1812,7 @@
     "findings": [
       "AUDIT-SD-AUDIENCE-SEGMENT-IDEMPOTENCY-001"
     ],
-    "reviewedEvidenceSha256": "75f25135a5794c267bf79e42a8ecf8c7de9ed286c196c086875403d4a7818a45"
+    "reviewedEvidenceSha256": "579313724378226fc66bddc5a2161ca753b2c7d8bd2ded3b0965e65add538138"
   },
   "signaldeskAuditEvents": {
     "reviewStatus": "reviewed",
@@ -1812,7 +1820,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to authenticated platform identity when persisted pId is SD and denies all browser writes. Workspace projection requires exact product/document identity, bounded actor/action/entity/reason fields and a valid persisted timestamp; malformed or foreign rows are logged and skipped through bounded pagination. Audit rows are retained independently from source-derived payload lifecycle, but active writers do not persist raw payloads, contact values, message bodies, evidence text, secrets or arbitrary exceptions.",
     "indexStatus": "The Audit workspace orders by createdAt descending and document ID descending, returns 50 projected rows and scans at most the shared fixed page ceiling across malformed head rows. Stable cursor parsing binds both timestamp and canonical event ID; the focused emulator proves 55 same-timestamp-aware valid events paginate without duplicates/omissions while a newer foreign row is excluded. The configured actorId/createdAt index is available for actor-filtered operational inspection; browser source/rule checks pass. Shared writer and Functions files retain ranged evidence, so the collection remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "801ea74c3480566ef864ee3498942834946f6b3f3c4889311e1909eaefac3385"
+    "reviewedEvidenceSha256": "a4349c8a2b95bd4f160ae59cd631174f4d162587ebf1127f3034980a03958e81"
   },
   "signaldeskBudgetPolicies": {
     "reviewStatus": "reviewed",
@@ -1822,7 +1830,7 @@
     "findings": [
       "AUDIT-SD-BUDGET-POLICY-IDEMPOTENCY-001"
     ],
-    "reviewedEvidenceSha256": "5e4a280d6bd55dd53d1dda004381b2525da1ed96089eacdc686d9b7b7c652b65"
+    "reviewedEvidenceSha256": "2a1e0a514aa7fa13c089d79da76884e100b5503eb485359cb993ffe1f50818e1"
   },
   "signaldeskCampaignSummaries": {
     "reviewStatus": "reviewed",
@@ -1841,7 +1849,7 @@
       "AUDIT-SD-OUTBOUND-CHANNEL-PAUSE-SETTLEMENT-RACE-001",
       "AUDIT-SD-CHANNEL-HEALTH-PRODUCT-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "14398f1bde5c4ffa7013bed098342897fc08b7d44b777ed013e8223f778eae47"
+    "reviewedEvidenceSha256": "51d32ec3274c855f68adc1c64c817be5e39ff6feb224937c369c3ebe3fd9d485"
   },
   "signaldeskChannelIdentities": {
     "reviewStatus": "reviewed",
@@ -1861,7 +1869,7 @@
     "findings": [
       "AUDIT-SD-CHANNEL-WINDOW-AUTHORITY-001"
     ],
-    "reviewedEvidenceSha256": "189a2c73fbb6e93269d4b67958c39e8f37ded49de277fb8c0674d03c803b2a72"
+    "reviewedEvidenceSha256": "44ef04afdf29f66c5f5f79561dbf2faf0042b7db50bcf0904879b7cc668c6b68"
   },
   "signaldeskCommercialOffers": {
     "reviewStatus": "reviewed",
@@ -1871,7 +1879,7 @@
     "findings": [
       "AUDIT-SD-COMMERCIAL-OFFER-REPLACEMENT-001"
     ],
-    "reviewedEvidenceSha256": "029eaa830439bfcde6d9bce60ce7259684a2ea892350d692d719d8f8ac79589a"
+    "reviewedEvidenceSha256": "b77e35ebd4c0e36881bf29525fc3e6c0c61e9857f27756c10a33cd80b265e579"
   },
   "signaldeskCommercialOpportunities": {
     "reviewStatus": "reviewed",
@@ -1881,7 +1889,7 @@
     "findings": [
       "AUDIT-SD-PIPELINE-CURRENCY-LIFECYCLE-001"
     ],
-    "reviewedEvidenceSha256": "1e4a4c84b554c672c55d51879dd09d16255059c0bf1cb136c35e8d90cc4daaa5"
+    "reviewedEvidenceSha256": "2aa98c11b2077d7bd4cd7288f320a2c994bebccfb098816af77fc4512ac22ce1"
   },
   "signaldeskConnectorSettings": {
     "reviewStatus": "reviewed",
@@ -1891,7 +1899,7 @@
     "findings": [
       "AUDIT-SD-CONNECTOR-SETTING-IDEMPOTENCY-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "2551a822e0211a447aec4201ca8c573fc0fd9e081edbf125f59a471690829b09"
+    "reviewedEvidenceSha256": "a35caffae80c078d59bee39aad4a05ce326589efc1af7c382887dc542fc54a2b"
   },
   "signaldeskContactIdentities": {
     "reviewStatus": "reviewed",
@@ -1916,7 +1924,7 @@
       "AUDIT-SD-CONTENT-ASSET-IDENTITY-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "e00c9bffebdb3240953c623ffb412058fef1ffa3a1f8893ac33b52aad16d80e7"
+    "reviewedEvidenceSha256": "d6e61bca0fcc13f1fe456003d3868e7b2fbce0db69b50d8e247687ac8501e00e"
   },
   "signaldeskContentCalendarItems": {
     "reviewStatus": "reviewed",
@@ -1929,7 +1937,7 @@
       "AUDIT-SD-CONTENT-SCHEDULE-IDEMPOTENCY-001",
       "AUDIT-SD-CONTENT-SCHEDULE-AUTHORITY-RACE-001"
     ],
-    "reviewedEvidenceSha256": "b2cb1902f28a8fe01e744f98381b15521a15dc544585f838d78fce97787b6e45"
+    "reviewedEvidenceSha256": "2ae79d073b5b03dafd1a7eebe98a56e4b06d28c1d2ebdb031989808c25414556"
   },
   "signaldeskContentDistributionDrafts": {
     "reviewStatus": "reviewed",
@@ -1944,7 +1952,7 @@
       "AUDIT-SD-CONTENT-REVIEW-IDEMPOTENCY-001",
       "AUDIT-SD-CONTENT-REVIEW-AUTHORITY-RACE-001"
     ],
-    "reviewedEvidenceSha256": "4907c587604ce184f907ef18ee10de39a9b02873247f50c3a7f3f1f8b785ec2f"
+    "reviewedEvidenceSha256": "b3af517e060ba6b802c5abd0fd2806b8d4bd8c7bea0293c42eeebbba88033172"
   },
   "signaldeskContentPerformanceSummaries": {
     "reviewStatus": "reviewed",
@@ -1959,7 +1967,7 @@
       "AUDIT-SD-CONTENT-PERFORMANCE-PAUSE-RACE-001",
       "AUDIT-SD-DEMAND-SUMMARY-COLLISION-001"
     ],
-    "reviewedEvidenceSha256": "d8fbec06ec2d0b4eef75e84302ee6bbe353567fcf427ae13e74734387454a9d1"
+    "reviewedEvidenceSha256": "45e29c82e173681cfb562e5d84a626cd559d7f7c5505f22afa96c81aef083fd1"
   },
   "signaldeskContentSources": {
     "reviewStatus": "reviewed",
@@ -1970,7 +1978,7 @@
       "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "c6f1f28bd0f2ab5da7538ea086cc615702ff0907d32966721d6d56b8bbd1c3fa"
+    "reviewedEvidenceSha256": "86aac5382646eb3c80d44374fd1022d8691c1251ca7f69fd3b2f906376cd6561"
   },
   "signaldeskControlRoomSummaries": {
     "reviewStatus": "reviewed",
@@ -1980,7 +1988,7 @@
     "findings": [
       "AUDIT-SD-CONTROL-ROOM-WRITER-IDENTITY-001"
     ],
-    "reviewedEvidenceSha256": "964b4c3c768b4bffbcbcece892f662e1e5f2518a9fd1f0e79ab95ef0d8c7d877"
+    "reviewedEvidenceSha256": "3aa87267ca998f065769e64cbdd22a7982f2e183058e0bb1c1473d8ab48f8149"
   },
   "signaldeskConversationSummaries": {
     "reviewStatus": "reviewed",
@@ -1990,7 +1998,7 @@
     "findings": [
       "AUDIT-SD-OUTBOUND-INBOUND-SETTLEMENT-RACE-001"
     ],
-    "reviewedEvidenceSha256": "5a45cd6aa0b8ed64257787371893b990596aef7d7b4388def093ac52a9a13da5"
+    "reviewedEvidenceSha256": "1007acea79138e0993c732536a8f22ac8a8abd498631f5e83bce8d775d3e9c8d"
   },
   "signaldeskConversations": {
     "reviewStatus": "reviewed",
@@ -2010,7 +2018,7 @@
     "findings": [
       "AUDIT-SD-DAILY-COST-SEED-CANONICALIZATION-001"
     ],
-    "reviewedEvidenceSha256": "3323de8aafb84f521ba0d4d9366aa6a01fb2d85b1f645ffe787ca49c19f9dc37"
+    "reviewedEvidenceSha256": "f8ceb1239dcb27452257b69439585bc28c91ba68b5ad9cb220f1185654500ccf"
   },
   "signaldeskDataRequests": {
     "reviewStatus": "reviewed",
@@ -2028,7 +2036,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits browser reads only to authenticated platform identity and only for persisted pId=SD; every browser write is denied. Both Admin writers derive target and product identity from strict transaction-current authority. Rejected facts and evidence references are immutable decision-audit evidence rather than mutable source payload; the source-data lifecycle emulator explicitly proves they are retained while adjacent AI worker detail is scrubbed.",
     "indexStatus": "Rules-based scoring uses a deterministic content-addressed point document. AI assist allocates one stable reference per in-memory claim settlement; Firestore transaction retries reuse it, and durable claim replay never creates another row. There is no collection query, composite index, TTL policy, cache or public invalidation path. Concurrent target-score E2E proves exactly one decision snapshot. Shared workflow/lifecycle/E2E/rule sources retain ranged evidence, so the collection remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "1d02856ea716d37d299afddec3ac8fec045b8c29fd49afd5dc026646309564f4"
+    "reviewedEvidenceSha256": "dec49a76c0261da2b34f52bdb294340eaab49931f92b1651c65f3bf1a5eddcc8"
   },
   "signaldeskDemandSignalSummaries": {
     "reviewStatus": "reviewed",
@@ -2039,7 +2047,7 @@
       "AUDIT-SD-DEMAND-SUMMARY-COLLISION-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "b09af993727f9b5f09d2a28fe9454f96f95df1938dba415621cc61018a221a20"
+    "reviewedEvidenceSha256": "ba554d8486d4ae76b5b5dd78973ca387b2f5d2a8fe3962cedd43b422587dec19"
   },
   "signaldeskDemandSignals": {
     "reviewStatus": "reviewed",
@@ -2059,7 +2067,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e6b7f0ce2d725eaffd4a534d7e664cedfa37a5e524c2437bd6c89ebd1c7c341c"
+    "reviewedEvidenceSha256": "6f058c13265dd4332da38800b9047932dfd25875d1a843852b43c674b45a773b"
   },
   "signaldeskEnrichmentResults": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2067,7 +2075,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "785f53922623ea3dfe6e8b506f62ec49cde7ac13c0fc7549170eacdab8a4505f"
+    "reviewedEvidenceSha256": "b4073d22fb2c286d2638b30d326c97f2fe7e7f5ac6a0ce577cea18d8520ae3a3"
   },
   "signaldeskEnrichmentWaterfalls": {
     "reviewStatus": "reviewed",
@@ -2078,7 +2086,7 @@
       "AUDIT-SD-ENRICHMENT-WATERFALL-CONFIG-IDEMPOTENCY-001",
       "AUDIT-SD-ENRICHMENT-WATERFALL-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "88b15ff20f3a88872edd45dc2a92ef5b6b35f9fb7a99f884b78506b36666a1a5"
+    "reviewedEvidenceSha256": "c1938e671308eab4129b72b65b9af3022e75da71405f02a1890e74064663fcd5"
   },
   "signaldeskEvalRuns": {
     "reviewStatus": "reviewed",
@@ -2094,7 +2102,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "75c79184a0f3b7b3bde8b7c9b9d7c3792c3c12b496b38f65f8530879f2742cba"
+    "reviewedEvidenceSha256": "b99f8585edf2be1563db96e81b33e7fed33727f112bc641792aea240552dd2ee"
   },
   "signaldeskEvidencePackets": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 8 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2102,7 +2110,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a8e856859f28a81888f6a66c4bdd0f0e6fc06adbfae50f83da949ad07dca8bd0"
+    "reviewedEvidenceSha256": "87d9851566f89cdad80e4e0c3f8eb406e81a49146ef787c391ec8cd625228fe3"
   },
   "signaldeskExperimentCards": {
     "reviewStatus": "reviewed",
@@ -2113,11 +2121,11 @@
       "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "9543b5eb813b4b759f29a112a8f9a7f577f2cbbf95f7c1803fe6ec98f5af4f9b"
+    "reviewedEvidenceSha256": "182294d8b0a06f1b38fdc28d7668d30eef3c9350aab5bc29de11dddad53db564"
   },
   "signaldeskFoundationSummaries": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "63b01f8ab8f208a419824c90644c98e99d04467069d89f7a2efedab32646d199",
+    "reviewedEvidenceSha256": "847153827bef73da4bc4e8af5e67b66ea2bc37a027eb9d01ef22a5bb1958a8b9",
     "ownershipModel": "Reserved dedicated SignalDesk foundation-summary namespace. No current first-party runtime producer, reader, query, DTO, route, job or retention owner exists; only the product constant, explicit read rule, historical activation intent and security emulator fixture remain",
     "rulesStatus": "Direct reads require an authenticated PLATFORM claim and an existing resource with exact pId SD. Every client write is denied. The emulator proves an ordinary active member cannot read, a platform operator can read the exact-product fixture, and even that operator cannot write",
     "indexStatus": "No active query, persistence or retention path exists; no composite index, field exemption or TTL policy is justified",
@@ -2132,7 +2140,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e8455278249451001a945162b2e0fe809864e7dbad7051fb1fce8534f45dffb4"
+    "reviewedEvidenceSha256": "e79e133dbee79af7d414c2fd321751085ebe02e2735dbf04922c3663339f0cf5"
   },
   "signaldeskIdempotencyKeys": {
     "reviewStatus": "reviewed",
@@ -2146,7 +2154,7 @@
       "AUDIT-SD-CONTENT-DOWNSTREAM-REPLAY-AUTHORITY-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "e942de42b48baaab2a6766240557f5c7a2fa2750465156f28453d202808a87a1"
+    "reviewedEvidenceSha256": "54a455534aee0d27b3e36bfb171c9760d0bd50ec05680d91bba3f315936004ed"
   },
   "signaldeskIdentityIndex": {
     "reviewStatus": "reviewed",
@@ -2183,7 +2191,7 @@
     "findings": [
       "AUDIT-SD-CONTROL-ROOM-WRITER-IDENTITY-001"
     ],
-    "reviewedEvidenceSha256": "a7f498af4d0639acc46e97ec3f831a3ff595e3cc23471a9a899637d24d0a93ae"
+    "reviewedEvidenceSha256": "ee535f55ca7a4ade7cee0af2daa4bcad3597b45a30c481511e67a1bbafe0f19b"
   },
   "signaldeskKillSwitches": {
     "reviewStatus": "reviewed",
@@ -2193,7 +2201,7 @@
     "findings": [
       "AUDIT-SD-KILL-SWITCH-RAW-ADMISSION-001"
     ],
-    "reviewedEvidenceSha256": "b0b7c6e8e5a614449894e4538e479c56d7a4ec26f011fe007430a23dc619342e"
+    "reviewedEvidenceSha256": "ea73acda797844caac9e680db788de9a224dd13e2c53fa28a614587389f459fd"
   },
   "signaldeskMarketPods": {
     "reviewStatus": "reviewed",
@@ -2203,7 +2211,7 @@
     "findings": [
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "83d07687816fe497ad170db43f71cea63111089a888d0d8440160704abd6e1ea"
+    "reviewedEvidenceSha256": "52f95fc6663836864c4c6673cf48a616bcf172f0d08e4b46be0e70ba5fd9ffb8"
   },
   "signaldeskMessageEvents": {
     "reviewStatus": "reviewed",
@@ -2221,7 +2229,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "d96a800e4e4771feb1f2fb503946efbc745d6562fbbd02c9cf26cb71639bb018"
+    "reviewedEvidenceSha256": "7015da125e64600d6b1338d1e3bafb4b20270fca74e0d25b532b02e978d5e3c5"
   },
   "signaldeskMessages": {
     "reviewStatus": "reviewed",
@@ -2239,7 +2247,7 @@
     "findings": [
       "AUDIT-SD-AI-REVIEW-PRODUCT-AUTHORITY-001"
     ],
-    "reviewedEvidenceSha256": "32e14fd2a94b392f5a1c533e35cf8197e4715c4ece9144d08fc2a998782e3768"
+    "reviewedEvidenceSha256": "26c7d169d6862a12e2d05f3a3f6f462a63a3ee9f63859ace7f8a5996269a37b7"
   },
   "signaldeskModelRoutes": {
     "reviewStatus": "reviewed",
@@ -2249,7 +2257,7 @@
     "findings": [
       "AUDIT-SD-MODEL-ROUTE-IDEMPOTENCY-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "59d4b01d7e036fbe0db8be35714831c964ce98df8928c21734b6db0d3d14cd35"
+    "reviewedEvidenceSha256": "dd40bcd4f5fa4519f653d7cfdb62ef688b0d9854e02577ee8179de3133134173"
   },
   "signaldeskOfferCtas": {
     "reviewStatus": "reviewed",
@@ -2260,7 +2268,7 @@
       "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "d6b173f4fa09e318636ad925ff8382e399ca6f16c23afa65ba895592f3044b84"
+    "reviewedEvidenceSha256": "69f1c4121a1952362d17bad4bc37d88a4eadee5eb28f461e00be02e8fef6c76c"
   },
   "signaldeskOperatingEnvelopes": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | reference | security-rule | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2268,7 +2276,7 @@
     "indexStatus": "Current evidence contains no query requiring an additional composite index; exact-document or write-only access uses Firestore native document addressing. Any future list/query consumer must add a bounded query and explicit index review.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "bba8a9c867226e3a75ed6f2f9bc02a0282514bd961bc743f9364aa4f13892828"
+    "reviewedEvidenceSha256": "e46dc26ffa36b3b0e1c3eea824c42e803c565618818e09a8271da09dcee1d1f5"
   },
   "signaldeskOutcomeEvents": {
     "reviewStatus": "reviewed",
@@ -2287,7 +2295,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "5b5fd4eb9c27135b86fc8ce73a8396a6f07282024627b560184e5bcc92410111"
+    "reviewedEvidenceSha256": "148ce892924f40be1c253af1cd8f4e21ecca48e918a64acd11a3cd77232f22e8"
   },
   "signaldeskProofPermissions": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2295,7 +2303,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "2f21b6aaab316c6bb10c8aced32058f5b9ce621ef1761c787e36fc1217dfbf4a"
+    "reviewedEvidenceSha256": "4189781dd0351f59d90be210a0bfafd5fb9335802731b6b4593c1fd6ddfd72d5"
   },
   "signaldeskProviderAccounts": {
     "reviewStatus": "reviewed",
@@ -2305,7 +2313,7 @@
     "findings": [
       "AUDIT-SD-PROVIDER-ACCOUNT-IDEMPOTENCY-001"
     ],
-    "reviewedEvidenceSha256": "b3d8c86a798bf82fe735070d21b88a567e534b1bd51604a906ecca4a02da3433"
+    "reviewedEvidenceSha256": "1928b8f4be6e3fe8c8be05ae9881a65217643d82e968d65bd95bad72c9cf52d3"
   },
   "signaldeskProviderEvaluations": {
     "reviewStatus": "reviewed",
@@ -2315,7 +2323,7 @@
     "findings": [
       "AUDIT-SD-PROVIDER-EVALUATION-RACE-IDEMPOTENCY-001"
     ],
-    "reviewedEvidenceSha256": "26218142efbeecabf4ab15334fb21ae8fc619dfcad6e327de36dca9490d65bc3"
+    "reviewedEvidenceSha256": "863f952a8fc003d7dc61c2ac43aea58760f697aa67423321471417e859cf15c1"
   },
   "signaldeskProviderSourceRetention": {
     "reviewStatus": "reviewed",
@@ -2325,7 +2333,7 @@
     "findings": [
       "AUDIT-SD-PROVIDER-RETENTION-REFRESH-RACE-IDEMPOTENCY-001"
     ],
-    "reviewedEvidenceSha256": "9247d5ea6c5ac4c79a4deb781ebfb32d0efb1eff037a6b0158779254d7f93545"
+    "reviewedEvidenceSha256": "eeb8fb9ecd9571151a6d31214387b6c28e26ba9d1a30ec0bb6afe6de87a323ee"
   },
   "signaldeskQueueSummaries": {
     "reviewStatus": "reviewed",
@@ -2335,7 +2343,7 @@
     "findings": [
       "AUDIT-SD-QUEUE-SUMMARY-WRITER-IDENTITY-001"
     ],
-    "reviewedEvidenceSha256": "da3614b84618b1bc0d0c06027aea1ae4602cd1d735064d48ef347896a5a0d0f1"
+    "reviewedEvidenceSha256": "de7e8e4c85e333fdedca577c1fc4737cb670b035ce5dc6fee37e02b0ff687504"
   },
   "signaldeskReplyClassifications": {
     "reviewStatus": "reviewed",
@@ -2353,7 +2361,7 @@
     "findings": [
       "AUDIT-SD-REPLY-PLAYBOOK-STALE-FIELDS-001"
     ],
-    "reviewedEvidenceSha256": "7d64ef97ea67e2aabe6d965b7d76e2626dd2b8165fa2547376616e244cc5c964"
+    "reviewedEvidenceSha256": "d23b916bcbd941acb145c696c7a1c62cd64430de457a5436d8cf3630adb71b79"
   },
   "signaldeskResearchRuns": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 7 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2361,7 +2369,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "af026e9019e7bbdec975278fe1452728b4b6411467bdf724232fb5e179dd2049"
+    "reviewedEvidenceSha256": "d9d2616c1b3b1f3d3764ce8a4f418510efa02ace0de8c6c1d282e2e9256831da"
   },
   "signaldeskResearchTableRows": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2369,7 +2377,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e68b116ee49db330e282e156187a16d4e6ec7c68e1859fa80f9e60bf40c86593"
+    "reviewedEvidenceSha256": "452187ef70b63d59294f471ac8b22d41cf919aacd6dbaa1f9e8b99191fb6977b"
   },
   "signaldeskRevenueAccounts": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 13 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2377,7 +2385,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "004a468b363f59db2b2d207a6dba7b27c32a0a77b838037eaffaa1da7f7b1b29"
+    "reviewedEvidenceSha256": "cf41baff8d42f0aceb25e59929df5899baad0483cd49ce77314cd277e2bb0df5"
   },
   "signaldeskRevenueControlSummaries": {
     "reviewStatus": "reviewed",
@@ -2388,11 +2396,11 @@
       "AUDIT-SD-PIPELINE-CURRENCY-LIFECYCLE-001",
       "AUDIT-SD-AI-REVIEW-PRODUCT-AUTHORITY-001"
     ],
-    "reviewedEvidenceSha256": "8fb0d9ad08e0ecb1cc44c8da5cd395240cf264c9f9ceea4de4e7691b7c7c7250"
+    "reviewedEvidenceSha256": "6ea4abda40a45a44e25555bb9b221d3a51ae00cf2cbd3148d5120d5f30769249"
   },
   "signaldeskRolePolicies": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "62e8eebe1a1e40131a0ff18986f67471fa371e5705d514d42a3223e940d1115f",
+    "reviewedEvidenceSha256": "239cf4492405da1a0c6fb196fd0a2ca0989610dacfa6322fafb119fddf947d88",
     "ownershipModel": "Reserved dedicated SignalDesk role-policy namespace. No current first-party runtime producer, reader, query, DTO, route, job or retention owner exists; only the product constant, explicit read rule, historical policy intent and security emulator fixture remain",
     "rulesStatus": "Direct reads require an authenticated PLATFORM claim and an existing resource with exact pId SD. Every client write is denied. The emulator proves an ordinary active member cannot read, a platform operator can read the exact-product fixture, and even that operator cannot write",
     "indexStatus": "No active query, persistence or retention path exists; no composite index, field exemption or TTL policy is justified",
@@ -2407,7 +2415,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f1945a8441809a779997d920595c9024bf2c9ad16393240a7ea68ade5c88bdd2"
+    "reviewedEvidenceSha256": "2b1a7a64e09944cf833d6239dc9b5fd8e14f243f213c94e9235bbb98ebdb2f19"
   },
   "signaldeskRunTimelines": {
     "reviewStatus": "reviewed",
@@ -2415,7 +2423,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits browser reads only to authenticated platform identity and only for rows with pId=SD; all browser writes are denied. The public workspace projector enforces exact document identity, product, entity type/ID, status, bounded label, one-to-thirty bounded steps and timestamp shape, then allowlists only those fields. Malformed or foreign rows are logged and omitted rather than passed to UI.",
     "indexStatus": "All writers use deterministic point documents. Mission and Control Room use the shared bounded updatedAt-desc workspace scan, strict-projecting before applying the result limit and stopping after four capped pages; only the automatic single-field updatedAt index is required. Application timelines replace their canonical public fields while lifecycle partial updates first assert the existing complete authority; completed timelines reject unfinished steps. Existing workspace-contract, lifecycle and focused E2E suites cover projection and representative terminal/failure updates. Shared large producer/lifecycle/rule/verifier files retain ranged evidence, so the collection remains in-progress.",
     "findings": [],
-    "reviewedEvidenceSha256": "a027cab88b6c326ccc868326907cb4aaba79dc3f58e15de1fc676724859a6770"
+    "reviewedEvidenceSha256": "50ac14df53eae8cf708a2e57c9a28e8b3f9b7af1348588c357842002c9c7283f"
   },
   "signaldeskSelfServiceCtas": {
     "reviewStatus": "reviewed",
@@ -2423,7 +2431,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to an authenticated platform identity and only when the persisted pId is SD; all browser writes remain denied. Every authoritative consumer rejects missing, wrong-product, malformed, pending-reconciliation or inactive CTA truth. A changed CTA installs a transaction-bound reconciliation token and then holds unpublished dependent content/drafts and blocks dependent partner briefs. Already-published dependencies remain immutable and create explicit review incidents instead of being silently rewritten.",
     "indexStatus": "Primary reads/writes use deterministic document IDs. The authoritative preview compatibility path additionally uses a bounded ctaType=preview/status=active query and rejects multiple active identities; no composite index is required by the current SignalDesk index file. Migration recognizes only the canonical and exact legacy preview IDs, selects unique latest truth or conservatively holds ambiguity, records an incident, reconciles dependencies and retires the alias without deleting history. Focused real Firestore emulator runs cover concurrent exact replay/conflict, preview migration/ambiguity, current fingerprint lineage, downgrade cascades, published-content incidents and recovery. The large workflow/E2E sources retain ranged evidence, so the collection is not yet marked reviewed.",
     "findings": [],
-    "reviewedEvidenceSha256": "16f2590645ed0b8ff56d0e720d9cebb505cb7a3e1402faea59b2618b34e5e104"
+    "reviewedEvidenceSha256": "9c9e302b7996ece41d9904fbe1c75eaa11590cd057ec692f3536ee80b85ebfe7"
   },
   "signaldeskSenderDomains": {
     "reviewStatus": "reviewed",
@@ -2431,7 +2439,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to authenticated platform identity when persisted pId is SD and denies all browser writes. Readiness requires active status, authenticated domain, low-volume/ready ramp, unsubscribe support and non-high brand risk. Transaction-current consumers reject missing, malformed, wrong-product, identity-mismatched, changed-fingerprint or no-longer-ready sender authority, including idempotent send/export replays. The exact historical pending sentinel is filtered from workspace output and malformed near-matches fail projection.",
     "indexStatus": "Direct mutation and bound-authority reads use deterministic document IDs. Workspace and default-ready discovery paginate by document ID through a fixed page ceiling, validate every row and fail closed if the scan cap is exhausted; active default discovery uses status plus document-ID ordering supported by built-in indexes. Exact replay returns the stored projected result without another write. Focused real Firestore emulator coverage includes canonical identity, concurrent replay/conflict, legacy recovery, wrong-product/malformed rows, pagination starvation resistance, draft/packet/export lineage, readiness revocation and provider/sequence replay denial. The large workflow/E2E sources retain ranged evidence, so the collection is not yet marked reviewed.",
     "findings": [],
-    "reviewedEvidenceSha256": "897d58cbff86880f2ba3f97c4926d0a9766644b7ccf24687c76658f99a4de4ea"
+    "reviewedEvidenceSha256": "faf3ae9a42ecb8bba7b15999db874004e3a5c9f3c7e13e19176fd45a49d25c43"
   },
   "signaldeskSequencerHandoffs": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2439,7 +2447,7 @@
     "indexStatus": "Current evidence contains no query requiring an additional composite index; exact-document or write-only access uses Firestore native document addressing. Any future list/query consumer must add a bounded query and explicit index review.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "00b2a67377039eb3bc469e67bcaea234897fb3dba053dcb0fb6bcb399f279da3"
+    "reviewedEvidenceSha256": "5560d824b43610546860a0695cc3a3ccc14e08e5b376a9449b0c23e83681b5c8"
   },
   "signaldeskSequencerSteps": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 9 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2447,7 +2455,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "909823f2f66bbad8089ceea0ebfb650865912436cf7bfbac1589196c1ed67b4a"
+    "reviewedEvidenceSha256": "e0c148ed69211c446292dd69cd88b8e14f86b4d52ed2a0c20349e42eed8822df"
   },
   "signaldeskSourceCandidates": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 6 first-party source files and the observed operation set [constant definition | read/query | reference | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2463,7 +2471,7 @@
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to an authenticated platform identity and only when the persisted resource has pId=SD; all browser writes remain denied. Admin writes are transactionally coupled to the completed source run, vendor run, claim, audit, cost and imported target truth. No raw provider payload, credential, token, contact value or provider error is persisted in the summary.",
     "indexStatus": "The provider summary uses one deterministic point read/write and needs no query index. Concurrent successful runs for the same provider serialize through the transaction read and leave the latest completed summary; unique source-run/idempotency rows preserve per-operation truth. Exact retries return the completed source/target projection without repeating provider work. The large workflow/E2E sources retain ranged evidence, so the collection is not yet marked reviewed.",
     "findings": [],
-    "reviewedEvidenceSha256": "0002af30360107251a6692b3fe28d7ffda9dffb4f5e0a739136cedf653347922"
+    "reviewedEvidenceSha256": "5c90b7f26d332b52b4b79d6c8515b79b618b1b78b139174e5c8d1f115a962c75"
   },
   "signaldeskSourcePolicies": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 12 first-party source files and the observed operation set [cache/derived-state | constant definition | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2471,7 +2479,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "41f8a68cdd990ee61a5b29f9a496a866f9a66942eb5cf20ef13cb2bf802720e3"
+    "reviewedEvidenceSha256": "419dee41fe94c259d44739b493e8c58ed18673eebb305c0833f19c96860c4eac"
   },
   "signaldeskSourceQualitySnapshots": {
     "reviewStatus": "reviewed",
@@ -2482,7 +2490,7 @@
       "AUDIT-SD-SOURCE-QUALITY-OUTCOME-ATTRIBUTION-001",
       "AUDIT-SD-SOURCE-QUALITY-STALE-FIELDS-001"
     ],
-    "reviewedEvidenceSha256": "e94bbee8c818ed25fddb98e6ffb209a7f06f066ec7f1d6b27328a9e6c94cd3ab"
+    "reviewedEvidenceSha256": "c7feb48e89f002a64ea9a29ee2d0a87cde23e1eacea36ece39002352a48dd081"
   },
   "signaldeskSourceRunSummaries": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 7 first-party source files and the observed operation set [constant definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2490,7 +2498,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "25ae593ac5b2e34e45f0696f62d7f5ab8bc9d6517254802b95201dbb3cc70fb1"
+    "reviewedEvidenceSha256": "bcb0df761bdbe882793e2f8968d845d52b45f501dfea5c0d11320e78a5422476"
   },
   "signaldeskStrategistMemos": {
     "reviewStatus": "reviewed",
@@ -2500,7 +2508,7 @@
     "findings": [
       "AUDIT-SD-STRATEGIST-MEMO-REPLAY-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "07074ba803fd8dc951270d859b7744136655c0f30f3112a58a4af45a137ac8aa"
+    "reviewedEvidenceSha256": "dee35411c834d2d4cc99c3093e2346f336be6dc805932934db9eae7d92cb86ec"
   },
   "signaldeskSuppressionLedger": {
     "reviewStatus": "reviewed",
@@ -2516,7 +2524,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a7aae01d5e76c3eee920beefde7399742a213003d40d7c2989b8a784f2d4e4da"
+    "reviewedEvidenceSha256": "7eff7f8190bbb5229fe09a2a349414a9496145416d588de54d7a00fb4a17eea3"
   },
   "signaldeskTargets": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 7 first-party source files and the observed operation set [constant definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2534,7 +2542,7 @@
     "findings": [
       "AUDIT-SD-TEAM-MEMBER-REPLAY-SHAPE-001"
     ],
-    "reviewedEvidenceSha256": "fbd8d5a935794bab78f0ecde1e4e7b55fda8340ec3d8dbef910952b8eeb1279d"
+    "reviewedEvidenceSha256": "3929ecbe5032a8c54373ab5b9193c861a61189276be1bae65a06cabd993a969d"
   },
   "signaldeskTemplateSummaries": {
     "reviewStatus": "reviewed",
@@ -2545,7 +2553,7 @@
       "AUDIT-SD-TEMPLATE-SEED-STALE-FIELDS-001",
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "1d6949288b4f92fa567568a1dd39230d3a1cbfde172cdc86dda09266baf4cfcd"
+    "reviewedEvidenceSha256": "1e6911fa81bcc2417bb86f43cd0d91302284221d6084a3d8ac73c4cf09b1b222"
   },
   "signaldeskTrustPartnerBriefs": {
     "reviewStatus": "reviewed",
@@ -2555,7 +2563,7 @@
     "findings": [
       "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ],
-    "reviewedEvidenceSha256": "6754183ca403eaa100cedc236caddb5a00460c14a58041370e45171d24b118a8"
+    "reviewedEvidenceSha256": "15c67e320a02283adbc376b961dde0926c7826b084a77731ac2ceed2afeac969"
   },
   "signaldeskTrustPartnerDeals": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 7 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2563,7 +2571,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f7cdfcd0f560da087bd0c64f5012523be81edaf695c10a223f358632dab43976"
+    "reviewedEvidenceSha256": "cacfb00d254294ebc7ffff088c913bd4fb98f32bb4897780783dbcab5303ff06"
   },
   "signaldeskTrustPartnerDeliverables": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 7 first-party source files and the observed operation set [constant definition | index definition | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2571,7 +2579,7 @@
     "indexStatus": "Current evidence contains no query requiring an additional composite index; exact-document or write-only access uses Firestore native document addressing. Any future list/query consumer must add a bounded query and explicit index review.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ee88930e971de610ff1eec61c7b551a9f752c3015890de682d182cc84c6548a9"
+    "reviewedEvidenceSha256": "bc2b9048afce434c679272cdf49d54a2759d6082623a54e6c26e871709939379"
   },
   "signaldeskTrustPartnerMetrics": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 8 first-party source files and the observed operation set [constant definition | delete | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2579,7 +2587,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f25fe9a4664aefbbdf6388b3ffdd6b7d025cc0d7b94fe579e76fc7db850c24c5"
+    "reviewedEvidenceSha256": "f329ac22b06754e6cc3013c43c1f5e1a7a1457e09226de6e551ea84e8c9f3fc1"
   },
   "signaldeskTrustPartnerNicheTests": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 6 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2587,7 +2595,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ff5817a20727ce632bc9b58e99267ffce19d90a7b7b59b047e0e7c04b78a3f8f"
+    "reviewedEvidenceSha256": "e4ade238afc94eb9704900049f16a75060ae5ada2f173ffec7733cadcdb24a67"
   },
   "signaldeskTrustPartnerProfiles": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 8 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2595,7 +2603,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "8f851a040374eeb3d36f9578bad9a1b5ac8ba3cf479509a38e6ebb0a7720e7f5"
+    "reviewedEvidenceSha256": "93e3b190a877757f4d9e85ae5fc5e565ec274d07a1142abb761ae5a352537bd9"
   },
   "signaldeskTrustPartnerRenewalDecisions": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 6 first-party source files and the observed operation set [constant definition | index definition | reference | security-rule]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2603,7 +2611,7 @@
     "indexStatus": "Current evidence contains no query requiring an additional composite index; exact-document or write-only access uses Firestore native document addressing. Any future list/query consumer must add a bounded query and explicit index review.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "a4542dfd0150fafb88c17865cdcfbebe04895e3cdb244fa3f78d1fffb489f44b"
+    "reviewedEvidenceSha256": "b7c9aa49058566b2f74853ac9f44501b4389fd326690d9cbad2e96bf021ebd51"
   },
   "signaldeskVendorRuns": {
     "ownershipModel": "SignalDesk collection family. Current reverse evidence records 10 first-party source files and the observed operation set [constant definition | index definition | read/query | reference | security-rule | transaction/batch | write]. The exact producer, reader, rule, index and verifier locations are enumerated in this catalog row; product and tenant authority remain governed by those current reviewed call sites rather than by an inferred cross-product fallback.",
@@ -2611,7 +2619,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "413c0388de6697cad6228d28315a3a2aacb5cfd4e3281c3b2b192915a1366b2f"
+    "reviewedEvidenceSha256": "25996332452ec29febcba1cd1b95ead2a8fb4c66b3e869e5fd3a29883e9edceb"
   },
   "signaldeskWebhookEvents": {
     "reviewStatus": "reviewed",
@@ -2622,7 +2630,7 @@
       "MLSD-WH-007",
       "MLSD-WH-013"
     ],
-    "reviewedEvidenceSha256": "5ffd8d5aa4d8e3b7e3752ee059308aa4ff62d579239902b1ac5db1ba759d6061"
+    "reviewedEvidenceSha256": "0247c7ee6b3c425d5dda69c8c59fe2a73e4b1aff8ed3147925a9ece3f7e561e1"
   },
   "sourceInputs": {
     "reviewStatus": "reviewed",
@@ -2669,7 +2677,7 @@
   },
   "storeAssetTemplates": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "026514ed24c7efcf07c3c285c6928318233fc1bb46939eb3cad0793e85200769",
+    "reviewedEvidenceSha256": "0c41d60946777d71cb991b178360a5dcc92d9dab66a910d892618d4ce790208d",
     "ownershipModel": "MenuList tenant/store-owned creative-template metadata at storeAssetTemplates/{tId}/{sId}/default. Explicit owner saves transactionally upsert at most 100 product/source/asset-scoped summaries; full editor documents and previews live in versioned tenant/store/template Storage paths. Exact selected-store scope, not user identity, owns the shared outlet index.",
     "rulesStatus": "Reads and create/update require authenticated membership in both the exact tenant and store path; the default document outer shape and identities are validated and direct document deletion is denied. Matching Storage rules require the same tenant/store membership. The DAL rejects conflicting/malformed scope, applies runtime editor-document validation and proves exact tenant/store/template path ownership before reading bytes.",
     "indexStatus": "List/open/save/delete use one exact default document; transactions prevent concurrent lost updates and cap the array at 100. No collection query or composite index applies. Versioned Storage objects are cleaned only after metadata commit and retained on ambiguous acknowledgement.",
@@ -2684,11 +2692,11 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "7c91eabd913b2c57d76124c6b24f2ca54475c441a08a3d2a5ff599c30984a7e3"
+    "reviewedEvidenceSha256": "be8c9d8e6c0cabb5a218fcae41b8538c03a6f6c34a8056163662a4621b05a4f9"
   },
   "subdomainRenameLog": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "d017f3a1a8f6c38696e791e389eae1a2c700658aa1f632a03439792f20d32234",
+    "reviewedEvidenceSha256": "f706028f7135549671ff2ab705e9b2fc165ff69fc9374ede2fb3f613af2f1429",
     "ownershipModel": "MenuList global server-only legal/support evidence at subdomainRenameLog/{autoId}. The platform-authenticated Admin rename route is the sole producer. Each transaction writes exact tenant/store identity, old/new public host, rename/redirect timestamps, bounded reason and owner acknowledgement reference, operator email, and the same exact actor document ID used by request admission and limiter partitioning. No browser, public DTO, cache, Redux, SWR, local-storage, job, queue, webhook or billing consumer exists.",
     "rulesStatus": "An explicit root rule denies every browser read, query, create, update and delete, including authenticated owner and platform clients. Only the platform-authenticated Node/Admin route writes the ledger after bounded validation and transaction-current store ownership verification. The tenant/store emulator proves owner and platform-client read/write/delete denial.",
     "indexStatus": "The sole producer writes an auto-ID document in the same transaction as canonical store, summary and subdomain-claim truth. No first-party collection query or reader exists, so no composite or single-field index is required. Retention is intentionally indefinite legal/support evidence; no TTL applies.",
@@ -2708,7 +2716,7 @@
   },
   "subscriptions": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "dc23a368e6e79aeb7c27a2864bfc4879f1d6e01a4e6646e01f4b46e1d9014723",
+    "reviewedEvidenceSha256": "d7714fd1d613cd9a3b3f96e5ee7283ef75a963c4cffa6b928ce67b90045b6187",
     "ownershipModel": "Product-local server-owned billing and entitlement truth. All 55 current producer, consumer, rule, index, migration and verifier sources were directly reviewed through restart 847. Signed subscription webhooks require one exact provider subscription ID plus exactly one product-local document before claim; zero matches retry and conflicting/dual ownership fails before side effects. Global Functions consumers use exact dual-product and agreeing positive-safe-integer tenant/store aliases before provider access, lifecycle delivery, entitlement mutation, credit recovery or monitoring joins. Every bounded fallback constrains product and both scope alias pairs before its limit. Current writers are create-only or transaction-current, reprove exact product/workspace authority, use safe-integer financial/credit evidence and preserve idempotent operation identity. Server grace expiry retains its originally admitted scope, entitlement sync proves target-store ownership in the same transaction, stale checkout cleanup revalidates complete current intent, reseller/referral/account-claim replays reject ambiguous aliases, and Answerlattice intake accounting rejects coercible arithmetic. Client provider/billing state is sequence-fenced by exact workspace scope, and MenuList server/browser/website admission requires exact MenuList session identity.",
     "rulesStatus": "Shared rules require both exact ML aliases plus present, agreeing tenant/store aliases and current MenuList tenant/store for MenuList reads, or both exact AL aliases plus present, agreeing tenant/store aliases/current Answerlattice workspace/billing permission for Answerlattice reads; dedicated Answerlattice rules enforce the same AL contract. All browser writes are denied and focused emulators reject same-scope foreign-product, conflicting-alias and incomplete-query access",
     "indexStatus": "Product-prefixed composites cover owner active/paused/pending selection with both tenant/store alias pairs, entitlement, reconciliation, paid-cycle expiry, reseller lists and Founder Monitor. Shared and dedicated index files also define the six-field product/scope equality composite used by bounded Answerlattice activation/license/intake/server fallbacks. A guarded dry-run migration can complete only explicit single-ML-alias legacy rows; remote rule/index deployment and live legacy-shape counts remain unverified",
@@ -2759,7 +2767,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "2458f210cae4d9867061b5ac41a1bc3554687ecacdb04d5ae44e3e4112b9c4a6"
+    "reviewedEvidenceSha256": "c4db9879ea039dd2f3ac33285c5e884124f2edc9730f121ca5c9ab389c04fef2"
   },
   "systemAlerts": {
     "reviewStatus": "reviewed",
@@ -2770,11 +2778,11 @@
       "AUDIT-SYSTEM-ALERT-CRITICAL-CONTRACT-001",
       "AUDIT-SYSTEM-ALERT-COOLDOWN-RACE-001"
     ],
-    "reviewedEvidenceSha256": "388a7596311289093857ef4ca212d0bd04853bc87d81bbc95a14da5a357970db"
+    "reviewedEvidenceSha256": "01d8dacd7337a4a4a91f96dba9c96e63ae8a0398bd47b2d0ceea7eabaf326ab5"
   },
   "systemErrors": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "692471dc5d57446430f4dc44c232896364d18955f6592ad1d93159c58e26a1a8",
+    "reviewedEvidenceSha256": "4a48790991c07d7fc5e57b4899db0c9f6f71c96eacb63bfcf24db571b70ac171",
     "ownershipModel": "MenuList global Admin-only operational error evidence. The sole active caller records a bounded stable failure code when platform alert creation fails. Scope aliases are normalized to non-empty bounded tenant/store identifiers, and SHA-256 of exact scope/type/code selects one opaque document. An exact-document transaction resets the count for a new one-hour window or increments the current window, refreshes timestamp and 30-day expiry, and marks recurrence unresolved. A critical first occurrence may create one separate system alert. No browser, public DTO, cache, Redux, SWR, local-storage, billing, queue or webhook consumer reads systemErrors.",
     "rulesStatus": "The explicit /systemErrors/{docId} rule denies every browser read and write. Only MenuList Cloud Functions Admin code writes the collection after local bounded projection; no request tenant header or browser-selected document ID reaches this path. The complete shared rules file remains in-progress, so the collection cannot yet be marked reviewed despite this exact rule branch and runtime trace.",
     "indexStatus": "Active writes and reads use one exact deterministic document inside a transaction and require no index. The prior compound recent-error query and unreachable unbounded summary query are removed rather than adding indexes. The writer refreshes expiresAt on every occurrence; the guarded TTL setup includes systemErrors, but remote QA/production TTL activation remains operator verification evidence.",
@@ -2784,7 +2792,7 @@
   },
   "systemHealth": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "c982e0b032d4fe9082f674d5d4fc48a5c1b121ebdbcda187d922368357558e9b",
+    "reviewedEvidenceSha256": "efd610dd401d0a35c3101ae7407ed22774c80a2e97438c67bdf2b77c0f00ac8d",
     "ownershipModel": "MenuList Admin-only operational health family. The maintenance scheduler exact-replaces the singleton billing state; Messaging Onboarding transactionally claims one mutable control row with an opaque lease ID, then atomically exact-replaces the deterministic hourly snapshot and settles control only while that lease remains current. Stale workers cannot publish, release a replacement lease or emit alerts. The protected platform ops API consumes the current snapshot by validated control pointer. No generic per-store support-health writer remains.",
     "rulesStatus": "The explicit systemHealth rule denies every browser read and write. All writers use the MenuList Admin SDK; the sole active app reader is a platform-role protected server route that uses Admin only after rate limiting and current persisted platform-user authorization.",
     "indexStatus": "All systemHealth operations are exact document reads/writes or a control transaction and require no collection index. Billing/Messaging source sample queries use indexes on their respective source collections. No active generic report TTL shape remains.",
@@ -2806,7 +2814,7 @@
     "findings": [
       "AUDIT-SYSTEM-TELEMETRY-WRITE-CONTRACT-001"
     ],
-    "reviewedEvidenceSha256": "3ee94fc25313f29362dd715b0683d1fdad5fb1de3fb1c868a21fdc7a4ca6761f"
+    "reviewedEvidenceSha256": "c00af3226d9cc28889eb021c04c90deccc0447a3bca94cbb0f1dae1daf7b4ca8"
   },
   "telemetry": {
     "reviewStatus": "reviewed",
@@ -2822,7 +2830,7 @@
     "indexStatus": "All current query sites and applicable index configuration are included in the current evidence fingerprint. Exact limits, ordering and composite requirements remain defined by those reviewed callers and index files.",
     "findings": [],
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "f867368acd8843e04f88411ea44fcbb4af2f80142398d724986ad38d4d4f9633"
+    "reviewedEvidenceSha256": "c2035ed4819f26713da85a8d338734232f98ff82966a10c302b68ceb4aed9bdc"
   },
   "testImageBatchAccounting": {
     "reviewStatus": "reviewed",
@@ -2845,7 +2853,7 @@
   },
   "todos": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "625715b9cd9ed4d494452e0a8c4c41bd8f44627a67ce08585cee8b55353f60cb",
+    "reviewedEvidenceSha256": "3540017b7984cb096466eb09823d651af6c98fbd2e8c5463f9a7a0e972712618",
     "ownershipModel": "Retired MenuList tenant/store-scoped task compatibility rows at todos/{tId}/{sId}/{todoId}. No active DAL, component, hook, reducer, route, job, screen, barrel, cache, Redux, SWR, local-storage or public DTO consumes or writes the namespace. Historical rows remain directly readable only to authenticated members whose exact tenant and store claims match the nested path.",
     "rulesStatus": "Browser reads require authenticated exact tenant and store membership. Every create, update and delete is denied, including tenant administrators; the focused emulator proves historical own-store read, foreign denial and all owner mutations denial. The broad tenant/store suite reconfirms own/mapped-store and foreign isolation. The complete shared rules file remains in-progress, so this row cannot yet be marked reviewed.",
     "indexStatus": "No active query or writer exists. The removed DAL's unbounded user/assignee OR query is absent, so no composite index, pagination cursor or cache applies. No TTL/migration/delete is performed; historical rows remain recoverable while new orphan data cannot grow.",
@@ -2856,7 +2864,7 @@
   },
   "todosMetadata": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "32a9044cde9c05584100851b3c8dbc5ddf23d0b71bd1a17c4d882afd9128182b",
+    "reviewedEvidenceSha256": "ce8fc86477edc19fce435cf349eac10bb9aa39503eb35baae3bbb3a931f8dbb8",
     "ownershipModel": "Retired MenuList tenant/store-scoped Todos configuration compatibility row at todosMetadata/data/{tId}/{sId}. No active DAL or owner/runtime consumer remains. Historical status/tag configuration stays directly readable only to authenticated exact tenant/store members and is not public truth.",
     "rulesStatus": "Browser reads require authenticated exact tenant and store membership; every create, merge, update and delete is denied. The focused emulator seeds the legacy row under disabled rules, proves own-store compatibility read, foreign denial, merge denial and delete denial. The complete shared rules file remains in-progress, so this row cannot yet be marked reviewed.",
     "indexStatus": "Access is one exact compatibility document and needs no index. The removed DAL/config merger is absent; no cache, pagination, TTL, migration or public invalidation applies. Historical rows are retained without accepting new parallel configuration truth.",
@@ -2867,7 +2875,7 @@
   },
   "topups": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "e4fc40486e2c245e6b2ec657306d63bb62f402e7c4c2866bba8cafdb0b93ee9d",
+    "reviewedEvidenceSha256": "fcda4e73c1e2a9e00e3f9a0209e950d2629574d3839421268a51994a8e036a34",
     "ownershipModel": "Product-local server-owned immutable Razorpay order snapshot keyed by normalized order ID. Authenticated creation uses transaction create semantics; an exact pending replay preserves the original timestamp, while paid, foreign or conflicting collisions are rejected unchanged. Verify and signed webhook settlement require complete agreeing product, tenant, store, billing-store and pack identity, re-read the transaction-current exact-dual product subscription, preserve the frozen billing store, guard safe-integer balances and apply credits once. Answerlattice store-summary writes use only the admitted transaction-current identity/credit projection. Browser access is limited to current exact MenuList tenant/store/product reads; Answerlattice top-ups remain server-only",
     "rulesStatus": "Shared rules require both exact ML aliases plus present, agreeing tenant/store aliases and current MenuList tenant/store for reads, and deny all browser writes. Focused shared-rules emulation proves exact ML access and rejects conflicting scope, same-scope foreign-product and incomplete-product reads",
     "indexStatus": "Owner list admission is product/scope constrained; create and settlement use exact document reads and transactions. Historical alias-less or incomplete-scope rows are not inferred or mutated, and no active owner history depends on them",
@@ -2910,7 +2918,7 @@
     "findings": [
       "AUDIT-STAFF-EMAIL-AUTHORITY-AMBIGUITY-001"
     ],
-    "reviewedEvidenceSha256": "75a19801b86de71743a3a8df9555ac4a73ad78b6e7e7fc951846fbb4f4107816"
+    "reviewedEvidenceSha256": "7eae96c2eb8f6576086cdd0fa3c921e2df54e1f2f97e8ff70eb081fcf0aa015a"
   },
   "usersSchedules": {
     "reviewStatus": "reviewed",

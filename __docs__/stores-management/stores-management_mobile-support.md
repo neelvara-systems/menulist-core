@@ -14,7 +14,7 @@
 | **Touch** | ❌ FAIL | Form-heavy admin interface |
 | **Value** | ❌ FAIL | Admin work done at desk |
 
-**Decision:** Desktop-only for platform store CRUD. This is an internal platform admin tool restricted to `ECOMSAI_PLATFORM_USER_ROLE`. Regular owners never see platform store creation/edit tables.
+**Decision:** Desktop-only for platform store CRUD. This is an internal platform admin tool restricted to `MENULIST_PLATFORM_USER_ROLE`. Regular owners never see platform store creation/edit tables.
 
 Owner-managed store settings have mobile parity through the mobile PWA shell:
 

@@ -6,19 +6,25 @@
 
 **Launch boundary:** Not current launch certification or deploy approval. This guide is a manual setup inventory; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
+Do not start with this document. Complete
+[`../deployment/menulist-staging-qa-setup.md`](../deployment/menulist-staging-qa-setup.md)
+and obtain MenuList QA evidence first. MenuList uses one current runtime location,
+`us-central1`; this guide does not introduce regional copies or another deployed
+environment.
+
 For the current full-system certification gates that require external access, provider credentials, browser/device QA, or explicit deploy approval, use [External Certification Runbook](./external-certification-runbook.md) and record results in `__docs__/audits/menulist-production-readiness-audit.md`.
 
 If an outage, security event, wrong public output, billing/provider failure, or rollback decision occurs during setup or launch, stop the checklist and use the [MenuList Incident Response Runbook](./incident-response-runbook.md).
 
 ---
 
-## Step 1: Create Telegram Bot (5 minutes)
+## Step 1: Create Target-Specific Telegram Alerting
 
 1. Open Telegram on your phone
 2. Search for **@BotFather** (verified bot)
 3. Send `/newbot`
-4. Name it: `MenuList Ops Bot`
-5. Username: `menulist_ops_bot` (or any available name)
+4. For the current QA pass, name it `MenuList QA Ops Bot`.
+5. Use an available username that clearly identifies QA.
 6. **Copy the bot token** — looks like `7123456789:AAF...`
 7. Create a private channel or group for alerts
 8. Add the bot to that channel
@@ -29,7 +35,9 @@ If an outage, security event, wrong public output, billing/provider failure, or 
 
 **Where to store:**
 
-Store Telegram secrets in QA first. Production values require QA alert-delivery evidence and explicit production secret approval.
+Store Telegram secrets in QA first. Before production, create a separate
+MenuList production bot/chat. Production values require QA alert-delivery
+evidence and explicit production secret approval.
 
 ```bash
 # Firebase Functions secrets
@@ -90,7 +98,8 @@ Before production, create the billing export dataset and enable export:
 | Simple launch setup | `menulist.cloud_billing_export` | Recommended unless a separate FinOps project is created |
 | Cleaner finance separation | `<finops-project>.cloud_billing_export` | Use only if a dedicated billing/admin project is created before launch |
 
-4. Dataset location: choose `US` multi-region unless a formal data-residency decision says otherwise. Dataset location cannot be changed later.
+4. Dataset location is a separate, irreversible BigQuery choice. Make it during
+   production setup; it does not change the MenuList Firebase runtime location.
 5. Enable:
    - Standard usage cost export
    - Detailed usage cost export
@@ -249,14 +258,17 @@ ENABLE_MENU_HEALTH_MONITOR: true, // Post-publish verification
 
 ## Step 7: SMTP Email Setup for Lifecycle Messaging (10 minutes)
 
-> Lifecycle messaging uses nodemailer with any SMTP server. Gmail SMTP is free (500/day personal, 2000/day Workspace).
+> Lifecycle messaging uses nodemailer with any SMTP server. QA may use a
+> controlled Workspace sender for low-volume testing. Production must use an
+> approved transactional sender or controlled Workspace relay; never use a
+> personal Gmail inbox or personal account password.
 
-### Option A: Gmail SMTP (Recommended for launch)
+### Option A: Controlled Workspace SMTP for QA
 
-1. **Enable 2-Factor Authentication** on your Google account
-2. Go to **Google Account → Security → 2-Step Verification → App Passwords**
-3. Generate an App Password — select "Mail" and "Other (Custom name)" → name it `MenuList Mailer`
-4. **Copy the 16-character app password** (e.g., `abcd efgh ijkl mnop`)
+1. Use a company-controlled sender, not the break-glass administrator account.
+2. Enable MFA on the sender account.
+3. Configure a Workspace relay or a dedicated app password named `MenuList QA Mailer`.
+4. Verify SPF, DKIM, and DMARC for the sending domain.
 
 **Store credentials in Firebase Functions secrets:**
 
@@ -270,7 +282,7 @@ firebase functions:secrets:set SMTP_PORT --project menulist-qa
 # Enter: 587
 
 firebase functions:secrets:set SMTP_USER --project menulist-qa
-# Enter: your-email@gmail.com (or your-email@yourdomain.com for Workspace)
+# Enter: the approved company-controlled QA sender
 
 firebase functions:secrets:set SMTP_PASS --project menulist-qa
 # Enter: abcdefghijklmnop (the 16-char app password, no spaces)
@@ -281,17 +293,20 @@ firebase functions:secrets:set SMTP_PASS --project menulist-qa
 ```
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=abcdefghijklmnop
+SMTP_USER=<approved-qa-sender>
+SMTP_PASS=<qa-smtp-secret>
 
 # Internal notifications — founder email for revenue alerts
-INTERNAL_NOTIFICATION_EMAIL=your-email@gmail.com
-INTERNAL_BILLING_EMAIL=your-email@gmail.com
+INTERNAL_NOTIFICATION_EMAIL=<company-controlled-recipient>
+INTERNAL_BILLING_EMAIL=<company-controlled-recipient>
 ```
 
-### Option B: Custom SMTP (Any provider)
+### Option B: Transactional SMTP Provider
 
-Use any SMTP server — the same 4 variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS).
+Use the same four variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and
+`SMTP_PASS`. Create target-specific QA and production credentials or streams.
+Use the production sender only after QA delivery evidence and explicit
+production approval.
 
 ### Enable the Feature Flag
 
@@ -303,14 +318,12 @@ In Firestore Console, create/update document `ops_config/system`:
 }
 ```
 
-### Gmail SMTP Limits
+### Sender Gate
 
-| Account Type     | Daily Limit      | Sufficient?                         |
-| ---------------- | ---------------- | ----------------------------------- |
-| Personal Gmail   | 500 emails/day   | ✅ Yes (50 stores ≈ 5 emails/day)   |
-| Google Workspace | 2,000 emails/day | ✅ Yes (500 stores ≈ 50 emails/day) |
-
-**Cost: ₹0** — Gmail SMTP is free. No API keys, no paid plans.
+- QA and production credentials are different.
+- The production sender uses the MenuList domain and has verified SPF, DKIM,
+  and DMARC.
+- A failed QA delivery or sender-authentication test blocks production setup.
 
 ---
 
@@ -596,7 +609,7 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
 | AI key rotation               | ✅ Auto    | Rotates on 429 errors, retries with next key   |
-| SMTP setup for messaging      | ❌ Manual  | One-time setup (10 min) — Gmail or custom SMTP |
+| SMTP setup for messaging      | ❌ Manual  | QA sender first; approved production sender before launch |
 | Gemini key isolation          | ❌ Manual  | Required — separate restricted staging/prod keys |
 | Optional Gemini rotation keys | ❌ Manual  | Optional — leak response/failover, not quota scaling |
 | AI provider health records    | ☐ Pre-prod verify | `_health/aiProvider_gemini` and `platformSummary/answerlatticeAiProviderHealth` |
@@ -614,16 +627,30 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 2. Create a dedicated staging key and a dedicated production key.
 3. Restrict each key to the Gemini API.
 4. Confirm the production key is not used by local development or staging.
-5. Store the staging key in Vercel staging `GEMINI_AI_KEY`.
+5. Store the QA key in Vercel Preview `GEMINI_AI_KEY`, restricted to the exact
+   `staging` Git branch.
 6. Store the production key in Vercel production `GEMINI_AI_KEY`.
 7. Store the MenuList Functions values in Firebase Secret Manager for `menulist-qa` and `menulist`.
 8. Configure budget alerts, spend monitoring, and model/project quota checks for the key's Google Cloud project.
-9. Deploy the Functions that own AI provider health checks after project access and secrets are ready.
-10. Confirm the provider health records update:
+9. Create a separate Preview **Spend cap enforcement** budget scoped to the
+   QA project and **Gemini API** service. Keep its monthly amount below the
+   owner's absolute loss limit because enforcement is not instantaneous and
+   in-flight work can still complete.
+10. Set the matching local rolling ceiling below the active AI Studio
+    project limit: `MENULIST_GEMINI_SPEND_LIMIT_USD_10M`,
+    `ANSWERLATTICE_GEMINI_SPEND_LIMIT_USD_10M`, or
+    `SIGNALDESK_GEMINI_SPEND_LIMIT_USD_10M`. The checked-in default is USD 8.
+11. Do not create a Cloud Run spend cap until the product has an approved
+    outage/restore runbook; enforcement pauses every Cloud Run service, job,
+    and worker pool in the selected project.
+12. Deploy the Functions that own AI provider health checks and spend admission
+    after project access and secrets are ready.
+13. Confirm the provider health and server-only spend records update:
 
 ```text
 MenuList: _health/aiProvider_gemini
 Answerlattice: platformSummary/answerlatticeAiProviderHealth
+Spend guard: geminiSpendWindows/{product}
 ```
 
 Current blocker logged July 2, 2026: this shell account still cannot deploy to
@@ -648,11 +675,14 @@ firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
 
 Repeat with `--project menulist` for production values after QA passes.
 
-**How it works:** The KeyManager auto-discovers available keys at startup. On
-429 rate limit errors, it rotates to the next healthy key and retries. Keys that
-hit rate limits get a 60s→120s→5min exponential cooldown. Rate limits still
+**How it works:** The KeyManager auto-discovers available keys at startup. On a
+transient `429`, the affected key enters cooldown and the gateway honors
+structured provider retry timing with bounded full-jitter backoff. It does not
+immediately hop keys to bypass a project-level limit. Hard quota failures and
+retry windows beyond the inline budget fail fast. Rate and spend limits still
 belong to the Google project/model tier, so production scaling requires billing,
-quota monitoring, budget alerts, and quota increase requests.
+quota monitoring, alert-only budgets, a Gemini API spend-cap budget, and quota
+increase requests.
 
 ---
 
@@ -667,3 +697,5 @@ quota monitoring, budget alerts, and quota increase requests.
 | 1.4     | June 2, 2026      | Added platform alert Email/WhatsApp go-live checklist                      |
 | 1.5     | June 26, 2026     | Reframed Gemini setup around key isolation, quota monitoring, and AI provider health verification |
 | 1.6     | July 16, 2026     | Added the ordered Digital Screens token-free public-mirror migration, rule cutover, and device stop gates |
+| 1.7     | August 2, 2026    | Added Gemini rolling-spend admission, provider spend-cap setup, and safe 429 behavior; Cloud Run cap remains outage-gated |
+| 1.8     | August 2, 2026    | Aligned QA-first setup, single current Firebase region, branch-scoped Preview secrets, and production sender requirements |

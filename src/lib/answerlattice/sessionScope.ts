@@ -1,7 +1,7 @@
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import {
-    ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_SUPPORT_USER_ROLE,
+    MENULIST_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import {
@@ -258,7 +258,7 @@ export function getAnswerlatticeScopedSession<T extends Record<string, any> | nu
 
 export function canUseAnswerlatticeManagement(sessionOrUser: any): boolean {
     const platformRole = resolveExactSessionPlatformRole(sessionOrUser);
-    if (platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE) {
+    if (platformRole === MENULIST_PLATFORM_USER_ROLE || platformRole === MENULIST_PLATFORM_SUPPORT_USER_ROLE) {
         return true;
     }
 

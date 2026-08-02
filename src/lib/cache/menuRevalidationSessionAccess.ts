@@ -1,4 +1,4 @@
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import {
     normalizeStorePermissionScopeDocumentId,
@@ -25,7 +25,7 @@ export function resolveMenuRevalidationSessionAccess(
     };
     const platformRole = resolveExactSessionPlatformRole(source);
     if (platformRole === null) return null;
-    if (platformRole === ECOMSAI_PLATFORM_USER_ROLE) {
+    if (platformRole === MENULIST_PLATFORM_USER_ROLE) {
         return { allowedStoreIds: new Set<string>(), platformSession: true };
     }
 

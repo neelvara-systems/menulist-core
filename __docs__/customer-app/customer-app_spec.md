@@ -449,7 +449,7 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 
 ##### QA-3. SW scope migration — customer origin
 
-- [ ] Open a customer tenant origin (e.g. `demo.qa.menulist.digital`) that previously had `sw.js` registered (simulate by manually registering before the fix)
+- [ ] Open a customer tenant origin (e.g. `qa-cafe.menulist.digital`) that previously had `sw.js` registered (simulate by manually registering before the fix)
 - [ ] Reload the page after the fix is deployed
 - [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw-customer.js`
 - [ ] Verify the old `sw.js` registration was unregistered (migration path in `ServiceWorkerRegister.tsx`)
@@ -457,7 +457,7 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 
 ##### QA-4. Cross-origin SW isolation
 
-- [ ] Install Customer App on `demo.qa.menulist.digital`
+- [ ] Install Customer App on `qa-cafe.menulist.digital`
 - [ ] Navigate to `app.menulist.ai` (owner dashboard) in the same browser
 - [ ] Verify the owner dashboard registers `sw.js` (not `sw-customer.js`) on its own origin
 - [ ] Verify the customer tenant's `sw-customer.js` is still registered on its origin (not overwritten)

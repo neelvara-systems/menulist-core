@@ -3,13 +3,13 @@
 **Status:** Local source complete; physical-device evidence pending
 **Last reviewed:** July 28, 2026
 
-> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+> **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 **Local result:** Local source complete. Polling is every 5 seconds with a 36-read maximum and retry state. An expired claimed draft receipt is cleaned while its menu source remains. Approved app release and device evidence remain pending.
 
 ## Admission decision
 
-This is a responsive website funnel, not a MobileShell sub-screen: this is a public website route before dashboard entry; all source-processing controls remain owner-authenticated. After claim, owner work continues through the existing dashboard/MobileShell routes.
+This is a responsive owner-app onboarding funnel, not a MobileShell sub-screen: the route is reachable before sign-in on the canonical app host, while all source-processing controls remain owner-authenticated. After claim, owner work continues through the existing dashboard/MobileShell routes.
 
 ## Mobile behavior
 

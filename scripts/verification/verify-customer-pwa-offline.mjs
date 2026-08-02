@@ -34,7 +34,7 @@ const proxyPort = readPositiveIntegerEnv('CUSTOMER_PWA_QA_PROXY_PORT', 3310);
 const timeoutMs = readPositiveIntegerEnv('CUSTOMER_PWA_QA_TIMEOUT_MS', 45000);
 const outputDir = process.env.CUSTOMER_PWA_QA_OUTPUT_DIR || '/tmp/menulist-customer-pwa-qa';
 const screenshotPath = path.join(outputDir, 'customer-pwa-offline-fallback.png');
-const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.qa.menulist.digital';
+const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.menulist.digital';
 const upstreamUrl = new URL(process.env.CUSTOMER_PWA_QA_UPSTREAM_URL || 'http://127.0.0.1:3000');
 const baseUrl = new URL(`http://${tenantHostname}:${proxyPort}`);
 
@@ -44,10 +44,10 @@ if (baseUrl.protocol !== 'http:') {
 if (!baseUrl.port || baseUrl.port === '80' || baseUrl.port === '443') {
   throw new Error('CUSTOMER_PWA_QA_PROXY_PORT must be an explicit non-production port.');
 }
-if (!/^[a-z0-9-]+\.qa\.menulist\.digital$/i.test(baseUrl.hostname)) {
+if (!/^[a-z0-9-]+\.menulist\.digital$/i.test(baseUrl.hostname)) {
   throw new Error('CUSTOMER_PWA_QA_TENANT_HOST must be a MenuList QA tenant hostname.');
 }
-if (['qa.menulist.digital', 'app.menulist.ai', 'www.menulist.ai'].includes(baseUrl.hostname.toLowerCase())) {
+if (['menulist.digital', 'www.menulist.digital', 'app.menulist.digital'].includes(baseUrl.hostname.toLowerCase())) {
   throw new Error('CUSTOMER_PWA_QA_TENANT_HOST must not use a platform or website hostname.');
 }
 if (

@@ -4,7 +4,7 @@ import {
     emitDeploymentIdentityUpdated,
     normalizeDeploymentDebugIdentity,
 } from '@constant/deploymentDebug';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import RolesPermissionInitialData from '@data/rolesPermissionsInitialData';
 import { getStoreById, readStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
@@ -136,7 +136,7 @@ export default function SessionProvider({ children, session }: Props) {
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
     const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(session) : null;
     const effectiveSession = isAnswerlatticeRoute ? getAnswerlatticeScopedSession(session as any) : session;
-    const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatformSession = session?.user?.platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
     const isStoreIndependentRoute =
         normalizedPathname === '/help-center'
@@ -338,7 +338,7 @@ export default function SessionProvider({ children, session }: Props) {
         let cancelled = false;
 
         // Check if the session exists and store details have not been fetched yet
-        if (session && (session.user?.platformRole == ECOMSAI_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
+        if (session && (session.user?.platformRole == MENULIST_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
             setActiveSubscriptionLoading(Boolean(session.user?.storeId));
 
             const bootstrapStoreContext = async () => {
@@ -657,7 +657,7 @@ export default function SessionProvider({ children, session }: Props) {
             return;
         }
 
-        if (session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE) {
+        if (session?.user?.platformRole === MENULIST_PLATFORM_USER_ROLE) {
             setUserPermissions(RolesPermissionInitialData);
             return;
         }

@@ -2,14 +2,21 @@
  * Answerlattice AI gateway.
  *
  * Provides the same API-key GenAI execution shape used by MenuList Functions:
- * key rotation on rate limits, bounded retries for transient failures, and one
- * provider client branch.
+ * rolling-spend admission, bounded key failover, jittered retries for transient
+ * failures, and one provider client branch.
  */
 
 import * as logger from 'firebase-functions/logger';
 import { AI_PROVIDER_CONFIG_MISSING_CODE, KeyManager } from './keyManager';
 import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 import { compileGeminiGenerateContentRequest } from '../sharedData/geminiRuntime';
+import {
+    GEMINI_SPEND_ADMISSION_ERROR_CODES,
+    GeminiSpendAdmissionController,
+    GeminiSpendReservation,
+    getFullJitterDelayMs,
+    getGeminiRetryAfterMs,
+} from '../sharedData/geminiSpendPolicy';
 
 const MAX_RETRY_ATTEMPTS = 6;
 const BASE_BACKOFF_DELAY_MS = 1000;
@@ -138,7 +145,10 @@ function getProviderErrorLogContext(error: any) {
 }
 
 export class AIGateway {
-    constructor(private readonly keyManager: KeyManager) { }
+    constructor(
+        private readonly keyManager: KeyManager,
+        private readonly spendAdmission?: GeminiSpendAdmissionController,
+    ) { }
 
     get models() {
         return {
@@ -176,6 +186,7 @@ export class AIGateway {
 
         for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
             const client = this.keyManager.getClient();
+            const spendReservation = await this.reserveSpend(method, config);
 
             try {
                 const result = method === 'fileUpload'
@@ -184,46 +195,51 @@ export class AIGateway {
                         ? await client.files.delete(config)
                         : await (client.models as any)[method](config);
 
+                await this.settleSpend(spendReservation, result, method);
                 this.keyManager.markKeySuccess(client);
                 return result;
             } catch (error: any) {
                 lastError = error;
+                await this.settleSpend(spendReservation, undefined, method);
 
                 if (isRateLimitError(error)) {
                     const hardQuota = isHardQuotaError(error);
                     this.keyManager.markKeyRateLimited(client);
 
-                    if (this.keyManager.totalKeys > 1) {
-                        logger.warn('[Answerlattice AIGateway] Rate limit hit; rotating to next key', {
+                    if (hardQuota) {
+                        logger.warn('[Answerlattice AIGateway] Non-transient project quota hit; failing fast', {
                             method,
                             attempt: attempt + 1,
                             maxRetryAttempts: MAX_RETRY_ATTEMPTS,
                             totalKeys: this.keyManager.totalKeys,
                             ...getProviderErrorLogContext(error),
                         });
-                        continue;
+                        throw error;
                     }
 
-                    if (hardQuota) {
-                        logger.warn('[Answerlattice AIGateway] Hard quota hit in single key mode; failing fast', {
+                    const providerRetryAfterMs = getGeminiRetryAfterMs(error);
+                    if (providerRetryAfterMs !== null && providerRetryAfterMs > MAX_BACKOFF_DELAY_MS) {
+                        logger.warn('[Answerlattice AIGateway] Provider retry window exceeds inline retry budget; failing fast', {
                             method,
                             attempt: attempt + 1,
                             maxRetryAttempts: MAX_RETRY_ATTEMPTS,
+                            retryAfterMs: providerRetryAfterMs,
                             ...getProviderErrorLogContext(error),
                         });
                         throw error;
                     }
-
+                    if (attempt >= MAX_RETRY_ATTEMPTS - 1) throw error;
                     backoffRetries++;
-                    const delay = Math.min(
-                        BASE_BACKOFF_DELAY_MS * Math.pow(2, backoffRetries),
-                        MAX_BACKOFF_DELAY_MS
+                    const delay = Math.max(
+                        providerRetryAfterMs ?? 0,
+                        getFullJitterDelayMs(backoffRetries, BASE_BACKOFF_DELAY_MS, MAX_BACKOFF_DELAY_MS),
                     );
-                    logger.warn('[Answerlattice AIGateway] Rate limit hit in single key mode; retrying with backoff', {
+                    logger.warn('[Answerlattice AIGateway] Rate limit hit; retrying with jittered backoff', {
                         method,
                         attempt: attempt + 1,
                         maxRetryAttempts: MAX_RETRY_ATTEMPTS,
                         delayMs: delay,
+                        totalKeys: this.keyManager.totalKeys,
                         ...getProviderErrorLogContext(error),
                     });
                     await this.delay(delay);
@@ -232,13 +248,14 @@ export class AIGateway {
 
                 if (isRetryableError(error)) {
                     backoffRetries++;
-                    const delay = Math.min(
-                        BASE_BACKOFF_DELAY_MS * Math.pow(2, backoffRetries),
-                        MAX_BACKOFF_DELAY_MS
+                    const delay = getFullJitterDelayMs(
+                        backoffRetries,
+                        BASE_BACKOFF_DELAY_MS,
+                        MAX_BACKOFF_DELAY_MS,
                     );
 
                     if (attempt < MAX_RETRY_ATTEMPTS - 1) {
-                        logger.warn('[Answerlattice AIGateway] Retryable provider error; retrying with backoff', {
+                        logger.warn('[Answerlattice AIGateway] Retryable provider error; retrying with jittered backoff', {
                             method,
                             attempt: attempt + 1,
                             maxRetryAttempts: MAX_RETRY_ATTEMPTS,
@@ -266,11 +283,50 @@ export class AIGateway {
         return this.keyManager.getStats();
     }
 
+    private async reserveSpend(method: string, config: any): Promise<GeminiSpendReservation | null> {
+        if (!this.spendAdmission) return null;
+        try {
+            return await this.spendAdmission.reserve(method, config);
+        } catch (error: any) {
+            logger.warn('[Answerlattice AIGateway] Gemini spend admission blocked provider call', {
+                method,
+                failureCode: typeof error?.code === 'string'
+                    ? error.code
+                    : GEMINI_SPEND_ADMISSION_ERROR_CODES.STORE_UNAVAILABLE,
+                retryAfterSeconds: typeof error?.retryAfterSeconds === 'number'
+                    ? error.retryAfterSeconds
+                    : undefined,
+            });
+            throw error;
+        }
+    }
+
+    private async settleSpend(
+        reservation: GeminiSpendReservation | null,
+        response: unknown,
+        method: string,
+    ): Promise<void> {
+        if (!reservation || !this.spendAdmission) return;
+        try {
+            await this.spendAdmission.settle(reservation, response);
+        } catch (error: any) {
+            logger.error('[Answerlattice AIGateway] Gemini spend settlement failed; reservation remains conservative', {
+                method,
+                failureCode: typeof error?.code === 'string'
+                    ? error.code
+                    : GEMINI_SPEND_ADMISSION_ERROR_CODES.STORE_UNAVAILABLE,
+            });
+        }
+    }
+
     private delay(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 
-export function createAIGateway(keyManager: KeyManager): AIGateway {
-    return new AIGateway(keyManager);
+export function createAIGateway(
+    keyManager: KeyManager,
+    spendAdmission?: GeminiSpendAdmissionController,
+): AIGateway {
+    return new AIGateway(keyManager, spendAdmission);
 }

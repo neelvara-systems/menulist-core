@@ -159,7 +159,7 @@ function verifyBillingEntitlementBoundary() {
   const menuListIndexes = JSON.parse(read('firestore.indexes.json'));
   const answerlatticeIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
   [
-    'resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE',
+    'resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE',
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
     'if (currentPlatformUser) {',
     "error: 'Current platform authority unavailable for billing mutation'",
@@ -170,7 +170,7 @@ function verifyBillingEntitlementBoundary() {
   ));
   assertNotIncludes(
     billingAccess,
-    'if (resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE) {\n        return true;',
+    'if (resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE) {\n        return true;',
     'MenuList platform billing mutation current-authority boundary',
   );
   assert(

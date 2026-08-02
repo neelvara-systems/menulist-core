@@ -1,6 +1,6 @@
 'use client';
 
-import { ECOMSAI_PLATFORM_STORE_ID } from '@constant/user';
+import { MENULIST_PLATFORM_STORE_ID } from '@constant/user';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Card, Space, Spin, Typography } from 'antd';
 import { useContext, useEffect, useState } from 'react';
@@ -27,7 +27,7 @@ const GoogleAnalyticsDashboard = () => {
     const propertyId = storeDetails?.analytics?.googleAnalyticsId?.trim();
 
     useEffect(() => {
-        if (storeDetails?.storeId || storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID) {
+        if (storeDetails?.storeId || storeDetails?.storeId == MENULIST_PLATFORM_STORE_ID) {
             setHasAnalytics(!!storeDetails?.analytics?.googleAnalyticsId);
             setLoading(false);
         }

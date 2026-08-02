@@ -1,7 +1,7 @@
 'use client'
 
 import { RESELLER_CAPS } from '@config/resellerPricing';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
     isResellerMonthlySummary,
@@ -138,7 +138,7 @@ function draftFromProfile(profile: ResellerManagementProfile): ResellerDraft {
 export default function MobileResellerManagementScreen({ onBack }: { onBack: () => void }) {
     const { data: session } = useSession();
     const platformRole = session?.platformRole || session?.user?.platformRole;
-    const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatform = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const [profiles, setProfiles] = useState<ResellerManagementProfile[]>([]);
     const [profileEvidence, setProfileEvidence] = useState<Pick<ResellerManagementProfilesResponse, "invalidProfileCount" | "isCapped" | "isPartial"> | null>(null);
     const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);

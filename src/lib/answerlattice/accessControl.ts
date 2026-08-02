@@ -13,8 +13,8 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import {
-    ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_SUPPORT_USER_ROLE,
+    MENULIST_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import {
     getAnswerlatticeSecurityLogContext,
@@ -74,8 +74,8 @@ export const getAnswerlatticeDb = () => {
 const isPlatformAdminSession = (session: any) => {
     const platformRole = resolveExactSessionPlatformRole(session);
 
-    return platformRole === ECOMSAI_PLATFORM_USER_ROLE
-        || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    return platformRole === MENULIST_PLATFORM_USER_ROLE
+        || platformRole === MENULIST_PLATFORM_SUPPORT_USER_ROLE;
 };
 
 const normalizeEmail = (value: unknown) => String(value || '').toLowerCase().trim();

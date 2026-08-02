@@ -34,7 +34,7 @@ May 7, 2026:
 
 - `npx tsc --noEmit --incremental false` passed.
 - `npm run build` passed; existing website i18n dynamic-server warnings still log during static generation.
-- Tenant route smoke passed: `Host: mysalon.qa.menulist.digital:4013` `HEAD /bar-menu` returned `200 OK`.
+- Historical tenant route smoke passed on the retired host `Host: mysalon.qa.menulist.digital:4013`; reruns use `Host: mysalon.menulist.digital:<port>` under the current QA contract.
 - Full tenant menu GET rendered after a defensive Decision Blocks time-slot guard; saved HTML contained `_publicSearch`, `menuVersion`, and `dateModified`.
 - `/offline` route smoke returned `200 OK`.
 
@@ -47,7 +47,7 @@ Business-type alignment follow-up:
 
 Final public search UX pass:
 
-- Browser-tested `http://mysalon.qa.menulist.digital:4014/bar-menu` with tenant host routing.
+- Historical browser evidence used retired `http://mysalon.qa.menulist.digital:4014/bar-menu`; current reruns use `http://mysalon.menulist.digital:<port>/bar-menu`.
 - Query `chay` returned `Chai` and `Masala chai` only after the fuzzy false-positive guard; `French omelette` no longer matched that phonetic query.
 - Query `chaisssss` returns the chai items through repeated-letter/plural recovery, without matching unrelated `choice`, `cheese`, or generic `tea` description text.
 - Query `chaies` returns chai items through bounded plural recovery, without matching unrelated egg or appam items.

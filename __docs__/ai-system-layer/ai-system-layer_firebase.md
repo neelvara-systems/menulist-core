@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed code/cost truth — not current launch or deploy certification
-**Last Updated:** August 1, 2026
+**Last Updated:** August 2, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -23,6 +23,7 @@ by tenant and store.
 - **Existing billable app-route ledger:** `menulistAiOperations/{tId}/{sId}/{docId}`
 - **New MenuList health record:** `_health/aiProvider_gemini`
 - **New Answerlattice health record:** `platformSummary/answerlatticeAiProviderHealth`
+- **New server-only spend window:** `geminiSpendWindows/{product}` in each product's existing Firebase project/database
 - **No new `aiUsageLog` collection:** That older design is not part of the active schema.
 
 The AI System Layer should avoid creating a write per internal AI call unless the operation is billable, owner-visible, or needed for incident response. The daily provider health checks add only one small status write per product per UTC day.
@@ -53,6 +54,8 @@ The existing daily AI-operation cleanup adds one bounded `reservationRecoveryAt 
 | Owner AI role permission check | Firestore/Admin SDK | Protected owner AI/capacity/status routes | Per guarded owner request | 1 existing store permission read | Rejects unauthorized users before capacity reads, media fetches, provider calls, task fanout, analytics reads, insight writes, operation writes, or credit consumption |
 | Owner transaction-history page | Firestore Admin SDK | `GET /api/ai-operations` | Owner/platform request | Owner: 1 current-store permission read, then capped operation reads (max 50) plus optional cursor lookup; platform: capped operation reads plus optional cursor lookup | Reads `menulistAiOperations/{tId}/{sId}` only after current `canAccessBilling` authorization for non-platform callers; owners receive allowlisted fields only and route diagnostics use bounded context |
 | Scheduler health previous status | Firestore Admin SDK | Answerlattice health task | Once per scheduler run | 1 | Skips duplicate successful checks inside the same UTC day |
+| Gemini spend reservation | Firestore Admin SDK | Before each billed Gemini provider attempt | Per provider attempt, including retries | 1 transaction read | Reads only the matching product spend-window document and fails closed if unavailable |
+| Gemini spend settlement/release | Firestore Admin SDK | After each Gemini response or failed attempt | Per provider attempt, including retries | 1 transaction read | Replaces the estimate with usage-based cost on success or releases it on failure |
 
 ### Writes
 
@@ -62,6 +65,8 @@ The existing daily AI-operation cleanup adds one bounded `reservationRecoveryAt 
 | Billable app-route operation | `menulistAiOperations/{tId}/{sId}` | Successful billable app-route AI output | Per charged operation | 1 | Existing route accounting path. Detailed mode stores usage metadata plus response presence/length only, not raw provider text. |
 | MenuList provider health | `_health/aiProvider_gemini` | `menulistMaintenanceScheduler.ai_provider_health_check` | Daily | 1 | Records provider/model/latency/status/key stats |
 | Answerlattice provider health | `platformSummary/answerlatticeAiProviderHealth` | `answerlatticeMasterScheduler.ai_provider_health_check` | Daily | 1 | Records provider/model/latency/status |
+| Gemini spend reservation | `geminiSpendWindows/{product}` | Before each billed Gemini provider attempt | Per provider attempt, including retries | 1 transaction write | Adds a conservative micro-USD reservation in the rolling minute bucket |
+| Gemini spend settlement/release | `geminiSpendWindows/{product}` | After each Gemini response or failed attempt | Per provider attempt, including retries | 1 transaction write | Replaces reservation with usage-based cost or releases it; settlement failure leaves the reservation conservative |
 
 ### Deletes
 
@@ -82,6 +87,15 @@ No new delete path was added for this hardening pass.
 
 The provider calls, not the health records, are the real production cost surface. Production scaling should be managed with billing, model-level quota monitoring, budget alerts, and quota increase requests.
 
+The rolling spend guard adds two small transaction reads and two small
+transaction writes per billed provider attempt. This is deliberate admission
+cost: it prevents concurrent app routes and Functions from independently
+crossing the same product/project ceiling. The one bounded document retains at
+most eleven minute buckets and contains no tenant, store, user, prompt,
+response, key, or provider payload. The default ceiling is USD 8 per rolling
+ten-minute window and can be lowered per environment with the full-name product
+env variables documented in the stack readiness guide.
+
 ---
 
 ## Security Rules
@@ -96,7 +110,13 @@ firestore.rules
   match /menulistAiOperations/{tId}/{sId}/{docId}
 ```
 
-No new Firestore rules or indexes are required for the daily health records because they are Admin SDK writes and point reads by operators/schedulers.
+No index is required for the daily health or rolling-spend records because they
+are Admin SDK point reads and transaction writes. The MenuList, Answerlattice,
+and SignalDesk Firestore rules now each contain an explicit
+`/geminiSpendWindows/{product}` deny branch. The focused emulator suite proves
+anonymous, owner, and platform browser contexts cannot read, list, create,
+replace, or delete the server-only budget record; Admin SDK behavior remains
+outside client-rule evaluation.
 
 ---
 

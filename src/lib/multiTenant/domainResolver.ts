@@ -160,7 +160,7 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
 
     // Check if it's a customer subdomain of any supported tenant base domain.
     // Production tenant links live under menulist.online, while QA tenant links
-    // live under qa.menulist.digital.
+    // live directly under menulist.digital.
     const platformBaseDomains = Array.from(
         new Set(
             MENULIST_TENANT_BASE_DOMAINS

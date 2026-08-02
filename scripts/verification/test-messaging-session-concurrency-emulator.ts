@@ -367,7 +367,7 @@ async function verifyFullResendInvalidatesStaleDeliveryState(): Promise<void> {
   session.extractedMenuData = { items: [{ id: "stale" }] };
   session.extractedProjectFiles = [{ uid: "stale" }];
   session.previewToken = "stale-preview-token";
-  session.previewUrl = "https://menulist.ai/msg-preview/full-resend-delivery-reset?token=stale";
+  session.previewUrl = "https://app.menulist.ai/msg-preview/full-resend-delivery-reset?token=stale";
   session.previewMessagePending = true;
   session.previewMessageDeliveryAttempts = 4;
   session.previewMessageLeaseToken = "stale-preview-lease";

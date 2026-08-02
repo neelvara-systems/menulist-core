@@ -259,7 +259,7 @@ async function verifyLifecycleSerializes(): Promise<void> {
 
   const expiredDelivery = buildSession({ sessionId: "messaging-expired-delivery" });
   expiredDelivery.state = "AWAITING_APPROVAL";
-  expiredDelivery.previewUrl = "https://menulist.ai/msg-preview/messaging-expired-delivery?token=test";
+  expiredDelivery.previewUrl = "https://app.menulist.ai/msg-preview/messaging-expired-delivery?token=test";
   expiredDelivery.previewMessagePending = true;
   expiredDelivery.expiresAt = Timestamp.fromMillis(Date.now() - 1);
   await sessions.doc(expiredDelivery.sessionId).set({
@@ -277,7 +277,7 @@ async function verifyLifecycleSerializes(): Promise<void> {
 
   const poisonSession = buildSession({ sessionId: "aaa-messaging-delivery-poison" });
   poisonSession.state = "AWAITING_APPROVAL";
-  poisonSession.previewUrl = "https://menulist.ai/msg-preview/aaa-messaging-delivery-poison?token=test";
+  poisonSession.previewUrl = "https://app.menulist.ai/msg-preview/aaa-messaging-delivery-poison?token=test";
   poisonSession.previewMessagePending = true;
   await sessions.doc(poisonSession.sessionId).set({
     ...poisonSession,
@@ -316,7 +316,7 @@ async function verifyLifecycleSerializes(): Promise<void> {
 
   const healthySession = buildSession({ sessionId: "zzz-messaging-delivery-healthy" });
   healthySession.state = "AWAITING_APPROVAL";
-  healthySession.previewUrl = "https://menulist.ai/msg-preview/zzz-messaging-delivery-healthy?token=test";
+  healthySession.previewUrl = "https://app.menulist.ai/msg-preview/zzz-messaging-delivery-healthy?token=test";
   healthySession.previewMessagePending = true;
   await sessions.doc(healthySession.sessionId).set({
     ...healthySession,
@@ -350,7 +350,7 @@ async function verifyLifecycleSerializes(): Promise<void> {
 
   const takeoverSession = buildSession({ sessionId: "messaging-delivery-takeover" });
   takeoverSession.state = "AWAITING_APPROVAL";
-  takeoverSession.previewUrl = "https://menulist.ai/msg-preview/messaging-delivery-takeover?token=test";
+  takeoverSession.previewUrl = "https://app.menulist.ai/msg-preview/messaging-delivery-takeover?token=test";
   takeoverSession.previewMessagePending = true;
   const takeoverNow = Timestamp.now();
   await sessions.doc(takeoverSession.sessionId).set({

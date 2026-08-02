@@ -5,7 +5,7 @@
 
 ---
 
-Internal platform tools are restricted to platform administrators (`ECOMSAI_PLATFORM_USER_ROLE`). They are not owner-facing mobile features.
+Internal platform tools are restricted to platform administrators (`MENULIST_PLATFORM_USER_ROLE`). They are not owner-facing mobile features.
 
 Mobile More exposes the active platform management screens that are practical as responsive admin forms: Entity Blocks, Tenants, Stores, and Users. These screens reuse the existing desktop admin components and DAL inside the shared mobile internal wrapper; they do not create separate mobile-only data logic.
 

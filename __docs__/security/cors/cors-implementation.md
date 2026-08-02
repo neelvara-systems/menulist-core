@@ -172,6 +172,10 @@ if (!isAllowed) {
 - `true` - Origin is allowed
 - `false` - Origin is not allowed or missing
 
+Allowed origins are exact origins. A configured `menulist.digital` origin does
+not authorize `*.menulist.digital`; this keeps QA customer sites separate from
+`app.menulist.digital` even though they share a registrable domain.
+
 ---
 
 ### 2. `validateCORS(request: Request): NextResponse | null`

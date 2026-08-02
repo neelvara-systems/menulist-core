@@ -17,7 +17,7 @@
 3. Configure store settings (business info, location, hours, etc.)
 4. View and manage all stores across the platform
 
-**Current Scope:** Internal use only (platform admins with `ECOMSAI_PLATFORM_USER_ROLE`)
+**Current Scope:** Internal use only (platform admins with `MENULIST_PLATFORM_USER_ROLE`)
 
 ---
 
@@ -171,7 +171,7 @@ Store (storeId: 1)
 
 | Role                         | Access           |
 | ---------------------------- | ---------------- |
-| `ECOMSAI_PLATFORM_USER_ROLE` | Full CRUD access |
+| `MENULIST_PLATFORM_USER_ROLE` | Full CRUD access |
 | Regular users                | No access        |
 
 ### Multi-Chain State ✅ (Implemented)

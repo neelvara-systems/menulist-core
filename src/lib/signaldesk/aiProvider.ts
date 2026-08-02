@@ -1,8 +1,13 @@
 import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
 import { isSupportedGeminiModel } from "@data/shared/geminiRuntime";
+import {
+    createFirestoreGeminiSpendAdmission,
+    getGeminiSpendLimitMicroUsd,
+} from "@data/shared/geminiSpendPolicy";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { createAIGateway } from "@lib/google/genAi/aiGateway";
 import { KeyManager } from "@lib/google/genAi/keyManager";
+import { signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import type { SignalDeskAiTask, SignalDeskTargetSummary } from "@type/signaldesk";
 import { z } from "zod";
@@ -48,7 +53,12 @@ const signalDeskKeyManager = new KeyManager([
     [SIGNALDESK_INTEGRATION_ENV.GEMINI_AI_KEY_3],
     [SIGNALDESK_INTEGRATION_ENV.GEMINI_AI_KEY_4],
 ]);
-const signalDeskGenAIClient = createAIGateway(signalDeskKeyManager);
+const signalDeskGeminiSpendAdmission = createFirestoreGeminiSpendAdmission({
+    getFirestore: () => signaldeskFirestoreAdmin,
+    limitMicroUsd: getGeminiSpendLimitMicroUsd('signaldesk', process.env),
+    product: 'signaldesk',
+});
+const signalDeskGenAIClient = createAIGateway(signalDeskKeyManager, signalDeskGeminiSpendAdmission);
 const hasGeminiKey = () => signalDeskKeyManager.hasConfiguredKeys();
 
 const requireSupportedModel = (model: string) => {

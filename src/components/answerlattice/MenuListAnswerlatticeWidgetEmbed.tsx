@@ -93,7 +93,7 @@ function resolveWidgetScriptSrc(): string {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${origin}/widget/v1/answerlattice-widget.js`;
     }
-    if (hostname === 'qa.menulist.digital' || hostname.endsWith('.qa.menulist.digital') || hostname.endsWith('.vercel.app')) {
+    if (hostname === 'menulist.digital' || hostname.endsWith('.menulist.digital') || hostname.endsWith('.vercel.app')) {
         return 'https://answerlattice.menulist.online/widget/v1/answerlattice-widget.js';
     }
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';

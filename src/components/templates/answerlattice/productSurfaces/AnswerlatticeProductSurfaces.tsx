@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { getEntities } from '@database/answerlattice/entities';
 import {
@@ -375,7 +376,19 @@ export default function AnswerlatticeProductSurfaces() {
                     <Col xs={24} lg={8}>
                         <Card title="Surface Directory" extra={<Tag>{surfaces.length}</Tag>} styles={{ body: { padding: 0 } }}>
                             {surfaces.length === 0 ? (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No product surfaces yet" style={{ padding: 24 }} />
+                                <Empty
+                                    description="No product surfaces yet"
+                                    image={(
+                                        <ContextualStateIllustration
+                                            color={token.colorPrimary}
+                                            size={104}
+                                            treatment="softHalo"
+                                            variant="roleStructureContext"
+                                        />
+                                    )}
+                                    imageStyle={{ height: 104 }}
+                                    style={{ padding: 24 }}
+                                />
                             ) : (
                                 <List
                                     dataSource={surfaces}

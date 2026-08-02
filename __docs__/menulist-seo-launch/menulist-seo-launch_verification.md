@@ -324,7 +324,10 @@ NODE
 
 - External claim that `menulist.online` robots and sitemap endpoints return internal errors was not current: `/robots.txt` and `/sitemap.xml` returned 200 in live checks.
 - Real blocker found: `menulist.online` serves the app but emits `menulist.ai` canonical/sitemap URLs, while `menulist.ai` currently serves a `/lander` shell. Search Console should wait until the chosen canonical host serves the app.
-- `/create-menu` is a public SEO landing page, not only an auth transition page; it already has server-rendered public copy and should remain indexable.
+- Historical conclusion at the time: `/create-menu` was treated as an
+  indexable public landing page. The August 2 host split supersedes this:
+  marketing-host `/create-menu` redirects to the canonical app host, and the
+  app-host onboarding route is `noindex`.
 - `/signin` and `/forgot-password` now define explicit noindex/nofollow metadata.
 - Middleware now emits `X-Robots-Tag: noindex, nofollow` for auth, app, account, billing, settings, API, direct internal client, create-menu success, and preview paths.
 - Platform robots/discovery policy now includes the missing auth/internal disallow prefixes.
@@ -333,7 +336,7 @@ NODE
 
 ### Readiness Decision
 
-The confirmed code-side noindex gap is fixed. Historical note: this pass was written before the owner finalized the split between the production website, production customer-link root, and QA host. Current repo contract is `menulist.ai` for production website, `*.menulist.online` for production customer menus/OBP, exact `menulist.online`/`www.menulist.online` redirects to `menulist.ai`, and `qa.menulist.digital` plus `*.qa.menulist.digital` for MenuList QA. The later June 23 pending cross-check fixed the stale public menu soft-index risk by noindexing missing project slug fallback pages while preserving the customer fallback ladder.
+The confirmed code-side noindex gap is fixed. Historical note: this pass was written before the owner finalized the host split. Current repo contract is `menulist.ai`/`www` for the production website, `app.menulist.ai` for the production owner app, `*.menulist.online` for production customer menus/OBP, `menulist.digital`/`www` for the QA website, `app.menulist.digital` for the QA owner app, and `*.menulist.digital` for QA customer tests. The later June 23 pending cross-check fixed the stale public menu soft-index risk by noindexing missing project slug fallback pages while preserving the customer fallback ladder.
 
 ---
 

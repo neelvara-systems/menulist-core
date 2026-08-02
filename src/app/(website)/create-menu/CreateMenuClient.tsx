@@ -11,13 +11,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
+import { buildWebsiteSignInPath } from '@/lib/website/signInLinks';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -90,15 +91,15 @@ export default function CreateMenuClient({
     const isSessionLoading = sessionStatus === 'loading';
     const createMenuPath = useWebsitePath(buildCreateMenuPath(growthAcquisition));
     const createMenuPreviewPath = useWebsitePath('/create-menu/preview');
-    const signInPath = `/signin?callbackUrl=${encodeURIComponent(createMenuPath)}`;
+    const signInPath = buildWebsiteSignInPath(createMenuPath);
 
     const redirectToSignIn = useCallback(() => {
-        router.push(signInPath);
-    }, [router, signInPath]);
+        window.location.assign(signInPath);
+    }, [signInPath]);
 
     const continueWithGoogle = useCallback(() => {
-        signIn('google', { callbackUrl: createMenuPath });
-    }, [createMenuPath]);
+        window.location.assign(signInPath);
+    }, [signInPath]);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {

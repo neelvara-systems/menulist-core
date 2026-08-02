@@ -258,7 +258,7 @@ function verifyCustomerServiceWorkerPolicy() {
     'root package must expose the customer PWA offline browser smoke',
   );
   [
-    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.qa.menulist.digital';",
+    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.menulist.digital';",
     "const upstreamUrl = new URL(process.env.CUSTOMER_PWA_QA_UPSTREAM_URL || 'http://127.0.0.1:3000');",
     'function createLoopbackTenantProxy()',
     'tenantProxy.setOffline(true);',

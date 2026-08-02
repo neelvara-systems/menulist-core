@@ -1,10 +1,12 @@
 "use client";
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { getBoundedErrorStringField } from "@lib/monitoring/boundedLogContext";
 import { getDefaultErrorPageTheme, readPersistedErrorPageTheme } from "@lib/runtime/errorPageTheme";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { useEffect, useState } from "react";
+import { LuHome, LuRefreshCw } from 'react-icons/lu';
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const [theme, setTheme] = useState(getDefaultErrorPageTheme);
@@ -45,20 +47,12 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           padding: 24,
           maxWidth: 480
         }}>
-          {/* Error Icon */}
-          <div style={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            backgroundColor: theme.darkMode ? '#2a2a2a' : '#e8e8e8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 24px',
-            fontSize: 40
-          }}>
-            ⚠️
-          </div>
+          <ContextualStateIllustration
+            color={secondaryTextColor}
+            size={152}
+            style={{ margin: '0 auto 24px' }}
+            variant="serverErrorContext"
+          />
 
           <h1 style={{
             fontSize: 24,
@@ -102,7 +96,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                 gap: 8
               }}
             >
-              🔄 Try Again
+              <LuRefreshCw aria-hidden="true" size={16} />
+              Try Again
             </button>
             <button
               onClick={() => window.location.href = '/'}
@@ -120,7 +115,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                 gap: 8
               }}
             >
-              🏠 Go Home
+              <LuHome aria-hidden="true" size={16} />
+              Go Home
             </button>
           </div>
           <ErrorReportButton

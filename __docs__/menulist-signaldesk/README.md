@@ -3,7 +3,7 @@
 **Project:** MenuList SignalDesk
 **Status:** Internal workflow implemented for source testing; Feature 1-11 hardening complete through Email Rail, while provider send, paid campaigns, auto-publish, external certification, and pending SignalDesk Firebase deployments remain blocked or owner-controlled
 **Created:** June 23, 2026
-**Last Updated:** July 22, 2026
+**Last Updated:** August 2, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -19,7 +19,7 @@ It is not a public product, not a MenuList owner/customer feature, not a generic
 
 ## AI Credential Boundary
 
-SignalDesk AI assist uses only `SIGNALDESK_GEMINI_AI_KEY*` through a product-scoped key manager. It reuses the maintained Gemini retry gateway implementation, but it does not consume MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. The separate `ai-worker` kill switch, model-route approval, provider budget, and action rate limit remain the runtime controls.
+SignalDesk AI assist uses only `SIGNALDESK_GEMINI_AI_KEY*` through a product-scoped key manager. It reuses the maintained Gemini gateway, but it does not consume MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. Before each billed attempt, the gateway reserves the SignalDesk project's rolling spend window; transient `429` uses structured retry timing and full jitter rather than immediate key hopping. `SIGNALDESK_GEMINI_SPEND_LIMIT_USD_10M` defaults to USD 8. The separate `ai-worker` kill switch, model-route approval, provider budget, action rate limit, and owner-controlled Gemini API spend-cap budget remain required controls.
 
 ## Source Inputs
 
@@ -254,3 +254,4 @@ Approved sources
 | 4.1 | 2026-07-11 | Implemented founder-triggered AI Volume Mode: up to five targets and three tasks, fast Gemini generation, independent critic, bounded same-provider escalation, founder cost maximum, paid-request idempotency, partial-failure evidence, parent/child workspace visibility, and no external-action authority. |
 | 4.2 | 2026-07-11 | Cross-check fixed expired AI Volume parents end to end: desktop persists/reuses the bounded retry payload, server reconstructs child/call/cost evidence, terminal status finalizes without provider calls, stable interruption evidence remains, and an old parent cannot release another batch's lock. |
 | 4.3 | 2026-07-21 | Feature 18 Operating Layer cross-check added full parent-route/workspace/action gating, child-rail read isolation, permission-specific controls, strict reply/source/pod projections, policy-run integrity, no-write exact replay, corrected mobile scope/cost docs, and focused deterministic E2E coverage. |
+| 4.4 | 2026-08-02 | Added product-project rolling Gemini spend admission, usage-based settlement, and structured jittered 429 handling without widening provider-send or public authority. |

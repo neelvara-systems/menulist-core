@@ -308,7 +308,7 @@ For each tenant:
 
 | Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
-| MenuList | `localhost:3000`             | `qa.menulist.digital`, `*.qa.menulist.digital` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai`, `*.menulist.online` | Marketing, owner app, customer menus/OBP |
+| MenuList | `localhost:3000`             | `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, `*.menulist.digital` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai`, `*.menulist.online` | Marketing, owner app, customer menus/OBP |
 | Neelvara | `localhost:3000/__neelvara` | `neelvara.menulist.online` | `neelvara.com`, `www.neelvara.com` | Static parent/entity trust website |
 | Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
@@ -321,7 +321,7 @@ Neelvara is deliberately a product-domain site route, not a MenuList tenant/cust
 
 Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are not active on a public host because MyCodex has no active domain. They do not change product slugs, env names, Firebase targets, or public canonical URLs.
 
-MenuList production customer links use `*.menulist.online`; `menulist.online` and `www.menulist.online` are exact-host redirects to `menulist.ai`. MenuList QA uses `qa.menulist.digital` plus `*.qa.menulist.digital`; `menulist.digital` and `www.menulist.digital` are exact-host redirect/noindex targets only.
+MenuList production customer links use `*.menulist.online`; `menulist.online` and `www.menulist.online` are exact-host redirects to `menulist.ai`. MenuList QA uses `menulist.digital`/`www` for the website, `app.menulist.digital` for the single owner app, and `*.menulist.digital` for customer tests. Both app hosts use `/dashboard`; authenticated session scope selects the tenant/store. Sign-in, `/create-menu`, `/invite`, and owner-route handoffs use the canonical app host. Marketing-host requests for those paths redirect there, deprecated `app.<tenant-base>` and `dashboard.*` aliases redirect there, and app `/` redirects to `/dashboard`. App responses are `noindex`; app `robots.txt` disallows crawling and app `sitemap.xml` is unavailable. Website/app CORS origins are exact, so QA customer subdomains do not inherit owner API access from `menulist.digital`.
 
 SignalDesk uses the dedicated private host `signaldesk.menulist.online`. The old MyCodex-host `/sd` dependency is removed from public routing and does not make SignalDesk a public `/sites` product.
 
@@ -348,7 +348,7 @@ Set per environment on Vercel:
 | Environment | Value                            |
 | ----------- | -------------------------------- |
 | Production  | `https://menulist.ai`            |
-| Preview     | `https://qa.menulist.digital`    |
+| Preview     | `https://menulist.digital`       |
 
 Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`screen/utils.ts`), QR codes (`feedbackQrCode.ts`), SEO metadata (`layout.tsx`, `SchemaMarkup.tsx`).
 

@@ -1,10 +1,10 @@
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import {
-    ECOMSAI_PLATFORM_STORE_ID,
-    ECOMSAI_PLATFORM_TENANT_ID,
-    ECOMSAI_PLATFORM_USER_ID,
-    ECOMSAI_PLATFORM_USER_NAME,
-    ECOMSAI_PLATFORM_USER_ROLE,
+    MENULIST_PLATFORM_STORE_ID,
+    MENULIST_PLATFORM_TENANT_ID,
+    MENULIST_PLATFORM_USER_ID,
+    MENULIST_PLATFORM_USER_NAME,
+    MENULIST_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { Timestamp } from "firebase/firestore";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
@@ -90,10 +90,10 @@ export function composeRequestBody<T extends object>(
     }
 
     const dataRecord = data as Record<string, unknown>;
-    const sessionName = resolveNonEmptyString(session?.user?.name, ECOMSAI_PLATFORM_USER_NAME);
+    const sessionName = resolveNonEmptyString(session?.user?.name, MENULIST_PLATFORM_USER_NAME);
     const modifiedBy = session
         ? sessionName
-        : resolveNonEmptyString(dataRecord.modifiedBy, ECOMSAI_PLATFORM_USER_NAME);
+        : resolveNonEmptyString(dataRecord.modifiedBy, MENULIST_PLATFORM_USER_NAME);
     const dataCopy: Record<string, unknown> = {
         ...dataRecord,
         pId: resolveNonEmptyString(
@@ -102,20 +102,20 @@ export function composeRequestBody<T extends object>(
         ),
         sId: normalizeScopeId(
             dataRecord.sId ?? session?.sId,
-            ECOMSAI_PLATFORM_STORE_ID,
+            MENULIST_PLATFORM_STORE_ID,
             "sId",
         ),
         tId: normalizeScopeId(
             dataRecord.tId ?? session?.tId,
-            ECOMSAI_PLATFORM_TENANT_ID,
+            MENULIST_PLATFORM_TENANT_ID,
             "tId",
         ),
         role: session
-            ? resolveNonEmptyString(session.role, ECOMSAI_PLATFORM_USER_ROLE)
-            : resolveNonEmptyString(dataRecord.role, ECOMSAI_PLATFORM_USER_ROLE),
+            ? resolveNonEmptyString(session.role, MENULIST_PLATFORM_USER_ROLE)
+            : resolveNonEmptyString(dataRecord.role, MENULIST_PLATFORM_USER_ROLE),
         uId: session
-            ? resolveActorId(session.uId, ECOMSAI_PLATFORM_USER_ID)
-            : resolveActorId(dataRecord.uId, ECOMSAI_PLATFORM_USER_ID),
+            ? resolveActorId(session.uId, MENULIST_PLATFORM_USER_ID)
+            : resolveActorId(dataRecord.uId, MENULIST_PLATFORM_USER_ID),
         modifiedBy,
         modifiedOn: now,
     };

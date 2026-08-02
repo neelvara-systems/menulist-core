@@ -1,5 +1,6 @@
 "use client";
 
+import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import { SIGNIN_URL } from "@constant/urls";
 import { CAMPAIGNCUE_PAGE_SIZE } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_DAILY_DESK_RECIPES } from "@constant/campaigncue/dailyDesk";
@@ -3313,7 +3314,11 @@ export default function CampaignCueWorkspaceApp() {
                             </div>
                         </article>
                     ))}
-                    {!rows.length ? <div className={styles.empty}><p>{copy?.empty || "No outputs yet."}</p></div> : null}
+                    {!rows.length ? (
+                        <div className={styles.empty}>
+                            <p>{copy?.empty || "No outputs yet."}</p>
+                        </div>
+                    ) : null}
                 </div>
             </section>
         );
@@ -4304,6 +4309,7 @@ export default function CampaignCueWorkspaceApp() {
                                     ))}
                                     {!data.sourceFacts.length ? (
                                         <div className={styles.empty}>
+                                            <ContextualStateIllustration color={token.colorPrimary} size={72} treatment="softHalo" variant="uploadContext" />
                                             <p>Add business details or an owner input so CampaignCue has facts to use.</p>
                                         </div>
                                     ) : null}
@@ -4570,6 +4576,7 @@ export default function CampaignCueWorkspaceApp() {
                                 })}
                                 {!data.sourceInputs.some((source) => source.sourceType !== "inspiration_pattern") ? (
                                     <div className={styles.empty}>
+                                        <ContextualStateIllustration color={token.colorPrimary} size={72} treatment="softHalo" variant="uploadContext" />
                                         <p>No inputs yet. Add an offer, event, menu link, booking link, or simple note first.</p>
                                     </div>
                                 ) : null}
@@ -4753,6 +4760,7 @@ export default function CampaignCueWorkspaceApp() {
                                 })}
                                 {!data.opportunities.length ? (
                                     <div className={styles.empty}>
+                                        <ContextualStateIllustration color={token.colorPrimary} size={72} treatment="softHalo" variant="feedbackContext" />
                                         <p>No ideas yet. Add a current offer, event, service, or menu link in Offers, events, and notes.</p>
                                     </div>
                                 ) : null}
@@ -4909,6 +4917,7 @@ export default function CampaignCueWorkspaceApp() {
                                 ))}
                                 {!data.sourceInputs.some((source) => source.sourceType === "inspiration_pattern" && source.patternCue) ? (
                                     <div className={styles.empty}>
+                                        <ContextualStateIllustration color={token.colorPrimary} size={72} treatment="softHalo" variant="uploadContext" />
                                         <p>No saved examples yet. Add one useful public format instead of browsing hundreds of templates.</p>
                                     </div>
                                 ) : null}
@@ -5072,6 +5081,7 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                             ) : (
                                 <div className={styles.empty}>
+                                    <ContextualStateIllustration color={token.colorPrimary} size={88} treatment="softHalo" variant="emptyWorkspace" />
                                     <p>No campaign packs yet. Use Create pack after your business details or current input is saved.</p>
                                 </div>
                             )}
@@ -5500,7 +5510,12 @@ export default function CampaignCueWorkspaceApp() {
                                         </div>
                                     );
                                 })}
-                                {!data.schedules.length ? <div className={styles.empty}><p>No scheduled tasks.</p></div> : null}
+                                {!data.schedules.length ? (
+                                    <div className={styles.empty}>
+                                        <ContextualStateIllustration color={token.colorPrimary} size={72} treatment="softHalo" variant="scheduleContext" />
+                                        <p>No scheduled tasks.</p>
+                                    </div>
+                                ) : null}
                             </div>
                         </section>
                     ) : null}
@@ -5658,7 +5673,11 @@ export default function CampaignCueWorkspaceApp() {
                                         </div>
                                     </div>
                                 ))}
-                                {!data.assets.length ? <div className={styles.empty}><p>No assets yet. Save a photo, logo, or file note before reusing it in packs.</p></div> : null}
+                                {!data.assets.length ? (
+                                    <div className={styles.empty}>
+                                        <p>No assets yet. Save a photo, logo, or file note before reusing it in packs.</p>
+                                    </div>
+                                ) : null}
                             </div>
                         </section>
                     ) : null}

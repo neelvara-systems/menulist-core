@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
-const { readFileSync } = require('node:fs');
+const { readdirSync, readFileSync } = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
@@ -304,6 +304,70 @@ const collectionCsv = readFileSync(
     path.join(root, '__docs__/audits/data-flow-pipeline-deep-audit.collections.csv'),
     'utf8',
 );
+
+const collectSourceFiles = (directory) => readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+        const absolutePath = path.join(directory, entry.name);
+        if (entry.isDirectory()) return collectSourceFiles(absolutePath);
+        return /\.(?:js|jsx|ts|tsx)$/.test(entry.name) ? [absolutePath] : [];
+    });
+const firestoreClientOperationNames = new Set([
+    'addDoc',
+    'collection',
+    'collectionGroup',
+    'deleteDoc',
+    'doc',
+    'endAt',
+    'endBefore',
+    'getCountFromServer',
+    'getDoc',
+    'getDocs',
+    'limit',
+    'limitToLast',
+    'onSnapshot',
+    'orderBy',
+    'query',
+    'runTransaction',
+    'setDoc',
+    'startAfter',
+    'startAt',
+    'updateDoc',
+    'where',
+    'writeBatch',
+]);
+const uncataloguedFirestoreClientSources = [];
+for (const absolutePath of collectSourceFiles(path.join(root, 'src'))) {
+    const source = readFileSync(absolutePath, 'utf8');
+    const localOperationNames = [];
+    for (const importMatch of source.matchAll(
+        /import\s*\{([^}]*)\}\s*from\s*['"](?:@firebase\/firestore|firebase\/firestore)['"]/gm,
+    )) {
+        for (const importedPart of importMatch[1].split(',')) {
+            const [importedName, localAlias] = importedPart
+                .trim()
+                .replace(/^type\s+/, '')
+                .split(/\s+as\s+/);
+            if (firestoreClientOperationNames.has(importedName)) {
+                localOperationNames.push(localAlias || importedName);
+            }
+        }
+    }
+    if (localOperationNames.length === 0) continue;
+    const executableSource = source
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+    if (!localOperationNames.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(executableSource))) {
+        continue;
+    }
+    const relativePath = path.relative(root, absolutePath).split(path.sep).join('/');
+    if (!collectionCsv.includes(relativePath)) uncataloguedFirestoreClientSources.push(relativePath);
+}
+assert.deepEqual(
+    uncataloguedFirestoreClientSources,
+    [],
+    `every direct Firebase client-operation source must appear in the reverse collection catalog; missing: ${uncataloguedFirestoreClientSources.join(', ')}`,
+);
+
 assert(
     !collectionCsv.split('\n').some((line) => line.startsWith('"documents",')),
     'collection catalog must not emit the Firestore documents grammar wrapper as a collection',

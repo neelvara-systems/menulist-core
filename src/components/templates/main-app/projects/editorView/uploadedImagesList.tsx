@@ -1,3 +1,4 @@
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -46,6 +47,7 @@ function UploadedImagesList({
         fileId: item.fileId || fileId,
         id: item.id,
     });
+    const hasImages = Boolean(item?.images?.length);
 
     const onImageDelete = (
         selectedItem: ExtractedDataItem & { fileId?: string },
@@ -126,7 +128,35 @@ function UploadedImagesList({
     };
 
     return (
-        <Flex wrap gap={12}>
+        <Flex wrap gap={12} style={{ width: '100%' }}>
+            {!hasImages ? (
+                <Flex
+                    align="center"
+                    gap={8}
+                    justify="center"
+                    style={{
+                        background: token.colorFillAlter,
+                        border: `1px dashed ${token.colorBorder}`,
+                        borderRadius: token.borderRadiusLG,
+                        padding: isMobile ? 14 : 18,
+                        textAlign: 'center',
+                        width: '100%',
+                    }}
+                    vertical
+                >
+                    <ContextualStateIllustration
+                        color={token.colorPrimary}
+                        size={isMobile ? 72 : 88}
+                        style={{ opacity: 0.78 }}
+                        treatment="softHalo"
+                        variant="uploadContext"
+                    />
+                    <span style={{ color: token.colorText, fontWeight: 600 }}>No photo yet</span>
+                    <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>
+                        {disabled ? 'This item does not have a photo.' : 'Add a clear photo when you are ready.'}
+                    </span>
+                </Flex>
+            ) : null}
             {item?.images?.map((image: UserUploadedFileType, index: number) => {
                 const imagePreviewConfig = disabled || isMobile ? true : {
                     mask: (

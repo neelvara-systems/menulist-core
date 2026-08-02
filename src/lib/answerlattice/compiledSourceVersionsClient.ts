@@ -11,6 +11,7 @@ import {
     type AnswerlatticeClientInvalidationOwnership,
 } from './invalidationOwnershipClient';
 
+// @firestore-collection-evidence DB_COLLECTIONS.PLATFORM_SUMMARY operations=read/query|write|transaction/batch
 type SourceVersionBumpMetadata = {
     reason?: string;
     sourceId?: string;

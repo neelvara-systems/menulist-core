@@ -1,11 +1,42 @@
 'use client'
 
-import { Button, Card, Flex, Result } from 'antd';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
+import { Button, Card, Flex, Result, theme } from 'antd';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
 import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 
 const HELP_CHAT_ERROR_BOUNDARY_TRIGGERED = 'help_chat_error_boundary_triggered';
+
+function ChatErrorResult({ onReset }: { onReset: () => void }) {
+    const { token } = theme.useToken();
+
+    return (
+        <Result
+            icon={(
+                <ContextualStateIllustration
+                    color={token.colorTextQuaternary}
+                    size={112}
+                    variant="warningContext"
+                />
+            )}
+            status="warning"
+            title="Something went wrong"
+            subTitle="The chat encountered an unexpected error. Please try again."
+            extra={(
+                <Flex justify="center">
+                    <Button
+                        type="primary"
+                        icon={<LuRefreshCw />}
+                        onClick={onReset}
+                    >
+                        Try Again
+                    </Button>
+                </Flex>
+            )}
+        />
+    );
+}
 
 interface Props {
     children: ReactNode;
@@ -52,22 +83,7 @@ class ChatErrorBoundary extends Component<Props, State> {
         if (this.state.hasError) {
             return (
                 <Card style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Result
-                        status="warning"
-                        title="Something went wrong"
-                        subTitle="The chat encountered an unexpected error. Please try again."
-                        extra={
-                            <Flex justify="center">
-                                <Button
-                                    type="primary"
-                                    icon={<LuRefreshCw />}
-                                    onClick={this.handleReset}
-                                >
-                                    Try Again
-                                </Button>
-                            </Flex>
-                        }
-                    />
+                    <ChatErrorResult onReset={this.handleReset} />
                 </Card>
             );
         }

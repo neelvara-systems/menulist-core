@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-07-29",
+  "updatedAt": "2026-08-02",
   "boundary": {
     "internalOnly": true,
     "publicRuntime": false,
@@ -140,10 +140,12 @@
       "verificationStatus": "not-run",
       "sourcePaths": [
         "firestore.rules",
-        "firebase.json"
+        "firebase.json",
+        "scripts/verification/test-gemini-spend-window-rules.ts"
       ],
       "evidenceIds": [
-        "menulist.tenant-store-rules"
+        "menulist.tenant-store-rules",
+        "menulist.gemini-spend-window-rules"
       ],
       "bundleIds": [
         "menulist.identity-and-tenant"
@@ -282,10 +284,12 @@
       "verificationStatus": "not-run",
       "sourcePaths": [
         "firestore-answerlattice.rules",
-        "__docs__/answerlattice/doctrine"
+        "__docs__/answerlattice/doctrine",
+        "scripts/verification/test-gemini-spend-window-rules.ts"
       ],
       "evidenceIds": [
         "answerlattice.governance-rules",
+        "answerlattice.gemini-spend-window-rules",
         "answerlattice.core-doctrine"
       ],
       "bundleIds": [
@@ -369,10 +373,12 @@
       "sourcePaths": [
         "firestore-signaldesk.rules",
         "storage-signaldesk.rules",
-        "firebase-signaldesk.json"
+        "firebase-signaldesk.json",
+        "scripts/verification/test-gemini-spend-window-rules.ts"
       ],
       "evidenceIds": [
-        "signaldesk.security-rules"
+        "signaldesk.security-rules",
+        "signaldesk.gemini-spend-window-rules"
       ],
       "bundleIds": [
         "signaldesk.registered-security"

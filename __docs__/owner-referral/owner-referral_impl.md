@@ -233,7 +233,7 @@ interface OwnerReferralTokenPayload {
 }
 ```
 
-Derive the AES-256-GCM key with HKDF-SHA-256 and a fixed domain label. Use a unique 96-bit random IV. Encode version, IV, ciphertext, and authentication tag with URL-safe base64. Put the token in `/invite#r=<token>` and build the absolute URL from `getPublicBaseUrl()` plus `appendPublicPath()`.
+Derive the AES-256-GCM key with HKDF-SHA-256 and a fixed domain label. Use a unique 96-bit random IV. Encode version, IV, ciphertext, and authentication tag with URL-safe base64. Put the token in `/invite#r=<token>` and build the absolute URL from `OWNER_APP_URL` plus `appendPublicPath()` so capture, onboarding, and the host-only attribution cookie stay on the canonical owner app.
 
 Identity-comparison tags are removed because owner identity, email, phone, business name, device, IP, and onboarding source do not affect payment-only eligibility.
 
@@ -253,7 +253,7 @@ The link is stateless and multi-use until its 30-day security expiry. `tokenId` 
 
 The first valid capture wins while the cookie remains valid. The capture endpoint never overwrites a valid first capture.
 
-The referral journey is canonical-host bound. If an invite is opened through a public alias, dashboard host, tenant host, or custom domain, route to the canonical public MenuList host before capture while preserving the browser fragment. Keep the invite CTA, sign-in/setup continuation, and payment-start request on that host. Do not broaden the cookie to `.menulist.ai`, `menulist.online`, or any tenant/customer host.
+The referral journey is canonical-host bound. If an invite is opened through a website alias, tenant host, or custom domain, route to the canonical MenuList owner-app host before capture while preserving the browser fragment. Keep the invite CTA, sign-in/setup continuation, and payment-start request on that host. Do not broaden the cookie to `.menulist.ai`, `.menulist.digital`, `menulist.online`, or any tenant/customer host.
 
 ---
 

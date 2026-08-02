@@ -80,7 +80,7 @@
 | OR-TOKEN-008 | Two link requests | Both stateless links valid independently; zero Firestore writes. |
 | OR-TOKEN-009 | Same link used by multiple invited businesses | Separate deterministic referral records may bind. |
 | OR-TOKEN-010 | Token payload inspection | No actor/email/phone/business identity comparison fields. |
-| OR-TOKEN-011 | Attacker controls Host header | URL still uses canonical `getPublicBaseUrl()`. |
+| OR-TOKEN-011 | Attacker controls Host header | URL still uses canonical `OWNER_APP_URL`. |
 | OR-TOKEN-012 | Access log/Referrer header | Fragment token absent. |
 | OR-CAP-001 | Valid page opens | Fragment removed; token memory-only; no capture/cookie. |
 | OR-CAP-002 | CTA selected | Same-origin capture sets host-only HttpOnly cookie. |

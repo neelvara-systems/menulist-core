@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
 import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
@@ -638,11 +639,16 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
         }
     };
 
-    const getUserRoleName = (user: StaffUserSummary) => {
+    const getUserRoleId = (user: StaffUserSummary) => {
         const storeMapping = (user as any)?.stores?.find((store: any) => store.storeId === storeDetails?.storeId);
-        if (!storeMapping?.role) return t('noRole');
-        const role = roles.find((item: any) => item.id === storeMapping.role);
-        return role?.name || storeMapping.role;
+        return storeMapping?.role || '';
+    };
+
+    const getUserRoleName = (user: StaffUserSummary) => {
+        const roleId = getUserRoleId(user);
+        if (!roleId) return t('noRole');
+        const role = roles.find((item: any) => item.id === roleId);
+        return role?.name || roleId;
     };
 
     if (!storeDetails || isLoadingUsers) {
@@ -686,7 +692,12 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                 {users.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuUser color={token.colorTextTertiary} size={40} />
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={88}
+                                treatment="softHalo"
+                                variant="teamContext"
+                            />
                             <Text type="secondary">{t('noStaffYet')}</Text>
                             <Button onClick={() => setShowAddUser(true)}><Flex align="center" gap={6}><LuPlus size={16} /><Text>{t('addStaff')}</Text></Flex></Button>
                         </Flex>
@@ -699,7 +710,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                                     <List.Item
                                         arrow
                                         description={<Flex align="center" gap={6}><Text type="secondary">{user.staffAuthMode === 'owner_passcode' ? user.staffLoginId || user.loginUsername : user.displayEmail || user.email}</Text>{!user.active ? <Tag color="default">Inactive</Tag> : null}</Flex>}
-                                        extra={<Tag color="primary">{getUserRoleName(user)}</Tag>}
+                                        extra={<Tag color={getUserRoleId(user) ? 'primary' : 'warning'}>{getUserRoleName(user)}</Tag>}
                                         key={user.id}
                                         onClick={() => setSelectedUser(user)}
                                         prefix={user.profileImage ? <Avatar src={user.profileImage} /> : <Avatar icon={<LuUser size={14} />} />}

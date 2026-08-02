@@ -3,7 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
@@ -300,7 +300,7 @@ export default function MobileShell() {
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatformAdmin = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
     const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);

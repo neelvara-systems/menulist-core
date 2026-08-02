@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import {
     ANSWERLATTICE_GOVERNANCE_TABS,
@@ -263,7 +264,21 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                     : data
                         ? 'No active product entities are available for this map.'
                         : 'The map will appear after the existing nightly ontology index has completed.'}
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                image={loadFailed ? (
+                    <ContextualStateIllustration
+                        color={token.colorTextQuaternary}
+                        size={112}
+                        variant="warningContext"
+                    />
+                ) : (
+                    <ContextualStateIllustration
+                        color={token.colorPrimary}
+                        size={128}
+                        treatment="softHalo"
+                        variant="roleStructureContext"
+                    />
+                )}
+                imageStyle={{ height: loadFailed ? 112 : 128 }}
                 style={{ padding: 48 }}
             >
                 {loadFailed ? <Button icon={<LuRefreshCw />} onClick={() => void load()}>Try again</Button> : null}

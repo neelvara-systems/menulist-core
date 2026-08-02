@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { MENULIST_PLATFORM_USER_ROLE } from "@constant/user";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -29,7 +29,7 @@ export {
 } from "./scopeDocumentId";
 
 const isPlatformSession = (session: any) => (
-    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE
 );
 
 async function requireCurrentPlatformPermissionAuthority(

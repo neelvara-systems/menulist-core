@@ -12,7 +12,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { isFunctionFeatureEnabled } from '../constants/features';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '../constants/user';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '../lib/rateLimit';
 import { normalizeMapsPlaceCheckInput, runMapsPlaceCheck } from '../logic/mapsPlaceCheck';
 import { isPublishVerificationScopeAuthorized } from '../monitoring/publishVerification';
@@ -56,7 +56,7 @@ function assertAuthenticatedAccount(request: { auth?: { token?: Record<string, a
 function assertStoreScopedAccount(request: { auth?: { token?: Record<string, any> } }, action: string) {
     assertAuthenticatedAccount(request, action);
 
-    if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return;
+    if (getRequesterRole(request) === MENULIST_PLATFORM_USER_ROLE) return;
 
     const token = request.auth?.token || {};
     const scope = parseCallableTenantStoreScope(token);
@@ -71,7 +71,7 @@ function hasTenantStoreAccess(
     storeId: string | number,
 ): boolean {
     if (!request.auth) return false;
-    if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
+    if (getRequesterRole(request) === MENULIST_PLATFORM_USER_ROLE) return true;
 
     return hasCallableTenantStoreAccess(request.auth.token || {}, tenantId, storeId);
 }

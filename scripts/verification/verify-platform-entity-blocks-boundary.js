@@ -295,7 +295,7 @@ function verifySharedBlockHelper(helper) {
 function verifyDesktopSurface(component) {
   [
     'FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS',
-    'session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE',
+    'session?.platformRole === MENULIST_PLATFORM_USER_ROLE',
     'getAllTenants().then',
     'getStoresSummary().then',
     'getUserByTenantId(String(tenantId)).then',

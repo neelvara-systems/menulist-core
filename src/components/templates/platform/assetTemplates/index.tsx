@@ -1,7 +1,8 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import {
     BUSINESS_CATEGORIES,
     BUSINESS_TYPES,
@@ -158,14 +159,14 @@ const buildSampleRenderInput = (
         contactName: 'Aarav Mehta',
         contactPhone: '+91 90000 11111',
         contactRole: 'Owner',
-        feedbackUrl: 'https://demo.menulist.online/feedback',
+        feedbackUrl: 'https://sample-cafe.menulist.online/feedback',
         lastPublishedAt: new Date(),
         logoUrl: null,
-        menuUrl: 'https://demo.menulist.online/menu',
-        obpBaseUrl: 'https://demo.menulist.online',
+        menuUrl: 'https://sample-cafe.menulist.online/menu',
+        obpBaseUrl: 'https://sample-cafe.menulist.online',
         outputFormat: 'png',
         projectId: 'platform-template-preview',
-        shortLink: 'demo.menulist.online/menu',
+        shortLink: 'sample-cafe.menulist.online/menu',
         socialHandle: '@greentablecafe',
         storeName: 'Green Table Cafe',
         templateFamilyId,
@@ -216,7 +217,7 @@ function PlatformAssetTemplates() {
     const [busyKey, setBusyKey] = useState('');
     const [editorState, setEditorState] = useState<EditorState | null>(null);
 
-    const canManage = session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const canManage = session?.platformRole === MENULIST_PLATFORM_USER_ROLE;
     const canUseManager = FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER
         && FEATURE_FLAGS.ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY
         && FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER;
@@ -428,6 +429,13 @@ function PlatformAssetTemplates() {
 
     if (!canUseManager) {
         return <Result
+            icon={(
+                <ContextualStateIllustration
+                    color={token.colorTextQuaternary}
+                    size={152}
+                    variant="warningContext"
+                />
+            )}
             status="warning"
             title="Platform template manager is disabled"
             subTitle="Enable the platform asset template manager and Creative Editor registry feature flags to manage platform templates."
@@ -436,6 +444,13 @@ function PlatformAssetTemplates() {
 
     if (!canManage) {
         return <Result
+            icon={(
+                <ContextualStateIllustration
+                    color={token.colorTextQuaternary}
+                    size={152}
+                    variant="accessDeniedContext"
+                />
+            )}
             status="403"
             title="Platform access required"
             subTitle="Only MenuList platform users can manage platform asset templates."

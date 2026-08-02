@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import TextElement from "@antdComponent/textElement";
 import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
@@ -7,7 +8,7 @@ import { canManageStaffTarget } from "@lib/staffManagement/scopeBoundary";
 import type { StaffFormUser, StaffMutationResponse, StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
-import { Alert, Button, Card, Flex, Input, Modal, Space, Spin } from "antd";
+import { Alert, Button, Card, Flex, Input, Modal, Space, Spin, theme } from "antd";
 import { useContext, useEffect, useRef, useState } from "react";
 import { LuPlus } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
@@ -75,6 +76,7 @@ function UsersListPage() {
     const [userDetailsModal, setUserDetailsModal] = useState<StaffModalState>({ active: false, data: null });
     const [userFormModal, setUserFormModal] = useState<StaffModalState>({ active: false, data: null });
     const dispatch = useAppDispatch();
+    const { token } = theme.useToken();
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
@@ -318,6 +320,21 @@ function UsersListPage() {
                         <UsersListTable
                             canManageTarget={canManageTarget}
                             canManageUsers={canManageUsers}
+                            emptyText={!canManageUsers
+                                ? 'Staff list is not available for your role.'
+                                : searchQuery
+                                    ? 'No staff matched your search.'
+                                    : (
+                                        <Flex align="center" gap={10} vertical>
+                                            <ContextualStateIllustration
+                                                color={token.colorPrimary}
+                                                size={112}
+                                                treatment="softHalo"
+                                                variant="teamContext"
+                                            />
+                                            <TextElement text="No staff members yet" />
+                                        </Flex>
+                                    )}
                             onClickUserDetails={(data) => setUserDetailsModal({ active: true, data })}
                             onDeleteUser={onDeleteUser}
                             onEditUser={(user) => setUserFormModal({ active: true, data: user })}

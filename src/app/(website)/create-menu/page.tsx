@@ -12,10 +12,10 @@ import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
-import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
 import { FEATURE_FLAGS } from '@config/features';
+import { OWNER_APP_URL } from '@constant/urls';
 import { getGrowthAcquisitionFromSearchParams } from '@lib/growth/acquisitionAttribution';
 import { Metadata } from 'next';
 import { useTranslations } from 'next-intl';
@@ -25,12 +25,17 @@ export const metadata: Metadata = completeWebsiteMetadata({
     title: 'Create Your Official Customer Link - MenuList',
     description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
     alternates: {
-        canonical: '/create-menu',
+        canonical: `${OWNER_APP_URL}/create-menu`,
     },
     openGraph: {
         title: 'Create Your Official Customer Link - MenuList',
         description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
-        url: '/create-menu',
+        url: `${OWNER_APP_URL}/create-menu`,
+    },
+    robots: {
+        index: false,
+        follow: false,
+        nocache: true,
     },
 });
 
@@ -46,11 +51,6 @@ export default function CreateMenuPage(
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return (
             <div className="ws-page">
-                <WebsitePageStructuredData
-                    path="/create-menu"
-                    title="Create Your Official Customer Link - MenuList"
-                    description="Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public."
-                />
                 <Header />
                 <div style={{
                     display: 'flex',
@@ -79,11 +79,6 @@ export default function CreateMenuPage(
 
     return (
         <div className="ws-page">
-            <WebsitePageStructuredData
-                path="/create-menu"
-                title="Create Your Official Customer Link - MenuList"
-                description="Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public."
-            />
             <Header />
             <CreateMenuClient growthAcquisition={growthAcquisition} />
             <Footer />

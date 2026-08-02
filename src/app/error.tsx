@@ -1,9 +1,10 @@
 'use client' // Error components must be Client Components
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
-import { Button, Flex, Result, Typography } from "antd";
+import { Button, Flex, Result, Typography, theme } from "antd";
 import { useEffect, useRef, useState } from 'react';
 import { LuHelpCircle, LuRefreshCw } from "react-icons/lu";
 const { Paragraph } = Typography
@@ -18,6 +19,7 @@ export default function Error({ error, reset }: {
 }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const refreshFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { token } = theme.useToken();
 
     useEffect(() => {
         logRuntimeFailure(APP_ERROR_BOUNDARY_RENDERED, error, {
@@ -68,6 +70,13 @@ export default function Error({ error, reset }: {
         <ErrorPageThemeWrapper>
             <Flex vertical justify="center" align="center" style={{ width: "100vw", height: "100vh", padding: 24 }}>
                 <Result
+                    icon={(
+                        <ContextualStateIllustration
+                            color={token.colorTextQuaternary}
+                            size={176}
+                            variant="serverErrorContext"
+                        />
+                    )}
                     status="500"
                     title="Something went wrong"
                     subTitle={

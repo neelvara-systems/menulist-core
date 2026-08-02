@@ -10,7 +10,7 @@
  *      Registers `/serwist/sw.js` (Serwist, bounded static caching only).
  *
  *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.online,
- *                              {subdomain}.qa.menulist.digital, verified custom domains)
+ *                              {subdomain}.menulist.digital, verified custom domains)
  *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
  *
  *   3. MyCodex PWA           → private MyCodex product host if one is

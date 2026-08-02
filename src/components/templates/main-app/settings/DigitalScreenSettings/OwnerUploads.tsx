@@ -6,6 +6,7 @@
  * Follows existing pattern: Client-side upload via DAL, not API route
  */
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { assertDigitalScreenMutationSucceeded, removePinnedSlide, updatePinnedSlideCaption, uploadScreenSlide } from "@database/campaigns";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
@@ -316,9 +317,28 @@ export default function OwnerUploads({
                     }}
                 />
             ) : (
-                <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: 16 }}>
-                    No custom slides uploaded
-                </Text>
+                <Flex
+                    align="center"
+                    gap={8}
+                    style={{
+                        background: token.colorFillAlter,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: token.borderRadiusLG,
+                        padding: '20px 16px',
+                        textAlign: 'center',
+                    }}
+                    vertical
+                >
+                    <ContextualStateIllustration
+                        color={token.colorPrimary}
+                        size={96}
+                        style={{ opacity: 0.78 }}
+                        treatment="softHalo"
+                        variant="uploadContext"
+                    />
+                    <Text strong>No custom slides yet</Text>
+                    <Text type="secondary">Upload a poster, offer, or brand slide when you are ready.</Text>
+                </Flex>
             )}
 
             <style jsx>{`

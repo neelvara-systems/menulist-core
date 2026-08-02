@@ -2,7 +2,7 @@
 
 > Status: one-time infrastructure setup runbook
 > Scope: Neelvara Systems, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex
-> Last updated: August 1, 2026
+> Last updated: August 2, 2026
 > Launch boundary: not current launch certification or deploy approval. This setup checklist cannot certify a release; production deployment approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
 This document is the setup checklist for fresh company, domain, staging/local,
@@ -18,10 +18,10 @@ Start with the owner-facing setup sequence before filling env values:
 
 Current owner corrections:
 
-- `qa.menulist.digital` is the MenuList QA/staging app host and
-  `*.qa.menulist.digital` is the MenuList QA tenant-test host family.
-- `menulist.digital` apex and `www.menulist.digital` are not product/public
-  hosts; redirect them to `menulist.ai` or serve a noindex internal page.
+- `menulist.digital` apex and `www.menulist.digital` are the MenuList QA
+  website, `app.menulist.digital` is its single owner/staff app, and
+  `*.menulist.digital` is the QA customer-test host family. Attach all only to
+  Vercel Preview/Staging, not Production.
 - `menulist.online` is not MenuList staging. It is the production customer
   tenant family (`*.menulist.online`) plus exact apex/`www` redirects to
   `menulist.ai`.
@@ -113,7 +113,8 @@ menulist-signaldesk-qa
 menulist-signaldesk
 ```
 
-Do not substitute `ecomsai`, `menulist-ai`, `canonica-qa`, or a sample project.
+Do not substitute a retired legacy MenuList project, `menulist-ai`,
+`canonica-qa`, or a sample project.
 
 ### Deploy Attempts Already Run
 
@@ -202,15 +203,25 @@ Complete these in order. Do not skip to production until QA passes.
 - MyCodex uses `MC` as its reserved internal product code and `mycodex` as its runtime product slug.
 - SignalDesk uses `SD` as its internal product code and `signaldesk` as its runtime product slug. Its env prefix is `SIGNALDESK_*`.
 - Neelvara is a deployment target and parent site, not a database-backed product code. Public parent-site env values use `NEXT_PUBLIC_NEELVARA_*`.
-- Do not use or recreate `ecomsai`. MenuList staging/local is `menulist-qa`.
+- Do not use or recreate a retired legacy MenuList project. MenuList
+  staging/local is `menulist-qa`.
 - Real secrets must never be committed. Store them in Vercel env vars, Firebase
   Secret Manager, ignored local env files, or external password management.
+- MenuList keeps one current region contract: `us-central1` for Firestore,
+  Storage, Firebase Functions, and Cloud Tasks. Do not create regional copies
+  or a third deployed environment during this setup.
+- Restrict Vercel staging secrets to each product's exact staging Git branch;
+  MenuList uses branch `staging`.
+- Every `menulist.digital` QA host is non-indexable, disallows all crawlers, and
+  publishes no sitemap.
+- Local and staging share QA configuration, but destructive/rule-focused local
+  work uses Firebase emulators first.
 
 ## Source Of Truth Matrix
 
 | Product | Code | Local URL | Staging URL | Staging Firebase | Production URL | Production Firebase |
 | --- | --- | --- | --- | --- | --- | --- |
-| MenuList | `ML` | `http://localhost:3000/` | `https://qa.menulist.digital` | `menulist-qa` | `https://menulist.ai`; owner app `https://app.menulist.ai`; customer tenants `*.menulist.online` | `menulist` |
+| MenuList | `ML` | `http://localhost:3000/` | website `https://menulist.digital`; owner app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | website `https://menulist.ai`; owner app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist` |
 | Neelvara | none | `http://localhost:3000/__neelvara/` | `https://neelvara.menulist.online` | none | `https://neelvara.com` | none |
 | Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
 | CampaignCue | `CC` | `http://localhost:3000/__campaigncue/` | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
@@ -227,8 +238,8 @@ Code references:
 
 Current live DNS/HTTP spot check from July 27, 2026:
 
-- `menulist.ai`, `answerlattice.com`, `qa.menulist.digital`, and product
-  staging subdomains under `menulist.online` resolve/respond.
+- This dated check covered the retired `qa.menulist.digital` host. Recheck the
+  current `menulist.digital`, `www`, `app`, and wildcard QA contract during setup.
 - `neelvara.com` and `campaigncue.ai` do not resolve
   from this environment yet. Verify purchase/ownership and Vercel DNS before
   treating those production hosts as live.
@@ -250,6 +261,7 @@ or select the matching project in the console.
 | Firestore | https://firebase.google.com/docs/firestore |
 | Cloud Storage for Firebase | https://firebase.google.com/docs/storage |
 | Firebase App Check web reCAPTCHA | https://firebase.google.com/docs/app-check/web/recaptcha-provider |
+| Firebase Emulator Suite | https://firebase.google.com/docs/emulator-suite |
 | Firebase Functions env and secrets | https://firebase.google.com/docs/functions/config-env |
 | Google Cloud Console | https://console.cloud.google.com/ |
 | Google Cloud resource hierarchy | https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy |
@@ -311,10 +323,11 @@ Use one parent operating identity and one shared infrastructure account stack:
 - Password manager: one company vault for registrar, Workspace, GitHub, Vercel,
   Firebase, Razorpay, provider credentials, and recovery codes.
 
-Use one company-controlled Google/Firebase login with MFA for console ownership,
-then separate projects by Firebase project id and IAM. Do not create separate
-random Gmail accounts for each product. If Google Workspace exists, use a
-Workspace admin/owner identity and add individual humans through IAM.
+Use `admin@neelvara.com` as the break-glass Workspace Super Admin and a named
+operator such as `danny@neelvara.com` for routine setup with only required
+access. Do not create separate random Gmail accounts for each product. Add
+individual humans through IAM, retain offline recovery codes, and add a second
+trusted Super Admin before production when another owner is available.
 
 Create service accounts per project only where the app needs server credentials.
 Do not use personal user keys for application runtime.
@@ -348,6 +361,11 @@ Vercel does not read `.env.staging.example` or `.env.production.example`
 directly. Copy their keys into Vercel Project Settings for the correct
 environment scope.
 
+The example files are inventories, not deployable configurations. Never place a
+literal `<...>` placeholder in `.env.local`, a Functions runtime env, or Vercel.
+For a product-by-product setup, omit unrelated product rows from the actual
+environment until those products are configured.
+
 ## Phase 0: Do Not Reuse Old Local Env Files Blindly
 
 If `.env`, `.env.local`, or `.env.prod` already exist from the old setup, treat
@@ -355,9 +373,11 @@ them as legacy local files until they are rebuilt from the templates above.
 
 Before using an existing local env file:
 
-- [ ] Confirm MenuList local/staging points to `menulist-qa`, not `ecomsai`.
-- [ ] Confirm MenuList production points to `menulist`, not `ecomsai`.
-- [ ] Confirm staging/local uses `NEXT_PUBLIC_ENV=preview`.
+- [ ] Confirm MenuList local/staging points to exact project `menulist-qa`.
+- [ ] Confirm MenuList production points to exact project `menulist`.
+- [ ] Confirm hosted staging uses `NEXT_PUBLIC_ENV=preview`; local development
+      overrides it with `NEXT_PUBLIC_ENV=development` while retaining the same
+      QA Firebase/provider family.
 - [ ] Confirm production uses `NEXT_PUBLIC_ENV=production`.
 - [ ] Confirm `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES` does not mix staging and
       production MenuList domains in the same env scope.
@@ -379,7 +399,7 @@ npm run verify:env-targets
 For real `.env` files, compare keys and safe public project/domain values only.
 Do not print or paste private keys, tokens, passwords, or client secrets.
 
-If an old env file still contains `ecomsai`, rebuild it from
+If an old env file still contains a retired Firebase project id, rebuild it from
 `.env.staging.example` or `.env.production.example` rather than patching a few
 individual lines. The current templates contain many more required product env
 keys than the old files.
@@ -400,9 +420,10 @@ domains across personal accounts.
 | `app.menulist.ai` | MenuList production owner/staff authenticated app | Subdomain only; configure in Vercel/DNS |
 | `*.menulist.online` | MenuList production customer menu/OBP tenant links | Wildcard/subdomains only; configure in Vercel/DNS |
 | `menulist.online` | Production redirect to `menulist.ai`; SignalDesk and sister-product staging subdomains also use this domain family | Already resolves; retain |
-| `qa.menulist.digital` | MenuList QA/staging app | Already owned; configure in Vercel/DNS for MenuList QA |
-| `*.qa.menulist.digital` | MenuList QA tenant test links | Wildcard/subdomains only; configure in Vercel/DNS |
-| `menulist.digital` | Apex is not product/public; redirect to `menulist.ai` or noindex internal page | Already owned; do not use for MyCodex |
+| `menulist.digital` | MenuList QA/staging website apex and customer-link base | Already owned; attach to Vercel Preview/Staging only; do not use for MyCodex |
+| `www.menulist.digital` | MenuList staging main website `www` alias | Subdomain only; attach to Vercel Preview/Staging only |
+| `app.menulist.digital` | MenuList QA owner/staff app | Subdomain only; attach to Vercel Preview/Staging only |
+| `*.menulist.digital` | MenuList QA customer test links | Wildcard/subdomains only; configure in Vercel/DNS |
 | `answerlattice.com` | Answerlattice production website/app | Already resolves; retain and connect/verify in Vercel |
 | `campaigncue.ai` | CampaignCue production website/app | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
 | `canonica.app` | Legacy Answerlattice name if already owned | Retain only as redirect to `answerlattice.com`; do not create Canonica accounts |
@@ -421,11 +442,21 @@ Do not purchase:
 
 Open Google Admin: https://admin.google.com/
 
-Create one real licensed administrator/founder mailbox:
+Create the break-glass Super Admin mailbox:
 
 ```text
 admin@neelvara.com
 ```
+
+Create the named daily operator mailbox:
+
+```text
+danny@neelvara.com
+```
+
+Use the founder's equivalent named address if a different name is appropriate.
+Keep the break-glass account out of daily browsing and provider work. Enable MFA
+on both and store break-glass recovery codes offline and in the company vault.
 
 Create aliases or groups instead of paid users for every address below:
 
@@ -481,8 +512,10 @@ Expected hostnames:
 
 | Hostname | Environment | Product |
 | --- | --- | --- |
-| `qa.menulist.digital` | staging | MenuList |
-| `*.qa.menulist.digital` | staging | MenuList tenant tests |
+| `menulist.digital` | staging | MenuList main website |
+| `www.menulist.digital` | staging | MenuList main website |
+| `app.menulist.digital` | staging | MenuList owner/staff app |
+| `*.menulist.digital` | staging | MenuList customer tests |
 | `neelvara.menulist.online` | staging | Neelvara |
 | `answerlattice.menulist.online` | staging | Answerlattice |
 | `campaigncue.menulist.online` | staging | CampaignCue |
@@ -495,8 +528,6 @@ Expected hostnames:
 | `*.menulist.online` | production | MenuList customer/public subdomains |
 | `menulist.online` | production redirect | Redirect to `menulist.ai` |
 | `www.menulist.online` | production redirect | Redirect to `menulist.ai` |
-| `menulist.digital` | noindex/redirect | Not product/public |
-| `www.menulist.digital` | noindex/redirect | Not product/public |
 | `neelvara.com` | production | Neelvara |
 | `www.neelvara.com` | production | Neelvara |
 | `answerlattice.com` | production | Answerlattice |
@@ -505,8 +536,12 @@ Expected hostnames:
 | `www.campaigncue.ai` | production | CampaignCue |
 | `signaldesk.menulist.online` | private | SignalDesk |
 
-Do not guess DNS records. Add each domain in Vercel first, then copy the exact
-DNS records Vercel shows into the registrar/DNS provider.
+Do not guess DNS records. Add each domain in Vercel first, then follow the exact
+DNS instructions Vercel shows. Before changing DNS authority, export the current
+zone and recreate all records that must survive. The apex wildcard contracts
+`*.menulist.digital` and `*.menulist.online` use Vercel nameservers; assign QA
+domains to exact Git branch `staging` and create a fresh branch deployment after
+assignment so they do not silently default to Production.
 
 ### 2. Create the shared Vercel project
 
@@ -519,9 +554,13 @@ Checklist:
 - [ ] Do not create separate Vercel projects for MenuList, Answerlattice,
       CampaignCue, SignalDesk, Neelvara, or MyCodex.
 - [ ] Connect the production branch to Vercel Production.
-- [ ] Use Vercel Preview or a Vercel custom environment for staging.
+- [ ] Use Vercel Preview for staging and restrict every staging value to the
+      exact staging Git branch. MenuList uses branch `staging`.
 - [ ] In staging, keep `NEXT_PUBLIC_ENV=preview` because the current code
       resolves staging through the `preview` deployment stage.
+- [ ] In local development, use `NEXT_PUBLIC_ENV=development` and
+      `NEXT_PUBLIC_VERCEL_ENV=development`; this changes runtime routing only and
+      does not create another deployed environment.
 
 Important MyCodex note: MyCodex currently has no active public domain. Do not
 add a MyCodex custom domain in Vercel unless the static-reader architecture and
@@ -571,7 +610,7 @@ If any target project is missing:
 
 - [ ] Create it in Firebase Console with the exact project id, or get IAM access
       from the owner account.
-- [ ] Do not use `ecomsai`, `menulist-ai`, `canonica-qa`, or any sample project
+- [ ] Do not use a retired legacy MenuList project, `menulist-ai`, `canonica-qa`, or any sample project
       as a substitute.
 - [ ] Do not continue to OAuth, Vercel env, Secret Manager, or deploy steps
       until all required project ids are visible to the setup account.
@@ -602,7 +641,11 @@ For each Firebase-backed project:
 - [ ] Link billing account.
 - [ ] Confirm Blaze plan is enabled where Cloud Functions, Secret Manager,
       Storage, Cloud Tasks, or production monitoring requires it.
-- [ ] Add budget alerts before production traffic.
+- [ ] Add budget alerts before Cloud Functions deploys, Secret Manager use,
+      Gemini API keys, Cloud Tasks, production monitoring, or production
+      traffic.
+- [ ] Record that alert-only budgets notify only; Preview spend-cap enforcement
+      is a separate project-and-service control.
 
 Projects:
 
@@ -622,8 +665,10 @@ For each Firebase-backed project:
 - [ ] Open Firebase Console.
 - [ ] Build > Firestore Database.
 - [ ] Create database in Native mode.
-- [ ] Use the same region policy intentionally. Current Functions default
-      region is `us-central1`; do not change runtime region casually.
+- [ ] Firestore asks for an explicit location. For MenuList, select
+      `us-central1` so it matches the current Functions/Tasks contract.
+- [ ] Record the actual location. Firestore location is immutable after
+      provisioning; stop for review if an existing resource differs.
 - [ ] Do not relax rules for staging.
 
 ### 4. Enable Cloud Storage for Firebase
@@ -632,7 +677,10 @@ For each Firebase-backed project:
 
 - [ ] Open Firebase Console.
 - [ ] Build > Storage.
-- [ ] Create the default bucket.
+- [ ] Create the default bucket in the documented product region. MenuList QA
+      Storage must use `us-central1`.
+- [ ] Record the actual location. Storage location is immutable after
+      provisioning; stop for review if an existing bucket differs.
 - [ ] Copy the bucket name into the matching env variables.
 
 Storage bucket env variables:
@@ -732,8 +780,8 @@ Authorized domains:
 
 | Project | Domains |
 | --- | --- |
-| `menulist-qa` | `localhost`, `qa.menulist.digital`, tested QA tenant hosts such as `demo.qa.menulist.digital` |
-| `menulist` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai` |
+| `menulist-qa` | `localhost`, `app.menulist.digital` |
+| `menulist` | `app.menulist.ai` |
 | `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
@@ -749,11 +797,26 @@ For each Firebase-backed project:
 - [ ] Generate a private key for server/Admin SDK use.
 - [ ] Store the downloaded JSON outside git.
 - [ ] Copy only the required fields into Vercel env.
+- [ ] Delete the temporary JSON after the required fields are stored securely.
+- [ ] Record key owner and creation date; review unused keys quarterly and
+      revoke immediately on leak, access removal, or replacement.
+- [ ] Before production, evaluate Vercel OIDC/Google Workload Identity. This is
+      not a blocker for the current QA private-key runtime.
 
 MenuList env:
 
+- `MENULIST_FIREBASE_PROJECT_ID`
+- `MENULIST_FIREBASE_STORAGE_BUCKET`
+- `MENULIST_FIREBASE_API_KEY`
+- `MENULIST_FIREBASE_CLIENT_EMAIL`
+- `MENULIST_FIREBASE_PRIVATE_KEY`
+- `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1`
+
+Keep these current runtime aliases identical to the canonical values:
+
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_STORAGE_BUCKET`
+- `FIREBASE_API_KEY`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
 - `FIREBASE_PROJECT_LOCATION=us-central1`
@@ -805,15 +868,13 @@ Staging/local JavaScript origins:
 
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
-- `https://qa.menulist.digital`
+- `https://app.menulist.digital`
 - `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
 
 Production JavaScript origins:
 
-- `https://menulist.ai`
-- `https://www.menulist.ai`
 - `https://app.menulist.ai`
 - `https://answerlattice.com`
 - `https://www.answerlattice.com`
@@ -831,11 +892,10 @@ Add these redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `http://127.0.0.1:3000/api/auth/callback/google`
-- `https://qa.menulist.digital/api/auth/callback/google`
+- `https://app.menulist.digital/api/auth/callback/google`
 - `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
-- `https://menulist.ai/api/auth/callback/google`
 - `https://app.menulist.ai/api/auth/callback/google`
 - `https://answerlattice.com/api/auth/callback/google`
 - `https://www.answerlattice.com/api/auth/callback/google`
@@ -874,15 +934,21 @@ Use:
 
 ### 1. Staging/local Vercel scope
 
+For every staging value, select Preview and restrict the Git Branch to the
+exact product staging branch. For MenuList, use `staging`; never expose its
+private keys or provider secrets to all Preview branches.
+
 Set these identity values:
 
 ```env
 NEXT_PUBLIC_ENV=preview
-NEXT_PUBLIC_APP_URL=https://qa.menulist.digital
-NEXT_PUBLIC_DEPLOYMENT_URL=https://qa.menulist.digital
-NEXT_PUBLIC_PLATFORM_DOMAIN=qa.menulist.digital
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=qa.menulist.digital
-NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=qa.menulist.digital
+NEXT_PUBLIC_VERCEL_ENV=preview
+NEXT_PUBLIC_APP_URL=https://menulist.digital
+NEXT_PUBLIC_DEPLOYMENT_URL=https://menulist.digital
+NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.digital,www.menulist.digital,app.menulist.digital
+NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.digital
+NEXTAUTH_URL=https://app.menulist.digital
 ```
 
 Use QA Firebase values:
@@ -893,6 +959,24 @@ Use QA Firebase values:
 - CampaignCue: `campaigncue-qa`
 - SignalDesk: `menulist-signaldesk-qa`
 - MyCodex: no Firebase
+
+For destructive/rule-focused local work, use the same QA configuration with
+local runtime markers and the Firebase Emulator Suite:
+
+```env
+NEXT_PUBLIC_ENV=development
+NEXT_PUBLIC_VERCEL_ENV=development
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_USE_EMULATORS=true
+FUNCTIONS_EMULATOR=true
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+```
+
+Keep these values off in Vercel. Emulator use does not create a third deployed
+environment.
 
 ### 2. Production Vercel scope
 
@@ -925,8 +1009,8 @@ from.
 | --- | --- | --- |
 | Runtime identity | `NEXT_PUBLIC_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DEPLOYMENT_URL`, `NEXT_PUBLIC_PLATFORM_DOMAIN`, `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`, `NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_BUILD_CREATED_AT`, `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE` | repo contract plus Vercel build metadata |
 | Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `NEXTAUTH_URL` | OpenSSL plus Google Cloud OAuth |
-| MenuList Firebase client | `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_FB_DATABASE_URL` | Firebase Web App config |
-| MenuList Firebase Admin | `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_PROJECT_LOCATION` | Firebase service account |
+| MenuList Firebase client | canonical `NEXT_PUBLIC_MENULIST_FIREBASE_*` and matching current `NEXT_PUBLIC_FIREBASE_*`/`NEXT_PUBLIC_FB_DATABASE_URL` aliases | Firebase Web App config |
+| MenuList Firebase Admin | canonical `MENULIST_FIREBASE_PROJECT_ID`, `MENULIST_FIREBASE_STORAGE_BUCKET`, `MENULIST_FIREBASE_API_KEY`, `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION`; matching current `FIREBASE_*` aliases include `FIREBASE_API_KEY` | Firebase service account plus Firebase Web API key |
 | Answerlattice Firebase client | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*`, `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Answerlattice Firebase Web App config |
 | Answerlattice Firebase Admin | `ANSWERLATTICE_FIREBASE_*`, `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS`, `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Answerlattice Firebase service account |
 | Answerlattice runtime | `ANSWERLATTICE_CRON_SECRET`, `ANSWERLATTICE_MCP_SESSION_SECRET`, `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`, `ANSWERLATTICE_NIGHTLY_TRIGGER_URL`, `ANSWERLATTICE_TRIGGER_NIGHTLY_URL`, `ANSWERLATTICE_PUBLIC_API_DEBUG`, `ANSWERLATTICE_TEST_URL`, `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` | generated secrets plus deployed function URL and product URL |
@@ -1161,6 +1245,8 @@ Checklist:
 - [ ] Create/store Answerlattice keys in `ANSWERLATTICE_GEMINI_AI_KEY` and
       matching Answerlattice Firebase Secret Manager.
 - [ ] Create/store SignalDesk keys in `SIGNALDESK_GEMINI_AI_KEY`.
+- [ ] Confirm budget alerts already exist for the Google Cloud project before
+      using the key for paid Gemini calls.
 - [ ] Add rotation keys only when they exist: `GEMINI_AI_KEY_2`,
       `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`,
       `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`,
@@ -1247,13 +1333,13 @@ Checklist:
 - [ ] Set staging MenuList Functions secrets:
       `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
 - [ ] Add staging webhook endpoint:
-      `https://qa.menulist.digital/api/razorpay/webhook`.
+      `https://app.menulist.digital/api/razorpay/webhook`.
 - [ ] Use Razorpay Live Mode for production.
 - [ ] Generate live key id and secret.
 - [ ] Set production Vercel env with live values.
 - [ ] Set production MenuList Functions secrets with live values.
 - [ ] Add production webhook endpoint:
-      `https://menulist.ai/api/razorpay/webhook`.
+      `https://app.menulist.ai/api/razorpay/webhook`.
 - [ ] Copy the webhook signing secret from each Razorpay webhook into the
       matching Vercel env scope.
 
@@ -1328,11 +1414,14 @@ Checklist:
 - [ ] Start App Check in monitoring mode first.
 - [ ] Enforce Firestore/Storage only after real browser traffic sends valid
       App Check tokens.
+- [ ] Confirm every `menulist.digital` QA host remains noindex and publishes no
+      sitemap; App Check registration does not make QA content public.
 
 Staging App Check domains:
 
-- `qa.menulist.digital`
-- tested QA tenant hosts such as `demo.qa.menulist.digital`
+- `menulist.digital`
+- `app.menulist.digital`
+- tested non-reserved QA customer hosts such as `qa-cafe.menulist.digital`
 - `answerlattice.menulist.online`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
@@ -1402,6 +1491,9 @@ Checklist:
       `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`.
 - [ ] Set MenuList Functions secrets:
       `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`.
+- [ ] Use Workspace SMTP only for controlled QA/low-volume testing. Before
+      production, confirm the approved transactional sender/provider and do not
+      use a personal Gmail inbox password.
 - [ ] Set `INTERNAL_NOTIFICATION_EMAIL`, `PLATFORM_ALERT_EMAIL_TO`, and
       `INTERNAL_BILLING_EMAIL`. Each value is one plain mailbox address; do not
       use a comma/semicolon recipient list or display-name syntax.
@@ -1457,6 +1549,18 @@ Checklist:
 
 - [ ] Create budget for each Firebase-backed project.
 - [ ] Configure alert thresholds.
+- [ ] Confirm budget alerts exist before paid Firebase, Functions, Secret
+      Manager, Gemini, Cloud Tasks, or production traffic starts.
+- [ ] Record that alerts are notifications and do not replace provider/app-level
+      rate limits or quota controls.
+- [ ] Create one Preview spend-cap enforcement budget per product project scoped
+      to the Gemini API service; keep it below the absolute monthly limit because
+      enforcement is not instantaneous.
+- [ ] Record the AI Studio rolling project limit and keep the matching
+      `MENULIST_*`, `ANSWERLATTICE_*`, or `SIGNALDESK_*`
+      `GEMINI_SPEND_LIMIT_USD_10M` value below it.
+- [ ] Leave Cloud Run spend caps disabled until whole-project service/job/worker
+      outage and manual-restore behavior is approved and drilled.
 - [ ] Generate `GCP_BUDGET_WEBHOOK_SECRET`.
 - [ ] Set the secret in Vercel env and MenuList Firebase Secret Manager.
 - [ ] Enable billing export only if reporting needs BigQuery data.
@@ -1524,7 +1628,7 @@ Open: https://uptimerobot.com/
 
 Checklist:
 
-- [ ] Add monitor for `https://qa.menulist.digital`.
+- [ ] Add monitors for `https://menulist.digital` and `https://app.menulist.digital`.
 - [ ] Add monitor for `https://answerlattice.menulist.online`.
 - [ ] Add monitor for `https://campaigncue.menulist.online`.
 - [ ] Add monitor for `https://signaldesk.menulist.online`.
@@ -1561,6 +1665,11 @@ For each hostname:
 - [ ] Add domain in the single Vercel project.
 - [ ] Let Vercel show the exact DNS record.
 - [ ] Add that DNS record in the registrar/DNS provider.
+- [ ] Export the current DNS zone before any nameserver change.
+- [ ] For an apex wildcard, recreate required existing records in Vercel DNS and
+      use the exact Vercel nameservers shown in the dashboard.
+- [ ] Assign QA domains to exact Git branch `staging` and create a deployment
+      after the assignment; confirm they are not attached to Production.
 - [ ] Wait for Vercel verification.
 - [ ] Confirm HTTPS certificate is issued.
 
@@ -1571,6 +1680,31 @@ of truth for the exact record it expects.
 
 Only run these after Firebase projects, billing, rules, indexes, Storage,
 Functions env files, and Secret Manager values exist.
+
+Every product/environment must complete this lifecycle independently:
+
+1. Load the pinned runtime and run the product/config-specific local emulator
+   rule suite. MenuList staging uses
+   `npm run verify:menulist-firebase-rules-predeploy`; that root-config result is
+   not deployment proof for Answerlattice, CampaignCue, or SignalDesk.
+2. Deploy the exact staging project/config with explicit
+   `firestore:rules,firestore:indexes,storage` scope. A narrow
+   `firestore:rules`-only command is for an incremental rule-only change, not a
+   fresh Firebase project baseline.
+3. Read back the published Firestore and Storage rule sources, list deployed
+   indexes, and wait until required indexes are `READY` and rule propagation has
+   completed.
+4. Use real staging Auth identities for expected owner/workspace access and
+   Rules Playground/direct client checks for anonymous, cross-tenant, and
+   server-only denies. Admin SDK/Functions evidence is invalid for client rules
+   because privileged server access bypasses them.
+5. Record project, command, published timestamps, index state, test identities,
+   allow/deny results, and blockers without secrets or customer data.
+6. Deploy Functions only after that product's rule lifecycle passes. Stop on
+   any unexpected allow/deny result and do not proceed to production.
+
+For the first MenuList QA execution, use the literal Phase I instructions in
+[MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md#phase-i---firebase-qa-infrastructure-deploy).
 
 MenuList staging:
 
@@ -1730,9 +1864,13 @@ After Vercel redeploy and Firebase deploys:
 
 MenuList staging:
 
-- [ ] Open `https://qa.menulist.digital`.
-- [ ] Open `https://qa.menulist.digital/api/version`.
-- [ ] Open a QA tenant test host such as `https://demo.qa.menulist.digital`.
+- [ ] Open `https://menulist.digital` and confirm it serves the MenuList main
+      website with QA/staging env values.
+- [ ] Open `https://www.menulist.digital` and confirm it serves the MenuList
+      main website with QA/staging env values.
+- [ ] Open `https://app.menulist.digital/signin` and
+      `https://app.menulist.digital/api/version`.
+- [ ] Open a non-reserved QA customer test host such as `https://qa-cafe.menulist.digital`.
 - [ ] Sign in.
 - [ ] Create/update a menu/project.
 - [ ] Confirm public menu/OBP cache invalidates after writes.
@@ -1741,7 +1879,7 @@ MenuList staging:
 MenuList production:
 
 - [ ] Open `https://menulist.ai`.
-- [ ] Open `https://menulist.ai/api/version`.
+- [ ] Open `https://app.menulist.ai/api/version`.
 - [ ] Sign in with production account.
 - [ ] Confirm live Razorpay key only in production.
 - [ ] Confirm App Check after monitoring.
@@ -1828,12 +1966,14 @@ Use this table while setting up. Do not paste secret values into this document.
 | --- | --- | --- | --- |
 | Vercel project connected | [ ] | [ ] | one shared project |
 | Vercel env filled | [ ] | [ ] | from `.env.*.example` |
+| Staging env branch-restricted | [ ] | n/a | Preview secrets limited to exact staging branch |
 | Domains verified in Vercel | [ ] | [ ] | copy Vercel DNS exactly |
 | Firebase projects created | [ ] | [ ] | no Neelvara/MyCodex Firebase |
 | Billing enabled | [ ] | [ ] | required for Functions/secrets |
 | Firestore enabled | [ ] | [ ] | Native mode |
 | Storage enabled | [ ] | [ ] | per product project |
 | Firebase Auth providers | [ ] | [ ] | only required providers |
+| Local emulator safety | [ ] | n/a | destructive/rule tests use emulators first |
 | Google OAuth | [ ] | [ ] | all domains and callbacks |
 | Admin SDK env | [ ] | [ ] | private keys escaped in Vercel |
 | Firebase Secret Manager | [ ] | [ ] | Functions secrets only |
@@ -1855,6 +1995,7 @@ Use this table while setting up. Do not paste secret values into this document.
 | Firebase deploys | [ ] | [ ] | after secrets exist |
 | Vercel redeploy | [ ] | [ ] | manual dashboard action |
 | Runtime smoke | [ ] | [ ] | all product domains |
+| Maintenance calendar | [ ] | [ ] | monthly spend/alerts, quarterly IAM/secrets, annual ownership/recovery |
 
 ## Blocking Rules
 
@@ -1875,6 +2016,8 @@ Use this table while setting up. Do not paste secret values into this document.
 - Do not add Firebase env keys for Neelvara.
 - Do not create separate Vercel projects unless the deployment matrix is changed
   first.
-- Do not use `ecomsai` anywhere in active env or deployment setup.
+- Do not expose staging secrets to every Vercel Preview branch.
+- Do not allow `menulist.digital` QA hosts to be indexed or publish sitemaps.
+- Do not use any retired legacy MenuList project in active env or deployment setup.
 - If any Firebase deploy fails with IAM, billing, or Secret Manager errors, fix
   the cloud project setup before changing application code.

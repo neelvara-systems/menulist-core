@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
@@ -446,6 +447,14 @@ function OnboardingWizard() {
         return (
             <div style={{ padding: '24px', maxWidth: 600, margin: '0 auto' }}>
                 <Result
+                    icon={(
+                        <ContextualStateIllustration
+                            color={token.colorPrimary}
+                            size={152}
+                            treatment="softHalo"
+                            variant="onboardingSuccessContext"
+                        />
+                    )}
                     status="success"
                     title="Client Onboarded Successfully!"
                     subTitle={`Store ID: ${result.storeId} | Status: ${result.status}${result.locationCount ? ` | ${result.locationCount} location${result.locationCount > 1 ? 's' : ''}` : ''}`}

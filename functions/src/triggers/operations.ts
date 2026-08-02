@@ -10,9 +10,10 @@ import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { timingSafeEqual } from 'crypto';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
+import { resolveMenuListOwnerAppUrl } from '../config/menulistRuntimeUrls';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '../constants/user';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import {
@@ -57,7 +58,7 @@ export async function assertCurrentOperationsPlatformOwner(
     }
 
     const userId = normalizeOwnerNotificationDocumentId(request.auth.token?.uId);
-    if (!userId || getRequesterRole(request) !== ECOMSAI_PLATFORM_USER_ROLE) {
+    if (!userId || getRequesterRole(request) !== MENULIST_PLATFORM_USER_ROLE) {
         throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
     }
 
@@ -65,7 +66,7 @@ export async function assertCurrentOperationsPlatformOwner(
     const userData = userSnapshot.exists ? userSnapshot.data() : undefined;
     const currentRole = String(userData?.platformRole || userData?.role || '');
     if (
-        currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        currentRole !== MENULIST_PLATFORM_USER_ROLE
         || userData?.active === false
         || userData?.deleted === true
         || userData?.authDisabled === true
@@ -93,7 +94,7 @@ function hasTenantStoreAccess(
     storeId: string | number,
 ): boolean {
     if (!request.auth) return false;
-    if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
+    if (getRequesterRole(request) === MENULIST_PLATFORM_USER_ROLE) return true;
 
     return hasCallableTenantStoreAccess(request.auth.token || {}, tenantId, storeId);
 }
@@ -117,8 +118,6 @@ const FORCE_REPUBLISH_FAILED_MESSAGE = 'Force republish could not be completed.'
 const BACKFILL_STORES_SUMMARY_FAILED_MESSAGE = 'Stores summary backfill could not be completed.';
 const STORES_SUMMARY_BACKFILL_MAX_STORES = 1_500;
 const STORES_SUMMARY_BACKFILL_MAX_PAYLOAD_BYTES = 850_000;
-const MENULIST_OWNER_APP_URL = 'https://app.menulist.ai';
-
 export function buildBackfillStoreSummaryEntry(
     storeDocumentId: string,
     data: Record<string, unknown>,
@@ -336,11 +335,15 @@ export const verifyMenuPublish = onCall(
             if (result.status === 'OK') {
                 try {
                     const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
+                    const ownerAppUrl = resolveMenuListOwnerAppUrl();
                     await sendLifecycleMessage({
                         storeId, tenantId,
                         eventType: 'STORE_PUBLISHED',
                         referenceId: `store-published-${storeId}`,
-                        metadata: { publicUrl: publicMenuUrl, dashboardUrl: MENULIST_OWNER_APP_URL },
+                        metadata: {
+                            publicUrl: publicMenuUrl,
+                            ...(ownerAppUrl ? { dashboardUrl: ownerAppUrl } : {}),
+                        },
                     });
                 } catch (messageError) {
                     logger.error('[verifyMenuPublish] Lifecycle success message failed', {

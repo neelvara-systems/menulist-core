@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
@@ -97,7 +97,7 @@ const schema = z.object({
 }).strict();
 
 const isPlatformSession = (session: any): boolean => (
-    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === MENULIST_PLATFORM_USER_ROLE
 );
 
 export const POST = withAuth(async (request, session) => {

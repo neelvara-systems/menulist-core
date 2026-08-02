@@ -90,7 +90,7 @@ function buildSession(sessionId: string, authUploadCount: number): MessagingOnbo
     pendingUploadCleanupPaths: [],
     pendingUploadsWhileProcessing: false,
     previewToken: "replacementLifecyclePreviewToken123",
-    previewUrl: `https://menulist.ai/msg-preview/${sessionId}?token=replacementLifecyclePreviewToken123`,
+    previewUrl: `https://app.menulist.ai/msg-preview/${sessionId}?token=replacementLifecyclePreviewToken123`,
     processingRuns: 1,
     provider: "whatsapp",
     providerDisplayId: "+919800001234",
