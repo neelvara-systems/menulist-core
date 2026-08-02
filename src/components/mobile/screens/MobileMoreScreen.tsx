@@ -12,7 +12,12 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { buildMenuSetupProgress } from '@lib/menuSetupProgress/buildMenuSetupProgress';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
-import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
+import {
+    claimStoreSwitchAttempt,
+    getAccessibleStoreSummaries,
+    getStoreSummaryId,
+    releaseStoreSwitchAttempt,
+} from '@lib/multiOutlet/storeSwitchAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries } from '@lib/phone/phoneNumber';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -371,6 +376,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     );
     const loginStoreId = Number(sessionUser.storeId || 0);
     const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || loginStoreId || 0);
+    const storeSwitchScopeKey = `${session?.user?.id ?? ''}:${session?.user?.tenantId ?? ''}:${currentStoreId}`;
+    const storeSwitchScopeKeyRef = useRef(storeSwitchScopeKey);
+    storeSwitchScopeKeyRef.current = storeSwitchScopeKey;
     const currentStoreSummary = accessibleStoreSummaries.find((store: any) => Number(store.storeId) === currentStoreId)
         || tenantDetails?.storesList?.find((store: any) => Number(store.storeId) === currentStoreId)
         || null;
@@ -394,7 +402,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const handleStoreDropdownChange = useCallback(async (value: string) => {
         const targetStoreId = Number(value);
-        if (!targetStoreId || targetStoreId === currentStoreId || isSwitchingStore) return;
+        if (
+            !targetStoreId
+            || targetStoreId === currentStoreId
+            || isSwitchingStore
+            || !accessibleStoreSummaries.some((store) => getStoreSummaryId(store) === targetStoreId)
+        ) return;
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
+        const initiatingScopeKey = storeSwitchScopeKey;
 
         setIsSwitchingStore(true);
         try {
@@ -402,6 +418,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 if (loginStoreId) {
                     await refreshFirebaseAuthClaims(loginStoreId);
                 }
+                if (storeSwitchScopeKeyRef.current !== initiatingScopeKey) return;
                 setActiveStoreContext(null);
             } else {
                 const res = await fetch('/api/auth/switch-store', {
@@ -411,11 +428,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     body: JSON.stringify({ targetStoreId }),
                 });
                 await readAuthAccountResponse(res, 'switch_store');
+                if (storeSwitchScopeKeyRef.current !== initiatingScopeKey) return;
                 await refreshFirebaseAuthClaims(targetStoreId);
+                if (storeSwitchScopeKeyRef.current !== initiatingScopeKey) return;
                 setActiveStoreContext(targetStoreId);
             }
+            if (storeSwitchScopeKeyRef.current !== initiatingScopeKey) return;
             Toast.show({ content: 'Switched branch', duration: 1500, icon: 'success' });
         } catch (error) {
+            if (storeSwitchScopeKeyRef.current !== initiatingScopeKey) return;
             logAuthFailure('mobile_more_store_switch_failed', error, {
                 surface: 'mobile_more',
                 flow: 'store_switch',
@@ -425,9 +446,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             });
             Toast.show({ content: 'Failed to switch branch', duration: 2200 });
         } finally {
+            releaseStoreSwitchAttempt(attemptToken);
             setIsSwitchingStore(false);
         }
-    }, [currentStoreId, isSwitchingStore, loginStoreId, setActiveStoreContext]);
+    }, [accessibleStoreSummaries, currentStoreId, isSwitchingStore, loginStoreId, setActiveStoreContext, storeSwitchScopeKey]);
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');

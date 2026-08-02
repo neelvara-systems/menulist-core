@@ -395,7 +395,7 @@ const EditCategoryModal = ({
                     {shouldShowGenerateTranslations ? (
                         <AIButtonIcon
                             type="default"
-                            Icon={LuSparkles}
+                            icon={<LuSparkles />}
                             onClick={onGenerateContent}
                             label={t('generateTranslations')}
                             tooltip="Adds missing translations for this category."

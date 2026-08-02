@@ -13,24 +13,27 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/answerlattice/help-widget/
  */
 
+/**
+ * Widget Feedback API — Public endpoint for widget answer feedback
+ *
+ * Receives thumbs up/down from widget end-users.
+ * Writes feedback to aiSearchHistory + emits Answerlattice signal for negative feedback.
+ *
+ * Auth: API key via X-API-Key header (same as widget search)
+ * Rate limited per API key. Feature-flagged via ENABLE_ANSWERLATTICE_WIDGET.
+ *
+ * @see src/lib/search/searchCore.ts
+ * @see __docs__/answerlattice/help-widget/
+ */
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import {
-    handlePublicApiCorsPreflight,
-    hashApiKey,
-    hasPublicApiCredentialScope,
-    validatePublicApiKey,
-    withPublicApiCors,
-} from '@lib/publicApi/auth';
-import {
-    ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
-    isAnswerlatticeWidgetRuntimeRequestAuthorized,
-} from '@lib/answerlattice/widgetRuntimeTokenServer';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, validatePublicApiKey, withPublicApiCors, } from '@lib/publicApi/auth';
+import { ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER, isAnswerlatticeWidgetRuntimeRequestAuthorized, } from '@lib/answerlattice/widgetRuntimeTokenServer';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -61,7 +64,7 @@ const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
 const jsonResponse = (
     request: NextRequest,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     init?: ResponseInit,
 ): NextResponse => {
     const response = NextResponse.json(body, init);
@@ -79,7 +82,7 @@ const cleanSignalContextText = (value: unknown, maxLength = 140): string | null 
     return text.length > maxLength ? text.slice(0, maxLength) : text;
 };
 
-const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) => {
+const buildWidgetFeedbackContextMetadata = (historyData: Record<string, unknown>) => {
     const contextKey = cleanSignalContextText(historyData.contextKey, 140);
     const matchedEntityIds = Array.isArray(historyData.matchedEntityIds)
         ? historyData.matchedEntityIds
@@ -110,7 +113,7 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
     };
 };
 
-const isWidgetSearchHistoryRow = (historyData: Record<string, any>): boolean => (
+const isWidgetSearchHistoryRow = (historyData: Record<string, unknown>): boolean => (
     historyData.mountContext === 'widget' || historyData.uId === 'widget'
 );
 
@@ -238,10 +241,11 @@ export async function POST(request: NextRequest) {
         const { searchHistoryId, isGood, resolutionOutcome } = validation.data;
 
         // Write feedback only to this workspace's own search-history record.
-        const historyRef = answerlatticeFirestoreAdmin
+        const db = requireAnswerlatticeFirestoreAdmin();
+        const historyRef = db
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
             .doc(searchHistoryId);
-        const transactionResult = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+        const transactionResult = await db.runTransaction(async (transaction) => {
             const historyDoc = await transaction.get(historyRef);
             const current = historyDoc.exists ? historyDoc.data() : null;
             if (
@@ -327,7 +331,7 @@ export async function POST(request: NextRequest) {
             created: feedbackCreated,
         });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         logRuntimeFailure('answerlattice_widget_feedback_failed', err);
         return jsonResponse(request, { error: 'Something went wrong' }, { status: 500 });
     }

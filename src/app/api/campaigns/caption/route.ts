@@ -5,11 +5,13 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { normalizeCampaignCaptionGenerationResult } from "@lib/ai/campaignCaptionOutput";
 import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { requireAnyStorePermission } from "@lib/permissions/server";
+import { getSessionProjectAccessBlockReason } from "@lib/menu/serverProjectAccess";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
 import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -18,7 +20,7 @@ import { getSafeFallbackCaption, sanitizeAIOutput } from "@lib/trust/phraseGuard
 import { CampaignCaptionRequestSchema } from "@lib/validation/apiSchemas";
 import { CAMPAIGN_CAPTION_PROMPT_V1, CampaignCaptionInput } from "@services/gemini/prompts/v1/campaignCaption.prompt";
 import { NextResponse } from 'next/server';
-import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { withAuth } from "../../../../middleware/auth";
 
 const AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 const ACTION = AI_ACTIONS_TYPES.CAMPAIGN_CAPTION;
@@ -98,7 +100,7 @@ function logCampaignCaptionProviderResponseParseFailure(
 function parseCampaignCaptionProviderResponse(
     responseText: string | undefined,
     context: CampaignCaptionProviderResponseParseContext,
-): Record<string, any> {
+): unknown {
     const rawText = String(responseText || '');
     const trimmedText = rawText.trim();
     const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
@@ -250,19 +252,18 @@ export const POST = withAuth(async (request, session) => {
         );
         if (permissionError) return permissionError;
 
-        // 🔒 TENANT ISOLATION: Verify user owns this project
+        // Tenant isolation: a supplied project may only identify an existing
+        // project in the authenticated tenant/store scope.
         if (projectId) {
-            const tenantId = session.tId;
-            const storeId = session.sId;
-
-            if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+            const projectAccessBlockReason = await getSessionProjectAccessBlockReason({ projectId, session });
+            if (projectAccessBlockReason) {
                 logger.security('Tenant Access Violation - Campaign Caption API', {
                     ...getAIRouteSecurityContext(session, request),
                     endpoint: '/api/campaigns/caption',
                     attemptedProject: getAIRouteLogContext({ projectId }),
                     requestId,
                 }, 'critical');
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+                return NextResponse.json({ error: projectAccessBlockReason }, { status: 403 });
             }
         }
 
@@ -360,9 +361,9 @@ export const POST = withAuth(async (request, session) => {
         const endTime = Date.now();
         const processingTime = endTime - startTime;
 
-        let generatedData: any;
+        let providerData: unknown;
         try {
-            generatedData = parseCampaignCaptionProviderResponse(response.text, {
+            providerData = parseCampaignCaptionProviderResponse(response.text, {
                 action: ACTION,
                 campaignType,
                 language,
@@ -395,17 +396,18 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 500 });
         }
 
-        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
+        const normalizedProviderData = normalizeCampaignCaptionGenerationResult(providerData);
+        if (!normalizedProviderData) {
             logAIRouteFailure('campaign_caption_non_object_response', undefined, {
                 action: ACTION,
                 campaignType,
-                isArray: Array.isArray(generatedData),
+                isArray: Array.isArray(providerData),
                 language,
                 model: AI_MODEL,
                 projectId,
                 requestId,
                 responseTextLength: response.text?.length || 0,
-                responseType: typeof generatedData,
+                responseType: typeof providerData,
                 responseUsage: response.usageMetadata || null,
                 storeId: session.sId,
                 surface,
@@ -419,20 +421,11 @@ export const POST = withAuth(async (request, session) => {
 
         // 🛡️ TRUST GUARD: Sanitize AI output for forbidden phrases
         const fallbackCaption = getSafeFallbackCaption(campaignType);
-        if (generatedData.caption) {
-            generatedData.caption = sanitizeAIOutput(
-                generatedData.caption,
-                fallbackCaption,
-                'campaign_caption'
-            );
-        }
-        if (generatedData.shortCaption) {
-            generatedData.shortCaption = sanitizeAIOutput(
-                generatedData.shortCaption,
-                fallbackCaption,
-                'campaign_short_caption'
-            );
-        }
+        const generatedData = {
+            ...normalizedProviderData,
+            caption: sanitizeAIOutput(normalizedProviderData.caption, fallbackCaption, 'campaign_caption'),
+            shortCaption: sanitizeAIOutput(normalizedProviderData.shortCaption, fallbackCaption, 'campaign_short_caption'),
+        };
 
         const transactionObject: any = {
             action: ACTION,

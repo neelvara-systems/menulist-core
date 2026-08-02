@@ -6,10 +6,11 @@ import {
     revokeAnswerlatticePublicApiKey,
     rotateAnswerlatticePublicApiKey,
 } from '../../src/lib/answerlattice/publicApiKeyStore';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { hashApiKey, validatePublicApiKey } from '../../src/lib/publicApi/auth';
 
 const scope = { tenantId: 701, storeId: 7001 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const actor = { id: 'owner_public_api_test' };
 const storeRef = () => db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
 const rawKey = (character: string) => `al_${character.repeat(32)}`;
@@ -38,8 +39,6 @@ async function seedStore(overrides: Record<string, unknown> = {}): Promise<void>
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
-
     await seedStore();
     assert.equal(await readAnswerlatticePublicApiKeySummary(scope), null);
 

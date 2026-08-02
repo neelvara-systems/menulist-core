@@ -12,7 +12,7 @@ CampaignCue workspace catch-path notices and failed API response branches use fi
 
 CampaignCue shared API guards hash user, tenant, and store rate-limit key segments before writing provider keys, and tenant/rate-limit security logs use bounded scope metadata instead of raw workspace identifiers. This keeps the protected API limits and ordering unchanged while avoiding raw identity values in Upstash key names or security-log extras.
 
-It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
+It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, external rendered-video provider calls, or MenuList write-back. Video Reel Studio is an owned deterministic Canvas/MediaRecorder export path, not a provider adapter.
 
 ## Proposed Product Shape
 

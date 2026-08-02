@@ -1,6 +1,7 @@
 'use client'
 
 import ArticleView from '@organisms/ArticleView';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getArticleById } from '@database/knowledgeBase/articles';
 import type { ChatReference } from '@type/chatSession';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
@@ -32,10 +33,15 @@ const getConfidenceInfo = (score?: number) => {
 
 const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false, isMobile = false }: MessageReferencesProps) => {
     const { token } = theme.useToken();
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
     const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
     const [resolvedArticles, setResolvedArticles] = useState<Record<string, KnowledgeBaseArticleType>>({});
+    const [resolvedArticlesScopeKey, setResolvedArticlesScopeKey] = useState<string | null>(null);
     const articleRequestRef = useRef(0);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const visibleResolvedArticles = resolvedArticlesScopeKey === cacheScopeKey ? resolvedArticles : {};
 
     if (!references || references.length === 0) {
         return null;
@@ -51,15 +57,20 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
     const resolveFullArticle = async (
         reference: ChatReference,
     ): Promise<ChatReference | KnowledgeBaseArticleType | null> => {
-        if (resolvedArticles[reference.id]) return resolvedArticles[reference.id];
+        if (visibleResolvedArticles[reference.id]) return visibleResolvedArticles[reference.id];
+        const requestScopeKey = cacheScopeKey;
         setLoadingArticleId(reference.id);
         try {
             const article = await getArticleById(reference.id);
+            if (currentScopeKeyRef.current !== requestScopeKey) return null;
             if (!article) {
                 message.warning('This help article is no longer available.');
                 return null;
             }
-            setResolvedArticles((current) => ({ ...current, [reference.id]: article }));
+            setResolvedArticles((current) => (
+                resolvedArticlesScopeKey === requestScopeKey ? { ...current, [reference.id]: article } : { [reference.id]: article }
+            ));
+            setResolvedArticlesScopeKey(requestScopeKey);
             return article;
         } catch {
             message.error('Unable to load this help article.');
@@ -95,7 +106,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {sortedReferences.map((ref) => {
                     const isExpanded = expandedArticleId === ref.id;
-                    const resolvedArticle = resolvedArticles[ref.id];
+                    const resolvedArticle = visibleResolvedArticles[ref.id];
                     const isLoading = loadingArticleId === ref.id;
                     return (
                         <motion.div

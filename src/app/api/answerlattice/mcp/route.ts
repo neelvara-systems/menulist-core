@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
                 session.sId,
                 session.bundleVersion,
                 toolName,
-                parsedArguments.data as Record<string, unknown>,
+                parsedArguments.data,
             );
             return jsonRpcResult(requestId, result, protocolVersion);
         }

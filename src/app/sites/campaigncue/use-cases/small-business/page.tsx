@@ -18,6 +18,7 @@ import {
     LuShieldAlert,
     LuShieldCheck,
     LuUpload,
+    LuVideo,
     LuWorkflow,
 } from "react-icons/lu";
 import {
@@ -433,7 +434,7 @@ export default async function CampaignCueSmallBusinessUseCasePage() {
                     <LuWorkflow aria-hidden="true" />
                     <strong>Connected to the product, not a separate landing-page promise.</strong>
                     <p>
-                        Daily Campaign Desk, Campaign Pack Studio, Creative Studio, CueLayers, Trust Center,
+                        Daily Campaign Desk, Campaign Pack Studio, Creative Studio, CueLayers, Video Reel Studio, Trust Center,
                         export delivery, and result memory are the real surfaces behind this page.
                     </p>
                 </div>
@@ -453,6 +454,10 @@ export default async function CampaignCueSmallBusinessUseCasePage() {
                     <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers)}>
                         <LuLayers aria-hidden="true" />
                         CueLayers
+                    </a>
+                    <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio)}>
+                        <LuVideo aria-hidden="true" />
+                        Video Reel Studio
                     </a>
                     <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter)}>
                         <LuClipboardCheck aria-hidden="true" />
@@ -527,6 +532,7 @@ export default async function CampaignCueSmallBusinessUseCasePage() {
                         <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.campaignPackStudio)}>Campaign Pack Studio</a>
                         <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio)}>Creative Studio</a>
                         <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers)}>CueLayers</a>
+                        <a href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio)}>Video Reel Studio</a>
                     </nav>
                     <nav aria-label="CampaignCue review links">
                         <h3>Trust</h3>

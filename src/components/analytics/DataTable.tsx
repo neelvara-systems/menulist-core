@@ -10,11 +10,11 @@ import type { TableProps, ColumnType } from 'antd/es/table';
 
 const { Title } = Typography;
 
-export interface DataTableColumn<T = any> extends ColumnType<T> {
+export interface DataTableColumn<T = Record<string, unknown>> extends ColumnType<T> {
   searchable?: boolean;
 }
 
-export interface DataTableProps<T = any> {
+export interface DataTableProps<T = Record<string, unknown>> {
   title?: string;
   columns: DataTableColumn<T>[];
   data: T[];
@@ -23,13 +23,28 @@ export interface DataTableProps<T = any> {
   showSearch?: boolean;
   searchPlaceholder?: string;
   onRowClick?: (record: T) => void;
-  rowKey?: string | ((record: T) => string);
+  rowKey?: string | ((record: T) => React.Key);
   className?: string;
   size?: 'small' | 'middle' | 'large';
   showPagination?: boolean;
 }
 
-export const DataTable = <T extends Record<string, any>>({
+export function getDataTableSearchValue<T extends object>(
+  record: T,
+  dataIndex: NonNullable<ColumnType<T>['dataIndex']>,
+): unknown {
+  const path = Array.isArray(dataIndex) ? dataIndex : [dataIndex];
+  return path.reduce<unknown>((current, segment) => {
+    if (current === null || typeof current !== 'object') return undefined;
+    if (typeof segment !== 'string' && typeof segment !== 'number' && typeof segment !== 'symbol') {
+      return undefined;
+    }
+    if (!Object.prototype.hasOwnProperty.call(current, segment)) return undefined;
+    return Reflect.get(current, segment);
+  }, record);
+}
+
+export const DataTable = <T extends Record<string, unknown>>({
   title,
   columns,
   data,
@@ -59,7 +74,7 @@ export const DataTable = <T extends Record<string, any>>({
       return columns.some((col) => {
         if (col.searchable === false) return false;
         
-        const value = col.dataIndex ? record[col.dataIndex as string] : null;
+        const value = col.dataIndex ? getDataTableSearchValue(record, col.dataIndex) : null;
         if (value === null || value === undefined) return false;
         
         return String(value).toLowerCase().includes(searchLower);
@@ -112,6 +127,7 @@ export const DataTable = <T extends Record<string, any>>({
               prefix={<SearchOutlined style={{ color: token.colorTextSecondary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              maxLength={500}
               allowClear
               style={{ maxWidth: 400 }}
             />

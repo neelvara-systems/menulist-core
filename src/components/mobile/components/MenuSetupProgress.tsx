@@ -18,7 +18,7 @@ interface MobileMenuSetupProgressProps {
     onOpenMenu?: () => void;
     onOpenOfficialPage?: () => void;
     onOpenShare?: () => void;
-    project?: (Project & Record<string, any>) | null;
+    project?: (Project & Record<string, unknown>) | null;
     storeDetails?: StoreDataType | null;
 }
 

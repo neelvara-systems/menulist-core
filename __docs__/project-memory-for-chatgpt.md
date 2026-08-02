@@ -127,7 +127,7 @@ Observed behavior:
   - `answerlattice.com` and other configured product hosts route via middleware to `/sites/<productId>` through `productDomains.ts`.
   - In local dev, product prefixes such as `/__answerlattice/...` also resolve to `/sites/answerlattice/...`.
 - Tenant routing:
-  - `*.menulist.ai` and validated custom domains resolve to tenant mode and rewrite into `/client/...`.
+  - `*.menulist.online` and validated custom domains resolve to tenant mode and rewrite into `/client/...`.
   - Middleware injects tenant headers: `x-tenant-subdomain`, `x-tenant-custom-domain`, and `x-tenant-type`.
 - Platform/website routing:
   - `menulist.ai`, `menulist.online`, and configured aliases are served in website context.

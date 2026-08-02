@@ -8,13 +8,12 @@ import StoreSwitcher from '@molecules/StoreSwitcher';
 import { getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState } from '@reduxSlices/clientThemeConfig';
 import DashboardHeaderShell from '@/components/shared/dashboardShell/DashboardHeaderShell';
 import { getFormatedDate, getFormatedTime, getUTCDate } from '@util/dateTime';
-import { objectNullCheck } from '@util/utils';
 import { Avatar, Badge, Button, Divider, Flex } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import { LuLoader, LuUser } from 'react-icons/lu';
 import AppBreadcrumb from './appBreadcrumb/appBreadcrumb';
 import styles from './headerComponent.module.scss';
@@ -22,8 +21,8 @@ import ProfileActionsModal from './profileActionsModal';
 
 const HeaderComponent = () => {
 
-    const { data: session } = useSession()
-    const [userData, setUserData] = useState<any>(session?.user)
+    const { data: session, status: sessionStatus } = useSession()
+    const userData = session?.user;
     const showDateInHeader = useAppSelector(getShowDateInHeaderState);
     const showUserDetailsInHeader = useAppSelector(getShowUserDetailsInHeaderState);
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
@@ -53,7 +52,9 @@ const HeaderComponent = () => {
 
                 {/* Profile */}
                 <div className={styles.profileWrap}>
-                    {objectNullCheck(userData, 'email')
+                    {sessionStatus === 'loading'
+                        ? <Button aria-label="Loading account" disabled icon={<LuLoader />} type="text" />
+                        : userData
                         ?
                         <>
                             <ProfileActionsModal userData={userData}>
@@ -69,7 +70,7 @@ const HeaderComponent = () => {
                             </ProfileActionsModal>
                         </>
                         :
-                        <Button type="text" icon={<LuUser />} onClick={() => router.replace(`${NAVIGARIONS_ROUTINGS.SIGNIN}`)} />
+                        <Button aria-label="Sign in" type="text" icon={<LuUser />} onClick={() => router.replace(`${NAVIGARIONS_ROUTINGS.SIGNIN}`)} />
                         // <Button type="text" icon={<LuUser />} onClick={() => signIn('google', { callbackUrl: 'http://localhost:3000/websites/dashboard' })} />
                     }
                 </div>

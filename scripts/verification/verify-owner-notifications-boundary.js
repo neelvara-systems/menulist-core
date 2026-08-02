@@ -200,8 +200,10 @@ function verifyFirestoreDocumentIdHelper(helper) {
 
 function verifyOpsRoute(route) {
   [
-    "withAuth(async (request, session) =>",
+    "withOwnerNotificationPrivateResponse(async (request, session) =>",
     "requiredPlatformRole: 'PLATFORM'",
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    "'X-Content-Type-Options': 'nosniff'",
     '!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD',
     'const OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;',
     "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
@@ -229,7 +231,6 @@ function verifyOpsRoute(route) {
     'Manual refresh only. One current-user authorization read and one bounded recent-event scan.',
     'Counts and filters describe that same product-scoped recent window',
     'detail recipient resolution runs only after selecting one event.',
-    "headers: { 'Cache-Control': 'no-store' }",
     'hashPublicRateLimitValue(userId)',
     'key: `owner-notification-ops:${userRateLimitHash}`',
     'key: `owner-notification-ops-read:${operatorRateLimitHash}`',
@@ -239,6 +240,12 @@ function verifyOpsRoute(route) {
     'readBoundedJsonBody(request, OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(PostActionSchema, body)',
     'manualRecipientOverride: true',
+    'manualActionFingerprint: buildOwnerNotificationManualSendFingerprint(identity)',
+    'isMatchingOwnerNotificationManualSendEvent({',
+    "{ processImmediately: false, processExisting: false }",
+    "return NextResponse.json({ error: 'Owner notification action ID conflict' }, { status: 409 });",
+    "return NextResponse.json({ error: 'Owner notification runtime is unavailable' }, { status: 503 });",
+    'projectOwnerNotificationPersistedEvent(',
     'normalizeDestinationForAudit',
     'recipientMasked',
     'manualHandoffAt',
@@ -293,6 +300,12 @@ function verifyOpsRoute(route) {
 
   [
     'request.json()',
+    'bodyResult.data as any',
+    'function toIso(value: any)',
+    'function sanitizeForFirestore(value: any): any',
+    'function sanitizeMetadataPreview(metadata: any)',
+    'function normalizeChannels(value: any)',
+    'function getOperatorId(session: any)',
     '.doc(params.eventId)',
     ".where('eventId', '==', params.eventId)",
     'processOwnerNotificationEvent(validation.data.productId, validation.data.eventId)',
@@ -303,6 +316,25 @@ function verifyOpsRoute(route) {
     "providerMessageId: data.providerMessageId || null",
     "logger.error('[API /ops/owner-notifications]",
   ].forEach((token) => assertNotIncludes(route, token, 'Owner notification ops API route'));
+}
+
+function verifyManualActionBoundary(boundary) {
+  [
+    'export function buildOwnerNotificationManualSendFingerprint(',
+    'export function isMatchingOwnerNotificationManualSendEvent(params:',
+    'projectOwnerNotificationPersistedEvent(',
+    'identity.productId,',
+    'identity.eventId,',
+    'identity.actionId,',
+    'identity.channel,',
+    'identity.destination,',
+    'identity.reason || null,',
+    'requestedChannels?.length === 1',
+    'destinationMatches',
+    'event.metadata.manualRecipientOverride === true',
+    'event.metadata.originalEventId === params.expected.eventId',
+    'event.metadata.manualActionFingerprint',
+  ].forEach((token) => assertIncludes(boundary, token, 'Owner notification manual action boundary'));
 }
 
 function verifyCore(core, recipientResolver, types, emailChannel, whatsappChannel, appLifecycle, ownerHeader) {
@@ -733,7 +765,7 @@ function verifyMonitor(monitor, responseHelper) {
     "message.error('Owner notification action failed')",
     'formatMonitorError',
     'copyRuntimeTextToClipboard',
-    'window.open(whatsappWebHref',
+    'openIsolatedBrowserUrl(whatsappWebHref',
     'Record Manual',
     'Cost-bounded monitor',
     'Current persisted platform authorization and one bounded recent-event window drive rows and counts.',
@@ -851,7 +883,8 @@ function verifyDocsAndPackage(
   lifecycleFirebaseDoc,
 ) {
   [
-    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js && npm run test:platform-notification-recipient && npm run test:notification-template-url-boundary"',
+    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js && npm run test:platform-notification-recipient && npm run test:notification-template-url-boundary && npm run test:owner-notification-manual-action"',
+    '"test:owner-notification-manual-action": "ts-node --compiler-options',
     '"test:owner-notification-delivery-boundaries":',
     '"test:notification-template-url-boundary":',
     '"test:platform-notification-recipient":',
@@ -891,6 +924,9 @@ function verifyDocsAndPackage(
     '`processingAttempt`',
     '`scope_not_found_or_mismatch`',
     '`metadata.manualRecipientOverride === true`',
+    'August 1 platform-recovery correction',
+    'immutable action fingerprint',
+    'changed effect dimension returns 409',
     '`npm run test:owner-notification-delivery-boundaries`',
   ].forEach((token) => assertIncludes(implDoc, token, 'Owner notification implementation docs'));
 
@@ -923,6 +959,8 @@ function verifyDocsAndPackage(
     '`scope_not_found_or_mismatch`',
     'July 10 deploy evidence',
     'No target was uploaded',
+    'August 1 ops manual-send convergence',
+    'replay of an existing deterministic manual action adds one direct event read',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Owner notification Firebase docs'));
   [
     'firebase deploy --only functions:',
@@ -976,6 +1014,7 @@ function verifyDocsAndPackage(
 		    'Staleness lifecycle delivery diagnostics checkpoint',
 		    'Owner-notification tenant/idempotency checkpoint',
 		    'Owner-notification restart 16 Firebase deploy checkpoint',
+		    'Owner-notification manual-recovery convergence checkpoint',
 		  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
 
 			  [
@@ -988,7 +1027,8 @@ function verifyDocsAndPackage(
 			    'raw trigger text',
 			    'Owner Notifications Doc Boundary',
 		    'Owner Notifications Deploy Retry Doc Boundary',
-			    'Owner Notification Template Output Boundary',
+		    'Owner Notification Template Output Boundary',
+          'Owner Notification Manual-Recovery Convergence',
           'MenuList Stale Menu Notification Reason Boundary',
           'Answerlattice Owner Notification Template Output Boundary',
 		    'Lifecycle Messaging Fail Closed',
@@ -1047,6 +1087,7 @@ function verifyOwnerNotificationsBoundary() {
     answerlatticeFirestoreIndexes: read('firestore-answerlattice.indexes.json'),
     firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/owner-notifications/route.ts'),
+    manualActionBoundary: read('src/lib/ops/ownerNotificationManualAction.ts'),
     core: read('src/lib/owner-notifications/index.ts'),
     formatters: read('src/lib/owner-notifications/formatters.ts'),
     appLifecycle: read('src/lib/messaging/index.ts'),
@@ -1084,6 +1125,7 @@ function verifyOwnerNotificationsBoundary() {
   verifyLifecycleSubscriptionIndexes(files.firestoreIndexes, files.answerlatticeFirestoreIndexes);
   verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);
+  verifyManualActionBoundary(files.manualActionBoundary);
   verifyCore(
     files.core,
     files.recipientResolver,

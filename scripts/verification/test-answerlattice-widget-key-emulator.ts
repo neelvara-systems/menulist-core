@@ -16,10 +16,11 @@ import {
     isExactAnswerlatticeWidgetStoreAuthority,
     mutateAnswerlatticeWidgetKeys,
 } from '../../src/lib/answerlattice/widgetKeyStore';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { hashApiKey, validatePublicApiKey } from '../../src/lib/publicApi/auth';
 
 const scope = { tenantId: 101, storeId: 1001 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const storeRef = () => db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
 const keyFor = (character: string, index = 0) => `al_${character.repeat(30)}${String(index).padStart(2, '0')}`;
 
@@ -39,8 +40,6 @@ async function seedStore(pId: string = PRODUCT_IDS.ANSWERLATTICE): Promise<void>
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
-
     await seedStore();
     assert.equal(
         isExactAnswerlatticeWidgetStoreAuthority((await storeRef().get()).data(), scope, String(scope.storeId)),

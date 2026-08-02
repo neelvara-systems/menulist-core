@@ -57,7 +57,12 @@ import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
-const schema = z.object({ outletName: z.string().trim().min(1).max(200) }).strict();
+const OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
+const schema = z.object({
+    expectedStoreId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH),
+    expectedTenantId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH),
+    outletName: z.string().trim().min(1).max(200),
+}).strict();
 const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
 const OUTLET_CREATE_EFFECT_CHUNK_SIZE = 2;
 const MAX_OUTLET_CREATION_MASTER_PROJECTS = 200;
@@ -193,10 +198,13 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: "Invalid input",
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
+        const body = bodyResult.data;
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-        const { outletName } = v.data;
+        const { expectedStoreId, expectedTenantId, outletName } = v.data;
+        if (expectedStoreId !== storeDocumentId || expectedTenantId !== tenantDocumentId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
         const sessionUserDocumentId = normalizeUserStoreAccessDocumentId(session.uId || session.user?.id);
         if (!sessionUserDocumentId) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -612,6 +620,7 @@ export const POST = withAuth(async (request, session) => {
                 storesList: [...normalizedStoresList, {
                     active: true,
                     storeId: newStoreId,
+                    storeKey,
                     name: outletName,
                     tenantName,
                     isMaster: false,
@@ -681,7 +690,7 @@ export const POST = withAuth(async (request, session) => {
                 }, { merge: true });
             }
 
-            return { newStoreId, outletSlug, tenantName };
+            return { newStoreId, outletSlug, storeKey, tenantName };
         });
         const newStoreDocumentId = String(result.newStoreId);
         const postCommit = await runStorePublicTruthPostCommitEffects({
@@ -714,6 +723,7 @@ export const POST = withAuth(async (request, session) => {
             failedEffectCount: postCommit.failedEffectCount,
             success: true,
             storeId: result.newStoreId,
+            storeKey: result.storeKey,
             outletSlug: result.outletSlug,
             outletName,
             masterPromoted,

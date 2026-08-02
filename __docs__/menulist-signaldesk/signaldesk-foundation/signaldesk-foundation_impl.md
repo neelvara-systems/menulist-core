@@ -5,6 +5,21 @@
 **Last Updated:** July 21, 2026
 **Runtime:** Protected SignalDesk shell, current-user/session admission, role access, kill switches, audit, mobile read-only enforcement, and transactional internal team access management are implemented.
 
+August 1, 2026 action-boundary corrections:
+
+- The protected action route preserves every Zod schema's exact parsed output
+  type through dispatch. Session input is typed at the shared security boundary.
+- Permission, mobile classification and server dispatch are exhaustive over the
+  action enum. Demand-signal behavior is explicit; incomplete new mappings fail
+  TypeScript.
+- Limiter-provider uncertainty returns private 503 without quota-derived
+  retry/reset timing. Proven exhaustion alone returns 429 timing.
+- Source-provider timeout/request failure returns retryable 503; bounded
+  request/business rejection remains 400 and unknown failure remains fixed 500.
+- The blocked-mobile audit write runs inside the route's private error boundary,
+  while still occurring after limiting/authorization and before any requested
+  mutation.
+
 ## Implemented File Layout
 
 Implement in this monorepo first with product-isolated folders:

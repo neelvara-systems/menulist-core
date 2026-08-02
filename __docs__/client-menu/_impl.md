@@ -33,7 +33,7 @@ This document consolidates all technical implementation details for the Customer
 ### Request Flow
 
 ```
-1. Customer → joespizza.menulist.ai/drinks
+1. Customer → joespizza.menulist.online/drinks
 2. Middleware (src/middleware.ts)
    - resolveDomain() extracts subdomain or custom domain
    - Deletes caller-supplied routing headers, then forwards middleware-owned x-tenant-subdomain, x-tenant-custom-domain, and x-tenant-type values on the rewritten request
@@ -83,7 +83,7 @@ The following infrastructure improvements were implemented to make the menu surf
 | Feature                   | Implementation                                                |
 | ------------------------- | ------------------------------------------------------------- |
 | **OBP Routing**           | Root `/` → OBP (when `ENABLE_OBP`), `/menu` → default project |
-| **Outlet Routing**        | `brand.menulist.ai/{outletSlug}` resolves to outlet store     |
+| **Outlet Routing**        | `brand.menulist.online/{outletSlug}` resolves to outlet store     |
 | **Custom Domain 301**     | Subdomain → custom domain redirect for SEO consolidation      |
 | **Old Slug 301**          | `previousSlugs` chain redirect preserves QR codes             |
 | **Reserved Slugs**        | `isReservedProjectSlug()` guard on name-based fallback        |
@@ -357,9 +357,10 @@ interface CandidateItem {
 ```typescript
 // src/lib/utils/domainResolver.ts
 export function resolveDomain(hostname: string): DomainInfo {
-  // Check if it's a menulist.ai subdomain
-  if (hostname.endsWith(".menulist.ai")) {
-    const subdomain = hostname.replace(".menulist.ai", "");
+  // Check if it is a configured MenuList tenant host:
+  // *.menulist.online in production or *.qa.menulist.digital in QA.
+  if (hostname.endsWith(".menulist.online")) {
+    const subdomain = hostname.replace(".menulist.online", "");
     return { type: "subdomain", subdomain, customDomain: null };
   }
 
@@ -684,7 +685,7 @@ useEffect(() => {
 
 | Flow                     | Test Case                               | Status  |
 | ------------------------ | --------------------------------------- | ------- |
-| Subdomain routing        | `joespizza.menulist.ai` → correct store | ✅ PASS |
+| Subdomain routing        | `joespizza.menulist.online` → correct store | ✅ PASS |
 | Custom domain routing    | `joespizza.com` → correct store         | ✅ PASS |
 | Slug routing             | `/drinks` → correct project             | ✅ PASS |
 | Default project          | No slug → isDefault project             | ✅ PASS |
@@ -742,7 +743,7 @@ useEffect(() => {
 
 | Test          | Action                           | Expected          |
 | ------------- | -------------------------------- | ----------------- |
-| Subdomain     | Visit `{subdomain}.menulist.ai`  | Menu loads        |
+| Subdomain     | Visit `{subdomain}.menulist.online`  | Menu loads        |
 | Custom Domain | Visit verified custom domain     | Menu loads        |
 | Slug          | Visit `{domain}/drinks`          | Correct project   |
 | Root          | Visit domain without slug        | Official Business Page |

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import styles from './styles.module.scss';
+import { normalizeAnimatedBubbleCount } from '../animationPresentation';
 
 interface AnimatedGradientBubblesProps {
   colors?: string[];
@@ -7,13 +8,15 @@ interface AnimatedGradientBubblesProps {
   speed?: 'slow' | 'medium' | 'fast';
 }
 
+const DEFAULT_BUBBLE_COLORS = ['#ffbe0b', '#fb5607', '#8338ec'];
+
 const seededUnit = (seed: number) => {
   let value = Math.imul(seed ^ 0x9e3779b9, 2654435761) >>> 0;
   value ^= value >>> 16;
   return value / 4294967295;
 };
 
-const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], count = 3, speed = 'medium' }: AnimatedGradientBubblesProps) => {
+const AnimatedGradientBubbles = ({ colors = DEFAULT_BUBBLE_COLORS, count = 3, speed = 'medium' }: AnimatedGradientBubblesProps) => {
   const bubbles = useMemo(() => {
     const speedConfig = {
       slow: { min: 10, range: 5 },    // 10s to 15s
@@ -22,9 +25,11 @@ const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], c
     };
 
     const { min, range } = speedConfig[speed];
-    const baseSeed = count * 97 + speed.length * 31 + colors.join('|').length;
+    const normalizedCount = normalizeAnimatedBubbleCount(count);
+    const normalizedColors = colors.length > 0 ? colors : DEFAULT_BUBBLE_COLORS;
+    const baseSeed = normalizedCount * 97 + speed.length * 31 + normalizedColors.join('|').length;
 
-    return Array.from({ length: count }).map((_, index) => {
+    return Array.from({ length: normalizedCount }).map((_, index) => {
       const seed = baseSeed + index * 11;
       const size = Math.floor(seededUnit(seed + 1) * 150) + 100; // 100px to 250px
       const top = seededUnit(seed + 2) * 100;
@@ -39,7 +44,7 @@ const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], c
           height: `${size}px`,
           top: `${top}%`,
           left: `${left}%`,
-          background: colors[index % colors.length],
+          background: normalizedColors[index % normalizedColors.length],
           animationDuration: `${animationDuration}s`,
           animationDelay: `${animationDelay}s`,
           transform: `translate(-${left}%, -${top}%)`,

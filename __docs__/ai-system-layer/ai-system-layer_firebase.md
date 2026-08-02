@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed code/cost truth — not current launch or deploy certification
-**Last Updated:** July 29, 2026
+**Last Updated:** August 1, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -131,6 +131,21 @@ June 30 SEO and Business Copy prompt-input normalization is Firebase-cost neutra
 July 5 text AI operation response summaries were Firebase-cost neutral when introduced. `/api/descriptions`, `/api/translations`, `/api/new-item-metadata`, `/api/business-copy`, `/api/seo`, `/api/reviews/suggest`, `/api/campaigns/caption`, and `/api/menu-card-export/design-advisor` send count/shape `clientResponse` summaries with `responseSummaryKind` markers instead of generated owner-facing text objects, and `src/lib/ai/operationLog.ts` preserves those pre-summarized payloads in `accounting_only` mode. The July 13 reservation contract changes positive-unit paid route accounting reads/writes and order as documented above; zero-unit actions remain on the historical no-reservation path. The response-summary change itself adds no Storage operations, extra provider calls, cache invalidations, rules, indexes, schema changes, owner-facing settings, or Vercel deploy action.
 
 July 12 text-output contract and accounting audit: description and translation calls now require canonical project/file scope and continue through the existing project-policy document read before provider work. This adds no reads to those two valid paths; malformed or cross-scope requests fail before provider/accounting writes. New-item metadata now performs the same project-policy read before its provider call: one project document read for a standalone project, plus the existing master-store policy read only when the project is linked to another store. That authorization cost prevents cross-project provider work and occurs after the existing store-permission read but before capacity/provider/accounting. Exact server/client output projection, source-text/price preservation, ID-based attribute merge, and response-shape summaries add no Firestore writes/deletes, Storage operations, rules, indexes, or Cloud Function changes. Existing business-copy and translation malformed-JSON retry behavior is unchanged; accounting now sums usage and internal cost across both successful provider responses instead of recording only the last response.
+
+August 1 accounting and campaign-caption correction: Business Copy and SEO
+now perform the reservation shell write plus subscription debit before paid
+provider work, then the existing settlement write after valid output, exactly
+as required by the current accounting-order rule above. Every unsettled path
+uses the exact reservation refund transaction. This is the intended positive-
+unit cost profile; the previous missing reservation caused provider spend to
+end in a rejected finalization rather than a usable owner result. Campaign
+Caption adds one project-document read only when the optional `projectId` is
+supplied, after permission admission and before capacity/provider work; missing,
+cross-scope, deleted, and platform-blocked projects fail before paid work.
+Caption DTO projection and Review Suggest limiter outage handling add no
+Firestore reads/writes/deletes, Storage operations, cache invalidations, rules,
+indexes, Cloud Function logic, or deploy requirement. No Firestore rules,
+indexes, or Functions changed in this correction.
 
 July 5 Campaign Caption provider-response parse diagnostics are Firebase-cost neutral. Empty, malformed non-object, malformed object-fragment, or non-object provider JSON now logs capped `campaign_caption_provider_response_parse_failed` or `campaign_caption_non_object_response` diagnostics with fixed `return_caption_generation_failed` policy and response-shape metadata only. The route still uses the existing bounded body admission, validation, permission gate, SAFE_MODE/rate-limit/capacity checks, Gemini call, phrase guard, response shape for valid output, `finalizeAiOperationAccounting()` write, and credit consumption order for valid output. Unusable provider responses still return the generic caption failure without a usable operation row or credit consumption. Bounded prompt summaries and caption response summaries in accounting input add no Firestore reads/writes/deletes, Storage operations, extra provider calls, AI accounting writes, credit consumption, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 

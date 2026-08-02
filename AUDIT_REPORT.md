@@ -1,7 +1,7 @@
 # MenuList System Audit Report
 
 Original audit date: 2026-06-20
-Latest audited addendum: 2026-07-31
+Latest audited addendum: 2026-08-01
 Product context: MenuList
 Audit type: System data-flow correctness, public business truth, cache/auth/reliability hardening
 
@@ -878,7 +878,7 @@ Canonical entities:
 | Menu items/prices/availability/order | Approved project/menu truth, with version-bound `screen.menuProjection` optimization | `/screen/[token]` Menu Board | Projection is accepted only when its source/version context matches; otherwise rebuild from canonical project truth |
 | Store name/logo/OBP accent/locale/plan/public eligibility | Public store truth; `publicPresence.accentColor` is the canonical brand accent | Screen header, decorative accents, prices, attribution, QR | Accent is normalized before output; inactive/deleted/blocked stores must not render |
 | Owner artwork | Existing Storage-backed custom slide URL and metadata | Highlights rotation | Contained inside output safe area; caption management name is not forced over artwork |
-| Screen liveness hint | Canonical `screenLastSeenAt` server timestamp | Owner settings/mobile/Output Center | Hint only; never represented as a live connection |
+| Screen open receipt | Canonical per-mode `screenSeenByMode` plus current `contentVersion` | Owner settings/mobile/Output Center | Exact-version browser-open hint only; never represented as a live connection |
 
 Customer-visible outputs:
 
@@ -1714,3 +1714,137 @@ Not yet certified:
 Production monitoring should prioritize public-menu render failures, rejected
 item deep links, timed-category transition accuracy, metadata/UI currency
 parity, public cache refresh latency, and tenant-specific theme contrast.
+
+## 12. Digital Screens Exact-Version Output Audit
+
+Audit date: 2026-08-01
+
+### 12.1 Executive Summary
+
+Confidence is high for the audited source, transaction, owner desktop/mobile,
+and public display fallback paths. The feature remains within the locked v2.3
+truth-layer boundary: one canonical menu source, Menu Board and Highlights as
+rendering modes, no device management, no screen analytics, and no separate
+signage authoring system.
+
+Material risks found:
+
+- One aggregate `screenLastSeenAt` made both owner cards look healthy after
+  only one screen type opened and could remain recent after a newer menu
+  version became canonical.
+- The anonymous acknowledgement accepted no mode/version proof, so owner copy
+  could not distinguish “browser opened” from “latest update opened.”
+- A failed owner-poster image was hidden, leaving a mostly empty Highlights
+  slide for its dwell interval.
+- `publicScreenState.ts` retained an unused browser `setDoc()` helper despite
+  the server-only mirror-write and Firestore-rule contract.
+- The bearer TV route lacked route-level noindex and no-referrer metadata even
+  though public menu/OBP pages are the intended discovery surfaces.
+- Status did not refresh in an already-open owner settings view without a full
+  page reload.
+- The owner setup card styles were scoped in the parent component while the
+  styled nodes rendered in a child component. The result was an unframed,
+  low-hierarchy setup view; the QR column also overflowed a true narrow
+  viewport.
+- A post-fix cross-check found the global child-card selectors were not fully
+  namespaced, creating unrelated UI collision risk. It also found Output Center
+  still used the legacy aggregate timestamp for Menu Board and showed no
+  Highlights status.
+
+No known critical or high-severity source correctness issue remains in these
+audited Digital Screens paths after the fixes below. Deployed tenant, CDN,
+real TV browser, physical overscan, image-host outage, and QR-distance evidence
+remain external certification work.
+
+### 12.2 System Map and Sources of Truth
+
+| Truth | Canonical source | Consumer |
+| --- | --- | --- |
+| Screen enabled state, current version, owner slides, receipts | `platformSummary/campaigns_{storeId}.screen` | Owner API, public token resolver, acknowledgement transaction |
+| Bearer link and tenant/store binding | private `platformSummary/screenControl_{storeId}` | Public token resolver, owner API, acknowledgement transaction |
+| Anonymous refresh trigger | token-free `platformSummary/screen_{storeId}` | Menu Board and Highlights Firestore listeners |
+| Menu/category/item/price/availability output | canonical project/menu truth plus validated screen projection/fallback | `/screen/[token]` server render |
+| Brand accent | normalized `stores.publicPresence.accentColor` | Both display roots as restrained decorative chrome |
+| Owner status | per-mode `{contentVersion, seenAt}` receipt compared with canonical `contentVersion` | Desktop and mobile setup cards |
+
+### 12.3 End-to-End Flow Audit
+
+| Flow | Path traced | Issue and fix | Remaining concern |
+| --- | --- | --- | --- |
+| Menu change to TV | Owner/menu mutation -> cache revalidation -> canonical version/mirror -> listener -> SSR reload | Existing source path retained. Receipt now confirms only the exact version opened after reload. | Deployed listener/cache latency needs QA tenant evidence. |
+| TV open acknowledgement | Display effect -> strict bounded POST -> rate limits -> token resolution -> transaction-current control/screen/store/tenant/version -> canonical receipt | Added separate `menu_board`/`highlights` receipts, stale-version `409`, UTC-day idempotency, and legacy aggregate compatibility. | Receipt proves browser open, not every media response or every TV sharing a link. |
+| Owner desktop status | Owner permission -> management API -> validated transport -> mode health -> Settings and Output Center cards | Removed ambiguous aggregate status, added exact-version status and explicit refresh for both modes, namespaced child-component CSS, and collapsed the same-device QR column below 640px. | Authenticated deployed browser QA remains pending. |
+| Owner mobile status | Mobile shell permission -> same owner API/DAL -> same receipt projection | Added desktop parity, 44px refresh action, and current mutation-version updates. | Physical-device mobile QA remains pending. |
+| Highlights owner poster | Canonical active slide -> display image -> render | Failed media now renders store identity and menu QR fallback instead of hiding into a blank slide. | Real CDN/image-host failure smoke remains pending. |
+| Public listener mirror | Server/Admin transaction -> five-field mirror -> anonymous exact get | Removed unused browser writer; browser module now owns document identity only. | Firestore rules were unchanged and remain covered by the existing emulator gate. |
+| Bearer-route discovery | `/screen/[token]` metadata -> crawler/referrer behavior | Added noindex/nofollow/noarchive/noimageindex/nosnippet and no-referrer; public menu/OBP remains the indexable structured-data surface. | Deployed response/meta smoke remains pending. |
+| OBP color and output quality | Store accent -> normalized `ScreenStoreInfo` -> fixed dark canvas and restrained CSS variable | Reconfirmed existing contract; semantic text, prices, and dietary colors are not owner-overridden. | Tenant-specific color and glare/overscan screenshots remain pending. |
+
+### 12.4 Fix Log and Invariants
+
+| Change | Invariant protected |
+| --- | --- |
+| Added bounded `screenSeenByMode` receipts and validated owner transport/hydration | One mode or stale version cannot certify another/current output |
+| Added shared pure decision plus server transaction helper | Token, tenant, lifecycle, version, and idempotency are decided atomically |
+| Added shared display acknowledgement hook | Menu Board and Highlights send one consistent strict request and cache success only after OK |
+| Added per-mode owner health and manual refresh | Owner sees precise current/pending/waiting/stale state without polling |
+| Added owner-poster brand fallback | Broken external media cannot create a blank customer-facing interval |
+| Removed browser mirror writer | Public listener truth remains server/Admin authoritative |
+| Corrected owner-card CSS scope and narrow layout | Both modes retain clear hierarchy and cannot create horizontal overflow |
+| Aligned Output Center to exact-version mode receipts | No owner surface can certify one mode from the other mode's aggregate activity |
+| Expanded lifecycle, emulator, verifier, docs, and cost model | The corrected behavior is executable and the operational cost is not understated |
+
+### 12.5 Verification Log
+
+Passed on the final source:
+
+- `npm run verify:digital-screens-boundary`, including lifecycle, exact-version
+  acknowledgement, Firestore-rules emulator, and Admin management-emulator
+  coverage.
+- `npm run verify:customer-app-pwa`, including customer storage and PWA icon
+  boundaries.
+- `npm run verify:menulist-api-tenant-safety`, including sensitive server
+  store scope, callable scope, and CSP report boundaries.
+- `npm run verify:public-business-truth` and its six downstream projection and
+  analytics boundary tests.
+- `npm run verify:menu-design-presentation-boundary`.
+- `npm run verify:public-customer-delivery`.
+- `npm run test:input-validation-boundary`.
+- `npm run security-os:audit -- --product menulist` for registry integrity;
+  the smallest relevant data/trust evidence bundle was inspected separately.
+- `npm run verify:dependency-freeze`.
+- `npx tsc --noEmit --pretty false`.
+- `npm run lint`.
+- `npm run docs:check-links`: zero broken links; 62 pre-existing naming
+  warnings in video artifacts outside Digital Screens.
+
+Visual dry run:
+
+- Rendered the real desktop `ScreenLink` through a temporary local route, then
+  removed that route before the final verifier.
+- Desktop at 1440x900 confirmed clear mode, preview, status, QR, URL, and action
+  hierarchy after the style-scope correction.
+- Chrome device emulation at 390x844 reported `innerWidth=390`,
+  `documentScrollWidth=390`, `scrollX=0`, and `scrollY=0`; the narrow layout
+  retained both status/action flows without horizontal overflow.
+- The temporary route is source-gated from shipping and was absent for the
+  final Digital Screens verifier.
+
+No build was run under the repository's current focused-verification policy.
+No Firestore rule, index, Storage rule, or Cloud Function changed, so no
+Firebase deploy was required. No Vercel deploy was performed; the app-route/
+display-client change still needs the normal target release and deployed smoke
+process before production use.
+
+### 12.6 Final Status and Monitoring
+
+Source-verified scope: canonical screen state, private token control, strict
+public acknowledgement, per-mode owner transport and health, desktop/mobile
+status refresh, public mirror authority, poster failure fallback, OBP accent
+inheritance, and locked product boundaries.
+
+Production monitoring should prioritize acknowledgement `409`/`429`/`503`
+rates, time from canonical version bump to current-mode receipt, listener reload
+failures, owner-poster image failures, repeated `Check TV` states, and owner-
+reported readability or QR-distance problems. These signals must remain
+operational diagnostics, not owner-facing screen analytics.

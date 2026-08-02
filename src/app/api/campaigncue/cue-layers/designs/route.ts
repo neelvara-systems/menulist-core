@@ -4,15 +4,15 @@ import {
     applyCampaignCueRateLimit,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueCueLayersApiError,
     listCampaignCueCueLayerDesignsServer,
 } from "@lib/campaigncue/cue-layers/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const GET = withAuth(async (request: NextRequest, session) => {
+export const GET = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;

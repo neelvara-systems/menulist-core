@@ -23,7 +23,7 @@ import {
 import { sanitizeAnswerlatticeIntakeMetadata } from '@lib/answerlattice/knowledgeIntakePrivacy';
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { getBillingPeriodKey, isValidBillingPeriodKey } from '@lib/billing/billingPeriod';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 type AnswerlatticeScope = {
@@ -71,7 +71,7 @@ export type AnswerlatticeIntakeUsageSettlementWriter = (
     context: AnswerlatticeIntakeUsageSettlementContext,
 ) => Promise<void> | void;
 
-const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
+const getAnswerlatticeIntakeUsageDb = () => requireAnswerlatticeFirestoreAdmin();
 const ANSWERLATTICE_INTAKE_USAGE_ACTIONS = new Set<string>([
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR,
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION,
@@ -88,6 +88,7 @@ const cleanText = (value: unknown, max = 300) => String(value || '')
     .slice(0, max);
 
 async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
+    const db = getAnswerlatticeIntakeUsageDb();
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     if (!tenantScope || !storeScope) {
@@ -147,9 +148,7 @@ async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
 }
 
 export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, input: ReserveUsageInput) {
-    if (!db || typeof (db as any).collection !== 'function') {
-        throw new Error('Answerlattice Firebase is not configured.');
-    }
+    const db = getAnswerlatticeIntakeUsageDb();
     const action = cleanText(input.action, 120);
     if (!ANSWERLATTICE_INTAKE_USAGE_ACTIONS.has(action)) {
         throw new Error('Unsupported Answerlattice intake usage action.');
@@ -316,6 +315,7 @@ export async function finalizeAnswerlatticeIntakeUsage(
     input: FinalizeUsageInput = {},
     settlementWriter?: AnswerlatticeIntakeUsageSettlementWriter,
 ) {
+    const db = getAnswerlatticeIntakeUsageDb();
     const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
     if (!normalizedLedgerId) throw new Error('Answerlattice intake usage ledger is not available.');
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
@@ -378,6 +378,7 @@ export async function finalizeAnswerlatticeIntakeUsage(
 }
 
 export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, ledgerId: string, reason: string) {
+    const db = getAnswerlatticeIntakeUsageDb();
     const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
     if (!normalizedLedgerId) throw new Error('Answerlattice intake usage ledger is not available.');
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);

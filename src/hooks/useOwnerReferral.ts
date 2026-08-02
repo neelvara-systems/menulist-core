@@ -8,6 +8,7 @@ import {
 } from '@lib/ownerReferral/ownerReferralClient';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { useLocale } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -90,9 +91,7 @@ export const useOwnerReferral = () => {
     const openWhatsApp = useCallback(() => {
         if (!data?.inviteUrl) throw new Error('owner_referral_whatsapp_unavailable');
         const target = `https://wa.me/?text=${encodeURIComponent(getOwnerReferralShareMessage(data.inviteUrl, locale))}`;
-        const opened = window.open(target, '_blank', 'noopener,noreferrer');
-        if (!opened) throw new Error('owner_referral_whatsapp_unavailable');
-        return true;
+        return openIsolatedBrowserUrl(target);
     }, [data, locale]);
 
     return {

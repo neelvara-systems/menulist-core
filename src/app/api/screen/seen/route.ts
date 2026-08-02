@@ -1,16 +1,8 @@
 export const dynamic = 'force-dynamic';
 /**
- * Screen Daily Seen Signal API
- * 
- * NOT a heartbeat - just ONE write per day per screen
- * Provides operational awareness without per-minute cost
- * 
- * Per ChatGPT validation: "Cold Signal Ping"
- * - At most ONE write per screen per day
- * - Gives daily liveness signal
- * - Store-level uptime tracking
- * - Churn early warning
- * - Sales proof later
+ * Bounded screen-open acknowledgement.
+ * Current clients acknowledge one exact content version per screen mode and
+ * UTC day. Legacy clients retain the previous store-level daily signal.
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
@@ -18,115 +10,49 @@ import { FEATURE_FLAGS } from "@config/features";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/scopeDocumentId";
-import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/entityEligibility";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPrivateScreenControlDocId } from "@lib/screen/privateScreenControl";
 import {
-    isCurrentScreenSeenPublicScope,
+    isDigitalScreenDisplayMode,
+} from "@lib/screen/screenSeenAcknowledgement";
+import { commitCurrentScreenSeen } from "@lib/screen/screenSeenServer";
+import {
     resolveUniqueLegacyScreenSeenStoreId,
 } from "@lib/screen/screenSeenScope";
 import { readBoundedJsonBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
-import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
+import type { DigitalScreenDisplayMode } from "@type/campaigns";
+import { z } from "zod";
 
 const TOKEN_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
-const TOKEN_RATE_LIMIT_ATTEMPTS = 4;
+const TOKEN_RATE_LIMIT_ATTEMPTS = 12;
 const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
 const SCREEN_SEEN_MAX_BODY_BYTES = 1024;
+const ScreenStoreIdSchema = z.union([z.string(), z.number()]);
+const ScreenSeenRequestSchema = z.union([
+    z.object({
+        storeId: ScreenStoreIdSchema.optional(),
+        token: z.string().regex(SCREEN_TOKEN_PATTERN),
+    }).strict(),
+    z.object({
+        contentVersion: z.number().int().positive(),
+        mode: z.enum(["menu_board", "highlights"]),
+        storeId: ScreenStoreIdSchema.optional(),
+        token: z.string().regex(SCREEN_TOKEN_PATTERN),
+    }).strict(),
+]);
 
 const cachedSeenResponse = () => NextResponse.json({ ok: true, cached: true });
-const rateLimitedSeenResponse = () => NextResponse.json(
+const rateLimitedSeenResponse = (reason: unknown) => NextResponse.json(
     { error: 'Temporarily unavailable' },
     {
-        status: 429,
+        status: reason === 'provider_unavailable' ? 503 : 429,
         headers: { 'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS) },
     },
 );
-
-const getUtcDateKey = (value: unknown): string | null => {
-    const timestampLike = value && typeof value === 'object' && 'toDate' in value
-        ? value as { toDate?: unknown }
-        : null;
-    const date =
-        timestampLike && typeof timestampLike.toDate === 'function'
-            ? timestampLike.toDate()
-            : value instanceof Date
-                ? value
-                : typeof value === 'string' || typeof value === 'number'
-                    ? new Date(value)
-                    : null;
-
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
-    return date.toISOString().slice(0, 10);
-};
-
-type ScreenSeenCommitResult = 'already_seen' | 'ineligible' | 'recorded';
-
-const commitCurrentScreenSeen = async (params: {
-    controlRef: FirebaseFirestore.DocumentReference;
-    screenRef: FirebaseFirestore.DocumentReference;
-    storeId: string;
-    token: string;
-}): Promise<ScreenSeenCommitResult> => {
-    const storeScope = normalizeStorePermissionScopeDocumentId(params.storeId);
-    if (!storeScope) return 'ineligible';
-    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
-
-    return firestoreAdmin.runTransaction(async (transaction) => {
-        const [controlSnapshot, screenSnapshot, storeSnapshot] = await Promise.all([
-            transaction.get(params.controlRef),
-            transaction.get(params.screenRef),
-            transaction.get(storeRef),
-        ]);
-        const control = controlSnapshot.data();
-        const screen = screenSnapshot.data()?.screen;
-        const storeData = storeSnapshot.data();
-        const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
-            storeData?.tenantId,
-            storeData?.tId,
-        ]);
-        const privateTokenMatches = controlSnapshot.exists
-            && control?.screenToken === params.token
-            && String(control?.storeId || "") === storeScope.documentId;
-        const legacyTokenMatches = !controlSnapshot.exists
-            && screen?.screenToken === params.token;
-        if (
-            !screenSnapshot.exists
-            || (!privateTokenMatches && !legacyTokenMatches)
-            || screen?.enabled !== true
-            || !tenantScope
-            || (
-                controlSnapshot.exists
-                && String(control?.tenantId || "") !== tenantScope.documentId
-            )
-        ) {
-            return 'ineligible';
-        }
-
-        const tenantRef = firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
-        const tenantSnapshot = await transaction.get(tenantRef);
-        if (!isCurrentScreenSeenPublicScope({
-            storeData,
-            storeDocumentId: storeScope.documentId,
-            tenantData: tenantSnapshot.data(),
-            tenantDocumentId: tenantScope.documentId,
-        })) {
-            return 'ineligible';
-        }
-
-        const lastSeenDate = getUtcDateKey(screen.screenLastSeenAt);
-        const todayDate = new Date().toISOString().slice(0, 10);
-        if (lastSeenDate === todayDate) return 'already_seen';
-
-        transaction.update(params.screenRef, {
-            'screen.screenLastSeenAt': FieldValue.serverTimestamp(),
-        });
-        return 'recorded';
-    });
-};
 
 export async function POST(request: NextRequest) {
     let logContext: Record<string, boolean | number | string | null | undefined> = {
@@ -147,11 +73,12 @@ export async function POST(request: NextRequest) {
         const ipRateConfig = getRateLimitForFeature('SCREEN_SEEN_SIGNAL');
         const ipHash = hashPublicRateLimitValue(getClientIp(request));
         const ipRateLimit = await checkRateLimit({
+            failClosedOnProviderError: true,
             key: `screen-seen:ip:${ipHash}`,
             ...ipRateConfig,
         });
         if (!ipRateLimit.allowed) {
-            return rateLimitedSeenResponse();
+            return rateLimitedSeenResponse(ipRateLimit.reason);
         }
 
         const bodyResult = await readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES, {
@@ -161,12 +88,19 @@ export async function POST(request: NextRequest) {
         });
         if (bodyResult.ok === false) return bodyResult.response;
 
-        const body = bodyResult.data && typeof bodyResult.data === 'object'
-            ? bodyResult.data as Record<string, unknown>
-            : {};
+        const parsedBody = ScreenSeenRequestSchema.safeParse(bodyResult.data);
+        if (!parsedBody.success) {
+            return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+        }
 
-        const token = typeof body.token === 'string' ? body.token.trim() : '';
-        const rawStoreId = body.storeId;
+        const parsedRequest = parsedBody.data;
+        const token = parsedRequest.token;
+        const mode = 'mode' in parsedRequest ? parsedRequest.mode : undefined;
+        const requestedContentVersion = 'mode' in parsedRequest
+            ? parsedRequest.contentVersion
+            : undefined;
+        const hasModeAcknowledgement = mode !== undefined;
+        const rawStoreId = parsedRequest.storeId;
         const suppliedStoreScope = rawStoreId == null
             ? null
             : normalizeStorePermissionScopeDocumentId(rawStoreId);
@@ -176,6 +110,7 @@ export async function POST(request: NextRequest) {
             directStoreLookup: Boolean(normalizedStoreId),
             ...getBoundedScreenStringContext('screenToken', token),
             ...getBoundedScreenStringContext('storeId', normalizedStoreId),
+            hasModeAcknowledgement,
         };
 
         // Validate token
@@ -187,17 +122,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
         }
 
+        if (hasModeAcknowledgement && !isDigitalScreenDisplayMode(mode)) {
+            return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+        }
+
         const screenTokenHash = hashPublicRateLimitValue(token);
         const storeHashSegment = normalizedStoreId
             ? `store:${hashPublicRateLimitValue(normalizedStoreId)}`
             : 'legacy';
         const tokenRateLimit = await checkRateLimit({
+            failClosedOnProviderError: true,
             key: `screen-seen:token:${storeHashSegment}:${screenTokenHash}`,
             limit: TOKEN_RATE_LIMIT_ATTEMPTS,
             window: TOKEN_RATE_LIMIT_WINDOW_SECONDS,
         });
         if (!tokenRateLimit.allowed) {
-            return rateLimitedSeenResponse();
+            return rateLimitedSeenResponse(tokenRateLimit.reason);
         }
 
         const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
@@ -248,14 +188,27 @@ export async function POST(request: NextRequest) {
             screenRef: docRef,
             storeId: targetStoreId,
             token,
+            ...(hasModeAcknowledgement
+                ? {
+                    mode: mode as DigitalScreenDisplayMode,
+                    requestedContentVersion: Number(requestedContentVersion),
+                }
+                : {}),
         });
         if (commitResult === 'ineligible') {
             return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
         }
         if (commitResult === 'already_seen') return cachedSeenResponse();
+        if (commitResult === 'stale_version') {
+            return NextResponse.json(
+                { error: 'Screen update changed' },
+                { status: 409 },
+            );
+        }
 
-        logger.info('[Screen Seen] Daily signal recorded', {
+        logger.info('[Screen Seen] Bounded signal recorded', {
             directStoreLookup: Boolean(normalizedStoreId),
+            mode: hasModeAcknowledgement ? mode as DigitalScreenDisplayMode : 'legacy',
             ...getBoundedScreenStringContext('storeId', targetStoreId),
         });
 

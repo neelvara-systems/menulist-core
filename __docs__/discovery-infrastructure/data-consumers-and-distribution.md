@@ -33,8 +33,8 @@ This document maps every data consumer type, how they discover MenuList data, wh
 - Entity alignment signals (`sameAs` social links, canonical URLs)
 
 **What MenuList already provides:**
-- Every OBP page (`{business}.menulist.ai`) has full `LocalBusiness` JSON-LD
-- Food catalog pages (`{business}.menulist.ai/menu`) have `Restaurant/FoodEstablishment` + `Menu` + `MenuItem` + `Offer` JSON-LD
+- Every OBP page (`{business}.menulist.online`) has full `LocalBusiness` JSON-LD
+- Food catalog pages (`{business}.menulist.online/menu`) have `Restaurant/FoodEstablishment` + `Menu` + `MenuItem` + `Offer` JSON-LD
 - Non-food catalog pages use the business type schema plus `OfferCatalog` + `Offer` + `Product` or `Service` JSON-LD
 - `llms.txt` provides structured capability summary following llmstxt.org standard
 - `llms-full.txt` provides extended documentation with exact schema.org type mappings
@@ -43,12 +43,12 @@ This document maps every data consumer type, how they discover MenuList data, wh
 
 **Example: How Perplexity would answer "What's on the menu at Joe's Pizza?"**
 ```
-1. Perplexity crawls joespizza.menulist.ai/menu
+1. Perplexity crawls joespizza.menulist.online/menu
 2. Finds <script type="application/ld+json"> in HTML
 3. Parses Restaurant → hasMenu → hasMenuSection[] → hasMenuItem[] for food businesses, or LocalBusiness/Store → hasOfferCatalog for non-food SMBs
 4. Extracts: item names, prices, dietary tags, availability
 5. Answers user with structured menu data
-6. Cites joespizza.menulist.ai/menu as source
+6. Cites joespizza.menulist.online/menu as source
 ```
 
 **What's NOT active in the current source contract:**
@@ -142,8 +142,8 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 
 | Surface | URL Pattern | Status |
 |---------|------------|--------|
-| Digital Menu | `{business}.menulist.ai/menu` | ✅ Production |
-| OBP | `{business}.menulist.ai` | ✅ Production |
+| Digital Menu | `{business}.menulist.online/menu` | ✅ Production |
+| OBP | `{business}.menulist.online` | ✅ Production |
 | QR Code | Points to menu URL | ✅ Multiple QR formats |
 | Physical Surfaces | Stickers, tent cards with QR | ✅ Production |
 | Digital Screens | Display mode for in-store screens | ✅ Production |
@@ -205,7 +205,7 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 ### Perplexity
 - **Method:** Web crawling + structured data extraction
 - **What it reads:** HTML pages with schema.org JSON-LD
-- **MenuList entry point:** Business subdomain pages (e.g., `joespizza.menulist.ai`)
+- **MenuList entry point:** Business subdomain pages (e.g., `joespizza.menulist.online`)
 - **What helps:** Rich schema.org markup, clean canonical URLs, dateModified freshness
 
 ### ChatGPT (via Bing/web browsing)
@@ -230,14 +230,14 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 
 | Entry Point | URL / Path | Purpose | Consumer |
 |------------|-----------|---------|----------|
-| OBP Page | `https://{subdomain}.menulist.ai/` | Business identity + schema.org | All crawlers |
-| Menu Page | `https://{subdomain}.menulist.ai/{projectSlug}` or owner-claimed `/menu` | Full menu + schema.org | All crawlers |
+| OBP Page | `https://{subdomain}.menulist.online/` | Business identity + schema.org | All crawlers |
+| Menu Page | `https://{subdomain}.menulist.online/{projectSlug}` or owner-claimed `/menu` | Full menu + schema.org | All crawlers |
 | llms.txt | `https://www.menulist.ai/llms.txt` | AI capability summary | AI engines |
 | llms-full.txt | `https://www.menulist.ai/llms-full.txt` | Extended schema docs | AI engines |
 | Platform robots.txt | `https://www.menulist.ai/robots.txt` | Platform crawl permissions | All crawlers |
-| Tenant robots.txt | `https://{subdomain}.menulist.ai/robots.txt` | Tenant crawl permissions + tenant sitemap | All crawlers |
+| Tenant robots.txt | `https://{subdomain}.menulist.online/robots.txt` | Tenant crawl permissions + tenant sitemap | All crawlers |
 | Platform sitemap.xml | `https://www.menulist.ai/sitemap.xml` | Platform URL list for indexing | Search engines |
-| Tenant sitemap.xml | `https://{subdomain}.menulist.ai/sitemap.xml` | OBP + active canonical menu/outlet URL list | Search engines |
+| Tenant sitemap.xml | `https://{subdomain}.menulist.online/sitemap.xml` | OBP + active canonical menu/outlet URL list | Search engines |
 | API v1 Business | `GET /api/public/v1/business` | Store data (API key auth) | External apps |
 | API v1 Menu | `GET /api/public/v1/menu` | Menu data (API key auth) | External apps |
 | POS Webhook | Owner-configured URL | Menu snapshot push | POS systems |

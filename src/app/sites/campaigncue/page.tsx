@@ -139,7 +139,7 @@ const HERO_FLOATING_ASSETS: HeroFloatingAsset[] = [
     { eyebrow: 'Story', title: 'Lunch combo frame', detail: 'Download', tone: 'rose' },
     { eyebrow: 'Poster', title: 'Counter card', detail: 'Print note', tone: 'pink' },
     { eyebrow: 'Google', title: 'Local update', detail: 'Manual publish', tone: 'blue' },
-    { eyebrow: 'Reel', title: 'Shot list', detail: 'Brief only', tone: 'purple' },
+    { eyebrow: 'Reel', title: 'Short video', detail: 'Local render', tone: 'purple' },
     { eyebrow: 'Review', title: 'Claim check', detail: 'Owner action', tone: 'cream' },
 ];
 
@@ -188,6 +188,12 @@ const PRODUCT_MEGA_MENU_GROUPS: MegaMenuGroup[] = [
                 detail: 'Reuse flat images with safe fallbacks.',
                 href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers,
                 icon: LuLayers,
+            },
+            {
+                label: 'Video Reel Studio',
+                detail: 'Approved short videos rendered in the browser.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio,
+                icon: LuVideo,
             },
         ],
     },
@@ -440,6 +446,13 @@ const FEATURE_DOCK_ITEMS: FeatureDockItem[] = [
         artifacts: ['Upload', 'Layer candidates', 'Fallback'],
     },
     {
+        title: 'Video Studio',
+        detail: 'Render checked short videos.',
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio,
+        icon: LuVideo,
+        artifacts: ['Scenes', 'Captions', 'Download'],
+    },
+    {
         title: 'Trust Center',
         detail: 'See claim risk early.',
         href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter,
@@ -539,6 +552,7 @@ const FOOTER_GROUPS: FooterGroup[] = [
             { label: 'Campaign Studio', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.campaignPackStudio },
             { label: 'Creative Studio', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio },
             { label: 'CueLayers', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers },
+            { label: 'Video Reel Studio', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio },
         ],
     },
     {

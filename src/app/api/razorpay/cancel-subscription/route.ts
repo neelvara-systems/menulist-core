@@ -48,9 +48,14 @@ export const POST = withAuth(async (request, session) => {
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const { checkRateLimit } = await import('@lib/rateLimit');
         const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-        const rl = await checkRateLimit({ key: `sub-mutate:${userRateLimitHash}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
+        const rl = await checkRateLimit({ failClosedOnProviderError: true, key: `sub-mutate:${userRateLimitHash}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
         if (!rl.allowed) {
-            return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
+            const providerUnavailable = rl.reason === 'provider_unavailable';
+            return NextResponse.json({
+                error: providerUnavailable
+                    ? 'Billing changes are temporarily unavailable. Please try again.'
+                    : 'Too many attempts. Please wait before trying again.',
+            }, { status: providerUnavailable ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {

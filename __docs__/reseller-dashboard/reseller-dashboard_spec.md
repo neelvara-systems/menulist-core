@@ -5,6 +5,13 @@
 **Created:** February 27, 2026  
 **Audience:** CEO, Business Team, Product Team
 
+August 1, 2026 reliability invariant: one onboarding operation may create at
+most one recoverable business scope and one Razorpay subscription attempt.
+Temporary Auth, provider or Firestore uncertainty is shown as a retryable
+service state; the system must not report success, silently delete the created
+scope, or create another payment subscription until exact recovery proves what
+happened.
+
 ---
 
 ## 1. Executive Summary

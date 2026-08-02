@@ -6,6 +6,7 @@ import {
     type SurfaceExecutionResult,
 } from '@lib/campaigns/executionSurfaces';
 import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { ExecutionSurface } from '@type/campaigns';
 
@@ -106,12 +107,9 @@ async function handleWhatsAppAction(
     const message = generateWhatsAppMessage(itemName, menuLink);
     const shareUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-    let openedWindow: Window | null = null;
+    let openRequested = false;
     try {
-        openedWindow = window.open(shareUrl, '_blank', 'noopener,noreferrer');
-        if (!openedWindow) {
-            throw new Error('today_campaign_whatsapp_open_blocked');
-        }
+        openRequested = openIsolatedBrowserUrl(shareUrl);
     } catch (error) {
         logCampaignFailure('today_campaign_whatsapp_open_failed', error, {
             ...getBoundedCampaignStringContext('surface', surface),
@@ -139,13 +137,13 @@ async function handleWhatsAppAction(
         });
     }
 
-    if (!openedWindow && !copied) {
+    if (!openRequested && !copied) {
         throw new Error('WhatsApp did not open. Please allow pop-ups and try again.');
     }
 
     if (surface === 'whatsapp_status') {
         return {
-            title: openedWindow ? 'WhatsApp opened' : 'Message copied',
+            title: openRequested ? 'WhatsApp opened' : 'Message copied',
             description: copied
                 ? 'A ready message was copied and WhatsApp was opened. Finish sharing inside WhatsApp.'
                 : 'WhatsApp was opened with a ready message. Finish sharing inside WhatsApp.',
@@ -153,7 +151,7 @@ async function handleWhatsAppAction(
     }
 
     return {
-        title: openedWindow ? 'WhatsApp opened' : 'Message copied',
+        title: openRequested ? 'WhatsApp opened' : 'Message copied',
         description: copied
             ? 'Your message was copied and WhatsApp was opened. Choose the chat and send it when ready.'
             : 'WhatsApp was opened with a ready message. Choose the chat and send it when ready.',

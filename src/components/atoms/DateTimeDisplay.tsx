@@ -5,7 +5,6 @@ import {
 } from "@util/dateTime";
 import { timeAgo } from "@util/dateTime/timeAgo";
 import { Space, Typography } from "antd";
-import { Timestamp } from "firebase/firestore";
 import { useFormatter, useLocale } from "next-intl";
 import React from "react";
 
@@ -27,7 +26,7 @@ const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = 
     if (!value) return fallback ? <Text type="secondary" style={style}>{fallback}</Text> : null;
 
     // Normalize any date-like value into a plain JS Date
-    const dateObj = toDate(value as any);
+    const dateObj = toDate(value);
 
     // Pick correct formatter
     let displayValue: string | null = null;

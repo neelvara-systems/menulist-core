@@ -4,29 +4,14 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
-import {
-    AnswerlatticeAnswerTestSaveSchema,
-    ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
-    getAnswerlatticeAnswerTestSummaryId,
-    hasDisallowedAnswerlatticeCriticalRagCaseMutation,
-    prepareAnswerlatticeAnswerTestCasesForWrite,
-    projectAnswerlatticeAnswerTestSummaryForClient,
-} from '@lib/answerlattice/answerTestContracts';
-import {
-    AnswerlatticeAnswerTestSummaryTooLargeError,
-    compactAnswerlatticeAnswerTestSummaryForWrite,
-    loadAnswerlatticeAnswerTestSummary,
-    normalizeAnswerlatticeAnswerTestSummary,
-} from '@lib/answerlattice/answerTestServer';
+import { AnswerlatticeAnswerTestSaveSchema, ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION, getAnswerlatticeAnswerTestSummaryId, hasDisallowedAnswerlatticeCriticalRagCaseMutation, prepareAnswerlatticeAnswerTestCasesForWrite, projectAnswerlatticeAnswerTestSummaryForClient, } from '@lib/answerlattice/answerTestContracts';
+import { AnswerlatticeAnswerTestSummaryTooLargeError, compactAnswerlatticeAnswerTestSummaryForWrite, loadAnswerlatticeAnswerTestSummary, normalizeAnswerlatticeAnswerTestSummary, } from '@lib/answerlattice/answerTestServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -196,12 +181,12 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
 
         const scope = { tId: access.scope.tenantId, sId: access.scope.storeId };
-        const summaryRef = answerlatticeFirestoreAdmin
+        const summaryRef = requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId));
         const now = new Date().toISOString();
         const updatedBy = String(access.user.email || access.user.name || access.user.id || 'unknown').slice(0, 180);
-        const summary = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const summary = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const snapshot = await transaction.get(summaryRef);
             const current = normalizeAnswerlatticeAnswerTestSummary(snapshot.exists ? snapshot.data() : undefined, scope);
             if (current.revision !== parsed.data.revision) {

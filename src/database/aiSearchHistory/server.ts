@@ -2,23 +2,13 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
-import {
-    normalizeAnswerlatticePublicCitations,
-    normalizeAnswerlatticeScopeClarification,
-} from '@lib/answerlattice/publicAnswerContracts';
+import { normalizeAnswerlatticePublicCitations, normalizeAnswerlatticeScopeClarification, } from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
-import {
-    ANSWERLATTICE_CACHE_SOURCES,
-    type AnswerlatticeCacheSourceVersions,
-    normalizeCacheVersion,
-} from '@lib/answerlattice/cacheVersionManifest';
-import {
-    normalizeAnswerlatticeCanonicalAnswerId,
-    normalizeAnswerlatticeResolvedEntityIds,
-} from '@lib/answerlattice/governanceIdBoundary';
+import { ANSWERLATTICE_CACHE_SOURCES, type AnswerlatticeCacheSourceVersions, normalizeCacheVersion, } from '@lib/answerlattice/cacheVersionManifest';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityIds, } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
-import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { AiSearchHistory, AiSearchHistoryReference } from '@type/aiSearchHistory';
@@ -258,7 +248,7 @@ const composeAiSearchHistory = (data: AiSearchHistoryWriteInput): AiSearchHistor
 
 export const addAiSearchHistoryServer = async (data: AiSearchHistoryWriteInput) => {
     const submitData = composeAiSearchHistory(data);
-    const docRef = await firestoreAdmin.collection(COLLECTION).add(submitData);
+    const docRef = await requireAnswerlatticeFirestoreAdmin().collection(COLLECTION).add(submitData);
     return { ...submitData, id: docRef.id } as AiSearchHistory;
 };
 
@@ -269,7 +259,7 @@ export const findCachedSearchByCacheKeyServer = async (
     const scope = getAiSearchHistoryScope(session);
     if (!scope) return null;
 
-    const snapshot = await firestoreAdmin.collection(COLLECTION)
+    const snapshot = await requireAnswerlatticeFirestoreAdmin().collection(COLLECTION)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('cacheKey', '==', hashSearchCacheKey(cacheKey))
         .where('tId', '==', scope.tId)

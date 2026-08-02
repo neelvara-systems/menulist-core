@@ -5,7 +5,7 @@ import {
     buildAnswerlatticeContentFeedbackStateDocumentId,
     executeAnswerlatticeContentFeedback,
 } from '../../src/lib/answerlattice/contentFeedbackServer';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
     cleanupAnswerlatticeOperationalRetention,
@@ -20,6 +20,7 @@ import {
 import { storageAdmin } from '../../functions-answerlattice/src/firebaseAdmin';
 
 const scope = { tId: 1, sId: 101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 assert.equal(
     getAnswerlatticeRetentionExpiry('ownerNotificationRateLimits', 0).toMillis(),
     2 * 24 * 60 * 60 * 1000,
@@ -71,7 +72,6 @@ const request = (
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db) throw new Error('Answerlattice Firestore Admin is required');
     await assert.rejects(
         executeAnswerlatticeContentFeedback(request('missing_actor'), scope, {
             ...actor,

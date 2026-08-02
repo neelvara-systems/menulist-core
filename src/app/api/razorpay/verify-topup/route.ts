@@ -84,27 +84,36 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_VERIFICATION');
         const userRateLimitHash = hashPublicRateLimitValue(session.user.id);
         const rateLimitResult = await checkRateLimit({
+            failClosedOnProviderError: true,
             key: `payment-verify:topup:${userRateLimitHash}`,
             ...rateLimitConfig,
         });
 
         if (!rateLimitResult.allowed) {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
-            logger.security('Payment Verification Rate Limit Exceeded', {
+            logger.security(providerUnavailable ? 'Payment Verification Rate Limit Provider Unavailable' : 'Payment Verification Rate Limit Exceeded', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
-                error: 'Too many payment verification attempts',
+                error: providerUnavailable ? 'Rate limit provider unavailable' : 'Too many payment verification attempts',
                 feature: 'PAYMENT_VERIFICATION',
-                limit: rateLimitConfig.limit,
-                waitSeconds,
-                window: rateLimitConfig.window,
+                ...(providerUnavailable ? {} : {
+                    limit: rateLimitConfig.limit,
+                    waitSeconds,
+                    window: rateLimitConfig.window,
+                }),
             }, 'high');
 
             return NextResponse.json(
-                { error: 'Too many payment verification attempts. Please try again later.', retryAfter: waitSeconds },
                 {
-                    status: 429,
-                    headers: {
+                    error: providerUnavailable
+                        ? 'Payment verification is temporarily unavailable. Please try again.'
+                        : 'Too many payment verification attempts. Please try again later.',
+                    ...(providerUnavailable ? {} : { retryAfter: waitSeconds }),
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
+                    headers: providerUnavailable ? {} : {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
                         'X-RateLimit-Remaining': String(rateLimitResult.remaining),

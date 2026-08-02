@@ -21,9 +21,9 @@ Data Flow:
     → Customer browser                ← static HTML, minimal JS
 
 Routing (when ENABLE_OBP = true):
-  subdomain.menulist.ai/              → OBP page (new)
-  subdomain.menulist.ai/menu          → Digital Menu (owner-claimed slug or explicit-default alias)
-  subdomain.menulist.ai/{slug}        → Specific project menu (existing)
+  subdomain.menulist.online/              → OBP page (new)
+  subdomain.menulist.online/menu          → Digital Menu (owner-claimed slug or explicit-default alias)
+  subdomain.menulist.online/{slug}        → Specific project menu (existing)
 
 Cache Strategy:
   unstable_cache with per-store tags  ← same pattern as menu page
@@ -522,7 +522,7 @@ The runtime implementation also accepts the resolved render language so localize
 ### Current Flow (`client/[[...slug]]/page.tsx`)
 
 ```
-Request: joespizza.menulist.ai/
+Request: joespizza.menulist.online/
   → params.slug = undefined
   → getProjectBySlugOrDefault(tId, sId, undefined)
   → returns default project
@@ -532,18 +532,18 @@ Request: joespizza.menulist.ai/
 ### New Flow (when ENABLE_OBP = true)
 
 ```
-Request: joespizza.menulist.ai/
+Request: joespizza.menulist.online/
   → params.slug = undefined
   → ENABLE_OBP check → true
   → render OBPPage component (identity page)
 
-Request: joespizza.menulist.ai/menu
+Request: joespizza.menulist.online/menu
   → params.slug = ["menu"]
   → resolve literal project slug `menu` first
   → otherwise resolve only `isDefault: true` as an alias
   → without either target render the menu-not-available recovery ladder
 
-Request: joespizza.menulist.ai/food-menu
+Request: joespizza.menulist.online/food-menu
   → params.slug = ["food-menu"]
   → current/previous project slug resolution
   → existing slug resolution (unchanged)
@@ -561,7 +561,7 @@ Request: joespizza.menulist.ai/food-menu
 ┌────────────────────────────────────────────────┐
 │  🔗 Your Official Business Link               │
 │                                                │
-│  joespizza.menulist.ai                          │
+│  joespizza.menulist.online                          │
 │                                                │
 │  [Send via WhatsApp] [Copy Link] [Copy Message] │
 │  [Open] [QR]                                    │
@@ -580,7 +580,7 @@ Request: joespizza.menulist.ai/food-menu
 ### After Menu Publish (toast)
 
 ```
-"Your business is live at joespizza.menulist.ai"
+"Your business is live at joespizza.menulist.online"
 ```
 
 ### Menu Editor Header
@@ -588,7 +588,7 @@ Request: joespizza.menulist.ai/food-menu
 Small inline:
 
 ```
-Public Link: joespizza.menulist.ai [copy icon]
+Public Link: joespizza.menulist.online [copy icon]
 ```
 
 ---
@@ -611,16 +611,16 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 1. **OBP renders correctly:**
    - Enable `ENABLE_OBP: true`
-   - Visit `subdomain.menulist.ai/` → should show OBP
+   - Visit `subdomain.menulist.online/` → should show OBP
    - Check: logo, name, status, View Menu button, actions, info, footer
 
 2. **Menu still accessible:**
-   - Visit `subdomain.menulist.ai/menu` → should show digital menu
-   - Visit `subdomain.menulist.ai/food-menu` → should show specific project
+   - Visit `subdomain.menulist.online/menu` → should show digital menu
+   - Visit `subdomain.menulist.online/food-menu` → should show specific project
 
 3. **Feature flag off:**
    - Set `ENABLE_OBP: false`
-   - Visit `subdomain.menulist.ai/` → should show the digital menu emergency rollback
+   - Visit `subdomain.menulist.online/` → should show the digital menu emergency rollback
 
 4. **Missing data graceful handling:**
    - Store with no address → directions button hidden
@@ -649,7 +649,7 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 ### ADR-1: OBP at Subdomain Root (Not Path-Based)
 
-**Decision:** OBP lives at `subdomain.menulist.ai/` (root), not `menulist.ai/businessname` (path).
+**Decision:** OBP lives at `subdomain.menulist.online/` (root), not `menulist.ai/businessname` (path).
 
 **Rationale:** Existing infrastructure uses subdomains with middleware routing, DNS configuration, and Firestore queries. Path-based would require new routing infrastructure and conflict with existing slug system.
 

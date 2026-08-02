@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { getImagePrompts } from '../../src/app/api/image-generation/prompt';
+import { ImageGenerationRequestSchema } from '../../src/lib/validation/apiSchemas';
 import { generateImageEditingPrompt as generateImageEditingPromptFromIndex } from '../../src/app/api/image-editing/promptsList';
 import { generateImageEditingPrompt as generateImageEditingPromptFromCompatibilityEntry } from '../../src/app/api/image-editing/promptsList/prompt';
-import type { GenerateImageViaApiPayloadType } from '../../src/components/templates/main-app/projects/types';
+import type { ImageGenerationRequestInput } from '../../src/lib/validation/apiSchemas';
 
 const buildPayload = (
-    generationConfig: GenerateImageViaApiPayloadType['generationConfig'],
-): GenerateImageViaApiPayloadType => ({
+    generationConfig: ImageGenerationRequestInput['generationConfig'],
+): ImageGenerationRequestInput => ({
     businessType: 'Restaurant',
     generationConfig,
     itemDetails: {
@@ -28,6 +29,23 @@ assert.doesNotMatch(
     maliciousColors,
     /ignore all instructions|<system>|[{}]/i,
     'foreground and background colors must not bypass prompt sanitization',
+);
+
+const promptOnlyRequest = ImageGenerationRequestSchema.parse({
+    generationConfig: { prompt: 'A clean storefront product photo.' },
+    projectId: '1-menu-2',
+});
+assert.doesNotThrow(
+    () => getImagePrompts(promptOnlyRequest, 'GEMINI'),
+    'a schema-valid prompt-only request must not require item details at runtime',
+);
+assert.equal(
+    ImageGenerationRequestSchema.safeParse({
+        generationConfig: { prompt: 'A clean storefront product photo.' },
+        projectId: '',
+    }).success,
+    false,
+    'image generation must reject a project ID that cannot establish tenant/store scope',
 );
 assert.match(
     maliciousColors,

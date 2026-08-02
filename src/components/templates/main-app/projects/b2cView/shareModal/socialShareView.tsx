@@ -1,3 +1,4 @@
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import {
@@ -115,10 +116,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
         const urlWithUTM = withEntrySource(shareUrl, platform.name);
         const socialShareUrl = platform.shareUrl(urlWithUTM);
         try {
-            const opened = window.open(socialShareUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('project_share_legacy_social_open_blocked');
-            }
+            openIsolatedBrowserUrl(socialShareUrl);
         } catch (error) {
             logExportFailure('project_share_legacy_social_open_failed', error, {
                 ...getBoundedExportStringContext('platform', platform.name),

@@ -15,6 +15,20 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
  */
 
+/**
+ * Answerlattice — Article Translation API
+ *
+ * Translates a KB article's title and content to a target locale using Gemini.
+ * Stores the translation on the article document: translations.{locale} = { ... }
+ *
+ * Phase 4 — Multi-Language KB Articles (4.2)
+ * Feature-flagged: ENABLE_ANSWERLATTICE_MULTI_LANGUAGE
+ *
+ * POST /api/answerlattice/translate
+ * Body: { articleId, targetLocale }
+ *
+ * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
+ */
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -22,30 +36,14 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
-import {
-    ANSWERLATTICE_TRANSLATION_SOURCE_LOCALE,
-    AnswerlatticeTranslationProviderOutputError,
-    buildAnswerlatticeTranslationDraftContent,
-    getAnswerlatticeArticleTranslationSource,
-    getAnswerlatticeTranslationDraftWriteBlockReason,
-    parseAnswerlatticeTranslationProviderOutput,
-} from '@lib/answerlattice/articleTranslationServer';
+import { ANSWERLATTICE_TRANSLATION_SOURCE_LOCALE, AnswerlatticeTranslationProviderOutputError, buildAnswerlatticeTranslationDraftContent, getAnswerlatticeArticleTranslationSource, getAnswerlatticeTranslationDraftWriteBlockReason, parseAnswerlatticeTranslationProviderOutput, } from '@lib/answerlattice/articleTranslationServer';
 import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
-import {
-    ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
-    normalizeAnswerlatticeKbArticleId,
-} from '@lib/answerlattice/kbArticleIdBoundary';
+import { ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH, normalizeAnswerlatticeKbArticleId, } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import {
-    isExactAnswerlatticePersistedAuthority,
-    resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { isExactAnswerlatticePersistedAuthority, resolveAnswerlatticeSessionScope, } from '@lib/answerlattice/sessionScope';
+import { requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -216,7 +214,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         targetLocaleForLog = targetLocale;
 
         // Fetch article
-        const db = answerlatticeFirestoreAdmin;
+        const db = requireAnswerlatticeFirestoreAdmin();
         const articleRef = db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(articleId);
         const articleDoc = await articleRef.get();
         if (!articleDoc.exists) {

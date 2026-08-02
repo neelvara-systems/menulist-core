@@ -9,7 +9,7 @@
  * - Category lookup from projectData
  */
 
-import { ExtractedDataCategory } from '@template/main-app/projects/types';
+import { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { FEATURE_FLAGS } from '@config/features';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
@@ -51,7 +51,7 @@ const PDP_FOCUSABLE_SELECTOR = [
 ].join(',');
 
 interface PDPModalProps {
-    item: any;
+    item: ExtractedDataItem | null;
     onClose: () => void;
     onClosed?: () => void;
     language: string;
@@ -215,11 +215,11 @@ function PDPModal({
     const images = useMemo(() => normalizePublicMenuImages(item?.images), [item?.images]);
     const imageCount = images.length;
     const getModalText = useCallback(
-        (value: unknown, fallback = '') => getLocalizedText(value as any, language, primaryLanguage, fallback),
+        (value: unknown, fallback = '') => getLocalizedText(value, language, primaryLanguage, fallback),
         [language, primaryLanguage],
     );
     const getAnalyticsText = useCallback(
-        (value: unknown, fallback = '') => getLocalizedText(value as any, primaryLanguage, primaryLanguage, fallback),
+        (value: unknown, fallback = '') => getLocalizedText(value, primaryLanguage, primaryLanguage, fallback),
         [primaryLanguage],
     );
     const activePriceAttributes = useMemo(
@@ -353,10 +353,10 @@ function PDPModal({
 
             if (trackView) {
                 const file = projectData?.files?.find(f => (
-                    f.extractedData?.data?.items?.some((i: any) => i.id === item.id)
+                    f.extractedData?.data?.items?.some((candidate) => candidate.id === item.id)
                 ));
                 const categoryId = typeof item.category === 'string' ? item.category : '';
-                const categoryRecord = file?.extractedData?.data?.categories?.find((cat: any) => cat.id === categoryId);
+                const categoryRecord = file?.extractedData?.data?.categories?.find((candidate) => candidate.id === categoryId);
                 const analyticsCategoryName = getAnalyticsText(categoryRecord?.name)
                     || (typeof item.category === 'object' ? getAnalyticsText(item.category) : undefined);
 
@@ -371,7 +371,7 @@ function PDPModal({
                         : undefined,
                     currency: currencyCode,
                     attributes: showItemPrices
-                        ? activePriceAttributes.reduce((acc: Record<string, string>, attr: any) => {
+                        ? activePriceAttributes.reduce((acc: Record<string, string>, attr) => {
                             const attributeName = getModalText(attr.name);
                             if (attributeName) {
                                 acc[attributeName] = String(attr.price);
@@ -384,9 +384,9 @@ function PDPModal({
 
             // Find category for this item
             const file = projectData?.files?.find(f => {
-                return f.extractedData?.data?.items?.find((i: any) => i.id === item.id);
+                return f.extractedData?.data?.items?.find((candidate) => candidate.id === item.id);
             });
-            setCategory(file?.extractedData?.data?.categories?.find((cat: any) => cat.id === item.category));
+            setCategory(file?.extractedData?.data?.categories?.find((candidate) => candidate.id === item.category));
         }
     }, [activePriceAttributes, currencyCode, getAnalyticsText, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
 
@@ -503,7 +503,7 @@ function PDPModal({
     const skillLevel = getDecisionFactString(item, 'skillLevel');
     const materials = getDecisionFactString(item, 'materials');
     const warranty = getDecisionFactString(item, 'warranty');
-    const nutritionInfo = getNutritionFact(item) as Record<string, unknown> | undefined;
+    const nutritionInfo = getNutritionFact(item);
     const nutritionBadges = nutritionInfo
         ? [
             nutritionInfo.calories ? t('menu.calories', { count: String(nutritionInfo.calories) }) : '',
@@ -1160,7 +1160,7 @@ function PDPModal({
                                         >
                                             {t('menu.options')}
                                         </h3>
-                                        {activePriceAttributes.map((attr: any, idx: number) => (
+                                        {activePriceAttributes.map((attr, idx) => (
                                             <div
                                                 key={idx}
                                                 className="flex justify-between items-center p-3 rounded-lg"
@@ -1213,7 +1213,7 @@ function PDPModal({
                         accentColor={moodConfig.accentColor}
                         closeLabel={t('menu.closeImageViewer')}
                         direction={languageDirection}
-                        images={images.map((image: any) => ({
+                        images={images.map((image) => ({
                             alt: getMenuItemImageAltText(getModalText(item.name, t('menu.menuItem'))),
                             url: image.url,
                         }))}

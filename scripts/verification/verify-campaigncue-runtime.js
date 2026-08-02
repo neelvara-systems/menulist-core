@@ -46,6 +46,8 @@ function verifyFeatureFlags() {
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_AI_PROVIDER_CALLS: false", "CampaignCue AI provider-call gate");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PATTERN_CUE: true", "CampaignCue Pattern Cue deterministic surface flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PATTERN_CUE_MODEL_ASSIST: false", "CampaignCue Pattern Cue model assist gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_VIDEO_STUDIO: true", "CampaignCue Video Reel Studio flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_IN_HOUSE_VIDEO_RENDER: true", "CampaignCue in-house video compositor flag");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR: true", "Shared creative editor flag");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS: true", "Shared creative editor interactive canvas flag");
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true", "Shared creative editor Fabric adapter flag");
@@ -68,16 +70,19 @@ function verifyApiRoutes() {
     "src/app/api/campaigncue/campaigns/route.ts",
     "src/app/api/campaigncue/campaigns/[campaignId]/actions/route.ts",
     "src/app/api/campaigncue/assets/route.ts",
+    "src/app/api/campaigncue/assets/[assetId]/preview/route.ts",
     "src/app/api/campaigncue/analytics/route.ts",
     "src/app/api/campaigncue/design-cue/turns/route.ts",
     "src/app/api/campaigncue/sources/route.ts",
     "src/app/api/campaigncue/integrations/route.ts",
     "src/app/api/campaigncue/locations/route.ts",
+    "src/app/api/campaigncue/video-projects/route.ts",
+    "src/app/api/campaigncue/firebase-token/route.ts",
   ];
 
   for (const relPath of routeFiles) {
     const content = read(relPath);
-    assertIncludes(content, "withAuth", relPath);
+    assertIncludes(content, "withCampaignCueAuth", relPath);
     assertIncludes(content, "requireCampaignCueRuntime", relPath);
     assertIncludes(content, "requireCampaignCueSessionScope", relPath);
     assertIncludes(content, "applyCampaignCueRateLimit", relPath);
@@ -123,6 +128,32 @@ function verifyApiRoutes() {
   assertIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "listCampaignCueProviderConnectionsServer", "integration posture direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/locations/route.ts"), "listCampaignCueLocationsServer", "location list direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/analytics/route.ts"), "readCampaignCueAnalyticsServer", "analytics summary direct loader");
+  const videoProjectsRoute = read("src/app/api/campaigncue/video-projects/route.ts");
+  assertIncludes(videoProjectsRoute, "CampaignCueVideoProjectMutationSchema", "video project mutation validation");
+  assertIncludes(videoProjectsRoute, "listCampaignCueVideoProjectsServer", "video project direct bounded loader");
+  assertIncludes(videoProjectsRoute, "logCampaignCueInputValidationFailure", "video project validation failures use bounded security logging");
+  assertNotIncludes(videoProjectsRoute, "details }, { status: 400", "video project validation response stays generic");
+  const firebaseTokenRoute = read("src/app/api/campaigncue/firebase-token/route.ts");
+  assertIncludes(firebaseTokenRoute, 'feature: "FILE_UPLOAD"', "private media tokens use the fail-closed upload limiter");
+  assertIncludes(firebaseTokenRoute, "createCampaignCueFirebaseTokenServer", "private media tokens are minted only after scoped workspace admission");
+  const assetPreviewRoute = read("src/app/api/campaigncue/assets/[assetId]/preview/route.ts");
+  assertIncludes(assetPreviewRoute, "CampaignCueIdSchema", "private media preview validates the scoped asset id");
+  const assetUploadClient = read("src/lib/campaigncue/assetUploadClient.ts");
+  assertIncludes(assetUploadClient, "parseCampaignCueAssetRecord", "private upload response passes through the asset DTO boundary");
+  assertIncludes(assetUploadClient, "workspaceId: params.workspaceId", "private upload response is bound to the active workspace");
+  assertNotIncludes(assetUploadClient, "return asset as CampaignCueAsset", "private upload response cannot bypass runtime validation with a cast");
+  assertNotIncludes(read("src/lib/firebase/campaigncueFirebaseClient.ts"), "null as unknown as", "optional CampaignCue Firebase clients retain honest nullable types");
+  assertIncludes(read("src/lib/campaigncue/apiGuards.ts"), "failClosedOnProviderError: true", "CampaignCue rate limiter fails closed on provider uncertainty");
+  assertIncludes(read("src/lib/campaigncue/apiGuards.ts"), 'rateLimit.reason === "provider_unavailable"', "CampaignCue limiter separates provider outage from quota exhaustion");
+  assertIncludes(read("src/lib/campaigncue/apiGuards.ts"), '"Rate Limit Provider Unavailable - CampaignCue"', "CampaignCue limiter outages are not mislabeled as owner quota exhaustion");
+  assertIncludes(read("src/lib/campaigncue/apiGuards.ts"), "withCampaignCuePrivateResponseHeaders", "CampaignCue protected response policy helper");
+  assertIncludes(read("src/lib/campaigncue/apiGuards.ts"), '"Cache-Control": "private, no-store, max-age=0"', "CampaignCue protected responses are not storable");
+  assertNotIncludes(read("src/lib/campaigncue/apiGuards.ts"), "session: any", "CampaignCue API guard session boundaries retain runtime types");
+  for (const routePath of routeFiles) {
+    const route = read(routePath);
+    assertIncludes(route, "withCampaignCueAuth", `${routePath} uses the product-wide protected response wrapper`);
+    assertNotIncludes(route, "withAuth", `${routePath} cannot bypass the CampaignCue protected response wrapper`);
+  }
 
   const cueLayerRouteFiles = [
     "src/app/api/campaigncue/cue-layers/designs/route.ts",
@@ -135,7 +166,7 @@ function verifyApiRoutes() {
   ];
   for (const relPath of cueLayerRouteFiles) {
     const content = read(relPath);
-    assertIncludes(content, "withAuth", relPath);
+    assertIncludes(content, "withCampaignCueAuth", relPath);
     assertIncludes(content, "requireCampaignCueRuntime", relPath);
     assertIncludes(content, "requireCampaignCueSessionScope", relPath);
     assertIncludes(content, "applyCampaignCueRateLimit", relPath);
@@ -146,7 +177,7 @@ function verifyApiRoutes() {
   assertIncludes(read("src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts"), "CampaignCueCueLayerRepairSchema", "CueLayers repair schema validation");
   assertIncludes(read("src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts"), "CampaignCueCueLayerExportSchema", "CueLayers export schema validation");
   const assetDownloadRoute = read("src/app/api/campaigncue/assets/[assetId]/download/route.ts");
-  assertIncludes(assetDownloadRoute, "withAuth", "CampaignCue asset download route auth");
+  assertIncludes(assetDownloadRoute, "withCampaignCueAuth", "CampaignCue asset download route protected auth response policy");
   assertIncludes(assetDownloadRoute, "requireCampaignCueRuntime", "CampaignCue asset download route runtime guard");
   assertIncludes(assetDownloadRoute, "requireCampaignCueSessionScope", "CampaignCue asset download route scope guard");
   assertIncludes(assetDownloadRoute, "applyCampaignCueRateLimit", "CampaignCue asset download route rate limit");
@@ -188,6 +219,7 @@ function verifyApiRoutes() {
     "src/app/api/campaigncue/design-cue/turns/route.ts",
     "src/app/api/campaigncue/sources/route.ts",
     "src/app/api/campaigncue/locations/route.ts",
+    "src/app/api/campaigncue/video-projects/route.ts",
     "src/app/api/campaigncue/cue-layers/uploads/route.ts",
     "src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts",
     "src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts",
@@ -201,6 +233,8 @@ function verifyApiRoutes() {
 
 function verifyServerRuntime() {
   const server = read("src/lib/campaigncue/server.ts");
+  const videoReel = read("src/lib/campaigncue/videoReel.ts");
+  const videoCompositor = read("src/lib/campaigncue/videoCompositor.ts");
   const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
   const dailyDesk = read("src/lib/campaigncue/dailyDesk.ts");
   const operatingLoop = read("src/lib/campaigncue/operatingLoop.ts");
@@ -237,7 +271,7 @@ function verifyServerRuntime() {
   assertIncludes(server, "sourceInputs.flatMap((sourceInput) => sourceInputToFacts(sourceInput))", "CampaignCue source fact flattening does not pass the array index as the optional clock");
   assertNotIncludes(server, "sourceInputs.flatMap(sourceInputToFacts)", "CampaignCue source fact flattening must not bind the flatMap index to the optional Date parameter");
   assertNotIncludes(server, "Promise.all([ref.get(), readStoreData(scope)])", "CampaignCue workspace load avoids repeat MenuList source reads");
-  assertIncludes(server, "firestoreAdmin.collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES)", "CampaignCue workspace writes use dedicated Admin");
+  assertIncludes(server, "requireCampaignCueFirestoreAdmin().collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES)", "CampaignCue workspace writes use fail-closed dedicated Admin");
   assertIncludes(server, "CAMPAIGNCUE_PAGE_SIZE", "CampaignCue server bounded list limit");
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS", "CampaignCue server idempotency collection");
   assertIncludes(server, "assertCampaignCueStoreRecordScope", "CampaignCue bootstrap verifies shared MenuList store ownership before consuming private profile data");
@@ -245,8 +279,8 @@ function verifyServerRuntime() {
   assertOccurrenceCount(
     server,
     "assertCurrentCampaignCueWorkspaceAccess(",
-    6,
-    "CampaignCue claim, asset, source, location and business transactions recheck current workspace membership",
+    7,
+    "CampaignCue claim, asset, source, location, business and video transactions recheck current workspace membership",
   );
   assertIncludes(server, "if (!snap.exists) throw new CampaignCueWorkspaceScopeError()", "CampaignCue bootstrap rejects missing or deleted store scope");
   const workspaceBootstrap = server.slice(
@@ -311,6 +345,16 @@ function verifyServerRuntime() {
   assertIncludes(server, "providerConnections: []", "CampaignCue overview avoids active provider connection reads");
   assertIncludes(server, "readsPerLoad: 9", "CampaignCue overview read cost includes the MenuList store-scope verification and excludes provider connection collection");
   assertIncludes(server, "readsPerLoad: 3", "CampaignCue analytics read cost includes the MenuList store-scope verification");
+  assertIncludes(server, "listCampaignCueVideoProjectsServer", "CampaignCue server exposes a bounded Video Reel Studio list");
+  assertIncludes(server, "mutateCampaignCueVideoProjectServer", "CampaignCue server exposes protected Video Reel Studio mutations");
+  assertIncludes(server, "canApplyCampaignCueVideoRenderReceipt(existingReceipt, renderInput.receipt)", "CampaignCue render receipt transition admission");
+  assertIncludes(videoReel, 'const renderReceiptSchema = z.discriminatedUnion("status"', "CampaignCue persisted render receipt status contract");
+  assertIncludes(videoReel, "buildCampaignCueVideoStoryboardText", "CampaignCue exposes a deterministic manual storyboard fallback");
+  assertIncludes(videoCompositor, "downloadCampaignCueVideoStoryboard", "CampaignCue downloads the manual storyboard locally");
+  assertIncludes(videoCompositor, "new Promise<void>((resolve, reject)", "CampaignCue render loop rejects drawing failures instead of hanging");
+  assertIncludes(server, "parseCampaignCueVideoProjectRecord", "CampaignCue persisted video projects use a strict runtime decoder");
+  assertIncludes(server, "evaluateCampaignCueVideoTrust", "CampaignCue video saves rerun deterministic trust checks");
+  assertIncludes(server, "getCampaignCueVideoSourceTrustGate", "CampaignCue video trust keeps the stricter campaign or output gate");
   assertIncludes(server, "const updated: CampaignCueCampaign", "CampaignCue action response avoids post-write campaign reread");
   assertIncludes(server, "readSourceSnapshot", "CampaignCue source snapshot summary reader exists");
   assertIncludes(server, "buildSourceSnapshotFromExistingSnapshot", "CampaignCue source input save can merge into existing snapshot");
@@ -346,7 +390,7 @@ function verifyServerRuntime() {
   assertIncludes(blockedActionBlock, "transaction.set(eventRef", "CampaignCue blocked actions transactionally record the event");
   assertIncludes(blockedActionBlock, "transaction.set(idempotencyRef", "CampaignCue blocked actions transactionally complete idempotency");
   assertNotIncludes(server, "await Promise.all([\n        updateDashboardSummary", "CampaignCue accepted actions avoid second summary commit");
-  assertIncludes(assetRegistrationBlock, "await firestoreAdmin.runTransaction", "CampaignCue asset registration atomically binds current authority, asset, event and replay completion");
+  assertIncludes(assetRegistrationBlock, "await requireCampaignCueFirestoreAdmin().runTransaction", "CampaignCue asset registration atomically binds current authority, asset, event and replay completion");
   assertIncludes(assetRegistrationBlock, "assertCurrentCampaignCueWorkspaceAccess", "CampaignCue asset registration rechecks current member authority");
   assertIncludes(assetRegistrationBlock, "assertCampaignCueAssetBinding", "CampaignCue asset registration rechecks transaction-current campaign/output/channel binding");
   assertIncludes(assetRegistrationBlock, "action: \"asset_registered\"", "CampaignCue asset registration still records audit event");
@@ -366,7 +410,9 @@ function verifyServerRuntime() {
   assertIncludes(server, "createCampaignCueSourceInputServer", "CampaignCue source input mutation");
   assertIncludes(server, "createCampaignCueAssetDownloadServer", "CampaignCue asset download handoff");
   assertIncludes(assetRegistrationBlock, "isCampaignCueWorkspaceStoragePath", "CampaignCue asset registration is workspace-path scoped");
-  assertIncludes(assetRegistrationBlock, "const storageGeneration = String(metadata.generation || \"\")", "CampaignCue asset registration captures immutable Storage generation");
+  assertIncludes(server, "const storageGeneration = String(metadata.generation || \"\")", "CampaignCue asset registration captures immutable Storage generation");
+  assertIncludes(server, "isCampaignCueMediaHeaderValid", "CampaignCue uploaded media verifies MIME signatures server-side");
+  assertIncludes(server, "previewStorageGeneration", "CampaignCue uploaded media binds generated previews to immutable generations");
   assertIncludes(assetDownloadBlock, "parseCampaignCueAssetRecord", "CampaignCue asset download validates persisted asset records");
   assertIncludes(assetBoundary, "isCampaignCueWorkspaceStoragePath(value.file.storagePath as string, params.workspaceId)", "CampaignCue persisted asset parser enforces workspace-path ownership");
   assertIncludes(assetDownloadBlock, "getSignedUrl", "CampaignCue private Storage downloads use runtime signed URLs");
@@ -520,7 +566,7 @@ function verifyServerRuntime() {
   assertNotIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS", "CueLayers active v1 avoids job event collection writes");
   assertIncludes(cueLayersServer, "bootCampaignCueCueLayerDesignServer", "CueLayers boot server entry");
   assertIncludes(cueLayersServer, "autosaveCampaignCueCueLayerDesignServer", "CueLayers autosave server entry");
-  assertIncludes(cueLayersServer, "committedDesign = await firestoreAdmin.runTransaction", "CueLayers autosave commits revision and version metadata transactionally");
+  assertIncludes(cueLayersServer, "committedDesign = await requireCampaignCueFirestoreAdmin().runTransaction", "CueLayers autosave commits revision and version metadata transactionally");
   assertIncludes(cueLayersServer, "currentDesign.current.revision !== expectedRevision", "CueLayers autosave rechecks revision in its commit transaction");
   assertOccurrenceCount(cueLayersServer, "deleteStorageObjectBestEffort(documentAsset.storagePath, \"autosave_snapshot\")", 2, "CueLayers autosave removes stale and failed-commit snapshots");
   assertIncludes(cueLayersServer, "withUncommittedStorageCleanup", "CueLayers upload tracks pre-commit Storage objects for compensation");
@@ -537,8 +583,8 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersServer, "exportCampaignCueCueLayerDesignServer", "CueLayers export server entry");
   assertIncludes(cueLayersServer, "params.input.sourceRevision !== design.current.revision", "CueLayers export rejects stale revisions");
   assertIncludes(cueLayersServer, "getCampaignCueCueLayerExportBindingError", "CueLayers export is bound to the immutable saved editor snapshot and canvas dimensions");
-  assertIncludes(cueLayersServer, "const committed = await firestoreAdmin.runTransaction", "CueLayers repair uses a final commit transaction");
-  assertIncludes(cueLayersServer, "committed = await firestoreAdmin.runTransaction", "CueLayers export uses a final commit transaction");
+  assertIncludes(cueLayersServer, "const committed = await requireCampaignCueFirestoreAdmin().runTransaction", "CueLayers repair uses a final commit transaction");
+  assertIncludes(cueLayersServer, "committed = await requireCampaignCueFirestoreAdmin().runTransaction", "CueLayers export uses a final commit transaction");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.ASSETS).doc(asset.id)", "CueLayers export registers its asset in the atomic commit");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(eventId)", "CueLayers export registers its audit event in the atomic commit");
   assertIncludes(cueLayersServer, "deleteStorageObjectBestEffort(exportOutputPath, \"stale_export_output\")", "CueLayers export removes stale uploaded output");
@@ -609,6 +655,9 @@ function verifyServerRuntime() {
 
 function verifyClientRuntime() {
   const app = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx");
+  const videoStudio = read("src/components/templates/campaigncue/CampaignCueVideoStudio.tsx");
+  const videoCompositor = read("src/lib/campaigncue/videoCompositor.ts");
+  const videoSchemas = read("src/lib/validation/campaigncueVideoSchemas.ts");
   const styles = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.module.scss");
   const layout = read("src/app/(campaigncue)/layout.tsx");
   const enLocale = read("public/locales/menulist.ai/en-US.json");
@@ -661,7 +710,7 @@ function verifyClientRuntime() {
     "Campaign ideas",
     "Campaign packs",
     "Creative outputs",
-    "Reel briefs",
+    "Reel projects",
     "Creator scripts",
     "WhatsApp drafts",
     "Google local drafts",
@@ -780,6 +829,43 @@ function verifyClientRuntime() {
   assertIncludes(app, "sourceRevision: savedRevision ?? activeCueLayerRevision", "CampaignCue CueLayers export pins to saved revision");
   assertIncludes(app, "renderedDataUrl: result.dataUrl", "CampaignCue CueLayers sends rendered export bytes");
   assertIncludes(app, "getCampaignCueAssetDownloadApiPath", "CampaignCue Asset Library uses scoped download API");
+  assertIncludes(app, "CampaignCueVideoStudio", "CampaignCue Video Reel Studio is mounted in the Video/Reel workspace");
+  assertIncludes(app, "key={data.workspace.workspaceId}", "Video Reel Studio remounts at the exact workspace boundary");
+  assertIncludes(videoStudio, "CAMPAIGNCUE_API_ROUTES.VIDEO_PROJECTS", "Video Reel Studio uses the product-scoped project API path");
+  assertIncludes(videoStudio, "activeWorkspaceRef.current !== requestWorkspaceId", "Video Reel Studio rejects obsolete workspace responses");
+  assertIncludes(videoStudio, "if (!isActiveWorkspace()) return;", "Video Reel Studio fences parent-visible and binary settlements to the active workspace");
+  assertIncludes(videoStudio, "renderController.current?.abort();", "Video Reel Studio aborts local rendering on workspace unmount");
+  assertIncludes(videoStudio, "tryAnotherSceneLine", "Video Reel Studio offers deterministic checked scene-line alternatives");
+  assertIncludes(videoStudio, "Skip this scene", "Video Reel Studio exposes explicit scene inclusion control");
+  assertIncludes(videoStudio, "Version history", "Video Reel Studio exposes bounded project history");
+  assertIncludes(videoStudio, "Render attempts", "Video Reel Studio exposes bounded render history");
+  assertIncludes(videoStudio, "Choose or record the narration again before rendering", "Video Reel Studio prevents silent narration loss after reload");
+  assertIncludes(videoStudio, "sessionMediaRightsConfirmed", "Video Reel Studio requires a session-media rights confirmation");
+  assertIncludes(videoStudio, "draft.status !== \"approved\"", "Video Reel Studio blocks render until the current version is approved");
+  assertIncludes(videoStudio, "0 provider credits", "Video Reel Studio shows its zero-provider-cost boundary");
+  assertIncludes(videoStudio, "downloadCampaignCueVideo", "Video Reel Studio downloads the locally rendered binary");
+  assertIncludes(videoStudio, "Download storyboard", "Video Reel Studio exposes its manual storyboard fallback");
+  assertIncludes(videoStudio, "clearLocalSceneImage", "Video Reel Studio clears ambiguous local image overrides");
+  assertIncludes(videoStudio, "Video downloaded, but CampaignCue could not confirm its render receipt", "Video Reel Studio distinguishes download success from receipt-sync failure");
+  assertIncludes(videoStudio, "Remove narration", "Video Reel Studio lets the owner remove session-only narration");
+  assertIncludes(videoStudio, "Private Asset Library upload", "Video Reel Studio exposes direct private reusable media intake");
+  assertIncludes(videoStudio, "Record narration", "Video Reel Studio exposes local narration recording");
+  assertIncludes(videoStudio, "Lower music under narration", "Video Reel Studio exposes separate voice and music ducking");
+  assertIncludes(videoStudio, "Review notes", "Video Reel Studio exposes bounded review notes");
+  assertIncludes(videoStudio, "render_progress", "Video Reel Studio persists bounded render checkpoints");
+  assertIncludes(videoStudio, "Cancel render", "Video Reel Studio exposes render cancellation");
+  assertIncludes(videoStudio, "Reuse a proven structure", "Video Reel Studio reuses useful structure without cloning source truth");
+  assertIncludes(videoCompositor, "canvas.captureStream", "CampaignCue compositor records an owned canvas stream");
+  assertIncludes(videoCompositor, "MediaRecorder.isTypeSupported", "CampaignCue compositor selects only native recording formats");
+  assertIncludes(videoCompositor, "CAMPAIGNCUE_VIDEO_ASPECT_PRESETS", "CampaignCue compositor uses governed aspect presets");
+  assertIncludes(videoCompositor, 'params.project.status !== "approved"', "CampaignCue compositor independently enforces approved project state");
+  assertIncludes(videoCompositor, "scene.enabled", "CampaignCue compositor excludes skipped scenes");
+  assertIncludes(videoCompositor, "cleanupCampaignCueRenderResources", "CampaignCue compositor centralizes stream, audio, object URL, and AudioContext teardown");
+  assertIncludes(videoCompositor, "await cleanupCampaignCueRenderResources({", "CampaignCue compositor cleans resources when recorder construction fails and after rendering");
+  assertOccurrenceCount(videoCompositor, "await cleanupCampaignCueRenderResources({", 2, "CampaignCue compositor cleans both recorder-construction failure and terminal render paths");
+  assertIncludes(videoCompositor, "blob.size > CAMPAIGNCUE_VIDEO_STUDIO.MAX_RENDER_SIZE_BYTES", "CampaignCue compositor rejects browser output that cannot fit the persisted render-receipt contract");
+  assertIncludes(videoSchemas, "At least one scene must be included", "CampaignCue video validation rejects an empty included timeline");
+  assertNotIncludes(videoCompositor, "fetch(", "CampaignCue compositor makes no provider or upload network call");
   assertIncludes(app, "asset-download:${asset.id}", "CampaignCue Asset Library has bounded asset download action");
   assertIncludes(app, "withFreshDailyDesk", "CampaignCue owner UI recomputes Daily Desk after local mutations");
   assertIncludes(app, "DashboardSidebarShell", "CampaignCue owner UI uses shared dashboard sidebar shell");
@@ -1388,6 +1474,12 @@ function verifyFirebaseBoundary() {
   assertIncludes(admin, "CAMPAIGNCUE_FIREBASE_ENV", "CampaignCue Admin env names constant");
   assertIncludes(admin, "campaigncue_admin_project_mismatch", "CampaignCue Admin rejects cross-product env credentials");
   assertIncludes(admin, "isExpectedCampaignCueProjectId(projectId, campaigncueFirebaseProjectId)", "CampaignCue Admin validates env and file credential projects");
+  assertNotIncludes(admin, "null as unknown as admin.", "CampaignCue Admin unavailable services retain honest nullable types");
+  assertIncludes(admin, "function requireCampaignCueAdminService<T>(service: T | null, serviceName: string): T", "CampaignCue Admin fail-closed service accessor");
+  assertIncludes(admin, "CampaignCue Firebase Admin ${serviceName} is unavailable.", "CampaignCue Admin unavailable-service error boundary");
+  assertIncludes(admin, "requireCampaignCueFirestoreAdmin", "CampaignCue Admin Firestore accessor export");
+  assertIncludes(admin, "requireCampaignCueStorageAdmin", "CampaignCue Admin Storage accessor export");
+  assertIncludes(admin, "requireCampaignCueAuthAdmin", "CampaignCue Admin Auth accessor export");
   assertIncludes(clientConfig, "CAMPAIGNCUE_FIREBASE_MODE_ALIASES", "CampaignCue Firebase mode aliases constant");
   assertIncludes(clientConfig, "if (params.nodeEnv === \"production\") return \"separate\";", "CampaignCue production Firebase mode is dedicated");
   assertIncludes(clientConfig, "isExpectedCampaignCueProjectId", "CampaignCue client config validates the governed project");
@@ -1397,9 +1489,13 @@ function verifyFirebaseBoundary() {
   assertIncludes(firestoreRules, "match /sourceInputs/{docId}", "CampaignCue source inputs rules");
   assertIncludes(firestoreRules, "match /idempotencyKeys/{docId}", "CampaignCue idempotency keys private");
   assertIncludes(storageRules, "allow read, write: if false", "CampaignCue Storage default deny");
+  assertIncludes(storageRules, "allow create: if isCampaignCueWorkspaceMember(workspaceId)", "CampaignCue private assets are create-only through scoped custom auth");
+  assertIncludes(storageRules, "allow update: if false", "CampaignCue private asset objects cannot be overwritten");
+  assertIncludes(storageRules, "audio/(mpeg|mp4|wav|ogg|webm)", "CampaignCue private Storage admits bounded audio formats");
   assertIncludes(storageRules, "request.resource.size <= 250 * 1024 * 1024", "CampaignCue Storage size cap");
   assertIncludes(storageRules, "isCampaignCueWorkspaceMember(workspaceId)", "CampaignCue Storage workspace scope");
   assertIncludes(firestoreRules, "match /cueLayerDesigns/{docId}", "CampaignCue CueLayers design rules");
+  assertIncludes(firestoreRules, "match /videoProjects/{docId}", "CampaignCue Video Reel Studio project rules");
   assertIncludes(firestoreRules, "match /cueLayerCostRecords/{docId}", "CampaignCue CueLayers cost records are admin-only");
   assertIncludes(storageRules, "match /campaigncue/cue-layers/{workspaceId}/{designId}/{allPaths=**}", "CampaignCue CueLayers storage path rule");
   assertIncludes(storageRules, "allow write, delete: if false", "CampaignCue CueLayers client Storage writes disabled");
@@ -1434,6 +1530,7 @@ function verifyProductConstantSeparation() {
     "src/constants/campaigncue/navigations.ts",
     "src/constants/campaigncue/product.ts",
     "src/constants/campaigncue/routes.ts",
+    "src/constants/campaigncue/videoReel.ts",
     "src/constants/campaigncue/website.ts",
     "src/constants/campaigncue/websiteFeatures.ts",
     "src/constants/campaigncue/websiteUseCases.ts",
@@ -1448,6 +1545,7 @@ function verifyProductConstantSeparation() {
   const cueLayers = read("src/constants/campaigncue/cueLayers.ts");
   const designCue = read("src/constants/campaigncue/designCue.ts");
   const delivery = read("src/constants/campaigncue/delivery.ts");
+  const videoReel = read("src/constants/campaigncue/videoReel.ts");
   const domains = read("src/constants/campaigncue/domains.ts");
   const routes = read("src/constants/campaigncue/routes.ts");
   const firebase = read("src/constants/campaigncue/firebase.ts");
@@ -1486,6 +1584,7 @@ function verifyProductConstantSeparation() {
   assertIncludes(database, "CAMPAIGNCUE_COLLECTIONS", "CampaignCue collection constants");
   assertIncludes(database, "CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES", "CampaignCue asset size constant");
   assertIncludes(database, "CUE_LAYER_DESIGNS", "CampaignCue CueLayers design collection constant");
+  assertIncludes(database, "VIDEO_PROJECTS", "CampaignCue Video Reel Studio collection constant");
   assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_JOB_STATUSES", "CampaignCue CueLayers job status constants");
   assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_JOB_OUTCOMES", "CampaignCue CueLayers outcome constants");
   assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_PROCESSING_STEPS", "CampaignCue CueLayers step constants");
@@ -1497,6 +1596,10 @@ function verifyProductConstantSeparation() {
   assertIncludes(delivery, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue export action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS", "CampaignCue disabled provider action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_FUTURE_PROVIDER_LAYER", "CampaignCue future provider layer constants");
+  assertIncludes(delivery, 'provider: "video_render"', "CampaignCue delivery registry identifies video rendering");
+  assertIncludes(delivery, 'label: "In-house video export"', "CampaignCue delivery registry names the active owned renderer accurately");
+  assertIncludes(videoReel, "CAMPAIGNCUE_VIDEO_MIME_CANDIDATES", "CampaignCue video MIME allowlist constants");
+  assertIncludes(videoReel, '"9:16"', "CampaignCue video presets include portrait rendering");
     assertIncludes(domains, "isCampaignCueRuntimeRoute", "CampaignCue runtime route helper");
     assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_BASE_PATH", "CampaignCue app route-group base path constant");
     assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH", "CampaignCue app workspace route-group path constant");
@@ -1506,6 +1609,7 @@ function verifyProductConstantSeparation() {
   assertIncludes(routes, "CAMPAIGN_ACTION_TEMPLATE", "CampaignCue action route template");
   assertIncludes(routes, "CUE_LAYERS_UPLOADS", "CampaignCue CueLayers upload route constant");
   assertIncludes(routes, "DESIGN_CUE_TURNS", "CampaignCue Design Cue route constant");
+  assertIncludes(routes, "VIDEO_PROJECTS", "CampaignCue Video Reel Studio route constant");
   assertIncludes(routes, "getCampaignCueAssetDownloadApiPath", "CampaignCue asset download route helper");
   assertIncludes(routes, "getCampaignCueCueLayersBootApiPath", "CampaignCue CueLayers boot route helper");
   assertIncludes(firebase, "CAMPAIGNCUE_FIREBASE_ENV", "CampaignCue Firebase env constants");
@@ -1522,6 +1626,7 @@ function verifyProductConstantSeparation() {
   assertIncludes(websiteFeatures, "campaign-pack-studio", "CampaignCue website feature catalog includes Campaign Pack Studio page");
   assertIncludes(websiteFeatures, "creative-studio", "CampaignCue website feature catalog includes Creative Studio page");
   assertIncludes(websiteFeatures, "cuelayers", "CampaignCue website feature catalog includes CueLayers page");
+  assertIncludes(websiteFeatures, "video-reel-studio", "CampaignCue website feature catalog includes Video Reel Studio page");
   assertIncludes(websiteFeatures, "creative-trust-center", "CampaignCue website feature catalog includes Creative Trust Center page");
   assertIncludes(websiteFeatures, "brand-playbook-proof-deck", "CampaignCue website feature catalog includes Brand Playbook and Proof Deck page");
   assertIncludes(websiteFeatures, "reusable-pack-templates", "CampaignCue website feature catalog includes Reusable Pack Templates page");
@@ -1550,6 +1655,7 @@ function verifyProductConstantSeparation() {
   assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/api/campaigncue/sources"', "CampaignCue workspace avoids hardcoded source API path");
   assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/api/campaigncue/cue-layers', "CampaignCue CueLayers UI avoids hardcoded API paths");
   assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/__campaigncue"', "CampaignCue workspace avoids hardcoded local public path");
+  assertNotIncludes(read("package.json"), "topview", "CampaignCue adds no Topview dependency or script");
 }
 
 function verifyRouteBoundary() {
@@ -1692,6 +1798,7 @@ function verifyDocsAlignment() {
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk", "CampaignCue public homepage links Daily Campaign Desk capability page");
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio", "CampaignCue public homepage links Creative Studio capability page");
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers", "CampaignCue public homepage links CueLayers capability page");
+  assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio", "CampaignCue public homepage links Video Reel Studio capability page");
   assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter", "CampaignCue public homepage links Creative Trust Center capability page");
   assertIncludes(publicSite, "Know what is safe and useful to promote today. Get the checked pack, staff handoff, and owner-controlled files ready to use.", "CampaignCue public hero reflects the governed operating-loop promise");
   assertIncludes(publicSite, "Copy or download", "CampaignCue public proof strip keeps a simple owner action label");
@@ -1705,6 +1812,7 @@ function verifyDocsAlignment() {
   assertIncludes(publicFeatureRoute, "DailyDeskPreview", "CampaignCue feature route previews Daily Campaign Desk");
   assertIncludes(publicFeatureRoute, "CreativeStudioPreview", "CampaignCue feature route previews Creative Studio");
   assertIncludes(publicFeatureRoute, "CueLayersPreview", "CampaignCue feature route previews CueLayers");
+  assertIncludes(publicFeatureRoute, "VideoStudioPreview", "CampaignCue feature route previews Video Reel Studio");
   assertIncludes(publicFeatureRoute, "TrustCenterPreview", "CampaignCue feature route previews Creative Trust Center");
   assertIncludes(publicFeatureRoute, "ProofDeckPreview", "CampaignCue feature route previews Brand Playbook and Proof Deck");
   assertIncludes(publicFeatureRoute, "TemplatePreview", "CampaignCue feature route previews reusable pack templates");
@@ -1716,6 +1824,7 @@ function verifyDocsAlignment() {
   assertIncludes(publicSmallBusinessUseCase, "UseCaseHeroPreview", "CampaignCue small-business page renders static product preview");
   assertIncludes(publicSmallBusinessUseCase, "SourceToPackVisual", "CampaignCue small-business page explains source-to-pack flow");
   assertIncludes(publicSmallBusinessUseCase, "ReusePreview", "CampaignCue small-business page exposes Creative Studio and CueLayers reuse");
+  assertIncludes(publicSmallBusinessUseCase, "CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio", "CampaignCue small-business page links the in-house Video Reel Studio");
   assertNotIncludes(publicSmallBusinessUseCase, "@template/campaigncue", "CampaignCue small-business page does not import owner workspace template");
   assertNotIncludes(publicSmallBusinessUseCase, "CampaignCueWorkspaceApp", "CampaignCue small-business page does not import owner workspace app");
   assertNotIncludes(publicSmallBusinessUseCase, "fetch(", "CampaignCue small-business page does not fetch owner data");
@@ -1730,6 +1839,7 @@ function verifyDocsAlignment() {
   assertIncludes(websiteFeatures, "Campaign Pack Studio", "CampaignCue website feature constants include Campaign Pack Studio");
   assertIncludes(websiteFeatures, "Creative Studio", "CampaignCue website feature constants include Creative Studio");
   assertIncludes(websiteFeatures, "CueLayers", "CampaignCue website feature constants include CueLayers");
+  assertIncludes(websiteFeatures, "Video Reel Studio", "CampaignCue website feature constants include Video Reel Studio");
   assertIncludes(websiteFeatures, "Creative Trust Center", "CampaignCue website feature constants include Creative Trust Center");
   assertIncludes(websiteFeatures, "Brand Playbook and Proof Deck", "CampaignCue website feature constants include Brand Playbook and Proof Deck");
   assertIncludes(websiteFeatures, "Reusable Pack Templates", "CampaignCue website feature constants include Reusable Pack Templates");
@@ -2002,10 +2112,13 @@ function verifyDocsAlignment() {
   assertIncludes(ugcScriptImpl, "dialogue/action beats", "UGC Script Studio implementation documents active brief fields");
   assertIncludes(ugcScriptImpl, "First-person usage or recommendation wording", "UGC Script Studio implementation documents first-person testimonial guard");
   assertIncludes(ugcScriptFirebase, "adds no new Firestore collection", "UGC Script Studio Firebase docs preserve no-new-cost active runtime");
-  assertIncludes(videoReelSpec, "Phone-camera structure", "Video Reel Studio spec documents phone-camera brief structure");
-  assertIncludes(videoReelSpec, "AI avatars, stock people, or fictional customers", "Video Reel Studio spec rejects fake avatar/customer posture");
-  assertIncludes(videoReelImpl, "B-roll checklist", "Video Reel Studio implementation documents B-roll brief fields");
-  assertIncludes(videoReelImpl, "does not call an avatar", "Video Reel Studio implementation preserves no-provider active runtime");
+  assertIncludes(videoReelSpec, "Text to motion", "Video Reel Studio spec documents owned text-motion composition");
+  assertIncludes(videoReelSpec, "Fake or synthetic customer testimonials", "Video Reel Studio spec rejects fake customer posture");
+  assertIncludes(videoReelSpec, "Browser-selected encoding", "Video Reel Studio spec keeps MP4 and WebM labeling honest");
+  assertIncludes(videoReelImpl, "Canvas, `captureStream`, MediaRecorder", "Video Reel Studio implementation documents the in-house compositor");
+  assertIncludes(videoReelImpl, "No Topview SDK/API", "Video Reel Studio implementation preserves the no-provider runtime");
+  assertIncludes(videoReelImpl, "The binary stays on the device", "Video Reel Studio implementation preserves the local binary boundary");
+  assertIncludes(changelog, "CampaignCue In-House Video Reel Studio", "CampaignCue changelog records the owned video runtime");
   assertIncludes(templateRegistrySpec, "Campaign proof deck", "Template registry spec documents proof deck output intent");
   assertIncludes(templateRegistryImpl, "campaign_proof_deck_pdf", "Template registry implementation documents proof deck output type");
   assertIncludes(deliveryDoc, "Campaign Proof Deck brief", "Delivery boundary documents proof deck as response-derived brief");
@@ -2068,20 +2181,27 @@ function verifyDocsAlignment() {
 function verifyRequiredFiles() {
   [
     "src/types/campaigncue.ts",
+    "src/types/campaigncueVideo.ts",
     "src/lib/validation/campaigncueSchemas.ts",
+    "src/lib/validation/campaigncueVideoSchemas.ts",
     "src/lib/campaigncue/apiGuards.ts",
     "src/lib/campaigncue/server.ts",
+    "src/lib/campaigncue/videoReel.ts",
+    "src/lib/campaigncue/videoCompositor.ts",
     "src/lib/campaigncue/cue-layers/server.ts",
     "src/types/campaigncueCueLayers.ts",
     "src/lib/validation/campaigncueCueLayersSchemas.ts",
     "src/app/sites/campaigncue/page.tsx",
     "src/app/sites/campaigncue/features/[featureSlug]/page.tsx",
+    "src/app/api/campaigncue/video-projects/route.ts",
     "src/app/(campaigncue)/campaigncue/app/page.tsx",
     "src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx",
+    "src/components/templates/campaigncue/CampaignCueVideoStudio.tsx",
     "__docs__/campaigncue/campaigncue-delivery-boundary.md",
     "__docs__/campaigncue/campaigncue-production-implementation-audit.md",
     "__docs__/campaigncue/cue-layers/cue-layers_validation.md",
     "__docs__/campaigncue/design-cue/design-cue_validation.md",
+    "__docs__/campaigncue/video-reel-studio/video-reel-studio_test-cases.md",
   ].forEach((relPath) => assert(exists(relPath), `${relPath} exists`));
 }
 

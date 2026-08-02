@@ -186,6 +186,23 @@ The add-location route uses the same operation/subscription/profile transaction 
 
 ### 3.8B Owner Credential Linkage
 
+The initial tenant/store/user transaction now also creates one provisional
+reseller transaction row with exact reseller, owner Auth/user, tenant/store,
+payment mode and request fingerprint. An existing owner Auth password/profile
+update occurs only after that commit. Exact retry adds two resource reads
+(store and user) to revalidate ownership before finishing Auth/provider work.
+Online flow may update the same provisional row once with provider plan/start/
+recovery timestamps before the external create. The final billing transaction
+replaces that exact row with the final ledger and creates the subscription
+while updating profile counters. A final replay performs transaction reads but
+no writes.
+
+Provider recovery is external Razorpay list traffic, capped at three 100-row
+pages for the exact plan/time window. A full final page is explicitly
+inconclusive and blocks another create; it is never treated as provider
+absence. Billing acknowledgement verification performs two settled reads and
+does not compensate when either read is unavailable.
+
 | Operation | Collection | Type | Count | Notes |
 | --------- | ---------- | ---- | ----- | ----- |
 | Prepare Firebase Auth owner | Firebase Auth | AUTH READ/WRITE | 1-2 | Existing compatible UID/email is reused or a new owner is created |

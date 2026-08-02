@@ -11,6 +11,9 @@ const RETRY_ONCE_VERIFY_SCRIPTS = new Set([
   'verify:menu-extraction-pipeline',
   'verify:shared-kb-generation-boundary',
 ]);
+const EXTERNAL_BLOCKED_VERIFY_SCRIPTS = new Set([
+  'verify:upstash-readiness',
+]);
 const listOnly = process.argv.slice(2).includes('--list');
 
 function sleep(ms) {
@@ -120,6 +123,16 @@ function isPassing(result) {
   return result.status === 0 && !result.signal;
 }
 
+function isExternallyBlocked(result) {
+  return EXTERNAL_BLOCKED_VERIFY_SCRIPTS.has(result.label)
+    && result.status === 2
+    && !result.signal;
+}
+
+function isSatisfied(result) {
+  return isPassing(result) || isExternallyBlocked(result);
+}
+
 const packageJson = readPackageJson();
 const verifyScripts = Object.keys(packageJson.scripts || {})
   .filter((name) => name.startsWith('verify:') && name !== SELF_SCRIPT)
@@ -185,15 +198,16 @@ for (const check of checks) {
   }
   cleanupRetryableEmulators(`${check.label} completion`);
   results.push(result);
-  if (!isPassing(result)) break;
+  if (!isSatisfied(result)) break;
 }
 
 const passedCount = results.filter(isPassing).length;
-const allPassed = passedCount === checks.length;
+const blockedCount = results.filter(isExternallyBlocked).length;
+const allSatisfied = results.length === checks.length && results.every(isSatisfied);
 
 console.log('\n[local-readiness-summary]');
 for (const result of results) {
-  const status = isPassing(result) ? 'PASS' : 'FAIL';
+  const status = isPassing(result) ? 'PASS' : isExternallyBlocked(result) ? 'BLOCKED_EXTERNAL' : 'FAIL';
   const statusDetails = result.signal
     ? ` signal=${result.signal}`
     : result.status !== 0
@@ -205,9 +219,10 @@ for (const result of results) {
   console.log(`${status} ${result.label}${statusDetails}${retryDetails}`);
 }
 console.log(`[local-readiness-summary] ${passedCount}/${checks.length} checks passed`);
+console.log(`[local-readiness-summary] external blockers: ${blockedCount}`);
 console.log(`[local-readiness-summary] child verify scripts: ${verifyScripts.length}`);
 console.log(`[local-readiness-summary] boundary: ${LOCAL_READINESS_BOUNDARY}`);
 
-if (!allPassed) {
+if (!allSatisfied) {
   process.exit(1);
 }

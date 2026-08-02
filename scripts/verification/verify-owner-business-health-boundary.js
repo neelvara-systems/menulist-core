@@ -64,6 +64,7 @@ const analyticsRoute = read('src/app/api/owner-business-assistant/analytics/rout
 const locationsRoute = read('src/app/api/owner-business-assistant/locations/route.ts');
 requireToken(locationsRoute, "'Cache-Control': 'private, no-store, max-age=0'", 'locations route private response cache boundary');
 requireToken(locationsRoute, "'X-Content-Type-Options': 'nosniff'", 'locations route JSON content boundary');
+requireToken(locationsRoute, 'cleanString(summarySnap.data()?.generatedAt, 80) || null', 'locations route generated-at scalar projection');
 if ((locationsRoute.match(/return NextResponse\.json\(/g) || []).length !== 1) {
   failures.push('locations route must keep NextResponse.json encapsulated by its private response boundary');
 }

@@ -4,7 +4,7 @@
  * @see __docs__/use-menulist/use-menulist_impl.md
  */
 
-import type { DigitalScreenSeenTimestamp } from '@lib/screen/screenTimestamp';
+import type { DigitalScreenSeenByMode } from '@type/campaigns';
 
 export interface ProjectLink {
     projectId: string;
@@ -34,7 +34,8 @@ export interface UseMenuListData {
     screenToken: string | null;
     menuBoardLink: string | null;
     highlightsLink: string | null;
-    screenLastSeenAt: DigitalScreenSeenTimestamp;
+    screenContentVersion: number | null;
+    screenSeenByMode?: DigitalScreenSeenByMode;
 
     // Store info
     storeName: string;

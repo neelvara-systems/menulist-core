@@ -2,7 +2,7 @@
 
 **Feature:** In-Store Digital Menu Screens (TV/Tablet Display)
 **Status:** 🔒 **v2.3 LOCKED** (readability/reliability/owner-trust/listener-isolation/bounded-diagnostics hardening only)
-**Last Updated:** July 29, 2026
+**Last Updated:** August 1, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Digital Screens state, listener, invalidation, Storage, and Firebase-cost evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
@@ -18,7 +18,7 @@
 - **Real-time:** Firebase `onSnapshot` doc listener on `platformSummary/screen_{sId}` (not polling, no internal owner summary exposure)
 - **Screen invalidation:** Browser paths request the protected revalidation route; only Admin/server transactions bump `screen.contentVersion`, replace the safe mirror, and invalidate the exact hashed-token cache tag. A screen is considered initialized from canonical state/private control, not from a client-readable token field.
 - **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
-- **Estimated Monthly Cost:** **~$0.31-$0.45/month for 1000 screens** depending on projection hit rate, menu-save frequency, and the direct-versus-legacy seen-signal mix.
+- **Estimated Monthly Cost:** **~$0.45-$1.09/month for 1000 active TV-mode links** under the documented 1-5 daily content-change range. Multiple TVs sharing the same store/mode/version collapse to one canonical write but still perform their admitted verification reads.
 - **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same menu data resolver, different client render)
 
 ---
@@ -36,8 +36,8 @@
 | Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
 | onSnapshot initial     | `platformSummary/screen_{storeId}` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx`, `MenuBoardDisplay.tsx` |
 | onSnapshot updates     | `platformSummary/screen_{storeId}` | Content changes       | ~1-5x/day      | 1 per change                  | `publicScreenState.ts`, display clients |
-| Daily seen signal      | `platformSummary`, `stores`, `tenants` | 1x/day/screen after bounded/rate/token checks | 1x/day | control + canonical screen + store + tenant transaction reads; no-store legacy requests first resolve a unique private or legacy token candidate | `api/screen/seen/route.ts` |
-| Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 2 (canonical + private control); no writes on an unchanged migrated state | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
+| Mode/version open acknowledgement | `platformSummary`, `stores`, `tenants` | First open per TV mode/version/UTC day after bounded/rate/token checks | ~2-6/day/active TV mode under 1-5 content changes | private control + canonical screen + store + tenant transaction reads; legacy no-store requests first resolve one unique token candidate | `api/screen/seen/route.ts`, `screenSeenServer.ts` |
+| Owner: getScreenState  | `platformSummary`, `stores`, `tenants` | Settings view or owner status refresh | Occasional | canonical + private control + store + tenant transaction reads; no writes on unchanged migrated state | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
 | Screen version touch   | `platformSummary` | Public menu cache invalidation, rendered store-output change, or nested OBP accent change | Per relevant change where screen exists | canonical screen + private control reads in one Admin transaction | `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
@@ -45,7 +45,7 @@
 
 | Operation                    | Collection        | Trigger                  | Frequency | Writes                        | Code Evidence                     |
 | ---------------------------- | ----------------- | ------------------------ | --------- | ----------------------------- | --------------------------------- |
-| Daily seen signal            | `platformSummary` | 1x/day/screen after rate-limit admission and transaction-current token, enabled-screen, exact store/tenant identity, lifecycle, and block checks | 1/day     | 0 when rate-limited/already seen/ineligible; otherwise 1 transaction update of `screenLastSeenAt`. Rate-limit denials are non-success and do not create the browser daily marker. | `api/screen/seen/route.ts`     |
+| Mode/version open acknowledgement | `platformSummary` | First admitted open per mode/version/UTC day after transaction-current token, scope, lifecycle, block, and version checks | ~2-6/day/active TV mode under 1-5 content changes | 0 when rate-limited/already seen/ineligible/stale; otherwise 1 transaction update of aggregate `screenLastSeenAt` plus that mode's bounded receipt. | `screenSeenServer.ts` |
 | Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 3 (`campaigns_{sId}` + private `screenControl_{sId}` + safe `screen_{sId}` mirror) | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
 | Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
@@ -101,9 +101,9 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 | ------------------------------- | --------- | ------ | -------- |
 | TV boot (1x SSR + items)        | 2-4       | 0      | Both     |
 | onSnapshot initial + changes    | ~3        | 0      | Both     |
-| Daily seen signal               | 1-2       | 1      | Both     |
+| Mode/version open acknowledgement | 8-24    | 2-6    | Per active TV mode under 1-5 content changes |
 | 6-hour proactive refreshes (3x) | 6-12      | 0      | Both     |
-| **Total per day**               | **~13-21** | **~1** | **Same** |
+| **Total per day**               | **~19-43** | **~2-6** | **Same render pipeline** |
 
 > **CRITICAL:** Menu Board mode and Highlights mode have **identical Firebase cost**. Both modes use the same server-side data pipeline (`getScreenDataByToken` + valid `screen.menuProjection` or `getMenuItemsForScreen` fallback). The only difference is which client component renders the data. No additional collections, indexes, functions, or storage.
 
@@ -113,18 +113,18 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 
 ### Per Screen
 
-- 13-21 reads × 30 days = 390-630 reads/month
-- 1 write × 30 days = 30 writes/month
-- Cost: ~$0.00029-$0.00043/month per screen
+- 19-43 reads × 30 days = 570-1,290 reads/month
+- 2-6 writes × 30 days = 60-180 writes/month
+- Cost: ~$0.00045-$0.00109/month per active TV-mode link at the document's existing Firestore unit-price assumptions
 
 ### At Scale
 
 | Scale          | Reads/month      | Writes/month | Read Cost   | Write Cost | **Total**       |
 | -------------- | ---------------- | ------------ | ----------- | ---------- | --------------- |
-| 100 screens    | 39,000-63,000    | 3,000        | $0.02-$0.04 | $0.01      | **$0.03-$0.05** |
-| 1,000 screens  | 390,000-630,000  | 30,000       | $0.23-$0.38 | $0.05      | **$0.28-$0.43** |
-| 5,000 screens  | 1.95M-3.15M      | 150,000      | $1.17-$1.89 | $0.27      | **$1.44-$2.16** |
-| 10,000 screens | 3.9M-6.3M        | 300,000      | $2.34-$3.78 | $0.54      | **$2.88-$4.32** |
+| 100 active TV-mode links    | 57,000-129,000   | 6,000-18,000      | $0.03-$0.08 | $0.01-$0.03 | **$0.04-$0.11** |
+| 1,000 active TV-mode links  | 570,000-1.29M    | 60,000-180,000    | $0.34-$0.77 | $0.11-$0.32 | **$0.45-$1.09** |
+| 5,000 active TV-mode links  | 2.85M-6.45M      | 300,000-900,000   | $1.71-$3.87 | $0.54-$1.62 | **$2.25-$5.49** |
+| 10,000 active TV-mode links | 5.7M-12.9M       | 600,000-1.8M      | $3.42-$7.74 | $1.08-$3.24 | **$4.50-$10.98** |
 
 **Storage:** ~1.5MB/store × stores with uploads (estimated <10%) = negligible
 
@@ -145,13 +145,13 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 | ----------------------------------- | -------------------------------- | --------------------------------------- |
 | No new collection family            | Keeps bounded screen docs in `platformSummary` | canonical/private/public document trio |
 | onSnapshot instead of polling       | 99.6% read reduction             | `ScreenDisplay.tsx:180`                 |
-| Daily seen signal (not heartbeat)   | 1 write/day vs 1440 writes/day   | `ScreenDisplay.tsx:130-147`             |
+| Bounded open receipts (not heartbeat) | One write per mode/version/UTC day, never periodic device heartbeats | `useDigitalScreenSeenSignal.ts`, `screenSeenServer.ts` |
 | Seen signal store eligibility | Prevents inactive, deleted, blocked, or tenant-blocked stores from refreshing liveness state; uses the shared cached public store-id lookup | `api/screen/seen/route.ts`, `lib/firestore/clientStoreLookup.ts` |
 | Version-matched offline cache       | Uses local content only while offline and version-equal | `screenRuntime.ts`, display clients |
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
 | **Scoped `unstable_cache`** | 60s token-hashed state cache plus store menu cache | `screen/[token]/page.tsx` |
 | Generated screen menu projection | Avoids full project fallback reads on valid cold public renders; stores available display items plus base menu slug context | `CampaignsSummaryDocument.screen.menuProjection`, `screen/[token]/page.tsx` |
-| Public-safe screen listener mirror | Preserves 1-doc listener cost while avoiding public reads of owner/internal campaign summary data | `lib/screen/publicScreenState.ts`, `firestore.rules` |
+| Public-safe screen listener mirror | Preserves 1-doc listener cost while avoiding public reads of owner/internal campaign summary data; its browser module exposes only document identity, not a writer | `lib/screen/publicScreenState.ts`, `screenManagementServer.ts`, `firestore.rules` |
 | Server-only screen touch | Keeps connected TVs fresh without browser writes and expires the exact token cache | `lib/cache/publicClientCache.ts`, `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 | Seen signal cheap-fail ordering | Rejects oversized anonymous bodies, including no-length streamed bodies, and hashed-IP/token bursts before Firestore lookup | `api/screen/seen/route.ts` |
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
@@ -163,6 +163,8 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 > **Scoped cache correction (July 29, 2026):** Screen state uses a hashed bearer-token tag and menu reconstruction uses `menu-store-{storeId}`. A version touch expires only the affected screen state; a menu write expires the affected store menu. This removes global `screen-data` fan-out while retaining a 60-second fallback TTL.
 
 > **OBP accent continuity (July 29, 2026):** `/screen/[token]` reads the already-loaded store's normalized `publicPresence.accentColor`; rendering adds no Firestore operation. A save that owns the nested accent is classified as a rendered screen-output change. For an initialized screen, the existing guarded refresh transaction reads canonical screen plus private control and writes the updated canonical version plus token-free listener mirror. No screen-specific theme field, collection, index, listener, Storage path, Function, or scheduler was added.
+
+> **Exact-version acknowledgement correction (August 1, 2026):** Menu Board and Highlights now store independent bounded receipts in the existing canonical screen map. The request is strict-shaped and transaction-current; stale versions return `409`, duplicate mode/version/day opens are no-ops, and legacy clients retain the aggregate daily path. The token rate allowance is 12/hour to admit both modes across several legitimate menu updates without becoming a heartbeat. This adds no collection, index, rule, Storage operation, Function, scheduler, or public listener field. It can increase canonical receipt writes from one daily aggregate to roughly 2-6 writes per active TV mode/day under 1-5 content changes; the scale table above includes that upper range. Manual owner refresh adds one existing authenticated state read only when tapped.
 
 > **Private-control backfill scope correction (July 29, 2026):** migration
 > eligibility now requires canonical numeric store/tenant aliases, an exact
@@ -229,7 +231,7 @@ page.tsx                               page.tsx
 | `getScreenDataByTokenServer()` | 2-3 reads, plus a cached tenant-block lookup only when denormalized state is absent | Same | Same | ₹0 mode delta |
 | Projection/fallback menu data | 0-1+ reads   | 0-1+ reads        | 0-1+ reads        | $0        |
 | onSnapshot listener       | 1 read/connect    | 1 read/connect    | 1 read/connect    | $0        |
-| Daily seen signal         | 1-2 reads + 1 write | 1-2 reads + 1 write | 1-2 reads + 1 write | $0        |
+| Mode/version open acknowledgement | 4 reads + 0-1 write | Same | Same | $0 mode delta |
 | 6-hour refresh            | 6-12 reads/day    | 6-12 reads/day    | 6-12 reads/day    | $0        |
 | Owner uploads (Storage)   | Max 3 images      | N/A (no uploads)  | Max 3 images      | $0        |
 | **Total delta**           | —                 | —                 | —                 | **$0.00** |

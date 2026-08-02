@@ -17,6 +17,8 @@ export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
     url: string;
     domains: readonly string[];
+    tenantDomains?: readonly string[];
+    redirectDomains?: readonly string[];
     devPathPrefix: string;
     firebaseProjectId: string;
 }
@@ -101,8 +103,10 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
     preview: {
         menulist: {
             productId: 'menulist',
-            url: 'https://menulist.online',
-            domains: ['menulist.online', 'www.menulist.online'],
+            url: 'https://qa.menulist.digital',
+            domains: ['qa.menulist.digital'],
+            tenantDomains: ['qa.menulist.digital'],
+            redirectDomains: ['menulist.digital', 'www.menulist.digital'],
             devPathPrefix: '',
             firebaseProjectId: 'menulist-qa',
         },
@@ -146,7 +150,9 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
         menulist: {
             productId: 'menulist',
             url: 'https://menulist.ai',
-            domains: ['menulist.ai', 'www.menulist.ai'],
+            domains: ['menulist.ai', 'www.menulist.ai', 'app.menulist.ai'],
+            tenantDomains: ['menulist.online'],
+            redirectDomains: ['menulist.online', 'www.menulist.online', 'menulist.digital', 'www.menulist.digital'],
             devPathPrefix: '',
             firebaseProjectId: 'menulist',
         },
@@ -296,9 +302,30 @@ export function getActiveProductDomains(
     return [...getProductDeploymentTarget(productId, stage).domains];
 }
 
+export function getActiveTenantDomains(
+    productId: DeploymentProductId,
+    stage: DeploymentStage = getDeploymentStage(),
+): string[] {
+    return [...(getProductDeploymentTarget(productId, stage).tenantDomains || [])];
+}
+
+export function getActiveRedirectDomains(
+    productId: DeploymentProductId,
+    stage: DeploymentStage = getDeploymentStage(),
+): string[] {
+    return [...(getProductDeploymentTarget(productId, stage).redirectDomains || [])];
+}
+
 export function getKnownProductDomains(productId: DeploymentProductId): string[] {
     return Array.from(new Set(
-        Object.values(DEPLOYMENT_TARGETS).flatMap((targets) => targets[productId].domains),
+        Object.values(DEPLOYMENT_TARGETS).flatMap((targets) => {
+            const target = targets[productId];
+            return [
+                ...target.domains,
+                ...(target.tenantDomains || []),
+                ...(target.redirectDomains || []),
+            ];
+        }),
     ));
 }
 

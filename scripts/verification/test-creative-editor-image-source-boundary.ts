@@ -5,13 +5,13 @@ import {
     isSafeCreativeEditorNetworkImageSource,
 } from "../../src/modules/creative-editor/imageSourceBoundary";
 
-const origin = "https://owner.menulist.ai";
+const origin = "https://app.menulist.ai";
 
 assert.equal(isSafeCreativeEditorNetworkImageSource("https://cdn.example.com/menu.webp", origin), true);
 assert.equal(isSafeCreativeEditorNetworkImageSource("http://cdn.example.com/menu.jpg?version=2", origin), true);
 assert.equal(isSafeCreativeEditorNetworkImageSource("/assets/menu.png", origin), true);
 assert.equal(isSafeCreativeEditorNetworkImageSource("https://cdn.example.com/menu.svg", origin), false);
-assert.equal(isSafeCreativeEditorNetworkImageSource("blob:https://owner.menulist.ai/temporary", origin), false);
+assert.equal(isSafeCreativeEditorNetworkImageSource("blob:https://app.menulist.ai/temporary", origin), false);
 assert.equal(isSafeCreativeEditorNetworkImageSource("ftp://cdn.example.com/menu.png", origin), false);
 assert.equal(isSafeCreativeEditorNetworkImageSource("javascript:alert(1)", origin), false);
 assert.equal(isSafeCreativeEditorNetworkImageSource("data:image/png;base64,iVBORw0KGgo=", origin), false);

@@ -16,6 +16,7 @@ export type OutletCreateResponse = {
     outletSlug: string;
     quantity: number | null;
     storeId: number;
+    storeKey: string;
     success: true;
     tenantName: string;
 };
@@ -92,6 +93,7 @@ export const isOutletCreateResponse = (data: unknown): data is OutletCreateRespo
     isRecord(data)
     && data.success === true
     && isPositiveSafeInteger(data.storeId)
+    && isNonEmptyString(data.storeKey)
     && isOutletSlug(data.outletSlug)
     && isNonEmptyString(data.outletName)
     && typeof data.masterPromoted === 'boolean'

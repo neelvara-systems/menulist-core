@@ -72,7 +72,7 @@ Do not place raw capture files, private demo data, or unapproved screenshots in 
 Approved public screenshot exception (June 15, 2026):
 
 - `/public/images/website/print-ready-kit/print-assets-dashboard.jpg` is a cropped Assets template-list capture with account-header details removed.
-- `/public/images/website/print-ready-kit/print-assets-editor.jpg` is the print asset editor capture for the dedicated Print-ready Kit page.
+- `/public/images/website/print-ready-kit/print-assets-editor.jpg` is the deterministic fictional print editor proof for the dedicated Print-ready Kit page. It is generated locally by `scripts/website-assets/generate-product-proof-assets.mjs` and uses the active `menulist.online` tenant-link contract.
 - These assets are mounted only on `/features/print-ready-kit` through `PrintReadyKitProofGallery.tsx`.
 
 Approved public feature screenshot proof assets (June 16, 2026):

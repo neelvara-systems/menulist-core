@@ -41,13 +41,11 @@ export default function MoveCategoryAction({
 
     useEffect(() => {
         onPreviewChange(preview);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [preview]);
+    }, [onPreviewChange, preview]);
 
     useEffect(() => {
         onConfigReady(destinationId && preview && preview.itemsToMove > 0 ? destinationId : null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [destinationId, preview]);
+    }, [destinationId, onConfigReady, preview]);
 
     const lockedCount = selectedItems.filter((i) => i.isLocked).length;
 

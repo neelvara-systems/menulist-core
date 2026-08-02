@@ -2,12 +2,13 @@
 
 import { getOwnerLabels } from '@config/businessLabels';
 import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { normalizeMobileMenuUpdatedAt, normalizeMobileMenuVersion } from '@lib/mobile/menuCommandMetadata';
 import { timeAgo } from '@util/dateTime/timeAgo';
 import { theme } from 'antd';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPalette, LuPen, LuPlus, LuPrinter, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
-import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
+import { Button, Flex, List, NavBar, Popup, Text } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from '../sheets/menuSheetLayout';
 
 type CommandAction = {
@@ -23,7 +24,7 @@ interface MobileMenuCommandSheetProps {
     businessType?: string;
     businessCategory?: string;
     labels: OfferingLabels;
-    lastUpdatedAt?: any;
+    lastUpdatedAt?: unknown;
     menuVersion?: number;
     onAddItem: () => void;
     onCategories: () => void;
@@ -47,10 +48,10 @@ interface MobileMenuCommandSheetProps {
     visible: boolean;
 }
 
-function formatRelativeDate(timestamp: any, locale: string): string {
+function formatRelativeDate(timestamp: unknown, locale: string): string {
     try {
-        const date = timestamp?.toDate?.() || (timestamp instanceof Date ? timestamp : new Date(timestamp));
-        if (isNaN(date.getTime())) return '';
+        const date = normalizeMobileMenuUpdatedAt(timestamp);
+        if (!date) return '';
         return timeAgo(date, locale);
     } catch {
         return '';
@@ -86,8 +87,13 @@ export default function MobileMenuCommandSheet({
 }: MobileMenuCommandSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const tMenuStatus = useTranslations('BusinessSettings.publicCustomer.menu');
+    const tPrint = useTranslations('MobileShare');
+    const tPosSync = useTranslations('PosSync');
     const locale = useLocale();
     const availabilityLabels = getOwnerLabels(businessType, businessCategory);
+    const lastUpdatedLabel = formatRelativeDate(lastUpdatedAt, locale);
+    const normalizedMenuVersion = normalizeMobileMenuVersion(menuVersion);
 
     const bulkActions = useMemo<CommandAction[]>(() => [
         {
@@ -173,14 +179,14 @@ export default function MobileMenuCommandSheet({
             key: 'preview',
             icon: <LuExternalLink style={{ fontSize: 20 }} />,
             title: t('viewUpdatedMenu'),
-            description: `See how customers view this ${labels.offeringLower}.`,
+            description: t('menuCompletionReadyDesc'),
             onClick: onPreview,
         },
         ...(onPrintMenu ? [{
             key: 'print-menu',
             icon: <LuPrinter style={{ fontSize: 20 }} />,
-            title: 'Print Menu',
-            description: 'Preview and create a PDF from this menu.',
+            title: tPrint('menuPdf'),
+            description: tPrint('menuPdfDesc'),
             onClick: onPrintMenu,
         }] : []),
         ...(onOpenDesignEditor ? [{
@@ -225,7 +231,7 @@ export default function MobileMenuCommandSheet({
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         }] : []),
-    ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onPrintMenu, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
+    ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onPrintMenu, onReorderMenu, onSmartRecommendations, onUploadMenu, t, tPrint]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -276,12 +282,14 @@ export default function MobileMenuCommandSheet({
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
                     right={(
-                        <Text
+                        <Button
+                            aria-label={t('close')}
+                            fill="none"
                             onClick={onClose}
                             style={{ alignItems: 'center', color: token.colorText, cursor: 'pointer', display: 'flex', justifyContent: 'center', minHeight: 44, minWidth: 44 }}
                         >
                             <LuX size={18} />
-                        </Text>
+                        </Button>
                     )}
                 >
                     {t('manageAndControl', { offering: labels.offeringTitle })}
@@ -302,11 +310,13 @@ export default function MobileMenuCommandSheet({
                         {renderActionList(menuSetupActions)}
                     </Flex>
 
-                    { (lastUpdatedAt || menuVersion) && (
+                    {(lastUpdatedLabel || normalizedMenuVersion) && (
                         <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 6, paddingTop: 10 }}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                {lastUpdatedAt && `Updated ${formatRelativeDate(lastUpdatedAt, locale)}`}
-                                {menuVersion ? `${lastUpdatedAt ? ' · ' : ''}v${menuVersion}` : ''}
+                                {lastUpdatedLabel ? tMenuStatus('updated', { when: lastUpdatedLabel }) : ''}
+                                {normalizedMenuVersion
+                                    ? `${lastUpdatedLabel ? ' · ' : ''}${tPosSync('menuVersion')} ${normalizedMenuVersion}`
+                                    : ''}
                             </Text>
                         </div>
                     )}

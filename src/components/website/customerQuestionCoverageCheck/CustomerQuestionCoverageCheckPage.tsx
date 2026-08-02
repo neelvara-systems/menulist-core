@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -39,6 +39,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildCustomerQuestionCoverageReport } from '@/lib/public-truth-tools/customerQuestionCoverageReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   CustomerQuestionCoverageCheckId,
   CustomerQuestionCoverageInput,
@@ -189,6 +190,7 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<CustomerQuestionCoverageHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -338,6 +340,8 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('customer_question_coverage_check_handoff_submitted', eventContext);
 
@@ -380,10 +384,13 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('customer_question_coverage_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -490,6 +497,7 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
           <label>
             <span>{t('handoff.name')}</span>
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -498,6 +506,7 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
           <label>
             <span>{t('handoff.email')}</span>
             <input
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -509,6 +518,7 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
         <label>
           <span>{t('handoff.phone')}</span>
           <input
+            maxLength={40}
             value={handoff.phoneNumber}
             onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
             autoComplete="tel"
@@ -520,6 +530,7 @@ function CustomerQuestionCoverageReportCard({ report }: { report: CustomerQuesti
           <label htmlFor="customer-question-coverage-check-website">{t('handoff.website')}</label>
           <input
             id="customer-question-coverage-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -672,6 +683,7 @@ export default function CustomerQuestionCoverageCheckPage() {
                 <label>
                   <span>{t('fields.businessName')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
                     autoComplete="organization"
@@ -680,6 +692,7 @@ export default function CustomerQuestionCoverageCheckPage() {
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))}
                     autoComplete="address-level2"
@@ -707,6 +720,7 @@ export default function CustomerQuestionCoverageCheckPage() {
               <label>
                 <span>{t('fields.publicUrl')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                   value={form.publicUrl}
                   onChange={(event) => setForm((current) => ({ ...current, publicUrl: event.target.value }))}
                   inputMode="url"
@@ -717,6 +731,7 @@ export default function CustomerQuestionCoverageCheckPage() {
               <label>
                 <span>{t('fields.sourceText')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.sourceText}
                   onChange={(event) => setForm((current) => ({ ...current, sourceText: event.target.value }))}
                   rows={6}
@@ -726,6 +741,7 @@ export default function CustomerQuestionCoverageCheckPage() {
               <label>
                 <span>{t('fields.commonQuestions')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.commonQuestions}
                   onChange={(event) => setForm((current) => ({ ...current, commonQuestions: event.target.value }))}
                   rows={5}
@@ -778,7 +794,7 @@ export default function CustomerQuestionCoverageCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <CustomerQuestionCoverageReportCard report={report} /> : <EmptyReport />}
+            {hasChecked ? <CustomerQuestionCoverageReportCard key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

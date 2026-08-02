@@ -817,6 +817,9 @@ function verifyBillingEntitlementBoundary() {
       'canManageAnswerlatticeBillingMutation(session, request)',
       `${routeLabel} Answerlattice billing permission boundary`,
     );
+    assertIncludes(content, 'failClosedOnProviderError: true', `${routeLabel} billing limiter outage boundary`);
+    assertIncludes(content, "reason === 'provider_unavailable'", `${routeLabel} distinguishes limiter outage from quota exhaustion`);
+    assertIncludes(content, 'status: providerUnavailable ? 503 : 429', `${routeLabel} returns retryable unavailable status for limiter outage`);
   });
   [createSubscription, cancelSubscription, pauseSubscription, resumeSubscription, upgradeSubscription, createTopupOrder]
     .forEach((content) => assertOrder(
@@ -875,11 +878,12 @@ function verifyBillingEntitlementBoundary() {
       "getRateLimitForFeature('PAYMENT_VERIFICATION')",
       'const userRateLimitHash = hashPublicRateLimitValue(',
       key,
-      "logger.security('Payment Verification Rate Limit Exceeded'",
+      "logger.security(providerUnavailable ? 'Payment Verification Rate Limit Provider Unavailable' : 'Payment Verification Rate Limit Exceeded'",
       `endpoint: '${endpoint}'`,
       "feature: 'PAYMENT_VERIFICATION'",
       "'Retry-After': String(waitSeconds)",
     ].forEach((token) => assertIncludes(content, token, label));
+    assertIncludes(content, '...(providerUnavailable ? {} : {', `${label} omits quota diagnostics on provider outage`);
     assertOrder(content, "getRateLimitForFeature('PAYMENT_VERIFICATION')", 'readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES', `${label} before bounded body`);
     assertOrder(content, 'const rateLimitResult = await checkRateLimit({', 'readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES', `${label} check before bounded body`);
     assertNotIncludes(content, rawKey, `${label} raw user key exclusion`);

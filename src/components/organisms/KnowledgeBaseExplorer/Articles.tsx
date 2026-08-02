@@ -4,7 +4,7 @@ import ArticleView from '@organisms/ArticleView';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Button, Empty, Flex, Skeleton, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuFileSearch, LuRefreshCw } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -18,34 +18,52 @@ interface ArticlesProps {
 }
 
 const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch }: ArticlesProps) => {
-    const { getArticle } = useArticleCache();
+    const { cacheScopeKey, getArticle } = useArticleCache();
+    const getArticleRef = useRef(getArticle);
     const [fullArticles, setFullArticles] = useState<(AnswerlatticeReadableArticle | null)[]>([]);
+    const [loadedRequestKey, setLoadedRequestKey] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const requestKey = JSON.stringify([cacheScopeKey, articles.map((article) => article.id)]);
+    const requestIsCurrent = loadedRequestKey === requestKey;
+    const visibleArticles = requestIsCurrent ? fullArticles : [];
+    const visibleLoading = loading || !requestIsCurrent;
 
     useEffect(() => {
+        getArticleRef.current = getArticle;
+    }, [getArticle]);
+
+    useEffect(() => {
+        let active = true;
+
         const fetchAllArticles = async () => {
             setLoading(true);
             const promises = articles.map(article =>
-                getArticle(article.id).catch((): null => null)
+                getArticleRef.current(article.id).catch((): null => null)
             );
             const results = await Promise.all(promises);
+            if (!active) return;
             setFullArticles(results);
+            setLoadedRequestKey(requestKey);
             setLoading(false);
         };
 
         if (articles.length > 0) {
-            fetchAllArticles();
+            void fetchAllArticles();
         } else {
             setFullArticles([]);
+            setLoadedRequestKey(requestKey);
             setLoading(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [articles]);
+
+        return () => {
+            active = false;
+        };
+    }, [articles, requestKey]);
 
     useEffect(() => {
-        if (loading || !activeArticleId || fullArticles.length === 0) return;
+        if (visibleLoading || !activeArticleId || visibleArticles.length === 0) return;
 
-        const activeArticle = fullArticles.find(article => article?.id === activeArticleId);
+        const activeArticle = visibleArticles.find(article => article?.id === activeArticleId);
         if (!activeArticle) return;
 
         const slug = normalizeHelpCenterRouteSegment(activeArticle.title);
@@ -57,7 +75,7 @@ const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch
         }, 100);
 
         return () => window.clearTimeout(scrollTimer);
-    }, [activeArticleId, fullArticles, loading]);
+    }, [activeArticleId, visibleArticles, visibleLoading]);
 
     return (
         <Flex vertical gap="large">
@@ -65,15 +83,15 @@ const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch
                 <Title level={4}>{parent.title}</Title>
                 <Text type="secondary">{parent.description}</Text>
             </div>
-            {loading ? (
+            {visibleLoading ? (
                 // Show skeletons while loading
                 <Flex vertical gap="middle">
                     {articles.map(article => (
                         <Skeleton key={article.id} active paragraph={{ rows: 4 }} />
                     ))}
                 </Flex>
-            ) : fullArticles.length > 0 ? (
-                fullArticles.map(article => article && (
+            ) : visibleArticles.length > 0 ? (
+                visibleArticles.map(article => article && (
                     <ArticleView
                         key={article.id}
                         article={article}

@@ -56,6 +56,7 @@ const PHONE_OTP_SEND_FAILED_MESSAGE = 'Could not send code. Please try again.';
 const PHONE_OTP_VERIFY_FAILED_MESSAGE = 'Invalid verification code.';
 const PHONE_OTP_OPEN_ACCOUNT_FAILED_MESSAGE = 'Could not open your account. Please request a new code.';
 const PHONE_OTP_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const PHONE_OTP_RESEND_AFTER_SECONDS_MAX = 300;
 const PHONE_OTP_VERIFY_SAFE_MESSAGES = new Set([
     PHONE_OTP_VERIFY_FAILED_MESSAGE,
     PHONE_OTP_OPEN_ACCOUNT_FAILED_MESSAGE,
@@ -83,6 +84,13 @@ const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
 );
 
+const isValidPhoneOtpResendAfterSeconds = (value: unknown): value is number => (
+    typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= 1
+    && value <= PHONE_OTP_RESEND_AFTER_SECONDS_MAX
+);
+
 const isSuccessfulPhoneOtpStartResponse = (
     value: PhoneOtpStartResponse | null | undefined,
     expectedPurpose: PhoneOtpPurpose,
@@ -90,12 +98,14 @@ const isSuccessfulPhoneOtpStartResponse = (
     action: 'start';
     challengeId: string;
     purpose: PhoneOtpPurpose;
+    resendAfterSeconds: number;
     success: true;
 } => (
     value?.success === true
     && value.action === 'start'
     && value.purpose === expectedPurpose
     && isNonEmptyString(value.challengeId)
+    && isValidPhoneOtpResendAfterSeconds(value.resendAfterSeconds)
 );
 
 const isSuccessfulPhoneOtpVerifyResponse = (
@@ -260,6 +270,7 @@ export default function PhoneOtpAuthPanel({
                     maxBytes: PHONE_OTP_RESPONSE_JSON_MAX_BYTES,
                     success: data?.success === true,
                     hasChallengeId: isNonEmptyString(data?.challengeId),
+                    hasValidResendAfterSeconds: isValidPhoneOtpResendAfterSeconds(data?.resendAfterSeconds),
                 });
                 throw new Error(PHONE_OTP_SEND_FAILED_MESSAGE);
             }
@@ -268,7 +279,7 @@ export default function PhoneOtpAuthPanel({
             setPhoneMasked(isNonEmptyString(data.phoneMasked) ? data.phoneMasked : '');
             setCode('');
             setStep('code');
-            setCooldown(Number(data.resendAfterSeconds || 60));
+            setCooldown(data.resendAfterSeconds);
         } catch {
             setError(PHONE_OTP_SEND_FAILED_MESSAGE);
         } finally {

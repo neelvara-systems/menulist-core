@@ -172,7 +172,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
     const userData = {
         ...(session?.user || {}),
         email: session?.user?.email || '',
-        image: (session?.user as any)?.image || '',
+        image: session?.user?.image || '',
         name: session?.user?.name || session?.user?.email || 'User',
     };
 
@@ -379,7 +379,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                     <Badge dot status="success" style={{ right: 8, top: 3 }}>
                         <Avatar
                             size={32}
-                            src={(session?.user as any)?.image || undefined}
+                            src={session?.user?.image || undefined}
                             style={{
                                 backgroundColor: token.colorPrimary,
                                 cursor: 'pointer',

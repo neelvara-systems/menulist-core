@@ -54,7 +54,8 @@ Desktop renders:
 - project selector for multi-project stores
 - official business link and direct project link cards
 - Store Menu, Business Profile, Project Menu, and outlet-scoped QR downloads
-- Digital Screens links, including bounded screen-link read failure diagnostics
+- Digital Screens links with independent exact-version Menu Board/Highlights
+  status, owner-triggered status refresh, and bounded read/refresh diagnostics
 - Menu Kit and print asset downloads
 - Print Assets focused route
 - Print Menu / Menu Card Export route entry
@@ -84,6 +85,7 @@ Bounded diagnostics cover:
 
 - output hub data-load failures
 - desktop screen-link load failures through `use_menulist_screen_links_load_failed`
+- desktop screen-status refresh failures through `use_menulist_screen_status_refresh_failed`
 - starter activation signal write failures
 - desktop page-level output copy failures through `use_menulist_copy_failed`; copied feedback and copy-driven starter activation signals wait for Clipboard API or acknowledged textarea fallback success
 - desktop direct public-output open failures through `use_menulist_open_failed`; selected menu, Menu Board, and Highlights opens use `noopener,noreferrer`

@@ -101,6 +101,19 @@ requireToken(
 ].forEach((token) => requireToken(mobileDashboard, token, 'mobile dashboard owner action layer'));
 
 [
+  'selectedProjectSummary as any',
+  'storeDetails as any',
+  'const renderMetricsCards = (metrics?: any)',
+  'const renderAiSummary = (summary?: any)',
+  'const periodData = currentViewData as any',
+  'topZeroResultSearchTerms.map((term: any)',
+  'historicalWeeks.map((w: any)',
+  'historicalWeeks.map((week: any',
+].forEach((token) => forbidToken(mobileDashboard, token, 'mobile dashboard typed DTO boundary'));
+
+requireToken(helper, 'lastPublishedAt?: unknown;', 'owner action minimal project contract');
+
+[
   'Feature Flag:** `ENABLE_OWNER_ACTION_LAYER`',
   'No new Firestore collection, Firestore field, API route, Cloud Function',
   'npm run verify:owner-action-layer',

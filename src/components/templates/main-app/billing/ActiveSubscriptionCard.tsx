@@ -1,5 +1,7 @@
 'use client'
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { helpCenterTabRouting } from '@constant/navigations';
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
@@ -170,10 +172,7 @@ function ActiveSubscriptionCard({
     const handleOpenPaymentLink = (flow: 'pending_payment' | 'retry_payment') => {
         if (!subscriptionCheckoutUrl) return;
         try {
-            const opened = window.open(subscriptionCheckoutUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_subscription_payment_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(subscriptionCheckoutUrl);
         } catch (error) {
             logPaymentFailure('payment_desktop_subscription_payment_link_open_failed', error, buildSubscriptionActionPaymentLogContext(flow, {
                 ...getBoundedPaymentStringContext('shortUrl', subscriptionCheckoutUrl),

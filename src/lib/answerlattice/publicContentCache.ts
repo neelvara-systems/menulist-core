@@ -3,14 +3,8 @@ import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePublicCacheTags } from '@lib/actions/revalidateAnswerlatticePublicCache';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { projectAnswerlatticePublicFaq } from '@lib/answerlattice/faqContent';
-import {
-    normalizeAnswerlatticePublicCategories,
-    projectAnswerlatticePublicArticle,
-    projectAnswerlatticePublicChangelogPage,
-    type AnswerlatticePublicArticle,
-    type AnswerlatticePublicChangelogPage,
-} from '@lib/answerlattice/publicContentBoundary';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticePublicCategories, projectAnswerlatticePublicArticle, projectAnswerlatticePublicChangelogPage, type AnswerlatticePublicArticle, type AnswerlatticePublicChangelogPage, } from '@lib/answerlattice/publicContentBoundary';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticePublicFaq } from '@type/answerlattice';
 import type { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
@@ -27,8 +21,7 @@ type Scope = {
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    if (!answerlatticeFirestoreAdmin) {
         throw new Error('Answerlattice Firestore Admin is not configured');
     }
     return answerlatticeFirestoreAdmin;
@@ -66,7 +59,7 @@ const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): Knowl
 };
 
 const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<AnswerlatticePublicFaq[]> => {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
@@ -91,7 +84,7 @@ const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<Ans
 };
 
 const fetchCategories = async (scope: Scope): Promise<KnowledgeBaseCategoriesType | null> => {
-    const scopedDoc = await getAnswerlatticeDb()
+    const scopedDoc = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.KB_CATEGORIES)
         .doc(getKnowledgeBaseCategoriesDocId(scope))
         .get();
@@ -104,7 +97,7 @@ const fetchCategories = async (scope: Scope): Promise<KnowledgeBaseCategoriesTyp
 };
 
 const fetchArticle = async (scope: Scope, articleId: string): Promise<AnswerlatticePublicArticle | null> => {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.KB_ARTICLES)
         .doc(articleId)
         .get();
@@ -117,7 +110,7 @@ const fetchArticle = async (scope: Scope, articleId: string): Promise<Answerlatt
 };
 
 const fetchLatestChangelogPage = async (scope: Scope): Promise<AnswerlatticePublicChangelogPage | null> => {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .orderBy('pageNumber', 'desc')
         .limit(PUBLIC_CHANGELOG_PAGE_SCAN_LIMIT)
@@ -135,7 +128,7 @@ const fetchLatestChangelogPage = async (scope: Scope): Promise<AnswerlatticePubl
 };
 
 const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): Promise<AnswerlatticePublicChangelogPage | null> => {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .where('pageNumber', '<', beforePageNumber)
         .orderBy('pageNumber', 'desc')

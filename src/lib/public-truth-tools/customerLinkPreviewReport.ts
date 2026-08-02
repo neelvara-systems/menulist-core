@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   CustomerLinkPreviewCheckId,
   CustomerLinkPreviewEvidence,
@@ -16,8 +21,11 @@ const REQUIRED_CHECKS = new Set<CustomerLinkPreviewCheckId>([
   'customer_action',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function getCustomerLinkPreviewEvidenceText(evidence: CustomerLinkPreviewEvidence): string {
@@ -89,9 +97,9 @@ function getNextActionType(status: CustomerLinkPreviewReport['status']): Custome
 }
 
 export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput): CustomerLinkPreviewReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
   const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'customer_link_preview_current_customer_link');
   const hasBusinessName = businessName.length >= 2;

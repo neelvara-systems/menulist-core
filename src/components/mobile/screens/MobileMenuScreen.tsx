@@ -3144,7 +3144,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             onOpenOfficialPage={onOpenOfficialPage}
                             onOpenShare={onOpenShare}
                             project={menuData}
-                            storeDetails={storeDetails as any}
+                            storeDetails={storeDetails}
                         />
                     ) : null}
 

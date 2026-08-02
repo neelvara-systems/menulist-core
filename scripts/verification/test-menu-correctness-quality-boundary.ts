@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { getTrustSignalFreshnessText } from '../../src/lib/menu/trustSignalFreshness';
+import {
+    getTrustSignalFreshnessText,
+    getTrustSignalLocationText,
+} from '../../src/lib/menu/trustSignalFreshness';
 import {
     computeQualitySignals,
     isPriceOutlierReviewed,
@@ -192,6 +195,11 @@ const now = new Date('2026-07-16T12:00:00.000Z');
 assert.equal(getTrustSignalFreshnessText('2026-07-16T11:00:00.000Z', now), 'Updated today');
 assert.equal(getTrustSignalFreshnessText('2026-07-16T13:00:00.000Z', now), null);
 assert.equal(getTrustSignalFreshnessText('2026-05-01T12:00:00.000Z', now), null);
+assert.equal(getTrustSignalLocationText(' Bandra\nWest ', 'Mumbai'), 'Bandra West, Mumbai');
+assert.equal(getTrustSignalLocationText('Mumbai', ' mumbai '), 'Mumbai');
+assert.equal(getTrustSignalLocationText('', '\u0000  '), null);
+assert.equal(getTrustSignalLocationText('A'.repeat(140), null), 'A'.repeat(120));
+assert.equal(getTrustSignalLocationText({ area: 'Bandra' }, 'Mumbai'), 'Mumbai');
 
 assert.equal(isMenuSnapshotPayloadWithinLimit({ items: [{ id: 'small' }] }), true);
 assert.equal(isMenuSnapshotPayloadWithinLimit(undefined), false);

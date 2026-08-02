@@ -35,8 +35,12 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
 
+const TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
+
 const SetStatusSchema = z.object({
     action: z.literal('set'),
+    expectedStoreId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH),
+    expectedTenantId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH),
     type: z.enum(TEMP_STATUS_TYPES),
     message: z.string().max(100).optional(),
     expiresAt: z.string().datetime({ message: "expiresAt must be a valid ISO 8601 datetime" }),
@@ -44,11 +48,12 @@ const SetStatusSchema = z.object({
 
 const ClearStatusSchema = z.object({
     action: z.literal('clear'),
+    expectedStoreId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH),
+    expectedTenantId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH),
 });
 
 const RequestSchema = z.discriminatedUnion('action', [SetStatusSchema, ClearStatusSchema]);
 const TEMP_STATUS_ACTION_MAX_BODY_BYTES = 4 * 1024;
-const TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
 
 function normalizeSessionDocumentId(value: unknown): string | null {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -130,6 +135,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { error: "Invalid input", details: getSafeZodValidationDetails(validation.error) },
             { status: 400 }
         );
+    }
+    const expectedStoreId = normalizeSessionDocumentId(validation.data.expectedStoreId);
+    const expectedTenantId = normalizeSessionDocumentId(validation.data.expectedTenantId);
+    if (expectedStoreId !== storeId || expectedTenantId !== tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const db = admin.firestore();

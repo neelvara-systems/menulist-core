@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   SocialBioLinkCheckEvidence,
   SocialBioLinkCheckId,
@@ -13,8 +18,11 @@ const REQUIRED_CHECKS = new Set<SocialBioLinkCheckId>([
   'customer_action',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function getSocialBioLinkCheckEvidenceText(evidence: SocialBioLinkCheckEvidence): string {
@@ -120,9 +128,9 @@ function getNextActionType(
 }
 
 export function buildSocialBioLinkCheckReport(input: SocialBioLinkCheckInput): SocialBioLinkCheckReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
   const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'social_bio_link_current_customer_link');
   const placementCount = getPlacementCount(input);

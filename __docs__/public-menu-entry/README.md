@@ -16,10 +16,10 @@
 
 1. The visitor opens the public page. Upload or link submission redirects an unauthenticated visitor to sign in.
 2. The signed-in client admits one submission at a time and submits a JPEG, PNG, WebP, or permission-confirmed public link. The returned draft identifier must pass the same exact UUID projector used by polling, claim, and preview routing.
-3. The protected route applies feature flags, a fail-closed 30-per-5-minute admission limit, account-scope integrity, current extraction permission for existing stores, SAFE_MODE, bounded parsing, source validation, active-draft reuse, and the 5-new-sources-per-24-hours quota.
+3. The protected private/no-store route applies feature flags, a fail-closed 30-per-5-minute admission limit, account-scope integrity, current extraction permission for existing stores, SAFE_MODE, bounded strict parsing, source validation, active-draft reuse, and the 5-new-sources-per-24-hours quota. Limiter outages do not expose quota timing.
 4. The route creates one owner-bound 24-hour draft and deterministic extraction job atomically. Link acquisition keeps its existing SSRF, redirect, MIME, size, and confidence boundaries.
-5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. Each response is projected through the canonical browser-safe extracted-menu/profile contract; malformed completed truth fails closed, and cleanup aborts an obsolete in-flight poll.
-6. One browser claim can be in flight at a time. Claim validates ownership, TTL, source envelope, prices, phone, account scope, and current publish permission for an existing store. New accounts receive the existing starter tenant/store setup.
+5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. The server revalidates the exact temporary Storage source envelope and projects every persisted field through the canonical browser-safe menu/profile contract; the browser repeats that projection. Malformed source or completed truth fails closed, and cleanup aborts an obsolete in-flight poll.
+6. One browser claim can be in flight at a time. Claim validates ownership, TTL, source envelope, prices, phone, account scope, and transaction-locked current user and publish authority for an existing store. New accounts receive the existing starter tenant/store setup only after the same transaction locks and confirms the user is still eligible and empty-scope.
 7. One transaction creates the canonical project, summary projection, new account records when needed, and the complete idempotency receipt. Project identity, unique non-reserved slug, public price truth, and optional Menu Correctness metadata are committed together.
 8. Public menu, OBP, client-store, screen, and assistant caches are refreshed after commit. A refresh failure does not roll back committed truth.
 9. The success page admits only the active MenuList platform/tenant host family
@@ -31,8 +31,8 @@
 ## Owner and account boundaries
 
 - A complete existing tenant/store session is treated as an existing account; a partial session fails with recovery guidance.
-- Existing accounts need current `USE_MENU_EXTRACTION` admission before source work and current `PUBLISH_MENU` admission inside claim.
-- New accounts do not have a store permission document yet; claim creates the existing starter account path.
+- Existing accounts need current `USE_MENU_EXTRACTION` admission before source work. Claim locks the current user record, requires its exact tenant/store/role mapping, and then evaluates `PUBLISH_MENU` from that current role inside the write transaction.
+- New accounts do not have a store permission document yet; claim locks current identity, lifecycle, revocation and empty-scope truth before creating the existing starter account path.
 - City is required only for a new account/subdomain. Existing accounts reuse store identity and are not asked for city.
 - A valid optional phone is normalized before public presence is written.
 - Extraction and claim do not charge Razorpay. Subscription conversion remains the separate existing Billing flow.

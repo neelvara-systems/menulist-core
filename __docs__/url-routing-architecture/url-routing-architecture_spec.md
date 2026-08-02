@@ -73,7 +73,7 @@
 - Subdomain → custom domain 301 redirect (SEO consolidation)
 - Lowercase + trailing slash URL normalization (middleware 301)
 - Brand OBP for multi-store chains (`BrandOBPContent.tsx`)
-- Outlet path routing (`brand.menulist.ai/pune/food-menu`)
+- Outlet path routing (`brand.menulist.online/pune/food-menu`)
 - Subdomain uniqueness enforcement (pre-check + storeId suffix fallback)
 - Firebase cost optimization (6 optimizations across all public surfaces)
 
@@ -111,9 +111,9 @@
 
 ### Story 3: Multi-Store Brand URL
 
-> As a chain owner with 5 outlets, I want one link (`storypizza.menulist.ai`) that shows all my locations.
+> As a chain owner with 5 outlets, I want one link (`storypizza.menulist.online`) that shows all my locations.
 
-**Flow:** Customer visits `storypizza.menulist.ai` → Brand OBP shows location selector → customer taps "Pune" → navigates to `storypizza.menulist.ai/pune` → Pune outlet OBP.
+**Flow:** Customer visits `storypizza.menulist.online` → Brand OBP shows location selector → customer taps "Pune" → navigates to `storypizza.menulist.online/pune` → Pune outlet OBP.
 
 ---
 

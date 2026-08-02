@@ -134,6 +134,8 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_OUTPUT_PICKER: true,
     ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY: true,
     ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true,
+    ENABLE_CAMPAIGNCUE_VIDEO_STUDIO: true,
+    ENABLE_CAMPAIGNCUE_IN_HOUSE_VIDEO_RENDER: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS_GENERATED_SOURCE: false,
@@ -1340,7 +1342,7 @@ export const FEATURE_FLAGS = {
      * Official Business Page (OBP) — Canonical public identity endpoint
      *
      * When enabled:
-     * - Subdomain root (joespizza.menulist.ai/) shows OBP identity page
+     * - Subdomain root (joespizza.menulist.online/) shows OBP identity page
      * - Digital menu accessible at /menu (reserved slug) and project slugs
      * - Custom domains also show OBP at root
      *

@@ -13,7 +13,14 @@ import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { type OwnerDashboardViewMode } from '@template/main-app/projects/types';
+import {
+    type AISummary,
+    type MonthlyViewData,
+    type OwnerDashboardMetrics,
+    type OwnerDashboardViewMode,
+    type WeeklyViewData,
+    type DailyViewData,
+} from '@template/main-app/projects/types';
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
@@ -179,6 +186,13 @@ export default function MobileDashboardScreen({
                 return data?.overview || null;
         }
     }, [data?.daily, data?.monthly, data?.overall, data?.overview, data?.today, data?.weekly, viewMode]);
+    const selectedPeriodData: DailyViewData | WeeklyViewData | MonthlyViewData | null = viewMode === 'daily'
+        ? data?.daily || null
+        : viewMode === 'weekly'
+            ? data?.weekly || null
+            : viewMode === 'monthly'
+                ? data?.monthly || null
+                : null;
     const businessHealthMetrics = useMemo(
         () => buildOwnerBusinessActivityMetrics(getOwnerBusinessPrimaryAnalyticsPeriod(businessHealthAnalytics?.periods))
             .map((metric) => ({ ...metric, delta: metric.detail })),
@@ -188,8 +202,8 @@ export default function MobileDashboardScreen({
     const ownerActionLayer = useMemo(() => (
         FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !loadingProjects && selectedProjectId
             ? buildOwnerActionLayer({
-                project: selectedProjectSummary as any,
-                storeDetails: storeDetails as any,
+                project: selectedProjectSummary,
+                storeDetails,
             })
             : null
     ), [loadingProjects, selectedProjectId, selectedProjectSummary, storeDetails]);
@@ -298,7 +312,7 @@ export default function MobileDashboardScreen({
     const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
     const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
     const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
-        .filter((surface) => Boolean((storeDetails as any)?.menuPresence?.[surface])).length;
+        .filter((surface) => Boolean(storeDetails?.menuPresence?.[surface as keyof NonNullable<typeof storeDetails.menuPresence>])).length;
     const feedbackReady = storeDetails ? storeDetails.feedbackEnabled !== false : false;
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
     const selectedMenuIsLive = selectedProjectSummary?.active !== false;
@@ -362,7 +376,7 @@ export default function MobileDashboardScreen({
         </div>
     );
 
-    const renderMetricsCards = (metrics?: any) => (
+    const renderMetricsCards = (metrics?: OwnerDashboardMetrics) => (
         <Flex gap={12} wrap>
             {renderMetricTile(labels.scansLabel, formatNumber(metrics?.menuVisits || 0), <LuEye color={token.colorPrimary} size={14} />)}
             {renderMetricTile(t('itemTaps'), formatNumber(metrics?.itemClicks || 0), <LuFlame color={token.colorWarning} size={14} />)}
@@ -372,7 +386,7 @@ export default function MobileDashboardScreen({
             {renderMetricTile(t('searches'), formatNumber(metrics?.searches || 0), <LuBarChart3 color={token.colorInfo} size={14} />)}
             {renderMetricTile(t('noResultSearches'), formatNumber(metrics?.zeroResultSearches || 0), <LuTrendingDown color={token.colorWarning} size={14} />)}
             {renderMetricTile(t('unavailableInterest'), formatNumber(metrics?.unavailableItemTaps || 0), <LuShield color={token.colorWarning} size={14} />)}
-            {metrics?.smartPicksRendered > 0 ? (
+            {metrics && metrics.smartPicksRendered > 0 ? (
                 <>
                     {renderMetricTile(t('smartPicks'), formatNumber(metrics.smartPicksRendered), <LuZap color={token.colorInfo} size={14} />)}
                     {renderMetricTile(t('spClicks'), formatNumber(metrics.smartPicksClicks || 0), <LuZap color={token.colorSuccess} size={14} />)}
@@ -587,7 +601,7 @@ export default function MobileDashboardScreen({
                 </Text>
                 {today.topZeroResultSearchTerms?.length ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {t('noResultTermsSoFar', { terms: today.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ') })}
+                        {t('noResultTermsSoFar', { terms: today.topZeroResultSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ') })}
                     </Text>
                 ) : null}
                 {topUnavailable ? (
@@ -632,7 +646,7 @@ export default function MobileDashboardScreen({
         );
     };
 
-    const renderAiSummary = (summary?: any) => summary?.bulletPoints?.length ? (
+    const renderAiSummary = (summary?: AISummary) => summary?.bulletPoints?.length ? (
         <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
             <List>
                 {summary.bulletPoints.map((bullet: string, index: number) => (
@@ -643,7 +657,7 @@ export default function MobileDashboardScreen({
     ) : null;
 
     const renderPeriodView = () => {
-        const periodData = currentViewData as any;
+        const periodData = selectedPeriodData;
 
         if (viewMode === 'today' || viewMode === 'overview' || viewMode === 'overall') return null;
         if (!periodData) {
@@ -654,11 +668,11 @@ export default function MobileDashboardScreen({
             );
         }
 
-        const dateLabel = viewMode === 'daily' && periodData.date
+        const dateLabel = viewMode === 'daily' && 'date' in periodData && periodData.date
             ? formatDateKey(periodData.date, formatter)
-            : viewMode === 'weekly' && periodData.weekStart && periodData.weekEnd
+            : viewMode === 'weekly' && 'weekStart' in periodData && periodData.weekStart && periodData.weekEnd
                 ? `${formatDateKey(periodData.weekStart, formatter)} - ${formatDateKey(periodData.weekEnd, formatter)}`
-                : viewMode === 'monthly' && periodData.monthStart
+                : viewMode === 'monthly' && 'monthStart' in periodData && periodData.monthStart
                     ? formatDateKey(periodData.monthStart, formatter)
                     : viewModeLabel;
 
@@ -675,7 +689,7 @@ export default function MobileDashboardScreen({
 
                 <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
                     {renderMetricsCards(periodData.metrics)}
-                    {viewMode === 'monthly' && periodData.daysWithData > 0 ? (
+                    {viewMode === 'monthly' && 'daysWithData' in periodData && periodData.daysWithData > 0 ? (
                         <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
                             {t('activeDaysThisMonth', { count: periodData.daysWithData })}
                         </Text>
@@ -713,7 +727,7 @@ export default function MobileDashboardScreen({
         </>
     );
 
-    const dailyHeaderData = viewMode === 'daily' ? currentViewData as any : null;
+    const dailyHeaderData = viewMode === 'daily' ? data?.daily : null;
     const dailyHeaderDateLabel = dailyHeaderData?.date
         ? formatDateKey(dailyHeaderData.date, formatter)
         : null;
@@ -743,7 +757,7 @@ export default function MobileDashboardScreen({
                             projectImage: selectedProjectSummary?.projectImage || null,
                             specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
                             specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
-                                ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                ? projectsList.find((project) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
                                 : undefined,
                             specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
                             specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
@@ -862,8 +876,8 @@ export default function MobileDashboardScreen({
                             loadingToday={obpDashboard.loadingToday}
                             mode={viewMode}
                         />
-                        <MobileMenuAnalyticsDetailsCard data={currentViewData as any} />
-                        {renderAiSummary((currentViewData as any)?.aiSummary)}
+                        <MobileMenuAnalyticsDetailsCard data={selectedPeriodData} />
+                        {renderAiSummary(selectedPeriodData?.aiSummary)}
 
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -915,7 +929,7 @@ export default function MobileDashboardScreen({
 
                         {/* 4-Week Trend — most engaging visual for SMB owners */}
                         {historicalWeeks.length > 0 ? (() => {
-                            const maxScans = Math.max(...historicalWeeks.map((w: any) => w.metrics?.menuVisits || 0), 1);
+                            const maxScans = Math.max(...historicalWeeks.map((week) => week.metrics.menuVisits || 0), 1);
                             return (
                                 <Card size="small" title={
                                     <Flex align="center" gap={6}>
@@ -924,8 +938,8 @@ export default function MobileDashboardScreen({
                                     </Flex>
                                 }>
                                     <Flex gap={8} vertical>
-                                        {historicalWeeks.map((week: any, idx: number) => {
-                                            const pct = Math.round((week.metrics?.menuVisits || 0) / maxScans * 100);
+                                        {historicalWeeks.map((week, idx) => {
+                                            const pct = Math.round((week.metrics.menuVisits || 0) / maxScans * 100);
                                             return (
                                                 <Flex key={idx} align="center" gap={8}>
                                                     <Text type="secondary" style={{ fontSize: 11, minWidth: 56 }}>{week.weekLabel}</Text>
@@ -939,7 +953,7 @@ export default function MobileDashboardScreen({
                                                         }} />
                                                     </div>
                                                     <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'right', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
-                                                        {formatNumber(week.metrics?.menuVisits || 0)}
+                                                        {formatNumber(week.metrics.menuVisits || 0)}
                                                     </Text>
                                                     {week.isCurrentWeek ? (
                                                         <Tag

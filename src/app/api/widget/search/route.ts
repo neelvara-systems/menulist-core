@@ -176,7 +176,7 @@ const normalizeWidgetGraphExpansion = (value: unknown) => {
 
 const jsonResponse = (
     request: NextRequest,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     init?: ResponseInit,
 ): NextResponse => {
     const response = NextResponse.json(body, init);
@@ -438,7 +438,7 @@ export async function POST(request: NextRequest) {
 
         // ===== FORMAT RESPONSE for Widget frontend =====
         // Keep KB references separate from reviewer-approved canonical citations.
-        const compactReferences = (result.references || []).slice(0, 12).flatMap((ref: any) => {
+        const compactReferences = (result.references || []).slice(0, 12).flatMap((ref) => {
             const id = typeof ref?.id === 'string' ? ref.id.trim().slice(0, 180) : '';
             const title = typeof ref?.title === 'string' ? ref.title.trim().slice(0, 300) : '';
             if (!id || !title) return [];
@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
         });
         const publicFallbackReason = normalizeAnswerlatticePublicFallbackReason(result.fallbackReason);
 
-        const response: Record<string, any> = {
+        const response: Record<string, unknown> = {
             answer: result.craftedAnswer,
             canonical: result.canonical,
             references: compactReferences,
@@ -467,16 +467,16 @@ export async function POST(request: NextRequest) {
             response.relatedContent = {
                 key: result.relatedContent.key,
                 label: result.relatedContent.label,
-                articles: (result.relatedContent.articles || []).slice(0, 5).map((article: any) => ({
+                articles: (result.relatedContent.articles || []).slice(0, 5).map((article) => ({
                     id: article.id,
                     title: article.title,
                 })),
-                faqs: (result.relatedContent.faqs || []).slice(0, 5).map((faq: any) => ({
+                faqs: (result.relatedContent.faqs || []).slice(0, 5).map((faq) => ({
                     id: faq.id,
                     question: faq.question,
                     ...(faq.articleId ? { articleId: faq.articleId } : {}),
                 })),
-                changelogs: (result.relatedContent.changelogs || []).slice(0, 3).map((entry: any) => ({
+                changelogs: (result.relatedContent.changelogs || []).slice(0, 3).map((entry) => ({
                     id: entry.id,
                     ...(entry.pageId ? { pageId: entry.pageId } : {}),
                     title: entry.title,
@@ -507,7 +507,7 @@ export async function POST(request: NextRequest) {
 
         return jsonResponse(request, response);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         await supportSearchAccounting?.abort('request_failed').catch((refundError) => {
             logRuntimeFailure('answerlattice_widget_search_reservation_refund_failed', refundError);
         });

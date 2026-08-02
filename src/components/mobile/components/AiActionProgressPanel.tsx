@@ -1,13 +1,14 @@
 'use client'
 
 import { theme } from 'antd';
+import { getAiActionProgressLabel, normalizeAiActionProgressLabels } from '@lib/mobile/aiActionProgress';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, DotLoading, Flex, Text } from '../antd';
 
 interface AiActionProgressPanelProps {
     detail?: string;
     helperText?: string;
-    labels: string[];
+    labels: readonly string[];
     title: string;
 }
 
@@ -18,10 +19,7 @@ export default function AiActionProgressPanel({
     title,
 }: AiActionProgressPanelProps) {
     const { token } = theme.useToken();
-    const safeLabels = useMemo(
-        () => (labels.length > 0 ? labels : ['Working on it...']),
-        [labels]
-    );
+    const safeLabels = useMemo(() => normalizeAiActionProgressLabels(labels), [labels]);
     const [labelIndex, setLabelIndex] = useState(0);
 
     useEffect(() => {
@@ -59,7 +57,7 @@ export default function AiActionProgressPanel({
                 </Flex>
                 <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
                     <Text strong>{title}</Text>
-                    <Text>{safeLabels[labelIndex]}</Text>
+                    <Text>{getAiActionProgressLabel(safeLabels, labelIndex)}</Text>
                     {detail ? <Text type="secondary">{detail}</Text> : null}
                     <Text type="secondary">{helperText}</Text>
                 </Flex>

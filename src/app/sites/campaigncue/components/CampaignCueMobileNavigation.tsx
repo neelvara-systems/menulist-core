@@ -17,6 +17,7 @@ import {
     LuRefreshCcw,
     LuShieldCheck,
     LuStore,
+    LuVideo,
     LuX,
 } from "react-icons/lu";
 import { CAMPAIGNCUE_WEBSITE_FEATURE_PATHS } from "@constant/campaigncue/websiteFeatures";
@@ -53,6 +54,12 @@ const PRODUCT_LINKS: DrawerLink[] = [
         detail: "Reuse images with safe fallback.",
         href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers,
         icon: LuLayers,
+    },
+    {
+        label: "Video Reel Studio",
+        detail: "Render checked short videos locally.",
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio,
+        icon: LuVideo,
     },
 ];
 

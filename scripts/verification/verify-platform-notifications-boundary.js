@@ -171,7 +171,7 @@ function verifyMonitor(monitor, responseHelper) {
     "message.error('Failed to load platform notifications')",
     "message.error('Platform notification action failed')",
     'copyRuntimeTextToClipboard',
-    'window.open(whatsappWebHref',
+    'openIsolatedBrowserUrl(whatsappWebHref',
     'setManualAlertOpen(true)',
     "createRuntimeId('platform_alert')",
     "createRuntimeId('platform_handoff')",

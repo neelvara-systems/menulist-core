@@ -29,7 +29,7 @@ The customer-facing digital menu that restaurant patrons see. Includes a control
 
 ### URL Patterns
 
-- Subdomain: `{store}.menulist.ai/{slug}`
+- Subdomain: `{store}.menulist.online/{slug}`
 - Custom Domain: `custom-domain.com/{slug}`
 
 ### Performance Acceptance Targets

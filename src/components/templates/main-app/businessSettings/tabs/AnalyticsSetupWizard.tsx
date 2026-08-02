@@ -1,5 +1,5 @@
-import { Alert, Button, Card, Image, Modal, Space, Steps, Switch, Typography, theme } from 'antd';
-import React, { useState } from 'react';
+import { Alert, Button, Card, Form, Image, Modal, Space, Steps, Switch, Typography, theme, type FormInstance } from 'antd';
+import React, { useEffect, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuCheckCircle, LuInfo } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
@@ -8,13 +8,17 @@ const { Step } = Steps;
 interface AnalyticsSetupWizardProps {
     open: boolean;
     onClose: () => void;
-    form: any;
+    form: FormInstance;
 }
 
 const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClose, form }) => {
     const { token } = theme.useToken();
     const [currentStep, setCurrentStep] = useState(0);
-    // Using parent form directly
+    const analytics = Form.useWatch('analytics', form) || {};
+
+    useEffect(() => {
+        if (open) setCurrentStep(0);
+    }, [open]);
 
     const steps = [
         {
@@ -163,18 +167,6 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                     <Space direction="vertical" size="large">
                         <Card type="inner">
                             <Space direction="vertical">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <Text strong={true}>Track Orders & Sales</Text>
-                                        <br />
-                                        <Text type="secondary">See how much money you make</Text>
-                                    </div>
-                                    <Switch
-                                        checked={form.getFieldValue(['analytics', 'enhancedEcommerce'])}
-                                        onChange={(checked) => form.setFieldValue(['analytics', 'enhancedEcommerce'], checked)}
-                                    />
-                                </div>
-
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                                     <div>
                                         <Text strong={true}>Track Menu Activity</Text>
@@ -182,7 +174,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">Track menu opens, item detail opens, search demand, unavailable-item demand, final menu CTA clicks, and entry source</Text>
                                     </div>
                                     <Switch
-                                        checked={form.getFieldValue(['analytics', 'trackMenuViews'])}
+                                        checked={analytics.trackMenuViews !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackMenuViews'], checked)}
                                     />
                                 </div>
@@ -194,7 +186,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See when Featured choices are shown and tapped</Text>
                                     </div>
                                     <Switch
-                                        checked={form.getFieldValue(['analytics', 'trackDecisionBlocks'])}
+                                        checked={analytics.trackDecisionBlocks !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackDecisionBlocks'], checked)}
                                     />
                                 </div>
@@ -206,7 +198,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See OBP views, CTA taps, social/review link clicks, owner shares, and menu conversion</Text>
                                     </div>
                                     <Switch
-                                        checked={form.getFieldValue(['analytics', 'trackOfficialBusinessPage'])}
+                                        checked={analytics.trackOfficialBusinessPage !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackOfficialBusinessPage'], checked)}
                                     />
                                 </div>
@@ -218,7 +210,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See install prompt, install, open, and shortcut activity</Text>
                                     </div>
                                     <Switch
-                                        checked={form.getFieldValue(['analytics', 'trackCustomerApp'])}
+                                        checked={analytics.trackCustomerApp !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackCustomerApp'], checked)}
                                     />
                                 </div>
@@ -230,7 +222,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">Use rounded geolocation or timezone region, never exact GPS</Text>
                                     </div>
                                     <Switch
-                                        checked={form.getFieldValue(['analytics', 'trackLocation'])}
+                                        checked={analytics.trackLocation === true}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackLocation'], checked)}
                                     />
                                 </div>
@@ -253,17 +245,17 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                 <Card variant="borderless">
                     <Space direction="vertical" align="center" style={{ width: '100%', textAlign: 'center' }}>
                         <LuCheckCircle size={48} style={{ color: token.colorSuccess }} />
-                        <Title level={4}>Great Job! You&apos;re All Set!</Title>
+                        <Title level={4}>Review Your Analytics Settings</Title>
                         <Paragraph>
-                            Your analytics are now ready to go! You&apos;ll start seeing data in about 24 hours.
+                            Close this guide, review the choices on the Analytics Settings page, and save your changes.
                         </Paragraph>
                         <Alert
-                            message="What's Next?"
+                            message="Before you finish"
                             description={
                                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                                    <li>✓ Check your dashboard tomorrow</li>
-                                    <li>✓ See which items are popular</li>
-                                    <li>✓ Watch your business grow!</li>
+                                    <li>✓ Add only the external IDs you actually use</li>
+                                    <li>✓ Review the tracking categories</li>
+                                    <li>✓ Save changes on the settings page</li>
                                 </ul>
                             }
                             type="success"

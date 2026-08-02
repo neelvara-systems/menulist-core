@@ -6,6 +6,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURE_PATHS = {
     creativeTrustCenter: "/features/creative-trust-center",
     brandPlaybookProofDeck: "/features/brand-playbook-proof-deck",
     reusablePackTemplates: "/features/reusable-pack-templates",
+    videoReelStudio: "/features/video-reel-studio",
 } as const;
 
 export const CAMPAIGNCUE_WEBSITE_FEATURES = [
@@ -468,6 +469,74 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             },
         ],
         relatedFeatureSlugs: ["brand-playbook-proof-deck", "campaign-pack-studio", "daily-campaign-desk"],
+    },
+    {
+        slug: "video-reel-studio",
+        path: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.videoReelStudio,
+        title: "Video Reel Studio",
+        eyebrow: "In-house short video",
+        heroTitle: "Turn a checked campaign into a short video you can download.",
+        description:
+            "Video Reel Studio builds a source-linked scene plan, keeps brand and review state visible, and composes the approved file in the browser from CampaignCue copy and media the owner controls.",
+        metaDescription:
+            "Explore CampaignCue Video Reel Studio for source-backed scenes, captions, owner media, approval, portrait, square, and landscape browser video exports.",
+        ownerProblem:
+            "Owners may have a useful reel idea but still need a script, scene order, captions, correct offer details, a simple edit path, and a downloadable file.",
+        outcome:
+            "One checked video output becomes an editable project with three bounded directions, a simple scene timeline, owner approval, and local MP4 or WebM download.",
+        previewKind: "video-studio",
+        dashboardNote:
+            "The real renderer runs inside the authenticated CampaignCue workspace. It uses the browser and zero provider credits; it does not connect or post to social accounts.",
+        proofRows: [
+            { label: "Source", value: "Checked campaign output and business facts", status: "Linked" },
+            { label: "Scenes", value: "Hook, detail, proof, CTA, captions, and timing", status: "Editable" },
+            { label: "Formats", value: "Portrait, square, and landscape", status: "One project" },
+            { label: "Delivery", value: "Browser render and manual download", status: "No provider" },
+        ],
+        steps: [
+            {
+                title: "Open a checked reel output",
+                detail: "CampaignCue creates the project from the same source-linked campaign brief and current brand snapshot.",
+            },
+            {
+                title: "Edit the lightweight timeline",
+                detail: "Choose one of three directions, adjust scenes, timing, motion, captions, and an image you control.",
+            },
+            {
+                title: "Review and approve",
+                detail: "Source, CTA, rights, claim, version, and approval checks stay visible before rendering.",
+            },
+            {
+                title: "Render and download",
+                detail: "The browser creates the file in its supported MP4 or WebM format. The owner posts it manually.",
+            },
+        ],
+        benefits: [
+            "Moves from a reel brief to a real file without an external video-generation provider.",
+            "Keeps scenes tied to current campaign facts and the current approved version.",
+            "Works with text motion or an image and audio file the owner controls.",
+            "Uses zero provider credits and preserves manual delivery.",
+        ],
+        boundaries: [
+            "Not a film, drama, avatar, synthetic-customer, face-swap, or viral-cloning generator.",
+            "No third-party media rights are granted by CampaignCue.",
+            "No cloud render, social posting, account connection, or ad-spend mutation.",
+        ],
+        faq: [
+            {
+                question: "Does CampaignCue send the project to another video generator?",
+                answer: "No. The active Video Reel Studio uses CampaignCue's deterministic browser compositor. External video-render providers remain disabled.",
+            },
+            {
+                question: "Will every browser download MP4?",
+                answer: "No. CampaignCue uses MP4 only when the browser reports native recording support and otherwise downloads WebM with the correct file label.",
+            },
+            {
+                question: "Can CampaignCue create fake customer videos?",
+                answer: "No. Synthetic customers, fake testimonials, avatars presented as real people, face/body swap, and copied viral footage are outside the product boundary.",
+            },
+        ],
+        relatedFeatureSlugs: ["campaign-pack-studio", "creative-trust-center", "brand-playbook-proof-deck"],
     },
 ] as const;
 

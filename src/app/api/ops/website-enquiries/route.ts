@@ -137,15 +137,20 @@ async function checkWebsiteEnquiryOpsRateLimit(operatorId: string) {
 
   if (rateLimit.allowed) return null;
 
+  const providerUnavailable = rateLimit.reason === 'provider_unavailable';
   const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
   return NextResponse.json(
-    { error: 'Too many website enquiry requests. Please try again later.' },
+    {
+      error: providerUnavailable
+        ? 'Website enquiries are temporarily unavailable'
+        : 'Too many website enquiry requests. Please try again later.',
+    },
     {
       headers: {
         'Cache-Control': 'no-store',
         'Retry-After': String(retryAfter),
       },
-      status: 429,
+      status: providerUnavailable ? 503 : 429,
     },
   );
 }

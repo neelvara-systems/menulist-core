@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -37,6 +37,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildMenuReadabilityReport } from '@/lib/public-truth-tools/menuReadabilityReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   MenuReadabilityCheckId,
   MenuReadabilityInput,
@@ -173,6 +174,7 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<MenuReadabilityHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -322,6 +324,8 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('menu_readability_check_handoff_submitted', eventContext);
 
@@ -364,10 +368,13 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('menu_readability_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -474,6 +481,7 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
           <label>
             <span>{t('handoff.name')}</span>
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -482,6 +490,7 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
           <label>
             <span>{t('handoff.email')}</span>
             <input
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -493,6 +502,7 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
         <label>
           <span>{t('handoff.phone')}</span>
           <input
+            maxLength={40}
             value={handoff.phoneNumber}
             onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
             autoComplete="tel"
@@ -504,6 +514,7 @@ function MenuReadabilityReportCard({ report }: { report: MenuReadabilityReport }
           <label htmlFor="menu-readability-check-website">{t('handoff.website')}</label>
           <input
             id="menu-readability-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -658,6 +669,7 @@ export default function MenuReadabilityCheckPage() {
                 <label>
                   <span>{t('fields.businessName')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
                     autoComplete="organization"
@@ -666,6 +678,7 @@ export default function MenuReadabilityCheckPage() {
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))}
                     autoComplete="address-level2"
@@ -693,6 +706,7 @@ export default function MenuReadabilityCheckPage() {
               <label>
                 <span>{t('fields.publicUrl')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                   value={form.publicUrl}
                   onChange={(event) => setForm((current) => ({ ...current, publicUrl: event.target.value }))}
                   inputMode="url"
@@ -703,6 +717,7 @@ export default function MenuReadabilityCheckPage() {
               <label>
                 <span>{t('fields.sourceText')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.sourceText}
                   onChange={(event) => setForm((current) => ({ ...current, sourceText: event.target.value }))}
                   rows={7}
@@ -755,7 +770,7 @@ export default function MenuReadabilityCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <MenuReadabilityReportCard report={report} /> : <EmptyReport />}
+            {hasChecked ? <MenuReadabilityReportCard key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

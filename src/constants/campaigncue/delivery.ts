@@ -112,9 +112,9 @@ export const CAMPAIGNCUE_PROVIDER_POSTURES = [
     },
     {
         provider: "video_render",
-        label: "Video rendering",
-        mode: "brief_only",
-        status: "manual_only",
-        reason: "Download a reel brief. CampaignCue does not render or upload videos in the active runtime.",
+        label: "In-house video export",
+        mode: "manual_export",
+        status: "available",
+        reason: "CampaignCue composes approved short videos in the browser for manual download. No external render provider or upload runs.",
     },
 ] as const;

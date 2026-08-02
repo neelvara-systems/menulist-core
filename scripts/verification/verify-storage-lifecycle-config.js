@@ -33,7 +33,8 @@ assert(coldlineRule?.action?.storageClass === 'COLDLINE', 'MenuList lifecycle co
 assert(coldlineRule?.condition?.age === 365, 'MenuList lifecycle config transitions legacy extraction uploads after 365 days');
 assert(
   Array.isArray(coldlineRule?.condition?.matchesPrefix)
-    && coldlineRule.condition.matchesPrefix.includes('MenuListAi/project/files/'),
+    && coldlineRule.condition.matchesPrefix.length === 1
+    && coldlineRule.condition.matchesPrefix[0] === 'MenuListAi/project/files/',
   'MenuList lifecycle config is scoped to legacy extraction upload prefix',
 );
 assert(!rules.some((rule) => rule?.action?.type === 'Delete'), 'MenuList lifecycle config does not delete owner/source uploads');

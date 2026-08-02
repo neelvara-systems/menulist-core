@@ -5,6 +5,7 @@ import {
     logBusinessSettingsFailure,
 } from '@template/main-app/businessSettings/utils/businessSettingsDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
     getOwnerComplianceScope,
     isOwnerComplianceMutationScopeAcknowledged,
@@ -257,10 +258,7 @@ export default function MobileCompliancePagesEditor({
 
     const handleOpenPage = () => {
         try {
-            const opened = window.open(pageUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_compliance_page_open_blocked');
-            }
+            openIsolatedBrowserUrl(pageUrl);
         } catch (error) {
             logBusinessSettingsFailure(
                 'mobile_compliance_page_open_failed',

@@ -1,7 +1,8 @@
 import { CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
 import type { CampaignCueAsset, CampaignCueChannel } from "@type/campaigncue";
 
-const ASSET_TYPES = new Set<CampaignCueAsset["assetType"]>(["image", "video", "document", "logo", "export"]);
+const ASSET_TYPES = new Set<CampaignCueAsset["assetType"]>(["image", "video", "audio", "document", "logo", "export"]);
 const ASSET_STATUSES = new Set<CampaignCueAsset["status"]>(["ready", "blocked", "archived"]);
 const ASSET_SOURCES = new Set<CampaignCueAsset["source"]>(["upload", "generated", "imported", "manual"]);
 const RIGHTS_STATUSES = new Set<CampaignCueAsset["rights"]["status"]>(["confirmed", "needs_review", "restricted"]);
@@ -12,6 +13,7 @@ const CONSENT_TYPES = new Set<NonNullable<CampaignCueAsset["rights"]["consentTyp
     "customer_release",
     "unknown",
 ]);
+const CHANNELS = new Set<CampaignCueChannel>(CAMPAIGNCUE_CHANNELS);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value && typeof value === "object" && !Array.isArray(value))
@@ -36,7 +38,9 @@ const parseUsageRefs = (value: unknown): CampaignCueAsset["usageRefs"] => {
         if (!isRecord(entry)) throw new Error("CampaignCue asset usage reference is invalid.");
         if (!isAbsent(entry.campaignId) && !isBoundedString(entry.campaignId, 120)) throw new Error("CampaignCue asset campaign reference is invalid.");
         if (!isAbsent(entry.outputId) && !isBoundedString(entry.outputId, 120)) throw new Error("CampaignCue asset output reference is invalid.");
-        if (!isAbsent(entry.channel) && !isBoundedString(entry.channel, 40)) throw new Error("CampaignCue asset channel reference is invalid.");
+        if (!isAbsent(entry.channel) && !CHANNELS.has(entry.channel as CampaignCueChannel)) {
+            throw new Error("CampaignCue asset channel reference is invalid.");
+        }
         return {
             campaignId: isAbsent(entry.campaignId) ? undefined : entry.campaignId as string,
             outputId: isAbsent(entry.outputId) ? undefined : entry.outputId as string,
@@ -84,6 +88,16 @@ export function parseCampaignCueAssetRecord(params: {
             throw new Error("CampaignCue asset MIME type is invalid.");
         }
         if (
+            !isAbsent(value.file.previewStoragePath)
+            && (!isBoundedString(value.file.previewStoragePath, 500)
+                || !isCampaignCueWorkspaceStoragePath(value.file.previewStoragePath as string, params.workspaceId))
+        ) {
+            throw new Error("CampaignCue asset preview Storage path is invalid.");
+        }
+        if (!isAbsent(value.file.previewMimeType) && !["image/png", "image/webp", "image/jpeg"].includes(String(value.file.previewMimeType))) {
+            throw new Error("CampaignCue asset preview MIME type is invalid.");
+        }
+        if (
             !isAbsent(value.file.storageGeneration)
             && (
                 typeof value.file.storageGeneration !== "string"
@@ -92,6 +106,15 @@ export function parseCampaignCueAssetRecord(params: {
         ) {
             throw new Error("CampaignCue asset Storage generation is invalid.");
         }
+        if (
+            !isAbsent(value.file.previewStorageGeneration)
+            && (
+                typeof value.file.previewStorageGeneration !== "string"
+                || !/^[1-9][0-9]{0,29}$/.test(value.file.previewStorageGeneration)
+            )
+        ) {
+            throw new Error("CampaignCue asset preview Storage generation is invalid.");
+        }
         if (!isAbsent(value.file.sizeBytes) && (
             !Number.isSafeInteger(value.file.sizeBytes)
             || Number(value.file.sizeBytes) < 0
@@ -99,11 +122,25 @@ export function parseCampaignCueAssetRecord(params: {
         )) {
             throw new Error("CampaignCue asset size is invalid.");
         }
+        if (!isAbsent(value.file.previewSizeBytes) && (
+            !Number.isSafeInteger(value.file.previewSizeBytes)
+            || Number(value.file.previewSizeBytes) < 1
+            || Number(value.file.previewSizeBytes) > 1024 * 1024
+        )) throw new Error("CampaignCue asset preview size is invalid.");
+        for (const dimension of ["width", "height"] as const) {
+            if (!isAbsent(value.file[dimension]) && (!Number.isInteger(value.file[dimension]) || Number(value.file[dimension]) < 1 || Number(value.file[dimension]) > 16_384)) {
+                throw new Error("CampaignCue asset dimensions are invalid.");
+            }
+        }
+        if (!isAbsent(value.file.durationSeconds) && (typeof value.file.durationSeconds !== "number" || !Number.isFinite(value.file.durationSeconds) || value.file.durationSeconds < 0 || value.file.durationSeconds > 21_600)) {
+            throw new Error("CampaignCue asset duration is invalid.");
+        }
         if (
             !isAbsent(value.file.storagePath)
             || !isAbsent(value.file.storageGeneration)
             || !isAbsent(value.file.mimeType)
             || !isAbsent(value.file.sizeBytes)
+            || !isAbsent(value.file.previewStoragePath)
         ) {
             file = {
                 storagePath: isAbsent(value.file.storagePath) ? undefined : value.file.storagePath as string,
@@ -112,20 +149,37 @@ export function parseCampaignCueAssetRecord(params: {
                     : value.file.storageGeneration as string,
                 mimeType: isAbsent(value.file.mimeType) ? undefined : value.file.mimeType as string,
                 sizeBytes: isAbsent(value.file.sizeBytes) ? undefined : value.file.sizeBytes as number,
+                previewStoragePath: isAbsent(value.file.previewStoragePath) ? undefined : value.file.previewStoragePath as string,
+                previewStorageGeneration: isAbsent(value.file.previewStorageGeneration) ? undefined : value.file.previewStorageGeneration as string,
+                previewMimeType: isAbsent(value.file.previewMimeType)
+                    ? undefined
+                    : value.file.previewMimeType as "image/png" | "image/webp" | "image/jpeg",
+                previewSizeBytes: isAbsent(value.file.previewSizeBytes) ? undefined : value.file.previewSizeBytes as number,
+                width: isAbsent(value.file.width) ? undefined : value.file.width as number,
+                height: isAbsent(value.file.height) ? undefined : value.file.height as number,
+                durationSeconds: isAbsent(value.file.durationSeconds) ? undefined : value.file.durationSeconds as number,
             };
         }
     }
     const usageRefs = parseUsageRefs(value.usageRefs);
     return {
-        ...value,
+        id: value.id as string,
+        workspaceId: value.workspaceId as string,
+        name: value.name as string,
+        assetType: value.assetType as CampaignCueAsset["assetType"],
+        status: value.status as CampaignCueAsset["status"],
+        source: value.source as CampaignCueAsset["source"],
         rights: {
-            ...value.rights,
+            status: value.rights.status as CampaignCueAsset["rights"]["status"],
             note: isAbsent(value.rights.note) ? undefined : value.rights.note as string,
             consentType: isAbsent(value.rights.consentType)
                 ? undefined
                 : value.rights.consentType as NonNullable<CampaignCueAsset["rights"]["consentType"]>,
         },
+        tags: value.tags as string[],
         file,
         usageRefs,
-    } as unknown as CampaignCueAsset;
+        createdAt: value.createdAt,
+        updatedAt: value.updatedAt,
+    };
 }

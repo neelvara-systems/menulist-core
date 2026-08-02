@@ -259,6 +259,80 @@ async function run(): Promise<void> {
     }), /profile identity is invalid/);
     assert.equal((await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(foreignInitialSubscriptionId).get()).exists, false);
 
+    const provisionalProfileRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.RESELLER_PROFILES)
+        .doc(`${prefix}-provisional-profile`);
+    const provisionalOperationId = 'f2aeeebd-2d43-4d06-9867-9af65c51c112';
+    const provisionalSubscriptionId = `${prefix}-provisional-subscription`;
+    const provisionalTransaction = {
+        ...onboardingTransaction({
+            amount: 40_000,
+            operationId: provisionalOperationId,
+            paymentMode: 'online',
+            storeId: 52,
+            subscriptionId: provisionalSubscriptionId,
+            tenantId: 42,
+        }),
+        resellerProfileId: provisionalProfileRef.id,
+    };
+    await provisionalProfileRef.set({
+        active: true,
+        authUserId: 'reseller_auth_uid',
+        currentActiveOfflineStores: 0,
+        totalOfflineStores: 0,
+        totalOnlineStores: 0,
+        totalRevenueCollectedPaise: 0,
+        totalStoresOnboarded: 0,
+        totalTransactions: 0,
+    });
+    const provisionalOperationRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS)
+        .doc(provisionalOperationId);
+    await provisionalOperationRef.set({
+        action: 'ONBOARD',
+        authUid: 'owner_auth_uid',
+        operationFingerprint: provisionalTransaction.operationFingerprint,
+        operationId: provisionalOperationId,
+        paymentMode: 'online',
+        resellerId: 'reseller_auth_uid',
+        status: 'provider_provisioning',
+        storeId: 52,
+        tenantId: 42,
+        userId: 'owner_auth_uid',
+    });
+    const provisionalResult = await createResellerOnboardingBillingServer({
+        profileId: provisionalProfileRef.id,
+        subscription: {
+            ...subscription(provisionalSubscriptionId, 'online', 40_000),
+            resellerProfileId: provisionalProfileRef.id,
+            sId: 52,
+            storeId: 52,
+            tId: 42,
+            tenantId: 42,
+        },
+        subscriptionId: provisionalSubscriptionId,
+        transaction: provisionalTransaction,
+    });
+    assert.equal(provisionalResult.replayed, false);
+    assert.equal((await provisionalOperationRef.get()).data()?.status, 'pending_payment');
+    assert.equal((await provisionalOperationRef.get()).data()?.authUid, undefined);
+    assert.equal((await provisionalProfileRef.get()).data()?.totalTransactions, 1);
+    const provisionalReplay = await createResellerOnboardingBillingServer({
+        profileId: provisionalProfileRef.id,
+        subscription: {
+            ...subscription(provisionalSubscriptionId, 'online', 40_000),
+            resellerProfileId: provisionalProfileRef.id,
+            sId: 52,
+            storeId: 52,
+            tId: 42,
+            tenantId: 42,
+        },
+        subscriptionId: provisionalSubscriptionId,
+        transaction: provisionalTransaction,
+    });
+    assert.equal(provisionalReplay.replayed, true);
+    assert.equal((await provisionalProfileRef.get()).data()?.totalTransactions, 1);
+
     const onlineOperationId = 'f56e42da-c45a-4394-bc76-c29f769f4507';
     const onlineSubscriptionId = `${prefix}-online-subscription`;
     await createResellerOnboardingBillingServer({

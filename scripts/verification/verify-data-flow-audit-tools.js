@@ -19,6 +19,10 @@ const fingerprintBackfill = readFileSync(
     path.join(root, 'scripts/audit/backfill-review-fingerprints.mjs'),
     'utf8',
 );
+const categoryFingerprintRecorder = readFileSync(
+    path.join(root, 'scripts/audit/record-category-review-fingerprints.mjs'),
+    'utf8',
+);
 const jsonObjectKeyIntegrity = readFileSync(
     path.join(root, 'scripts/audit/json-object-key-integrity.mjs'),
     'utf8',
@@ -32,6 +36,11 @@ assert.equal(
     packageJson.scripts?.['audit:data-flow:manifest'],
     'node scripts/audit/generate-data-flow-audit-manifest.mjs',
     'package scripts must expose the maintained coverage manifest generator',
+);
+assert.equal(
+    packageJson.scripts?.['audit:data-flow:record-category-review'],
+    'node scripts/audit/record-category-review-fingerprints.mjs',
+    'package scripts must expose the guarded exact category-review recorder',
 );
 
 const parseSummaryCount = (label) => {
@@ -67,11 +76,19 @@ assert.match(
     /const exactState = reviewState\[file\];[\s\S]*const state = exactState \|\| categoryDefaults \|\| \{\};/,
     'coverage manifest generator must preserve exact per-file review state before category metadata',
 );
+assert.match(manifestGenerator, /reviewedSha256 = '<canonical-self-fingerprint>'/, 'coverage manifest must use a stable semantic fingerprint for its self-referential review-state artifact');
 assert.match(
     fingerprintBackfill,
     /latestCommitDate >= review\.reviewedAt/,
     'review fingerprint backfill must reject same-day and later commits',
 );
+assert.match(categoryFingerprintRecorder, /categories\.has\(row\[categoryIndex\]\)/, 'category review recorder must select only explicitly requested manifest categories');
+assert.match(categoryFingerprintRecorder, /currentDigest !== row\[digestIndex\]/, 'category review recorder must reject stale manifest fingerprints');
+assert.match(categoryFingerprintRecorder, /reviewedSha256 = '<canonical-self-fingerprint>'/, 'category review recorder must reproduce the review-state semantic self-fingerprint');
+assert.match(categoryFingerprintRecorder, /if \(apply\) writeFileSync/, 'category review recorder must remain dry-run unless explicitly applied');
+assert.match(categoryFingerprintRecorder, /\.includes\(note\)/, 'category review recorder must not append duplicate review notes on convergence reruns');
+assert.match(categoryFingerprintRecorder, /reviewState\[REVIEW_STATE_FILE\]\.reviewedSha256 = createHash/, 'category review recorder must finalize its self-fingerprint after all selected review entries');
+assert.match(categoryFingerprintRecorder, /findings: Array\.from\(new Set/, 'category review recorder must preserve existing and category finding evidence');
 assert.match(
     fingerprintBackfill,
     /dirtyPaths\.has\(file\)/,
@@ -340,8 +357,8 @@ assert(
         && fontPresetRow.includes('write')
         && fontPresetRow.includes('delete')
         && fontPresetRow.includes('firestore.rules')
-        && fontPresetRow.includes('"in-progress"'),
-    'collection catalog must trace scalar collection constants and reopen when newly associated rule evidence is not fully reviewed',
+        && fontPresetRow.includes('"reviewed"'),
+    'collection catalog must trace scalar collection constants and close only against current reviewed rule evidence',
 );
 for (const sharedAssetCollection of ['graphics', 'illustrations', 'images']) {
     const sharedAssetRow = collectionCsv
@@ -459,10 +476,10 @@ const ownerControlUsageRow = collectionCsv
     .find((row) => row.startsWith('"ownerControlUsage",'));
 assert(ownerControlUsageRow, 'collection catalog must contain ownerControlUsage');
 assert(
-    ownerControlUsageRow.includes('"in-progress"')
+    ownerControlUsageRow.includes('"reviewed"')
         && ownerControlUsageRow.includes('firestore.rules')
         && ownerControlUsageRow.includes('AUDIT-OWNER-CONTROL-WRITE-INTEGRITY-001'),
-    'collection catalog must retain owner-control evidence while reopening it after the shared rules source changes',
+    'collection catalog must retain owner-control evidence and its current reviewed shared-rules fingerprint',
 );
 for (const collectionName of ['applicationLogs', 'errorLogs']) {
     const row = collectionCsv

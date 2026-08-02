@@ -11,11 +11,12 @@ import {
     saveCachedEmbedding,
 } from '../../src/database/queryEmbeddings';
 import {
-    answerlatticeFirestoreAdmin as db,
     AnswerlatticeVector,
+    requireAnswerlatticeFirestoreAdmin,
 } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 
 const scope = { tId: 31, sId: 3101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const vectorValues = Array.from({ length: 768 }, (_, index) => (index % 17) / 17);
 
 const embeddingDocumentId = (cacheKey: string, embeddingScope = scope) => (
@@ -26,8 +27,6 @@ const embeddingDocumentId = (cacheKey: string, embeddingScope = scope) => (
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
-
     const cacheKey = `${scope.tId}:${scope.sId}:query/with unsafe document separators`;
     await saveCachedEmbedding(
         cacheKey,

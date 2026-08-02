@@ -168,6 +168,8 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'set',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
                     type: statusType,
                     message: statusType === 'custom' ? customMessage.trim() : undefined,
                     expiresAt,
@@ -255,7 +257,11 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
                 ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'clear' }),
+                body: JSON.stringify({
+                    action: 'clear',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                }),
             });
 
             const result = await readTempStatusResponse(res, 'clear', {

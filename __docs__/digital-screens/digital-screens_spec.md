@@ -5,9 +5,9 @@
 **Author:** Lead Architect (Cascade)  
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Architecture Alignment + Market Research (Feb 2026)  
 **Applies:** 3-Year Architecture Freeze Rule  
-**Last Audit:** July 29, 2026 (private bearer-token control, server-authoritative owner mutations, scoped cache invalidation, offline-cache truth guard, 720p pagination, artwork safe area, health semantics, and expiry refresh)
+**Last Audit:** August 1, 2026 (private bearer-token control, server-authoritative owner mutations, scoped cache invalidation, offline-cache truth guard, 720p pagination, artwork fallback, per-mode exact-version health, and expiry refresh)
 
-## Current Release Boundary (July 29, 2026)
+## Current Release Boundary (August 1, 2026)
 
 This spec preserves the locked Digital Screens product boundary and source-backed implementation evidence. It is not a current launch certificate.
 
@@ -74,7 +74,7 @@ Not a side feature. Infrastructure expansion.
 
 ### Source Gate
 
-Digital Screens freshness claims must match the active source path: private control token lookup, canonical screen state, a 60-second token-hashed state cache, a store-scoped menu cache, and the public-safe `platformSummary/screen_{storeId}` content-version listener. Local content is used only offline and only for the same `contentVersion`. Manual browser refresh remains the fallback when a TV does not receive the listener reload. Guard with `npm run verify:digital-screens-boundary`.
+Digital Screens freshness claims must match the active source path: private control token lookup, canonical screen state, a 60-second token-hashed state cache, a store-scoped menu cache, and the public-safe `platformSummary/screen_{storeId}` content-version listener. Local content is used only offline and only for the same `contentVersion`. A per-mode receipt means that browser opened that exact canonical version; it does not prove a heartbeat, every attached TV, or every third-party media response. Manual browser refresh remains the fallback when a TV does not receive the listener reload. Guard with `npm run verify:digital-screens-boundary`.
 
 ### The Defining Principle
 
@@ -126,6 +126,12 @@ That includes project-level screen assignment. Screens follow the active store m
 
 8. **Access And Kill-Switch Parity:** Owner links/settings require `canManageDigitalScreens` on desktop and mobile. `DIGITAL_SCREENS_ENABLED=false` removes owner entry points and closes both `/screen/[token]` and `/api/screen/seen`.
 
+9. **Truthful Render Confidence:** Menu Board and Highlights own separate bounded receipts keyed to the canonical `contentVersion`. An older version, the other mode, or the legacy aggregate timestamp cannot mark the latest mode output as seen.
+
+10. **Zero-Blank Artwork Failure:** If an owner-uploaded Highlights poster cannot load, the current slide must render the store identity and menu QR fallback instead of an empty poster frame.
+
+11. **Bearer Route Discovery Isolation:** `/screen/[token]` must remain noindex/nofollow/noarchive/noimageindex with no-referrer. Menu/OBP routes own public discovery and structured data; a TV bearer URL never becomes a search landing page.
+
 ---
 
 ## Scope
@@ -140,7 +146,7 @@ That includes project-level screen assignment. Screens follow the active store m
 | **Live Screen URL**             | One URL per store, mode via query parameter                        |
 | **Automatic Content**           | System decides what to show based on menu data + availability      |
 | **Owner Visibility**            | See what's currently showing (read-only)                           |
-| **Owner Setup Trust**           | See two screen types, compact TV links, QR blocks, and last-seen status |
+| **Owner Setup Trust**           | See two screen types, compact TV links, QR blocks, separate latest-version status, and manual status refresh |
 | **Owner Inserts**               | Upload custom images (optional escape hatch, highlights mode only) |
 | **Offline Resilience**          | An already-loaded screen keeps its last valid in-memory/local cache during a connection loss; a cold browser boot still needs the route assets |
 | **Availability-Aware**          | Auto-removes sold-out items from both modes                        |
@@ -290,11 +296,11 @@ Restaurant screens operate in:
 | Screen page load      | Per TV boot       | 2-4 typical reads (screen, store, optional project summary/fallback) |
 | Real-time listener    | On content change | 1 read per change (onSnapshot) |
 | 6hr proactive refresh | 3x/day            | 2-4 typical reads per refresh  |
-| Daily seen signal     | 1x/day            | Direct: 3 transaction reads + up to 1 write; legacy fallback adds a token query capped at 2 candidates |
-| Owner view            | Occasional        | 1 screen summary read          |
+| Mode/version open acknowledgement | First open per mode/version/UTC day | Direct: 4 transaction reads + up to 1 write; stale and duplicate receipts do not write; legacy fallback adds a token query capped at 2 candidates |
+| Owner view/status refresh | Occasional     | Canonical + private control + store + tenant transaction reads; no write on unchanged state |
 | Owner upload          | Rare              | 1 write + storage              |
 
-**Estimated daily cost per store:** ~15-23 reads + 1 write = **~$0.00031-$0.00045/month per screen** (see `digital-screens_firebase.md` for full breakdown)
+**Estimated daily cost per active TV-mode link:** ~19-43 reads + 2-6 writes under 1-5 content changes/day = **~$0.00045-$0.00109/month** (see `digital-screens_firebase.md` for assumptions and shared-receipt write collapse)
 
 ---
 
@@ -333,7 +339,7 @@ Both share:
   ✓ Same data pipeline (DAL)
   ✓ Same offline cache (localStorage)
   ✓ Same Firebase listener (onSnapshot)
-  ✓ Same seen signal (1/day)
+  ✓ Same bounded mode/version acknowledgement policy
   ✓ Same zero-config philosophy
 ```
 
@@ -537,7 +543,9 @@ When a campaign targets `digital_screen` surface:
 ┌───────────────────────────────────────────┐
 │  Digital Screen                              │
 │                                              │
-│  Status: Link ready                          │
+│  Menu Board: Waiting for TV                  │
+│  Highlights: Latest update seen              │
+│  [Refresh status]                            │
 │                                              │
 │  Screen links:                               │
 │  Menu Board: xyz.menulist.com/screen/abc123  │
@@ -614,7 +622,8 @@ When a campaign targets `digital_screen` surface:
 | Offline cache + resilience     | ✅ SHIPPED |
 | Owner uploads (max 3)          | ✅ SHIPPED |
 | Settings UI (read-only + link) | ✅ SHIPPED |
-| Daily seen signal              | ✅ SHIPPED |
+| Backward-compatible aggregate daily signal | ✅ SHIPPED |
+| Per-mode exact-version open receipts        | ✅ SHIPPED |
 | Firebase listener (real-time)  | ✅ SHIPPED |
 | Evergreen slides (Layer 3)     | ✅ SHIPPED |
 

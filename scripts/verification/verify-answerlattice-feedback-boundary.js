@@ -195,6 +195,7 @@ const contentFeedbackStorage = read('src/lib/contentFeedbackStorage/index.ts');
 const packageJson = JSON.parse(read('package.json'));
 const widgetFeedbackRoute = read('src/app/api/widget/feedback/route.ts');
 const widgetEscalationRoute = read('src/app/api/widget/escalation/route.ts');
+assert(!widgetEscalationRoute.includes('Record<string, any>'), 'widget escalation response boundary must not erase response value types');
 const widgetEscalationServer = read('src/lib/answerlattice/widgetEscalationServer.ts');
 const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
 const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
@@ -340,6 +341,10 @@ assert(widgetFeedbackRoute.includes("resolutionOutcome: z.enum(['resolved', 'not
 assert(widgetFeedbackRoute.includes("resolutionOutcome === 'resolved' && value.isGood !== true"), 'widget feedback must reject inconsistent positive outcome payloads');
 assert(widgetFeedbackRoute.includes('resolutionOutcome: authoritativeOutcome'), 'widget feedback must persist an authoritative outcome on the existing search-history record');
 assert(widgetFeedbackRoute.includes('created: feedbackCreated'), 'widget feedback replay must return whether the stored outcome was newly created');
+assert(widgetFeedbackRoute.includes('body: Record<string, unknown>'), 'widget feedback responses must retain unknown-valued runtime fields');
+assert(widgetFeedbackRoute.includes('historyData: Record<string, unknown>'), 'widget feedback persisted helpers must retain unknown-valued fields');
+assert(!widgetFeedbackRoute.includes('Record<string, any>'), 'widget feedback must not erase persisted or response field types');
+assert(!widgetFeedbackRoute.includes('catch (err: any)'), 'widget feedback terminal errors must remain unknown');
 assert(widgetClient.includes('Did this solve your issue?'), 'widget feedback must ask an explicit resolution question');
 assert(widgetClient.includes("handleFeedback(msg.id, 'resolved')"), 'widget must submit explicit resolved outcomes');
 assert(widgetClient.includes("handleFeedback(msg.id, 'not_resolved')"), 'widget must submit explicit not-resolved outcomes');

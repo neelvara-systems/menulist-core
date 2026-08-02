@@ -1,3 +1,4 @@
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { LoadingOutlined } from '@ant-design/icons';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
@@ -40,10 +41,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
 
   const handleSourceOpen = (sourceUrl: string, fileName: string, fileType: string) => {
     try {
-      const opened = window.open(sourceUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        throw new Error('answerlattice_kb_source_open_blocked');
-      }
+      openIsolatedBrowserUrl(sourceUrl);
     } catch (error) {
       logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
         surface: 'kb_generation_job_card',

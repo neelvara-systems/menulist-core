@@ -65,11 +65,11 @@ answerlattice.com/get-started
       → Go to dashboard
 ```
 
-If provider creation has an indeterminate outcome, the exact attempt enters `provider_recovery_pending`. The same request details preserve the provisional scope, wait through a 15-minute recovery hold, and then perform a bounded exact-note search before any same-attempt provider creation is allowed. Changed details cannot claim that scope. A `payment_pending` retry restores the default-auth product bridge and returns the persisted checkout, but requires widget-key rotation because the original plaintext key is never stored.
+If provider creation has an indeterminate outcome, the exact attempt enters `provider_recovery_pending`. The same request details preserve the provisional scope, wait through a 15-minute recovery hold, and then perform a bounded exact-note search before any same-attempt provider creation is allowed. Changed details cannot claim that scope, including after the workspace reaches `payment_pending`. A payment-pending retry transactionally revalidates and restores the default-auth product bridge, repairs missing initial surfaces/summaries without overwriting existing owner truth, and returns the persisted checkout, but requires widget-key rotation because the original plaintext key is never stored.
 
 Compensation is permitted only when the route can prove that provider creation did not occur or an exact known provider subscription is already in a terminal checkout state. The latter returns `ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED` so the founder can retry the same setup after the owned provisional scope is deactivated. Unknown provider state is never treated as terminal. Once local finalization succeeds, later bridge/bootstrap failure is retried from persisted `payment_pending` truth; the provider subscription and workspace are not cancelled. All route-owned responses use `private, no-store` and `nosniff`.
 
-The server admits product URLs only over HTTP/HTTPS without embedded credentials, detects duplicate Answerlattice users for the same normalized email instead of selecting one arbitrarily, preserves a known provider subscription ID across provider-fetch failures, and clears stale recovery fields before a compensated user starts a new attempt.
+The server admits product URLs only over HTTP/HTTPS without embedded credentials, requires the current non-revoked default-auth user before account/provider work, detects duplicate Answerlattice users for the same normalized email instead of selecting one arbitrarily, preserves a known provider subscription ID across provider-fetch failures, requires an exact hosted Razorpay checkout before payment-pending finalization, and clears stale recovery fields before a compensated user starts a new attempt.
 
 The browser starts only one setup POST at a time. A successful route response is
 reconciled against current monthly plan pricing, exact provider checkout host,
@@ -111,6 +111,7 @@ A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or p
 
 | Date | Change |
 |------|--------|
+| 2026-08-01 | Revalidated current default-auth authority, made the product-account bridge transactional, required exact checkout truth, and made payment-pending bootstrap recovery non-destructive and fingerprint-bound |
 | 2026-07-22 | Required exact dual-product identity for onboarding resume, pending-subscription persistence, provider recovery, and compensation; conflicting subscriptions now remain unchanged |
 | 2026-07-19 | Linked post-onboarding profile ownership to the dedicated revisioned, atomically synchronized Workspace Profile feature |
 | 2026-07-19 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email fail-closed admission, and HTTP(S)-only credential-free product URLs |

@@ -32,7 +32,7 @@ interface HealthMetric {
   responseTime?: number;
   errorRate?: number;
   uptime?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface SystemHealthReport {

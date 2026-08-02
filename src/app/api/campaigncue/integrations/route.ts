@@ -6,6 +6,7 @@ import {
     getCampaignCueSessionScope,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueApiError,
@@ -13,9 +14,8 @@ import {
     logCampaignCueServerError,
 } from "@lib/campaigncue/server";
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const GET = withAuth(async (request: NextRequest, session) => {
+export const GET = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;

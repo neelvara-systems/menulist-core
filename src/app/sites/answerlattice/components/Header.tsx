@@ -44,6 +44,7 @@ const NAV_LINKS = [
 
 const MOBILE_OTHER_LINKS = [
     ...NAV_LINKS.filter((link) => link.href !== '/product'),
+    { label: 'Operating Guide', href: '/resources/answerlattice-operating-guide' },
     { label: 'Pre-Onboarding', href: '/pre-onboarding' },
     { label: 'Trust and Data Handling', href: '/trust' },
     { label: 'Security', href: '/security' },
@@ -590,7 +591,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         aria-controls="answerlattice-mobile-navigation"
                         aria-expanded={isDrawerVisible}
                         aria-label="Open navigation"
-                        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:hidden"
+                        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:!hidden"
                         onClick={openDrawer}
                         type="button"
                     >

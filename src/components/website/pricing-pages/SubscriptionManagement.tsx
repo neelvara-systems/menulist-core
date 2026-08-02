@@ -10,6 +10,7 @@ import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { formatDateTime } from "@util/dateTime";
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { getBoundedPaymentStringContext, logPaymentFailure } from "@hook/paymentDiagnostics";
+import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -43,8 +44,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
             return;
         }
         try {
-            const opened = window.open(pendingCheckoutUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) throw new Error('website_pricing_pending_payment_open_blocked');
+            openIsolatedBrowserUrl(pendingCheckoutUrl);
         } catch (error) {
             logPaymentFailure('website_pricing_pending_payment_open_failed', error, {
                 flow: 'returning_owner_pending_payment',

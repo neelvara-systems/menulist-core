@@ -59,6 +59,7 @@ function verifyManagementAuthority() {
   assertIncludes(contracts, 'code === "digital_screen_slide_not_found"', 'Digital Screens stale-slide conflict');
   assertIncludes(contracts, 'code === "digital_screen_slide_id_conflict"', 'Digital Screens reused-slide identity conflict');
   assertIncludes(contracts, 'isDigitalScreenManagementResponse(', 'Digital Screens management response runtime contract');
+  assertIncludes(contracts, 'screenSeenByMode?: DigitalScreenSeenByModeTransport;', 'Digital Screens bounded per-mode owner receipts');
   assertIncludes(contracts, 'FIRESTORE_TIMESTAMP_MAX_MILLISECONDS', 'Digital Screens response timestamp bound');
   assertIncludes(server, 'mutation?.action !== "initialize"', 'Digital Screens read does not initialize');
   assertIncludes(server, 'digital_screen_control_scope_invalid', 'Digital Screens private control scope guard');
@@ -94,9 +95,11 @@ function verifyPublicReadAndRefresh() {
   const retiredWorker = read('public/screen-sw.js');
   const server = read('src/database/campaigns/serverScreen.ts');
   const seen = read('src/app/api/screen/seen/route.ts');
+  const seenServer = read('src/lib/screen/screenSeenServer.ts');
   const invalidation = read('src/lib/screen/serverScreenInvalidation.ts');
   const revalidation = read('src/app/api/revalidate/menu/route.ts');
   const publicClientCache = read('src/lib/cache/publicClientCache.ts');
+  const publicScreenState = read('src/lib/screen/publicScreenState.ts');
   const functionsInvalidation = read('functions/src/logic/publicCacheRevalidation.ts');
 
   assertIncludes(page, 'getPrivateScreenTokenCacheTag(token)', 'Digital Screens token-hashed cache tag');
@@ -104,6 +107,10 @@ function verifyPublicReadAndRefresh() {
   assertIncludes(page, 'tags: [`menu-store-${storeId}`]', 'Digital Screens store-scoped menu cache');
   assertNotIncludes(page, "tags: ['screen-data']", 'Digital Screens global screen cache fan-out');
   assertIncludes(page, 'if (!isValidScreenToken(token))', 'Digital Screens route token validation');
+  assertIncludes(page, 'referrer: "no-referrer"', 'Digital Screens bearer-route referrer policy');
+  assertIncludes(page, 'index: false', 'Digital Screens bearer-route noindex policy');
+  assertIncludes(page, 'noarchive: true', 'Digital Screens bearer-route noarchive policy');
+  assertIncludes(page, 'noimageindex: true', 'Digital Screens bearer-route noimageindex policy');
   assertIncludes(retiredWorker, "const RETIRED_SCREEN_CACHE = 'menulist-screen-v1';", 'Digital Screens retired worker cache identity');
   assertIncludes(retiredWorker, 'await caches.delete(RETIRED_SCREEN_CACHE);', 'Digital Screens retired worker cache cleanup');
   assertIncludes(retiredWorker, 'await self.registration.unregister();', 'Digital Screens retired worker self-unregistration');
@@ -120,14 +127,27 @@ function verifyPublicReadAndRefresh() {
   assertIncludes(server, 'resolveScreenNumberLocale', 'Digital Screens locale resolution');
   assertIncludes(server, 'getPublicStoreById(storeId)', 'Digital Screens public store eligibility');
 
-  assertIncludes(seen, 'transaction.get(params.controlRef)', 'Digital Screens seen private control read');
-  assertIncludes(seen, 'privateTokenMatches', 'Digital Screens seen private token binding');
+  assertIncludes(seenServer, 'transaction.get(params.controlRef)', 'Digital Screens seen private control read');
+  assertIncludes(seenServer, 'privateTokenMatches', 'Digital Screens seen private token binding');
   assertIncludes(seen, "where('screenToken', '==', token)", 'Digital Screens seen private lookup');
   assertIncludes(seen, "where('screen.screenToken', '==', token)", 'Digital Screens seen legacy lookup');
-  assertIncludes(seen, "control?.tenantId || \"\") !== tenantScope.documentId", 'Digital Screens seen tenant reconciliation');
+  assertIncludes(seenServer, "control?.tenantId || \"\") !== tenantScope.documentId", 'Digital Screens seen tenant reconciliation');
   assertIncludes(seen, 'normalizeStorePermissionScopeDocumentId(rawStoreId)', 'Digital Screens seen exact supplied store identity');
   assertNotIncludes(seen, 'String(rawStoreId).trim()', 'Digital Screens seen must not trim a supplied store into different authority');
-  assertIncludes(seen, "'screen.screenLastSeenAt': FieldValue.serverTimestamp()", 'Digital Screens seen server timestamp');
+  assertIncludes(seenServer, '"screen.screenLastSeenAt": FieldValue.serverTimestamp()', 'Digital Screens seen server timestamp');
+  assertIncludes(seen, 'const ScreenSeenRequestSchema = z.union([', 'Digital Screens seen runtime input contract');
+  assertIncludes(seen, 'token: z.string().regex(SCREEN_TOKEN_PATTERN)', 'Digital Screens exact bearer-token admission');
+  assertIncludes(seen, 'failClosedOnProviderError: true', 'Digital Screens seen limiter provider failure boundary');
+  assertIncludes(seen, "status: reason === 'provider_unavailable' ? 503 : 429", 'Digital Screens seen limiter outage response');
+  assertNotIncludes(seen, 'parsedRequest.token.trim()', 'Digital Screens must not trim bearer authority');
+  assertIncludes(seenServer, 'getDigitalScreenSeenWriteDecision({', 'Digital Screens version-current seen decision');
+  assertIncludes(seen, 'if (commitResult === \'stale_version\')', 'Digital Screens stale-version acknowledgement rejection');
+  assertIncludes(seenServer, '`screen.screenSeenByMode.${params.mode}.contentVersion`', 'Digital Screens per-mode version receipt');
+  assertIncludes(seenServer, '`screen.screenSeenByMode.${params.mode}.seenAt`', 'Digital Screens per-mode server timestamp');
+  assertIncludes(seen, 'const TOKEN_RATE_LIMIT_ATTEMPTS = 12;', 'Digital Screens bounded multi-mode acknowledgement rate');
+  assertIncludes(publicScreenState, 'getPublicScreenStateDocId', 'Digital Screens public mirror identity helper');
+  assertNotIncludes(publicScreenState, 'setDoc', 'Digital Screens denied browser mirror writer');
+  assertNotIncludes(publicScreenState, 'firebaseClient', 'Digital Screens public mirror browser authority');
 
   assertIncludes(invalidation, 'getPrivateScreenTokenCacheTag(screenToken)', 'Digital Screens invalidation token cache tag');
   assertIncludes(invalidation, 'revalidateTag(result.tokenCacheTag', 'Digital Screens token cache invalidation');
@@ -153,6 +173,7 @@ function verifyDisplayTruthAndQuality() {
   const adjust = read('src/components/shared/media/MediaImageAdjustModal.tsx');
   const slideGenerator = read('src/lib/screen/slideGenerator.ts');
   const campaignTypes = read('src/types/campaigns.ts');
+  const seenHook = read('src/hooks/useDigitalScreenSeenSignal.ts');
 
   [menuBoard, highlights].forEach((display, index) => {
     const label = index === 0 ? 'Menu Board' : 'Highlights';
@@ -164,8 +185,7 @@ function verifyDisplayTruthAndQuality() {
     assertIncludes(display, 'if (!snapshot.exists())', `${label} deleted mirror reload`);
     assertIncludes(display, 'cancelScheduledReload?.();', `${label} scheduled reload cleanup`);
     assertIncludes(display, '_guardedReloadWithRetry(', `${label} guarded immediate retry`);
-    assertIncludes(display, "body: JSON.stringify({ token, storeId })", `${label} seen signal`);
-    assertIncludes(display, 'if (!response.ok)', `${label} seen acknowledgement`);
+    assertIncludes(display, 'useDigitalScreenSeenSignal({', `${label} seen signal`);
     assertNotIncludes(display, 'console.', `${label} raw diagnostics`);
   });
   assertIncludes(runtime, 'input.online === false', 'Digital Screens offline-only cache');
@@ -185,6 +205,12 @@ function verifyDisplayTruthAndQuality() {
   assertIncludes(runtime, 'getFittingScreenColumnAssignments', 'Digital Screens exact bounded column fitting');
   assertIncludes(runtime, 'getSmallestFittingScreenColumnCount', 'Digital Screens content-aware column count');
   assertIncludes(highlights, '<div className="brand-name-large">{storeInfo.name || "Menu"}</div>', 'Digital Screens brand identity is visible with or without a logo');
+  assertIncludes(highlights, 'if (imageFailed)', 'Digital Screens broken owner-poster fallback');
+  assertIncludes(highlights, 'key={`${slide.id}:${slide.imageUrl}`}', 'Digital Screens broken-image state is isolated to one immutable owner slide');
+  assertIncludes(highlights, '<BrandSlide qrReady={qrReady} qrUrl={qrUrl} storeInfo={storeInfo} />', 'Digital Screens owner-poster zero-blank fallback');
+  assertIncludes(seenHook, 'body: JSON.stringify({ contentVersion, mode, storeId, token })', 'Digital Screens exact-version mode acknowledgement');
+  assertIncludes(seenHook, 'completedSignals.has(marker) || activeSignals.has(marker)', 'Digital Screens duplicate client acknowledgement suppression');
+  assertIncludes(seenHook, '`screen_seen_${token}_${mode}_${contentVersion}_${today}`', 'Digital Screens mode-version local acknowledgement key');
   assertIncludes(menuBoard, 'const MAX_TOTAL_ITEMS = 500;', 'Digital Screens fallback render cap');
   assertIncludes(menuBoard, 'const PAGE_DURATION_MS = 12000;', 'Digital Screens bounded page duration');
   assertIncludes(menuBoard, 'import styles from "./screenDisplay.module.scss";', 'Menu Board compiled display styles');
@@ -224,14 +250,16 @@ function verifyDisplayTruthAndQuality() {
   assertIncludes(highlights, 'const initialTruthRef = useRef({', 'Highlights offline-first mount/server refresh distinction');
   assertIncludes(highlights, 'if (prev.slides.length === 0)', 'Highlights empty-slide rotation guard');
   assertIncludes(highlights, 'Number.isSafeInteger(prev.currentIndex)', 'Highlights rotation index normalization');
-  assertIncludes(highlights, 'digital_screen_display_seen_storage_read_failed', 'Highlights blocked-storage diagnostics');
+  assertIncludes(seenHook, '${diagnosticPrefix}_seen_storage_read_failed', 'Digital Screens blocked-storage read diagnostics');
+  assertIncludes(seenHook, '${diagnosticPrefix}_seen_storage_write_failed', 'Digital Screens blocked-storage write diagnostics');
   assertIncludes(highlights, 'const fullscreenHintTimerRef = useRef<number | null>(null);', 'Highlights tracked fullscreen timer');
   assertIncludes(highlights, 'clearFullscreenHintTimer();', 'Highlights fullscreen timer reset');
   assertIncludes(highlights, 'window.clearTimeout(fullscreenHintTimerRef.current);', 'Highlights fullscreen timer cleanup');
   assertIncludes(menuBoard, 'normalizeCachedScreenMenuItems(', 'Menu Board cached item projection');
   assertIncludes(menuBoard, 'const initialTruthRef = useRef(', 'Menu Board server-truth reconciliation');
   assertIncludes(menuBoard, 'const totalPagesRef = useRef(totalPages);', 'Menu Board current pagination bound');
-  assertIncludes(menuBoard, 'digital_screen_menuboard_seen_storage_read_failed', 'Menu Board blocked-storage diagnostics');
+  assertIncludes(menuBoard, 'mode: "menu_board"', 'Menu Board mode-specific acknowledgement');
+  assertIncludes(highlights, 'mode: "highlights"', 'Highlights mode-specific acknowledgement');
   assertIncludes(menuBoard, 'const fullscreenHintTimerRef = useRef<number | null>(null);', 'Menu Board tracked fullscreen timer');
   assertIncludes(menuBoard, 'clearFullscreenHintTimer();', 'Menu Board fullscreen timer reset');
   assertIncludes(menuBoard, 'window.clearTimeout(fullscreenHintTimerRef.current);', 'Menu Board fullscreen timer cleanup');
@@ -254,9 +282,31 @@ function verifyOwnerExperience() {
   assertIncludes(health, 'summary: "Link ready"', 'Digital Screens unobserved health');
   assertIncludes(health, 'summary: "Seen recently"', 'Digital Screens recent health');
   assertIncludes(health, 'summary: "Check TV"', 'Digital Screens stale health');
-  [desktop, desktopLink, mobile, output].forEach((surface, index) => {
-    assertIncludes(surface, 'getDigitalScreenHealth', `Digital Screens health surface ${index + 1}`);
+  assertIncludes(health, 'summary: "Latest update seen"', 'Digital Screens exact-version mode health');
+  assertIncludes(health, 'summary: "Update not seen"', 'Digital Screens pending-version mode health');
+  [desktopLink, mobile].forEach((surface, index) => {
+    assertIncludes(surface, 'getDigitalScreenModeHealth', `Digital Screens mode health surface ${index + 1}`);
   });
+  assertIncludes(output, 'getDigitalScreenModeHealth', 'Digital Screens exact-version Output Center health');
+  assertIncludes(output, 'screenContentVersion = screenState.contentVersion', 'Digital Screens Output Center canonical version read');
+  assertIncludes(output, 'screenSeenByMode = screenState.screenSeenByMode', 'Digital Screens Output Center mode receipt read');
+  assertIncludes(output, 'data.screenSeenByMode?.menu_board', 'Digital Screens Output Center Menu Board receipt');
+  assertIncludes(output, 'data.screenSeenByMode?.highlights', 'Digital Screens Output Center Highlights receipt');
+  assertIncludes(output, 'use_menulist_screen_status_refresh_failed', 'Digital Screens Output Center refresh diagnostics');
+  assertIncludes(output, 'aria-label="Refresh TV status"', 'Digital Screens Output Center explicit status refresh');
+  assertNotIncludes(output, 'getDigitalScreenHealth(data.screenLastSeenAt)', 'Digital Screens Output Center legacy aggregate status');
+  assertIncludes(desktopLink, 'Refresh TV status', 'Digital Screens desktop status refresh');
+  assertIncludes(desktopLink, '<style jsx global>', 'Digital Screens desktop child-card style scope');
+  assertIncludes(desktopLink, '.screen-link-section {', 'Digital Screens desktop scoped style wrapper');
+  assertIncludes(desktopLink, '.screen-link-section .screen-preview.highlights {', 'Digital Screens desktop child preview namespace');
+  assertIncludes(desktopLink, '.screen-link-section .preview-image {', 'Digital Screens desktop preview image namespace');
+  assertNotIncludes(desktopLink, '\n                .preview-image {', 'Digital Screens desktop unscoped preview image style');
+  assertNotIncludes(desktopLink, '\n                .screen-mode-card {', 'Digital Screens desktop unscoped mode-card style');
+  assertIncludes(desktopLink, '@media (max-width: 640px)', 'Digital Screens desktop narrow-viewport layout');
+  assertIncludes(desktopLink, '.screen-link-section .screen-mode-qr {\n                        display: none;', 'Digital Screens desktop narrow-viewport QR overflow guard');
+  assertIncludes(mobile, 'Refresh TV status', 'Digital Screens mobile status refresh');
+  assertIncludes(desktop, 'contentVersion: screenState.contentVersion', 'Digital Screens desktop current-version owner state');
+  assertIncludes(mobile, 'setContentVersion(state.contentVersion)', 'Digital Screens mobile current-version owner state');
   assertNotIncludes(desktop, 'Running', 'Digital Screens desktop overclaim');
   assertNotIncludes(mobile, "'Connected'", 'Digital Screens mobile overclaim');
   assertIncludes(output, 'href="/business-settings?section=digital-screens"', 'Digital Screens setup deep link');
@@ -304,8 +354,18 @@ function verifyMigrationAndDocs() {
   ].forEach((docPath) => {
     assertIncludes(read(docPath), 'publicPresence.accentColor', `${docPath} canonical OBP accent`);
   });
+  [
+    '__docs__/digital-screens/README.md',
+    '__docs__/digital-screens/digital-screens_impl.md',
+    '__docs__/digital-screens/digital-screens_mobile-support.md',
+  ].forEach((docPath) => {
+    assertIncludes(read(docPath), 'screenSeenByMode', `${docPath} exact-version mode receipt`);
+  });
   assertIncludes(read('__docs__/digital-screens/digital-screens_improvements.md'), 'July 29, 2026', 'Digital Screens improvement log');
+  assertIncludes(read('__docs__/digital-screens/digital-screens_improvements.md'), 'August 1, 2026 render-confidence correction', 'Digital Screens render-confidence improvement log');
   assertIncludes(read('__docs__/changelog.md'), 'Digital Screens Truth and TV Output Hardening', 'Digital Screens changelog');
+  assertIncludes(read('__docs__/changelog.md'), 'Digital Screens Exact-Version Output Confidence', 'Digital Screens exact-version changelog');
+  assertIncludes(read('AUDIT_REPORT.md'), 'Digital Screens Exact-Version Output Audit', 'Digital Screens audit report');
 }
 
 const checks = [

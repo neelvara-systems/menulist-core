@@ -5,24 +5,13 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
-import {
-    AnswerlatticeAnswerTestRollbackResponseSchema,
-    AnswerlatticeAnswerTestRollbackSchema,
-    isAnswerlatticeAnswerTestRollbackAuthorityInScope,
-} from '@lib/answerlattice/answerTestContracts';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
+import { AnswerlatticeAnswerTestRollbackResponseSchema, AnswerlatticeAnswerTestRollbackSchema, isAnswerlatticeAnswerTestRollbackAuthorityInScope, } from '@lib/answerlattice/answerTestContracts';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import {
-    normalizeAnswerlatticeCanonicalAnswerId,
-    normalizeAnswerlatticeMutationProposalId,
-    normalizeAnswerlatticeResolvedEntityIds,
-} from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityIds, } from '@lib/answerlattice/governanceIdBoundary';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -151,7 +140,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const db = answerlatticeFirestoreAdmin;
+        const db = requireAnswerlatticeFirestoreAdmin();
         const answerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(answerId);
         const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditLogId);
         const proposalId = `rollback_${auditLogId}`;

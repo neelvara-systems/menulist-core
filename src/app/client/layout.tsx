@@ -2,7 +2,7 @@
  * Client Menu Layout
  * 
  * This layout is used for client digital menus accessed via:
- * - Subdomains: joespizza.menulist.ai
+ * - Subdomains: joespizza.menulist.online
  * - Custom domains: joespizza.com
  * 
  * It provides a minimal wrapper without the platform navigation.

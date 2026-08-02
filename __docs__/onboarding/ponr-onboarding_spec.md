@@ -130,7 +130,7 @@ Instead, show instruction screen:
 │                                         │
 │  [QR CODE]                              │
 │                                         │
-│  xyz.menulist.ai/screen/abc123          │
+│  xyz.menulist.online/screen/abc123          │
 │  [Copy link]                            │
 │                                         │
 │  ✓ Works offline                        │

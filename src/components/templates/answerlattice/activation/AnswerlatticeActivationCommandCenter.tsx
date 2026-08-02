@@ -9,6 +9,7 @@ import {
     readAnswerlatticeActivationDashboardResponse,
 } from '@lib/answerlattice/activationDashboardResponseClient';
 import type { AnswerlatticeActivationStep, AnswerlatticeActivationStepStatus, AnswerlatticeActivationSummary } from '@type/answerlattice';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
 import AnswerlatticeOperationsPanel from './AnswerlatticeOperationsPanel';
@@ -32,7 +33,7 @@ import {
     theme,
 } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBookOpen,
@@ -75,13 +76,19 @@ const stageLabel: Record<string, string> = {
     live: 'Launch checks complete',
 };
 
-const formatDateTime = (value: any): string => {
+const formatDateTime = (value: unknown): string => {
     if (!value) return 'Not seen yet';
-    const date = typeof value?.toDate === 'function'
-        ? value.toDate()
-        : typeof value?.seconds === 'number'
-            ? new Date(value.seconds * 1000)
-            : new Date(value);
+    const timestampLike = typeof value === 'object' && value !== null
+        ? value as { seconds?: unknown; toDate?: unknown }
+        : null;
+    const dateInput = typeof value === 'string' || typeof value === 'number' || value instanceof Date
+        ? value
+        : Number.NaN;
+    const date = typeof timestampLike?.toDate === 'function'
+        ? timestampLike.toDate()
+        : typeof timestampLike?.seconds === 'number'
+            ? new Date(timestampLike.seconds * 1000)
+            : new Date(dateInput);
     if (Number.isNaN(date.getTime())) return 'Not seen yet';
     return date.toLocaleString(undefined, {
         month: 'short',
@@ -127,6 +134,7 @@ const combineActivationStepStatus = (
 };
 
 export default function AnswerlatticeActivationCommandCenter() {
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const screens = Grid.useBreakpoint();
     const router = useRouter();
     const { token } = theme.useToken();
@@ -136,14 +144,33 @@ export default function AnswerlatticeActivationCommandCenter() {
     const [refreshing, setRefreshing] = useState(false);
     const [testingNotification, setTestingNotification] = useState(false);
     const [rebuildingContext, setRebuildingContext] = useState(false);
+    const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    const loadRequestRef = useRef(0);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     const loadSummary = useCallback(async (silent = false) => {
+        const requestScopeKey = cacheScopeKey;
+        const requestId = loadRequestRef.current + 1;
+        loadRequestRef.current = requestId;
+        if (!requestScopeKey) {
+            setSummary(null);
+            setLoadedScopeKey(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         if (silent) {
             setRefreshing(true);
         } else {
             setLoading(true);
+            setSummary(null);
+            setLoadedScopeKey(null);
+            setTestingNotification(false);
+            setRebuildingContext(false);
         }
 
         try {
@@ -157,14 +184,21 @@ export default function AnswerlatticeActivationCommandCenter() {
                 isAnswerlatticeActivationSummaryResponse,
                 ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
             setSummary(data.summary);
+            setLoadedScopeKey(requestScopeKey);
         } catch {
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
+            setSummary(null);
+            setLoadedScopeKey(requestScopeKey);
             message.error(ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
-    }, []);
+    }, [cacheScopeKey]);
 
     useEffect(() => {
         loadSummary();
@@ -267,6 +301,8 @@ export default function AnswerlatticeActivationCommandCenter() {
     }, [currentHostname, router]);
 
     const testNotifications = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent) return;
         setTestingNotification(true);
         try {
             const response = await fetch('/api/answerlattice/notifications/test', {
@@ -279,16 +315,21 @@ export default function AnswerlatticeActivationCommandCenter() {
                 isAnswerlatticeNotificationTestResponse,
                 ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             message.success(`Test email sent to ${data.recipientEmail}`);
             await loadSummary(true);
         } catch {
-            message.error(ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED);
+            if (currentScopeKeyRef.current === requestScopeKey) {
+                message.error(ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED);
+            }
         } finally {
-            setTestingNotification(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setTestingNotification(false);
         }
-    }, [loadSummary]);
+    }, [cacheScopeKey, loadSummary, scopeIsCurrent]);
 
     const rebuildCompiledContext = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent) return;
         setRebuildingContext(true);
         try {
             const response = await fetch('/api/answerlattice/bundles/rebuild', {
@@ -303,6 +344,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                 isAnswerlatticeCompiledContextRebuildResponse,
                 ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             if (data.ok && data.manifest.status === 'ready') {
                 message.success(`Compiled context v${data.manifest.bundleVersion} is ready`);
             } else {
@@ -310,13 +352,15 @@ export default function AnswerlatticeActivationCommandCenter() {
             }
             await loadSummary(true);
         } catch {
-            message.error(ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED);
+            if (currentScopeKeyRef.current === requestScopeKey) {
+                message.error(ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED);
+            }
         } finally {
-            setRebuildingContext(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setRebuildingContext(false);
         }
-    }, [loadSummary]);
+    }, [cacheScopeKey, loadSummary, scopeIsCurrent]);
 
-    if (loading) {
+    if (loading || !scopeIsCurrent) {
         return <Skeleton active paragraph={{ rows: 10 }} />;
     }
 

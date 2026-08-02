@@ -807,7 +807,7 @@ const verifyStaticBoundaries = () => {
     assertIncludes(server, "recordCampaignCueApprovalActionTransactional", "transactional approval lifecycle");
     assertIncludes(server, "buildCampaignCueIdempotencyRequestHash", "request-bound idempotency identity");
     assertIncludes(server, "actorId: params.scope.userId", "actor-bound idempotency identity");
-    assertIncludes(actionServerBlock, "return firestoreAdmin.runTransaction", "ordinary action final transaction");
+    assertIncludes(actionServerBlock, "return requireCampaignCueFirestoreAdmin().runTransaction", "ordinary action final transaction");
     assertIncludes(actionServerBlock, "const currentSnap = await transaction.get(campaignRef)", "ordinary action current campaign re-read");
     assertIncludes(actionServerBlock, "transaction.set(summaryRef", "ordinary action atomic dashboard summary");
     assertIncludes(actionServerBlock, "transaction.set(idempotencyRef", "ordinary action atomic idempotency completion");

@@ -15,7 +15,6 @@ import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ImageGenerationRequestSchema } from "@lib/validation/apiSchemas";
-import { GenerateImageViaApiPayloadType } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
@@ -28,38 +27,80 @@ const ACTION = AI_ACTIONS_TYPES.IMAGE_GENERATION;
 const LOG_FILE = "image-generation.log"
 const IMAGE_GENERATION_AI_MAX_BODY_BYTES = 16 * 1024 * 1024;
 
-const getImageGenerationConfigLogSummary = (config: Record<string, any> | undefined | null) => ({
-    aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
-    colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
-    compositionCount: Array.isArray(config?.compositions) ? config.compositions.length : 0,
-    environmentCount: Array.isArray(config?.environments) ? config.environments.length : 0,
-    hasBackgroundColor: Boolean(config?.backgroundColor),
-    hasForegroundColor: Boolean(config?.foregroundColor),
-    hasNegativePrompt: Boolean(config?.negativePrompt),
-    hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
-    hasReferenceImage: Boolean(config?.referanceImage?.url),
-    isMultiMode: Boolean(config?.isMultiMode),
-    lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
-    moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
-    negativePromptLength: typeof config?.negativePrompt === 'string' ? config.negativePrompt.length : 0,
-    numberOfImages: Number(config?.numberOfImages || 1),
-    promptLength: typeof config?.prompt === 'string' ? config.prompt.length : 0,
-    selectedImageTypeCount: Array.isArray(config?.selectedImageTypes) ? config.selectedImageTypes.length : 0,
-    styleCount: Array.isArray(config?.styles) ? config.styles.length : 0,
-    stylesCategoryPresent: Boolean(config?.stylesCategory),
-    transparentBg: Boolean(config?.transparentBg),
-});
+const toUnknownRecord = (value: unknown): Record<string, unknown> => (
+    value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {}
+);
 
-const getImageItemDetailsLogSummary = (itemDetails: Record<string, any> | undefined | null) => ({
-    attributeCount: Array.isArray(itemDetails?.attributes) ? itemDetails.attributes.length : 0,
-    categoryLength: typeof itemDetails?.category === 'string' ? itemDetails.category.length : 0,
-    descriptionLength: typeof itemDetails?.description === 'string' ? itemDetails.description.length : 0,
-    hasCategory: Boolean(itemDetails?.category),
-    hasDescription: Boolean(itemDetails?.description),
-    hasId: Boolean(itemDetails?.id),
-    hasName: Boolean(itemDetails?.name),
-    nameLength: typeof itemDetails?.name === 'string' ? itemDetails.name.length : 0,
-});
+const getImageGenerationConfigLogSummary = (value: unknown) => {
+    const config = toUnknownRecord(value);
+    const referenceImage = toUnknownRecord(config.referanceImage);
+    return {
+        aspectRatio: typeof config.aspectRatio === 'string' ? config.aspectRatio : undefined,
+        colorCount: Array.isArray(config.colors) ? config.colors.length : 0,
+        compositionCount: Array.isArray(config.compositions) ? config.compositions.length : 0,
+        environmentCount: Array.isArray(config.environments) ? config.environments.length : 0,
+        hasBackgroundColor: Boolean(config.backgroundColor),
+        hasForegroundColor: Boolean(config.foregroundColor),
+        hasNegativePrompt: Boolean(config.negativePrompt),
+        hasPrompt: typeof config.prompt === 'string' && config.prompt.length > 0,
+        hasReferenceImage: Boolean(referenceImage.url),
+        isMultiMode: Boolean(config.isMultiMode),
+        lightingCount: Array.isArray(config.lighting) ? config.lighting.length : 0,
+        moodCount: Array.isArray(config.moods) ? config.moods.length : 0,
+        negativePromptLength: typeof config.negativePrompt === 'string' ? config.negativePrompt.length : 0,
+        numberOfImages: typeof config.numberOfImages === 'number' && Number.isFinite(config.numberOfImages)
+            ? config.numberOfImages
+            : 1,
+        promptLength: typeof config.prompt === 'string' ? config.prompt.length : 0,
+        selectedImageTypeCount: Array.isArray(config.selectedImageTypes) ? config.selectedImageTypes.length : 0,
+        styleCount: Array.isArray(config.styles) ? config.styles.length : 0,
+        stylesCategoryPresent: Boolean(config.stylesCategory),
+        transparentBg: Boolean(config.transparentBg),
+    };
+};
+
+const getImageItemDetailsLogSummary = (value: unknown) => {
+    const itemDetails = toUnknownRecord(value);
+    return {
+        attributeCount: Array.isArray(itemDetails.attributes) ? itemDetails.attributes.length : 0,
+        categoryLength: typeof itemDetails.category === 'string' ? itemDetails.category.length : 0,
+        descriptionLength: typeof itemDetails.description === 'string' ? itemDetails.description.length : 0,
+        hasCategory: Boolean(itemDetails.category),
+        hasDescription: Boolean(itemDetails.description),
+        hasId: Boolean(itemDetails.id),
+        hasName: Boolean(itemDetails.name),
+        nameLength: typeof itemDetails.name === 'string' ? itemDetails.name.length : 0,
+    };
+};
+
+type ImageGenerationTransactionLog = {
+    action: typeof ACTION;
+    candidatesTokenCount: number;
+    chargePerCredit?: number;
+    clientResponse?: string[];
+    failedPromptCount?: number;
+    fileId?: string;
+    geminiResponse?: ReturnType<typeof summarizeImageProviderResponse>[];
+    generationConfigSummary?: ReturnType<typeof getImageGenerationConfigLogSummary>;
+    imageCount?: number;
+    itemSummary?: ReturnType<typeof getImageItemDetailsLogSummary>;
+    marginPaise?: number;
+    model?: string;
+    ourChargePaise?: number;
+    processingTime?: number;
+    projectId?: string;
+    promptCount?: number;
+    promptTokenCount: number;
+    realCostPaise?: number;
+    tokenPerCredit?: number;
+    totalCharge: number;
+    totalCredits: number;
+    totalTokenCount: number;
+    transactionId: string | null;
+    unitsConsumed?: number;
+};
 
 
 export const POST = withAuth(async (request, session) => {
@@ -70,6 +111,7 @@ export const POST = withAuth(async (request, session) => {
     let projectIdForLog: string | undefined;
     let fileIdForLog: string | undefined;
     let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
+    let accountingFailureLogged = false;
 
     try {
         if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
@@ -89,7 +131,9 @@ export const POST = withAuth(async (request, session) => {
         const bodyResult = await readBoundedJsonBody(request, IMAGE_GENERATION_AI_MAX_BODY_BYTES);
         if (bodyResult.ok === false) return bodyResult.response;
 
-        const rawData = bodyResult.data as any;
+        const rawData = toUnknownRecord(bodyResult.data);
+        const rawGenerationConfig = toUnknownRecord(rawData.generationConfig);
+        const rawReferenceImage = toUnknownRecord(rawGenerationConfig.referanceImage);
         const validation = validateAPIInput(ImageGenerationRequestSchema, rawData);
 
         if (!validation.success) {
@@ -101,11 +145,11 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/image-generation',
                 error: errorMsg,
                 attemptedData: getAIRouteLogContext({
-                    hasGenerationConfig: !!rawData?.generationConfig,
-                    hasPrompt: !!rawData?.generationConfig?.prompt,
-                    projectId: rawData?.projectId,
-                    fileId: rawData?.fileId,
-                    businessType: rawData?.businessType,
+                    hasGenerationConfig: Boolean(rawData.generationConfig),
+                    hasPrompt: Boolean(rawGenerationConfig.prompt),
+                    projectId: rawData.projectId,
+                    fileId: rawData.fileId,
+                    businessType: rawData.businessType,
                 }),
                 requestId,
             }, 'high'); // HIGH severity - very expensive operation
@@ -113,12 +157,12 @@ export const POST = withAuth(async (request, session) => {
             await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
                 error: errorMsg,
                 attemptedData: getAIRouteLogContext({
-                    hasGenerationConfig: !!rawData?.generationConfig,
-                    hasPrompt: !!rawData?.generationConfig?.prompt,
-                    hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
-                    projectId: rawData?.projectId,
-                    fileId: rawData?.fileId,
-                    businessType: rawData?.businessType,
+                    hasGenerationConfig: Boolean(rawData.generationConfig),
+                    hasPrompt: Boolean(rawGenerationConfig.prompt),
+                    hasReferenceImage: Boolean(rawReferenceImage.url),
+                    projectId: rawData.projectId,
+                    fileId: rawData.fileId,
+                    businessType: rawData.businessType,
                 }),
             });
             return NextResponse.json({
@@ -127,7 +171,7 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const jsonData = validation.data as unknown as GenerateImageViaApiPayloadType;
+        const jsonData = validation.data;
         const { generationConfig, projectId, fileId, itemDetails, businessType } = jsonData;
         projectIdForLog = projectId;
         fileIdForLog = fileId;
@@ -220,8 +264,8 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'NO_IMAGE_GENERATED',
                 data: {
                     requestSummary: {
-                        generationConfig: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
-                        itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+                        generationConfig: getImageGenerationConfigLogSummary(generationConfig),
+                        itemDetails: getImageItemDetailsLogSummary(itemDetails),
                     },
                     responseSummary: {
                         providerResponseCount: generatedImagesResponse?.length || 0,
@@ -234,7 +278,8 @@ export const POST = withAuth(async (request, session) => {
 
         // Initialize transaction object outside the if block
         let remainingBalance = null;
-        let transactionObject: any = {
+        let transactionObject: ImageGenerationTransactionLog = {
+            action: ACTION,
             totalCharge: 0,
             totalCredits: 0,
             totalTokenCount: 0,
@@ -264,8 +309,8 @@ export const POST = withAuth(async (request, session) => {
             // Update the transaction object with calculated values and other details
             transactionObject = {
                 ...transactionObject,
-                itemSummary: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
-                generationConfigSummary: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
+                itemSummary: getImageItemDetailsLogSummary(itemDetails),
+                generationConfigSummary: getImageGenerationConfigLogSummary(generationConfig),
                 projectId,
                 fileId,
                 action: ACTION,
@@ -311,9 +356,7 @@ export const POST = withAuth(async (request, session) => {
                     requestId,
                     userId,
                 });
-                if (transactionError && typeof transactionError === 'object') {
-                    (transactionError as Record<string, unknown>).__imageGenerationLogged = true;
-                }
+                accountingFailureLogged = true;
                 throw transactionError;
             }
         }
@@ -345,8 +388,8 @@ export const POST = withAuth(async (request, session) => {
             logFileName: LOG_FILE, userId: userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
                 requestSummary: {
-                    generationConfig: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
-                    itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+                    generationConfig: getImageGenerationConfigLogSummary(generationConfig),
+                    itemDetails: getImageItemDetailsLogSummary(itemDetails),
                 },
                 responseSummary: getTransactionLogSummary().responseSummary,
                 transaction: getTransactionLogSummary()
@@ -366,7 +409,7 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
 
     } catch (error) {
-        if (!(error && typeof error === 'object' && '__imageGenerationLogged' in error)) {
+        if (!accountingFailureLogged) {
             logAIRouteFailure('image_generation_api_failed', error, {
                 action: ACTION,
                 fileId: fileIdForLog,

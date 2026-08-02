@@ -1,10 +1,10 @@
 # Digital Screens — Technical Implementation
 
-July 29, 2026 current contract: bearer tokens live in server-only `screenControl_{storeId}` private control documents. Owner reads/mutations use the permission-checked `/api/digital-screens` boundary and atomically update canonical state, private control, and the token-free listener mirror. Public screen resolution and the daily seen transaction reconcile the private control store/tenant identity before rendering or liveness writes.
+August 1, 2026 current contract: bearer tokens live in server-only `screenControl_{storeId}` private control documents. Owner reads/mutations use the permission-checked `/api/digital-screens` boundary and atomically update canonical state, private control, and the token-free listener mirror. Public screen resolution and the open-acknowledgement transaction reconcile private control, store/tenant identity, display mode, and canonical content version before a receipt write.
 
 **Created:** January 4, 2026
 **Status:** 🔒 **v2.3 LOCKED — Controlled owner testing ready; full production certification pending the overall MenuList audit.**
-**Last Audit:** July 29, 2026 (private control migration, server-authoritative mutations, scoped caches, offline-cache truth guard, output layout/artwork/expiry hardening, and truthful owner health)
+**Last Audit:** August 1, 2026 (private control migration, server-authoritative mutations, scoped caches, offline-cache truth guard, output layout/artwork/expiry hardening, per-mode exact-version owner health, and zero-blank media fallback)
 **Applies:** 3-Year Architecture Freeze Rule
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated Digital Screens runtime evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
@@ -77,7 +77,9 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `evergreenSlides.ts` (~95 lines) — `generateEvergreenSlides()`, `generateBrandFallback()` (imports `MenuItemForSlide` from `@type/campaigns`)
 - `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
-- `publicScreenState.ts` — Converts canonical screen state into the token-free public listener mirror; owner mutations write canonical and mirror documents in one transaction.
+- `publicScreenState.ts` — Pure token-free public listener document-ID helper. Browser mirror writes are intentionally absent; owner/server transactions construct and write the mirror.
+- `screenSeenAcknowledgement.ts` — Pure display-mode validation, UTC-day normalization, and exact-version/idempotency decision.
+- `screenSeenServer.ts` — Transaction-current private token, store/tenant lifecycle, canonical version, and per-mode receipt authority.
 - `screenManagementServer.ts` — Authorized owner state transaction for explicit initialization, settings, custom slides, legacy token migration, and expired-reference pruning.
 - `serverScreenInvalidation.ts` — Admin-only content-version and public mirror transaction plus exact token-cache invalidation.
 - `screenRuntime.ts` — Offline cache admission, TV viewport layout rules, and the stable fallback accent used when no valid OBP accent exists.
@@ -85,14 +87,15 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
 
-- `page.tsx` (~90 lines) — Server component: DAL fetch, generated projection/fallback menu resolution, mode routing via `?mode=` query param
-- `ScreenDisplay.tsx` — **Highlights mode** client: zero-safe bounded rotation, runtime-projected/version-matched/expiry-aware offline fallback, first-mount versus later-server-truth reconciliation, fail-closed public mirror listener with cleanup-owned guarded reload retry, storage-contained seen signal, expiry refresh, cleanup-owned fullscreen hint, hero image slides, QR, capsule progress, screen-safe brand fallback
+- `page.tsx` — Server component: bearer-route noindex/no-referrer metadata, DAL fetch, generated projection/fallback menu resolution, and mode routing via `?mode=` query param
+- `ScreenDisplay.tsx` — **Highlights mode** client: zero-safe bounded rotation, runtime-projected/version-matched/expiry-aware offline fallback, first-mount versus later-server-truth reconciliation, fail-closed public mirror listener with cleanup-owned guarded reload retry, shared exact-version open acknowledgement, expiry refresh, cleanup-owned fullscreen hint, hero image slides, QR, capsule progress, and brand fallback when data or owner poster media fails
 - **`MenuBoardDisplay.tsx`** — **Menu Board mode** client: screen-grade full menu layout, runtime-projected offline fallback, later-server-truth reconciliation, current-bound ordered category/item pagination, fail-closed public mirror listener with cleanup-owned guarded reload retry, price alignment, QR, progress bar, and storage/fullscreen containment
 - `ScreenAttribution.tsx` — Shared quiet MenuList attribution used by both screen modes.
 
 ### API Route (1 file)
 
-- `src/app/api/screen/seen/route.ts` — Daily seen signal (1 write/day/screen) with bounded diagnostics, enabled-screen gate, legacy summary-id guard, and public store eligibility gate
+- `src/app/api/screen/seen/route.ts` — Bounded open acknowledgement with strict current/legacy request schemas, IP/token limits, direct/legacy token resolution, stale-version `409`, and generic public errors
+- `src/hooks/useDigitalScreenSeenSignal.ts` — Shared client effect; posts token/store/mode/version once per UTC day marker and caches success only after an OK response
 
 ### Functions Support
 
@@ -118,7 +121,7 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `index.tsx` — Main card: fetch state, owner-only toggle, settings composition
 - `OwnerUploads.tsx` — Single custom-slide list, add/edit/delete controls, and owner-only mode support
 - `OwnerUploads.tsx` — Upload manager: max 3, 14-day expiry, delete, caption edit
-- `ScreenLink.tsx` — TV setup cards for Menu Board + Highlights, compact URLs, QR blocks, last-seen status, and bounded copy/open diagnostics. Copied feedback waits for Clipboard API success or acknowledged textarea fallback success.
+- `ScreenLink.tsx` — TV setup cards for Menu Board + Highlights, compact URLs, QR blocks, separate exact-version status, manual status refresh, and bounded copy/open diagnostics. Copied feedback waits for Clipboard API success or acknowledged textarea fallback success.
 - `src/components/mobile/screens/MobileDigitalScreensScreen.tsx` — Mobile parity surface for TV status, both links, custom slides, owner-only toggle, and bounded copy/open diagnostics. Copied feedback follows the same acknowledged browser-local copy contract as desktop.
 - `scripts/verification/verify-digital-screens-boundary.js` — Dedicated local source gate for Digital Screens public display, owner settings, cache invalidation, Firestore public mirror, and docs parity.
 - `scripts/backfill-digital-screen-public-mirrors.ts` — Dry-run-by-default migration that replaces legacy token-bearing public mirrors before the tightened Firestore rule is deployed.
@@ -167,7 +170,7 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 4. Lazy QR: Delay rendering by 2s [line 119-125]
 5. Start slide rotation timer (8s interval) [line 158-168]
 6. Set up Firebase onSnapshot listener on `platformSummary/screen_{storeId}` [line 174-206]
-7. Send daily seen signal (1/day via localStorage check; same-origin/no-store/manual-redirect POST; API writes only for enabled screens backed by public-eligible stores; local marker only after OK) [line 130-147]
+7. Send a bounded `highlights` open acknowledgement for the exact SSR `contentVersion`; local marker is keyed by token/mode/version/UTC day and stored only after OK
 8. Start 30-min offline fallback timer [line 209-218]
 9. Start 6-hour proactive refresh timer [line 220-233]
 ```
@@ -194,7 +197,7 @@ Settings page → DigitalScreenSettings/index.tsx
   → getScreenState() or initializeScreenState() [DAL]
   → Display:
       ScreenLink (v2.0: TWO links — Menu Board + Highlights)
-      TV setup status (daily last-seen signal)
+      Separate Menu Board / Highlights latest-version status + owner-triggered refresh
       OwnerUploads (single custom-slide list; max 3; highlights mode only)
       Override toggle (highlights mode only)
   → Upload: file → base64 → uploadScreenSlide() → Storage + pinnedSlides[]
@@ -300,6 +303,7 @@ Any screen content change in platformSummary/campaigns_{sId}
 | `ownerOverrideEnabled` | boolean       | "Only custom slides" toggle for Highlights                  |
 | `pinnedSlides`         | ScreenSlide[] | Max 3, 14-day expiry each                                   |
 | `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal after enabled-screen and public store eligibility checks |
+| `screenSeenByMode`     | object?       | Bounded `menu_board` / `highlights` receipts containing only canonical `contentVersion` and server `seenAt` |
 | `menuProjection`       | object?       | Legacy optional read-through projection; used only when exact source/version context still matches |
 
 `screen` does not store an owner-selected project assignment. Menu resolution remains store-level and automatic; `menuProjection.baseProjectId` and `baseProjectSlug` are generated only to prove the cached payload and QR/menu URL context match the current automatic source.
@@ -355,15 +359,15 @@ Do not deploy step 6 before steps 1–5.
 | Firebase doc listener    | `ScreenDisplay.tsx:174-206` | GPT FIX 3: direct doc, not query    |
 | Zero-blank guarantee     | `ScreenDisplay.tsx:239-303` | Emergency brand fallback            |
 | Lazy QR loading          | `ScreenDisplay.tsx:118-125` | 2s delay for cold boot speed        |
-| Daily seen signal        | `ScreenDisplay.tsx:130-147` | 1 write/day ops awareness; same-origin/no-store/manual-redirect client POST; API fails cheap before JSON parse and verifies enabled screen/store eligibility before writing |
+| Mode/version open acknowledgement | `useDigitalScreenSeenSignal.ts`, `screenSeenServer.ts` | One idempotent canonical write per mode/version/UTC day after strict request, token, store/tenant lifecycle, and transaction-current version checks |
 | Build version context    | `ScreenDisplay.tsx`         | Bounded diagnostics only            |
 | Offline fallback         | `ScreenDisplay.tsx:108-116` | localStorage on data change         |
 | 30-min offline retry     | `ScreenDisplay.tsx:209-218` | Reload if listener error            |
 | 6-hour proactive refresh | `ScreenDisplay.tsx:220-233` | Memory leaks, code deploys          |
 
-Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded display failure diagnostics. Cache read/write failures, blocked daily-marker storage reads, daily seen signal failures, non-OK daily seen signal responses, listener failures, fullscreen recovery request failures, and guarded reload storage failures record normalized `digital_screen_*` or `screen_guarded_reload_storage_failed` failure codes with bounded token/store/version/count/component metadata, response status when available, and source error name/code/status only. The daily seen POST is explicitly same-origin, uncached, and manual-redirect, and the local daily marker is cached only after an OK response. IP/token rate-limit denials return non-success `429` plus `Retry-After`, so they cannot create a browser marker for an unverified write; unexpected persistence failures remain non-success `503`. The API route accepts a valid direct target; its legacy no-store fallback queries at most two token matches and proceeds only when exactly one canonical `campaigns_{storeId}` candidate exists. The selected candidate then enters a transaction that re-reads the current summary, store, and tenant. The same transaction requires the exact token, enabled screen, exact store/tenant aliases, and current public lifecycle/block eligibility before it checks the UTC daily marker and updates `screenLastSeenAt`. A duplicate legacy token, disable, reassignment, deletion, or block therefore fails closed. Owner desktop/mobile screen-link blocked-open failures use the same helper and record only mode plus URL presence/length metadata. Normal cache hits, server-data fallback, QR readiness, content-version changes, listener setup/cleanup, offline retries, successful owner link opens, successful fullscreen recovery, reload suppression, successful seen-signal marker caching, and six-hour refreshes stay silent.
+Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded display failure diagnostics. Cache failures, blocked acknowledgement-marker storage, open acknowledgement failures/non-OK responses, listener failures, fullscreen recovery failures, and guarded reload storage failures record normalized codes with bounded token/store/version/mode/count/component metadata and response status where available. The acknowledgement POST is same-origin, uncached, manual-redirect, and strict-shaped. Current clients send `mode` plus `contentVersion`; legacy clients without both fields retain the aggregate daily path. The transaction re-reads private control, canonical screen, store, and tenant, then rejects token/scope/lifecycle drift and returns `409` when the requested version is no longer canonical. A successful current request updates `screenLastSeenAt` plus only that mode's `{contentVersion, seenAt}` receipt; duplicate mode/version/day requests are no-ops. The browser marker is cached only after OK. Rate limits return `429`; unexpected persistence failures return `503`. Owner desktop/mobile blocked-open failures remain bounded. Normal cache hits, successful acknowledgements, content-version reloads, and six-hour refreshes stay silent.
 
-Owner desktop settings, mobile settings, and Output Center retain the canonical `DigitalScreenState["screenLastSeenAt"]` type instead of widening the field to `any`. `src/lib/screen/screenTimestamp.ts` is the shared defensive presentation boundary for Firestore `Timestamp`, Admin/JSON seconds forms, valid `Date`, millisecond, and ISO inputs. It validates conversion results and returns `null` for malformed, throwing, non-finite, whitespace-mutated, or invalid-date values, so malformed legacy/presentation data renders the established “waiting” state rather than throwing.
+Owner desktop settings, mobile settings, and desktop Output Center read canonical `contentVersion` plus `DigitalScreenState["screenSeenByMode"]`. `screenHealth.ts` reports `Latest update seen` only for a recent exact-version receipt from that mode, `Update not seen` for an older receipt, and waiting/check states for absent or stale receipts. None of these owner surfaces silently reuses one mode's receipt for the other. Output Center refreshes status only after an explicit owner action and reuses the existing authorized `getScreenState()` read. `screenTimestamp.ts` remains the defensive timestamp conversion boundary; the aggregate `screenLastSeenAt` remains storage compatibility only.
 
 The same normalizer owns `ScreenSlide.validUntil` presentation and expiry policy. A present but malformed expiry fails closed as expired in `filterExpiredSlides`; desktop/mobile countdowns render zero days rather than throwing, and mobile ordering uses only validated milliseconds. Missing expiry remains the deliberate non-expiring contract for generated evergreen slides.
 
@@ -633,7 +637,7 @@ useEffect(() => {
 2. `platformSummary/screenControl_{sId}` contains a valid token plus exact `storeId` and `tenantId`
 3. canonical `screen` contains no `screenToken` after migration and `screen.pinnedSlides` exists
 4. `screen.menuProjection` is optional; when present, exact source/version context must match before public render uses it
-5. `screen.screenLastSeenAt` updates daily only after private/legacy token, enabled screen, store, and tenant checks
+5. `screen.screenLastSeenAt` and bounded `screen.screenSeenByMode` receipts update only after private/legacy token, enabled screen, store, tenant, and transaction-current content-version checks
 6. `platformSummary/screen_{sId}` contains only the public-safe listener fields
 
 ---
@@ -675,6 +679,7 @@ The following historical docs are in `_archive/` — their content has been abso
 | 14.3    | 2026-06-28 | Codex   | **Functions public-output refresh:** Server-side cache revalidation can now bump initialized screen versions for first extraction, scheduled special-menu switching, and entitlement attribution changes. |
 | 14.4    | 2026-07-01 | Codex   | **Seen-signal store eligibility:** `/api/screen/seen` now verifies enabled screen state, legacy `campaigns_{storeId}` document shape, and shared public store-id eligibility before updating `screenLastSeenAt`. |
 | 14.5    | 2026-07-25 | Codex   | **Seen-signal transaction authority:** direct and legacy daily liveness paths now re-read current screen, store, and tenant truth in one transaction and reject concurrent disable, reassignment, deletion, lifecycle block, or identity-alias drift before updating `screenLastSeenAt`. |
+| 17.0    | 2026-08-01 | Codex   | **Exact-version render confidence:** Menu Board and Highlights now write separate bounded version receipts, stale versions fail closed, owner desktop/mobile show per-mode status with manual refresh, the denied browser mirror writer was removed, and broken owner poster media falls back to store identity plus menu QR. |
 | 16.1    | 2026-07-29 | Codex   | **OBP brand continuity:** `ScreenStoreInfo` now carries the normalized canonical OBP accent; screen roots expose one CSS variable for restrained chrome, and nested accent saves wake initialized screens through the existing refresh transaction. |
 | 14.6    | 2026-07-25 | Codex   | **Legacy token uniqueness:** the no-store daily liveness fallback now queries up to two candidates and fails closed unless exactly one canonical `campaigns_{storeId}` document owns the token, matching public screen-render admission. |
 | 14.7    | 2026-07-25 | Codex   | **Seen-signal acknowledgement integrity:** IP/token limiter denials return non-success `429` with `Retry-After` rather than cached success, preventing the display from persisting its local daily marker when no transaction ran. |

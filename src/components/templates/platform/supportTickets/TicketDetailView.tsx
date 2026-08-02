@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -70,10 +72,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
             if (!trustedUrl) {
                 throw new Error('answerlattice_ticket_attachment_url_invalid');
             }
-            const opened = window.open(trustedUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('answerlattice_ticket_attachment_open_blocked');
-            }
+            openIsolatedBrowserUrl(trustedUrl);
         } catch (error) {
             logRuntimeFailure('answerlattice_ticket_attachment_open_failed', error, {
                 surface: 'ticket_detail_view',

@@ -1,79 +1,24 @@
 import { FEATURE_FLAGS } from '@config/features';
-import {
-    ANSWERLATTICE_ALL_PERMISSIONS,
-    ANSWERLATTICE_PERMISSION_KEYS,
-    AnswerlatticePermissionKey,
-    AnswerlatticeRoleDefinition,
-    DEFAULT_ANSWERLATTICE_ROLE_IDS,
-    DEFAULT_ANSWERLATTICE_ROLE_METADATA,
-    isDefaultAnswerlatticeRoleId,
-    normalizeAnswerlatticeRolePermissions,
-} from '@constant/answerlattice/permissions';
+import { ANSWERLATTICE_ALL_PERMISSIONS, ANSWERLATTICE_PERMISSION_KEYS, AnswerlatticePermissionKey, AnswerlatticeRoleDefinition, DEFAULT_ANSWERLATTICE_ROLE_IDS, DEFAULT_ANSWERLATTICE_ROLE_METADATA, isDefaultAnswerlatticeRoleId, normalizeAnswerlatticeRolePermissions, } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { STAFF_EMAIL_DOMAIN } from '@constant/urls';
-import {
-    ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
-    ECOMSAI_PLATFORM_USER_ROLE,
-} from '@constant/user';
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE, } from '@constant/user';
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { AuthUserIdentityConflictError, getAuthUserByEmail } from '@lib/auth/serverUserContext';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    findAnswerlatticeRole,
-    getAnswerlatticeDb,
-    normalizeAnswerlatticeRolesForStore,
-    requireAnswerlatticePermission,
-    requireAnswerlatticeTeamPermission,
-} from '@lib/answerlattice/accessControl';
-import {
-    getAnswerlatticeSecurityLogContext,
-    getBoundedAnswerlatticeStringContext,
-    logAnswerlatticeDiagnostic,
-    logAnswerlatticeFailure,
-} from '@lib/answerlattice/diagnostics';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, findAnswerlatticeRole, getAnswerlatticeDb, normalizeAnswerlatticeRolesForStore, requireAnswerlatticePermission, requireAnswerlatticeTeamPermission, } from '@lib/answerlattice/accessControl';
+import { getAnswerlatticeSecurityLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeDiagnostic, logAnswerlatticeFailure, } from '@lib/answerlattice/diagnostics';
 import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import {
-    normalizeAnswerlatticeStaffUserId,
-    requireAnswerlatticeStaffUserId,
-} from '@lib/answerlattice/staffUserIdBoundary';
-import {
-    AnswerlatticeStaffStoreMembership,
-    getAnswerlatticeStaffMembership,
-    isAnswerlatticeManagedStaffIdentityCollision,
-    isAnswerlatticeStaffSelfTarget,
-    isAnswerlatticeStaffAccountActive,
-    isAnswerlatticeStaffRemovalReplay,
-    readAnswerlatticeStaffAccessState,
-    resolveAnswerlatticeStaffAuthLookup,
-    shouldSendAnswerlatticeStaffSetupEmail,
-} from '@lib/answerlattice/staffAccessContracts';
-import {
-    buildAnswerlatticeStaffClaimAccessProjection,
-    buildAnswerlatticeStaffClaimStateSignature,
-    normalizeAnswerlatticeStaffClaimPlatformRole,
-    selectAnswerlatticeStaffClaimMembership,
-} from '@lib/answerlattice/staffClaimsContracts';
+import { normalizeAnswerlatticeStaffUserId, requireAnswerlatticeStaffUserId, } from '@lib/answerlattice/staffUserIdBoundary';
+import { AnswerlatticeStaffStoreMembership, getAnswerlatticeStaffMembership, isAnswerlatticeManagedStaffIdentityCollision, isAnswerlatticeStaffSelfTarget, isAnswerlatticeStaffAccountActive, isAnswerlatticeStaffRemovalReplay, readAnswerlatticeStaffAccessState, resolveAnswerlatticeStaffAuthLookup, shouldSendAnswerlatticeStaffSetupEmail, } from '@lib/answerlattice/staffAccessContracts';
+import { buildAnswerlatticeStaffClaimAccessProjection, buildAnswerlatticeStaffClaimStateSignature, normalizeAnswerlatticeStaffClaimPlatformRole, selectAnswerlatticeStaffClaimMembership, } from '@lib/answerlattice/staffClaimsContracts';
 import { syncAnswerlatticeStaffProductAccountBridge } from '@lib/answerlattice/staffAccessBridge';
-import {
-    buildAnswerlatticeRoleCreationFingerprint,
-    classifyAnswerlatticeRoleCreationReplay,
-    normalizeAnswerlatticeRoleInputPermissions,
-} from '@lib/answerlattice/staffRoleContracts';
-import {
-    AnswerlatticeStaffTransactionError,
-    createAnswerlatticeStaffMembershipTransaction,
-    getAnswerlatticeRoleAssignedUserIdsInTransaction,
-    isAnswerlatticeRoleAssignedInTransaction,
-    removeAnswerlatticeStaffMembershipTransaction,
-    updateAnswerlatticeStaffMembershipTransaction,
-} from '@lib/answerlattice/staffAccessTransactions';
-import {
-    isAnswerlatticeActiveStoreInScope,
-} from '@lib/answerlattice/sessionScope';
-import { answerlatticeAuthAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { buildAnswerlatticeRoleCreationFingerprint, classifyAnswerlatticeRoleCreationReplay, normalizeAnswerlatticeRoleInputPermissions, } from '@lib/answerlattice/staffRoleContracts';
+import { AnswerlatticeStaffTransactionError, createAnswerlatticeStaffMembershipTransaction, getAnswerlatticeRoleAssignedUserIdsInTransaction, isAnswerlatticeRoleAssignedInTransaction, removeAnswerlatticeStaffMembershipTransaction, updateAnswerlatticeStaffMembershipTransaction, } from '@lib/answerlattice/staffAccessTransactions';
+import { isAnswerlatticeActiveStoreInScope, } from '@lib/answerlattice/sessionScope';
+import { answerlatticeAuthAdmin, requireAnswerlatticeAuthAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { logger } from '@lib/monitoring/logger';
@@ -836,7 +781,7 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
             storeId: number;
         } | null = null;
         try {
-            const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
+            const answerlatticeUser = await requireAnswerlatticeAuthAdmin().getUserByEmail(email);
             const selected = await readAnswerlatticeStaffClaimProjectionForActiveMembership({
                 accountActive: active,
                 currentClaimStoreId: answerlatticeUser.customClaims?.storeId,
@@ -868,7 +813,7 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
             );
             const disabledNeedsUpdate = answerlatticeUser.disabled === authIdentityActive;
             if (claimsNeedUpdate) {
-                await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUser.uid, {
+                await requireAnswerlatticeAuthAdmin().setCustomUserClaims(answerlatticeUser.uid, {
                     accessRevision: state.accessRevision,
                     admin: claimState.adminClaim,
                     pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -886,12 +831,12 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
                 };
             }
             if (disabledNeedsUpdate) {
-                await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, {
+                await requireAnswerlatticeAuthAdmin().updateUser(answerlatticeUser.uid, {
                     disabled: !authIdentityActive,
                 });
             }
             if (claimsNeedUpdate || disabledNeedsUpdate || params.forceRevoke) {
-                await answerlatticeAuthAdmin.revokeRefreshTokens(answerlatticeUser.uid);
+                await requireAnswerlatticeAuthAdmin().revokeRefreshTokens(answerlatticeUser.uid);
             }
         } catch (error: unknown) {
             if (getErrorCode(error) !== 'auth/user-not-found') throw error;

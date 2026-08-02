@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Menu Presence Monitor — Desktop Component (v2)
  *
@@ -289,10 +291,7 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
     const handleOpenExternalSurface = (surface: ManualSurfaceConfig) => {
         if (!surface.openUrl) return;
         try {
-            const opened = window.open(surface.openUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('use_menulist_presence_external_open_blocked');
-            }
+            openIsolatedBrowserUrl(surface.openUrl);
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_external_open_failed', error, buildPresenceLogContext('open', surface));
             message.error('Failed to open link');

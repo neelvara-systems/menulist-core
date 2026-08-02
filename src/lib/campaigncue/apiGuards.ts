@@ -9,7 +9,7 @@ import {
     getBoundedSecurityRouteContext,
     getBoundedSecurityStringContext,
 } from "@lib/security/securityDiagnostics";
-import { verifyTenantAccess } from "@/middleware/auth";
+import { type AuthenticatedHandler, verifyTenantAccess, withAuth } from "@/middleware/auth";
 import { resolveCampaignCueSessionIdentity } from "@lib/campaigncue/workspaceScope";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -22,10 +22,54 @@ const CAMPAIGNCUE_JSON_BODY_MAX_BYTES = Math.max(
         + (128 * 1024),
 );
 
-export const getCampaignCueSessionScope = (session: any) => {
+const CAMPAIGNCUE_PRIVATE_RESPONSE_HEADERS = {
+    "Cache-Control": "private, no-store, max-age=0",
+    "X-Content-Type-Options": "nosniff",
+} as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value && typeof value === "object" && !Array.isArray(value))
+);
+
+const getCampaignCueSecuritySession = (session: unknown) => {
+    if (!isRecord(session)) return undefined;
+    const user = isRecord(session.user) ? session.user : undefined;
+    return {
+        sId: session.sId,
+        storeId: session.storeId,
+        tId: session.tId,
+        tenantId: session.tenantId,
+        uId: session.uId,
+        user: user ? {
+            email: user.email,
+            id: user.id,
+            storeId: user.storeId,
+            tenantId: user.tenantId,
+        } : undefined,
+        userId: session.userId,
+    };
+};
+
+export const withCampaignCuePrivateResponseHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(CAMPAIGNCUE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
+
+export const withCampaignCueAuth = (handler: AuthenticatedHandler) => {
+    const authenticatedHandler = withAuth(handler);
+    return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => (
+        withCampaignCuePrivateResponseHeaders(await authenticatedHandler(...args))
+    );
+};
+
+export const getCampaignCueSessionScope = (session: unknown) => {
     const identity = resolveCampaignCueSessionIdentity(session);
-    const email = session?.user?.email || session?.email;
-    const name = session?.user?.name || session?.name;
+    const sessionRecord = isRecord(session) ? session : null;
+    const userRecord = isRecord(sessionRecord?.user) ? sessionRecord.user : null;
+    const email = userRecord?.email || sessionRecord?.email;
+    const name = userRecord?.name || sessionRecord?.name;
     return {
         email: email ? String(email) : undefined,
         name: name ? String(name) : undefined,
@@ -38,12 +82,12 @@ export const getCampaignCueSessionScope = (session: any) => {
 export type CampaignCueSecurityLogContext = Record<string, boolean | number | string | null | undefined>;
 
 export const getCampaignCueSecurityLogContext = (
-    session: any,
+    session: unknown,
     request: NextRequest,
     endpoint = request.nextUrl.pathname,
     context: CampaignCueSecurityLogContext = {},
 ): CampaignCueSecurityLogContext => ({
-    ...getBoundedSecurityRouteContext(session, request),
+    ...getBoundedSecurityRouteContext(getCampaignCueSecuritySession(session), request),
     ...getBoundedSecurityStringContext("endpoint", endpoint),
     ...getBoundedSecurityStringContext("method", request.method),
     ...context,
@@ -51,19 +95,23 @@ export const getCampaignCueSecurityLogContext = (
 
 export const requireCampaignCueRuntime = () => {
     if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_APP_SHELL) {
-        return NextResponse.json({ error: "CampaignCue app is disabled" }, { status: 404 });
+        return withCampaignCuePrivateResponseHeaders(
+            NextResponse.json({ error: "CampaignCue app is disabled" }, { status: 404 }),
+        );
     }
     return null;
 };
 
 export const requireCampaignCueSessionScope = (
     request: NextRequest,
-    session: any,
+    session: unknown,
 ) => {
     const scope = getCampaignCueSessionScope(session);
     if (!scope.tId || !scope.sId || !scope.userId) {
         return {
-            error: NextResponse.json({ error: "CampaignCue workspace requires an onboarded account" }, { status: 400 }),
+            error: withCampaignCuePrivateResponseHeaders(
+                NextResponse.json({ error: "CampaignCue workspace requires an onboarded account" }, { status: 400 }),
+            ),
             scope,
         };
     }
@@ -76,7 +124,9 @@ export const requireCampaignCueSessionScope = (
             }),
         }, "critical");
         return {
-            error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+            error: withCampaignCuePrivateResponseHeaders(
+                NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+            ),
             scope,
         };
     }
@@ -86,7 +136,7 @@ export const requireCampaignCueSessionScope = (
 
 export const applyCampaignCueRateLimit = async (params: {
     request: NextRequest;
-    session: any;
+    session: unknown;
     feature: RateLimitFeature;
     keyPrefix: string;
 }) => {
@@ -98,24 +148,37 @@ export const applyCampaignCueRateLimit = async (params: {
     const rateLimit = await checkRateLimit({
         key: `${CAMPAIGNCUE_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimit.allowed) return null;
 
+    const providerUnavailable = rateLimit.reason === "provider_unavailable";
     const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
-    logger.security("Rate Limit Exceeded - CampaignCue", {
+    logger.security(providerUnavailable
+        ? "Rate Limit Provider Unavailable - CampaignCue"
+        : "Rate Limit Exceeded - CampaignCue", {
         ...getCampaignCueSecurityLogContext(params.session, params.request, params.request.nextUrl.pathname, {
             ...getBoundedSecurityStringContext("feature", params.feature),
             ...getBoundedSecurityStringContext("storeId", scope.sId),
             ...getBoundedSecurityStringContext("tenantId", scope.tId),
             ...getBoundedSecurityStringContext("userId", scope.userId),
         }),
-        limit: rateLimitConfig.limit,
-        waitSeconds,
-        window: rateLimitConfig.window,
+        ...(!providerUnavailable ? {
+            limit: rateLimitConfig.limit,
+            waitSeconds,
+            window: rateLimitConfig.window,
+        } : {}),
     }, "medium");
 
-    return NextResponse.json(
+    if (providerUnavailable) {
+        return withCampaignCuePrivateResponseHeaders(NextResponse.json(
+            { error: "CampaignCue is temporarily unavailable. Please try again later." },
+            { status: 503 },
+        ));
+    }
+
+    return withCampaignCuePrivateResponseHeaders(NextResponse.json(
         {
             error: `Too many requests. Please wait ${waitSeconds} seconds.`,
             retryAfter: waitSeconds,
@@ -130,14 +193,14 @@ export const applyCampaignCueRateLimit = async (params: {
                 "X-RateLimit-Reset": String(rateLimit.resetAt),
             },
         },
-    );
+    ));
 };
 
 export const parseCampaignCueJsonBody = async (params: {
     endpoint?: string;
     logLabel?: string;
     request: NextRequest;
-    session: any;
+    session: unknown;
 }) => {
     const bodyResult = await readBoundedJsonBody(params.request, CAMPAIGNCUE_JSON_BODY_MAX_BYTES, {
         invalidJsonMessage: "Invalid JSON",
@@ -159,7 +222,21 @@ export const parseCampaignCueJsonBody = async (params: {
         ),
     }, "medium");
     return {
-        response: bodyResult.response,
+        response: withCampaignCuePrivateResponseHeaders(bodyResult.response),
         success: false as const,
     };
+};
+
+export const logCampaignCueInputValidationFailure = (params: {
+    endpoint: string;
+    label: string;
+    request: NextRequest;
+    session: unknown;
+    validationError: string;
+}) => {
+    logger.security(params.label, {
+        ...getCampaignCueSecurityLogContext(params.session, params.request, params.endpoint, {
+            ...getBoundedSecurityStringContext("validationError", params.validationError),
+        }),
+    }, "medium");
 };

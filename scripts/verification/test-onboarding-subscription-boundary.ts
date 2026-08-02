@@ -7,7 +7,9 @@ import {
 import {
     findOnboardingProviderSubscriptionForAttempt,
     isOnboardingProviderSubscription,
+    isMatchingOnboardingProviderSubscription,
     isMatchingPersistedOnboardingSubscription,
+    isOwnedOnboardingProviderSubscriptionAttempt,
     resolveOnboardingPlanPrice,
 } from '../../src/lib/onboarding/onboardingSubscriptionBoundary';
 
@@ -68,6 +70,9 @@ for (const price of [
 
 assert.equal(isOnboardingProviderSubscription({
     id: 'sub_Abc123',
+    notes: {},
+    plan_id: 'plan_1',
+    quantity: 1,
     short_url: 'https://rzp.io/i/example',
     total_count: 36,
 }), true);
@@ -95,8 +100,50 @@ const providerCandidate = {
         userId: 'owner-1',
     },
     plan_id: 'plan_1',
+    quantity: 1,
     short_url: 'https://rzp.io/i/recovered',
+    total_count: 36,
 };
+const providerExpectation = {
+    attemptId: 'attempt-1',
+    candidate: providerCandidate,
+    planId: 'starter',
+    providerPlanId: 'plan_1',
+    storeId: 22,
+    tenantId: 11,
+    totalCount: 36,
+    userId: 'owner-1',
+};
+assert.equal(isMatchingOnboardingProviderSubscription(providerExpectation), true);
+assert.equal(isOwnedOnboardingProviderSubscriptionAttempt(providerExpectation), true);
+for (const candidate of [
+    { ...providerCandidate, plan_id: 'plan_other' },
+    { ...providerCandidate, quantity: 2 },
+    { ...providerCandidate, total_count: 3 },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, onboardingAttemptId: 'attempt-other' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, onboardingSource: 'OTHER' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, planId: 'growth' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, storeId: 23 } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, tenantId: 12 } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, userId: 'owner-2' } },
+    { ...providerCandidate, notes: null },
+]) {
+    assert.equal(isMatchingOnboardingProviderSubscription({ ...providerExpectation, candidate }), false);
+}
+for (const candidate of [
+    { ...providerCandidate, notes: { ...providerCandidate.notes, onboardingAttemptId: 'attempt-other' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, onboardingSource: 'OTHER' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, planId: 'growth' } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, storeId: 23 } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, tenantId: 12 } },
+    { ...providerCandidate, notes: { ...providerCandidate.notes, userId: 'owner-2' } },
+]) {
+    assert.equal(isOwnedOnboardingProviderSubscriptionAttempt({ ...providerExpectation, candidate }), false);
+}
+assert.equal(isOwnedOnboardingProviderSubscriptionAttempt({
+    ...providerExpectation,
+    candidate: { ...providerCandidate, plan_id: 'plan_other', quantity: 2, total_count: 3 },
+}), true, 'an exact owned attempt remains safe to cancel when its commercial response contract is invalid');
 assert.equal(findOnboardingProviderSubscriptionForAttempt({
     attemptId: 'attempt-1',
     candidates: [providerCandidate],
@@ -104,6 +151,7 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
     providerPlanId: 'plan_1',
     storeId: 22,
     tenantId: 11,
+    totalCount: 36,
     userId: 'owner-1',
 })?.id, 'sub_Recovered123');
 assert.equal(findOnboardingProviderSubscriptionForAttempt({
@@ -113,6 +161,7 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
     providerPlanId: 'plan_1',
     storeId: 22,
     tenantId: 11,
+    totalCount: 36,
     userId: 'owner-1',
 }), null, 'provider recovery must require the exact deterministic attempt identity');
 

@@ -11,6 +11,7 @@ import {
     isNonNegativeSafeInteger,
 } from "@lib/reseller/resellerMutationState";
 import { projectResellerProfileRecord } from "@lib/reseller/resellerProfileRecord";
+import { getMatchingResellerOnboardingProvisioningOperation } from "@lib/reseller/resellerOnboardingOperation";
 import type { ResellerProfileRecord, ResellerTransaction } from "@type/reseller";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
@@ -284,11 +285,12 @@ export const createResellerOnboardingBillingServer = async (params: {
             profileRef ? firestoreTransaction.get(profileRef) : Promise.resolve(null),
         ]);
 
+        let upgradesProvisioningOperation = false;
         if (operationSnapshot.exists) {
             const operation = operationSnapshot.data() || {};
             const existingSubscription = subscriptionSnapshot.exists ? subscriptionSnapshot.data() || {} : {};
             const existingScope = getMenuListSubscriptionEntitlementScope(existingSubscription);
-            if (
+            const matchesCompletedOperation = (
                 operation.operationId !== params.transaction.operationId
                 || operation.operationFingerprint !== params.transaction.operationFingerprint
                 || operation.action !== 'ONBOARD'
@@ -304,10 +306,27 @@ export const createResellerOnboardingBillingServer = async (params: {
                 || existingSubscription.providerSubscriptionId !== params.subscriptionId
                 || existingSubscription.resellerId !== params.transaction.resellerId
                 || existingSubscription.resellerProfileId !== params.transaction.resellerProfileId
+            ) === false;
+            if (matchesCompletedOperation) {
+                return { replayed: true, transactionId: transactionRef.id };
+            }
+            const provisioningOperation = getMatchingResellerOnboardingProvisioningOperation({
+                fingerprint: params.transaction.operationFingerprint,
+                operationData: operation,
+                operationId: params.transaction.operationId,
+                resellerId: params.transaction.resellerId,
+            });
+            if (
+                !provisioningOperation
+                || provisioningOperation.tenantId !== params.transaction.tenantId
+                || provisioningOperation.storeId !== params.transaction.storeId
+                || provisioningOperation.userId !== params.subscription.userId
+                || operation.paymentMode !== params.transaction.paymentMode
+                || subscriptionSnapshot.exists
             ) {
                 throw new Error('Reseller onboarding operation id is already used by another action.');
             }
-            return { replayed: true, transactionId: transactionRef.id };
+            upgradesProvisioningOperation = true;
         }
 
         if (subscriptionSnapshot.exists) {
@@ -401,12 +420,17 @@ export const createResellerOnboardingBillingServer = async (params: {
             subscriptionRef,
             composeInitialSubscriptionPayloadServer(params.subscription),
         );
-        firestoreTransaction.create(transactionRef, sanitizeForAdminFirestore({
+        const persistedOperation = sanitizeForAdminFirestore({
             ...params.transaction,
             createdOn: now,
             id: transactionRef.id,
             modifiedOn: now,
-        }));
+        });
+        if (upgradesProvisioningOperation) {
+            firestoreTransaction.set(transactionRef, persistedOperation);
+        } else {
+            firestoreTransaction.create(transactionRef, persistedOperation);
+        }
 
         if (profileRef && profileUpdates) {
             firestoreTransaction.update(profileRef, {

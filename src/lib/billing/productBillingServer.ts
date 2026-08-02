@@ -125,7 +125,7 @@ const assertAnswerlatticeWorkspaceAllowsBillingActivation = async (
 
 export const getBillingFirestoreAdminForProduct = (productId: ProductId): FirebaseFirestore.Firestore => {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
-        if (!answerlatticeFirestoreAdmin || typeof (answerlatticeFirestoreAdmin as any).collection !== 'function') {
+        if (!answerlatticeFirestoreAdmin) {
             throw new Error('Answerlattice Firebase is not configured.');
         }
         return answerlatticeFirestoreAdmin;

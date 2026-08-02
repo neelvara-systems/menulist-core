@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   PublicTruthCheckEvidence,
   PublicTruthCheckFactId,
@@ -19,12 +24,17 @@ const REQUIRED_FACTS = new Set<PublicTruthCheckFactId>([
   'customer_actions',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeTextarea(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function hasUsefulText(value: string): boolean {
@@ -107,9 +117,9 @@ function countSummary(checks: PublicTruthCheckItem[]): PublicTruthCheckReport['s
 }
 
 export function buildPublicTruthCheckReport(input: PublicTruthCheckInput): PublicTruthCheckReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const publicUrl = trimToSingleLine(input.publicUrl);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const publicUrl = trimToSingleLine(input.publicUrl, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const menuOrServiceText = normalizeTextarea(input.menuOrServiceText);
   const searchableSource = menuOrServiceText;
   const hasValidPublicUrl = isValidHttpUrl(publicUrl, 'public_truth_check_public_url');

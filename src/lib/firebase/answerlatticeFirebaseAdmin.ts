@@ -7,21 +7,13 @@
  *
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md v4.3.0
  */
-
 import { admin } from './firebaseAdminCompat';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import {
-    answerlatticeFirebaseBoundary,
-    answerlatticeFirestoreDatabaseId,
-    shouldUseSharedAnswerlatticeFirebase,
-} from './answerlatticeConfig';
+import { answerlatticeFirebaseBoundary, answerlatticeFirestoreDatabaseId, shouldUseSharedAnswerlatticeFirebase, } from './answerlatticeConfig';
 import { isAnswerlatticeEmulatorProjectId } from '@data/shared/answerlatticeFirebaseBoundary';
-import {
-    getBoundedFirebaseAdminStringContext,
-    logFirebaseAdminFailure,
-} from './firebaseAdminDiagnostics';
+import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from './firebaseAdminDiagnostics';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -214,9 +206,29 @@ const answerlatticeFirestoreAdmin = answerlatticeAdminApp
     ? (answerlatticeFirestoreDatabaseId
         ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
         : getAdminFirestore(answerlatticeAdminApp))
-    : (null as unknown as admin.firestore.Firestore);
-const answerlatticeStorageAdmin = answerlatticeAdminApp ? admin.storage(answerlatticeAdminApp) : (null as unknown as admin.storage.Storage);
-const answerlatticeAuthAdmin = answerlatticeAdminApp ? admin.auth(answerlatticeAdminApp) : (null as unknown as admin.auth.Auth);
+    : null;
+const answerlatticeStorageAdmin = answerlatticeAdminApp ? admin.storage(answerlatticeAdminApp) : null;
+const answerlatticeAuthAdmin = answerlatticeAdminApp ? admin.auth(answerlatticeAdminApp) : null;
+
+function requireAnswerlatticeAdminService<T>(service: T | null, serviceName: string): T {
+    if (!service) {
+        throw new Error(`Answerlattice Firebase Admin ${serviceName} is unavailable.`);
+    }
+    return service;
+}
+
+const requireAnswerlatticeFirestoreAdmin = () => requireAnswerlatticeAdminService(
+    answerlatticeFirestoreAdmin,
+    'Firestore',
+);
+const requireAnswerlatticeStorageAdmin = () => requireAnswerlatticeAdminService(
+    answerlatticeStorageAdmin,
+    'Storage',
+);
+const requireAnswerlatticeAuthAdmin = () => requireAnswerlatticeAdminService(
+    answerlatticeAuthAdmin,
+    'Auth',
+);
 
 type AnswerlatticeVectorValue = ReturnType<typeof FieldValue.vector> & {
     values?: number[];
@@ -230,4 +242,13 @@ const AnswerlatticeVector = (function AnswerlatticeVector(values?: number[]) {
     return FieldValue.vector(values) as AnswerlatticeVectorValue;
 }) as AnswerlatticeVectorFactory;
 
-export { AnswerlatticeVector, answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin, answerlatticeStorageAdmin };
+export {
+    AnswerlatticeVector,
+    answerlatticeAdminApp,
+    answerlatticeAuthAdmin,
+    answerlatticeFirestoreAdmin,
+    answerlatticeStorageAdmin,
+    requireAnswerlatticeAuthAdmin,
+    requireAnswerlatticeFirestoreAdmin,
+    requireAnswerlatticeStorageAdmin,
+};

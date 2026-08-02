@@ -172,6 +172,20 @@ const widgetEmbedSource = fs.readFileSync(
     path.join(ROOT, 'src/components/answerlattice/MenuListAnswerlatticeWidgetEmbed.tsx'),
     'utf8',
 );
+assert.ok(
+    widgetEmbedSource.includes("url.protocol !== 'https:'"),
+    'MenuList widget script overrides must require HTTPS',
+);
+for (const credentialField of ['url.username', 'url.password', 'url.hash']) {
+    assert.ok(
+        widgetEmbedSource.includes(credentialField),
+        `MenuList widget script overrides must reject ${credentialField}`,
+    );
+}
+assert.ok(
+    widgetEmbedSource.includes('normalizeConfiguredWidgetScriptSrc(CONFIGURED_SCRIPT_SRC)'),
+    'MenuList widget must validate the configured script override before use',
+);
 for (const routeContext of [
     "dashboard: { feature: 'today', workflow: 'review_daily_business'",
     "'menu-manager': { feature: 'ai_menu_manager', workflow: 'prepare_and_approve_menu_work'",

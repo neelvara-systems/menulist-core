@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Public Menu Entry — Success Page
  * 
@@ -389,10 +391,7 @@ export default function CreateMenuSuccessClient() {
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('public_create_menu_success_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
 
             setHandoffError(null);
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED);

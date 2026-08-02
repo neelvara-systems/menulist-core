@@ -328,7 +328,7 @@ export async function runSingleItemDescriptionGeneration({
         tone,
     });
 
-    const nextDescription = generatedDescriptions?.[item.id] as unknown as Record<string, string> | undefined;
+    const nextDescription = generatedDescriptions?.[item.id];
 
     if (!nextDescription) {
         return {

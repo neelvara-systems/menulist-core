@@ -1,29 +1,44 @@
 import TextElement from '@antdComponent/textElement';
 import { Segmented, theme, Tooltip } from 'antd';
+import type { ReactNode } from 'react';
 import styles from './segmentComponent.module.scss';
 
 export const SEGMENT_OPTIONS_TYPES = {
     ARRAY: 'ARRAY',
     ARRAY_OF_OBJECTS: 'ARRAY_OF_OBJECTS'
-}
+} as const;
 
 type SizeType = 'small' | 'middle' | 'large';
 
 const MIDDLE_SIZE: SizeType = "middle";
 
-type props = {}
+type SegmentValue = string | number;
+type SegmentObjectOption = { key: string; icon?: ReactNode };
 
-const SegmentComponent = ({ label, value, onChange, options, type, size = MIDDLE_SIZE, showIcon = false, entity = "", parentClassname = "", hideLabel = false }: any) => {
+interface SegmentComponentProps {
+    label?: ReactNode;
+    value: SegmentValue;
+    onChange: (value: SegmentValue) => void;
+    options: Array<string | SegmentObjectOption>;
+    type?: typeof SEGMENT_OPTIONS_TYPES[keyof typeof SEGMENT_OPTIONS_TYPES];
+    size?: SizeType;
+    showIcon?: boolean;
+    entity?: string;
+    parentClassname?: string;
+    hideLabel?: boolean;
+}
+
+const SegmentComponent = ({ label, value, onChange, options, type, size = MIDDLE_SIZE, showIcon = false, entity = "", parentClassname = "", hideLabel = false }: SegmentComponentProps) => {
     const { token } = theme.useToken();
 
     const getSegmentOptions = () => {
         if (type == SEGMENT_OPTIONS_TYPES.ARRAY) {
-            return options.map((option: any) => {
+            return options.filter((option): option is string => typeof option === 'string').map((option) => {
                 return {
                     label:
                         <Tooltip title={`${option} ${entity}`}>
-                            <div style={{ color: value == option.value ? token.colorBgBase : token.colorTextBase }}
-                                className={`${styles.segmentItem} ${value == option.value ? styles.active : ''}`}>
+                            <div style={{ color: value === option ? token.colorBgBase : token.colorTextBase }}
+                                className={`${styles.segmentItem} ${value === option ? styles.active : ''}`}>
                                 <div className={styles.name}>{option}</div>
                             </div>
                         </Tooltip>,
@@ -31,16 +46,16 @@ const SegmentComponent = ({ label, value, onChange, options, type, size = MIDDLE
                 }
             })
 
-        } else return options.map((option: any) => {
+        } else return options.filter((option): option is SegmentObjectOption => typeof option === 'object').map((option) => {
             return {
                 label:
                     <Tooltip title={`${option.key} ${entity}`}>
                         <div
-                            style={{ color: value == option.value ? token.colorBgBase : token.colorTextBase }}
-                            className={`${styles.segmentItem} ${value == option.value ? styles.active : ''}`}>
+                            style={{ color: value === option.key ? token.colorBgBase : token.colorTextBase }}
+                            className={`${styles.segmentItem} ${value === option.key ? styles.active : ''}`}>
                             {showIcon && <div className={styles.iconWrap}
                                 style={{
-                                    color: value == option.key ? token.colorPrimary : token.colorTextSecondary,
+                                    color: value === option.key ? token.colorPrimary : token.colorTextSecondary,
                                     // minWidth: size == "small" ? "20px" : "26px",
                                     // minHeight: size == "small" ? "20px" : "26px",
                                     // padding: size == "small" ? "2px" : "6px",
@@ -64,7 +79,6 @@ const SegmentComponent = ({ label, value, onChange, options, type, size = MIDDLE
                     // style={{ background: token.colortext }}
                     size={size}
                     block={true}
-                    defaultValue={value}
                     onChange={onChange}
                     options={getSegmentOptions()}
                 />

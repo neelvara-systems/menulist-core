@@ -1,7 +1,8 @@
 'use client'
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
-import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { getResolvedAnalyticsPreferences, normalizeGoogleSearchConsoleVerification } from '@lib/analytics/preferences';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
@@ -146,7 +147,9 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
         const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails.analytics);
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
         setFbPixelId(storeDetails.analytics?.facebookPixelId || '');
-        setSearchConsole(storeDetails.analytics?.googleSearchConsole || (storeDetails.analytics as any)?.searchConsoleVerification || '');
+        setSearchConsole(normalizeGoogleSearchConsoleVerification(
+            storeDetails.analytics?.googleSearchConsole || (storeDetails.analytics as Record<string, unknown> | undefined)?.searchConsoleVerification,
+        ) || '');
         setEnhancedEcommerce(storeDetails.analytics?.enhancedEcommerce || false);
         setTrackMenuViews(analyticsPreferences.trackMenuViews);
         setTrackDecisionBlocks(analyticsPreferences.trackDecisionBlocks);
@@ -203,12 +206,8 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
         );
 
     const handleOpenExternalLink = (url: string, source: string) => {
-        if (typeof window === 'undefined') return;
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_seo_analytics_external_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logMobileOwnerFailure('mobile_seo_analytics_external_link_open_failed', error, {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
@@ -360,12 +359,6 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                             These settings are applied directly to your store when you switch them on or off.
                         </Text>
                         <FeatureToggleCard
-                            checked={enhancedEcommerce}
-                            description={tAnalytics('enhancedEcommerceHelp')}
-                            label={tAnalytics('enhancedEcommerce')}
-                            onChange={setEnhancedEcommerce}
-                        />
-                        <FeatureToggleCard
                             checked={trackMenuViews}
                             description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu."
                             label="Menu activity"
@@ -456,7 +449,10 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
         const expectedStoreId = sourceStoreDetails.storeId;
         const expectedTenantId = sourceStoreDetails.tenantId;
         const previousAnalytics = sourceStoreDetails.analytics;
-        const submittedAnalyticsDraft = analyticsDraft;
+        const submittedAnalyticsDraft = {
+            ...analyticsDraft,
+            googleSearchConsole: normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole) || '',
+        };
         saveInFlightRef.current = true;
 
         try {
@@ -465,7 +461,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
             delete analyticsBase.searchConsoleVerification;
             const nextAnalytics = {
                 ...analyticsBase,
-                ...analyticsDraft,
+                ...submittedAnalyticsDraft,
             };
             const update = {
                 analytics: getStoreDeepDifference(nextAnalytics, previousAnalytics || {}, {
@@ -851,12 +847,6 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                     description={ANALYTICS_SETTINGS_GROUPING_NOTE}
                                 />
                                 <TrackingCategoryDisclosureList />
-                                <ToggleRow
-                                    checked={enhancedEcommerce}
-                                    description={tAnalytics('enhancedEcommerceHelp')}
-                                    label={tAnalytics('enhancedEcommerce')}
-                                    onChange={setEnhancedEcommerce}
-                                />
                                 <ToggleRow
                                     checked={trackMenuViews}
                                     description="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu."
@@ -1249,7 +1239,9 @@ function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
         enhancedEcommerce: storeDetails?.analytics?.enhancedEcommerce || false,
         facebookPixelId: storeDetails?.analytics?.facebookPixelId || '',
         googleAnalyticsId: storeDetails?.analytics?.googleAnalyticsId || '',
-        googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || (storeDetails?.analytics as any)?.searchConsoleVerification || '',
+        googleSearchConsole: normalizeGoogleSearchConsoleVerification(
+            storeDetails?.analytics?.googleSearchConsole || (storeDetails?.analytics as Record<string, unknown> | undefined)?.searchConsoleVerification,
+        ) || '',
     };
 }
 

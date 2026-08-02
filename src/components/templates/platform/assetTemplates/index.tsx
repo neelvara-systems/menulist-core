@@ -18,13 +18,18 @@ import {
     type CreativeEditorTemplateContext,
 } from '@lib/creative-editor/templateRegistryDal';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { PRINTABLE_ASSET_TYPES, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_TYPES, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
 import {
     buildPrintableAssetEditorDocument,
     isPrintableAssetEditorRenderable,
 } from '@lib/printable-asset-templates/editorDocumentAdapter';
-import { PRINTABLE_TEMPLATE_FAMILIES, getPrintableTemplateFamily } from '@lib/printable-asset-templates/templateFamilies';
+import {
+    PRINTABLE_TEMPLATE_FAMILIES,
+    getPrintableTemplateFamily,
+    normalizePrintableTemplateFamilyId,
+} from '@lib/printable-asset-templates/templateFamilies';
 import type { PrintableAssetRenderInput, PrintableAssetTypeId, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
+import { toDate } from '@util/dateTime';
 import CreativeEditor from '@/modules/creative-editor/CreativeEditor';
 import type { CreativeEditorDocument, CreativeEditorTemplateSaveRequest, CreativeEditorTemplateSummary } from '@/modules/creative-editor/types';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -105,6 +110,19 @@ const normalizeStatus = (status?: string): TemplateStatus => {
     return 'draft';
 };
 
+const normalizeAssetTypeId = (value?: string): PrintableAssetTypeId => (
+    isPrintableAssetTypeId(value) ? value : 'single_table_card'
+);
+
+const formatTemplateUpdatedAt = (value?: string): string => {
+    const date = toDate(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : 'not dated';
+};
+
+const normalizePreviewDimension = (value: number): number => (
+    Number.isFinite(value) && value > 0 ? value : 1
+);
+
 const makeDefaultTitle = (assetTypeId: PrintableAssetTypeId, templateFamilyId: PrintableTemplateFamilyId) => {
     const asset = getPrintableAssetType(assetTypeId);
     const family = getPrintableTemplateFamily(templateFamilyId);
@@ -140,14 +158,14 @@ const buildSampleRenderInput = (
         contactName: 'Aarav Mehta',
         contactPhone: '+91 90000 11111',
         contactRole: 'Owner',
-        feedbackUrl: 'https://demo.menulist.ai/feedback',
+        feedbackUrl: 'https://demo.menulist.online/feedback',
         lastPublishedAt: new Date(),
         logoUrl: null,
-        menuUrl: 'https://demo.menulist.ai/menu',
-        obpBaseUrl: 'https://demo.menulist.ai',
+        menuUrl: 'https://demo.menulist.online/menu',
+        obpBaseUrl: 'https://demo.menulist.online',
         outputFormat: 'png',
         projectId: 'platform-template-preview',
-        shortLink: 'demo.menulist.ai/menu',
+        shortLink: 'demo.menulist.online/menu',
         socialHandle: '@greentablecafe',
         storeName: 'Green Table Cafe',
         templateFamilyId,
@@ -242,9 +260,10 @@ function PlatformAssetTemplates() {
     }, [loadTemplates]);
 
     const selectTemplate = (template: CreativeEditorTemplateSummary) => {
+        const selectedAssetTypeId = normalizeAssetTypeId(template.assetTypeId);
         setSelectedTemplate(template);
-        setAssetTypeId((template.assetTypeId || 'single_table_card') as PrintableAssetTypeId);
-        setTemplateFamilyId((template.templateFamilyId || 'modern-calm') as PrintableTemplateFamilyId);
+        setAssetTypeId(selectedAssetTypeId);
+        setTemplateFamilyId(normalizePrintableTemplateFamilyId(template.templateFamilyId));
         setStatus(normalizeStatus(template.status));
         setTitle(template.title);
         setDescription(template.description || '');
@@ -280,7 +299,9 @@ function PlatformAssetTemplates() {
     };
 
     const openExistingEditor = async (template: CreativeEditorTemplateSummary) => {
-        const selectedAssetType = (template.assetTypeId || assetTypeId) as PrintableAssetTypeId;
+        const selectedAssetType = isPrintableAssetTypeId(template.assetTypeId)
+            ? template.assetTypeId
+            : assetTypeId;
         if (!isPrintableAssetEditorRenderable(selectedAssetType)) {
             messageApi.warning('This asset type does not use the Fabric editor yet.');
             return;
@@ -571,8 +592,11 @@ function PlatformAssetTemplates() {
                             <div className={styles.templateGrid}>
                                 {filteredTemplates.map((template) => {
                                     const selected = selectedTemplate?.id === template.id;
-                                    const width = Math.min(118, Math.max(70, Math.round((template.width / Math.max(template.height, template.width)) * 118)));
-                                    const height = Math.min(118, Math.max(70, Math.round((template.height / Math.max(template.height, template.width)) * 118)));
+                                    const templateWidth = normalizePreviewDimension(template.width);
+                                    const templateHeight = normalizePreviewDimension(template.height);
+                                    const longestSide = Math.max(templateHeight, templateWidth);
+                                    const width = Math.min(118, Math.max(70, Math.round((templateWidth / longestSide) * 118)));
+                                    const height = Math.min(118, Math.max(70, Math.round((templateHeight / longestSide) * 118)));
                                     return (
                                         <Card
                                             className={styles.templateCard}
@@ -584,26 +608,26 @@ function PlatformAssetTemplates() {
                                             <Flex vertical gap={12}>
                                                 <div className={styles.templatePreview}>
                                                     <div className={styles.templatePreviewInner} style={{ width, height }}>
-                                                        {template.thumbnailUrl ? (
+                                                        {typeof template.thumbnailUrl === 'string' && template.thumbnailUrl ? (
                                                             <img
                                                                 alt={`${template.title} preview`}
                                                                 className={styles.templatePreviewImage}
                                                                 src={template.thumbnailUrl}
                                                             />
                                                         ) : (
-                                                            `${template.width} x ${template.height}`
+                                                            `${templateWidth} x ${templateHeight}`
                                                         )}
                                                     </div>
                                                 </div>
                                                 <Flex justify="space-between" align="flex-start" gap={10}>
                                                     <Flex vertical gap={2} style={{ minWidth: 0 }}>
                                                         <Text strong ellipsis>{template.title}</Text>
-                                                        <Text type="secondary" ellipsis>{template.description || getPrintableTemplateFamily(template.templateFamilyId).label}</Text>
+                                                        <Text type="secondary" ellipsis>{typeof template.description === 'string' && template.description.trim() ? template.description : getPrintableTemplateFamily(template.templateFamilyId).label}</Text>
                                                     </Flex>
                                                     <Tag color={getStatusColor(template.status)}>{normalizeStatus(template.status)}</Tag>
                                                 </Flex>
                                                 <Flex justify="space-between" align="center" gap={8} wrap="wrap">
-                                                    <span className={styles.mutedMetric}>v{template.version || 1} · {template.updatedAt ? new Date(template.updatedAt).toLocaleDateString() : 'not dated'}</span>
+                                                    <span className={styles.mutedMetric}>v{Number.isSafeInteger(template.version) && (template.version || 0) > 0 ? template.version : 1} · {formatTemplateUpdatedAt(template.updatedAt)}</span>
                                                     <Space>
                                                         <Button
                                                             icon={<LuFileEdit />}

@@ -4,6 +4,7 @@ import {
     applyCampaignCueRateLimit,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     bootCampaignCueCueLayerDesignServer,
@@ -12,9 +13,8 @@ import {
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { CampaignCueCueLayerIdSchema } from "@lib/validation/campaigncueCueLayersSchemas";
 import { type NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const GET = withAuth(async (
+export const GET = withCampaignCueAuth(async (
     request: NextRequest,
     session,
     params?: { designId?: string },

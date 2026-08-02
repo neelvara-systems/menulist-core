@@ -253,7 +253,7 @@ The link is stateless and multi-use until its 30-day security expiry. `tokenId` 
 
 The first valid capture wins while the cookie remains valid. The capture endpoint never overwrites a valid first capture.
 
-The referral journey is canonical-host bound. If an invite is opened through a public alias, dashboard host, tenant host, or custom domain, route to the canonical public MenuList host before capture while preserving the browser fragment. Keep the invite CTA, sign-in/setup continuation, and payment-start request on that host. Do not broaden the cookie to `.menulist.ai` or expose it to tenant/customer hosts.
+The referral journey is canonical-host bound. If an invite is opened through a public alias, dashboard host, tenant host, or custom domain, route to the canonical public MenuList host before capture while preserving the browser fragment. Keep the invite CTA, sign-in/setup continuation, and payment-start request on that host. Do not broaden the cookie to `.menulist.ai`, `menulist.online`, or any tenant/customer host.
 
 ---
 

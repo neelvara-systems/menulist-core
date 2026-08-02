@@ -24,6 +24,7 @@ function requireToken(source, token, label) {
   'src/app/(main)/use-menulist/print-assets/page.tsx',
   'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
   'src/components/shared/printableAssets/PrintableTemplatePreview.tsx',
+  'src/components/templates/platform/assetTemplates/index.tsx',
   'src/lib/printable-asset-templates/types.ts',
   'src/lib/printable-asset-templates/assetTypes.ts',
   'src/lib/printable-asset-templates/editorDocumentAdapter.ts',
@@ -357,6 +358,13 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'businessCategory: platformBusinessCategory',
   'secondaryLabel: project.url.replace',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
+[
+  'normalizeTemplateThumbnailUrl(template.thumbnailUrl)',
+  'normalizeTemplateThumbnailUrl(activePlatformTemplate.thumbnailUrl)',
+  'normalizeTemplateDimension(template.width)',
+  'normalizeTemplateDimension(template.height)',
+  "typeof template.description === 'string'",
+].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop persisted template summary boundary'));
 if (desktopAssetsRoute.includes('menuModifiedOn: project.modifiedOn') || desktopAssetsRoute.includes('menuModifiedOn: defaultProject.modifiedOn')) {
   failures.push('desktop assets route must use the store publish timestamp instead of project edit time for printable freshness');
 }
@@ -515,6 +523,27 @@ const templateSchemas = read('src/lib/validation/creativeEditorTemplateSchemas.t
   'Element must have width or height',
 ].forEach((token) => requireToken(templateSchemas, token, 'creative editor template registry schemas'));
 
+const platformTemplateManager = read('src/components/templates/platform/assetTemplates/index.tsx');
+[
+  'isPrintableAssetTypeId(template.assetTypeId)',
+  'normalizePrintableTemplateFamilyId(template.templateFamilyId)',
+  'normalizePreviewDimension(template.width)',
+  'normalizePreviewDimension(template.height)',
+  'formatTemplateUpdatedAt(template.updatedAt)',
+  "typeof template.thumbnailUrl === 'string'",
+  "typeof template.description === 'string'",
+  'Number.isSafeInteger(template.version)',
+].forEach((token) => requireToken(platformTemplateManager, token, 'platform template persisted-summary boundary'));
+[
+  "setAssetTypeId((template.assetTypeId || 'single_table_card') as PrintableAssetTypeId)",
+  "setTemplateFamilyId((template.templateFamilyId || 'modern-calm') as PrintableTemplateFamilyId)",
+  'new Date(template.updatedAt).toLocaleDateString()',
+].forEach((token) => {
+  if (platformTemplateManager.includes(token)) {
+    failures.push(`platform template persisted-summary boundary retains unsafe token: ${token}`);
+  }
+});
+
 [
   'thumbnailDataUrl',
   'CreativeEditorTemplateScope',
@@ -618,7 +647,7 @@ if (qrCode.includes("templateFamilyId === 'brand-banner' || templateFamilyId ===
   failures.push('branded QR must not share the full banner branch between brand-banner and local-bold');
 }
 
-if (desktopAssetsRoute.includes('window.open(')) {
+if (desktopAssetsRoute.includes('openIsolatedBrowserUrl(')) {
   failures.push('desktop assets route should preview in a modal, not window.open');
 }
 if (desktopAssetsRoute.includes('Preview was blocked')) {

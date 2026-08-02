@@ -6,12 +6,12 @@
  *
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
- *   Local tenant URL host: menulist.online — local generated customer links mirror staging
+ *   Local tenant URL host: qa.menulist.digital — local generated customer links mirror staging
  *   Local: /__neelvara       — Neelvara website
  *   Local: /__answerlattice        — Answerlattice website
  *   Local: /__campaigncue          — CampaignCue website
  *   Local: /signaldesk             — private MenuList SignalDesk app
- *   QA: menulist.online       — MenuList preview/staging
+ *   QA: qa.menulist.digital       — MenuList preview/staging
  *   QA: neelvara.menulist.online — Neelvara preview/staging
  *   QA: answerlattice.menulist.online — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
@@ -23,8 +23,10 @@
  *   Prod: signaldesk.menulist.online — private SignalDesk app
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
- *   {subdomain}.menulist.online — Customer-facing digital menu in local/staging
- *   {subdomain}.menulist.ai     — Customer-facing digital menu in production
+ *   {subdomain}.qa.menulist.digital — Customer-facing digital menu in local/staging
+ *   {subdomain}.menulist.online     — Customer-facing digital menu in production
+ *   menulist.online + www          — Production redirect to menulist.ai
+ *   menulist.digital + www         — Not product/public; redirect/noindex only
  *   help.menulist.ai         — Help center / knowledge base (future)
  *   support.menulist.ai      — Support portal (future)
  *   msg.menulist.ai          — Messaging-onboarding placeholder email domain
@@ -37,7 +39,9 @@
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
 import { RESERVED_SUBDOMAINS as ROUTING_RESERVED_SUBDOMAINS } from './reservedSlugs';
 import {
+    getActiveRedirectDomains,
     getActiveProductDomains,
+    getActiveTenantDomains,
     getDeploymentStage,
     getProductDeploymentTarget,
 } from './deploymentTargets';
@@ -55,7 +59,7 @@ const sanitizeDomain = (value?: string | null): string => {
         .replace(/\/.*$/, '');
 };
 
-/** Root domain — used for marketing site, SEO, and canonical URLs */
+/** Root domain — used for marketing site, owner app shell, SEO, and platform canonical URLs */
 const activeMenulistDomains = getActiveProductDomains('menulist').map((domain) => sanitizeDomain(domain));
 const activeExternalMenulistDomains = activeMenulistDomains.filter((domain) =>
     domain
@@ -63,9 +67,12 @@ const activeExternalMenulistDomains = activeMenulistDomains.filter((domain) =>
     && domain !== '127.0.0.1'
     && !domain.startsWith('192.168.')
 );
-const localGeneratedTenantDomain = getProductDeploymentTarget('menulist', 'preview').domains[0] || 'menulist.online';
+const activeMenulistRedirectDomains = getActiveRedirectDomains('menulist').map((domain) => sanitizeDomain(domain));
+const activeMenulistTenantDomains = getActiveTenantDomains('menulist').map((domain) => sanitizeDomain(domain));
+const activeExternalMenulistTenantDomains = activeMenulistTenantDomains.filter(Boolean);
+const localGeneratedTenantDomain = getProductDeploymentTarget('menulist', 'preview').tenantDomains?.[0] || 'qa.menulist.digital';
 const defaultPlatformDomain = getDeploymentStage() === 'local'
-    ? localGeneratedTenantDomain
+    ? getProductDeploymentTarget('menulist', 'preview').domains[0] || 'qa.menulist.digital'
     : activeExternalMenulistDomains[0] || 'menulist.ai';
 
 const configuredPlatformDomain = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN);
@@ -74,11 +81,27 @@ const isConfiguredPlatformDomainAllowed = getDeploymentStage() === 'local'
 
 export const PLATFORM_DOMAIN = (isConfiguredPlatformDomainAllowed ? configuredPlatformDomain : '') || defaultPlatformDomain;
 
+const defaultTenantBaseDomain = getDeploymentStage() === 'local'
+    ? localGeneratedTenantDomain
+    : activeExternalMenulistTenantDomains[0] || PLATFORM_DOMAIN;
+const configuredTenantBaseDomain = sanitizeDomain(process.env.NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN);
+const isConfiguredTenantBaseDomainAllowed = getDeploymentStage() === 'local'
+    || configuredTenantBaseDomain === defaultTenantBaseDomain
+    || activeExternalMenulistTenantDomains.includes(configuredTenantBaseDomain);
+
+/** Customer-facing hosted-link base domain. Production is intentionally separate from menulist.ai. */
+export const MENULIST_TENANT_BASE_DOMAIN = (isConfiguredTenantBaseDomainAllowed ? configuredTenantBaseDomain : '') || defaultTenantBaseDomain;
+export const MENULIST_TENANT_BASE_DOMAINS = Array.from(new Set([
+    MENULIST_TENANT_BASE_DOMAIN,
+    ...activeExternalMenulistTenantDomains,
+].filter(Boolean)));
+export const MENULIST_PLATFORM_REDIRECT_DOMAINS = Array.from(new Set(activeMenulistRedirectDomains.filter(Boolean)));
+
 /**
  * Alias domains that behave identically to PLATFORM_DOMAIN for the active
- * runtime environment. Vercel preview should use menulist.online; production
- * should use menulist.ai. Non-local alias env values are filtered to the
- * active deployment's MenuList domains.
+ * runtime environment. Vercel preview should use qa.menulist.digital;
+ * production should use menulist.ai. Non-local alias env values are filtered
+ * to the active deployment's MenuList platform domains.
  */
 const envDomainAliases = (process.env.NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES || '')
     .split(',')
@@ -99,6 +122,7 @@ export const PLATFORM_DOMAIN_ALIASES = Array.from(new Set([
 
 /** Full root URL with protocol */
 export const PLATFORM_URL = `https://${PLATFORM_DOMAIN}`;
+export const MENULIST_TENANT_BASE_URL = `https://${MENULIST_TENANT_BASE_DOMAIN}`;
 
 const stripTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 const stripLeadingSlashes = (value: string) => value.replace(/^\/+/, '');
@@ -157,7 +181,9 @@ export const getPublicBaseUrl = (): string => {
 
 /** Dashboard subdomain — owner/staff authenticated app */
 export const DASHBOARD_SUBDOMAIN = 'app';
-export const DASHBOARD_URL = `https://${DASHBOARD_SUBDOMAIN}.${PLATFORM_DOMAIN}`;
+export const DASHBOARD_URL = getDeploymentStage() === 'production'
+    ? `https://${DASHBOARD_SUBDOMAIN}.${PLATFORM_DOMAIN}`
+    : PLATFORM_URL;
 
 /** Help center subdomain */
 export const HELP_SUBDOMAIN = 'help';
@@ -178,7 +204,7 @@ export const STAFF_EMAIL_DOMAIN = `staff.${PLATFORM_DOMAIN}`;
 // ═══════════════════════════════════════════════════════════════
 
 /** Sign-in page URL */
-export const SIGNIN_URL = `${PLATFORM_URL}/signin`;
+export const SIGNIN_URL = `${DASHBOARD_URL}/signin`;
 
 /** System email sender (no-reply) */
 export const SYSTEM_EMAIL_FROM = `MenuList <system@${PLATFORM_DOMAIN}>`;
@@ -198,7 +224,7 @@ export const getMenuUrl = (subdomain: string): string => {
     const normalizedSubdomain = subdomain.trim().toLowerCase();
     if (!normalizedSubdomain) return getPublicBaseUrl();
 
-    return normalizeBaseUrl(`https://${normalizedSubdomain}.${PLATFORM_DOMAIN}`);
+    return normalizeBaseUrl(`https://${normalizedSubdomain}.${MENULIST_TENANT_BASE_DOMAIN}`);
 };
 
 /** Build a customer-facing tenant root URL from either custom domain or subdomain */
@@ -245,8 +271,9 @@ export const PLATFORM_DOMAINS = [
     `${HELP_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
     `${SUPPORT_SUBDOMAIN}.${PLATFORM_DOMAIN}`,
     `msg.${PLATFORM_DOMAIN}`,
-    // Alias domains (staging/testing environments)
+    // Alias and redirect domains (staging/testing environments and apex redirects)
     ...PLATFORM_DOMAIN_ALIASES,
+    ...MENULIST_PLATFORM_REDIRECT_DOMAINS,
     // All product website domains (answerlattice.com, campaigncue.ai, surfaceos.app, etc.)
     ...ALL_PRODUCT_DOMAINS,
 ];

@@ -43,8 +43,8 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
     const email = String(session?.user?.email || '').toLowerCase().trim();
     const currentPlatformUser = await getCurrentPlatformUser(session);
-    const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore | null;
-    if (!currentPlatformUser || !email || !db || typeof db.collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!currentPlatformUser || !email || !db) {
         return NextResponse.json(
             { error: 'Forbidden' },
             { status: 403, headers: { 'Cache-Control': 'private, no-store' } },

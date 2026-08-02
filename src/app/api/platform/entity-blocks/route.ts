@@ -3,7 +3,10 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { parsePlatformStoreSummary } from "@data/shared/storeSummaryBoundary";
-import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import {
+    getCurrentPlatformUser,
+    resolveCurrentSessionUserDocumentId,
+} from "@lib/auth/currentPlatformUser";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
@@ -15,6 +18,7 @@ import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessA
 import { buildPlatformBlockDetails } from "@lib/platform/entityBlock";
 import { buildPlatformEntityBlockAcknowledgement } from "@lib/platform/entityBlockAcknowledgement";
 import { logger } from "@lib/monitoring/logger";
+import { getBoundedErrorStringField } from "@lib/monitoring/boundedLogContext";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -142,10 +146,6 @@ function normalizePreviousPlatformBlockDetails(value: unknown): PlatformBlockDet
 
 function isPlatformEntityBlockScopeConflict(error: unknown): boolean {
     return error instanceof PlatformEntityBlockScopeConflictError;
-}
-
-function getPlatformEntityBlockOperatorId(session: any): string {
-    return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
 }
 
 const EntityBlockRequestSchema = z.object({
@@ -334,8 +334,8 @@ async function syncUserBlockAuthState({
         }
 
         return { authDisabled: desiredDisabled, authSynced: true, status: 'synced' as const };
-    } catch (error: any) {
-        if (error?.code === "auth/user-not-found") {
+    } catch (error) {
+        if (getBoundedErrorStringField(error, 'code', 128) === "auth/user-not-found") {
             logFirebaseAdminDiagnostic("platform_entity_block_auth_user_missing", {
                 desiredDisabled,
                 hasEmail: email.length > 0,
@@ -366,10 +366,20 @@ function hasExactStoredUserIdentity(entity: Record<string, unknown>, userScope: 
 }
 
 function getPlatformEntityBlockTimestampMillis(value: unknown): number {
-    if (value instanceof Date) return value.getTime();
-    if (value && typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
-        const millis = value.toMillis();
-        return Number.isFinite(millis) ? millis : 0;
+    try {
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) ? millis : 0;
+        }
+        if (value && typeof value === 'object') {
+            const toMillis = Reflect.get(value, 'toMillis');
+            if (typeof toMillis === 'function') {
+                const millis = Number(Reflect.apply(toMillis, value, []));
+                return Number.isFinite(millis) ? millis : 0;
+            }
+        }
+    } catch {
+        return 0;
     }
     return 0;
 }
@@ -460,7 +470,11 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
     }
 
     const rateLimitConfig = getRateLimitForFeature('PLATFORM_ENTITY_BLOCK_MUTATION');
-    const operatorRateLimitHash = hashPublicRateLimitValue(getPlatformEntityBlockOperatorId(session));
+    const operatorId = resolveCurrentSessionUserDocumentId(session);
+    if (!operatorId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);
     const rateLimit = await checkRateLimit({
         key: `${PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY}:${operatorRateLimitHash}`,
         ...rateLimitConfig,
@@ -479,20 +493,23 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
             window: rateLimitConfig.window,
         }, 'high');
 
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
         return NextResponse.json(
             {
-                error: rateLimit.reason === 'provider_unavailable'
+                error: providerUnavailable
                     ? "Entity block controls are temporarily unavailable."
                     : "Too many entity block attempts. Please try again later.",
                 retryAfter: waitSeconds,
             },
             {
-                status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+                status: providerUnavailable ? 503 : 429,
                 headers: {
                     'Retry-After': String(waitSeconds),
-                    'X-RateLimit-Limit': String(rateLimitConfig.limit),
-                    'X-RateLimit-Remaining': String(rateLimit.remaining),
-                    'X-RateLimit-Reset': String(rateLimit.resetAt),
+                    ...(!providerUnavailable ? {
+                        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                        'X-RateLimit-Remaining': String(rateLimit.remaining),
+                        'X-RateLimit-Reset': String(rateLimit.resetAt),
+                    } : {}),
                 },
             },
         );
@@ -626,7 +643,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                             ? freshStore.tId
                             : null,
                 );
-                if (tenantScope && !hasExactTenantOwnership(freshStore, tenantScope)) {
+                if (!tenantScope || !hasExactTenantOwnership(freshStore, tenantScope)) {
                     throw new PlatformEntityBlockScopeConflictError();
                 }
                 const blockDetails = buildPlatformBlockDetails({

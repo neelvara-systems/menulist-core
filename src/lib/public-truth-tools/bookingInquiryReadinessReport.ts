@@ -5,6 +5,11 @@ import {
   isValidMailtoDestination,
   isValidTelDestination,
 } from './phoneValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   BookingInquiryPrimaryAction,
   BookingInquiryReadinessCheckId,
@@ -37,12 +42,17 @@ const ACTION_HINTS: Record<BookingInquiryPrimaryAction, RegExp> = {
   whatsapp: /(?:\bwhatsapp\b|\bwa\.me\b|\bmessage\b|\bchat\b)/i,
 };
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeActionText(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function isValidActionDestination(value: string, diagnosticSource = 'booking_inquiry_action_destination'): boolean {
@@ -175,11 +185,11 @@ function getNextActionType(status: BookingInquiryReadinessReport['status']): Boo
 }
 
 export function buildBookingInquiryReadinessReport(input: BookingInquiryReadinessInput): BookingInquiryReadinessReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const publicUrl = trimToSingleLine(input.publicUrl);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const publicUrl = trimToSingleLine(input.publicUrl, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const actionText = normalizeActionText(input.actionText);
-  const actionLinkOrNumber = trimToSingleLine(input.actionLinkOrNumber);
+  const actionLinkOrNumber = trimToSingleLine(input.actionLinkOrNumber, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const primaryAction = input.primaryAction || 'other';
   const hasActionText = actionText.replace(/\s+/g, ' ').trim().length >= 8;
   const actionLooksVisible = input.actionVisible || hasActionHint(actionText, primaryAction);

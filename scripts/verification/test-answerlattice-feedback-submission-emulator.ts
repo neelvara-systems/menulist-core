@@ -1,12 +1,13 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import {
     executeAnswerlatticeFeedbackSubmission,
 } from '../../src/lib/answerlattice/feedbackSubmissionServer';
 
 const scope = { tId: 1, sId: 101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const actor = {
     id: 'customer-1',
     name: 'Customer One',
@@ -32,7 +33,6 @@ const request = (comment = 'Clear and useful.') => ({
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db) throw new Error('Answerlattice Firestore Admin is required');
     await db.recursiveDelete(db.collection('feedback'));
     await db.recursiveDelete(db.collection('answerlattice_signalEvents'));
 

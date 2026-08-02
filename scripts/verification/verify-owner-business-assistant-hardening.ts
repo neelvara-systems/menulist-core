@@ -708,6 +708,7 @@ assert.match(locationsRoute, /isActiveStore/);
 assert.match(locationsRoute, /normalizeLocationStore/);
 assert.match(locationsRoute, /cleanSourceFactIds/);
 assert.match(locationsRoute, /isOwnerBusinessHealthStatus/);
+assert.match(locationsRoute, /cleanString\(summarySnap\.data\(\)\?\.generatedAt, 80\) \|\| null/);
 assert.match(locationsRoute, /firestoreReadCount: 2/);
 assert.match(locationsRoute, /'Cache-Control': 'private, no-store, max-age=0'/);
 assert.match(locationsRoute, /'X-Content-Type-Options': 'nosniff'/);

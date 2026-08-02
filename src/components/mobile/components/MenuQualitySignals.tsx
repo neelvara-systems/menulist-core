@@ -23,7 +23,7 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
 interface MobileMenuQualitySignalsProps {
     activeKey?: string[];
     files: ProjectFileType[] | undefined;
-    projectContent?: any;
+    projectContent?: unknown;
     projectLanguages?: string[];
     showCategoryIcons?: boolean;
     showItemPrices?: boolean;

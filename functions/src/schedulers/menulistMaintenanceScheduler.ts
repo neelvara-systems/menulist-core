@@ -146,6 +146,7 @@ const maintenanceSecrets = Array.from(new Set([
     ...SECRET_GROUPS.RAZORPAY,
     ...SECRET_GROUPS.WHATSAPP_OUTBOUND,
     ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+    ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
 ]));
 
 function getIntervalBucket(date: Date, minutes: number): number {

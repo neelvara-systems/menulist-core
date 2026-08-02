@@ -8,9 +8,9 @@ import {
     getPublicBundlePath,
 } from '../../src/lib/answerlattice/compiledContext';
 import {
-    answerlatticeAuthAdmin as auth,
-    answerlatticeFirestoreAdmin as db,
-    answerlatticeStorageAdmin as storage,
+    requireAnswerlatticeAuthAdmin,
+    requireAnswerlatticeFirestoreAdmin,
+    requireAnswerlatticeStorageAdmin,
 } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import {
     executeAnswerlatticeWorkspaceLifecycle,
@@ -23,6 +23,10 @@ import {
     getAnswerlatticeWorkspaceRecoverConfirmation,
 } from '../../src/lib/answerlattice/workspaceLifecycleContracts';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+
+const auth = requireAnswerlatticeAuthAdmin();
+const db = requireAnswerlatticeFirestoreAdmin();
+const storage = requireAnswerlatticeStorageAdmin();
 
 const scope = { tId: 8701, sId: 87001 };
 const actorId = 'platform_workspace_lifecycle_emulator';
@@ -548,8 +552,6 @@ async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error('FIREBASE_AUTH_EMULATOR_HOST is required');
     if (!process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error('FIREBASE_STORAGE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice Firestore emulator is not configured');
-    if (!storage || typeof (storage as any).bucket !== 'function') throw new Error('Answerlattice Storage emulator is not configured');
 
     await seedWorkspace();
     await closeAndRecover();

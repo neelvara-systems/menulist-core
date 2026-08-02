@@ -9,8 +9,8 @@
  *   1. Owner Dashboard PWA   → platform origins (menulist.ai, app.menulist.ai)
  *      Registers `/serwist/sw.js` (Serwist, bounded static caching only).
  *
- *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.ai,
- *                              verified custom domains)
+ *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.online,
+ *                              {subdomain}.qa.menulist.digital, verified custom domains)
  *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
  *
  *   3. MyCodex PWA           → private MyCodex product host if one is
@@ -255,7 +255,7 @@ async function reconcileServiceWorker(targetUrl: string | null): Promise<void> {
         // Development should never keep a stale worker attached.
         // Production non-PWA routes remove wrong workers, but platform
         // website routes preserve the correct owner worker so visiting
-        // menulist.online/ cannot break the installed owner app's
+        // menulist.ai/ cannot break the installed owner app's
         // offline fallback for the same origin.
         if (process.env.NODE_ENV !== 'production' || !targetUrl) {
             let removedRegistration = false;

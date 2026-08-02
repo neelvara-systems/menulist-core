@@ -32,7 +32,11 @@ async function run(): Promise<void> {
         'DNS labels longer than 63 characters must fail before provider work',
     );
     assert(isReservedCustomDomainClaimCandidate('menulist.ai'), 'production MenuList root must be reserved');
-    assert(isReservedCustomDomainClaimCandidate('owner.menulist.ai'), 'MenuList tenant/service namespace must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('app.menulist.ai'), 'MenuList owner app namespace must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('menulist.online'), 'MenuList production tenant root must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('demo.menulist.online'), 'MenuList production tenant namespace must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('qa.menulist.digital'), 'MenuList QA platform root must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('demo.qa.menulist.digital'), 'MenuList QA tenant namespace must be reserved');
     assert(isReservedCustomDomainClaimCandidate('answerlattice.menulist.online'), 'preview product host must be reserved');
     assert(isReservedCustomDomainClaimCandidate('support.answerlattice.com'), 'product descendants must be reserved');
     assert(isReservedCustomDomainClaimCandidate('surfaceos.app'), 'declared future product roots must be reserved');

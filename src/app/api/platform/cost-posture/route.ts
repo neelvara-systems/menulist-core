@@ -33,6 +33,10 @@ const EXTRACTION_OPERATION_LIMIT = 300;
 const BUSINESS_HEALTH_EVENT_LIMIT = 200;
 const ALERT_LIMIT = 30;
 const MAX_TIMESTAMP_PARSE_DIAGNOSTIC_SHAPES = 25;
+const PLATFORM_COST_PRIVATE_HEADERS = {
+  'Cache-Control': 'private, no-store',
+  'X-Content-Type-Options': 'nosniff',
+};
 
 const QuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(90).optional().default(30),
@@ -43,6 +47,12 @@ type SourceReadResult<T> = {
   coverage: PlatformCostSourceCoverage;
 };
 const reportedTimestampParseShapes = new Set<string>();
+
+const platformCostJson = (body: Record<string, unknown>, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  Object.entries(PLATFORM_COST_PRIVATE_HEADERS).forEach(([name, value]) => headers.set(name, value));
+  return NextResponse.json(body, { ...init, headers });
+};
 
 function cleanText(value: unknown, max = 260): string {
   return String(value || '')
@@ -60,16 +70,16 @@ function getCostAlertStringContext(label: string, value: unknown): Record<string
   };
 }
 
-function getCostAlertDisplayType(data: Record<string, any>): string {
+function getCostAlertDisplayType(data: Record<string, unknown>): string {
   return cleanText(data.type || data.category || 'cost', 80) || 'cost';
 }
 
-function buildCostAlertTitle(data: Record<string, any>): string {
+function buildCostAlertTitle(data: Record<string, unknown>): string {
   const displayType = getCostAlertDisplayType(data).replace(/[_-]+/g, ' ');
   return `Cost signal: ${displayType}`;
 }
 
-function buildCostAlertMessage(data: Record<string, any>): string {
+function buildCostAlertMessage(data: Record<string, unknown>): string {
   const context = {
     ...getCostAlertStringContext('title', data.title),
     ...getCostAlertStringContext('message', data.message),
@@ -133,7 +143,7 @@ function logTimestampParseFailure(source: string, value: unknown, error: unknown
   });
 }
 
-function toIso(value: any, source = 'unknown'): string | null {
+function toIso(value: unknown, source = 'unknown'): string | null {
   return parseCostPostureDate(value, source, logTimestampParseFailure)?.toISOString() || null;
 }
 
@@ -377,7 +387,7 @@ function buildGuardrails(
   ];
 }
 
-export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
+export const GET = withPlatformAuth(async (request: NextRequest, session) => {
   let failureContext: Record<string, boolean | number | string | null | undefined> = {
     route: '/api/platform/cost-posture',
     ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
@@ -386,12 +396,12 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
   try {
     if (!FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE) {
-      return NextResponse.json({ error: 'Platform cost posture is disabled' }, { status: 404 });
+      return platformCostJson({ error: 'Platform cost posture is disabled' }, { status: 404 });
     }
 
     const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
+      return platformCostJson({ error: 'Invalid query', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
     }
     failureContext = {
       ...failureContext,
@@ -417,21 +427,24 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
         window: rateLimitConfig.window,
       }, 'medium');
 
-      return NextResponse.json(
+      const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+      return platformCostJson(
         {
-          error: rateLimit.reason === 'provider_unavailable'
+          error: providerUnavailable
             ? 'Platform cost posture is temporarily unavailable.'
             : `Too many requests. Please wait ${waitSeconds} seconds.`,
           retryAfter: waitSeconds,
-          resetAt: rateLimit.resetAt,
+          ...(!providerUnavailable ? { resetAt: rateLimit.resetAt } : {}),
         },
         {
-          status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+          status: providerUnavailable ? 503 : 429,
           headers: {
             'Retry-After': String(waitSeconds),
-            'X-RateLimit-Limit': String(rateLimitConfig.limit),
-            'X-RateLimit-Remaining': String(rateLimit.remaining),
-            'X-RateLimit-Reset': String(rateLimit.resetAt),
+            ...(!providerUnavailable ? {
+              'X-RateLimit-Limit': String(rateLimitConfig.limit),
+              'X-RateLimit-Remaining': String(rateLimit.remaining),
+              'X-RateLimit-Reset': String(rateLimit.resetAt),
+            } : {}),
           },
         },
       );
@@ -442,7 +455,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       logger.security('Authorization Failed - Platform Cost Posture Current Role', {
         ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
       }, 'high');
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return platformCostJson({ error: 'Forbidden' }, { status: 403 });
     }
 
     const periodDays = parsed.data.days;
@@ -532,9 +545,9 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       sourceCoverage,
     };
 
-    return NextResponse.json({ data });
+    return platformCostJson({ data });
   } catch (error) {
     logRuntimeFailure('platform_cost_posture_route_failed', error, failureContext);
-    return NextResponse.json({ error: 'Failed to load platform cost posture' }, { status: 500 });
+    return platformCostJson({ error: 'Failed to load platform cost posture' }, { status: 500 });
   }
 });

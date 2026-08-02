@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Customer Communication Kit — Desktop Component
  *
@@ -213,10 +215,7 @@ function MessageCard({ copyMessage, diagnosticContext, template, themeToken, wha
     const handleWhatsApp = () => {
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('use_menulist_communication_kit_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
         } catch (error) {
             logUseMenuListFailure('use_menulist_communication_kit_whatsapp_open_failed', error, {
                 ...buildCommunicationKitLogContext('whatsapp_open'),

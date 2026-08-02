@@ -26,7 +26,7 @@ Do not replace this path with OpenWA, `whatsapp-web.js`, QR-scanned WhatsApp Web
 | `WHATSAPP_VERIFY_TOKEN` | Firebase Secret Manager | Required for Meta webhook registration |
 | `ENABLE_MESSAGING_ONBOARDING` | Function runtime env | Checked-in MenuList Functions env files default `false`; set `true` only on a target with real provider credentials and webhook registration |
 | `MESSAGING_ONBOARDING_PROVIDERS` | Function runtime env | Default `whatsapp` |
-| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Function runtime env | Required preview host; dev/staging uses `https://menulist.online` |
+| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Function runtime env | Required preview host; dev/staging uses `https://qa.menulist.digital`; production uses `https://menulist.ai` unless a later approved preview host changes it |
 
 Do not create dummy WhatsApp secrets to satisfy deploy checks. Dummy secrets hide the real operational blocker and make provider behavior unreliable.
 

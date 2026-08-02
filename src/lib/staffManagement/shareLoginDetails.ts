@@ -1,5 +1,6 @@
 import { buildWhatsAppPhoneParam as buildCanonicalWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
 import { SIGNIN_URL } from "@constant/urls";
+import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 
 export type StaffLoginDetailsShareInput = {
     countryCode?: string;
@@ -142,9 +143,9 @@ export async function copyTextToClipboard(text: string) {
 }
 
 export function openWhatsAppWebShare(details: StaffLoginDetailsShareInput) {
-    if (typeof window === 'undefined') return false;
-
-    const popup = window.open(buildWhatsAppShareUrl(details), '_blank', 'noopener,noreferrer');
-    if (popup) popup.opener = null;
-    return Boolean(popup);
+    try {
+        return openIsolatedBrowserUrl(buildWhatsAppShareUrl(details));
+    } catch {
+        return false;
+    }
 }

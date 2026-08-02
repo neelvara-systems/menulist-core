@@ -29,12 +29,16 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
   className,
 }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const refreshInFlightRef = React.useRef(false);
 
   const handleRefresh = async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setIsRefreshing(true);
     try {
       await onRefresh();
     } finally {
+      refreshInFlightRef.current = false;
       setIsRefreshing(false);
     }
   };

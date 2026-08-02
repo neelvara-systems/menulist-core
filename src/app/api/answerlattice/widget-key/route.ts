@@ -8,26 +8,28 @@ export const dynamic = 'force-dynamic';
  * returned once at creation time and are never stored for later recovery.
  */
 
-import { FEATURE_FLAGS } from '@config/features';
+import {
+    FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
 import {
     ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+    } from '@lib/answerlattice/accessControl';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
     buildAnswerlatticeWidgetKeySummaries,
     normalizeAnswerlatticeWidgetApiState,
-} from '@lib/answerlattice/widgetKeyManager';
+    } from '@lib/answerlattice/widgetKeyManager';
 import {
     AnswerlatticeWidgetKeyStoreError,
     mutateAnswerlatticeWidgetKeys,
-} from '@lib/answerlattice/widgetKeyStore';
+    } from '@lib/answerlattice/widgetKeyStore';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { hashApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -63,8 +65,7 @@ const RequestSchema = z.discriminatedUnion('action', [
 const WIDGET_KEY_ACTION_MAX_BODY_BYTES = 4 * 1024;
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
 const toKeyResponse = (state: unknown) => {

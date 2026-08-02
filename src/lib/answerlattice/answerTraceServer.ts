@@ -1,27 +1,13 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeCacheVersion } from '@lib/answerlattice/cacheVersionManifest';
-import {
-    normalizeAnswerlatticeCanonicalAnswerId,
-    normalizeAnswerlatticeResolvedEntityIds,
-} from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityIds, } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
-import {
-    normalizeAnswerlatticePublicCitations,
-    normalizeAnswerlatticeScopeClarification,
-} from '@lib/answerlattice/publicAnswerContracts';
+import { normalizeAnswerlatticePublicCitations, normalizeAnswerlatticeScopeClarification, } from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import {
-    ANSWERLATTICE_ANSWER_TRACE_MAX_ANSWER_CHARS,
-    ANSWERLATTICE_ANSWER_TRACE_RECENT_RESULT_LIMIT,
-    ANSWERLATTICE_ANSWER_TRACE_RECENT_SCAN_LIMIT,
-    AnswerlatticeAnswerTraceResponseSchema,
-    AnswerlatticeAnswerTraceSchema,
-    type AnswerlatticeAnswerTrace,
-    type AnswerlatticeAnswerTraceResponse,
-} from './answerTraceContracts';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { ANSWERLATTICE_ANSWER_TRACE_MAX_ANSWER_CHARS, ANSWERLATTICE_ANSWER_TRACE_RECENT_RESULT_LIMIT, ANSWERLATTICE_ANSWER_TRACE_RECENT_SCAN_LIMIT, AnswerlatticeAnswerTraceResponseSchema, AnswerlatticeAnswerTraceSchema, type AnswerlatticeAnswerTrace, type AnswerlatticeAnswerTraceResponse, } from './answerTraceContracts';
 
 const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 const ANSWER_SOURCES = new Set(['canonical', 'faq', 'rag', 'cache', 'empty']);
@@ -171,7 +157,7 @@ export const projectAnswerlatticeAnswerTrace = (
 };
 
 const getScopedHistoryQuery = (scope: AnswerTraceScope) => (
-    answerlatticeFirestoreAdmin.collection(COLLECTION)
+    requireAnswerlatticeFirestoreAdmin().collection(COLLECTION)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
@@ -187,8 +173,8 @@ export const loadAnswerlatticeAnswerTraces = async (
     if (searchHistoryId && !normalizedId) throw new Error('answer_trace_id_invalid');
 
     if (normalizedId) {
-        const [snapshot] = await answerlatticeFirestoreAdmin.getAll(
-            answerlatticeFirestoreAdmin.collection(COLLECTION).doc(normalizedId),
+        const [snapshot] = await requireAnswerlatticeFirestoreAdmin().getAll(
+            requireAnswerlatticeFirestoreAdmin().collection(COLLECTION).doc(normalizedId),
             { fieldMask: [...TRACE_PROJECTED_FIELDS] },
         );
         const trace = snapshot.exists

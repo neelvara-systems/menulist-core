@@ -28,7 +28,7 @@ Projects are your digital menus. Each project is a separate menu (e.g., "Food Me
 3. Type the new name
 4. Click **Save**
 
-> 💡 **Tip:** The project name becomes part of the URL (e.g., "Drinks" → yourstore.menulist.ai/drinks)
+> 💡 **Tip:** The project name becomes part of the URL (e.g., "Drinks" → yourstore.menulist.online/drinks)
 
 ### How to delete a project
 1. Go to **Projects**
@@ -41,7 +41,7 @@ Projects are your digital menus. Each project is a separate menu (e.g., "Food Me
 ### How to manage multiple menus
 1. Create separate projects for each menu type (Food, Drinks, Desserts)
 2. Set one as **Default** (the main menu)
-3. Each project gets its own URL: `yourstore.menulist.ai/food-menu`
+3. Each project gets its own URL: `yourstore.menulist.online/food-menu`
 4. You can link between them or give customers separate QR codes
 
 ---

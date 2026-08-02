@@ -45,8 +45,7 @@ const withNotificationTestHeaders = <T extends NextResponse>(response: T): T => 
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {

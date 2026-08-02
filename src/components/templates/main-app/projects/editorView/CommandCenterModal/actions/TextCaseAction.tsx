@@ -56,13 +56,11 @@ export default function TextCaseAction({
 
     useEffect(() => {
         onConfigReady(config);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config]);
+    }, [config, onConfigReady]);
 
     useEffect(() => {
         onPreviewChange(preview);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [preview]);
+    }, [onPreviewChange, preview]);
 
     return (
         <Flex vertical gap={12}>

@@ -47,12 +47,15 @@ function verifySearchBoundary() {
   const cacheScopeHook = read('src/hooks/answerlattice/useAnswerlatticeCacheScope.ts');
   const categoriesCache = read('src/hooks/useKBCategoriesCache.ts');
   const articleCache = read('src/hooks/useArticleCache.ts');
+  const knowledgeBaseArticles = read('src/components/organisms/KnowledgeBaseExplorer/Articles.tsx');
   const ticketCache = read('src/hooks/useTicketCache.ts');
   const changelogCache = read('src/hooks/useChangelogCache.ts');
   const platformTickets = read('src/components/templates/platform/supportTickets/index.tsx');
   const faqView = read('src/components/templates/main-app/helpCenter/FaqView.tsx');
   const articleView = read('src/components/organisms/ArticleView/index.tsx');
   const articleViewModal = read('src/components/organisms/ArticleViewModal/index.tsx');
+  const aiSearchResultDisplay = read('src/components/organisms/AISearchModal/SearchResultDisplay.tsx');
+  const messageReferences = read('src/components/templates/main-app/helpChat/MessageReferences.tsx');
 
   assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
   assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
@@ -133,9 +136,20 @@ function verifySearchBoundary() {
   assertIncludes(categoriesCache, 'new Map<string, Promise<KnowledgeBaseCategoriesType | null>>()', 'Help Center category request coalescing per scope');
   assertIncludes(categoriesCache, 'cachedKBCategories?.scopeKey === scopeKey', 'Help Center category cache scope check');
   assertIncludes(articleCache, 'cachedArticles.scopeKey === scopeKey', 'Help Center article cache scope check');
+  assertIncludes(articleCache, 'cacheScopeKey: scopeKey', 'Help Center article consumer scope exposure');
+  assertIncludes(knowledgeBaseArticles, 'const requestKey = JSON.stringify([cacheScopeKey, articles.map((article) => article.id)]);', 'Help Center article-list scoped request identity');
+  assertIncludes(knowledgeBaseArticles, 'const visibleArticles = requestIsCurrent ? fullArticles : [];', 'Help Center article-list prior-scope render rejection');
+  assertIncludes(knowledgeBaseArticles, 'if (!active) return;', 'Help Center article-list late-result lifecycle fence');
+  assertIncludes(knowledgeBaseArticles, 'getArticleRef.current(article.id)', 'Help Center article-list current scoped fetcher');
+  assertNotIncludes(knowledgeBaseArticles, 'eslint-disable-next-line react-hooks/exhaustive-deps', 'Help Center article-list effect suppression');
   assertIncludes(ticketCache, 'cachedTickets.scopeKey === scopeKey', 'Help Center ticket cache scope check');
   assertIncludes(changelogCache, 'new Map<string, Promise<ChangelogPage | null>>()', 'Answerlattice changelog request coalescing per scope');
   assertIncludes(platformTickets, "useTicketCache({ audience: 'platform' })", 'Platform ticket cache audience separation');
+  assertIncludes(platformTickets, 'void setupListener();', 'Platform ticket listener contained async setup');
+  assertIncludes(platformTickets, "message.error('Failed to sync tickets in real-time');", 'Platform ticket listener setup failure visibility');
+  assertIncludes(platformTickets, 'deletedTicketsLoadInFlightRef.current', 'Platform deleted-ticket single-flight load');
+  assertIncludes(platformTickets, 'if (componentActiveRef.current) setDeletedTickets(response);', 'Platform deleted-ticket unmount settlement fence');
+  assertIncludes(platformTickets, 'void fetchDeletedTickets();', 'Platform deleted-ticket contained refresh');
   assertNotIncludes(categoriesCache, 'let categoriesFetchInFlight:', 'Help Center global category in-flight promise');
   assertNotIncludes(changelogCache, 'let changelogFetchInFlight:', 'Answerlattice global changelog in-flight promise');
   assertIncludes(faqView, "if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT)", 'Help Center explicit FAQ flag fallback');
@@ -146,9 +160,15 @@ function verifySearchBoundary() {
   assertIncludes(articleView, 'editor.commands.setContent(editorContent, false);', 'Help Center article editor prop synchronization');
   assertIncludes(articleView, '[editorContent, editor]', 'Help Center article editor normalized synchronization dependencies');
   assertIncludes(articleViewModal, 'let active = true;', 'Help Center article modal request lifecycle fence');
-  assertIncludes(articleViewModal, 'if (active) setFullArticle(article);', 'Help Center article modal stale-result rejection');
+  assertIncludes(articleViewModal, 'if (active) {', 'Help Center article modal stale-result rejection');
+  assertIncludes(articleViewModal, 'const requestKey = JSON.stringify([cacheScopeKey, providedArticle?.id || null]);', 'Help Center article modal scoped request identity');
+  assertIncludes(articleViewModal, 'const visibleArticle = requestIsCurrent ? fullArticle : null;', 'Help Center article modal prior-scope render rejection');
   assertIncludes(articleViewModal, "logRuntimeFailure('answerlattice_article_modal_load_failed'", 'Help Center article modal fetch failure diagnostics');
   assertNotIncludes(articleViewModal, 'const loadArticle = async', 'Help Center article modal unfenced detached loader');
+  assertIncludes(aiSearchResultDisplay, 'const visibleResolvedArticles = resolvedArticlesScopeKey === cacheScopeKey ? resolvedArticles : {};', 'AI Search article preview prior-scope render rejection');
+  assertIncludes(aiSearchResultDisplay, 'currentScopeKeyRef.current !== requestScopeKey', 'AI Search article preview obsolete-scope settlement rejection');
+  assertIncludes(messageReferences, 'const visibleResolvedArticles = resolvedArticlesScopeKey === cacheScopeKey ? resolvedArticles : {};', 'Help Chat article preview prior-scope render rejection');
+  assertIncludes(messageReferences, 'currentScopeKeyRef.current !== requestScopeKey', 'Help Chat article preview obsolete-scope settlement rejection');
 }
 
 function verifyMobileBoundary() {

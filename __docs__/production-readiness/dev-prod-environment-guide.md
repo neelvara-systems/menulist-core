@@ -15,7 +15,7 @@ This is the current source-of-truth contract for the shared Vercel app. Code mir
 | Environment | Vercel env | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- | --- |
 | Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Staging / QA | Preview | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
+| Staging / QA | Preview | `https://qa.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Production | Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
@@ -51,7 +51,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
 | 18  | Deployment safety checks                         | **ALREADY EXISTS** | `npm run verify:production-readiness-local`, `npm run verify:functions-deploy-preflight`, and `npm run verify:env-targets` provide source/preflight gates. They do not authorize deployment. |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
-| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `menulist.online` + `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
+| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `qa.menulist.digital` + `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
 | 22  | Failure playbook                                 | **RESOLVED**       | [MenuList Incident Response Runbook](./incident-response-runbook.md) defines severity, containment, SAFE_MODE limits, scoped rollback, recovery, communication, and durable evidence requirements; live drill evidence remains pending |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
@@ -309,7 +309,7 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 
 1. Local MenuList uses `http://localhost:3000/` and Firebase `menulist-qa`.
 2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `answerlattice-qa`.
-3. Vercel Preview MenuList uses `https://menulist.online` and Firebase `menulist-qa`.
+3. Vercel Preview MenuList uses `https://qa.menulist.digital` and Firebase `menulist-qa`; QA tenant links use `*.qa.menulist.digital`.
 4. Vercel Preview Answerlattice uses `https://answerlattice.menulist.online` and Firebase `answerlattice-qa`.
 
 **Step 2: Configure Local Development**
@@ -323,8 +323,9 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 1. In Vercel Dashboard → Settings → Environment Variables
 2. Set all MenuList `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars to the production Firebase project `menulist`.
 3. Set all Answerlattice `ANSWERLATTICE_FIREBASE_*` and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` vars to the production Firebase project `answerlattice`.
-4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` in Production and `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online` in Preview.
-5. Run `npm run verify:env-targets` after env/documentation edits.
+4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online` in Production.
+5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=qa.menulist.digital` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=qa.menulist.digital` in Preview.
+6. Run `npm run verify:env-targets` after env/documentation edits.
 
 **Step 4: Seed Non-Production QA Data**
 
@@ -580,7 +581,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
   1. Sign up with your email
   2. Add monitors:
      - `https://menulist.ai` (main site)
-     - `https://yourstore.menulist.ai` (sample store)
+     - `https://yourstore.menulist.online` (sample store)
      - `https://menulist.ai/api/health` (if exists)
   3. Set check interval: 5 minutes
   4. Add alert contacts (email + optional Telegram webhook)

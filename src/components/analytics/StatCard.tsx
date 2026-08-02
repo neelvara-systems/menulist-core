@@ -7,6 +7,7 @@ import React from 'react';
 import { Card, Statistic, Progress, Space, Typography, theme, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { normalizeAnalyticsPercentage } from './analyticsPresentation';
 
 const { Text } = Typography;
 
@@ -46,7 +47,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   const { token } = theme.useToken();
 
   // Calculate percentage if total is provided
-  const percentage = total && total > 0 ? (value / total) * 100 : 0;
+  const percentage = normalizeAnalyticsPercentage(value, total ?? 0);
 
   // Determine progress color based on status
   const getProgressColor = () => {

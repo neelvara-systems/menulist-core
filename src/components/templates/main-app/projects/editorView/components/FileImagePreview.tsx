@@ -1,3 +1,4 @@
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Alert, Button, Divider, Flex, message, Popover, Space, theme, Tooltip, Typography } from 'antd';
 import { LuAlertTriangle, LuExternalLink, LuEye, LuFileText, LuHelpCircle, LuInfo, LuKeyboard, LuMinus, LuMousePointer2, LuMove, LuPlus, LuRotateCcw, LuTrash, LuXCircle } from 'react-icons/lu';
@@ -210,10 +211,7 @@ const SourceFilePreview = ({
         if (!sourceUrl) return;
 
         try {
-            const opened = window.open(sourceUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('project_file_source_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(sourceUrl);
         } catch (error) {
             logRuntimeFailure('project_file_source_link_open_failed', error, {
                 surface: 'project_file_image_preview',

@@ -98,7 +98,7 @@ const desktopPresence = read('src/components/templates/main-app/useMenuList/Pres
   "logUseMenuListFailure('use_menulist_presence_remove_failed'",
   'use_menulist_presence_confirm_update_rejected',
   'use_menulist_presence_remove_update_rejected',
-  "window.open(surface.openUrl, '_blank', 'noopener,noreferrer')",
+  'openIsolatedBrowserUrl(surface.openUrl)',
   "withAnalyticsSource(data.obpLink, 'copy_link')",
   "getBoundedUseMenuListStringContext('obpLink', data.obpLink)",
   "getBoundedUseMenuListStringContext('surfaceKey', surface?.dalKey)",
@@ -119,7 +119,7 @@ const desktopPresence = read('src/components/templates/main-app/useMenuList/Pres
   'console.debug',
   'await navigator.clipboard.writeText(sourcedObpLink);\n            message.success',
   "document.execCommand('copy');\n            message.success",
-  "window.open(surface.openUrl, '_blank')",
+  "openIsolatedBrowserUrl(surface.openUrl, '_blank')",
 ].forEach((token) => forbidToken(desktopPresence, token, 'desktop Presence Monitor'));
 
 const mobilePresence = read('src/components/mobile/components/PresenceMonitor.tsx');
@@ -136,7 +136,7 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   "logMobileOwnerFailure('mobile_presence_remove_failed'",
   'mobile_presence_confirm_update_rejected',
   'mobile_presence_remove_update_rejected',
-  "window.open(surface.openUrl, '_blank', 'noopener,noreferrer')",
+  'openIsolatedBrowserUrl(surface.openUrl)',
   "withAnalyticsSource(obpLink, 'copy_link')",
   "getBoundedMobileOwnerStringContext('obpLink', obpLink)",
   "getBoundedMobileOwnerStringContext('surfaceKey', surface?.dalKey)",
@@ -152,6 +152,7 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   "id: 'appleBusiness'",
   "id: 'bingPlaces'",
 ].forEach((token) => requireToken(mobilePresence, token, 'mobile Presence Monitor'));
+forbidToken(mobilePresence, 'window.open(', 'mobile Presence Monitor no-opener handle acknowledgement');
 [
   'catch {',
   'console.error',
@@ -160,7 +161,7 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   'console.debug',
   'await navigator.clipboard.writeText(sourcedObpLink);\n            Toast.show',
   "document.execCommand('copy');\n            Toast.show",
-  "window.open(surface.openUrl, '_blank')",
+  "openIsolatedBrowserUrl(surface.openUrl, '_blank')",
   'SwipeAction',
   'CheckList',
   '<Switch',

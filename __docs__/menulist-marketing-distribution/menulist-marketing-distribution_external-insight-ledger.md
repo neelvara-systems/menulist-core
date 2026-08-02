@@ -423,6 +423,63 @@ measurable two-surface activation chain.
   the useful research loop, corrected the unsupported thresholds and
   structural absolutes, and deferred use to MenuList's paid-acquisition gate.
 
+### ML-MKT-EXT-006 - HyperFrames 0.7.87 Release Train And Recent Production Articles
+
+- **Status:** `DEFERRED_REFERENCE`
+- **Shared:** August 1, 2026
+- **Source:** [HyperFrames npm package](https://www.npmjs.com/package/hyperframes?activeTab=versions), [official GitHub releases](https://github.com/heygen-com/hyperframes/releases), [official HyperFrames X account](https://x.com/HyperFrames_), and the Day 21-26 official articles linked below.
+- **Source type:** Release notes and X article series
+- **Topics:** hyperframes, video-production, local-rendering, prompt-guide, BRIEF.md, motion-continuity, transition-flicker, product-screenshots, audio-opening, audio-ducking, captions, native-aspect-ratios, templates, color-grading, media-effects, overlays, website-capture
+- **Use when:** Starting the next MenuList video project or explicitly admitting a newer HyperFrames CLI into the local production toolchain.
+- **Revalidate:** Current npm latest version, release notes since `0.7.87`, Node and FFmpeg requirements, local skill state, CLI command compatibility, Apache license, third-party media rights, encoded output parity, and the zero-cost local-only production boundary.
+
+**Source idea**
+
+The upstream project moved from `0.7.62` to `0.7.87` through a large patch train. The current official series covers cloud rendering, reusable components, templates and variables, deterministic color grading, a structured Prompt Guide, and media effects and overlays. Release notes also add product-launch continuity checks, stronger music openings, audio automation fixes, caption-zone handling, orientation-aware resolution, safer fast capture, and bounded website capture.
+
+**MenuList verdict**
+
+Adopt the production principles that improve truth, continuity, and repeatability:
+
+- persist the intent interview in `BRIEF.md`;
+- use the Prompt Guide's motion grammar and avoid-the-slideshow continuity contract;
+- use real product screenshots and check for motion jumps at every cut;
+- keep music audible from frame zero while preserving voice-reactive ducking;
+- preserve deliberate automation plateaus and exclude hidden audio;
+- use templates and variables only after the master scene and copy are approved;
+- keep captions inside an intentional native aspect-ratio layout;
+- use deterministic, restrained color correction and grading;
+- use bounded website capture for real MenuList UI evidence;
+- continue encoded frame-zero, transition, and final-frame QA.
+
+Do not adopt cloud rendering, account-backed generation, hosted catalogs, paid media, or login-gated assets. Do not use bloom, pixelation, CRT, glitch, ASCII, engraving, HUD, light leaks, or freeze-frame dressing as generic decoration. Media effects and overlays are admitted only when one motivated treatment improves a specific transition or supporting-footage beat without obscuring product UI, captions, claims, or owner control.
+
+The upstream skills directory still contains 19 workflows; this is an improvement inside the existing skill set, not a new MenuList workflow count.
+
+**Current decision**
+
+No installation or production upgrade in this review pass. Keep `0.7.62` as the last verified production baseline and treat `0.7.87` as the reviewed candidate. The next toolchain action is an isolated, pinned, telemetry-disabled `0.7.87` smoke test on a disposable short composition. Frozen videos and source projects must not be migrated in place.
+
+**Official recent articles**
+
+- [Day 21 - Cloud Rendering](https://x.com/HyperFrames_/status/2081491370485952790) - reject for MenuList's local-only workflow.
+- [Day 22 - Components Catalog](https://x.com/HyperFrames_/status/2081798071353278651) - selectively useful for reviewed local reusable blocks.
+- [Day 23 - Templates and Variables](https://x.com/HyperFrames_/status/2082197435246600341) - high value for controlled campaign and aspect-ratio variants.
+- [Day 24 - Color Grading](https://x.com/HyperFrames_/status/2082536413829235004) - useful only as restrained deterministic correction and brand look.
+- [Day 25 - Prompt Guide](https://x.com/HyperFrames_/status/2082892893027749917) - adopt the brief, continuity, pacing, and review guidance.
+- [Day 26 - Media Effects and Overlays](https://x.com/HyperFrames_/status/2083324288632045910) - selectively admit motivated treatments; reject decorative effect stacking.
+
+**Related MenuList truth**
+
+- [HyperFrames operating guide](../videos/videos_hyperframes-operating-guide.md)
+- [Founder-approved production standard](../videos/videos_founder-approved-production-standard.md)
+- [Video version ledger](../videos/videos_version-ledger.md)
+- [External insight ledger workflow](#intake-workflow)
+
+**Outcome history**
+
+- August 1, 2026 - Verified npm latest `0.7.87`, reviewed official release notes from the `0.7.62` baseline, inspected the 19-skill directory, and read the official Day 21-26 X article list plus the full Day 26 article. Recorded a selective adoption verdict and deferred the CLI change to an isolated local smoke test.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

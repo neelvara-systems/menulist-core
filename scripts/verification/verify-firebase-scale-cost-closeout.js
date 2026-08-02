@@ -177,6 +177,7 @@ const usageMap = spawnSync(
 );
 assertCheck(usageMap.status === 0, 'Firebase usage-map scanner completes');
 const usage = JSON.parse(usageMap.stdout);
+const normalizedCloseoutReadme = closeoutReadme.replace(/\s+/g, ' ');
 assertCheck(usage.rows.length > 0, 'Firebase usage-map scanner finds runtime files');
 assertCheck((usage.byRisk['high-listener'] || 0) <= 9, 'Realtime-listener risk count does not grow silently');
 assertCheck((usage.byRisk['medium-public-read'] || 0) <= 2, 'Public-read risk count does not grow silently');
@@ -189,9 +190,13 @@ assertCheck(
   'Summary-document guidance uses enforced ceilings and avoids stale price arithmetic',
 );
 assertCheck(
-  closeoutReadme.includes('481 runtime files')
-    && closeoutReadme.includes('No schema migration was introduced'),
-  'Closeout README records the current scanner result and bounded change',
+  normalizedCloseoutReadme.includes(`${usage.rows.length} runtime files`)
+    && normalizedCloseoutReadme.includes(`${usage.byRisk['high-listener'] || 0} listener-risk files`)
+    && normalizedCloseoutReadme.includes(`${usage.byRisk['medium-public-read'] || 0} public-read-risk files`)
+    && normalizedCloseoutReadme.includes(`${usage.byRisk['medium-query-scope'] || 0} query-scope-risk files`)
+    && normalizedCloseoutReadme.includes(`${usage.byRisk['medium-write-volume'] || 0} write-volume-risk files`)
+    && normalizedCloseoutReadme.includes('No schema migration was introduced'),
+  'Closeout README records the exact current scanner totals and bounded change',
 );
 assertCheck(
   closeoutFirebase.includes('At most one successful platform-wide suite per UTC day')

@@ -10,9 +10,11 @@ export const CAMPAIGNCUE_API_ROUTES = {
     CUE_LAYERS_DESIGNS: `${CAMPAIGNCUE_API_BASE_PATH}/cue-layers/designs`,
     CUE_LAYERS_UPLOADS: `${CAMPAIGNCUE_API_BASE_PATH}/cue-layers/uploads`,
     DESIGN_CUE_TURNS: `${CAMPAIGNCUE_API_BASE_PATH}/design-cue/turns`,
+    FIREBASE_TOKEN: `${CAMPAIGNCUE_API_BASE_PATH}/firebase-token`,
     INTEGRATIONS: `${CAMPAIGNCUE_API_BASE_PATH}/integrations`,
     LOCATIONS: `${CAMPAIGNCUE_API_BASE_PATH}/locations`,
     SOURCES: `${CAMPAIGNCUE_API_BASE_PATH}/sources`,
+    VIDEO_PROJECTS: `${CAMPAIGNCUE_API_BASE_PATH}/video-projects`,
     WORKSPACE: `${CAMPAIGNCUE_API_BASE_PATH}/workspace`,
 } as const;
 
@@ -22,6 +24,10 @@ export function getCampaignCueCampaignActionApiPath(campaignId: string): string 
 
 export function getCampaignCueAssetDownloadApiPath(assetId: string): string {
     return `${CAMPAIGNCUE_API_ROUTES.ASSETS}/${encodeURIComponent(assetId)}/download`;
+}
+
+export function getCampaignCueAssetPreviewApiPath(assetId: string): string {
+    return `${CAMPAIGNCUE_API_ROUTES.ASSETS}/${encodeURIComponent(assetId)}/preview`;
 }
 
 export function getCampaignCueCueLayersJobApiPath(jobId: string): string {

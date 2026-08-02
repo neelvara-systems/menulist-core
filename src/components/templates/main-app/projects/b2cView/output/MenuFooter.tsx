@@ -57,7 +57,7 @@ import {
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuFooterProps {
-    storeDetails?: StoreDataType;
+    storeDetails?: Partial<StoreDataType>;
     moodConfig: MenuMoodConfig;
     /** Available languages for read-only display */
     languages?: string[];
@@ -72,7 +72,7 @@ interface MenuFooterProps {
     /** Menu publish version (monotonic, from project.menuVersion) */
     menuVersion?: number;
     /** When menu was last published (from project.lastPublishedAt) */
-    lastPublishedAt?: any; // Firestore Timestamp or Date
+    lastPublishedAt?: StoreDataType['lastPublishedAt'];
     showLanguageSelector?: boolean;
     showUpdateMeta?: boolean;
     analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
@@ -164,7 +164,7 @@ function resolveMenuFooterDate(
  * Examples: "today", "yesterday", "3 days ago", "Jan 15"
  */
 function formatRelativeDate(
-    timestamp: any,
+    timestamp: unknown,
     language: string | undefined,
     t: PublicCustomerTranslator,
 ): string {
@@ -196,7 +196,7 @@ function formatRelativeDate(
     }
 }
 
-function getMenuFooterUpdatedAtIso(timestamp: any): string | undefined {
+function getMenuFooterUpdatedAtIso(timestamp: unknown): string | undefined {
     try {
         const date = resolveMenuFooterDate(timestamp, 'iso');
         return date?.toISOString();

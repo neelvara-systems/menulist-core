@@ -3,9 +3,8 @@ import { Flex } from 'antd';
 import React from 'react';
 import {
     LuClipboard,
-    LuFile, LuFileAudio, LuFileImage, LuFileText, LuFileVideo, LuYoutube
+    LuFile, LuFileAudio, LuFileImage, LuFileText, LuFileType, LuFileVideo, LuYoutube
 } from 'react-icons/lu';
-import { TbFileTypePdf } from 'react-icons/tb';
 
 interface FileIconProps {
     fileType: IngestionJobSourceFile['type'];
@@ -19,7 +18,7 @@ const FileIcon: React.FC<FileIconProps> = ({ fileType }) => {
             icon = <LuFileImage fontSize={22} color='#F59E0B' />;
             break;
         case FILE_TYPE.PDF:
-            icon = <TbFileTypePdf fontSize={22} color='#EF4444' />;
+            icon = <LuFileType fontSize={22} color='#EF4444' />;
             break;
         case FILE_TYPE.DOCUMENT:
             icon = <LuFileText fontSize={22} color='#3B82F6' />;

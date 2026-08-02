@@ -22,10 +22,22 @@ import { getPrivateScreenTokenCacheTag } from "@lib/screen/privateScreenControl"
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
 import { isValidScreenToken } from "@lib/screen/utils";
+import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import MenuBoardDisplay from "./MenuBoardDisplay";
 import ScreenDisplay from "./ScreenDisplay";
+
+export const metadata: Metadata = {
+    referrer: "no-referrer",
+    robots: {
+        follow: false,
+        index: false,
+        noarchive: true,
+        noimageindex: true,
+        nosnippet: true,
+    },
+};
 
 // OPT-6: Cache screen data reads at Vercel edge (60s TTL)
 // Eliminates redundant Firestore reads when multiple screens share a token

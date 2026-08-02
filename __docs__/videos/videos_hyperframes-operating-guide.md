@@ -22,7 +22,7 @@ HyperFrames controls how the asset is produced. The conversion brief controls wh
 
 ## Source Docs Reviewed
 
-HyperFrames docs reviewed through July 18, 2026:
+HyperFrames docs and official release material reviewed through August 1, 2026:
 
 - Prompt Guide: https://hyperframes.heygen.com/guides/prompting
 - Quickstart: https://hyperframes.heygen.com/quickstart
@@ -38,6 +38,18 @@ HyperFrames docs reviewed through July 18, 2026:
 - HyperFrames v0.7.60 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.60
 - HyperFrames v0.7.61 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.61
 - HyperFrames v0.7.62 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.62
+- HyperFrames v0.7.70 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.70
+- HyperFrames v0.7.79 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.79
+- HyperFrames v0.7.82 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.82
+- HyperFrames v0.7.83 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.83
+- HyperFrames v0.7.85 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.85
+- HyperFrames v0.7.87 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.87
+- HyperFrames Day 21 - Cloud Rendering: https://x.com/HyperFrames_/status/2081491370485952790
+- HyperFrames Day 22 - Components Catalog: https://x.com/HyperFrames_/status/2081798071353278651
+- HyperFrames Day 23 - Templates and Variables: https://x.com/HyperFrames_/status/2082197435246600341
+- HyperFrames Day 24 - Color Grading: https://x.com/HyperFrames_/status/2082536413829235004
+- HyperFrames Day 25 - Prompt Guide: https://x.com/HyperFrames_/status/2082892893027749917
+- HyperFrames Day 26 - Media Effects and Overlays: https://x.com/HyperFrames_/status/2083324288632045910
 - HyperFrames Apache 2.0 license: https://github.com/heygen-com/hyperframes/blob/main/LICENSE
 - HeyGen Terms: https://www.heygen.com/terms
 - Pixabay Content License summary: https://pixabay.com/service/license-summary/
@@ -85,7 +97,7 @@ npx hyperframes skills update
 
 HyperFrames requires Node 22 or newer and FFmpeg. Use Node 22 only for HyperFrames work; do not change the MenuList app runtime.
 
-The current Mac has HyperFrames `0.7.62`, Node `22.23.1`, FFmpeg `7.1`, local headless Chrome, and `whisper-cpp`. It has an M5 Pro, 48 GB unified memory, and enough available memory for the smaller optional local model tiers. Local rendering, Motion Graphics, Talking Head Recut, bundled SFX, deterministic grades, and FFmpeg media operations are ready. HeyGen CLI authentication, Kokoro, Parakeet MLX, mflux, LTX, real-ESRGAN, MusicGen, `uvx`, `gh`, Figma credentials, Docker, and Lambda are not currently required or installed for the launch queue.
+The last verified production baseline used HyperFrames `0.7.62`, Node `22.23.1`, FFmpeg `7.1`, local headless Chrome, and `whisper-cpp`. As of August 1, 2026, npm latest is `0.7.87`, but that version has not yet passed a MenuList isolated smoke test and is not the production authority. The current interactive shell may not be on Node 22 and may not expose a persistent global HyperFrames command; always activate Node `22.23.1` and use an explicit version during the next controlled smoke test. The Mac has an M5 Pro, 48 GB unified memory, and enough available memory for the smaller optional local model tiers. Local rendering, Motion Graphics, Talking Head Recut, bundled SFX, deterministic grades, and FFmpeg media operations remain the approved path. HeyGen CLI authentication, Kokoro, Parakeet MLX, mflux, LTX, real-ESRGAN, MusicGen, `uvx`, `gh`, Figma credentials, Docker, and Lambda are not currently required or installed for the launch queue.
 
 ## Skill Routing And Local Cost
 
@@ -136,6 +148,39 @@ The following changes are materially useful to MenuList:
 | Publish/review | Persistent review sessions and stable publish links were added | Optional for internal review only; local MP4 remains the public handoff authority |
 
 These releases improve production reliability. They do not change MenuList positioning, the local-render default, the founder-approved logo/audio system, or the requirement to verify rights before public distribution.
+
+## HyperFrames 0.7.63-0.7.87 Review
+
+The upstream patch train from the last verified `0.7.62` production baseline to npm latest `0.7.87` contains useful production changes, but it has not yet been admitted into the MenuList toolchain. Frozen videos and their source projects remain unchanged.
+
+| Release area | Upstream change | MenuList decision |
+| --- | --- | --- |
+| Prompting and continuity | `0.7.85` adds a seven-level Prompt Guide, an intent interview persisted in `BRIEF.md`, an eight-rule motion grammar, an explicit avoid-the-slideshow continuity contract, and end-to-end product-launch-video fixes | Adopt the guidance now in briefs and reviews; verify the CLI behavior in an isolated project before changing production commands |
+| Product proof | `0.7.83` tells product-launch workflows to use real screenshots and detect motion jumps at frame cuts | Adopt as a permanent MenuList rule; it directly supports product truth and addresses prior flicker feedback |
+| Audio | `0.7.83` avoids weak music openings, excludes hidden audio from the render mix, and preserves plateaus in sampled volume automation | Adopt the review rules; verify that our voice-reactive ducking and frozen tracks render identically under `0.7.87` |
+| Captions and mobile layout | `0.7.79` adds a narrow caption-zone layout waiver | Use only for intentional native `9:16` layouts after visual validation; it does not permit arbitrary overlap |
+| Output resolution | `0.7.82` preserves the selected orientation-aware render resolution, including 4K | Useful for native 1920 x 1080, 1080 x 1920, and later 4K exports; verify dimensions from the encoded file |
+| Render reliability | `0.7.70` self-verifies experimental fast-capture frames and falls back when GPU or memory pressure corrupts them | Useful safety net, but keep `--experimental-fast-capture=false` for founder masters until an isolated comparison proves parity |
+| Website capture | `0.7.87` gives website capture a bounded runtime and fails fast on blocked or degraded pages | Adopt for future menulist.online capture work after smoke testing; preserve the captured diagnostics and use real screenshots only |
+| Studio editing | `0.7.79` through `0.7.87` improve exact keyframe targeting, nested timing, dense timeline readability, and preview resource cleanup | Helpful for handcrafted polish; no product or campaign claim changes |
+| Templates and variables | The Day 23 workflow turns one reviewed composition into controlled variants | High value for the 12-video system and native aspect-ratio families; use only after the master scene and copy are approved |
+| Components catalog | The Day 22 workflow provides editable local registry blocks | Selective use only after source, license, fit, and visual review; prefer MenuList-owned reusable blocks |
+| Color grading | Day 24 adds deterministic correction, grade, LUT, and look controls whose preview matches render | Use restrained correction and a subtle consistent look; do not turn MenuList into a cinematic, neon, retro, or restaurant-stock treatment |
+| Media effects and overlays | Day 26 adds pixel, print, art, bloom, blur, HUD, flash, light-leak, and freeze-frame treatments | Default reject for core MenuList UI scenes. Allow only a motivated, brief transition or supporting footage treatment that does not obscure UI, captions, proof, or owner control |
+| Cloud rendering | Day 21 adds a hosted rendering path | Reject for MenuList. Local HyperFrames and FFmpeg remain mandatory |
+
+### Controlled Upgrade Gate
+
+Do not upgrade inside a frozen video project. The next admitted-toolchain test must:
+
+1. activate Node `22.23.1`;
+2. run an explicitly pinned `hyperframes@0.7.87` in a disposable copy of one short composition;
+3. keep telemetry disabled and avoid login, hosted media, cloud rendering, or account-backed generation;
+4. run skills check, doctor, project check, snapshots, a 1080p render, and encoded MP4 QA;
+5. compare frame zero, transitions, captions, ducking, final-frame hold, duration, dimensions, loudness, and hashes against the known baseline;
+6. update this guide only after the smoke result is recorded.
+
+Until that gate passes, `0.7.62` remains the last verified production baseline and `0.7.87` remains the reviewed upstream candidate.
 
 ## MenuList Media-Use Policy
 

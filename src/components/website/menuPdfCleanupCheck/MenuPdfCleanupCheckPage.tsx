@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -36,6 +36,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildMenuPdfCleanupReport } from '@/lib/public-truth-tools/menuPdfCleanupReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   MenuPdfCleanupCheckId,
   MenuPdfCleanupInput,
@@ -206,6 +207,7 @@ function MenuPdfCleanupReportCard({ report }: { report: MenuPdfCleanupReport }) 
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<MenuPdfCleanupHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -357,6 +359,8 @@ function MenuPdfCleanupReportCard({ report }: { report: MenuPdfCleanupReport }) 
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('menu_pdf_cleanup_check_handoff_submitted', eventContext);
 
@@ -399,10 +403,13 @@ function MenuPdfCleanupReportCard({ report }: { report: MenuPdfCleanupReport }) 
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('menu_pdf_cleanup_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -508,23 +515,24 @@ function MenuPdfCleanupReportCard({ report }: { report: MenuPdfCleanupReport }) 
         <div className="ws-public-truth-check-handoff__grid">
           <label>
             <span>{t('handoff.name')}</span>
-            <input value={handoff.name} onChange={(event) => updateHandoff('name', event.target.value)} autoComplete="name" />
+            <input maxLength={120} value={handoff.name} onChange={(event) => updateHandoff('name', event.target.value)} autoComplete="name" />
           </label>
           <label>
             <span>{t('handoff.email')}</span>
-            <input value={handoff.workEmail} onChange={(event) => updateHandoff('workEmail', event.target.value)} autoComplete="email" inputMode="email" />
+            <input maxLength={180} value={handoff.workEmail} onChange={(event) => updateHandoff('workEmail', event.target.value)} autoComplete="email" inputMode="email" />
           </label>
         </div>
 
         <label>
           <span>{t('handoff.phone')}</span>
-          <input value={handoff.phoneNumber} onChange={(event) => updateHandoff('phoneNumber', event.target.value)} autoComplete="tel" inputMode="tel" />
+          <input maxLength={40} value={handoff.phoneNumber} onChange={(event) => updateHandoff('phoneNumber', event.target.value)} autoComplete="tel" inputMode="tel" />
         </label>
 
         <div style={{ display: 'none' }} aria-hidden>
           <label htmlFor="menu-pdf-cleanup-check-website">{t('handoff.website')}</label>
           <input
             id="menu-pdf-cleanup-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -661,11 +669,11 @@ export default function MenuPdfCleanupCheckPage() {
               <div className="ws-public-truth-check-form__grid">
                 <label>
                   <span>{t('fields.businessName')}</span>
-                  <input value={form.businessName} onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))} autoComplete="organization" />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName} value={form.businessName} onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))} autoComplete="organization" />
                 </label>
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
-                  <input value={form.cityOrArea} onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))} autoComplete="address-level2" />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea} value={form.cityOrArea} onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))} autoComplete="address-level2" />
                 </label>
               </div>
 
@@ -691,6 +699,7 @@ export default function MenuPdfCleanupCheckPage() {
               <label>
                 <span>{t('fields.pdfReference')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText}
                   value={form.pdfReference}
                   onChange={(event) => setForm((current) => ({ ...current, pdfReference: event.target.value }))}
                 />
@@ -708,6 +717,7 @@ export default function MenuPdfCleanupCheckPage() {
                 <label>
                   <span>{t('fields.currentCustomerLink')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                     value={form.currentCustomerLink}
                     onChange={(event) => setForm((current) => ({ ...current, currentCustomerLink: event.target.value }))}
                     inputMode="url"
@@ -762,7 +772,7 @@ export default function MenuPdfCleanupCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <MenuPdfCleanupReportCard report={report} /> : <EmptyReport />}
+            {hasChecked ? <MenuPdfCleanupReportCard key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

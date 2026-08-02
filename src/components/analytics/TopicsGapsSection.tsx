@@ -8,7 +8,7 @@ import { Row, Col, Space, Typography } from 'antd';
 import { TopQuestions, type TopQuestionsProps } from './TopQuestions';
 import { KnowledgeGaps, type KnowledgeGapsProps } from './KnowledgeGaps';
 import { RefreshButton } from './RefreshButton';
-import { ExportButton } from './ExportButton';
+import { ExportButton, type ExportButtonProps } from './ExportButton';
 
 const { Title } = Typography;
 
@@ -18,7 +18,7 @@ export interface TopicsGapsSectionProps {
   knowledgeGapsData: KnowledgeGapsProps['data'];
   loading?: boolean;
   onRefresh?: () => Promise<void>;
-  onExport?: () => void;
+  onExport?: ExportButtonProps['onExport'];
   className?: string;
 }
 
@@ -51,6 +51,7 @@ export const TopicsGapsSection: React.FC<TopicsGapsSectionProps> = ({
               filename="topics-and-gaps"
               formats={['csv', 'json']}
               loading={loading}
+              onExport={onExport}
             />
           )}
           {onRefresh && <RefreshButton onRefresh={onRefresh} loading={loading} />}

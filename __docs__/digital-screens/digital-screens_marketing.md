@@ -4,7 +4,7 @@
 **Status:** 🔒 **LOCKED — FINAL (Post-Market Review)**  
 **Author:** Lead Architect (Cascade)  
 **Audience:** Sales Team, Marketing Team, Partnership Discussions  
-**Last Audit:** July 16, 2026 (code-truth freshness, valid-price, loaded-offline, access, and lifecycle wording)
+**Last Audit:** August 1, 2026 (code-truth freshness, valid-price, loaded-offline, access, lifecycle, and unsupported-claim wording)
 
 ## Source Gate
 
@@ -24,7 +24,7 @@ Marketing copy must describe Digital Screens as a saved MenuList source display 
 
 ### Why It Matters (For the Pitch)
 
-> "Shop owners don't want another thing to manage. They want their TV to show their menu — like their signboard, like their price list. MenuList makes the TV invisible. It just shows the right thing."
+> "Shop owners don't want another thing to manage. They want their TV to show their menu — like their signboard, like their price list. MenuList keeps the screen tied to the same saved menu source."
 
 ---
 
@@ -118,7 +118,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Key Points:**
 
-- 80% of shop TVs show outdated content
+- Shop TVs often end up blank, generic, or outdated when they require a separate editing routine
 - Customers can't decide what to order
 - You're too busy to update it
 
@@ -130,7 +130,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 ### Slide 2: The Solution
 
-**Title:** One Link. Always Right. Never Touch It.
+**Title:** One Link. Your Saved Menu on TV.
 
 **Visual:** Simple diagram: Menu → MenuList → TV
 
@@ -173,7 +173,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 **Menu Board (main screen):**
 
 - Full menu with categories and prices
-- Sold out items disappear
+- Sold-out items leave after the menu is saved and the screen refresh completes
 - New items appear after save and refresh
 - Pages rotate for large menus
 
@@ -270,7 +270,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 ### Benefit Bullets
 
 - ✓ **Your full menu on screen** — Categories, items, prices from one saved source.
-- ✓ **Sold out? It disappears** — No embarrassment, no manual updates.
+- ✓ **Sold out? Save once** — Connected screens refresh from the same menu source.
 - ✓ **New item? It appears** — Add to MenuList, save, and the screen refreshes through the update path.
 - ✓ **Connection-resilient after load** — If the connection drops after content has loaded, the screen keeps its last valid display. A cold browser boot still needs the page assets.
 - ✓ **Two modes, one link** — Menu board for ordering, highlights for promotions.
@@ -373,7 +373,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 | **"We don't have a TV"**                  | "This feature is optional. But if you ever add one, you're ready. Focus on what matters to you today."                                   |
 | **"Isn't this just content generation?"** | "No. This is your saved MenuList menu on screen. When you mark butter chicken sold out, the connected screen refreshes from that source." |
 | **"Will this help our sales?"**           | "Customers who see the full menu with prices decide faster. We don't promise numbers, but we make sure customers see what's available."  |
-| **"We use [signage tool X]"**             | "Great tools for big chains with dedicated teams. MenuList is for owners who want zero management. One link, full menu, never touch it." |
+| **"We use [signage tool X]"**             | "Great tools for teams that need signage management. MenuList is for owners who want one link and no separate screen editing." |
 | **"Can I customize the design?"**         | "The menu board is designed for readability. You can upload images on the highlights screen for special occasions."                      |
 | **"Can it show our full menu?"**          | "That's the default. Open the link and your full menu appears with categories, items, and prices."                                       |
 
@@ -381,8 +381,8 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 1. **Full menu on screen** — Categories, items, prices. Not just slideshows.
 2. **Connected to real data** — Not static images, saved MenuList source data
-3. **Zero management** — Set once, never touch again
-4. **Availability-aware** — Sold out = removed automatically
+3. **No separate screen editing** — Manage the saved menu source
+4. **Availability-aware** — Saved sold-out changes flow through the screen refresh path
 5. **Two modes, one system** — Menu board + highlights from same link
 6. **Included in MenuList** — Not a separate product or cost
 7. **Keeps loaded content during a connection loss** — India-ready without promising a cold offline boot
@@ -475,7 +475,7 @@ Potential paths:
 
 1. **Full menu on screen** — Categories, items, prices. Not slideshows.
 2. **Zero effort** — Set once, forget forever.
-3. **Availability-aware** — Sold out items disappear.
+3. **Availability-aware** — Saved sold-out changes leave connected screens after refresh.
 
 ### The Demo Flow
 

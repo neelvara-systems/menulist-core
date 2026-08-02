@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -182,6 +182,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const deliveryInFlightRef = useRef(false);
   const reportText = useMemo(() => buildReportText(report), [report]);
   const setupJobs = useMemo(() => getReportSetupJobs(report), [report]);
   const StatusIcon = report.status === 'ready' ? LuBadgeCheck : report.status === 'missing_basics' ? LuAlertTriangle : LuShieldCheck;
@@ -247,6 +248,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
 
   async function handleDeliverySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (deliveryInFlightRef.current) return;
     setDeliveryError(null);
 
     const name = delivery.name.trim();
@@ -315,6 +317,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
       sourcePathLength: sourcePath.length,
     };
 
+    deliveryInFlightRef.current = true;
     setDeliveryStatus('submitting');
     trackWebsiteMarketingEvent('shareable_tool_report_delivery_submitted', eventContext);
 
@@ -363,6 +366,8 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
       setDeliveryError(t('delivery.submitFailed'));
       logRuntimeFailure('shareable_tool_report_delivery_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      deliveryInFlightRef.current = false;
     }
   }
 
@@ -512,6 +517,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
               <label>
                 <span>{t('delivery.name')}</span>
                 <input
+                  maxLength={120}
                   value={delivery.name}
                   onChange={(event) => updateDelivery('name', event.target.value)}
                   autoComplete="name"
@@ -520,6 +526,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
               <label>
                 <span>{t('delivery.email')}</span>
                 <input
+                  maxLength={180}
                   value={delivery.workEmail}
                   onChange={(event) => updateDelivery('workEmail', event.target.value)}
                   autoComplete="email"
@@ -531,6 +538,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
             <label>
               <span>{t('delivery.phone')}</span>
               <input
+                maxLength={40}
                 value={delivery.phoneNumber}
                 onChange={(event) => updateDelivery('phoneNumber', event.target.value)}
                 autoComplete="tel"
@@ -542,6 +550,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
               <label htmlFor="shareable-tool-report-website">{t('delivery.website')}</label>
               <input
                 id="shareable-tool-report-website"
+                maxLength={200}
                 value={delivery.website}
                 onChange={(event) => updateDelivery('website', event.target.value)}
                 tabIndex={-1}
@@ -609,9 +618,11 @@ export default function ToolReportPage() {
   const t = useTranslations('Website.ToolReportPage');
   const [viewState, setViewState] = useState<ToolReportViewState>('empty');
   const [report, setReport] = useState<ShareableToolReportPayload | null>(null);
+  const [reportRevision, setReportRevision] = useState(0);
 
   useEffect(() => {
     function readReportHash() {
+      setReportRevision((current) => current + 1);
       if (!window.location.hash) {
         setReport(null);
         setViewState('empty');
@@ -670,7 +681,7 @@ export default function ToolReportPage() {
       </section>
 
       {viewState === 'loaded' && report ? (
-        <ToolReportLoaded report={report} />
+        <ToolReportLoaded key={reportRevision} report={report} />
       ) : viewState !== 'loaded' ? (
         <ToolReportEmptyState state={viewState} />
       ) : null}

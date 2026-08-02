@@ -219,8 +219,8 @@ assert.equal(
 );
 
 assert.equal(
-    buildCanonicalItemUrl('HTTPS://example.menulist.ai/menu', 'item / 1', ' hi '),
-    'https://example.menulist.ai/menu?item=item+%2F+1&lang=hi',
+    buildCanonicalItemUrl('HTTPS://example.menulist.online/menu', 'item / 1', ' hi '),
+    'https://example.menulist.online/menu?item=item+%2F+1&lang=hi',
 );
 assert.equal(
     buildCanonicalItemUrl('/menu?existing=1#section', 'item-1'),

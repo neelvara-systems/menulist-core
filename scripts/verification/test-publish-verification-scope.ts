@@ -72,7 +72,7 @@ async function run(): Promise<void> {
     'conflicting persisted user tenant aliases must fail closed',
   );
   await userRef.set({ tId: 1 }, { merge: true });
-  const publicMenuUrl = 'https://scope-test.menulist.ai/dinner';
+  const publicMenuUrl = 'https://scope-test.menulist.online/dinner';
   assert.equal(
     await isPublishVerificationScopeAuthorized('101', '1', 'user-1', { publicMenuUrl }),
     true,
@@ -121,7 +121,7 @@ async function run(): Promise<void> {
     ['project-a', 'project-b'],
     'force republish must touch every active canonical project and no deleted/cross-scope project',
   );
-  assert.equal(republish.publicMenuUrl, 'https://scope-test.menulist.ai');
+  assert.equal(republish.publicMenuUrl, 'https://scope-test.menulist.online');
   assert.equal(
     typeof (await projects.doc('project-a').get()).data()?.forceRepublishAt?.toMillis,
     'function',

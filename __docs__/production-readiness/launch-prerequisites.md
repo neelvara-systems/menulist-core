@@ -184,7 +184,13 @@ firebase deploy --project menulist-qa --config firebase.json --only functions:me
 
 Expected result: Firebase CLI deploys `menulistMaintenanceScheduler` after predeploy lint/build.
 
-Current blocker logged July 9, 2026: the latest package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, passed predeploy lint/build, then failed before deployment with:
+Current operator blocker refreshed August 1, 2026: Firebase CLI is not authenticated, so current scoped MenuList QA deploy attempts stop before predeploy or upload with:
+
+```text
+Error: Failed to authenticate, have you run firebase login?
+```
+
+Historical July 9, 2026 evidence: the last authenticated package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, passed predeploy lint/build, then failed before deployment with:
 
 ```text
 Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/menulist-qa had HTTP Error: 403, The caller does not have permission
@@ -398,8 +404,8 @@ Do not mark platform alert delivery production-ready until dashboard visibility,
 | Monitor        | URL                                          | Check Interval |
 | -------------- | -------------------------------------------- | -------------- |
 | MenuList Main  | `https://menulist.ai`                        | 5 min          |
-| Sample Store 1 | `https://yourstore.menulist.ai`              | 5 min          |
-| Sample Store 2 | `https://anotherstore.menulist.ai`           | 5 min          |
+| Sample Store 1 | `https://yourstore.menulist.online`              | 5 min          |
+| Sample Store 2 | `https://anotherstore.menulist.online`           | 5 min          |
 | API Health     | `https://menulist.ai/api/health` (if exists) | 5 min          |
 
 3. Set alert contacts: your email + Telegram webhook (optional)
@@ -583,8 +589,8 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | Set GCP budget alerts         | ❌ Manual  | One-time setup (10 min)                        |
 | Verify SAFE_MODE end-to-end   | ❌ Manual  | Step 2C must pass before production            |
 | UptimeRobot setup             | ❌ Manual  | One-time setup (5 min)                         |
-| Deploy Functions blocker set | ❌ Manual  | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but the latest package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. The latest Answerlattice `functions:answerlattice` deploy attempt also completed predeploy build against `answerlattice-qa` and failed with Cloud Resource Manager HTTP 403 caller permission. Restore project access, then retry the documented scoped Firebase Functions target set or the exact changed subset being certified. |
-| Deploy Storage rules cutover  | ❌ Manual  | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker. |
+| Deploy Functions blocker set | ❌ Manual  | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): the current August 1 operator attempt stops before predeploy because Firebase CLI is not authenticated. The last authenticated package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. The latest Answerlattice `functions:answerlattice` deploy attempt also completed predeploy build against `answerlattice-qa` and failed with Cloud Resource Manager HTTP 403 caller permission. Authenticate an authorized account, then retry the documented scoped Firebase Functions target set or the exact changed subset being certified. |
+| Deploy Storage rules cutover  | ❌ Manual  | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): the current August 1 operator attempt stops before upload because Firebase CLI is not authenticated; the last authenticated `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker. |
 | Digital Screens mirror cutover | ❌ Manual | Step 8B: deploy token-free app/Functions writers, dry-run and apply the mirror migration, verify stored data, then deploy the tightened rule and complete device QA. |
 | Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |

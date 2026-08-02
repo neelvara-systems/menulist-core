@@ -1,7 +1,10 @@
 'use client';
 
 import type { AiMenuManagerCardPayload, AiMenuManagerSuggestedReply } from '@type/aiMenuManager';
-import { normalizeAiMenuManagerLocalActionUrl } from '@lib/ai-menu-manager/localActionUrl';
+import {
+    normalizeAiMenuManagerLocalActionUrl,
+    openAiMenuManagerLocalActionUrl,
+} from '@lib/ai-menu-manager/localActionUrl';
 import { shouldShowAiMenuManagerApprovalReason } from '@lib/ai-menu-manager/presentation';
 import {
     getBoundedRuntimeStringContext,
@@ -105,9 +108,12 @@ function downloadTextFile(action: LocalAction) {
     anchor.href = url;
     anchor.download = action.filename || 'menulist-export.txt';
     document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+    try {
+        anchor.click();
+    } finally {
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    }
 }
 
 function buildLocalActionLogContext(card: AiMenuManagerCardPayload, action: LocalAction) {
@@ -161,11 +167,7 @@ export default function MobileAiMenuCardStack({
             }
 
             if (action.type === 'open_url') {
-                const actionUrl = normalizeAiMenuManagerLocalActionUrl(action.value);
-                const opened = window.open(actionUrl, '_blank', 'noopener,noreferrer');
-                if (!opened) {
-                    throw new Error('mobile_ai_menu_manager_local_action_open_blocked');
-                }
+                openAiMenuManagerLocalActionUrl(action.value);
                 return;
             }
 

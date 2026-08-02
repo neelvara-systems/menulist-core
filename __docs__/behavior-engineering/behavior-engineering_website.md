@@ -49,7 +49,7 @@ QR code on your table or counter links to your live menu. Menu changes? QR still
 ## How It Works (3 steps)
 
 1. **Upload your menu** — Send us photos of your menu or type it in. We'll create your digital menu.
-2. **Get your official link** — Your unique link like joespizza.menulist.ai is ready to share everywhere.
+2. **Get your official link** — Your unique link like joespizza.menulist.online is ready to share everywhere.
 3. **Share the same link** — Send this link whenever customers ask. Menu changes keep the same link after the approved save/publish and public refresh path.
 
 ## Social Proof Slots

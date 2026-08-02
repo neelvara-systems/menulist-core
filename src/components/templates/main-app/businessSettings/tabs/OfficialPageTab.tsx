@@ -1172,7 +1172,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 </Col>
                             </Row>
                             <CompliancePagesSection
-                                domain={customDomain || (subdomain ? `${subdomain}.menulist.ai` : undefined)}
+                                domain={(customDomain || subdomain)
+                                    ? generateOBPUrl(subdomain, customDomain).replace(/^https?:\/\//, '')
+                                    : undefined}
                                 storeId={session.sId}
                                 tenantId={session.tId}
                             />

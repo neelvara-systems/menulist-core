@@ -125,6 +125,24 @@ const isPinnedScreenSlide = (value: unknown): value is ScreenSlide => {
         && isFirestoreTimestampLike(slide.validUntil);
 };
 
+const isDigitalScreenSeenByMode = (
+    value: unknown,
+    currentContentVersion: number,
+): value is NonNullable<DigitalScreenState["screenSeenByMode"]> => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return Object.keys(record).every((key) => {
+        if (key !== "menu_board" && key !== "highlights") return false;
+        const receipt = record[key];
+        if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return false;
+        const candidate = receipt as { contentVersion?: unknown; seenAt?: unknown };
+        return Number.isSafeInteger(candidate.contentVersion)
+            && Number(candidate.contentVersion) >= 1
+            && Number(candidate.contentVersion) <= currentContentVersion
+            && isFirestoreTimestampLike(candidate.seenAt);
+    });
+};
+
 export const isDigitalScreenState = (value: unknown): value is DigitalScreenState => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const screen = value as Partial<DigitalScreenState>;
@@ -145,7 +163,11 @@ export const isDigitalScreenState = (value: unknown): value is DigitalScreenStat
         && Array.isArray(screen.pinnedSlides)
         && screen.pinnedSlides.length <= DIGITAL_SCREEN_MAX_UPLOADS
         && screen.pinnedSlides.every(isPinnedScreenSlide)
-        && (screen.screenLastSeenAt === undefined || isFirestoreTimestampLike(screen.screenLastSeenAt));
+        && (screen.screenLastSeenAt === undefined || isFirestoreTimestampLike(screen.screenLastSeenAt))
+        && (screen.screenSeenByMode === undefined || isDigitalScreenSeenByMode(
+            screen.screenSeenByMode,
+            Number(screen.contentVersion),
+        ));
 };
 
 export const isDigitalScreenOwnerState = (value: unknown): value is DigitalScreenOwnerState => (
@@ -803,6 +825,19 @@ function hydrateDigitalScreenOwnerState(
         })),
         ...(transport.screenLastSeenAtMs
             ? { screenLastSeenAt: Timestamp.fromMillis(transport.screenLastSeenAtMs) }
+            : {}),
+        ...(transport.screenSeenByMode
+            ? {
+                screenSeenByMode: Object.fromEntries(
+                    Object.entries(transport.screenSeenByMode).map(([mode, receipt]) => [
+                        mode,
+                        {
+                            contentVersion: receipt.contentVersion,
+                            seenAt: Timestamp.fromMillis(receipt.seenAtMs),
+                        },
+                    ]),
+                ),
+            }
             : {}),
         screenToken: transport.screenToken,
     };

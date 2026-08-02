@@ -1,56 +1,15 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { eraseAnswerlatticeStaffProductAccountBridge } from '@lib/answerlattice/staffAccessBridge';
-import {
-    getAnswerlatticeStaffMembership,
-    readAnswerlatticeStaffAccessState,
-} from '@lib/answerlattice/staffAccessContracts';
+import { getAnswerlatticeStaffMembership, readAnswerlatticeStaffAccessState, } from '@lib/answerlattice/staffAccessContracts';
 import { repairAnswerlatticeStaffAccessProjections } from '@lib/answerlattice/staffAccessServer';
-import {
-    ANSWERLATTICE_STAFF_QUERY_LIMIT,
-    removeAnswerlatticeWorkspaceMembershipForErasureTransaction,
-} from '@lib/answerlattice/staffAccessTransactions';
-import {
-    appendAnswerlatticeTenantSummaryAdmin,
-    getAnswerlatticeTenantSummaryShardId,
-    removeAnswerlatticeTenantSummaryEntryAdmin,
-} from '@lib/answerlattice/tenantSummaryAdmin';
-import {
-    ANSWERLATTICE_WORKSPACE_ERASURE_BATCH_LIMIT,
-    ANSWERLATTICE_WORKSPACE_ERASURE_COLLECTIONS,
-    ANSWERLATTICE_WORKSPACE_ERASURE_QUERY_LIMIT,
-    type AnswerlatticeWorkspaceLifecycleRequest,
-    type AnswerlatticeWorkspaceLifecycleState,
-    type AnswerlatticeWorkspaceScope,
-    canRecoverAnswerlatticeWorkspace,
-    canStartAnswerlatticeWorkspaceErasure,
-    classifyAnswerlatticeWorkspaceRecord,
-    getAnswerlatticeWorkspaceCloseConfirmation,
-    getAnswerlatticeWorkspaceEraseAfterMillis,
-    getAnswerlatticeWorkspaceEraseConfirmation,
-    getAnswerlatticeWorkspaceRecoverConfirmation,
-    hasExactAnswerlatticeProductIdentity,
-    isExactAnswerlatticeWorkspaceConfirmation,
-} from '@lib/answerlattice/workspaceLifecycleContracts';
-import {
-    ANSWERLATTICE_CONTEXT_PRIVATE_ROOT,
-    ANSWERLATTICE_CONTEXT_PUBLIC_ROOT,
-    getAnswerlatticeBundleManifestDocId,
-    isAnswerlatticeContextBundleManifestForScope,
-} from '@lib/answerlattice/compiledContext';
-import {
-    isAnswerlatticeStoreInScope,
-    normalizeAnswerlatticeScopeDocumentId,
-} from '@lib/answerlattice/sessionScope';
-import {
-    getExpectedAnswerlatticePublicBundleId,
-    isExpectedAnswerlatticePublicBundleId,
-} from '@lib/answerlattice/publicBundleIdentityServer';
-import {
-    answerlatticeAuthAdmin,
-    answerlatticeFirestoreAdmin,
-    answerlatticeStorageAdmin,
-} from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { ANSWERLATTICE_STAFF_QUERY_LIMIT, removeAnswerlatticeWorkspaceMembershipForErasureTransaction, } from '@lib/answerlattice/staffAccessTransactions';
+import { appendAnswerlatticeTenantSummaryAdmin, getAnswerlatticeTenantSummaryShardId, removeAnswerlatticeTenantSummaryEntryAdmin, } from '@lib/answerlattice/tenantSummaryAdmin';
+import { ANSWERLATTICE_WORKSPACE_ERASURE_BATCH_LIMIT, ANSWERLATTICE_WORKSPACE_ERASURE_COLLECTIONS, ANSWERLATTICE_WORKSPACE_ERASURE_QUERY_LIMIT, type AnswerlatticeWorkspaceLifecycleRequest, type AnswerlatticeWorkspaceLifecycleState, type AnswerlatticeWorkspaceScope, canRecoverAnswerlatticeWorkspace, canStartAnswerlatticeWorkspaceErasure, classifyAnswerlatticeWorkspaceRecord, getAnswerlatticeWorkspaceCloseConfirmation, getAnswerlatticeWorkspaceEraseAfterMillis, getAnswerlatticeWorkspaceEraseConfirmation, getAnswerlatticeWorkspaceRecoverConfirmation, hasExactAnswerlatticeProductIdentity, isExactAnswerlatticeWorkspaceConfirmation, } from '@lib/answerlattice/workspaceLifecycleContracts';
+import { ANSWERLATTICE_CONTEXT_PRIVATE_ROOT, ANSWERLATTICE_CONTEXT_PUBLIC_ROOT, getAnswerlatticeBundleManifestDocId, isAnswerlatticeContextBundleManifestForScope, } from '@lib/answerlattice/compiledContext';
+import { isAnswerlatticeStoreInScope, normalizeAnswerlatticeScopeDocumentId, } from '@lib/answerlattice/sessionScope';
+import { getExpectedAnswerlatticePublicBundleId, isExpectedAnswerlatticePublicBundleId, } from '@lib/answerlattice/publicBundleIdentityServer';
+import { answerlatticeAuthAdmin, answerlatticeFirestoreAdmin, answerlatticeStorageAdmin, requireAnswerlatticeAuthAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getDirectActiveProductSubscriptionForStore } from '@lib/billing/productBillingServer';
@@ -112,8 +71,8 @@ export class AnswerlatticeWorkspaceLifecycleError extends Error {
 }
 
 const getDb = (): FirebaseFirestore.Firestore => {
-    const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore | null;
-    if (!db || typeof db.collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         throw new AnswerlatticeWorkspaceLifecycleError('ANSWERLATTICE_FIREBASE_NOT_CONFIGURED', 503);
     }
     return db;
@@ -926,9 +885,9 @@ const eraseOneStaffMembership = async (params: {
         if (!shouldUseSharedAnswerlatticeFirebase) {
             try {
                 const lookup = typeof targetData.firebaseUid === 'string' && targetData.firebaseUid
-                    ? await answerlatticeAuthAdmin.getUser(targetData.firebaseUid)
-                    : await answerlatticeAuthAdmin.getUserByEmail(String(targetData.email || ''));
-                await answerlatticeAuthAdmin.deleteUser(lookup.uid);
+                    ? await requireAnswerlatticeAuthAdmin().getUser(targetData.firebaseUid)
+                    : await requireAnswerlatticeAuthAdmin().getUserByEmail(String(targetData.email || ''));
+                await requireAnswerlatticeAuthAdmin().deleteUser(lookup.uid);
             } catch (error) {
                 if (getAuthErrorCode(error) !== 'auth/user-not-found') throw error;
             }

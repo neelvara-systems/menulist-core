@@ -8312,7 +8312,7 @@ Cost/deploy boundary: this is MenuList owner browser-handoff hardening and docs/
 
 ## June 29 Follow-up: Pricing Success Dashboard Handoff Hardening
 
-The website pricing payment sweep found subscription checkout, onboarding resume, and credit-pack callers already using bounded payment diagnostics, but the success modal still opened the dashboard with `window.open('https://dashboard.menulist.ai', '_blank')`. A blocked popup could silently fail after successful payment, and the new tab retained opener access.
+The website pricing payment sweep found subscription checkout, onboarding resume, and credit-pack callers already using bounded payment diagnostics, but the success modal still opened the dashboard with `window.open('https://app.menulist.ai', '_blank')`. A blocked popup could silently fail after successful payment, and the new tab retained opener access.
 
 Fixes:
 

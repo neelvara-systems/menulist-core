@@ -30,6 +30,8 @@ July 16 end-to-end hardening:
 - App and Functions provider calls now fail closed on redirects and use bounded network/SMTP timeouts. Provider message IDs are control-free and capped before delivery persistence.
 - Explicit WhatsApp consent revocation overrides stale legacy consent booleans.
 - Owner-notification event documents fail closed above 128KB, before Firestore creation or provider work.
+- Platform manual-send recovery now binds each action ID to the exact source event, product, channel, normalized destination and reason. Exact retries converge; changed payloads return conflict before provider work, and unavailable product runtime admission no longer reports false success.
+- The protected ops API applies private/no-store/nosniff headers to every response and keeps limiter-provider outages separate from real quota exhaustion.
 - Repeated publish-verification failures use one store/day reference instead of a unique timestamp per retry.
 
 ## Scope

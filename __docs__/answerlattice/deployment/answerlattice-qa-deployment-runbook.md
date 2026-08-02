@@ -35,7 +35,7 @@ QA Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
 | Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://qa.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 The code-level contract lives in `src/constants/deploymentTargets.ts`; `npm run verify:env-targets` checks the matrix, Firebase aliases, and Answerlattice deploy scripts.

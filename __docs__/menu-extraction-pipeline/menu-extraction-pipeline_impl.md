@@ -13,7 +13,22 @@ July 14 owner-history checkpoint: successful/partial authenticated extraction co
 
 July 15 owner-job boundary checkpoint: the protected route rejects zero-byte or duplicate-identity file declarations, admits only the fixed `image_processing` action, and canonicalizes business type/category against shared MenuList business data before those values enter the owner-upload fingerprint or extraction prompt. Retry loading uses the same bounded file schema, so malformed historical source rows cannot create a replacement job. Persisted project business identity wins, with canonical request values used only for legacy projects that do not carry it. The pre-AI document-size projection now reserves 100KB for one file and caps reserved headroom at 200KB for larger batches, so the documented 15-file/page intake no longer rejects a normal small project solely because the heuristic was multiplied by every page. The final worker transaction keeps the actual 900KB save guard.
 
-The owner job helper preserves a cleanup-safe marker only for a definitive 4xx route rejection. Desktop and mobile then remove the just-uploaded job files with the existing bounded cleanup diagnostics. Transport failures, 5xx responses, 200-response parse failures, and invalid 200 response shapes remain non-destructive because the server may already have committed a durable job; clients must not delete its source files based on an ambiguous acknowledgement.
+The owner job helper preserves a cleanup-safe marker only for a definitive 4xx
+route rejection or the route's 503 responses, which all occur before durable
+job creation. Desktop and mobile then remove the just-uploaded job files with
+the existing bounded cleanup diagnostics. Transport failures, 500 responses,
+200-response parse failures, and invalid 200 response shapes remain
+non-destructive because the server may already have committed a durable job;
+clients must not delete its source files based on an ambiguous acknowledgement.
+
+August 1 owner-job convergence checkpoint: the protected response is uniformly
+private/no-store/nosniff, and both distributed limiter calls fail closed with a
+distinct fixed 503 outage response. Retry lineage is server-owned: the route
+derives `retryCount` from the exact failed job, treats a legacy missing count as
+zero, rejects malformed persisted retry state and never accepts a browser
+counter. Project/job/file/timestamp projections use exact runtime checks rather
+than `any` or string coercion, while valid Firestore Timestamps and legacy
+Date/seconds/finite-number timestamps remain readable.
 
 ## Files
 
@@ -54,10 +69,10 @@ The browser uploads files to Firebase Storage as before, then calls `createMenuP
 
 The route:
 
-1. Requires `withAuth()`.
+1. Requires `withAuth()` through the route-owned private-response wrapper.
 2. Checks SAFE_MODE.
 3. Verifies tenant/store access from the authenticated session.
-4. Applies a `FILE_UPLOAD` request gate and rejects bodies above 128KB before JSON parsing.
+4. Applies a fail-closed `FILE_UPLOAD` request gate and rejects bodies above 128KB before JSON parsing.
 5. Validates request shape with Zod.
 6. Confirms `projectId` belongs to the session tenant/store.
 7. Allows only configured Firebase Storage URLs under `projects/files/{tId}/{sId}/`.
@@ -66,13 +81,16 @@ The route:
 10. Computes a server-trusted owner-upload `sourceFingerprint` from Firebase Storage metadata when the request is a normal owner upload. If metadata lookup fails, the route logs `menu_extraction_owner_upload_metadata_lookup_failed` with bounded tenant/store, file UID/type, Storage-path presence/length, file-size, and normalized source error metadata only, then continues without a fingerprint for that request.
 11. Reuses a recent completed first-extraction project job for the same project/user/fingerprint before running new AI work.
 12. Applies a bounded project-document headroom gate before provider work without invalidating the supported 15-file/page batch contract.
-13. Applies `AI_EXPENSIVE` rate limiting only when a new extraction job is still needed.
+13. Applies fail-closed `AI_EXPENSIVE` rate limiting only when a new extraction job is still needed.
 14. Runs menu-intake identity when enabled.
 15. Creates the job with the fixed extraction action, canonical business context, and shared routing fields: `destination.type = "project"` and `destinationType = "project"`.
 
 June 29 follow-up: the protected owner upload route and menu-intake identity preflight hash owner, tenant, and store limiter key material before calling the shared limiter. The `FILE_UPLOAD`, `AI_EXPENSIVE`, and `AI_OPERATION` limits, SAFE_MODE checks, bounded body caps, tenant access checks, project ownership validation, Storage URL allowlists, identity analysis, completed-job reuse, and job creation behavior are unchanged; raw user IDs, tenant IDs, and store IDs must not be stored in these limiter key names.
 
-The protected owner route treats source lineage as server-owned. It does not accept client-provided `source` or `sourceMetadata`; retry jobs load those fields from the original failed job after verifying owner, tenant, store, and project ownership.
+The protected owner route treats source lineage and retry count as server-owned.
+It does not accept client-provided `source`, `sourceMetadata`, or `retryCount`;
+retry jobs load lineage and derive the next counter from the original failed
+job after verifying exact owner, tenant, store, and project ownership.
 
 Menu Extraction retry job ID boundary: retry requests use `src/lib/menu-extraction/jobIdBoundary.ts` before the original failed job read. The route accepts only Firestore auto-ID shaped job IDs for `retriedFromJobId`, rejects whitespace-mutated, path-shaped, or reserved document IDs through the shared Firestore document-ID guard, and `loadRetryContext()` re-normalizes the retry job ID before the original `menuImageProcessingJobs/{jobId}` document ref. The loader then verifies project, tenant, store, user, failed status, retryability, source, and Storage URL ownership before creating a replacement job.
 

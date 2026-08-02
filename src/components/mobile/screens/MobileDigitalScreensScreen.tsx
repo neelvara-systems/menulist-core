@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
@@ -20,18 +21,17 @@ import {
 } from '@lib/screen/screenDiagnostics';
 import {
     screenTimestampToMillis,
-    type DigitalScreenSeenTimestamp,
 } from '@lib/screen/screenTimestamp';
-import { getDigitalScreenHealth } from '@lib/screen/screenHealth';
+import { getDigitalScreenModeHealth, type DigitalScreenModeHealth } from '@lib/screen/screenHealth';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import type { ScreenSlide } from '@type/campaigns';
+import type { DigitalScreenSeenByMode, ScreenSlide } from '@type/campaigns';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuTrash2, LuWifi } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuRefreshCw, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -54,6 +54,7 @@ interface MobileScreenLinkCardProps {
     copied: boolean;
     description: string;
     icon: ReactNode;
+    health: DigitalScreenModeHealth;
     mode: ScreenMode;
     onCopy: () => void;
     onOpen: () => void;
@@ -107,6 +108,7 @@ function MobileScreenLinkCard({
     copied,
     description,
     icon,
+    health,
     mode,
     onCopy,
     onOpen,
@@ -129,6 +131,13 @@ function MobileScreenLinkCard({
                 </Flex>
 
                 <MobileScreenPreview mode={mode} />
+
+                <Flex align="center" gap={8} wrap="wrap">
+                    <Tag color={health.state === 'current' ? 'success' : health.state === 'pending' || health.state === 'stale' ? 'warning' : 'default'}>
+                        {health.summary}
+                    </Tag>
+                    <Text type="secondary">{health.detail}</Text>
+                </Flex>
 
                 <div className="mobile-screen-url">
                     <Text style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
@@ -163,9 +172,11 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         storeDetails?.customDomain
     );
     const [loading, setLoading] = useState(true);
+    const [refreshingStatus, setRefreshingStatus] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [screenUrl, setScreenUrl] = useState('');
-    const [screenLastSeenAt, setScreenLastSeenAt] = useState<DigitalScreenSeenTimestamp>(null);
+    const [contentVersion, setContentVersion] = useState(1);
+    const [screenSeenByMode, setScreenSeenByMode] = useState<DigitalScreenSeenByMode>();
     const [ownerOverride, setOwnerOverride] = useState(false);
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
     const [pendingSlide, setPendingSlide] = useState<AdjustableUploadedFile | null>(null);
@@ -181,8 +192,15 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
     const compactMenuUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const compactHighlightsUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
-    const screenHealth = useMemo(() => getDigitalScreenHealth(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = screenHealth.state !== 'link_ready';
+    const menuHealth = useMemo(
+        () => getDigitalScreenModeHealth(screenSeenByMode?.menu_board, contentVersion),
+        [contentVersion, screenSeenByMode?.menu_board],
+    );
+    const highlightsHealth = useMemo(
+        () => getDigitalScreenModeHealth(screenSeenByMode?.highlights, contentVersion),
+        [contentVersion, screenSeenByMode?.highlights],
+    );
+    const hasSeenSignal = Boolean(screenSeenByMode?.menu_board || screenSeenByMode?.highlights);
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
     const buildMobileDigitalScreenLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
         surface: 'mobile_digital_screens',
@@ -198,10 +216,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const handleOpenScreenLink = (url: string, type: ScreenMode) => {
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_digital_screen_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logScreenSettingsFailure('mobile_digital_screen_link_open_failed', error, buildMobileDigitalScreenLogContext('link_open', {
                 mode: type,
@@ -240,23 +255,30 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         </Flex>
     ), [t]);
 
-    const fetchState = async () => {
+    const fetchState = async (background = false) => {
         const requestId = ++loadRequestRef.current;
         try {
-            setLoading(true);
+            if (background) setRefreshingStatus(true);
+            else setLoading(true);
             let state = await getScreenState();
             if (!state) state = await initializeScreenState();
             if (requestId !== loadRequestRef.current) return;
             setScreenUrl(buildScreenUrl(state.screenToken, publicBaseUrl));
-            setScreenLastSeenAt(state.screenLastSeenAt || null);
+            setContentVersion(state.contentVersion);
+            setScreenSeenByMode(state.screenSeenByMode);
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
+            return true;
         } catch (error) {
             if (requestId !== loadRequestRef.current) return;
             logScreenSettingsFailure('mobile_digital_screen_state_load_failed', error, buildMobileDigitalScreenLogContext('load_state'));
-            Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            if (!background) Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            return false;
         } finally {
-            if (requestId === loadRequestRef.current) setLoading(false);
+            if (requestId === loadRequestRef.current) {
+                setLoading(false);
+                setRefreshingStatus(false);
+            }
         }
     };
 
@@ -264,7 +286,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         if (!canAccessDigitalScreens) {
             loadRequestRef.current += 1;
             setScreenUrl('');
-            setScreenLastSeenAt(null);
+            setContentVersion(1);
+            setScreenSeenByMode(undefined);
             setOwnerOverride(false);
             setPinnedSlides([]);
             setLoading(false);
@@ -308,6 +331,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 newValue: enabled,
             });
             setOwnerOverride(enabled);
+            setContentVersion(updateResult.screen.contentVersion);
+            setScreenSeenByMode(updateResult.screen.screenSeenByMode);
             Toast.show({ content: enabled ? t('uploadsPrioritized') : t('systemContentRestored'), duration: 1500 });
         } catch (error) {
             logScreenSettingsFailure('mobile_digital_screen_override_toggle_failed', error, buildMobileDigitalScreenLogContext('override_toggle', {
@@ -389,6 +414,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setPinnedSlides((previous) => previous.map((slide) => (
                 slide.id === slideId ? { ...slide, caption: nextCaption } : slide
             )));
+            setContentVersion(updateResult.screen.contentVersion);
+            setScreenSeenByMode(updateResult.screen.screenSeenByMode);
             setEditingSlideId(null);
             setEditingSlideCaption('');
             Toast.show({ content: 'Slide name updated', duration: 1500 });
@@ -410,6 +437,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 'mobile_digital_screen_slide_delete_rejected',
             );
             setPinnedSlides((previous) => previous.filter((slide) => slide.id !== slideId));
+            setContentVersion(deleteResult.screen.contentVersion);
+            setScreenSeenByMode(deleteResult.screen.screenSeenByMode);
             Toast.show({ content: 'Slide removed', duration: 1500 });
         } catch (error) {
             logScreenSettingsFailure('mobile_digital_screen_slide_delete_failed', error, buildMobileDigitalScreenLogContext('slide_delete', {
@@ -447,27 +476,31 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 title={t('title')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <Flex align="center" justify="space-between">
-                        <Flex align="center" gap={10} style={{ minWidth: 0 }}>
-                            <span className="mobile-screen-icon">
-                                <LuWifi size={18} />
-                            </span>
-                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                                <Text strong>TV status</Text>
-                                <Text type="secondary">{screenHealth.detail}</Text>
-                            </Flex>
-                        </Flex>
-                        <Tag color={screenHealth.state === 'recent' ? 'success' : screenHealth.state === 'stale' ? 'warning' : 'default'}>
-                            {screenHealth.summary}
-                        </Tag>
-                    </Flex>
-                </Card>
+                <Flex align="center" justify="space-between">
+                    <Title level={5} style={{ margin: 0 }}>TV links</Title>
+                    <Button
+                        aria-label="Refresh TV status"
+                        fill="none"
+                        loading={refreshingStatus}
+                        onClick={() => {
+                            void fetchState(true).then((refreshed) => {
+                                Toast.show({
+                                    content: refreshed ? 'TV status refreshed' : 'Unable to refresh TV status',
+                                    duration: 1600,
+                                });
+                            });
+                        }}
+                        style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+                    >
+                        <LuRefreshCw size={17} />
+                    </Button>
+                </Flex>
 
                 <MobileScreenLinkCard
                     compactUrl={compactMenuUrl}
                     copied={copiedMenu}
                     description={t('menuBoardDesc')}
+                    health={menuHealth}
                     icon={<LuMonitor color={token.colorPrimary} size={18} />}
                     mode="menu"
                     onCopy={() => void handleCopy(screenUrl, 'menu')}
@@ -479,6 +512,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                     compactUrl={compactHighlightsUrl}
                     copied={copiedHighlights}
                     description={t('highlightsDesc')}
+                    health={highlightsHealth}
                     icon={<LuPlay color={token.colorInfo} size={18} />}
                     mode="highlights"
                     onCopy={() => void handleCopy(highlightsUrl, 'highlights')}

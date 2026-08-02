@@ -241,7 +241,7 @@ gbpState?: {
 
 ```typescript
 // @src/types/platform/store.ts:79-82
-subdomain?: string;          // e.g., "joespizza" → joespizza.menulist.ai
+subdomain?: string;          // e.g., "joespizza" → joespizza.menulist.online
 customDomain?: string;       // e.g., "joespizza.com"
 domainVerified?: boolean;
 primaryProjectId?: string;   // Default project to show on domain

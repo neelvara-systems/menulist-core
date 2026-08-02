@@ -69,11 +69,11 @@ Stop immediately if:
 
 | Surface | Type | Staging/local | Production | Firebase |
 | --- | --- | --- | --- | --- |
-| MenuList | primary product | `https://menulist.online` | `https://menulist.ai` | `menulist-qa` / `menulist` |
+| MenuList | primary product | `https://qa.menulist.digital`; QA tenants use `*.qa.menulist.digital` | `https://menulist.ai`; owner app `https://app.menulist.ai`; customer tenants `*.menulist.online` | `menulist-qa` / `menulist` |
 | Neelvara | static parent site | `https://neelvara.menulist.online` | `https://neelvara.com` | none |
 | Answerlattice | product | `https://answerlattice.menulist.online` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
 | CampaignCue | product | `https://campaigncue.menulist.online` | `https://campaigncue.ai` | `campaigncue-qa` / `campaigncue` |
-| SignalDesk | private product surface | `https://signaldesk.menulist.online` | use `menulist.online` family unless later contract changes it | `menulist-signaldesk-qa` / `menulist-signaldesk` |
+| SignalDesk | private product surface | `https://signaldesk.menulist.online` | `https://signaldesk.menulist.online` unless later contract changes it | `menulist-signaldesk-qa` / `menulist-signaldesk` |
 | MyCodex | static private PWA | no active domain in new setup | no active domain in new setup | none |
 
 Internal codes exist only for product identity/data contracts:
@@ -128,6 +128,7 @@ What to do:
 2. Turn on MFA and save recovery codes in the password vault.
 3. Confirm these existing domains are in the same owner-controlled account:
    - `menulist.ai`
+   - `menulist.digital`
    - `menulist.online`
    - `answerlattice.com`
 4. Search and purchase these domains if available at checkout:
@@ -144,6 +145,7 @@ Expected result:
 - These domains are owned or retained:
   - `neelvara.com`
   - `menulist.ai`
+  - `menulist.digital`
   - `menulist.online`
   - `answerlattice.com`
   - `campaigncue.ai`
@@ -187,7 +189,7 @@ What to do:
    - `menulist.ai`
    - `answerlattice.com`
    - `campaigncue.ai`
-6. Add `menulist.online` only if you want Workspace-managed staging email.
+6. Add `menulist.digital` only if you want Workspace-managed staging email.
    Staging email is optional.
 7. Create aliases or groups instead of paid mailboxes for every public address.
 
@@ -371,7 +373,7 @@ Authorized domain checklist:
 
 | Firebase project | Add authorized domains |
 | --- | --- |
-| `menulist-qa` | `localhost`, `menulist.online`, `www.menulist.online` |
+| `menulist-qa` | `localhost`, `qa.menulist.digital`, tested QA tenant hosts such as `demo.qa.menulist.digital` |
 | `menulist` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai`, `help.menulist.ai`, `support.menulist.ai` |
 | `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
@@ -435,7 +437,7 @@ What to do:
 Authorized JavaScript origins:
 
 - `http://localhost:3000`
-- `https://menulist.online`
+- `https://qa.menulist.digital`
 - `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
@@ -447,7 +449,7 @@ Authorized JavaScript origins:
 Authorized redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
-- `https://menulist.online/api/auth/callback/google`
+- `https://qa.menulist.digital/api/auth/callback/google`
 - `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
@@ -483,8 +485,8 @@ What to do:
 
 Add these staging domains:
 
-- `menulist.online`
-- `www.menulist.online`
+- `qa.menulist.digital`
+- `*.qa.menulist.digital`
 - `neelvara.menulist.online`
 - `answerlattice.menulist.online`
 - `campaigncue.menulist.online`
@@ -497,6 +499,11 @@ Add these production domains:
 - `app.menulist.ai`
 - `help.menulist.ai`
 - `support.menulist.ai`
+- `menulist.online`
+- `www.menulist.online`
+- `*.menulist.online`
+- `menulist.digital`
+- `www.menulist.digital`
 - `neelvara.com`
 - `www.neelvara.com`
 - `answerlattice.com`
@@ -704,7 +711,10 @@ What to do:
 3. Store staging keys in staging Vercel env and staging Firebase secrets.
 4. Store production keys only in production Vercel env and production Firebase
    secrets.
-5. Add rotation keys only when real rotation/failover keys exist.
+5. Create every Firebase-declared rotation secret name before deploying the
+   matching Functions target. Prefer separate real failover keys; if a slot
+   temporarily uses the same provider/account value, record it as a rotate-later
+   placeholder and do not treat it as quota scaling.
 
 Expected result:
 
@@ -919,7 +929,9 @@ Staging commands:
 
 ```bash
 firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
+npm run verify:functions-deploy-preflight
+npm --prefix functions run build
+npm --prefix functions run deploy:menulist-qa
 
 firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
 firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
@@ -977,9 +989,9 @@ What to check:
 
 MenuList staging:
 
-- Open `https://menulist.online`.
-- Open `https://www.menulist.online`.
-- Open `https://menulist.online/api/version`.
+- Open `https://qa.menulist.digital`.
+- Open `https://qa.menulist.digital/api/version`.
+- Open a QA tenant test host such as `https://demo.qa.menulist.digital`.
 - Sign in.
 - Confirm data writes go to `menulist-qa`.
 

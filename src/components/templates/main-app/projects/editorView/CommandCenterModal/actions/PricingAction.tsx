@@ -52,13 +52,11 @@ export default function PricingAction({
 
     useEffect(() => {
         onPreviewChange(preview);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [preview]);
+    }, [onPreviewChange, preview]);
 
     useEffect(() => {
         onConfigReady(config && validation.valid ? config : null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, validation.valid]);
+    }, [config, onConfigReady, validation.valid]);
 
     const currentMethod = PRICING_METHODS.find((m) => m.value === method);
     const currentSymbol = currentMethod?.usesCurrency ? currencySymbol : '%';

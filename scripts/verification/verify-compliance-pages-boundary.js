@@ -312,7 +312,7 @@ function verifyOwnerEditorsBoundary() {
     assertIncludes(content, 'value.success === true', `${label} success true requirement`);
     assertIncludes(content, 'value.type === type', `${label} type acknowledgement requirement`);
     assertIncludes(content, 'value.action === getExpectedComplianceApiMutationAction(action)', `${label} action acknowledgement requirement`);
-    assertIncludes(content, "window.open(pageUrl, '_blank', 'noopener,noreferrer')", `${label} safe preview handoff`);
+    assertIncludes(content, "openIsolatedBrowserUrl(pageUrl)", `${label} safe preview handoff`);
     assertIncludes(content, 'getBoundedBusinessSettingsStringContext', `${label} bounded diagnostics`);
     assertIncludes(content, "notification.error({ message: 'Failed to save.' });", `${label} fixed save failure copy`);
     assertIncludes(content, "notification.error({ message: 'Failed to reset.' });", `${label} fixed reset failure copy`);
@@ -332,7 +332,7 @@ function verifyOwnerEditorsBoundary() {
   assertIncludes(mobile, 'value.success === true', 'Mobile compliance success true requirement');
   assertIncludes(mobile, 'value.type === type', 'Mobile compliance type acknowledgement requirement');
   assertIncludes(mobile, 'value.action === getExpectedComplianceApiMutationAction(action)', 'Mobile compliance action acknowledgement requirement');
-  assertIncludes(mobile, "window.open(pageUrl, '_blank', 'noopener,noreferrer')", 'Mobile compliance safe preview handoff');
+  assertIncludes(mobile, "openIsolatedBrowserUrl(pageUrl)", 'Mobile compliance safe preview handoff');
   assertIncludes(mobile, 'getBoundedBusinessSettingsStringContext', 'Mobile compliance bounded diagnostics');
   assertIncludes(mobile, "Toast.show({ content: 'Failed to save.'", 'Mobile compliance fixed save failure copy');
   assertIncludes(mobile, "Toast.show({ content: 'Failed to reset.'", 'Mobile compliance fixed reset failure copy');

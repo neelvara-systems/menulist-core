@@ -1,6 +1,7 @@
 'use client'
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import type { StoreDataType } from '@type/platform/store';
@@ -333,10 +334,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
         if (!trimmed) return;
         const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
         try {
-            const opened = window.open(normalized, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_advanced_settings_external_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(normalized);
         } catch (error) {
             logMobileOwnerFailure('mobile_advanced_settings_external_link_open_failed', error, {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),

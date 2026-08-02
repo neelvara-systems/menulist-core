@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -42,6 +42,7 @@ import {
   type ShareableToolReportPayload,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildSocialBioLinkCheckReport } from '@/lib/public-truth-tools/socialBioLinkCheckReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   SocialBioLinkCheckId,
   SocialBioLinkCheckInput,
@@ -177,6 +178,7 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<SocialBioLinkCheckHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -372,6 +374,8 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('social_bio_link_check_handoff_submitted', eventContext);
 
@@ -414,10 +418,13 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('social_bio_link_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -531,6 +538,7 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
             <span>{t('handoff.name')}</span>
             <input
               type="text"
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -540,6 +548,7 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
             <span>{t('handoff.email')}</span>
             <input
               type="email"
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -549,6 +558,7 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
             <span>{t('handoff.phone')}</span>
             <input
               type="tel"
+              maxLength={40}
               value={handoff.phoneNumber}
               onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
               autoComplete="tel"
@@ -558,6 +568,7 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
             <span>{t('handoff.website')}</span>
             <input
               type="text"
+              maxLength={500}
               value={handoff.website}
               onChange={(event) => updateHandoff('website', event.target.value)}
               autoComplete="url"
@@ -662,6 +673,7 @@ export default function SocialBioLinkCheckPage() {
                   <span>{t('fields.businessName')}</span>
                   <input
                     type="text"
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => updateForm('businessName', event.target.value)}
                     placeholder={t('fields.businessNamePlaceholder')}
@@ -671,6 +683,7 @@ export default function SocialBioLinkCheckPage() {
                   <span>{t('fields.cityOrArea')}</span>
                   <input
                     type="text"
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => updateForm('cityOrArea', event.target.value)}
                     placeholder={t('fields.cityOrAreaPlaceholder')}
@@ -680,6 +693,7 @@ export default function SocialBioLinkCheckPage() {
                   <span>{t('fields.currentCustomerLink')}</span>
                   <input
                     type="text"
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                     value={form.currentCustomerLink}
                     onChange={(event) => updateForm('currentCustomerLink', event.target.value)}
                     placeholder={t('fields.currentCustomerLinkPlaceholder')}
@@ -743,7 +757,7 @@ export default function SocialBioLinkCheckPage() {
 
           <AnimateOnScroll delay={0.08}>
             {report ? (
-              <SocialBioLinkCheckReportCard report={report} />
+              <SocialBioLinkCheckReportCard key={report.generatedAt} report={report} />
             ) : (
               <div className="ws-public-truth-check-empty">
                 <LuShieldCheck size={28} aria-hidden="true" />

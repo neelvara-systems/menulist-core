@@ -6,7 +6,11 @@ import { PERMISSIONS } from "@constant/permissions";
 import { FEATURE_FLAGS } from "@config/features";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import {
+    checkAICapacity,
+    refundAiCapacityReservationSafely,
+    reserveAiCapacity,
+} from "@lib/ai/capacityCheck";
 import { normalizeSeoGenerationResult } from "@lib/ai/seoOutput";
 import { getModelName } from "@constant/AI/models";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
@@ -199,6 +203,7 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     const action = AI_ACTIONS_TYPES.SEO_AEO_GENERATION;
     const requestId = crypto.randomUUID();
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
         if (!FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION) {
@@ -262,6 +267,16 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: session.sId,
+            source: '/api/seo',
+            subscription: capacityCheck.subscription!,
+            tId: session.tId,
+            uId: session.uId ?? session.user?.id,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         const startTime = Date.now();
         const generationConfig = {
@@ -439,12 +454,14 @@ export const POST = withAuth(async (request, session) => {
         let remainingBalance = null;
         try {
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: { userId, requestId, action, storeId: session.sId, tenantId: session.tId },
                 input: transactionObject,
                 logLabel: 'SEO generation',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -500,5 +517,10 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'SEO generation failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'seo_generation_request_did_not_settle', {
+            endpoint: '/api/seo',
+            requestId,
+        });
     }
 });

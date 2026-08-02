@@ -3,23 +3,13 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import {
-    isAnswerlatticeStoreInScope,
-    resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope, } from '@lib/answerlattice/sessionScope';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { isExactAnswerlatticeWidgetStoreAuthority } from '@lib/answerlattice/widgetKeyStore';
-import {
-    generateAnswerlatticeVerifiedContextKey,
-    normalizeAnswerlatticeEvidenceHosts,
-    normalizeVerifiedContextKeyRecord,
-} from '@lib/answerlattice/verifiedWidgetContextServer';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { generateAnswerlatticeVerifiedContextKey, normalizeAnswerlatticeEvidenceHosts, normalizeVerifiedContextKeyRecord, } from '@lib/answerlattice/verifiedWidgetContextServer';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -67,7 +57,7 @@ const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
 };
 
 const getStore = async (access: NonNullable<Awaited<ReturnType<typeof requireAnswerlatticePermission>>['access']>) => {
-    const ref = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
+    const ref = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
     const snapshot = await ref.get();
     if (!snapshot.exists) return null;
     const data = snapshot.data() || {};
@@ -154,7 +144,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
         const generated = generateAnswerlatticeVerifiedContextKey();
         const rotationRequestedAtMs = Date.now();
-        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const updatedStoreData = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
             if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {
@@ -241,7 +231,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
         const store = await getStore(access);
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
-        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const updatedStoreData = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
             if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {
@@ -300,7 +290,7 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
         if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
         const store = await getStore(access);
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
-        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const updatedStoreData = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
             if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {

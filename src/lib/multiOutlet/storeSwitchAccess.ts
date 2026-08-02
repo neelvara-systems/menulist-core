@@ -1,19 +1,19 @@
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 
-type SessionStoreMapping = {
+export type SessionStoreMapping = {
     storeId?: number | string | null;
     role?: string | null;
     name?: string | null;
 };
 
-type SessionUserWithStores = {
+export type SessionUserWithStores = {
     platformRole?: string | null;
     storeId?: number | string | null;
     storeIds?: Array<number | string | null> | null;
     stores?: SessionStoreMapping[] | null;
 };
 
-type StoreSummary = Record<string, unknown> & {
+export type StoreSummary = Record<string, unknown> & {
     active?: boolean;
     storeId?: number | string | null;
     storeDetails?: {
@@ -25,6 +25,29 @@ type StoreSummary = Record<string, unknown> & {
 type TenantWithStoresList = {
     storesList?: StoreSummary[] | null;
 } | null | undefined;
+
+export type StoreSwitchAttemptToken = number;
+
+let activeStoreSwitchAttemptToken: StoreSwitchAttemptToken | null = null;
+let nextStoreSwitchAttemptToken = 0;
+
+/**
+ * Claims one browser-wide store-switch attempt. Multiple switch controls can
+ * be mounted together, but Firebase custom claims are process-global for the
+ * signed-in browser user and must never be refreshed concurrently.
+ */
+export const claimStoreSwitchAttempt = (): StoreSwitchAttemptToken | null => {
+    if (activeStoreSwitchAttemptToken !== null) return null;
+    nextStoreSwitchAttemptToken += 1;
+    activeStoreSwitchAttemptToken = nextStoreSwitchAttemptToken;
+    return activeStoreSwitchAttemptToken;
+};
+
+export const releaseStoreSwitchAttempt = (token: StoreSwitchAttemptToken): boolean => {
+    if (activeStoreSwitchAttemptToken !== token) return false;
+    activeStoreSwitchAttemptToken = null;
+    return true;
+};
 
 export const normalizeStoreSwitchStoreId = (value: unknown): number | null => {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';

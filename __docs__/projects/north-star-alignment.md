@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The Projects feature has solid foundations for the North Star moment. Upload and AI extraction are simple. Publishing and auto-sync exist. Key gaps remain in the "everywhere" part (live URL at menulist.ai/{id}).
+The Projects feature has solid foundations for the North Star moment. Upload and AI extraction are simple. Publishing and auto-sync exist. Key gaps remain in the "everywhere" part (live URL at `{store}.menulist.online/{slug}`).
 
 ---
 
@@ -66,7 +66,7 @@ const syncChanges = useCallback(async (updatedData: Project = projectData) => {
 
 | Feature                                   | Priority  | Notes                                 |
 | ----------------------------------------- | --------- | ------------------------------------- |
-| Live URL at `menulist.ai/{restaurant-id}` | 🔴 High   | Will implement after editor is stable |
+| Live URL at `{store}.menulist.online/{slug}` | 🔴 High   | Will implement after editor is stable |
 | "Updated X seconds ago" indicator         | 🟡 Medium | UX polish                             |
 | Show live URL prominently in UI           | 🟡 Medium | After live URL is implemented         |
 
@@ -142,7 +142,7 @@ const syncChanges = useCallback(async (updatedData: Project = projectData) => {
 
 | Feature                           | Priority  | Notes                                   |
 | --------------------------------- | --------- | --------------------------------------- |
-| Show live URL prominently         | 🔴 High   | After `menulist.ai/{id}` is implemented |
+| Show live URL prominently         | 🔴 High   | After hosted public links are implemented |
 | "Updated 2 seconds ago" indicator | 🟡 Medium | UX polish                               |
 
 ---
@@ -157,7 +157,7 @@ const syncChanges = useCallback(async (updatedData: Project = projectData) => {
 
 ### Phase 2: Live URL Implementation (Next)
 
-- [ ] Create public route: `menulist.ai/{restaurant-id}`
+- [ ] Create public route: `{store}.menulist.online/{slug}`
 - [ ] Menu renders from Firestore in real-time
 - [ ] Changes reflect instantly (no cache issues)
 - [ ] Show live URL prominently in Editor/B2C view
@@ -212,7 +212,7 @@ const syncChanges = useCallback(async (updatedData: Project = projectData) => {
 ## Next Action Items
 
 1. **Stabilize Editor** — Current focus
-2. **Implement Live URL** — `menulist.ai/{restaurant-id}`
+2. **Implement Live URL** — `{store}.menulist.online/{slug}`
 3. **Surface Live URL in UI** — Prominent display after publish
 4. **Add freshness indicator** — "Updated 2 seconds ago"
 

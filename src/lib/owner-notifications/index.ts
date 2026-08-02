@@ -58,8 +58,7 @@ const OWNER_NOTIFICATION_EVENT_STATUSES: OwnerNotificationEventStatus[] = [
 
 function getDbForProduct(productId: OwnerNotificationProductId): Firestore | null {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
-        const db = answerlatticeFirestoreAdmin as any;
-        return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+        return answerlatticeFirestoreAdmin;
     }
     return admin.firestore();
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import type { LookupFunction } from 'node:net';
 import {
+    getPosSyncDeliveryHttpStatus,
     getNextPosSyncMenuVersion,
     normalizePosSyncMenuVersion,
     resolvePosSyncDeliveryOutcome,
@@ -166,6 +167,9 @@ assert.equal(normalizePosSyncMenuVersion(0), 0);
 assert.equal(normalizePosSyncMenuVersion(9), 9);
 assert.equal(normalizePosSyncMenuVersion('9'), null);
 assert.equal(normalizePosSyncMenuVersion(Number.NaN), null);
+assert.equal(getPosSyncDeliveryHttpStatus('success'), 200);
+assert.equal(getPosSyncDeliveryHttpStatus('failed'), 502);
+assert.equal(getPosSyncDeliveryHttpStatus('timeout'), 504);
 
 const deliveryTimestamp = { toDate: () => new Date('2026-07-21T10:00:00.000Z') };
 assert.deepEqual(parsePosDeliveryHistoryEntry('del_mdx_0123456789ab', {

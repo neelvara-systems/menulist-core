@@ -48,6 +48,25 @@ const routeFeatureMap: Record<string, { feature: string; workflow: string; entit
     billing: { feature: 'billing', workflow: 'manage_subscription', entityHints: ['subscription', 'plan'] },
 };
 
+function normalizeConfiguredWidgetScriptSrc(value: string): string {
+    if (!value) return '';
+    try {
+        const url = new URL(value);
+        if (
+            url.protocol !== 'https:'
+            || !url.hostname
+            || url.username
+            || url.password
+            || url.hash
+        ) {
+            return '';
+        }
+        return url.toString();
+    } catch {
+        return '';
+    }
+}
+
 function normalizePathname(pathname: string | null): string {
     if (!pathname) return '/';
     const withoutQuery = pathname.split(/[?#]/)[0] || '/';
@@ -66,14 +85,15 @@ function isBlockedRoute(pathname: string): boolean {
 }
 
 function resolveWidgetScriptSrc(): string {
-    if (CONFIGURED_SCRIPT_SRC) return CONFIGURED_SCRIPT_SRC;
+    const configuredScriptSrc = normalizeConfiguredWidgetScriptSrc(CONFIGURED_SCRIPT_SRC);
+    if (configuredScriptSrc) return configuredScriptSrc;
     if (typeof window === 'undefined') return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 
     const { hostname, origin } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${origin}/widget/v1/answerlattice-widget.js`;
     }
-    if (hostname === 'menulist.online' || hostname.endsWith('.vercel.app')) {
+    if (hostname === 'qa.menulist.digital' || hostname.endsWith('.qa.menulist.digital') || hostname.endsWith('.vercel.app')) {
         return 'https://answerlattice.menulist.online/widget/v1/answerlattice-widget.js';
     }
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';

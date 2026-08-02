@@ -11,7 +11,13 @@ function request(pathname, options = {}) {
   const url = new URL(pathname, BASE_URL);
   const client = url.protocol === "https:" ? https : http;
   const headers = { ...(options.headers || {}) };
-  if (options.host) headers.Host = options.host;
+  if (options.host) {
+    headers.Host = options.host;
+    // Public-host routing is exercised as the canonical HTTPS request that the
+    // deployed proxy receives. An HTTP forwarded protocol correctly triggers
+    // the transport redirect before product/path isolation can be evaluated.
+    if (!headers["x-forwarded-proto"]) headers["x-forwarded-proto"] = "https";
+  }
   if (options.body && !headers["content-type"]) headers["content-type"] = "application/json";
 
   return new Promise((resolve, reject) => {

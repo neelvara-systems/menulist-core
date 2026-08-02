@@ -20,9 +20,10 @@ import {
     isAnswerlatticeOperationsStatusResponse,
     readAnswerlatticeActivationDashboardResponse,
 } from '@lib/answerlattice/activationDashboardResponseClient';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import type { AnswerlatticeOperationsStatusSummary, AnswerlatticeOwnerOperationStatus } from '@type/answerlattice';
 import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuClock3, LuRefreshCw, LuServerCog, LuSettings } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -86,16 +87,34 @@ export default function AnswerlatticeOperationsPanel({
     isMobile: boolean;
     onOpenSettings?: () => void;
 }) {
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const { token } = theme.useToken();
     const [operations, setOperations] = useState<AnswerlatticeOperationsStatusSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    const loadRequestRef = useRef(0);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
     const loadOperations = useCallback(async (silent = false) => {
+        const requestScopeKey = cacheScopeKey;
+        const requestId = loadRequestRef.current + 1;
+        loadRequestRef.current = requestId;
+        if (!requestScopeKey) {
+            setOperations(null);
+            setLoadedScopeKey(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         if (silent) {
             setRefreshing(true);
         } else {
             setLoading(true);
+            setOperations(null);
+            setLoadedScopeKey(null);
         }
 
         try {
@@ -109,14 +128,21 @@ export default function AnswerlatticeOperationsPanel({
                 isAnswerlatticeOperationsStatusResponse,
                 ANSWERLATTICE_OPERATIONS_STATUS_LOAD_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
             setOperations(data.operations);
+            setLoadedScopeKey(requestScopeKey);
         } catch {
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
+            setOperations(null);
+            setLoadedScopeKey(requestScopeKey);
             message.error(ANSWERLATTICE_OPERATIONS_STATUS_LOAD_FAILED);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
-    }, []);
+    }, [cacheScopeKey]);
 
     useEffect(() => {
         loadOperations();
@@ -141,7 +167,7 @@ export default function AnswerlatticeOperationsPanel({
         padding: 12,
     };
 
-    if (loading) {
+    if (loading || !scopeIsCurrent) {
         return <Card title="Daily Governance"><Skeleton active paragraph={{ rows: 4 }} /></Card>;
     }
 

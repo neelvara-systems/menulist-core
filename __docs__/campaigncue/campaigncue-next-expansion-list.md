@@ -1,7 +1,7 @@
 # CampaignCue Next Expansion List
 
-**Status:** Parking lot after the main gap-fix and delivery-boundary implementation passes.
-**Rule:** Do not treat this file as active scope. Use it when CampaignCue's current export/download-first runtime, source facts, trust checks, structured packs, outcome capture, agency/location safety, and launch setup are stable.
+**Status:** Backlog register after the main gap-fix and delivery-boundary implementation passes.
+**Rule:** Do not use this file to claim that an earlier accepted capability is complete. The local export/download runtime is the current source truth, while media upload/thumbnails, fuller video generation, audio depth, collaborative review, durable render lifecycle, and video-result reuse remain original-decision parity gaps recorded in [Video Reel Studio validation](./video-reel-studio/video-reel-studio_validation.md). Provider integration and social/ad mutation remain separate rejected or separately gated scope.
 
 ## Implemented From Market Gap Pass
 
@@ -23,6 +23,7 @@ Now implemented and not future scope:
 - staff assignee/task metadata on the existing schedule document
 - bounded result receipt metrics and deterministic one-variable learning on the existing campaign document
 - bounded Pattern Cue with one current workspace-level example, raw-note non-persistence, original hook options, reel/UGC projection, and pattern-hash recheck without a new collection or overview read
+- in-house Video Reel Studio with compact `videoProjects`, bounded variants/scenes/history/receipts, deterministic trust, version-bound approval, local Canvas/MediaRecorder rendering, owner image/audio input, three aspect ratios, and manual MP4/WebM download with zero provider calls
 
 ## Expansion Candidates
 
@@ -33,7 +34,7 @@ Now implemented and not future scope:
 | 3 | Media upload and thumbnail pipeline | Asset metadata is live; real uploads need signed upload, thumbnails, moderation, retention, and rights proof. | Storage deploy, upload UI, size/type guard, retention policy, and preview generation. |
 | 4 | Rendered image templates | Restaurants and salons will want ready-to-post images, but template rendering must stay source-checked. | Asset rights checks, template registry, render cost estimate, and export fallback. |
 | 5 | Hosted mini-page and QR route | The output pack now includes a mini-page/QR brief; public hosting needs its own approval, tracking, cache, and abuse controls. | Public route contract, noindex/index decision, QR/link tracking policy, owner approval, cache invalidation, and Firebase cost plan. |
-| 6 | Short-video render pipeline | Reel briefs are live; rendered MP4s require provider cost, likeness, subtitle, and storage controls. | Credit reservation, provider queue, consent policy, retry cap, and manual shoot fallback. |
+| 6 | Durable cloud/server video rendering | Local in-house composition is live; server-rendered files or durable cloud re-download would add material infrastructure and media-retention risk. | Explicit separate approval, secure large-file upload/render worker, Storage retention, signed access, queue/retry caps, monitoring, and zero ambiguity with the current local renderer. |
 | 7 | Google Business Profile connected publish | Manual Google drafts are live; connected publish can reduce work only for eligible locations. | OAuth, location capability detection, quota handling, post-type restrictions, and rollback-safe logs. |
 | 8 | WhatsApp template/contact consent system | Manual WhatsApp copy is live; direct send requires consent, templates, preferences, pricing, and opt-out. | Contact minimization, opt-in proof, template status, pricing display, and user preference webhooks. |
 | 9 | Agency client portal | Approval requests are live; agencies need client comments, reviewed variants, and client-visible history. | Client-scoped auth, comments, audit trail, no cross-client leakage, and notification controls. |

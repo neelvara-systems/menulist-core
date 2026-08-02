@@ -12,7 +12,7 @@
 ## Architecture Overview
 
 ```
-Customer opens: storypizza.menulist.ai/food-menu
+Customer opens: storypizza.menulist.online/food-menu
                                 │
                     ┌───────────┴───────────┐
                     │     MIDDLEWARE          │
@@ -84,7 +84,7 @@ interface ProjectSummaryData {
 ```typescript
 // Added to StoreDataType:
 outletSlug?: string;  // NEW: URL path segment for outlet routing
-                      // e.g., "pune" → brand.menulist.ai/pune
+                      // e.g., "pune" → brand.menulist.online/pune
                       // Only set on outlet stores (isMaster=false)
 ```
 
@@ -308,7 +308,7 @@ For each tenant:
 
 | Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
-| MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
+| MenuList | `localhost:3000`             | `qa.menulist.digital`, `*.qa.menulist.digital` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai`, `*.menulist.online` | Marketing, owner app, customer menus/OBP |
 | Neelvara | `localhost:3000/__neelvara` | `neelvara.menulist.online` | `neelvara.com`, `www.neelvara.com` | Static parent/entity trust website |
 | Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
@@ -320,6 +320,8 @@ Source of truth: `src/constants/deploymentTargets.ts`.
 Neelvara is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/neelvara`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
 
 Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are not active on a public host because MyCodex has no active domain. They do not change product slugs, env names, Firebase targets, or public canonical URLs.
+
+MenuList production customer links use `*.menulist.online`; `menulist.online` and `www.menulist.online` are exact-host redirects to `menulist.ai`. MenuList QA uses `qa.menulist.digital` plus `*.qa.menulist.digital`; `menulist.digital` and `www.menulist.digital` are exact-host redirect/noindex targets only.
 
 SignalDesk uses the dedicated private host `signaldesk.menulist.online`. The old MyCodex-host `/sd` dependency is removed from public routing and does not make SignalDesk a public `/sites` product.
 
@@ -346,7 +348,7 @@ Set per environment on Vercel:
 | Environment | Value                            |
 | ----------- | -------------------------------- |
 | Production  | `https://menulist.ai`            |
-| Preview     | `https://menulist.online`        |
+| Preview     | `https://qa.menulist.digital`    |
 
 Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`screen/utils.ts`), QR codes (`feedbackQrCode.ts`), SEO metadata (`layout.tsx`, `SchemaMarkup.tsx`).
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -42,6 +42,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildPublicTruthCheckReport } from '@/lib/public-truth-tools/publicTruthCheckReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   PublicTruthCheckInput,
   PublicTruthCheckOwnerFacts,
@@ -186,6 +187,7 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<PublicTruthCheckHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -335,6 +337,8 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('public_truth_check_handoff_submitted', eventContext);
 
@@ -377,10 +381,13 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('public_truth_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -487,6 +494,7 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
           <label>
             <span>{t('handoff.name')}</span>
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -495,6 +503,7 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
           <label>
             <span>{t('handoff.email')}</span>
             <input
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -506,6 +515,7 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
         <label>
           <span>{t('handoff.phone')}</span>
           <input
+            maxLength={40}
             value={handoff.phoneNumber}
             onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
             autoComplete="tel"
@@ -517,6 +527,7 @@ function PublicTruthReport({ report }: { report: PublicTruthCheckReport }) {
           <label htmlFor="public-truth-check-website">{t('handoff.website')}</label>
           <input
             id="public-truth-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -672,6 +683,7 @@ export default function PublicTruthCheckPage() {
                 <label>
                   <span>{t('fields.businessName')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
                     autoComplete="organization"
@@ -680,6 +692,7 @@ export default function PublicTruthCheckPage() {
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))}
                     autoComplete="address-level2"
@@ -691,6 +704,7 @@ export default function PublicTruthCheckPage() {
                 <label>
                   <span>{t('fields.businessType')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText}
                     value={form.businessType}
                     onChange={(event) => setForm((current) => ({ ...current, businessType: event.target.value }))}
                     autoComplete="off"
@@ -717,6 +731,7 @@ export default function PublicTruthCheckPage() {
               <label>
                 <span>{t('fields.publicUrl')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                   value={form.publicUrl}
                   onChange={(event) => setForm((current) => ({ ...current, publicUrl: event.target.value }))}
                   inputMode="url"
@@ -727,6 +742,7 @@ export default function PublicTruthCheckPage() {
               <label>
                 <span>{t('fields.sourceText')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.menuOrServiceText}
                   onChange={(event) => setForm((current) => ({ ...current, menuOrServiceText: event.target.value }))}
                   rows={6}
@@ -779,7 +795,7 @@ export default function PublicTruthCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <PublicTruthReport report={report} /> : <EmptyReport />}
+            {hasChecked ? <PublicTruthReport key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

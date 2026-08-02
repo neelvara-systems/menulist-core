@@ -9,7 +9,7 @@
 
 ## Intent
 
-Show the dedicated print asset editor as an approved cropped product screenshot.
+Show the dedicated print asset editor as deterministic fictional product proof.
 
 ## Placement
 

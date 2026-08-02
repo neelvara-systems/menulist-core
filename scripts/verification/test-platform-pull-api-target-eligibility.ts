@@ -164,11 +164,11 @@ assert.notDeepEqual(
 );
 
 const canonicalItemUrl = new URL(buildCanonicalItemUrl(
-    'https://example.menulist.ai/menu',
+    'https://example.menulist.online/menu',
     'item / 1',
     'hi',
 ));
-assert.equal(canonicalItemUrl.origin + canonicalItemUrl.pathname, 'https://example.menulist.ai/menu');
+assert.equal(canonicalItemUrl.origin + canonicalItemUrl.pathname, 'https://example.menulist.online/menu');
 assert.equal(canonicalItemUrl.searchParams.get('item'), 'item / 1', 'item identity must survive URL encoding');
 assert.equal(canonicalItemUrl.searchParams.get('lang'), 'hi', 'localized item URLs must retain language identity');
 

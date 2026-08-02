@@ -11,24 +11,24 @@ export const dynamic = 'force-dynamic';
  * @see src/lib/notifications/index.ts — Core notification sender
  */
 
+/**
+ * Notification Send API — Internal endpoint for triggering email notifications.
+ *
+ * Called fire-and-forget from client-side DAL functions (tickets, etc.).
+ * Uses firebase-admin for logging (server-side only).
+ * Protected by current Answerlattice support permission. Recipient and
+ * template data are derived from the exact persisted ticket.
+ *
+ * @see src/lib/notifications/index.ts — Core notification sender
+ */
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
-import {
-    normalizeAnswerlatticeSupportTicketId,
-    parseAnswerlatticeSupportTicketDocument,
-} from '@lib/answerlattice/supportTicketLifecycle';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeSupportTicketId, parseAnswerlatticeSupportTicketDocument, } from '@lib/answerlattice/supportTicketLifecycle';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { sendNotification } from '@lib/notifications';
-import {
-    getBoundedNotificationStringContext,
-    getNotificationPayloadLogContext,
-    logNotificationFailure,
-} from '@lib/notifications/notificationDiagnostics';
-import {
-    CLIENT_TICKET_NOTIFICATION_EVENTS,
-    projectTicketNotification,
-} from '@lib/notifications/ticketNotificationBoundary';
+import { getBoundedNotificationStringContext, getNotificationPayloadLogContext, logNotificationFailure, } from '@lib/notifications/notificationDiagnostics';
+import { CLIENT_TICKET_NOTIFICATION_EVENTS, projectTicketNotification, } from '@lib/notifications/ticketNotificationBoundary';
 import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
@@ -102,7 +102,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const ticketSnapshot = await answerlatticeFirestoreAdmin
+        const ticketSnapshot = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.SUPPORT_TICKETS)
             .doc(ticketId)
             .get();
@@ -137,7 +137,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const sent = await sendNotification(projection.payload);
 
         return NextResponse.json({ sent });
-    } catch (err: any) {
+    } catch (err: unknown) {
         logNotificationFailure('notification_send_route_failed', err, failureContext);
         return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
     }

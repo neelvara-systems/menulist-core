@@ -8,6 +8,7 @@ import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { claimStoreSwitchAttempt, releaseStoreSwitchAttempt } from '@lib/multiOutlet/storeSwitchAccess';
 import {
     createMultiOutletStatusError,
     isOutletCreateResponse,
@@ -216,6 +217,8 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             return;
         }
         if (Number(storeId) === activeStoreId) return;
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
         const expectedTenantId = storeDetails.tenantId;
         const expectedStoreId = storeDetails.storeId;
         locationActionInFlightRef.current = true;
@@ -248,6 +251,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                 Toast.show({ content: t('failedToSwitch'), duration: 2000 });
             }
         } finally {
+            releaseStoreSwitchAttempt(attemptToken);
             locationActionInFlightRef.current = false;
         }
     };
@@ -275,6 +279,9 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             || !isExpectedLocationScope(expectedTenantId, expectedStoreId)
         ) return;
 
+        const requiresClaimTransition = Number(currentLocationScopeRef.current.activeStoreContext) === outletStoreId;
+        const attemptToken = requiresClaimTransition ? claimStoreSwitchAttempt() : undefined;
+        if (requiresClaimTransition && attemptToken === null) return;
         locationActionInFlightRef.current = true;
         setDeactivatingStoreId(outletStoreId);
         try {
@@ -318,7 +325,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                     )),
                 }
                 : previous);
-            if (Number(currentLocationScopeRef.current.activeStoreContext) === Number(outletStoreId)) {
+            if (requiresClaimTransition) {
                 const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
                 if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                 if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
@@ -340,6 +347,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                 Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
             }
         } finally {
+            if (typeof attemptToken === 'number') releaseStoreSwitchAttempt(attemptToken);
             locationActionInFlightRef.current = false;
             if (isMountedRef.current) {
                 setDeactivatingStoreId(null);
@@ -480,7 +488,11 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                 ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ outletName: submittedOutletName }),
+                body: JSON.stringify({
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                    outletName: submittedOutletName,
+                }),
             });
             const data = await readMobileOutletActionResponse(res, buildMobileLocationLogContext('create_outlet', {
                 ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
@@ -533,6 +545,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                                     name: submittedOutletName,
                                     outletSlug: data.outletSlug,
                                     storeId: data.storeId,
+                                    storeKey: data.storeKey,
                                     tenantName: data.tenantName || previous.name,
                                 }]),
                         ],

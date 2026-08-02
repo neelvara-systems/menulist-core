@@ -3,30 +3,16 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    ANSWERLATTICE_GUIDANCE_MAX_BODY_BYTES,
-    AnswerlatticeGuidanceOutcomeSchema,
-    buildAnswerlatticeGuidanceOutcomeIdempotencyKey,
-    matchAnswerlatticeGuidanceOutcomeToHistory,
-} from '@lib/answerlattice/guidedResolutionContracts';
+import { ANSWERLATTICE_GUIDANCE_MAX_BODY_BYTES, AnswerlatticeGuidanceOutcomeSchema, buildAnswerlatticeGuidanceOutcomeIdempotencyKey, matchAnswerlatticeGuidanceOutcomeToHistory, } from '@lib/answerlattice/guidedResolutionContracts';
 import { normalizeAnswerlatticeCanonicalAnswerId } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitterServer';
 import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
-import {
-    ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
-    isAnswerlatticeWidgetRuntimeRequestAuthorized,
-} from '@lib/answerlattice/widgetRuntimeTokenServer';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import {
-    handlePublicApiCorsPreflight,
-    hashApiKey,
-    hasPublicApiCredentialScope,
-    validatePublicApiKey,
-    withPublicApiCors,
-} from '@lib/publicApi/auth';
+import { ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER, isAnswerlatticeWidgetRuntimeRequestAuthorized, } from '@lib/answerlattice/widgetRuntimeTokenServer';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, validatePublicApiKey, withPublicApiCors, } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -168,7 +154,7 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { success: true, recorded: false });
         }
 
-        const historySnap = await answerlatticeFirestoreAdmin
+        const historySnap = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
             .doc(normalizedSearchHistoryId)
             .get();

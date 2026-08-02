@@ -258,7 +258,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         articleIdForLog = validation.data.articleId;
 
         const db = answerlatticeFirestoreAdmin;
-        if (!db || typeof (db as any).collection !== 'function') {
+        if (!db) {
             return privateJson({ error: 'Answerlattice database is not configured.' }, { status: 500 });
         }
 

@@ -8,32 +8,17 @@ import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { upsertAnswerlatticeExtractedEntityCandidate } from '@lib/answerlattice/ontologyServer';
-import {
-    AnswerlatticeInvalidationOwnershipError,
-    getAnswerlatticeMissingBundleManifestBase,
-    getAnswerlatticeMissingSourceVersionsBase,
-    readAnswerlatticeInvalidationOwnership,
-    type AnswerlatticeInvalidationOwnership,
-} from '@lib/answerlattice/invalidationOwnership';
-import {
-    ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
-    normalizeAnswerlatticeKbArticleId,
-} from '@lib/answerlattice/kbArticleIdBoundary';
+import { AnswerlatticeInvalidationOwnershipError, getAnswerlatticeMissingBundleManifestBase, getAnswerlatticeMissingSourceVersionsBase, readAnswerlatticeInvalidationOwnership, type AnswerlatticeInvalidationOwnership, } from '@lib/answerlattice/invalidationOwnership';
+import { ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH, normalizeAnswerlatticeKbArticleId, } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import {
-    isExactAnswerlatticePersistedAuthority,
-    resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { isExactAnswerlatticePersistedAuthority, resolveAnswerlatticeSessionScope, } from '@lib/answerlattice/sessionScope';
+import { requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -47,11 +32,8 @@ import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const ArticleSchema = z.object({
-    categoryTitle: z.string().trim().max(180).optional().nullable(),
-    content: z.any().optional(),
     id: z.string().trim().max(ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH)
         .refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
-    title: z.string().trim().min(1).max(240).optional(),
 }).strict();
 const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;
 const ARTICLE_ENTITY_ID_LIMIT = 10;
@@ -196,16 +178,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
+            if (providerUnavailable) {
+                return privateJson(
+                    { error: 'Entity extraction is temporarily unavailable. Please try again later.' },
+                    { status: 503 },
+                );
+            }
+
             return privateJson(
                 {
-                    error: providerUnavailable
-                        ? 'Entity extraction is temporarily unavailable. Please try again later.'
-                        : `Too many requests. Please wait ${waitSeconds} seconds.`,
+                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt,
                 },
                 {
-                    status: providerUnavailable ? 503 : 429,
+                    status: 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -242,7 +229,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         articleIdForLog = article.id;
         const tenantId = scope.tenantId;
         const storeId = scope.storeId;
-        const articleRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id);
+        const articleRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id);
         const articleSnap = await articleRef.get();
         if (!articleSnap.exists) {
             return privateJson({ error: 'Article not found' }, { status: 404 });
@@ -270,7 +257,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ARTICLE_ENTITY_ID_LIMIT,
             ).sort();
 
-            return answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+            return requireAnswerlatticeFirestoreAdmin().runTransaction(async (transaction) => {
                 const currentArticleSnapshot = await transaction.get(articleRef);
                 if (!currentArticleSnapshot.exists) {
                     throw new ArticleEntityExtractionConflictError('article_deleted_during_entity_extraction');
@@ -284,7 +271,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 }
 
                 const entitySnapshots = await Promise.all(normalizedNextEntityIds.map((entityId) => (
-                    transaction.get(answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId))
+                    transaction.get(requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId))
                 )));
                 if (entitySnapshots.some((snapshot) => {
                     const data = snapshot.data() || {};
@@ -317,7 +304,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 if (entityLinksChanged) {
                     const invalidationOwnership = await readAnswerlatticeInvalidationOwnership({
                         cacheSources: [ANSWERLATTICE_CACHE_SOURCES.KB],
-                        db: answerlatticeFirestoreAdmin,
+                        db: requireAnswerlatticeFirestoreAdmin(),
                         scope: { tId: tenantId, sId: storeId },
                         transaction,
                     });
@@ -342,7 +329,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return privateJson({ ok: true, entityIds, newCandidateCount: 0 });
         }
 
-        const existingEntitiesSnap = await answerlatticeFirestoreAdmin
+        const existingEntitiesSnap = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
             .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tenantId)
@@ -368,9 +355,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const result = await extractEntitiesFromArticles(
             [{
-                title: String(persistedArticle.title || article.title || ''),
+                title: String(persistedArticle.title || ''),
                 content: textContent,
-                category: String(persistedArticle.categoryTitle || article.categoryTitle || '') || undefined,
+                category: String(persistedArticle.categoryTitle || '') || undefined,
             }],
             tenantId,
             storeId,
@@ -387,7 +374,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     billingMode: 'internal',
                     clientResponse: {
                         articleId: article.id,
-                        categoryTitle: persistedArticle.categoryTitle || article.categoryTitle || null,
+                        categoryTitle: persistedArticle.categoryTitle || null,
                     },
                     model: ANSWERLATTICE_TEXT_MODEL,
                     processingTime: Date.now() - startedAt,

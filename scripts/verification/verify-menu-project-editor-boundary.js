@@ -74,11 +74,22 @@ const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
 const pdfViewer = read('src/components/templates/main-app/projects/PdfViewer.tsx');
+const projectCommonTypes = read('src/components/templates/main-app/projects/types/common.types.ts');
 const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
 const editor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
 const editorWelcomeBanner = read('src/components/templates/main-app/projects/editorView/EditorWelcomeBanner.tsx');
 const zoomableImage = read('src/components/templates/main-app/projects/editorView/ZoomableImage.tsx');
 const commandCenter = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx');
+const commandCenterActionFiles = [
+  'ActiveInactiveAction.tsx',
+  'AvailabilityAction.tsx',
+  'MoveCategoryAction.tsx',
+  'PricingAction.tsx',
+  'TextCaseAction.tsx',
+].map((file) => ({
+  file,
+  source: read(`src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/${file}`),
+}));
 const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
@@ -111,6 +122,12 @@ const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/changelog.md');
 
+for (const { file, source } of commandCenterActionFiles) {
+  forbidToken(source, 'react-hooks/exhaustive-deps', `${file} hook dependency boundary`);
+  requireToken(source, 'onConfigReady', `${file} config callback dependency`);
+  requireToken(source, 'onPreviewChange', `${file} preview callback dependency`);
+}
+
 requireToken(
   packageJson,
   '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-owner-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:time-slot-data-flow"',
@@ -127,6 +144,8 @@ requireToken(
   '{Boolean(isStillLoading) && <Card',
   'setPdfFiles((previous) => previous',
 ].forEach((token) => requireToken(pdfViewer, token, 'PDF conversion review boundary'));
+requireToken(projectCommonTypes, 'fileId: string;', 'converted PDF page source-file identity type');
+forbidToken(projectCommonTypes, 'fileId: any;', 'converted PDF page any identity type');
 
 [
   'setActiveProject: (project: Project) => void;',

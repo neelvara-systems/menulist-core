@@ -22,7 +22,11 @@ import {
     shouldUseDigitalScreenOfflineCache,
 } from '../../src/lib/screen/screenRuntime';
 import { normalizePublicAccentColor } from '../../src/lib/obp/accentColor';
-import { getDigitalScreenHealth } from '../../src/lib/screen/screenHealth';
+import {
+    getDigitalScreenHealth,
+    getDigitalScreenModeHealth,
+} from '../../src/lib/screen/screenHealth';
+import { getDigitalScreenSeenWriteDecision } from '../../src/lib/screen/screenSeenAcknowledgement';
 import {
     getDigitalScreenManagementClientError,
     isDigitalScreenManagementResponse,
@@ -73,6 +77,12 @@ const validManagementResponse = {
             type: 'owner_upload',
             validUntilMs: now + 60_000,
         }],
+        screenSeenByMode: {
+            menu_board: {
+                contentVersion: 1,
+                seenAtMs: now,
+            },
+        },
         screenToken: 'Ab12Cd34',
     },
     success: true,
@@ -103,6 +113,22 @@ assert.equal(
     }),
     false,
     'Digital Screens must reject response timestamps outside the Firestore range',
+);
+assert.equal(
+    isDigitalScreenManagementResponse({
+        ...validManagementResponse,
+        screen: {
+            ...validManagementResponse.screen,
+            screenSeenByMode: {
+                menu_board: {
+                    contentVersion: 2,
+                    seenAtMs: now,
+                },
+            },
+        },
+    }),
+    false,
+    'A mode receipt must never claim a content version newer than canonical owner state',
 );
 
 assert.equal(
@@ -474,6 +500,88 @@ assert.deepEqual(
         summary: 'Check TV',
     },
     'A materially future-dated signal must not be presented as recent TV activity',
+);
+assert.deepEqual(
+    getDigitalScreenModeHealth(undefined, 4, now),
+    {
+        detail: 'Waiting for this TV link',
+        state: 'link_ready',
+        summary: 'Waiting for TV',
+    },
+    'An unopened screen type must not inherit another mode\'s seen status',
+);
+assert.deepEqual(
+    getDigitalScreenModeHealth({
+        contentVersion: 4,
+        seenAt: Timestamp.fromMillis(now - 60_000),
+    }, 4, now),
+    {
+        detail: 'Opened 1 minute ago',
+        state: 'current',
+        summary: 'Latest update seen',
+    },
+    'A recent exact-version receipt may confirm that screen type opened the latest update',
+);
+assert.equal(
+    getDigitalScreenModeHealth({
+        contentVersion: 3,
+        seenAt: Timestamp.fromMillis(now - 60_000),
+    }, 4, now).state,
+    'pending',
+    'A recent receipt for an older version must not confirm the latest update',
+);
+assert.equal(
+    getDigitalScreenModeHealth({
+        contentVersion: 4,
+        seenAt: Timestamp.fromMillis(now - 48 * 60 * 60 * 1000),
+    }, 4, now).state,
+    'stale',
+    'An exact-version receipt outside the freshness window must ask the owner to check the TV',
+);
+assert.equal(
+    getDigitalScreenSeenWriteDecision({
+        currentContentVersion: 5,
+        mode: 'menu_board',
+        requestedContentVersion: 4,
+    }),
+    'stale_version',
+    'A TV must not acknowledge a version that stopped being canonical before the write',
+);
+assert.equal(
+    getDigitalScreenSeenWriteDecision({
+        currentContentVersion: 5,
+        mode: 'menu_board',
+    }),
+    'stale_version',
+    'A partial mode acknowledgement must fail closed instead of falling into the legacy path',
+);
+assert.equal(
+    getDigitalScreenSeenWriteDecision({
+        currentContentVersion: 5,
+        mode: 'highlights',
+        modeReceipt: {
+            contentVersion: 5,
+            seenAt: Timestamp.fromMillis(now),
+        },
+        nowMs: now,
+        requestedContentVersion: 5,
+    }),
+    'already_seen',
+    'The same screen type and content version must write at most once per UTC day',
+);
+assert.equal(
+    getDigitalScreenSeenWriteDecision({
+        currentContentVersion: 5,
+        mode: 'highlights',
+        modeReceipt: {
+            contentVersion: 4,
+            seenAt: Timestamp.fromMillis(now),
+        },
+        nowMs: now,
+        requestedContentVersion: 5,
+    }),
+    'recorded',
+    'A new canonical version must receive a fresh acknowledgement even on the same day',
 );
 assert.deepEqual(
     getDigitalScreenManagementClientError(new Error('digital_screen_slide_invalid')),

@@ -56,12 +56,32 @@ const main = () => {
                 storageGeneration: "1722099012345678",
                 mimeType: "image/png",
                 sizeBytes: 1024,
+                previewStoragePath: "campaigncue/assets/cc_workspace_test/images/preview.webp",
+                previewStorageGeneration: "1722099012345679",
+                previewMimeType: "image/webp",
+                previewSizeBytes: 512,
+                width: 1080,
+                height: 1080,
             },
         },
         workspaceId: "cc_workspace_test",
     });
     assert(stored.file?.storagePath?.includes("cc_workspace_test"), "workspace-owned Storage path must parse");
     assert(stored.file?.storageGeneration === "1722099012345678", "exact Storage generation must parse");
+    assert(stored.file?.previewStorageGeneration === "1722099012345679", "exact preview generation must parse");
+
+    const projected = parseCampaignCueAssetRecord({
+        assetId: "cc_asset_test",
+        value: { ...baseAsset(), internalClaimId: "must-not-project", privateProviderPayload: { secret: true } },
+        workspaceId: "cc_workspace_test",
+    });
+    assert(!("internalClaimId" in projected), "unexpected persisted claim fields must not enter the asset DTO");
+    assert(!("privateProviderPayload" in projected), "unexpected persisted provider fields must not enter the asset DTO");
+    assertThrows(() => parseCampaignCueAssetRecord({
+        assetId: "cc_asset_test",
+        value: { ...baseAsset(), usageRefs: [{ campaignId: "cc_campaign_test", channel: "email" }] },
+        workspaceId: "cc_workspace_test",
+    }), "asset usage references must reject channels outside the CampaignCue contract");
 
     assertThrows(() => parseCampaignCueAssetRecord({
         assetId: "cc_asset_test",
@@ -75,6 +95,11 @@ const main = () => {
     }), "cross-workspace Storage path must fail closed");
     assertThrows(() => parseCampaignCueAssetRecord({
         assetId: "cc_asset_test",
+        value: { ...baseAsset(), file: { previewStoragePath: "campaigncue/assets/another_workspace/preview.webp" } },
+        workspaceId: "cc_workspace_test",
+    }), "cross-workspace preview path must fail closed");
+    assertThrows(() => parseCampaignCueAssetRecord({
+        assetId: "cc_asset_test",
         value: {
             ...baseAsset(),
             file: {
@@ -84,6 +109,11 @@ const main = () => {
         },
         workspaceId: "cc_workspace_test",
     }), "malformed Storage generation must fail closed");
+    assertThrows(() => parseCampaignCueAssetRecord({
+        assetId: "cc_asset_test",
+        value: { ...baseAsset(), file: { previewStorageGeneration: "../latest" } },
+        workspaceId: "cc_workspace_test",
+    }), "malformed preview Storage generation must fail closed");
     assertThrows(() => parseCampaignCueAssetRecord({
         assetId: "different_asset",
         value: baseAsset(),
@@ -110,6 +140,25 @@ const main = () => {
         outputId: "cc_output_test",
         channel: "creative",
     }).success, "bounded campaign/output linkage must validate");
+    assert(CampaignCueAssetSchema.safeParse({
+        idempotencyKey: "asset-audio-upload-001",
+        name: "Owner music",
+        assetType: "audio",
+        storagePath: "campaigncue/assets/cc_workspace_test/audio/source.mp3",
+        mimeType: "audio/mpeg",
+        sizeBytes: 1024,
+        previewStoragePath: "campaigncue/assets/cc_workspace_test/audio/preview.webp",
+        previewMimeType: "image/webp",
+        previewSizeBytes: 512,
+    }).success, "private audio with a bounded preview must validate");
+    assert(!CampaignCueAssetSchema.safeParse({
+        idempotencyKey: "asset-preview-detached-001",
+        name: "Detached preview",
+        assetType: "image",
+        previewStoragePath: "campaigncue/assets/cc_workspace_test/images/preview.webp",
+        previewMimeType: "image/webp",
+        previewSizeBytes: 512,
+    }).success, "preview registration must require a source file");
 
     const server = fs.readFileSync(path.join(ROOT, "src/lib/campaigncue/server.ts"), "utf8");
     const assetStart = server.indexOf("export async function createCampaignCueAssetServer");
@@ -118,8 +167,10 @@ const main = () => {
     assert(assetStart > -1 && assetEnd > assetStart, "asset server block must be discoverable");
     assert(assetBlock.includes("parseCampaignCueAssetRecord"), "asset download must project persisted records through the strict boundary");
     assert(assetBlock.includes("isCampaignCueWorkspaceStoragePath"), "asset registration must enforce workspace Storage ownership");
-    assert(assetBlock.includes(".getMetadata()"), "asset registration must derive file metadata from CampaignCue Storage");
+    assert(server.includes(".getMetadata()"), "asset registration must derive file metadata from CampaignCue Storage");
     assert(assetBlock.includes("storageGeneration"), "asset registration must persist the verified immutable Storage generation");
+    assert(server.includes("isCampaignCueMediaHeaderValid"), "asset registration must verify MIME signatures before admitting uploaded media");
+    assert(assetBlock.includes("previewStorageGeneration"), "asset registration must bind private previews to an immutable Storage generation");
     assert(assetBlock.includes("assertCampaignCueAssetBinding"), "asset registration must validate output references against both initial and transaction-current campaign truth");
     assert(assetBlock.includes("assertCurrentCampaignCueWorkspaceAccess"), "asset registration must recheck current member authority in its commit transaction");
     assert(assetBlock.includes("assertCampaignCueIdempotencyClaimOwnership"), "asset registration must bind its commit to the exact replay claim");

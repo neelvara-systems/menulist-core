@@ -8,7 +8,7 @@ import {
     getAnswerlatticeAnswerTestSummaryId,
 } from '../../src/lib/answerlattice/answerTestContracts';
 import { executeAnswerlatticeReleaseAction } from '../../src/lib/answerlattice/releaseServer';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { isAnswerlatticeContextBundleManifestForScope } from '../../src/lib/answerlattice/compiledContext';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -25,6 +25,7 @@ const access: AnswerlatticeAccessContext = {
     user: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
 };
 const scope = { tId: 1, sId: 101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 
 const createAction = (requestId: string, versionNormalized: number, entityChanges = ['billing']) => ({
     action: 'create' as const,
@@ -50,7 +51,6 @@ const previewRelease = async (releaseId: string) => {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db) throw new Error('Answerlattice Firestore Admin is required');
     for (const name of [
         'answerlattice_entities',
         'answerlattice_canonicalAnswers',

@@ -168,7 +168,7 @@ Your QR codes point to your official menu on MenuList. A few things to keep in m
 
 - **Check your QR periodically** — Make sure no one has placed a sticker over your QR code
 - **Your QR always shows your name** — Customers can verify it points to your business
-- **The link always shows menulist.ai** — If the link looks different, the QR may have been tampered with
+- **The link shows your `menulist.online` hosted link or your connected custom domain** — If the link looks different, the QR may have been tampered with
 - **Report suspicious QR changes** — Contact us if something looks wrong
 
 This is rare, but good to be aware of.

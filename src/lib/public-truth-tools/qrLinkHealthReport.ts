@@ -1,10 +1,16 @@
 import {
+  MENULIST_TENANT_BASE_DOMAINS,
   PLATFORM_DOMAIN,
   PLATFORM_DOMAIN_ALIASES,
   RESERVED_SUBDOMAINS,
 } from '@constant/urls';
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 import { parsePublicHttpsUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   QrLinkExpectedDestination,
   QrLinkHealthCheckId,
@@ -23,7 +29,7 @@ const REQUIRED_CHECKS = new Set<QrLinkHealthCheckId>([
   'customer_action',
 ]);
 
-const KNOWN_MENULIST_DOMAINS = Array.from(new Set([
+const KNOWN_MENULIST_PLATFORM_DOMAINS = Array.from(new Set([
   PLATFORM_DOMAIN,
   ...PLATFORM_DOMAIN_ALIASES,
   ...getProductDeploymentTarget('menulist', 'local').domains,
@@ -32,14 +38,24 @@ const KNOWN_MENULIST_DOMAINS = Array.from(new Set([
 ]))
   .map((domain) => domain.toLowerCase().replace(/^www\./, '').trim())
   .filter(Boolean);
+const KNOWN_MENULIST_TENANT_DOMAINS = Array.from(new Set([
+  ...MENULIST_TENANT_BASE_DOMAINS,
+  ...(getProductDeploymentTarget('menulist', 'preview').tenantDomains || []),
+  ...(getProductDeploymentTarget('menulist', 'production').tenantDomains || []),
+]))
+  .map((domain) => domain.toLowerCase().replace(/^www\./, '').trim())
+  .filter(Boolean);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
-function getRootDomainMatch(hostname: string): string | null {
+function getRootDomainMatch(hostname: string, domains: readonly string[]): string | null {
   const host = hostname.toLowerCase().replace(/^www\./, '');
-  return KNOWN_MENULIST_DOMAINS.find((domain) => host === domain || host.endsWith(`.${domain}`)) || null;
+  return domains.find((domain) => host === domain || host.endsWith(`.${domain}`)) || null;
 }
 
 function getSubdomain(hostname: string, rootDomain: string): string {
@@ -51,15 +67,16 @@ function getSubdomain(hostname: string, rootDomain: string): string {
 function appearsMenuListCustomerLink(url: URL | null): boolean {
   if (!url) return false;
 
-  const rootDomain = getRootDomainMatch(url.hostname);
-  if (!rootDomain) return false;
-
   const normalizedPath = url.pathname.toLowerCase();
-  const subdomain = getSubdomain(url.hostname, rootDomain).split('.')[0] || '';
+  const tenantRootDomain = getRootDomainMatch(url.hostname, KNOWN_MENULIST_TENANT_DOMAINS);
+  const subdomain = tenantRootDomain
+    ? getSubdomain(url.hostname, tenantRootDomain).split('.')[0] || ''
+    : '';
   const hasTenantSubdomain = Boolean(subdomain) && !RESERVED_SUBDOMAINS.includes(subdomain);
+  const platformRootDomain = getRootDomainMatch(url.hostname, KNOWN_MENULIST_PLATFORM_DOMAINS);
   const hasRootCustomerPath = normalizedPath === '/client' || normalizedPath.startsWith('/client/');
 
-  return hasTenantSubdomain || hasRootCustomerPath;
+  return hasTenantSubdomain || (Boolean(platformRootDomain) && hasRootCustomerPath);
 }
 
 function hasActionHint(url: URL | null): boolean {
@@ -159,9 +176,9 @@ function getNextActionType(status: QrLinkHealthReport['status']): QrLinkHealthRe
 }
 
 export function buildQrLinkHealthReport(input: QrLinkHealthInput): QrLinkHealthReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const qrTargetUrl = trimToSingleLine(input.qrTargetUrl);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const qrTargetUrl = trimToSingleLine(input.qrTargetUrl, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const url = parsePublicHttpsUrl(qrTargetUrl, 'qr_link_health_target_url');
   const hasTarget = qrTargetUrl.length > 0;
   const hasValidTargetUrl = Boolean(url);

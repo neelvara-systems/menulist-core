@@ -27,7 +27,6 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import MainContentRenderer from "../mainContentRenderer";
-import GoogleSearchConsole from "./GoogleSearchConsole";
 import UnifiedAnalyticsTracking from "./UnifiedAnalyticsTracking";
 import { APP_THEME_COLOR } from "@constant/common";
 
@@ -35,7 +34,6 @@ import { APP_THEME_COLOR } from "@constant/common";
 // block the initial menu render. Only loaded after hydration (ssr: false).
 const GoogleAnalytics = dynamic(() => import("./GoogleAnalytics"), { ssr: false });
 const FacebookPixel = dynamic(() => import("./FacebookPixel"), { ssr: false });
-const EnhancedEcommerce = dynamic(() => import("./EnhancedEcommerce"), { ssr: false });
 
 // Customer App (Installable PWA) — install prompt + standalone/shortcut analytics.
 // Lazy-loaded to keep the menu render lean; the controller itself renders nothing
@@ -267,10 +265,8 @@ function ClientMenuRenderer({
 
     return (
         <>
-            <GoogleSearchConsole storeDetails={storeDetails} />
             <GoogleAnalytics storeDetails={storeDetails} />
             <FacebookPixel storeDetails={storeDetails} />
-            <EnhancedEcommerce storeDetails={storeDetails} />
 
             {/* Store Status Urgency Badge - Feature #2A
                 When ENABLE_OUTPUT_CONTROL is ON, TrustSignals (rendered above by page.tsx)

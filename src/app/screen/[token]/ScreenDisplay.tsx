@@ -14,6 +14,7 @@
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
+import { useDigitalScreenSeenSignal } from "@/hooks/useDigitalScreenSeenSignal";
 import {
   formatScreenPrice,
   getScreenDietType,
@@ -47,12 +48,6 @@ import ScreenAttribution from "./ScreenAttribution";
 import styles from "./screenDisplay.module.scss";
 
 const SCREEN_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
-const SCREEN_SEEN_REQUEST_POLICY = {
-  cache: "no-store" as RequestCache,
-  credentials: "same-origin" as RequestCredentials,
-  redirect: "manual" as RequestRedirect,
-};
-
 interface ScreenDisplayProps {
   initialData: {
     slides: ScreenSlide[];
@@ -82,6 +77,14 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     storeId,
   } = initialData;
   const cacheKey = `menulist-screen-data-${token}`;
+
+  useDigitalScreenSeenSignal({
+    contentVersion: initialData.contentVersion,
+    diagnosticPrefix: "digital_screen_display",
+    mode: "highlights",
+    storeId,
+    token,
+  });
 
   // Use a local snapshot only for a version-matched offline boot.
   const [state, setState] = useState<ScreenState>(() => {
@@ -186,63 +189,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
-
-  // HARDENING: Daily "seen" signal for operational awareness
-  // NOT a heartbeat - just ONE write per day per screen
-  // Gives ops team visibility without per-minute cost
-  useEffect(() => {
-    const todayKey = `screen_seen_${token}_${new Date().toISOString().slice(0, 10)}`;
-    let alreadySeenToday = false;
-    try {
-      alreadySeenToday = localStorage.getItem(todayKey) === "1";
-    } catch (error) {
-      // Storage can be disabled by a TV browser policy. The operational signal
-      // is best-effort and must never take the public display down with it.
-      logScreenDisplayFailure(
-        "digital_screen_display_seen_storage_read_failed",
-        error,
-        {
-          ...getBoundedScreenStringContext("token", token),
-          ...getBoundedScreenStringContext("storeId", storeId),
-        },
-      );
-    }
-
-    if (!alreadySeenToday) {
-      fetch("/api/screen/seen", {
-        ...SCREEN_SEEN_REQUEST_POLICY,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, storeId }),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            logScreenDisplayFailure(
-              "digital_screen_display_seen_signal_rejected",
-              new Error("screen_seen_signal_rejected"),
-              {
-                ...getBoundedScreenStringContext("token", token),
-                ...getBoundedScreenStringContext("storeId", storeId),
-                responseStatus: response.status,
-              },
-            );
-            return;
-          }
-          localStorage.setItem(todayKey, "1");
-        })
-        .catch((error) => {
-          // Seen-signal failures must not break the public screen.
-          logScreenDisplayFailure(
-            "digital_screen_display_seen_signal_failed",
-            error,
-            {
-              ...getBoundedScreenStringContext("token", token),
-              ...getBoundedScreenStringContext("storeId", storeId),
-            },
-          );
-        });
-    }
-  }, [token, storeId]);
 
   // Advance to next slide
   const advanceSlide = useCallback(() => {
@@ -460,33 +406,11 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
           "--screen-brand-accent": storeInfo.accentColor || DEFAULT_DIGITAL_SCREEN_ACCENT_COLOR,
         } as CSSProperties}
       >
-        <div className="slide brand-slide">
-          <div className="brand-content">
-            {storeInfo.logoUrl && (
-              <div className="brand-logo-wrap">
-                <img
-                  src={storeInfo.logoUrl}
-                  alt={storeInfo.name}
-                  className="brand-logo"
-                />
-              </div>
-            )}
-            <div className="brand-name-large">{storeInfo.name || "Menu"}</div>
-            <p className="brand-tagline">Scan to view full menu</p>
-            {qrReady && storeInfo.menuQrUrl && (
-              <div className="brand-qr">
-                <QRCode
-                  value={storeInfo.menuQrUrl}
-                  size={140}
-                  color="#1e293b"
-                  bgColor="#ffffff"
-                  errorLevel="H"
-                  style={{ borderRadius: 8 }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <BrandSlide
+          qrReady={qrReady}
+          qrUrl={storeInfo.menuQrUrl}
+          storeInfo={storeInfo}
+        />
         <ScreenAttribution activePlanType={storeInfo.activePlanType} />
       </div>
     );
@@ -572,67 +496,20 @@ function SlideContent({
 
   if (slide.type === "brand_fallback") {
     return (
-      <div className="slide brand-slide">
-        <div className="brand-content">
-          {storeInfo.logoUrl && (
-            <div className="brand-logo-wrap">
-              <img
-                src={storeInfo.logoUrl}
-                alt={storeInfo.name}
-                className="brand-logo"
-              />
-            </div>
-          )}
-          <div className="brand-name-large">{storeInfo.name || "Menu"}</div>
-          <p className="brand-tagline">Scan to view full menu</p>
-          {/* HARDENING: Lazy QR loading for cold boot */}
-          {qrReady && slideQrUrl && (
-            <div className="brand-qr">
-              <QRCode
-                value={slideQrUrl}
-                size={140}
-                color="#1e293b"
-                bgColor="#ffffff"
-                errorLevel="H"
-                style={{ borderRadius: 8 }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      <BrandSlide qrReady={qrReady} qrUrl={slideQrUrl} storeInfo={storeInfo} />
     );
   }
 
   if (slide.type === "owner_upload") {
-    const ownerSlideLabel = normalizeOwnerSlideCaption(slide.caption);
-
     return (
-      <div className="slide owner-upload-slide">
-        <img
-          src={slide.imageUrl}
-          alt={ownerSlideLabel}
-          className="owner-upload-image"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-
-        {qrReady && slideQrUrl && (
-          <div className="slide-qr-corner">
-            <QRCode
-              value={slideQrUrl}
-              size={80}
-              color="#1e293b"
-              bgColor="#ffffff"
-              errorLevel="H"
-              style={{ borderRadius: 6 }}
-            />
-            <span className="slide-qr-label">{slideQrLabel}</span>
-          </div>
-        )}
-
-        <div className="slide-store-watermark">{storeInfo.name}</div>
-      </div>
+      <OwnerUploadSlide
+        key={`${slide.id}:${slide.imageUrl}`}
+        qrLabel={slideQrLabel}
+        qrReady={qrReady}
+        qrUrl={slideQrUrl}
+        slide={slide}
+        storeInfo={storeInfo}
+      />
     );
   }
 
@@ -728,6 +605,96 @@ function SlideContent({
       )}
 
       {/* Store name — subtle bottom-right branding */}
+      <div className="slide-store-watermark">{storeInfo.name}</div>
+    </div>
+  );
+}
+
+function BrandSlide({
+  qrReady,
+  qrUrl,
+  storeInfo,
+}: {
+  qrReady: boolean;
+  qrUrl?: string;
+  storeInfo: ScreenStoreInfo;
+}) {
+  return (
+    <div className="slide brand-slide">
+      <div className="brand-content">
+        {storeInfo.logoUrl && (
+          <div className="brand-logo-wrap">
+            <img
+              src={storeInfo.logoUrl}
+              alt={storeInfo.name}
+              className="brand-logo"
+              onError={(event) => {
+                (event.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+        )}
+        <div className="brand-name-large">{storeInfo.name || "Menu"}</div>
+        <p className="brand-tagline">Scan to view full menu</p>
+        {qrReady && qrUrl && (
+          <div className="brand-qr">
+            <QRCode
+              value={qrUrl}
+              size={140}
+              color="#1e293b"
+              bgColor="#ffffff"
+              errorLevel="H"
+              style={{ borderRadius: 8 }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OwnerUploadSlide({
+  qrLabel,
+  qrReady,
+  qrUrl,
+  slide,
+  storeInfo,
+}: {
+  qrLabel: string;
+  qrReady: boolean;
+  qrUrl?: string;
+  slide: ScreenSlide;
+  storeInfo: ScreenStoreInfo;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (imageFailed) {
+    return <BrandSlide qrReady={qrReady} qrUrl={qrUrl} storeInfo={storeInfo} />;
+  }
+
+  return (
+    <div className="slide owner-upload-slide">
+      <img
+        src={slide.imageUrl}
+        alt={normalizeOwnerSlideCaption(slide.caption)}
+        className="owner-upload-image"
+        onError={() => setImageFailed(true)}
+      />
+
+      {qrReady && qrUrl && (
+        <div className="slide-qr-corner">
+          <QRCode
+            value={qrUrl}
+            size={80}
+            color="#1e293b"
+            bgColor="#ffffff"
+            errorLevel="H"
+            style={{ borderRadius: 6 }}
+          />
+          <span className="slide-qr-label">{qrLabel}</span>
+        </div>
+      )}
+
       <div className="slide-store-watermark">{storeInfo.name}</div>
     </div>
   );

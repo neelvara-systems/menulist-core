@@ -24,7 +24,7 @@ Your MenuList link is your official menu link. Share it whenever customers ask f
 ### Your Official Link
 
 After publishing your menu, your official link is ready. It looks like:  
-**yourbusiness.menulist.ai**
+**yourbusiness.menulist.online**
 
 You can find it on your dashboard or in the Share section.
 

@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { normalizeGoogleSearchConsoleVerification } from '../../src/lib/analytics/preferences';
 import {
     cleanPublicAnalyticsString,
     getPublicAnalyticsAttributionToken,
@@ -70,6 +73,65 @@ assert.equal(cleanPublicAnalyticsString({
     },
 }), undefined);
 assert.equal(coercionReads, 0);
+
+const desktopAnalyticsSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/main-app/businessSettings/tabs/AnalyticsTab.tsx'),
+    'utf8',
+);
+const analyticsWizardSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/main-app/businessSettings/tabs/AnalyticsSetupWizard.tsx'),
+    'utf8',
+);
+const mobileAnalyticsSource = readFileSync(
+    resolve(process.cwd(), 'src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx'),
+    'utf8',
+);
+const clientWebsiteSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/website/clientWebsite/index.tsx'),
+    'utf8',
+);
+const facebookPixelSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/website/clientWebsite/FacebookPixel.tsx'),
+    'utf8',
+);
+const googleAnalyticsSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/website/clientWebsite/GoogleAnalytics.tsx'),
+    'utf8',
+);
+for (const source of [desktopAnalyticsSource, analyticsWizardSource, mobileAnalyticsSource]) {
+    assert.ok(!source.includes("tAnalytics('enhancedEcommerce')"));
+    assert.ok(!source.includes("t('enhancedEcommerce')"));
+}
+assert.ok(!analyticsWizardSource.includes('Track Orders & Sales'));
+assert.ok(!analyticsWizardSource.includes('See how much money you make'));
+assert.ok(!analyticsWizardSource.includes('start seeing data in about 24 hours'));
+assert.ok(analyticsWizardSource.includes("const analytics = Form.useWatch('analytics', form) || {};"));
+assert.ok(analyticsWizardSource.includes('if (open) setCurrentStep(0);'));
+assert.ok(analyticsWizardSource.includes('save your changes'));
+assert.ok(!clientWebsiteSource.includes('EnhancedEcommerce'));
+assert.equal(
+    existsSync(resolve(process.cwd(), 'src/components/templates/website/clientWebsite/EnhancedEcommerce.tsx')),
+    false,
+);
+assert.ok(!facebookPixelSource.includes("trackFBEvent('AddToCart'"));
+assert.ok(!facebookPixelSource.includes("trackFBEvent('InitiateCheckout'"));
+assert.ok(!facebookPixelSource.includes("trackFBEvent('Purchase'"));
+assert.ok(googleAnalyticsSource.includes('gtag: (...args: unknown[]) => void;'));
+assert.ok(googleAnalyticsSource.includes('dataLayer: unknown[];'));
+assert.ok(!googleAnalyticsSource.includes('any[]'));
+
+assert.equal(normalizeGoogleSearchConsoleVerification('abcDEF_123-xyz'), 'abcDEF_123-xyz');
+assert.equal(
+    normalizeGoogleSearchConsoleVerification('<meta name="google-site-verification" content="abcDEF_123-xyz" />'),
+    'abcDEF_123-xyz',
+);
+assert.equal(
+    normalizeGoogleSearchConsoleVerification("<meta content='abcDEF_123-xyz' name='google-site-verification'>"),
+    'abcDEF_123-xyz',
+);
+assert.equal(normalizeGoogleSearchConsoleVerification('<meta name="other" content="abcDEF_123-xyz">'), undefined);
+assert.equal(normalizeGoogleSearchConsoleVerification('<script>abcDEF_123-xyz</script>'), undefined);
+assert.equal(normalizeGoogleSearchConsoleVerification('javascript:alert(1)'), undefined);
 
 assert.deepEqual(
     getBoundedMarketingEventParams({

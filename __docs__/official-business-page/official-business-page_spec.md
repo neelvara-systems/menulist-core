@@ -206,10 +206,10 @@
 
 | URL                               | What Shows                     | Condition                           |
 | --------------------------------- | ------------------------------ | ----------------------------------- |
-| `joespizza.menulist.ai/`          | OBP                            | `ENABLE_OBP = true`                 |
-| `joespizza.menulist.ai/`          | Digital Menu                   | `ENABLE_OBP = false` emergency rollback only |
-| `joespizza.menulist.ai/menu`      | Owner-claimed Menu project or explicit default alias | When either target exists; otherwise recovery ladder |
-| `joespizza.menulist.ai/food-menu` | Specific project               | Existing slug system                |
+| `joespizza.menulist.online/`          | OBP                            | `ENABLE_OBP = true`                 |
+| `joespizza.menulist.online/`          | Digital Menu                   | `ENABLE_OBP = false` emergency rollback only |
+| `joespizza.menulist.online/menu`      | Owner-claimed Menu project or explicit default alias | When either target exists; otherwise recovery ladder |
+| `joespizza.menulist.online/food-menu` | Specific project               | Existing slug system                |
 | `joespizza.com/`                  | OBP                            | Custom domain + `ENABLE_OBP = true` |
 
 **`menu` is claimable.** A project may own `/menu`; otherwise the route aliases only the explicit default project and never chooses the first project implicitly.

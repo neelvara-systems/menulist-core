@@ -321,8 +321,8 @@ Examples:
 | ----------------- | ----------------- | -------------------------------------------------------- |
 | Store name        | Store document    | `stores/{sId}.businessName`                              |
 | QR code           | Menu URL          | Generated from subdomain + project slug                  |
-| Menu link         | Project URL       | `{subdomain}.menulist.ai/{slug}`                         |
-| Short link        | Same as menu link | Displayed as `menulist.ai/{slug}`                        |
+| Menu link         | Project URL       | `{subdomain}.menulist.online/{slug}`                         |
+| Short link        | Same as menu link | Displayed as the hosted `menulist.online` link or custom domain URL |
 | "Updated on" date | Last publish      | `projects/{docId}.modifiedOn`                            |
 | Store logo        | Store document    | `stores/{sId}.logoUrl` (optional, for premium templates) |
 | Brand color       | Store document    | `publicPresence.accentColor`, then existing color fallbacks |

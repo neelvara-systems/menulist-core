@@ -11,7 +11,7 @@ import {
 } from '@lib/answerlattice/supportTruthExport';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
@@ -115,15 +115,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     try {
+        const firestoreAdmin = requireAnswerlatticeFirestoreAdmin();
         const { json, payload } = await buildAnswerlatticeSupportTruthExport({
-            db: answerlatticeFirestoreAdmin,
+            db: firestoreAdmin,
             productName: access.storeName,
             tId: access.scope.tenantId,
             sId: access.scope.storeId,
         });
         await recordAnswerlatticeSupportTruthExportAudit({
             actorId: access.user.id || access.user.email,
-            db: answerlatticeFirestoreAdmin,
+            db: firestoreAdmin,
             json,
             payload,
             tId: access.scope.tenantId,

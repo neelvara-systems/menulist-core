@@ -10,7 +10,7 @@ import { collectObpMediaReferences } from "@lib/media/obpMediaReferences";
 import { assertTenantUpdateSucceeded, updateTenant } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
-import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { getResolvedAnalyticsPreferences, normalizeGoogleSearchConsoleVerification } from "@lib/analytics/preferences";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { parseWorkingHoursRanges, WORKING_HOURS_DAY_KEYS } from "@lib/hours/hoursEngine";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
@@ -211,6 +211,9 @@ function normalizeAnalyticsSettings(analytics?: Record<string, any> | null) {
     if (!next.googleSearchConsole && next.searchConsoleVerification) {
         next.googleSearchConsole = next.searchConsoleVerification;
     }
+    const googleSearchConsole = normalizeGoogleSearchConsoleVerification(next.googleSearchConsole);
+    if (googleSearchConsole) next.googleSearchConsole = googleSearchConsole;
+    else delete next.googleSearchConsole;
     delete next.searchConsoleVerification;
     return next;
 }
@@ -356,7 +359,7 @@ function BusinessSettingsPresenceMonitorCard({
                 posSyncStatus: null,
                 projectId: null,
                 projectName: null,
-                screenLastSeenAt: null,
+                screenContentVersion: null,
                 screenToken,
                 storeLogo: storeDetails.logo || null,
                 storeName: getStoreContextName(storeDetails, 'Your Business'),
@@ -969,7 +972,10 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                     {FEATURE_FLAGS.ENABLE_TEMP_STATUS ? (
                         <div ref={publicTruthFocusRefs.current.tempStatus}>
                             <TempStatusCard
-                                setStoreDetails={setStoreDetails}
+                                setStoreDetails={(update) => setStoreDetails((current) => {
+                                    const next = typeof update === 'function' ? update(current) : update;
+                                    return next || current;
+                                })}
                                 storeDetails={storeDetails}
                             />
                         </div>

@@ -16,6 +16,7 @@ import {
     LuShieldCheck,
     LuSparkles,
     LuUpload,
+    LuVideo,
     LuWorkflow,
 } from "react-icons/lu";
 import {
@@ -81,6 +82,11 @@ const CAMPAIGNCUE_FEATURE_PROOF_IMAGES = {
         src: "/campaigncue-website-assets/dummy/campaigncue-feature-reusable-templates.webp",
         alt: "Sample CampaignCue reusable pack template flow showing save, refresh, review, and export steps.",
         caption: "Dummy reusable-pack flow showing fact refresh before export.",
+    },
+    "video-studio": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-pack-studio.webp",
+        alt: "Illustrative CampaignCue pack interface used to explain the source-linked Video Reel Studio workflow with dummy business data.",
+        caption: "Illustrative source-linked workspace preview; real rendering stays inside the owner app.",
     },
 } satisfies Record<CampaignCueWebsiteFeature["previewKind"], CampaignCueFeatureProofImage>;
 
@@ -236,6 +242,30 @@ function PackStudioPreview() {
     );
 }
 
+function VideoStudioPreview() {
+    const outputs = ["Hook direction", "Scene timeline", "Burned-in captions", "Owner image/audio", "9:16 · 1:1 · 16:9", "Manual download"];
+
+    return (
+        <MiniChrome title="Video Reel Studio">
+            <div className="campaigncue-feature-pack-preview">
+                <section>
+                    <span><LuVideo aria-hidden="true" /> In-house browser render</span>
+                    <h3>Checked weekend offer · 14 seconds</h3>
+                    <p>Source-linked scenes, current brand, owner approval, and zero provider credits.</p>
+                </section>
+                <div>
+                    {outputs.map((output) => (
+                        <span key={output}>
+                            <LuCheckCircle2 aria-hidden="true" />
+                            {output}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        </MiniChrome>
+    );
+}
+
 function CreativeStudioPreview() {
     return (
         <MiniChrome title="Creative Studio">
@@ -368,6 +398,8 @@ function CampaignCueFeaturePreview({ feature }: { feature: CampaignCueWebsiteFea
             return <ProofDeckPreview />;
         case "templates":
             return <TemplatePreview />;
+        case "video-studio":
+            return <VideoStudioPreview />;
         default:
             return <PackStudioPreview />;
     }

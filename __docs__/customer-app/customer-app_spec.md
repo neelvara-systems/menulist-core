@@ -133,7 +133,7 @@ An **installable customer retention surface** that:
 ### Flow 1: Customer Installs the App
 
 ```
-Customer visits joespizza.menulist.ai for 3rd time
+Customer visits joespizza.menulist.online for 3rd time
     ↓
 System shows install prompt: "Save this menu for faster access"
     ↓
@@ -209,7 +209,7 @@ New customers see updated branding
 
 If the cached project-summary lookup used to choose `/menu` is unavailable, the manifest stays valid and falls back to `/` for that response. That degraded path is observable through capped `customer_app_manifest_start_url_lookup_failed` diagnostics with shape-only metadata; it does not change the normal `/menu` policy when the summary read succeeds.
 
-**Routing Model (Canonical):** Each store is served from its own subdomain (`{subdomain}.menulist.ai`) or verified custom domain (`joespizza.com`). The manifest is served from the tenant origin root: `https://joespizza.menulist.ai/manifest.webmanifest`. Path-based manifests (e.g., `menulist.ai/{slug}/manifest.webmanifest`) are NOT used — they would split scope across tenants and weaken install identity. The manifest ignores route-level `?start=` identity and always represents one store-level Customer App. See `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts` for the existing domain resolution layer.
+**Routing Model (Canonical):** Each store is served from its own subdomain (`{subdomain}.menulist.online`) or verified custom domain (`joespizza.com`). The manifest is served from the tenant origin root: `https://joespizza.menulist.online/manifest.webmanifest`. Path-based manifests (e.g., `menulist.ai/{slug}/manifest.webmanifest`) are NOT used — they would split scope across tenants and weaken install identity. The manifest ignores route-level `?start=` identity and always represents one store-level Customer App. See `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts` for the existing domain resolution layer.
 
 ### 2. App Icon System
 
@@ -449,7 +449,7 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 
 ##### QA-3. SW scope migration — customer origin
 
-- [ ] Open a customer tenant origin (e.g. `demo.menulist.ai`) that previously had `sw.js` registered (simulate by manually registering before the fix)
+- [ ] Open a customer tenant origin (e.g. `demo.qa.menulist.digital`) that previously had `sw.js` registered (simulate by manually registering before the fix)
 - [ ] Reload the page after the fix is deployed
 - [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw-customer.js`
 - [ ] Verify the old `sw.js` registration was unregistered (migration path in `ServiceWorkerRegister.tsx`)
@@ -457,7 +457,7 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 
 ##### QA-4. Cross-origin SW isolation
 
-- [ ] Install Customer App on `demo.menulist.ai`
+- [ ] Install Customer App on `demo.qa.menulist.digital`
 - [ ] Navigate to `app.menulist.ai` (owner dashboard) in the same browser
 - [ ] Verify the owner dashboard registers `sw.js` (not `sw-customer.js`) on its own origin
 - [ ] Verify the customer tenant's `sw-customer.js` is still registered on its origin (not overwritten)
@@ -554,7 +554,7 @@ Customer App analytics uses the **existing `analytics` collection** and **existi
 
 | ID   | Requirement                                              | Priority | Notes                                                                      |
 | ---- | -------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| FR1  | Dynamic manifest per store                               | P0       | Route: `{subdomain}.menulist.ai/manifest.webmanifest` (tenant origin root) |
+| FR1  | Dynamic manifest per store                               | P0       | Route: `{subdomain}.menulist.online/manifest.webmanifest` (tenant origin root) |
 | FR2  | Icon generation endpoint                                 | P0       | `/api/app-icons/{storeId}/{size}`                                          |
 | FR3  | Apple touch icon support                                 | P0       | `/icons/apple-touch-icon-180x180.png`                                      |
 | FR4  | Install prompt on 3rd visit                              | P0       | 30-day dismissal suppression                                               |
@@ -601,7 +601,7 @@ Detailed breakdown in `customer-app_firebase.md`.
 ┌─────────────────────────────────────────────────────────────────┐
 │                     CUSTOMER VISITS STORE                        │
 │                                                                  │
-│   joespizza.menulist.ai → 3rd visit detected                   │
+│   joespizza.menulist.online → 3rd visit detected                   │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼

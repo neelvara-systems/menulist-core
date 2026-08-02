@@ -3,7 +3,7 @@
 **Status:** SCAFFOLDING ONLY / PRODUCT DISABLED (GBP API and runtime completion required; do not flip flags)
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
-**Last Runtime Audit:** July 11, 2026
+**Last Runtime Audit:** August 1, 2026
 **Audience:** Developers  
 **Pillar:** 3 of 6
 
@@ -108,6 +108,12 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 | Zod validation      | ✅ Available | For request validation             |
 
 ## Existing Scaffolding (Not Ready to Activate)
+
+The dormant `/api/reviews/suggest` route reserves paid units before provider
+work and refunds any unsettled request. Its per-user distributed limiter also
+fails closed: limiter infrastructure outage returns 503, while actual quota
+exhaustion returns 429. These source protections do not activate the feature or
+change the GBP launch blocker.
 
 | File                                             | Purpose                                                 | Status      |
 | ------------------------------------------------ | ------------------------------------------------------- | ----------- |

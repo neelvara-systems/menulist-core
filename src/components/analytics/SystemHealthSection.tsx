@@ -14,6 +14,7 @@ import {
   CloudServerOutlined,
 } from '@ant-design/icons';
 import { RefreshButton } from './RefreshButton';
+import { normalizeAnalyticsPercentage } from './analyticsPresentation';
 
 const { Title, Text } = Typography;
 
@@ -76,7 +77,7 @@ export const SystemHealthSection: React.FC<SystemHealthSectionProps> = ({
 
   // Calculate percentage
   const getPercentage = (value: number, threshold: number) => {
-    return Math.min((value / threshold) * 100, 100);
+    return normalizeAnalyticsPercentage(value, threshold);
   };
 
   return (
@@ -114,7 +115,7 @@ export const SystemHealthSection: React.FC<SystemHealthSectionProps> = ({
       {/* Health Metrics */}
       <Row gutter={[16, 16]}>
         {metrics.map((metric, index) => (
-          <Col key={metric.name || index} xs={24} md={12} lg={8}>
+          <Col key={`${metric.name}:${index}`} xs={24} md={12} lg={8}>
             <Card loading={loading}>
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {/* Header */}

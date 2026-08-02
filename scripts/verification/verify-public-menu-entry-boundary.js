@@ -40,6 +40,7 @@ const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const rateLimits = read('src/lib/rateLimit/configs.ts');
 const createRoute = read('src/app/api/public/create-menu/route.ts');
 const claimRoute = read('src/app/api/public/create-menu/claim/route.ts');
+const claimUserAuthority = read('src/lib/public-menu-entry/claimUserAuthority.ts');
 const priceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const slugBoundary = read('src/lib/public-menu-entry/claimProjectSlug.ts');
 const createClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
@@ -111,10 +112,15 @@ for (const fieldPath of ['extractedData', 'extractedBusinessProfile', 'sourceMet
   'const reusableDraft = await findReusableDraftForUser(userId, { sourceInputHash });',
   'const statusOnly = searchParams.get(\'statusOnly\')',
   'key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`',
-  "status: providerUnavailable ? 503 : 429",
+  "providerUnavailable\n            ? { status: 503 }",
   'extractedData = normalizeExtractedMenuPriceTruth(extractedData);',
   "const responseStatus = draft.extractionStatus === 'completed' && !extractedData",
   "error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null",
+  'withPublicMenuEntryPrivateResponse',
+  'const imageFile = imageValue instanceof File ? imageValue : null;',
+  'normalizePublicDraftSourceForProject(draft, normalizedDraftId, {',
+  'const normalizedPreview = normalizePublicCreateMenuPreviewDraft({',
+  'if (!normalizedPreview || !draftSource)',
 ].forEach((token) => requireToken(createRoute, token, 'Public Menu Entry intake/poll route'));
 requireOrder(createRoute, [
   'const admissionResponse = await checkAuthenticatedPublicMenuEntryAdmission(userId);',
@@ -162,18 +168,36 @@ requireOrder(createRoute, [
   "revalidateTag(`store-${result.storeId}`, { expire: 0 })",
   "revalidateTag('client-stores', { expire: 0 })",
   "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')",
+  'withPublicMenuClaimPrivateResponse',
+  'assertCurrentUserAvailableForOnboardingInTransaction(',
+  'resolvePublicMenuClaimUserAuthority({',
+  'currentAuthoritySession',
+  'providerUnavailable\n                    ? { status: 503 }',
 ].forEach((token) => requireToken(claimRoute, token, 'Public Menu Entry claim route'));
 requireOrder(claimRoute, [
   'const storeDoc = await transaction.get(storeRef);',
   'const storeData = storeDoc.data() || {};',
+  'resolvePublicMenuClaimUserAuthority({',
   'requireAnyStorePermissionForStoreData(',
   '[PERMISSIONS.PUBLISH_MENU]',
   'transaction.set(projectRef, projectData);',
 ], 'Public Menu Entry current publish permission and write order');
 requireOrder(claimRoute, [
+  'assertCurrentUserAvailableForOnboardingInTransaction(',
+  'createTenantStoreInTransaction(transaction, db, {',
+], 'Public Menu Entry new-account current-user lock before allocation');
+requireOrder(claimRoute, [
   'projectData._mce = toMCEMetadata(mceValidate({',
   'transaction.set(projectRef, projectData);',
 ], 'Public Menu Entry MCE stamp stays in project transaction');
+
+[
+  'isCurrentUserRecordEligible({',
+  'normalizeAuthSessionStoreScope(params.userData)',
+  'scope.tenantId !== params.expectedTenantId',
+  'scope.storeId !== params.expectedStoreId',
+  'candidate.role.length > 0',
+].forEach((token) => requireToken(claimUserAuthority, token, 'Public Menu Entry current-user authority boundary'));
 
 [
   'isReservedProjectSlug(proposedSlug)',
@@ -259,9 +283,10 @@ forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry 
   'if (refreshTimer !== null) clearTimeout(refreshTimer);',
 ].forEach((token) => requireToken(successClient, token, 'Public Menu Entry success handoff'));
 [
-  "import { PLATFORM_DOMAIN } from '@constant/urls';",
-  'normalizedHostname === normalizedPlatformDomain',
-  'normalizedHostname.endsWith(`.${normalizedPlatformDomain}`)',
+  'MENULIST_TENANT_BASE_DOMAINS',
+  'PLATFORM_DOMAIN_ALIASES',
+  'trustedPlatformHosts.includes(normalizedHostname)',
+  'normalizedHostname.endsWith(`.${tenantBaseDomain}`)',
 ].forEach((token) => requireToken(successUrl, token, 'Public Menu Entry success URL host boundary'));
 [
   'PUBLIC_CREATE_MENU_LAST_CLAIM_KEY',

@@ -112,7 +112,7 @@ const desktopCommunicationKit = read('src/components/templates/main-app/useMenuL
   "document.execCommand('copy')",
   "logUseMenuListFailure('use_menulist_communication_kit_copy_failed'",
   "logUseMenuListFailure('use_menulist_communication_kit_whatsapp_open_failed'",
-  "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
+  'openIsolatedBrowserUrl(whatsappUrl)',
   'whatsappUrlLength',
   'copyMessageLength',
   'whatsappMessageLength',
@@ -137,7 +137,7 @@ const mobileCommunicationKit = read('src/components/mobile/components/Communicat
   "logMobileOwnerFailure('mobile_communication_kit_native_share_failed'",
   "logMobileOwnerFailure('mobile_communication_kit_whatsapp_open_failed'",
   "if (error instanceof DOMException && error.name === 'AbortError') return;",
-  "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
+  'openIsolatedBrowserUrl(whatsappUrl)',
   'whatsappUrlLength',
   'copyMessageLength',
   'nativeShareMessageLength',
@@ -145,6 +145,7 @@ const mobileCommunicationKit = read('src/components/mobile/components/Communicat
   "withAnalyticsSource(input.menuLink, source)",
   'minHeight: 48',
 ].forEach((token) => requireToken(mobileCommunicationKit, token, 'mobile communication kit'));
+forbidToken(mobileCommunicationKit, 'window.open(', 'mobile communication kit no-opener handle acknowledgement');
 [
   'console.error',
   'fetch(',
@@ -161,7 +162,7 @@ const useMenuList = read('src/components/templates/main-app/useMenuList/index.ts
   'buildPrintableAssetsUrl(data?.projectId)',
   'recordStarterActivationSignal',
   "getBoundedUseMenuListStringContext('copiedText'",
-  "window.open(url, '_blank', 'noopener,noreferrer')",
+  "openIsolatedBrowserUrl(url)",
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf',
 ].forEach((token) => requireToken(useMenuList, token, 'Use MenuList output center'));
 [
@@ -201,9 +202,12 @@ const menuKitSection = read('src/components/templates/main-app/projects/b2cView/
   "getBoundedExportStringContext('menuUrl'",
   'hasClipboardWrite',
   'hasCopyFallback',
-  "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
+  "openIsolatedBrowserUrl(whatsappUrl)",
+  'const date = toDate(value);',
+  'return Number.isFinite(date.getTime()) ? date : undefined;',
 ].forEach((token) => requireToken(menuKitSection, token, 'Menu Kit share modal section'));
 forbidToken(menuKitSection, 'console.error', 'Menu Kit share modal section');
+forbidToken(menuKitSection, '(ts as any)?.seconds', 'Menu Kit share modal timestamp boundary');
 
 const exportDiagnostics = read('src/lib/export/exportDiagnostics.ts');
 [

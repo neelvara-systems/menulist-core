@@ -92,10 +92,7 @@ export function isNotificationSmtpConfigured(): boolean {
 
 export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.ANSWERLATTICE) {
     const isAnswerlattice = productId === PRODUCT_IDS.ANSWERLATTICE;
-    const answerlatticeDbAvailable = Boolean(
-        answerlatticeFirestoreAdmin
-        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function'
-    );
+    const answerlatticeDbAvailable = Boolean(answerlatticeFirestoreAdmin);
 
     return {
         enabled: FEATURE_FLAGS.ENABLE_ANSWERLATTICE_NOTIFICATIONS,
@@ -109,7 +106,7 @@ export function getNotificationReadiness(productId: ProductId | string = PRODUCT
 
 function getNotificationLogTarget(productId?: ProductId | string): NotificationLogTarget | null {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
-        if (answerlatticeFirestoreAdmin && typeof (answerlatticeFirestoreAdmin as any).collection === 'function') {
+        if (answerlatticeFirestoreAdmin) {
             return {
                 db: answerlatticeFirestoreAdmin,
                 collectionName: DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS,

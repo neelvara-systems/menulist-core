@@ -1,9 +1,10 @@
 'use client';
 
-import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
+import { getMenuUrl, MENULIST_TENANT_BASE_DOMAIN, normalizeBaseUrl } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -663,10 +664,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     const handleOpenSubdomain = useCallback(() => {
         if (!subdomainUrl) return;
         try {
-            const opened = window.open(subdomainUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw createDomainSettingsError('desktop_domain_settings_subdomain_open_blocked');
-            }
+            openIsolatedBrowserUrl(subdomainUrl);
         } catch (error) {
             logStoreDataFailure(
                 'desktop_domain_settings_subdomain_open_failed',
@@ -706,10 +704,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
         if (!activeDomain) return;
         const domainUrl = normalizeBaseUrl(activeDomain);
         try {
-            const opened = window.open(domainUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw createDomainSettingsError('desktop_domain_settings_domain_open_blocked');
-            }
+            openIsolatedBrowserUrl(domainUrl);
         } catch (error) {
             logStoreDataFailure(
                 'desktop_domain_settings_domain_open_failed',
@@ -811,7 +806,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                         ) : (
                             <>
                                 <Input
-                                    addonAfter={`.${PLATFORM_DOMAIN}`}
+                                    addonAfter={`.${MENULIST_TENANT_BASE_DOMAIN}`}
                                     placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                     onBlur={(event) => void checkAvailability(event.target.value)}

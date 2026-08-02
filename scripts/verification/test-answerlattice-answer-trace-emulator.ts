@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import { DB_COLLECTIONS } from '../../src/constants/database';
 import { PRODUCT_IDS } from '../../src/constants/product';
 import { loadAnswerlatticeAnswerTraces } from '../../src/lib/answerlattice/answerTraceServer';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const scope = { tId: 41, sId: 4101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const collection = () => db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY);
 
 const baseHistory = (createdOn: Timestamp) => ({
@@ -24,10 +25,6 @@ const baseHistory = (createdOn: Timestamp) => ({
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof db.collection !== 'function') {
-        throw new Error('Answerlattice emulator Firestore is not configured');
-    }
-
     await db.recursiveDelete(collection());
     const now = Date.now();
 

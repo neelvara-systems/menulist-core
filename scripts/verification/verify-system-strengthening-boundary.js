@@ -165,6 +165,8 @@ function verifyBatchWorkerAdmission() {
 function verifyScreenSeenRateLimit() {
   const route = 'src/app/api/screen/seen/route.ts';
   const source = read(route);
+  const commitModule = 'src/lib/screen/screenSeenServer.ts';
+  const commitSource = read(commitModule);
   [
     'rejectInvalidOrOversizedDeclaredBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
     "key: `screen-seen:ip:${ipHash}`",
@@ -173,13 +175,18 @@ function verifyScreenSeenRateLimit() {
     'hashPublicRateLimitValue(token)',
     'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
     'rateLimitedSeenResponse',
-    "status: 429",
+    "status: reason === 'provider_unavailable' ? 503 : 429",
+    'failClosedOnProviderError: true',
     "'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS)",
     'commitCurrentScreenSeen',
+  ].forEach((token) => {
+    assertIncludes(source, token, `${route} must retain public screen signal guard ${token}`);
+  });
+  [
     'isCurrentScreenSeenPublicScope',
     'transaction.update(params.screenRef',
   ].forEach((token) => {
-    assertIncludes(source, token, `${route} must retain public screen signal guard ${token}`);
+    assertIncludes(commitSource, token, `${commitModule} must retain transactional public screen signal guard ${token}`);
   });
   assertOrder(
     source,
@@ -194,8 +201,8 @@ function verifyScreenSeenRateLimit() {
     'cheap public rate limits must run before the current-authority transaction',
   );
   assertOrder(
-    source,
-    route,
+    commitSource,
+    commitModule,
     [
       'transaction.get(params.screenRef)',
       'transaction.get(storeRef)',
@@ -284,7 +291,7 @@ function verifyAiRouteControls() {
       'buildAnswerlatticeRateLimitKey',
       'requireAnswerlatticePermission',
       'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT',
-      'answerlatticeFirestoreAdmin',
+      'requireAnswerlatticeFirestoreAdmin',
       "generationMode: 'deterministic'",
       'ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS',
       'logRuntimeFailure',

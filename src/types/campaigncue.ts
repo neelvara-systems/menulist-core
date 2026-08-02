@@ -425,6 +425,8 @@ export interface CampaignCueResultReceipt {
     experimentVariable?: CampaignCueExperimentVariable;
     confidence: "owner_reported";
     recordedAt?: unknown;
+    videoProjectId?: string;
+    videoRenderReceiptId?: string;
 }
 
 export interface CampaignCuePackFreshness {
@@ -469,7 +471,7 @@ export interface CampaignCueAsset extends CampaignCueTimestamped {
     id: string;
     workspaceId: string;
     name: string;
-    assetType: "image" | "video" | "document" | "logo" | "export";
+    assetType: "image" | "video" | "audio" | "document" | "logo" | "export";
     status: "ready" | "blocked" | "archived";
     source: "upload" | "generated" | "imported" | "manual";
     rights: {
@@ -485,6 +487,13 @@ export interface CampaignCueAsset extends CampaignCueTimestamped {
         downloadUrl?: string;
         mimeType?: string;
         sizeBytes?: number;
+        previewStoragePath?: string;
+        previewStorageGeneration?: string;
+        previewMimeType?: "image/png" | "image/webp" | "image/jpeg";
+        previewSizeBytes?: number;
+        width?: number;
+        height?: number;
+        durationSeconds?: number;
     };
     usageRefs: Array<{
         campaignId?: string;

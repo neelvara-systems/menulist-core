@@ -1,35 +1,18 @@
 export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
-import {
-    ANSWERLATTICE_ALL_PERMISSIONS,
-    type AnswerlatticePermissionKey,
-    DEFAULT_ANSWERLATTICE_ROLE_IDS,
-    DEFAULT_ANSWERLATTICE_ROLE_METADATA,
-    normalizeAnswerlatticeRolePermissions,
-} from '@constant/answerlattice/permissions';
+import { ANSWERLATTICE_ALL_PERMISSIONS, type AnswerlatticePermissionKey, DEFAULT_ANSWERLATTICE_ROLE_IDS, DEFAULT_ANSWERLATTICE_ROLE_METADATA, normalizeAnswerlatticeRolePermissions, } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
-import {
-    findAnswerlatticeRole,
-    normalizeAnswerlatticeRolesForStore,
-} from '@lib/answerlattice/accessControl';
-import {
-    getAnswerlatticeStaffClaimMembership,
-    hasAnswerlatticeTenantAdminClaim,
-    normalizeAnswerlatticeStaffClaimPlatformRole,
-    readActiveAnswerlatticeStaffClaimState,
-} from '@lib/answerlattice/staffClaimsContracts';
+import { findAnswerlatticeRole, normalizeAnswerlatticeRolesForStore, } from '@lib/answerlattice/accessControl';
+import { getAnswerlatticeStaffClaimMembership, hasAnswerlatticeTenantAdminClaim, normalizeAnswerlatticeStaffClaimPlatformRole, readActiveAnswerlatticeStaffClaimState, } from '@lib/answerlattice/staffClaimsContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import {
-    getAuthUserByEmail,
-    getUniqueAuthUserByEmailFromCollection,
-} from '@lib/auth/serverUserContext';
+import { getAuthUserByEmail, getUniqueAuthUserByEmailFromCollection, } from '@lib/auth/serverUserContext';
 import { resolveSetClaimsRole, resolveSetClaimsWorkspaceFromStore } from '@lib/auth/setClaimsWorkspace';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
-import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin, requireAnswerlatticeAuthAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { normalizeStorePermissionScopeDocumentId, type StorePermissionScopeDocumentId } from '@lib/permissions/server';
@@ -130,7 +113,7 @@ async function createAnswerlatticeCustomTokenIfNeeded(
     let answerlatticeUid: string;
 
     try {
-        const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
+        const answerlatticeUser = await requireAnswerlatticeAuthAdmin().getUserByEmail(email);
         answerlatticeUid = answerlatticeUser.uid;
     } catch (error: any) {
         if (error?.code !== 'auth/user-not-found') {
@@ -139,7 +122,7 @@ async function createAnswerlatticeCustomTokenIfNeeded(
         }
 
         try {
-            const newAnswerlatticeUser = await answerlatticeAuthAdmin.createUser({
+            const newAnswerlatticeUser = await requireAnswerlatticeAuthAdmin().createUser({
                 email,
                 emailVerified: true,
                 displayName: displayName || undefined,
@@ -147,18 +130,18 @@ async function createAnswerlatticeCustomTokenIfNeeded(
             answerlatticeUid = newAnswerlatticeUser.uid;
         } catch (createError: any) {
             if (createError?.code !== 'auth/email-already-exists') throw createError;
-            answerlatticeUid = (await answerlatticeAuthAdmin.getUserByEmail(email)).uid;
+            answerlatticeUid = (await requireAnswerlatticeAuthAdmin().getUserByEmail(email)).uid;
         }
     }
 
-    await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUid, customClaims);
-    return answerlatticeAuthAdmin.createCustomToken(answerlatticeUid, customClaims);
+    await requireAnswerlatticeAuthAdmin().setCustomUserClaims(answerlatticeUid, customClaims);
+    return requireAnswerlatticeAuthAdmin().createCustomToken(answerlatticeUid, customClaims);
 }
 
 async function getAnswerlatticeAuthUserByEmail(email: string): Promise<any | null> {
     if (shouldUseSharedAnswerlatticeFirebase) return null;
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') return null;
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) return null;
 
     const normalizedEmail = String(email || '').toLowerCase().trim();
     if (!normalizedEmail) return null;

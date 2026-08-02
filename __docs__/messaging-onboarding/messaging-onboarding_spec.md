@@ -210,7 +210,7 @@ When expanding to a new country:
    → Tenant, store, project, project summary, public URL, user account
 
 8. System sends final message
-   → "Your menu is live: spice-garden.menulist.ai"
+   → "Your menu is live: spice-garden.menulist.online"
    → "Manage anytime: menulist.ai/login"
 
 9. WhatsApp tunnel closed permanently
@@ -547,7 +547,7 @@ The preview page is the most critical conversion surface.
 
 ### Security (INV-2, ADR-13)
 
-- Preview URL: `preview.menulist.ai/{sessionId}?token={previewToken}`
+- Preview URL: `https://qa.menulist.digital/msg-preview/{sessionId}?token={previewToken}` in QA/staging, and `https://menulist.ai/msg-preview/{sessionId}?token={previewToken}` in production.
 - Token is a unique 20+ char cryptographically random string, sent ONLY to owner's WhatsApp
 - Approve action validates: `request.token === session.previewToken` (token-only, no WhatsApp confirmation)
 - If owner forwards link → recipient can view AND approve (owner's delegation choice — data is non-sensitive)
@@ -785,7 +785,7 @@ This feature is successful when:
 | 2   | WhatsApp template message approval timeline                       | Affects proactive messages   | To research                                                                                                                                                                                           |
 | 3   | User account creation method — phone-based auth or magic link?    | Affects dashboard login flow | **Decision: Claim link via WhatsApp. Owner can claim with Google, email/password, or WhatsApp number/passcode; phone number stays linked to user.**                                                   |
 | 4   | Free setup duration — how long before billing required?            | Affects business model       | **Decision (ADR-12): Verified publish → 7-day starter activation → focused starter workspace → owner pays via existing Razorpay to keep the same public URL and QR live. See `_impl.md §17`.** |
-| 5   | Preview page domain — dedicated subdomain or path?                | Affects infrastructure       | **Decision: `preview.menulist.ai/{sessionId}` or path under main domain**                                                                                                                             |
+| 5   | Preview page domain — dedicated subdomain or path?                | Affects infrastructure       | **Decision: QA/staging uses `https://qa.menulist.digital/msg-preview/{sessionId}`; production uses the same path under `https://menulist.ai` unless a later approved preview host changes it.** |
 
 ---
 

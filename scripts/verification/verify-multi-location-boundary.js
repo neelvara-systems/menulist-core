@@ -170,12 +170,17 @@ function verifyCreateRoute(createRoute) {
   [
     'FEATURE_FLAGS.ENABLE_OUTLET_CREATION',
     'FEATURE_FLAGS.ENABLE_OUTLET_BILLING',
+    'expectedStoreId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+    'expectedTenantId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+    'if (expectedStoreId !== storeDocumentId || expectedTenantId !== tenantDocumentId)',
     'MAX_OUTLET_CREATION_MASTER_PROJECTS = 200',
     "sub.status !== 'active'",
     'getRazorpayManagedSubscriptionId(sub)',
     'isRazorpayQuantityUpdateUnsupported(billingError)',
     'outletCreationLock',
     'buildUserStoreAccessUpdate(',
+    'storesList: [...normalizedStoresList, {',
+    'storeKey,',
     'buildSummaryProjectPayload(',
     'LEGACY_PLATFORM_COUNTER_DOCUMENT_ID',
     'findNextAvailablePlatformEntityId(',
@@ -227,6 +232,7 @@ function verifyCreateRoute(createRoute) {
     'multi_outlet_create_post_commit_effect_failed',
     'effectsPending: postCommit.effectsPending',
     'failedEffectCount: postCommit.failedEffectCount',
+    'storeKey: result.storeKey',
   ].forEach((token) => assertIncludes(createRoute, token, 'Outlet create route boundary'));
 
   [
@@ -234,6 +240,17 @@ function verifyCreateRoute(createRoute) {
     'const buildUniqueOutletSlug = async',
     'const tenantData = (await tenantRef.get()).data();',
   ].forEach((token) => assertNotIncludes(createRoute, token, 'Outlet create must not use non-transactional slug or tenant authority'));
+
+  assertOrder(
+    createRoute,
+    [
+      'const v = validateAPIInput(schema, body);',
+      'if (expectedStoreId !== storeDocumentId || expectedTenantId !== tenantDocumentId)',
+      'const masterStoreRef = db.doc(',
+      'const storeSnap = await masterStoreRef.get();',
+    ],
+    'Outlet create initiating/current scope admission before Firestore reads',
+  );
 
   assertOrder(
     createRoute,
@@ -613,6 +630,8 @@ function verifyClientBoundaries(files) {
     'MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES = 16 * 1024',
     'OUTLET_LOCATION_PAYMENT_REQUIRED_CODE',
     'isOutletCreateResponse',
+    'storeKey: string;',
+    'isNonEmptyString(data.storeKey)',
     'isOutletRenameResponse',
     'isOutletDeactivateResponse',
     'isOutletPaymentRequiredResponse',
@@ -690,7 +709,10 @@ function verifyClientBoundaries(files) {
     'readDesktopLocationActionResponse(res,',
     'isOutletDeactivateResponse(data, outletStoreId)',
     'desktop_location_deactivate_response_invalid',
-    'if (Number(targetStoreId) === currentStoreId) return;',
+    'const normalizedTargetStoreId = normalizeStoreSwitchStoreId(targetStoreId);',
+    'const currentStoreId = normalizeStoreSwitchStoreId(activeStoreContext || storeDetails?.storeId);',
+    'normalizedTargetStoreId === currentStoreId',
+    'getStoreSummaryId(store) === normalizedTargetStoreId && store.active !== false',
     'data.billingReductionPending',
     '<AddOutletModal',
     '<OutletRenameModal',
@@ -703,6 +725,12 @@ function verifyClientBoundaries(files) {
     'isOutletPaymentRequiredResponse(data)',
     'isOutletCreateResponse(data)',
     'desktop_location_create_response_invalid',
+    'actionInFlightRef.current',
+    'isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)',
+    'expectedStoreId: String(expectedStoreId)',
+    'expectedTenantId: String(expectedTenantId)',
+    'storeKey: data.storeKey',
+    "String(previous.tenantId ?? '') === String(expectedTenantId)",
     'router.push(\'/billing\')',
   ].forEach((token) => assertIncludes(addOutletModal, token, 'Desktop Add Outlet boundary'));
 
@@ -742,6 +770,9 @@ function verifyClientBoundaries(files) {
     'data.billingReductionPending',
     'mobile_location_rename_response_invalid',
     'mobile_location_create_response_invalid',
+    'expectedStoreId: String(expectedStoreId)',
+    'expectedTenantId: String(expectedTenantId)',
+    'storeKey: data.storeKey',
     'onOpenBilling',
     'style={{ minHeight: 44 }}',
     'return <MobileLocationsScreenContent key={scopeKey} {...props} />;',

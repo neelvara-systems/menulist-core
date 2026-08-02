@@ -36,7 +36,7 @@ function assertOrder(source, tokens, label) {
 function verifyRoute(route) {
   [
     "export const dynamic = 'force-dynamic';",
-    'withPlatformAuth(async (request: NextRequest, session: any) =>',
+    'withPlatformAuth(async (request: NextRequest, session) =>',
     'const EXTRACTION_OPERATION_LIMIT = 300;',
     'const BUSINESS_HEALTH_EVENT_LIMIT = 200;',
     'const ALERT_LIMIT = 30;',
@@ -75,6 +75,10 @@ function verifyRoute(route) {
     'const userRateLimitHash = hashPublicRateLimitValue(userId);',
     'key: `platform-cost-posture:${userRateLimitHash}`',
     'failClosedOnProviderError: true',
+    "'Cache-Control': 'private, no-store'",
+    "'X-Content-Type-Options': 'nosniff'",
+    "const providerUnavailable = rateLimit.reason === 'provider_unavailable';",
+    "...(!providerUnavailable ? { resetAt: rateLimit.resetAt } : {})",
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
     "Authorization Failed - Platform Cost Posture Current Role",
     "logger.security('Rate Limit Exceeded - Platform Cost Posture'",
@@ -93,9 +97,9 @@ function verifyRoute(route) {
     "status: 'pending' as const",
     'blocksBillForecast: true',
     'buildGuardrails(systemConfig.safeMode, billingExport.blocksBillForecast, sourceCoverage)',
-    'return NextResponse.json({ data });',
+    'return platformCostJson({ data });',
     "logRuntimeFailure('platform_cost_posture_route_failed'",
-    "return NextResponse.json({ error: 'Failed to load platform cost posture' }, { status: 500 });",
+    "return platformCostJson({ error: 'Failed to load platform cost posture' }, { status: 500 });",
   ].forEach((token) => assertIncludes(route, token, 'Platform Cost Posture API route'));
 
   assertOrder(route, [
@@ -105,7 +109,7 @@ function verifyRoute(route) {
     'const rateLimit = await checkRateLimit({',
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
     'const [systemConfig, alertRead, extractionRead, businessHealthRead] = await Promise.all([',
-    'return NextResponse.json({ data });',
+    'return platformCostJson({ data });',
   ], 'Platform Cost Posture API admission/read order');
 
   [
@@ -117,14 +121,17 @@ function verifyRoute(route) {
     'reason: data.reason ? cleanText(data.reason, 240) : null',
     'safeMode.reason ? `: ${safeMode.reason}`',
     'key: `platform-cost-posture:${userId}`',
-    '.set(',
     '.delete(',
     'writeBatch',
     'runTransaction',
     'data.realCostPaise != null ? safeNumber(data.realCostPaise) : safeNumber(data.totalCharge)',
+    'Record<string, any>',
+    'session: any',
+    'function toIso(value: any',
   ].forEach((token) => assertNotIncludes(route, token, 'Platform Cost Posture API boundary'));
 
   assertNotMatches(route, /\.collection\([^)]*\)\s*\.add\s*\(/, 'Platform Cost Posture API Firestore write boundary');
+  assertNotMatches(route, /\.doc\([^)]*\)\s*\.set\s*\(/, 'Platform Cost Posture API Firestore set boundary');
 }
 
 function verifyDal(dal) {
@@ -161,7 +168,7 @@ function verifyDal(dal) {
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_RESPONSE_REJECTED',
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_RESPONSE_INVALID',
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_REQUEST_FAILED',
-    "if (error instanceof Error && error.name === 'AbortError') throw error;",
+    "if (getBoundedErrorStringField(error, 'name', 128) === 'AbortError') throw error;",
     'const error = createPlatformCostPostureLoadError(response.status);',
     'throw error;',
     'return payload.data;',

@@ -252,7 +252,11 @@ requires(emulatorTest, [
   'duplicate legacy rows must remain fail-closed instead of choosing a winner',
   'DNS labels longer than 63 characters must fail before provider work',
   "isReservedCustomDomainClaimCandidate('menulist.ai')",
-  "isReservedCustomDomainClaimCandidate('owner.menulist.ai')",
+  "isReservedCustomDomainClaimCandidate('app.menulist.ai')",
+  "isReservedCustomDomainClaimCandidate('menulist.online')",
+  "isReservedCustomDomainClaimCandidate('demo.menulist.online')",
+  "isReservedCustomDomainClaimCandidate('qa.menulist.digital')",
+  "isReservedCustomDomainClaimCandidate('demo.qa.menulist.digital')",
   "isReservedCustomDomainClaimCandidate('surfaceos.app')",
   "!isReservedCustomDomainClaimCandidate('owner.example.com')",
 ], 'custom-domain emulator regression');

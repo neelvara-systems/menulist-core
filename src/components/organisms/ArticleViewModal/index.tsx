@@ -20,14 +20,20 @@ interface ArticleViewModalProps {
 export default function ArticleViewModal({ open, onClose, article: providedArticle }: ArticleViewModalProps) {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
-    const { getArticle, addArticleToCache } = useArticleCache();
+    const { cacheScopeKey, getArticle, addArticleToCache } = useArticleCache();
     const [fullArticle, setFullArticle] = useState<AnswerlatticeReadableArticle | null>(null);
+    const [loadedRequestKey, setLoadedRequestKey] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const isMobile = screens.md === false;
+    const requestKey = JSON.stringify([cacheScopeKey, providedArticle?.id || null]);
+    const requestIsCurrent = loadedRequestKey === requestKey;
+    const visibleArticle = requestIsCurrent ? fullArticle : null;
+    const visibleLoading = isLoading || Boolean(open && providedArticle && !requestIsCurrent);
 
     useEffect(() => {
         if (!open || !providedArticle) {
             setFullArticle(null);
+            setLoadedRequestKey(requestKey);
             setIsLoading(false);
             return;
         }
@@ -38,6 +44,7 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
         if ('content' in providedArticle) {
             // Already have full article - use it and cache it
             setFullArticle(providedArticle);
+            setLoadedRequestKey(requestKey);
             setIsLoading(false);
             addArticleToCache(providedArticle);
         } else {
@@ -52,13 +59,17 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
                 onCacheMiss: () => {
                     if (active) setIsLoading(true);
                 },
-            })
+                })
                 .then((article) => {
-                    if (active) setFullArticle(article);
+                    if (active) {
+                        setFullArticle(article);
+                        setLoadedRequestKey(requestKey);
+                    }
                 })
                 .catch((error) => {
                     if (!active) return;
                     setFullArticle(null);
+                    setLoadedRequestKey(requestKey);
                     logRuntimeFailure('answerlattice_article_modal_load_failed', error, {
                         ...getBoundedRuntimeStringContext('articleId', articleId),
                     });
@@ -71,7 +82,7 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
         return () => {
             active = false;
         };
-    }, [addArticleToCache, getArticle, open, providedArticle]);
+    }, [addArticleToCache, getArticle, open, providedArticle, requestKey]);
 
     return (
         <Modal
@@ -98,7 +109,7 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
                 },
             }}
         >
-            {isLoading ? (
+            {visibleLoading ? (
                 /* Loading Skeleton */
                 <div style={{ padding: 24 }}>
                     {/* Breadcrumb skeleton */}
@@ -115,10 +126,10 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
                         <Skeleton.Button active size="small" style={{ width: 70 }} />
                     </Space>
                 </div>
-            ) : fullArticle ? (
+            ) : visibleArticle ? (
                 /* Article Content */
                 <ArticleView
-                    article={fullArticle}
+                    article={visibleArticle}
                     mode="modal"
                     showBreadcrumbs={true}
                     showTags={true}

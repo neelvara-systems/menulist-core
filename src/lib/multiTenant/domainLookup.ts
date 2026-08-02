@@ -89,7 +89,7 @@ async function buildTenantInfo(storeDoc: FirebaseFirestore.QueryDocumentSnapshot
 
 /**
  * Lookup tenant by subdomain
- * e.g., "joespizza" from joespizza.menulist.ai
+ * e.g., "joespizza" from joespizza.menulist.online
  */
 export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo | null> {
     try {

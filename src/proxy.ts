@@ -7,7 +7,7 @@
  *    product owner app paths rewrite to the product route group when configured.
  * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice,
  *    /__campaigncue/app(/...) → /campaigncue/app(/...)) — local dev only
- * 3. Client tenant domains (*.menulist.ai → /client)
+ * 3. Client tenant domains (*.menulist.online or *.qa.menulist.digital → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
  * OWASP Compliance:
@@ -38,6 +38,7 @@ import {
     SIGNALDESK_BASE_PATH,
     SIGNALDESK_SHORT_ALIAS_PATH,
 } from '@constant/signaldesk/routes';
+import { MENULIST_PLATFORM_REDIRECT_DOMAINS } from '@constant/urls';
 import {
     ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX,
     ANSWERLATTICE_HOSTED_HELP_INTERNAL_BASE_PATH,
@@ -567,6 +568,27 @@ function setMyCodexResponseHeaders(response: NextResponse): NextResponse {
     return response;
 }
 
+function buildOriginPinnedRedirectUrl(targetUrl: string, request: NextRequest): URL {
+    const url = new URL(targetUrl);
+    // Assign the path after fixing the destination origin. Passing a request
+    // pathname such as `//attacker.example/path` to the URL constructor would
+    // otherwise interpret it as a protocol-relative cross-origin URL.
+    url.pathname = request.nextUrl.pathname;
+    url.search = request.nextUrl.search;
+    return url;
+}
+
+function buildMenuListRedirectDomainResponse(hostname: string | null, request: NextRequest): NextResponse | null {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost || !MENULIST_PLATFORM_REDIRECT_DOMAINS.includes(normalizedHost)) {
+        return null;
+    }
+
+    const target = getProductDeploymentTarget('menulist', 'production');
+    const url = buildOriginPinnedRedirectUrl(target.url, request);
+    return NextResponse.redirect(url, 301);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Main Proxy
 // ═══════════════════════════════════════════════════════════════
@@ -577,13 +599,17 @@ export async function proxy(request: NextRequest) {
     const domainInfo = resolveDomain(hostname);
     const knownProductId = resolveKnownProductIdByHostname(hostname);
 
+    const menulistRedirectResponse = buildMenuListRedirectDomainResponse(hostname, request);
+    if (menulistRedirectResponse) {
+        return applySecurityHeaders(request, menulistRedirectResponse);
+    }
+
     if (
         isLegacyAnswerlatticePublicHostname(hostname)
         && !shouldBypassDomainRouting(pathname)
     ) {
         const target = getProductDeploymentTarget('answerlattice', 'production');
-        const url = new URL(request.nextUrl.pathname, target.url);
-        url.search = request.nextUrl.search;
+        const url = buildOriginPinnedRedirectUrl(target.url, request);
         return NextResponse.redirect(url, 308);
     }
 
@@ -594,8 +620,7 @@ export async function proxy(request: NextRequest) {
         && !shouldBypassDomainRouting(pathname)
     ) {
         const target = getProductDeploymentTarget(knownProductId);
-        const url = new URL(request.nextUrl.pathname, target.url);
-        url.search = request.nextUrl.search;
+        const url = buildOriginPinnedRedirectUrl(target.url, request);
         return NextResponse.redirect(url, 308);
     }
 

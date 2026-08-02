@@ -396,13 +396,14 @@ export type NewItemMetadataRequest = z.infer<typeof NewItemMetadataRequestSchema
 
 export const ImageGenerationRequestSchema = z.object({
     generationConfig: imageGenerationConfigSchema,
-    projectId: z.string().max(100),
+    projectId: z.string().max(160).refine((value) => normalizeMultiOutletProjectId(value)?.projectId === value),
     fileId: z.string().max(100).optional(),
     itemDetails: imageGenerationItemDetailsSchema.optional(),
     businessType: z.string().max(100).optional()
 });
 
 export type ImageGenerationRequest = z.infer<typeof ImageGenerationRequestSchema>;
+export type ImageGenerationRequestInput = z.input<typeof ImageGenerationRequestSchema>;
 
 // ═══════════════════════════════════════════════════════════
 // IMAGE EDITING API

@@ -8,6 +8,13 @@ export type PosSyncDeliveryOutcome = {
     status: 'connection_issue' | 'healthy';
 };
 
+export type PosSyncDeliveryStatus = 'failed' | 'success' | 'timeout';
+
+export function getPosSyncDeliveryHttpStatus(status: PosSyncDeliveryStatus): 200 | 502 | 504 {
+    if (status === 'success') return 200;
+    return status === 'timeout' ? 504 : 502;
+}
+
 function getNonnegativeSafeInteger(value: unknown): number {
     return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }

@@ -163,22 +163,6 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                     <Form.Item
                         label={(
                             <Space>
-                                <span>{t('enhancedEcommerce')}</span>
-                                <Tooltip title={t('enhancedEcommerceTooltip')}>
-                                    <LuHelpCircle />
-                                </Tooltip>
-                            </Space>
-                        )}
-                        name={["analytics", "enhancedEcommerce"]}
-                        valuePropName="checked"
-                        extra={<Text type="secondary">{t('enhancedEcommerceHelp')}</Text>}
-                    >
-                        <Switch />
-                    </Form.Item>
-
-                    <Form.Item
-                        label={(
-                            <Space>
                                 <span>Menu activity</span>
                                 <Tooltip title="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu.">
                                     <LuHelpCircle />

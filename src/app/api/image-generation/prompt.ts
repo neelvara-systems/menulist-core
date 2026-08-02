@@ -1,6 +1,6 @@
 import { ASPECT_RATIOS_LIST } from "@constant/common";
+import type { ImageGenerationRequestInput } from "@lib/validation/apiSchemas";
 import { IMAGE_VIEW_TYPES } from "@template/main-app/projects/editorView/AiImageGenerator/imageViewType";
-import { GenerateImageViaApiPayloadType } from "@template/main-app/projects/types";
 
 /**
  * Sanitizes user input to prevent AI prompt injection attacks
@@ -64,7 +64,7 @@ function sanitizeAIPromptInput(input: string, maxLength: number = 200): string {
  * Extracts a concise summary or key aspect from the description.
  * Applies sanitization to prevent prompt injection.
  */
-function extractContextFromDescription(details: GenerateImageViaApiPayloadType['itemDetails']): string {
+function extractContextFromDescription(details: ImageGenerationRequestInput['itemDetails']): string {
     const description = details?.description;
     const itemName = sanitizeAIPromptInput(details?.name ?? 'Subject');
 
@@ -88,10 +88,10 @@ function extractContextFromDescription(details: GenerateImageViaApiPayloadType['
  * @param inputJson - The complete input JSON object.
  * @returns A detailed string prompt for an AI image generator.
  */
-export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model: string): string[] {
+export function getImagePrompts(inputJson: ImageGenerationRequestInput, model: string): string[] {
     const config = inputJson.generationConfig;
     const businessType = inputJson.businessType;
-    const details = inputJson.itemDetails;
+    const details = inputJson.itemDetails || {};
     const generatedPrompts: string[] = [];
     // --- Extract data with defaults and sanitize user inputs ---
     const itemName = sanitizeAIPromptInput(details.name ?? 'Subject');

@@ -4,10 +4,10 @@ import {
     resolveLegacyMenuPdfIncludeQr,
 } from '@lib/export/menuPdfGenerator';
 
-assert.equal(resolveLegacyMenuPdfIncludeQr('https://menulist.ai/client/store/menu', undefined, true), true);
+assert.equal(resolveLegacyMenuPdfIncludeQr('https://demo.menulist.online/menu', undefined, true), true);
 assert.equal(resolveLegacyMenuPdfIncludeQr('http://localhost:3000/client/store/menu', true, false), true);
-assert.equal(resolveLegacyMenuPdfIncludeQr('https://menulist.ai/client/store/menu', false, true), false);
-assert.equal(resolveLegacyMenuPdfIncludeQr('https://menulist.ai/client/store/menu', undefined, false), false);
+assert.equal(resolveLegacyMenuPdfIncludeQr('https://demo.menulist.online/menu', false, true), false);
+assert.equal(resolveLegacyMenuPdfIncludeQr('https://demo.menulist.online/menu', undefined, false), false);
 
 for (const invalid of [
     undefined,
@@ -15,8 +15,8 @@ for (const invalid of [
     '',
     '/client/store/menu',
     'javascript:alert(1)',
-    'https://user:secret@menulist.ai/client/store/menu',
-    { url: 'https://menulist.ai/client/store/menu' },
+    'https://user:secret@demo.menulist.online/menu',
+    { url: 'https://demo.menulist.online/menu' },
 ]) {
     assert.equal(resolveLegacyMenuPdfIncludeQr(invalid, true, true), false);
 }
@@ -27,7 +27,7 @@ const normalized = normalizeLegacyMenuPdfOptions({
     items: [],
     language: 'en',
     logoUrl: 'data:image/png;base64,AAAA',
-    menuUrl: 'https://menulist.ai/client/store/menu',
+    menuUrl: 'https://demo.menulist.online/menu',
     projectData: {
         get modifiedOn() {
             throw new Error('must remain contained');
@@ -43,7 +43,7 @@ const normalized = normalizeLegacyMenuPdfOptions({
     },
     storeName: 'Boundary Cafe',
 });
-assert.equal(normalized?.menuUrl, 'https://menulist.ai/client/store/menu');
+assert.equal(normalized?.menuUrl, 'https://demo.menulist.online/menu');
 assert.equal(normalized?.projectId, undefined);
 assert.equal(normalized?.currency, undefined);
 assert.equal(normalized?.logoUrl, undefined);

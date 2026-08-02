@@ -258,7 +258,7 @@ function verifyCustomerServiceWorkerPolicy() {
     'root package must expose the customer PWA offline browser smoke',
   );
   [
-    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.menulist.ai';",
+    "const tenantHostname = process.env.CUSTOMER_PWA_QA_TENANT_HOST || 'habibis.qa.menulist.digital';",
     "const upstreamUrl = new URL(process.env.CUSTOMER_PWA_QA_UPSTREAM_URL || 'http://127.0.0.1:3000');",
     'function createLoopbackTenantProxy()',
     'tenantProxy.setOffline(true);',
@@ -1313,6 +1313,7 @@ function verifyDigitalScreenDiagnostics() {
   const ownerControlUsage = read('src/database/ownerControlUsage/index.ts');
   const screenDisplay = read('src/app/screen/[token]/ScreenDisplay.tsx');
   const menuBoardDisplay = read('src/app/screen/[token]/MenuBoardDisplay.tsx');
+  const screenSeenSignal = read('src/hooks/useDigitalScreenSeenSignal.ts');
   const screenPage = read('src/app/screen/[token]/page.tsx');
   const screenAttribution = read('src/app/screen/[token]/ScreenAttribution.tsx');
 
@@ -1399,12 +1400,11 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(screenSettings, "void fetchSettings(); // Refresh to get new slide", 'desktop screen upload refresh fire-and-forget');
   assertIncludes(screenLink, 'desktop_digital_screen_link_open_failed', 'desktop screen link open diagnostics');
   assertIncludes(screenLink, 'desktop_digital_screen_link_copy_failed', 'desktop screen link copy diagnostics');
-  assertIncludes(screenLink, 'desktop_digital_screen_link_open_blocked', 'desktop screen blocked-open code');
   assertIncludes(screenLink, 'logScreenSettingsFailure("desktop_digital_screen_link_open_failed"', 'desktop screen link secure diagnostics');
   assertIncludes(screenLink, 'logScreenSettingsFailure("desktop_digital_screen_link_copy_failed"', 'desktop screen link copy secure diagnostics');
   assertIncludes(screenLink, 'getBoundedScreenStringContext("screenOpenUrl", url)', 'desktop screen link bounded URL context');
   assertIncludes(screenLink, 'getBoundedScreenStringContext("screenCopyUrl", url)', 'desktop screen link copy bounded URL context');
-  assertIncludes(screenLink, 'const opened = window.open(url, "_blank", "noopener,noreferrer")', 'desktop screen safe link open');
+  assertIncludes(screenLink, 'openIsolatedBrowserUrl(url)', 'desktop screen safe link open');
   assertIncludes(screenLink, 'copyScreenTextToClipboard(url)', 'desktop screen link acknowledged copy helper usage');
   assertIncludes(screenLink, 'hasClipboardWrite: hasScreenClipboardWrite()', 'desktop screen link clipboard support metadata');
   assertIncludes(screenLink, 'hasCopyFallback: hasScreenCopyFallback()', 'desktop screen link fallback support metadata');
@@ -1454,10 +1454,10 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(mobileScreenSettings, 'assertDigitalScreenMutationSucceeded(', 'mobile digital screens mutation acknowledgement guard');
   assertIncludes(mobileScreenSettings, 'logScreenSettingsFailure', 'mobile digital screens secure diagnostics');
   assertIncludes(mobileScreenSettings, 'getBoundedScreenStringContext', 'mobile digital screens bounded context');
-  assertIncludes(mobileScreenSettings, 'mobile_digital_screen_link_open_blocked', 'mobile digital screen blocked-open code');
   assertIncludes(mobileScreenSettings, "getBoundedScreenStringContext('screenOpenUrl', url)", 'mobile digital screen bounded open URL context');
   assertIncludes(mobileScreenSettings, "getBoundedScreenStringContext('screenCopyUrl', url)", 'mobile digital screen bounded copy URL context');
-  assertIncludes(mobileScreenSettings, "const opened = window.open(url, '_blank', 'noopener,noreferrer')", 'mobile digital screen safe link open');
+  assertIncludes(mobileScreenSettings, 'openIsolatedBrowserUrl(url)', 'mobile digital screen isolated link open');
+  assertNotIncludes(mobileScreenSettings, 'window.open(', 'mobile digital screen no-opener handle acknowledgement');
   assertIncludes(mobileScreenSettings, 'copyScreenTextToClipboard(url)', 'mobile digital screen acknowledged copy helper usage');
   assertIncludes(mobileScreenSettings, 'hasClipboardWrite: hasScreenClipboardWrite()', 'mobile digital screen clipboard support metadata');
   assertIncludes(mobileScreenSettings, 'hasCopyFallback: hasScreenCopyFallback()', 'mobile digital screen fallback support metadata');
@@ -1487,31 +1487,37 @@ function verifyDigitalScreenDiagnostics() {
   [
     'digital_screen_display_cache_read_failed',
     'digital_screen_display_cache_write_failed',
-    'digital_screen_display_seen_signal_failed',
     'digital_screen_display_listener_failed',
     'digital_screen_display_fullscreen_request_failed',
   ].forEach((failureCode) => {
     assertIncludes(screenDisplay, failureCode, `highlights screen display failure code ${failureCode}`);
   });
-  assertIncludes(screenDisplay, 'SCREEN_SEEN_REQUEST_POLICY', 'highlights screen display seen-signal request policy');
-  assertMatches(screenDisplay, /cache:\s*["']no-store["']/, 'highlights screen display seen-signal request bypasses browser cache');
-  assertMatches(screenDisplay, /credentials:\s*["']same-origin["']/, 'highlights screen display seen-signal request keeps credentials same-origin');
-  assertMatches(screenDisplay, /redirect:\s*["']manual["']/, 'highlights screen display seen-signal request does not follow redirects');
-  assertIncludes(screenDisplay, '...SCREEN_SEEN_REQUEST_POLICY', 'highlights screen display uses seen-signal request policy');
+  assertIncludes(screenDisplay, 'diagnosticPrefix: "digital_screen_display"', 'highlights screen display seen-signal diagnostic scope');
+  assertIncludes(screenDisplay, 'mode: "highlights"', 'highlights screen display seen-signal mode');
   [
     'digital_screen_menuboard_cache_read_failed',
     'digital_screen_menuboard_cache_write_failed',
-    'digital_screen_menuboard_seen_signal_failed',
     'digital_screen_menuboard_listener_failed',
     'digital_screen_menuboard_fullscreen_request_failed',
   ].forEach((failureCode) => {
     assertIncludes(menuBoardDisplay, failureCode, `menu board screen display failure code ${failureCode}`);
   });
-  assertIncludes(menuBoardDisplay, 'SCREEN_SEEN_REQUEST_POLICY', 'menu board screen display seen-signal request policy');
-  assertMatches(menuBoardDisplay, /cache:\s*["']no-store["']/, 'menu board screen display seen-signal request bypasses browser cache');
-  assertMatches(menuBoardDisplay, /credentials:\s*["']same-origin["']/, 'menu board screen display seen-signal request keeps credentials same-origin');
-  assertMatches(menuBoardDisplay, /redirect:\s*["']manual["']/, 'menu board screen display seen-signal request does not follow redirects');
-  assertIncludes(menuBoardDisplay, '...SCREEN_SEEN_REQUEST_POLICY', 'menu board screen display uses seen-signal request policy');
+  assertIncludes(menuBoardDisplay, 'diagnosticPrefix: "digital_screen_menuboard"', 'menu board screen display seen-signal diagnostic scope');
+  assertIncludes(menuBoardDisplay, 'mode: "menu_board"', 'menu board screen display seen-signal mode');
+  [
+    'SCREEN_SEEN_REQUEST_POLICY',
+    'cache: "no-store" as RequestCache',
+    'credentials: "same-origin" as RequestCredentials',
+    'redirect: "manual" as RequestRedirect',
+    '...SCREEN_SEEN_REQUEST_POLICY',
+    'body: JSON.stringify({ contentVersion, mode, storeId, token })',
+    '${diagnosticPrefix}_seen_signal_rejected',
+    '${diagnosticPrefix}_seen_signal_failed',
+    '${diagnosticPrefix}_seen_storage_read_failed',
+    '${diagnosticPrefix}_seen_storage_write_failed',
+  ].forEach((boundary) => {
+    assertIncludes(screenSeenSignal, boundary, `shared screen seen-signal boundary ${boundary}`);
+  });
   [
     [screenDisplay, '[Screen] Cache read failed:'],
     [screenDisplay, '[Screen] Cache write failed:'],

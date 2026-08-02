@@ -48,6 +48,11 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      match /videoProjects/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
       match /trustReports/{docId} {
         allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
         allow write: if false;

@@ -10,6 +10,7 @@
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import TIMEZONES_LIST from '@data/timeZones';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     AnswerlatticeWorkspaceProfileResponseSchema,
@@ -20,7 +21,7 @@ import {
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Descriptions, Flex, Form, Grid, Input, Select, Skeleton, Space, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuCode, LuSave, LuSettings } from 'react-icons/lu';
 import AnswerlatticeSupportTruthExport from './settings/AnswerlatticeSupportTruthExport';
 
@@ -103,6 +104,7 @@ const readAnswerlatticeSettingsResponse = async <T,>(
 
 export default function AnswerlatticeSettings() {
     const session = useClientAuthSession();
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const router = useRouter();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
@@ -111,9 +113,26 @@ export default function AnswerlatticeSettings() {
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [savingProfile, setSavingProfile] = useState(false);
     const [workspaceProfileRevision, setWorkspaceProfileRevision] = useState<number | null>(null);
+    const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    const loadRequestRef = useRef(0);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
     const loadProfile = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        const requestId = loadRequestRef.current + 1;
+        loadRequestRef.current = requestId;
+        if (!requestScopeKey) {
+            form.resetFields();
+            setWorkspaceProfileRevision(null);
+            setLoadedScopeKey(null);
+            setLoadingProfile(false);
+            return;
+        }
         setLoadingProfile(true);
+        setSavingProfile(false);
+        setWorkspaceProfileRevision(null);
         try {
             const response = await fetch('/api/answerlattice/workspace-profile', {
                 ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
@@ -125,27 +144,37 @@ export default function AnswerlatticeSettings() {
                 isWorkspaceProfileResponse,
                 ANSWERLATTICE_PROFILE_LOAD_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
             form.setFieldsValue(data.profile);
             setWorkspaceProfileRevision(data.revision);
+            setLoadedScopeKey(requestScopeKey);
         } catch {
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
+            form.resetFields();
             setWorkspaceProfileRevision(null);
+            setLoadedScopeKey(requestScopeKey);
             message.error(ANSWERLATTICE_PROFILE_LOAD_FAILED);
         } finally {
-            setLoadingProfile(false);
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoadingProfile(false);
+            }
         }
-    }, [form]);
+    }, [cacheScopeKey, form]);
 
     useEffect(() => {
         loadProfile();
     }, [loadProfile]);
 
     const handleSaveProfile = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent) return;
         setSavingProfile(true);
         try {
             if (workspaceProfileRevision === null) {
                 throw new Error(ANSWERLATTICE_PROFILE_SAVE_FAILED);
             }
             const values = await form.validateFields();
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             const response = await fetch('/api/answerlattice/workspace-profile', {
                 ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
                 method: 'PUT',
@@ -156,6 +185,7 @@ export default function AnswerlatticeSettings() {
                 }),
             });
             if (response.status === 409) {
+                if (currentScopeKeyRef.current !== requestScopeKey) return;
                 message.warning('Product details changed in another session. The latest values have been reloaded.');
                 await loadProfile();
                 return;
@@ -166,15 +196,18 @@ export default function AnswerlatticeSettings() {
                 isWorkspaceProfileResponse,
                 ANSWERLATTICE_PROFILE_SAVE_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             form.setFieldsValue(data.profile);
             setWorkspaceProfileRevision(data.revision);
             message.success('Product details saved');
         } catch {
-            message.error(ANSWERLATTICE_PROFILE_SAVE_FAILED);
+            if (currentScopeKeyRef.current === requestScopeKey) {
+                message.error(ANSWERLATTICE_PROFILE_SAVE_FAILED);
+            }
         } finally {
-            setSavingProfile(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setSavingProfile(false);
         }
-    }, [form, loadProfile, workspaceProfileRevision]);
+    }, [cacheScopeKey, form, loadProfile, scopeIsCurrent, workspaceProfileRevision]);
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20}>
@@ -190,14 +223,14 @@ export default function AnswerlatticeSettings() {
                         type="primary"
                         icon={<LuSave size={14} />}
                         loading={savingProfile}
-                        disabled={workspaceProfileRevision === null}
+                        disabled={!scopeIsCurrent || workspaceProfileRevision === null}
                         onClick={handleSaveProfile}
                     >
                         Save
                     </Button>
                 )}
             >
-                {loadingProfile ? (
+                {loadingProfile || !scopeIsCurrent ? (
                     <Skeleton active paragraph={{ rows: 6 }} />
                 ) : (
                     <Flex vertical gap={16}>
@@ -286,7 +319,7 @@ export default function AnswerlatticeSettings() {
                                 block
                                 icon={<LuSave size={14} />}
                                 loading={savingProfile}
-                                disabled={workspaceProfileRevision === null}
+                                disabled={!scopeIsCurrent || workspaceProfileRevision === null}
                                 onClick={handleSaveProfile}
                             >
                                 Save Product Details

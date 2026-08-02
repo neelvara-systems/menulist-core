@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   MenuPdfCleanupCheckId,
   MenuPdfCleanupEvidence,
@@ -17,8 +22,11 @@ const REQUIRED_CHECKS = new Set<MenuPdfCleanupCheckId>([
   'current_customer_link',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function hasPdfReference(input: MenuPdfCleanupInput, pdfReference: string): boolean {
@@ -118,10 +126,10 @@ function getNextActionType(status: MenuPdfCleanupReport['status']): MenuPdfClean
 }
 
 export function buildMenuPdfCleanupReport(input: MenuPdfCleanupInput): MenuPdfCleanupReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
   const pdfReference = trimToSingleLine(input.pdfReference);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const sourcePresent = hasPdfReference(input, pdfReference);
   const hasCustomerLink = currentCustomerLink.length > 0;
   const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'menu_pdf_cleanup_current_customer_link');

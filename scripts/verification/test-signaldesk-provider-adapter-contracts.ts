@@ -202,7 +202,7 @@ const assertMetaTransportContracts = async () => {
     ];
     const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
     let requestCount = 0;
-    let lastRequest: { input: RequestInfo | URL; init?: RequestInit } | null = null;
+    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     let responseFactory = () => new Response(JSON.stringify({
         contacts: [{ input: '919876543210' }],
         messaging_product: 'whatsapp',
@@ -219,7 +219,7 @@ const assertMetaTransportContracts = async () => {
         process.env[SIGNALDESK_INTEGRATION_ENV.MESSENGER_PAGE_ID] = '3456789012';
         const mockedFetch: typeof fetch = async (input, init) => {
             requestCount += 1;
-            lastRequest = { input, init };
+            requests.push({ input, init });
             return responseFactory();
         };
         globalThis.fetch = mockedFetch;
@@ -234,6 +234,8 @@ const assertMetaTransportContracts = async () => {
             status: 'sent',
         });
         assert.equal(requestCount, 1);
+        const lastRequest = requests.at(-1);
+        assert(lastRequest, 'provider transport must capture the outbound request');
         assert.match(String(lastRequest?.input), /\/v21\.0\/1234567890\/messages$/);
         assert.equal(lastRequest?.init?.method, 'POST');
         assert.equal(lastRequest?.init?.redirect, 'manual');

@@ -141,24 +141,24 @@ assert.equal(imagePageCoercionAttempted, false);
 
 assert.equal(
     normalizeRuntimeDiagnosticUrl(
-        'https://menulist.ai/client/acme?token=secret#private',
-        'https://menulist.ai',
+        'https://app.menulist.ai/client/acme?token=secret#private',
+        'https://app.menulist.ai',
     ),
-    'https://menulist.ai/client/acme',
+    'https://app.menulist.ai/client/acme',
 );
 assert.equal(
     normalizeRuntimeDiagnosticUrl(
         'https://private.example.com/customer/acme?email=owner@example.com',
-        'https://menulist.ai',
+        'https://app.menulist.ai',
     ),
     'https://private.example.com',
 );
 assert.equal(
-    normalizeRuntimeDiagnosticUrl('https://user:secret@example.com/path', 'https://menulist.ai'),
+    normalizeRuntimeDiagnosticUrl('https://user:secret@example.com/path', 'https://app.menulist.ai'),
     undefined,
 );
 assert.equal(
-    normalizeRuntimeDiagnosticUrl('javascript:alert(1)', 'https://menulist.ai'),
+    normalizeRuntimeDiagnosticUrl('javascript:alert(1)', 'https://app.menulist.ai'),
     undefined,
 );
 

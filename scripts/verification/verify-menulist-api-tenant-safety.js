@@ -1070,6 +1070,9 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       'const tenantRateLimitHash = hashPublicRateLimitValue(tenantScope.documentId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeScope.documentId);',
       'key: `menu-intake:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
+      'failClosedOnProviderError: true',
+      'rateLimit.reason === "provider_unavailable"',
+      'status: providerUnavailable ? 503 : 429',
       'readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES)',
       'IntakeRequestSchema.safeParse(bodyResult.data)',
       'requireAnyStorePermission',
@@ -1603,6 +1606,9 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
   assertIncludes(
     'src/app/api/outlets/create/route.ts',
     [
+      'expectedStoreId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+      'expectedTenantId: z.string().trim().min(1).max(OUTLET_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+      'if (expectedStoreId !== storeDocumentId || expectedTenantId !== tenantDocumentId)',
       "import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from \"@lib/multiOutlet/diagnostics\";",
       'multi_outlet_billing_upi_quantity_update_unsupported',
       'multi_outlet_billing_provider_quantity_update_failed',
@@ -1739,9 +1745,15 @@ function verifyMobileLocationsFailureContract() {
   assert(mobileLocations.includes('return <MobileLocationsScreenContent key={scopeKey} {...props} />;'), 'Mobile Locations must remount drafts on exact tenant/store changes');
   assert(mobileLocations.includes('locationActionInFlightRef.current'), 'Mobile Locations must serialize tenant/store mutations before React state settles');
   assert(mobileLocations.includes('isExpectedLocationScope(expectedTenantId, expectedStoreId)'), 'Mobile Locations must recheck exact action scope after async stages');
+  assert(mobileLocations.includes('expectedStoreId: String(expectedStoreId)'), 'Mobile Locations outlet creation must corroborate its initiating store');
+  assert(mobileLocations.includes('expectedTenantId: String(expectedTenantId)'), 'Mobile Locations outlet creation must corroborate its initiating tenant');
   assert(mobileLocations.includes("String(previous.tenantId ?? '') === String(expectedTenantId)"), 'Mobile Locations tenant-list settlement must require the admitted tenant');
   assert(mobileLocations.includes("String(previous?.storeId ?? '') === String(expectedStoreId)"), 'Mobile Locations store settlement must require the admitted store');
   assert(mobileLocations.includes('store.name === submittedTarget.name'), 'Mobile Locations rename settlement must preserve newer same-store name truth');
+  assert(addOutletModal.includes('actionInFlightRef.current'), 'Desktop Add Outlet must synchronously reject duplicate creation attempts');
+  assert(addOutletModal.includes('isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)'), 'Desktop Add Outlet must reject obsolete scope/modal settlement');
+  assert(addOutletModal.includes('expectedStoreId: String(expectedStoreId)'), 'Desktop Add Outlet must corroborate its initiating store');
+  assert(addOutletModal.includes('expectedTenantId: String(expectedTenantId)'), 'Desktop Add Outlet must corroborate its initiating tenant');
   assert(mobileLocations.includes('store.outletSlug === submittedTarget.outletSlug'), 'Mobile Locations rename settlement must preserve newer same-store slug truth');
   assert(mobileLocations.includes('previous.outletPolicy === sourcePolicy'), 'Mobile Locations policy settlement must preserve newer current-store policy truth');
   assert(mobileLocations.includes('store.storeDetails?.outletPolicy === sourcePolicy'), 'Mobile Locations policy settlement must preserve newer tenant-summary policy truth');
@@ -1938,7 +1950,7 @@ function verifySessionScopedPublicTruthRoutes() {
       '.doc(tenantDocumentId)',
       '.collection(storeDocumentId)',
       'const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);',
-      'let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};',
+      'let existingSummaryProjectsForDefaultDemotion: Record<string, Record<string, unknown>> = {};',
       'existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists',
       'Object.entries(existingSummaryProjectsForDefaultDemotion).forEach',
       'const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([',
@@ -2413,6 +2425,9 @@ function verifySessionScopedPublicTruthRoutes() {
       'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
       'RequestSchema.safeParse(body)',
+      'expectedStoreId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+      'expectedTenantId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+      'if (expectedStoreId !== storeId || expectedTenantId !== tenantId)',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
       'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
       'const transactionPermissionError = await db.runTransaction(async (transaction) => {',
@@ -2626,7 +2641,8 @@ function verifyPlatformAdminMutationBoundedBodies() {
     [
       'withPlatformAuth',
       'getRateLimitForFeature(\'PLATFORM_ENTITY_BLOCK_MUTATION\')',
-      'hashPublicRateLimitValue(getPlatformEntityBlockOperatorId(session))',
+      'const operatorId = resolveCurrentSessionUserDocumentId(session);',
+      'hashPublicRateLimitValue(operatorId)',
       'key: `${PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY}:${operatorRateLimitHash}`',
       'logger.security(\'Rate Limit Exceeded - Platform Entity Blocks\'',
       'getBoundedSecurityRouteContext(session, request)',
@@ -2697,7 +2713,8 @@ function verifyPlatformAdminMutationBoundedBodies() {
     'src/app/api/platform/entity-blocks/route.ts',
     [
       'const rateLimitConfig = getRateLimitForFeature(\'PLATFORM_ENTITY_BLOCK_MUTATION\');',
-      'const operatorRateLimitHash = hashPublicRateLimitValue(getPlatformEntityBlockOperatorId(session));',
+      'const operatorId = resolveCurrentSessionUserDocumentId(session);',
+      'const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);',
       'const rateLimit = await checkRateLimit({',
       'if (!rateLimit.allowed) {',
       'readBoundedJsonBody(request, PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES',
@@ -2720,6 +2737,10 @@ function verifyPlatformAdminMutationBoundedBodies() {
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('request.json()'), 'platform entity blocks must not parse unbounded JSON');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('logger.warn("[platform] Firebase Auth user missing during user block sync"'), 'platform entity blocks must not raw-log missing Firebase Auth users');
   assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('userId: entity?.id'), 'platform entity blocks must not log raw user IDs for missing Firebase Auth users');
+  assert(read('src/app/api/platform/entity-blocks/route.ts').includes('if (!tenantScope || !hasExactTenantOwnership(freshStore, tenantScope)) {'), 'platform entity blocks must require exact persisted store tenant ownership before mutation');
+  assert(read('src/app/api/platform/entity-blocks/route.ts').includes("getBoundedErrorStringField(error, 'code', 128) === \"auth/user-not-found\""), 'platform entity blocks must narrow Firebase Auth failures without any');
+  assert(read('src/app/api/platform/entity-blocks/route.ts').includes("const toMillis = Reflect.get(value, 'toMillis');"), 'platform entity blocks must contain legacy timestamp access');
+  assert(!read('src/app/api/platform/entity-blocks/route.ts').includes('catch (error: any)'), 'platform entity blocks must preserve unknown error boundaries');
   assertIncludes(
     'src/lib/rateLimit/configs.ts',
     [
@@ -2897,11 +2918,14 @@ function verifyOpsMutationBoundedBodies() {
     'src/app/api/ops/platform-notifications/route.ts',
     'src/app/api/ops/owner-notifications/route.ts',
   ].forEach((route) => {
+    const actionContext = route.endsWith('/owner-notifications/route.ts')
+      ? "getBoundedOpsStringContext('action', isUnknownRecord(body) ? body.action : undefined)"
+      : "getBoundedOpsStringContext('action', body?.action)";
     assertIncludes(
       route,
       [
         'getBoundedSecurityRouteContext(session, request)',
-        "getBoundedOpsStringContext('action', body?.action)",
+        actionContext,
       ],
       `${route} bounded ops notification security logs`,
     );
@@ -3654,6 +3678,10 @@ function verifyTempStatusClientResponseDiagnostics() {
   assert(desktopTempStatus.includes('AUTH_BROWSER_REQUEST_POLICY'), 'desktop temp status requests must use the shared authenticated browser request policy');
   assert((desktopTempStatus.match(/fetch\('\/api\/store\/temp-status'/g) || []).length >= 2, 'desktop temp status requests must call the status route');
   assert((desktopTempStatus.match(/\.\.\.AUTH_BROWSER_REQUEST_POLICY/g) || []).length >= 2, 'desktop temp status mutations must spread the shared request policy');
+  assert((desktopTempStatus.match(/expectedStoreId: String\(expectedStoreId\)/g) || []).length >= 2, 'desktop temp status mutations must corroborate the initiating store');
+  assert((desktopTempStatus.match(/expectedTenantId: String\(expectedTenantId\)/g) || []).length >= 2, 'desktop temp status mutations must corroborate the initiating tenant');
+  assert(desktopTempStatus.includes('actionInFlightRef.current'), 'desktop temp status must reject duplicate actions before React state settles');
+  assert(desktopTempStatus.includes('isExpectedScope(expectedTenantId, expectedStoreId)'), 'desktop temp status must reject obsolete confirmation and response settlement');
   assert(!desktopTempStatus.includes("fetch('/api/store/temp-status', {\n                cache: 'no-store'"), 'desktop temp status must not reintroduce inline request policy');
   assert(!desktopTempStatus.includes('res.json()'), 'desktop temp status card must not use direct response parsing');
   assert(!desktopTempStatus.includes('.json().catch'), 'desktop temp status card must not silently swallow malformed response JSON');
@@ -3666,6 +3694,8 @@ function verifyTempStatusClientResponseDiagnostics() {
   assert(mobileTempStatus.includes('AUTH_BROWSER_REQUEST_POLICY'), 'mobile temp status requests must use the shared authenticated browser request policy');
   assert((mobileTempStatus.match(/fetch\('\/api\/store\/temp-status'/g) || []).length >= 2, 'mobile temp status requests must call the status route');
   assert((mobileTempStatus.match(/\.\.\.AUTH_BROWSER_REQUEST_POLICY/g) || []).length >= 2, 'mobile temp status mutations must spread the shared request policy');
+  assert((mobileTempStatus.match(/expectedStoreId: String\(expectedStoreId\)/g) || []).length >= 2, 'mobile temp status mutations must corroborate the initiating store');
+  assert((mobileTempStatus.match(/expectedTenantId: String\(expectedTenantId\)/g) || []).length >= 2, 'mobile temp status mutations must corroborate the initiating tenant');
   assert(!mobileTempStatus.includes("fetch('/api/store/temp-status', {\n                cache: 'no-store'"), 'mobile temp status must not reintroduce inline request policy');
   assert(!mobileTempStatus.includes('res.json()'), 'mobile temp status screen must not use direct response parsing');
   assert(!mobileTempStatus.includes('.json().catch'), 'mobile temp status screen must not silently swallow malformed response JSON');
@@ -3681,6 +3711,10 @@ function verifyTempStatusClientResponseDiagnostics() {
   assert(mobileHours.includes('AUTH_BROWSER_REQUEST_POLICY'), 'mobile Today/Hours temp status requests must use the shared authenticated browser request policy');
   assert((mobileHours.match(/fetch\('\/api\/store\/temp-status'/g) || []).length >= 3, 'mobile Today/Hours temp status requests must call the status route');
   assert((mobileHours.match(/\.\.\.AUTH_BROWSER_REQUEST_POLICY/g) || []).length >= 3, 'mobile Today/Hours temp status mutations must spread the shared request policy');
+  assert((mobileHours.match(/expectedStoreId: String\(expectedStoreId\)/g) || []).length >= 3, 'mobile Today/Hours temp status mutations must corroborate the initiating store');
+  assert((mobileHours.match(/expectedTenantId: String\(expectedTenantId\)/g) || []).length >= 3, 'mobile Today/Hours temp status mutations must corroborate the initiating tenant');
+  assert(mobileHours.includes('tempStatusActionInFlightRef.current'), 'mobile Today/Hours temp status must reject duplicate actions before React state settles');
+  assert(mobileHours.includes('isExpectedTempStatusScope(expectedTenantId, expectedStoreId)'), 'mobile Today/Hours temp status must reject obsolete confirmation and response settlement');
   assert(!mobileHours.includes("fetch('/api/store/temp-status', {\n                cache: 'no-store'"), 'mobile Today/Hours temp status must not reintroduce inline request policy');
   assert(!mobileHours.includes('res.json()'), 'mobile Today/Hours temp status actions must not use direct response parsing');
   assert(!mobileHours.includes('.json().catch'), 'mobile Today/Hours temp status actions must not silently swallow malformed response JSON');
@@ -4275,7 +4309,7 @@ function verifyAnalyticsErrorBoundary() {
   assert(weeklyNarrativeRouteForAuth.includes('failClosedOnProviderError: true'), 'weekly narrative refresh must fail closed when rate limiting is unavailable');
   assert(weeklyNarrativeRouteForAuth.includes("rateLimit.reason === 'provider_unavailable'"), 'weekly narrative refresh must distinguish provider outage from exhaustion');
   assert(weeklyNarrativeRouteForAuth.includes("generationMode: 'deterministic'"), 'weekly narrative refresh must remain deterministic');
-  assert(weeklyNarrativeRouteForAuth.includes('answerlatticeFirestoreAdmin.runTransaction(async (transaction)'), 'weekly narrative refresh must serialize idempotency decisions');
+  assert(weeklyNarrativeRouteForAuth.includes('requireAnswerlatticeFirestoreAdmin().runTransaction(async (transaction)'), 'weekly narrative refresh must serialize idempotency decisions');
   assert(weeklyNarrativeRouteForAuth.includes('getAnswerlatticeWeeklyInsightWriteDecision('), 'weekly narrative refresh must reject stale out-of-order writes');
   assert(!weeklyNarrativeRouteForAuth.includes('answerlatticeGenAIClient'), 'weekly narrative refresh must not call a model provider');
   assert(!weeklyNarrativeRouteForAuth.includes('recordAnswerlatticeAiOperation'), 'weekly narrative refresh must not record a provider operation');
@@ -4561,7 +4595,7 @@ function verifyAnalyticsErrorBoundary() {
       label: 'campaign caption',
       permission: '[PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU, PERMISSIONS.MANAGE_MENU]',
       route: 'src/app/api/campaigns/caption/route.ts',
-      before: 'if (projectId) {',
+      before: 'const projectAccessBlockReason = await getSessionProjectAccessBlockReason({ projectId, session });',
     },
     {
       label: 'description generation',
@@ -4635,6 +4669,31 @@ function verifyAnalyticsErrorBoundary() {
       `${label} route must validate input and permission before expensive AI work`,
     );
   });
+  assertIncludes(
+    'src/lib/menu/serverProjectAccess.ts',
+    [
+      'normalizeMultiOutletNumericDocumentId',
+      'normalizeMultiOutletProjectId',
+      'const sessionScope = getOutletSessionScope(session);',
+      'projectScope.tId !== tenantScope.numericId',
+      'projectScope.sId !== storeScope.numericId',
+      '.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantScope.documentId}/${storeScope.documentId}/${projectScope.projectId}`)',
+      '!projectSnapshot.exists',
+      'project?.deleted === true',
+      'isPlatformEntityBlocked(project)',
+    ],
+    'server project access boundary',
+  );
+  assertIncludes(
+    'src/app/api/campaigns/caption/route.ts',
+    [
+      'getSessionProjectAccessBlockReason',
+      'const projectAccessBlockReason = await getSessionProjectAccessBlockReason({ projectId, session });',
+      'if (projectAccessBlockReason) {',
+      'return NextResponse.json({ error: projectAccessBlockReason }, { status: 403 });',
+    ],
+    'campaign caption project ownership boundary',
+  );
   assertIncludes(
     'src/lib/multiOutlet/serverOutletPolicy.ts',
     [
@@ -6038,10 +6097,9 @@ function verifyOwnerUtilitySecureLogging() {
 	      'platform_notification_monitor_load_failed',
       'platform_notification_monitor_action_failed',
       'platform_notification_monitor_whatsapp_open_failed',
-      'platform_notification_monitor_whatsapp_open_blocked',
       'platform_notification_monitor_message_copy_failed',
       'logRuntimeFailure',
-      "const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(whatsappWebHref)",
       "getBoundedRuntimeStringContext('destination', prefillModal.destination)",
 	      "getBoundedRuntimeStringContext('subject', prefillModal.subject)",
 	      "getBoundedRuntimeStringContext('messageBody', prefillModal.body)",
@@ -6083,14 +6141,13 @@ function verifyOwnerUtilitySecureLogging() {
       'owner_notification_monitor_load_failed',
       'owner_notification_monitor_action_failed',
       'owner_notification_monitor_whatsapp_open_failed',
-      'owner_notification_monitor_whatsapp_open_blocked',
       'owner_notification_monitor_message_copy_failed',
       'function formatMonitorError(value: unknown): string',
       'Stored error present (${text.length} chars).',
       'record.error ? formatMonitorError(record.error) : metadataText(record)',
       'formatMonitorError(selectedEvent.error)',
       'logRuntimeFailure',
-      "const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(whatsappWebHref)",
       "getBoundedRuntimeStringContext('destination', prefillDestination)",
 	      "getBoundedRuntimeStringContext('subject', prefillSubject)",
 	      "getBoundedRuntimeStringContext('messageBody', prefillBody)",
@@ -8079,6 +8136,8 @@ function verifyPublicOperationalSignalCheapFail() {
       'rejectInvalidOrOversizedDeclaredBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
       "getRateLimitForFeature('SCREEN_SEEN_SIGNAL')",
       'const ipHash = hashPublicRateLimitValue(getClientIp(request));',
+      'const ipRateLimit = await checkRateLimit({',
+      'failClosedOnProviderError: true',
       'key: `screen-seen:ip:${ipHash}`',
       'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
       'const screenTokenHash = hashPublicRateLimitValue(token);',
@@ -8104,8 +8163,20 @@ function verifyPublicOperationalSignalCheapFail() {
       'SCREEN_TOKEN_PATTERN',
       'normalizeStorePermissionScopeDocumentId(rawStoreId)',
       'rateLimitedSeenResponse',
-      "status: 429",
+      "status: reason === 'provider_unavailable' ? 503 : 429",
       "'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS)",
+      "summaryRef.where('screenToken', '==', token).limit(2).get()",
+      ".where('screen.screenToken', '==', token)",
+      'resolveUniqueLegacyScreenSeenStoreId(',
+      'storeId: targetStoreId',
+      "getBoundedScreenStringContext('screenToken', token)",
+      "getBoundedScreenStringContext('storeId', normalizedStoreId)",
+    ],
+    'screen seen token/store guard',
+  );
+  assertIncludes(
+    'src/lib/screen/screenSeenServer.ts',
+    [
       'firestoreAdmin.runTransaction',
       'transaction.get(params.controlRef)',
       'transaction.get(params.screenRef)',
@@ -8116,17 +8187,12 @@ function verifyPublicOperationalSignalCheapFail() {
       'const legacyTokenMatches = !controlSnapshot.exists',
       'screen?.enabled !== true',
       'isCurrentScreenSeenPublicScope({',
-      "summaryRef.where('screenToken', '==', token).limit(2).get()",
-      ".where('screen.screenToken', '==', token)",
-      'resolveUniqueLegacyScreenSeenStoreId(',
-      'storeId: targetStoreId',
       'transaction.update(params.screenRef',
-      "'screen.screenLastSeenAt': FieldValue.serverTimestamp()",
-      "getBoundedScreenStringContext('screenToken', token)",
-      "getBoundedScreenStringContext('storeId', normalizedStoreId)",
+      '"screen.screenLastSeenAt": FieldValue.serverTimestamp()',
     ],
-    'screen seen token/store guard',
+    'screen seen transactional authority guard',
   );
+  assert(!read('src/app/api/screen/seen/route.ts').includes('parsedRequest.token.trim()'), 'screen seen must not trim a bearer token into different authority');
   assertIncludes(
     'src/lib/screen/screenSeenScope.ts',
     [
@@ -8137,7 +8203,7 @@ function verifyPublicOperationalSignalCheapFail() {
     'screen seen legacy candidate uniqueness',
   );
   assertOrder(
-    'src/app/api/screen/seen/route.ts',
+    'src/lib/screen/screenSeenServer.ts',
     [
       'transaction.get(params.screenRef)',
       'transaction.get(storeRef)',
@@ -8812,7 +8878,10 @@ function verifyPaymentMutationBoundedJson() {
         "const rateLimitConfig = getRateLimitForFeature('PAYMENT_VERIFICATION');",
         'const userRateLimitHash = hashPublicRateLimitValue(',
         key,
-        "logger.security('Payment Verification Rate Limit Exceeded'",
+        "logger.security(providerUnavailable ? 'Payment Verification Rate Limit Provider Unavailable' : 'Payment Verification Rate Limit Exceeded'",
+        'failClosedOnProviderError: true',
+        "rateLimitResult.reason === 'provider_unavailable'",
+        'status: providerUnavailable ? 503 : 429',
         "feature: 'PAYMENT_VERIFICATION'",
         "'Retry-After': String(waitSeconds)",
       ],
@@ -8851,6 +8920,15 @@ function verifyPaymentMutationBoundedJson() {
         'const validation = validateAPIInput(',
       ],
       `${route} mutation limiter before bounded payment body`,
+    );
+    assertIncludes(
+      route,
+      [
+        'failClosedOnProviderError: true',
+        "reason === 'provider_unavailable'",
+        'status: providerUnavailable ? 503 : 429',
+      ],
+      `${route} mutation limiter outage boundary`,
     );
   });
 
@@ -9390,9 +9468,13 @@ function verifyPaymentMutationBoundedJson() {
       'reseller_onboard_route_failed',
       'reseller_onboard_cache_revalidation_failed',
       'reseller_onboard_auth_cleanup_failed',
+      'reseller_onboard_auth_finalization_failed',
       'reseller_onboard_auth_claims_compensation_failed',
+      'reseller_onboard_billing_commit_verification_failed',
       'reseller_onboard_provider_compensation_failed',
       'reseller_onboard_provider_compensation_cache_revalidation_failed',
+      'reseller_onboard_provider_recovery_failed',
+      'reseller_onboard_provider_recovery_pending',
     ]],
     ['src/app/api/reseller/renew/route.ts', ['reseller_renew_route_failed']],
     ['src/app/api/reseller/add-location-capacity/route.ts', ['reseller_add_location_capacity_route_failed']],
@@ -9424,7 +9506,27 @@ function verifyPaymentMutationBoundedJson() {
 	    assert(onboardRoute.includes('reason: \'reseller_online_provider_setup_failed\''), 'reseller online provider failure compensation must record stable reason');
 	    assert(onboardRoute.includes('await authAdmin.setCustomUserClaims(params.authUid, {'), 'reseller provider failure compensation must clear just-set owner auth scope claims');
 	    assert(onboardRoute.includes('await compensateResellerOnboardingFailure({'), 'reseller online provider catch must call compensation before rethrow');
-	    assert(onboardRoute.includes('projectResellerProviderSubscription(providerSubscription)'), 'reseller online onboarding must validate provider identity and allowlist the checkout URL');
+	    assert(onboardRoute.includes('projectResellerProviderSubscriptionForAttempt('), 'reseller online onboarding must validate the exact provider attempt and allowlist its checkout URL');
+	    assert(onboardRoute.includes("isPlatformUser ? getCurrentPlatformUser(session) : getCurrentUser(session)"), 'reseller onboarding must revalidate the current actor independently of the session');
+	    assert(onboardRoute.includes("status: 'provider_provisioning'"), 'reseller onboarding must durably record its provisional operation before Auth/provider finalization');
+	    assert(onboardRoute.includes('getMatchingResellerOnboardingProvisioningOperation({'), 'reseller onboarding retries must require an exact provisional operation');
+	    assert(onboardRoute.includes('isMatchingResellerOnboardingProvisioningResources({'), 'reseller onboarding retries must revalidate persisted tenant/store/user ownership');
+	    assert(onboardRoute.includes('providerRecoveryAvailableAt: admin.firestore.Timestamp.fromMillis(recoveryAvailableAt)'), 'reseller onboarding must persist a provider recovery hold before creation');
+	    assert(onboardRoute.includes('return { searchComplete: false, subscription: null };'), 'bounded provider recovery must fail closed when all configured pages are full');
+	    assert(onboardRoute.includes('if (!recovery.searchComplete)'), 'provider creation must not resume after an incomplete recovery scan');
+	    assert(onboardRoute.includes('operationFingerprint,'), 'reseller provider notes must bind the external attempt to the operation fingerprint');
+	    assert(onboardRoute.includes("error: 'Payment setup is still being verified. Retry this onboarding request later.'"), 'ambiguous provider outcomes must remain retryable without local compensation');
+	    assert(onboardRoute.includes('const [subscriptionRead, operationRead] = await Promise.allSettled(['), 'billing commit verification must distinguish read outages from proven absence');
+	    assert(onboardRoute.includes("error: 'Billing setup is still being verified. Retry this onboarding request.'"), 'billing verification outages must preserve recoverable state');
+	    assertOrder(
+	      'src/app/api/reseller/onboard/route.ts',
+	      [
+	        'result = await db.runTransaction(async (transaction) => {',
+	        'await authAdmin.setCustomUserClaims(result.authUid, {',
+	        'await authAdmin.updateUser(result.authUid, {',
+	      ],
+	      'reseller onboarding must commit recoverable scope before mutating an existing Auth profile',
+	    );
 	    assertOrder(
 	      'src/app/api/reseller/onboard/route.ts',
 	      [
@@ -9556,12 +9658,11 @@ function verifyPaymentMutationBoundedJson() {
       [
 	        'desktop_reseller_dashboard_payment_link_copy_failed',
 	        'desktop_reseller_dashboard_payment_link_open_failed',
-	        'desktop_reseller_dashboard_payment_link_open_blocked',
 	        'normalizeRazorpaySubscriptionCheckoutUrl(link)',
 	        'copyResellerTextToClipboard(checkoutUrl)',
 	        'hasClipboardWrite: hasResellerClipboardWrite()',
 	        'hasCopyFallback: hasResellerCopyFallback()',
-	        "window.open(checkoutUrl, '_blank', 'noopener,noreferrer')",
+	        "openIsolatedBrowserUrl(checkoutUrl)",
 	        "getBoundedResellerStringContext('paymentLink', link)",
 	        'void copyPaymentLink(record.subscriptionShortUrl, record)',
         'openPaymentLink(record.subscriptionShortUrl, record)',
@@ -9573,7 +9674,6 @@ function verifyPaymentMutationBoundedJson() {
       [
 	        'mobile_reseller_dashboard_payment_link_copy_failed',
 	        'mobile_reseller_dashboard_payment_link_open_failed',
-	        'mobile_reseller_dashboard_payment_link_open_blocked',
 	        'copyPaymentLink = async (transaction: ResellerClientRecord)',
 	        'copyMobileResellerDashboardText(link)',
 	        'MOBILE_RESELLER_DASHBOARD_COPY_UNAVAILABLE',
@@ -9581,7 +9681,7 @@ function verifyPaymentMutationBoundedJson() {
 	        'hasClipboardWrite: hasMobileResellerDashboardClipboardWrite()',
 	        'hasCopyFallback: hasMobileResellerDashboardCopyFallback()',
 	        "const copied = document.execCommand('copy');",
-	        "window.open(link, '_blank', 'noopener,noreferrer')",
+	        "openIsolatedBrowserUrl(link)",
 	        "getBoundedMobileOwnerStringContext('paymentLink', link)",
 	        'onCopyPaymentLink: (transaction: ResellerClientRecord) => void',
         'onOpenPaymentLink: (transaction: ResellerClientRecord) => void',
@@ -9804,7 +9904,7 @@ function verifyPaymentMutationBoundedJson() {
       'logPaymentFailure',
       'website_pricing_dashboard_open_failed',
       'website_pricing_dashboard_redirect_failed',
-      "window.open(DASHBOARD_URL, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(DASHBOARD_URL)",
       'window.location.assign(DASHBOARD_URL)',
       "getBoundedPaymentStringContext('dashboardUrl', DASHBOARD_URL)",
       'hasPurchaseIntent: Boolean(purchaseIntent)',
@@ -9858,7 +9958,7 @@ function verifyPaymentMutationBoundedJson() {
       'payment_desktop_subscription_payment_link_open_failed',
       'getBoundedPaymentStringContext',
       'const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);',
-      "window.open(subscriptionCheckoutUrl, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(subscriptionCheckoutUrl)",
       "message.error('Subscription cancellation failed. Please contact support.')",
     ],
     'desktop subscription-card bounded payment diagnostics',
@@ -9874,7 +9974,7 @@ function verifyPaymentMutationBoundedJson() {
     [
       'logPaymentFailure',
       'payment_desktop_billing_invoice_open_failed',
-      "window.open(record.invoiceUrl, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(record.invoiceUrl)",
       "getBoundedPaymentStringContext('invoiceUrl', record.invoiceUrl)",
       "message.error('Could not open invoice.')",
     ],
@@ -9896,7 +9996,7 @@ function verifyPaymentMutationBoundedJson() {
       'payment_mobile_subscription_resume_failed',
       'payment_mobile_subscription_cancel_failed',
       'payment_mobile_billing_external_link_open_failed',
-      "window.open(url, '_blank', 'noopener,noreferrer')",
+      "openIsolatedBrowserUrl(url)",
       "getBoundedPaymentStringContext('externalUrl', url)",
       'getBoundedPaymentStringContext',
     ],
@@ -10534,6 +10634,8 @@ function verifyAuthAccountClientResponseDiagnostics() {
   const mobileBillingScreen = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const mobileLocationsScreen = read('src/components/mobile/screens/MobileLocationsScreen.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const outletContextBanner = read('src/components/atoms/OutletContextBanner/index.tsx');
+  const storeSwitchAccess = read('src/lib/multiOutlet/storeSwitchAccess.ts');
 
   assert(authAccountResponses.includes('AUTH_ACCOUNT_RESPONSE_JSON_MAX_BYTES = 16 * 1024'), 'auth account client responses must cap response JSON parsing');
   assert(authAccountResponses.includes('AUTH_ACCOUNT_REQUEST_POLICY'), 'auth account browser requests must share a request policy');
@@ -10559,6 +10661,8 @@ function verifyAuthAccountClientResponseDiagnostics() {
   });
   assert(firebaseAuthSyncHelper.includes('firebaseClaimsMatchTargetStore(refreshedToken?.claims, targetStoreId)'), 'Firebase auth claim refresh must verify target-store acknowledgement before active browser context changes');
   assert(firebaseAuthSyncHelper.includes('firebase_auth_claims_refresh_mismatch'), 'Firebase auth claim refresh must code target-store acknowledgement failures');
+  assert(firebaseAuthSyncHelper.includes('firebase_auth_claims_refresh_missing_user'), 'Firebase auth claim refresh must fail closed when the browser Firebase actor is absent');
+  assert(!firebaseAuthSyncHelper.includes('if (!firebaseAuth?.currentUser) return { ready: false };'), 'Firebase auth claim refresh must not resolve an unacknowledged browser claim transition');
   assert(firebaseAuthSyncHelper.includes('resolveFirebaseAuthSessionScopeState'), 'Firebase auth sync must use exact session scope state');
   assert(firebaseAuthSyncHelper.includes("sessionScope.status === 'invalid'"), 'Firebase auth sync must distinguish conflicting scope from absent onboarding');
   assert(firebaseAuthSyncHelper.includes('firebase_auth_sync_invalid_session_scope'), 'Firebase auth sync must code contradictory session scope');
@@ -10595,6 +10699,9 @@ function verifyAuthAccountClientResponseDiagnostics() {
   assert(authAccountResponses.includes('error.code = code.slice(0, 64)'), 'auth account client errors may keep bounded response codes');
   assert(!authAccountResponses.includes('response.json()'), 'auth account client responses must not use direct unbounded response parsing');
   assert(!authAccountResponses.includes('.json().catch'), 'auth account client responses must not silently swallow malformed response JSON');
+  assert(storeSwitchAccess.includes('let activeStoreSwitchAttemptToken: StoreSwitchAttemptToken | null = null;'), 'shared store-switch access must own one browser-wide attempt');
+  assert(storeSwitchAccess.includes('if (activeStoreSwitchAttemptToken !== null) return null;'), 'shared store-switch access must refuse concurrent attempts');
+  assert(storeSwitchAccess.includes('if (activeStoreSwitchAttemptToken !== token) return false;'), 'shared store-switch access must reject foreign releases');
 
   [
     [desktopProfileModal, 'desktop profile modal'],
@@ -10605,6 +10712,25 @@ function verifyAuthAccountClientResponseDiagnostics() {
     assert(!source.includes('/api/auth/update-profile') || !source.includes('data.error ||'), `${label} must not surface raw profile API error text`);
     assert(!source.includes('/api/auth/change-password') || !source.includes('data.error ||'), `${label} must not surface raw password API error text`);
   });
+  [
+    [desktopLocationsPage, 'desktop locations'],
+    [mobileLocationsScreen, 'mobile locations'],
+  ].forEach(([source, label]) => {
+    assert((source.match(/claimStoreSwitchAttempt\(\)/g) || []).length >= 2, `${label} must also serialize active-outlet deactivation claim restoration`);
+    assert(source.includes("if (typeof attemptToken === 'number') releaseStoreSwitchAttempt(attemptToken);"), `${label} active-outlet deactivation must release only its exact claim attempt`);
+    assert(source.includes('requiresClaimTransition'), `${label} must couple active-outlet deactivation to the HQ claim transition`);
+  });
+
+  assert(outletContextBanner.includes('await refreshFirebaseAuthClaims(loginStoreId);'), 'outlet context banner must refresh login-store Firebase claims before returning to HQ');
+  assert(outletContextBanner.includes('claimStoreSwitchAttempt()'), 'outlet context banner must synchronously claim the browser-wide switch attempt');
+  assert(outletContextBanner.includes('releaseStoreSwitchAttempt(attemptToken)'), 'outlet context banner must release the exact browser-wide switch attempt');
+  assert(outletContextBanner.includes('returnScopeKeyRef.current !== initiatingScopeKey'), 'outlet context banner must not settle a stale initiating scope');
+  assertOrder(
+    'src/components/atoms/OutletContextBanner/index.tsx',
+    ['await refreshFirebaseAuthClaims(loginStoreId);', 'setActiveStoreContext(null);'],
+    'outlet context banner return-to-HQ claim/context order',
+  );
+  assert(!outletContextBanner.includes('onClick={() => setActiveStoreContext(null)}'), 'outlet context banner must not clear local scope without refreshing Firebase claims');
 
   assert(!desktopProfileModal.includes('const data = await res.json()'), 'desktop profile modal must not use direct profile/password response parsing');
   assert(!desktopProfileModal.includes('res.json().catch'), 'desktop profile modal must not silently swallow account response parsing failures');
@@ -10624,6 +10750,12 @@ function verifyAuthAccountClientResponseDiagnostics() {
     assert(source.includes('/api/auth/switch-store'), `${label} must remain a switch-store caller`);
     assert(source.includes('AUTH_ACCOUNT_REQUEST_POLICY'), `${label} must use the shared auth account request policy for switch-store calls`);
     assert(source.includes("readAuthAccountResponse(res, 'switch_store')"), `${label} must parse and validate switch-store responses before accepting success`);
+    assert(source.includes('claimStoreSwitchAttempt()'), `${label} must synchronously claim the browser-wide switch attempt`);
+    assert(source.includes('releaseStoreSwitchAttempt(attemptToken)'), `${label} must release the exact browser-wide switch attempt`);
+    assert(
+      source.includes('!== initiatingScopeKey') || source.includes('isExpectedLocationScope(expectedTenantId, expectedStoreId)'),
+      `${label} must not settle after its initiating tenant/store scope changes`,
+    );
   });
 
   assert(!mobileMoreScreen.includes('const data = await res.json()'), 'mobile More account screens must not use direct profile/password response parsing');

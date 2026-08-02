@@ -16,4 +16,5 @@ export * from "./routes";
 export * from "./website";
 export * from "./websiteFeatures";
 export * from "./websiteUseCases";
+export * from "./videoReel";
 export * from "./workspace";

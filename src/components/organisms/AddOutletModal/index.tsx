@@ -19,11 +19,13 @@ import {
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
+import type { StoreDataType } from '@type/platform/store';
+import type { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { calculateProration } from '@util/razorpay';
 import { Alert, Button, Input, Modal, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useContext, useState } from 'react';
+import { useCallback, useContext, useRef, useState } from 'react';
 
 const { Text } = Typography;
 
@@ -33,7 +35,12 @@ interface AddOutletModalProps {
     subscription: FirestoreSubscriptionDoc | null;
 }
 
-function buildAddOutletLogContext(storeDetails: any, tenantDetails: any, outletName: string, needsBillingAction = false) {
+function buildAddOutletLogContext(
+    storeDetails: Pick<StoreDataType, 'storeId' | 'tenantId'> | null,
+    tenantDetails: Pick<TenantDataType, 'tenantId'> | null,
+    outletName: string,
+    needsBillingAction = false,
+) {
     return {
         needsBillingAction,
         ...getBoundedMultiOutletStringContext('storeId', storeDetails?.storeId),
@@ -69,6 +76,35 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [requiresBillingAction, setRequiresBillingAction] = useState(false);
+    const actionInFlightRef = useRef(false);
+    const modalEpochRef = useRef(0);
+    const previousOpenRef = useRef(open);
+    const currentScopeRef = useRef({
+        open,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId || tenantDetails?.tenantId,
+    });
+    if (previousOpenRef.current !== open) {
+        previousOpenRef.current = open;
+        modalEpochRef.current += 1;
+    }
+    currentScopeRef.current = {
+        open,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId || tenantDetails?.tenantId,
+    };
+
+    const isExpectedScope = useCallback((tenantId: unknown, storeId: unknown, modalEpoch: number) => (
+        currentScopeRef.current.open
+        && modalEpochRef.current === modalEpoch
+        && String(currentScopeRef.current.tenantId ?? '') === String(tenantId ?? '')
+        && String(currentScopeRef.current.storeId ?? '') === String(storeId ?? '')
+    ), []);
+
+    const handleClose = useCallback(() => {
+        modalEpochRef.current += 1;
+        onClose();
+    }, [onClose]);
 
     const proration = subscription ? calculateProration(subscription) : null;
     const currency = subscription?.currency || 'INR';
@@ -85,12 +121,18 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (subscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
 
     const openBilling = () => {
-        onClose();
+        handleClose();
         router.push('/billing');
     };
 
     const handleCreate = async () => {
-        if (!outletName.trim()) return;
+        if (!outletName.trim() || !storeDetails?.storeId || !(storeDetails.tenantId || tenantDetails?.tenantId)) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId || tenantDetails?.tenantId;
+        const expectedModalEpoch = modalEpochRef.current;
+        const submittedOutletName = outletName.trim();
+        if (actionInFlightRef.current || !isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) return;
+        actionInFlightRef.current = true;
         setLoading(true);
         setError(null);
         setRequiresBillingAction(false);
@@ -100,12 +142,17 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                 ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ outletName: outletName.trim() }),
+                body: JSON.stringify({
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                    outletName: submittedOutletName,
+                }),
             });
             const data = await readDesktopAddOutletResponse(
                 res,
-                buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+                buildAddOutletLogContext(storeDetails, tenantDetails, submittedOutletName),
             );
+            if (!isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) return;
 
             if (!res.ok) {
                 const needsBillingAction = isOutletPaymentRequiredResponse(data);
@@ -117,7 +164,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                         res.status,
                         needsBillingAction ? OUTLET_LOCATION_PAYMENT_REQUIRED_CODE : undefined,
                     ),
-                    buildAddOutletLogContext(storeDetails, tenantDetails, outletName, needsBillingAction),
+                    buildAddOutletLogContext(storeDetails, tenantDetails, submittedOutletName, needsBillingAction),
                 );
                 setError(needsBillingAction ? 'Add one paid location from Billing, then come back.' : 'Failed to create outlet');
                 return;
@@ -125,7 +172,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             if (!isOutletCreateResponse(data)) {
                 const invalidResponseError = createMultiOutletStatusError('desktop_location_create_response_invalid', res.status);
                 logMultiOutletFailure('desktop_location_create_response_invalid', invalidResponseError, {
-                    ...buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+                    ...buildAddOutletLogContext(storeDetails, tenantDetails, submittedOutletName),
                     responseOk: res.ok,
                     responseStatus: res.status,
                 });
@@ -134,44 +181,58 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             }
 
             // Update local tenant storesList
-            if (tenantDetails && data.storeId) {
-                const normalizedCurrentStores = tenantDetails.storesList.map((store: any) => (
-                    data.masterPromoted && Number(store.storeId) === Number(storeDetails?.storeId)
-                        ? { ...store, isMaster: true }
-                        : store
-                ));
-                const updatedStoresList = [
-                    ...normalizedCurrentStores,
-                    {
-                        active: true,
-                        isMaster: false,
-                        name: outletName.trim(),
-                        outletSlug: data.outletSlug,
-                        storeId: data.storeId,
-                        tenantName: data.tenantName || tenantDetails.name,
-                    },
-                ];
-                setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
+            if (data.storeId) {
+                setTenantDetails((previous) => previous?.storesList
+                    && String(previous.tenantId ?? '') === String(expectedTenantId)
+                    ? {
+                        ...previous,
+                        storesList: [
+                            ...previous.storesList.map((store) => (
+                                data.masterPromoted && Number(store.storeId) === Number(expectedStoreId)
+                                    ? { ...store, isMaster: true }
+                                    : store
+                            )),
+                            ...(previous.storesList.some((store) => Number(store.storeId) === Number(data.storeId))
+                                ? []
+                                : [{
+                                    active: true,
+                                    isMaster: false,
+                                    name: submittedOutletName,
+                                    outletSlug: data.outletSlug,
+                                    storeId: data.storeId,
+                                    storeKey: data.storeKey,
+                                    tenantName: data.tenantName || previous.name,
+                                }]),
+                        ],
+                    }
+                    : previous);
             }
-            if (data.masterPromoted && storeDetails) {
-                setStoreDetails({
-                    ...storeDetails,
-                    isMaster: true,
-                    outletPolicy: data.outletPolicy || storeDetails.outletPolicy || DEFAULT_OUTLET_POLICY,
-                });
+            if (data.masterPromoted) {
+                setStoreDetails((previous) => previous
+                    && String(previous.tenantId ?? '') === String(expectedTenantId)
+                    && String(previous.storeId ?? '') === String(expectedStoreId)
+                    ? {
+                        ...previous,
+                        isMaster: true,
+                        outletPolicy: data.outletPolicy || previous.outletPolicy || DEFAULT_OUTLET_POLICY,
+                    }
+                    : previous);
             }
 
             setOutletName('');
-            onClose();
+            handleClose();
         } catch (e) {
             logMultiOutletFailure(
                 'desktop_location_create_failed',
                 e,
-                buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+                buildAddOutletLogContext(storeDetails, tenantDetails, submittedOutletName),
             );
-            setError('Network error. Please try again.');
+            if (isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) {
+                setError('Network error. Please try again.');
+            }
         } finally {
-            setLoading(false);
+            actionInFlightRef.current = false;
+            if (isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) setLoading(false);
         }
     };
 
@@ -179,7 +240,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
         <Modal
             title="Add New Outlet"
             open={open}
-            onCancel={onClose}
+            onCancel={handleClose}
             onOk={handleCreate}
             okText="Add Outlet"
             okButtonProps={{ loading, disabled: !outletName.trim() || !hasBillingAccess }}

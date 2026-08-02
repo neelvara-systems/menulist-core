@@ -324,7 +324,7 @@ T+0:07  Owner clicks "Approve & Publish"
         → State: PUBLISHING
 T+0:08  Transaction completes: tenant, store, user, project, project summary, public URL, and session LIVE finalization.
         → State: LIVE
-T+0:08  WhatsApp: "Your menu is live: spice-garden.menulist.ai
+T+0:08  WhatsApp: "Your menu is live: spice-garden.menulist.online
         Manage anytime: menulist.ai/login"
 
 RESULT: ✅ Full onboarding in ~8 minutes (5 min perceived effort)

@@ -160,8 +160,9 @@ forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset h
 
 [
   'export function getActivePublicItemPriceAttributes',
-  "readOwnValue(attribute, 'active') !== false",
-  "hasDisplayPrice(readOwnValue(attribute, 'price'))",
+  "const active = readOwnValue(attribute, 'active');",
+  "const price = readOwnValue(attribute, 'price');",
+  'activeAttributes.push({',
   'export function getPublicItemListPriceLabel',
   'const minPrice = Math.min(...numericPrices);',
   'const maxPrice = Math.max(...numericPrices);',
@@ -305,10 +306,11 @@ requireToken(
   'const activePriceAttributes = useMemo(',
   'getActivePublicItemPriceAttributes(item)',
   'getPublicItemListPriceLabel(item, currencySymbol)',
-  'activePriceAttributes.map((attr: any, idx: number)',
+  'activePriceAttributes.map((attr, idx) =>',
   'price: showItemPrices && activePriceAttributes.length === 0',
 ].forEach((token) => requireToken(pdpModal, token, 'Public PDP active option price boundary'));
 forbidToken(pdpModal, 'item.attributes.map((attr: any, idx: number)', 'Public PDP inactive/unpriced attributes');
+forbidToken(pdpModal, 'item: any;', 'Public PDP erased item contract');
 forbidToken(pdpModal, "background: '#ef444420'", 'Public PDP low-contrast unavailable/spice badge');
 forbidToken(pdpModal, "color: '#d97706'", 'Public PDP low-contrast allergen badge');
 requireToken(pdpModal, "color: moodConfig.headingColor", 'Public PDP readable mood tag text');
@@ -489,6 +491,12 @@ function verifyRuntimeDesignBoundary() {
   };
   if (getActivePublicItemPriceAttributes(priceItem).length !== 2) {
     failures.push('Public option prices must exclude inactive and unpriced attributes');
+  }
+  const projectedPriceAttribute = getActivePublicItemPriceAttributes({
+    attributes: [{ id: 'safe', name: { en: 'Safe' }, price: 100, internalMargin: 82 }],
+  })[0];
+  if (!projectedPriceAttribute || 'internalMargin' in projectedPriceAttribute) {
+    failures.push('Public option-price projection must omit undeclared persisted fields');
   }
   if (getPublicItemListPriceLabel(priceItem, '₹') !== '₹100.00–₹200.00') {
     failures.push('Public numeric option price summary must expose the active range');

@@ -51,7 +51,7 @@ const schemaWithAccountEmail = generateOBPSchema(
         name: 'Example Business',
         storeId: 123,
     },
-    'https://example.menulist.ai',
+    'https://example.menulist.online',
 );
 assert.equal(
     'email' in schemaWithAccountEmail,
@@ -61,7 +61,7 @@ assert.equal(
 
 const brandSchema = generateBrandOBPSchema({
     brandName: 'Example Brand',
-    canonicalUrl: 'https://example.menulist.ai/',
+    canonicalUrl: 'https://example.menulist.online/',
     language: 'en',
     locations: [
         {
@@ -80,23 +80,23 @@ const brandSchema = generateBrandOBPSchema({
     modifiedOn: expected,
 });
 assert.equal(brandSchema['@type'], 'Organization');
-assert.equal(brandSchema.url, 'https://example.menulist.ai');
+assert.equal(brandSchema.url, 'https://example.menulist.online');
 assert.equal(brandSchema.dateModified, expected);
 assert.deepEqual(
     brandSchema.location,
     [
         {
             '@type': 'LocalBusiness',
-            '@id': 'https://example.menulist.ai/menu#business',
+            '@id': 'https://example.menulist.online/menu#business',
             name: 'Example Main Store',
-            url: 'https://example.menulist.ai/menu',
+            url: 'https://example.menulist.online/menu',
             address: '1 Main Street',
         },
         {
             '@type': 'LocalBusiness',
-            '@id': 'https://example.menulist.ai/example-branch#business',
+            '@id': 'https://example.menulist.online/example-branch#business',
             name: 'Example Branch',
-            url: 'https://example.menulist.ai/example-branch',
+            url: 'https://example.menulist.online/example-branch',
             address: 'Mumbai',
         },
     ],

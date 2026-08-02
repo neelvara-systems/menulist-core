@@ -60,7 +60,7 @@ Blocked campaigns usually contain missing consent, fake testimonial wording, una
 
 ### Credits Look High
 
-The current export/download-first runtime does not charge credits. Credit estimates only become active when paid generation, rendered video, billing, or provider actions are enabled in a separate future layer.
+The current export/download-first runtime does not charge credits. In-house browser video composition uses zero provider credits. Credit estimates become active only if paid generation, external/cloud rendering, billing, or provider actions are enabled in a separate future layer.
 
 ## Need More Help
 

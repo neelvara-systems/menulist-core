@@ -418,10 +418,13 @@ requireToken(menuBoardDisplay, 'hasScreenPrice(item.price)', 'Menu Board price d
   'resolveLocalExportStorageScope(storeData)',
   'readLocalPdfDownloadAt(pdfHistoryScope, projectId)',
   'recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash);',
+  'const modifiedMs = toDate(menuModifiedOn).getTime();',
+  'if (!Number.isFinite(modifiedMs)) return false;',
 ].forEach((token) => requireToken(projectShareModal, token, 'Project share PDF path'));
 [
   'localStorage.setItem(PDF_DOWNLOAD_KEY',
   'menulist_last_pdf_version_${projectId}',
+  '(menuModifiedOn as any)?.seconds',
 ].forEach((token) => forbidToken(projectShareModal, token, 'Project share PDF path unscoped legacy freshness key'));
 
 [

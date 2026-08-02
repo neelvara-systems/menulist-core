@@ -5,21 +5,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
-import {
-    getAnswerlatticeCompletedWeeklyWindows,
-    getAnswerlatticeWeeklyInsightWriteDecision,
-} from '@lib/answerlattice/analyticsIntelligenceContracts';
-import {
-    type AnswerlatticeChatAnalyticsDay,
-    parseAnswerlatticeChatAnalyticsDay,
-} from '@lib/answerlattice/chatAnalyticsContracts';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
+import { getAnswerlatticeCompletedWeeklyWindows, getAnswerlatticeWeeklyInsightWriteDecision, } from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { type AnswerlatticeChatAnalyticsDay, parseAnswerlatticeChatAnalyticsDay, } from '@lib/answerlattice/chatAnalyticsContracts';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { withAuth } from '@/middleware/auth';
@@ -185,7 +176,7 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: Ses
         weekStartForLog = weekStart;
         weekEndForLog = weekEnd;
 
-        const queryRange = (start: string, end: string) => answerlatticeFirestoreAdmin
+        const queryRange = (start: string, end: string) => requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
             .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
@@ -297,14 +288,14 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: Ses
             promptVersion: 'deterministic-v1',
         };
         const sourceHash = hashPayload(payload);
-        const weeklyRef = answerlatticeFirestoreAdmin
+        const weeklyRef = requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.INSIGHTS)
             .doc(String(tId))
             .collection(DB_COLLECTIONS.STORES)
             .doc(String(sId))
             .collection(DB_COLLECTIONS.AI)
             .doc('weekly');
-        const writeDecision = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+        const writeDecision = await requireAnswerlatticeFirestoreAdmin().runTransaction(async (transaction) => {
             const currentInsight = await transaction.get(weeklyRef);
             const decision = getAnswerlatticeWeeklyInsightWriteDecision(
                 currentInsight.exists ? currentInsight.data() : null,

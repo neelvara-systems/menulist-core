@@ -9,11 +9,19 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
-import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
+import {
+    claimStoreSwitchAttempt,
+    getAccessibleStoreSummaries,
+    getStoreSummaryId,
+    normalizeStoreSwitchStoreId,
+    releaseStoreSwitchAttempt,
+    type SessionUserWithStores,
+    type StoreSummary,
+} from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useSession } from 'next-auth/react';
-import { useContext, useMemo } from 'react';
+import { useContext, useMemo, useRef, useState } from 'react';
 import { LuMapPin, LuStar } from 'react-icons/lu';
 
 const HEADER_STORE_SWITCH_FAILED = 'header_store_switch_failed';
@@ -22,17 +30,26 @@ export default function StoreSwitcher() {
     const { tenantDetails, storeDetails, userPermissions, activeStoreContext, setActiveStoreContext } =
         useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
+    const [isSwitching, setIsSwitching] = useState(false);
 
     const accessibleStoresList = useMemo(
-        () => getAccessibleStoreSummaries({ sessionUser: session?.user as any, tenantDetails }),
+        () => getAccessibleStoreSummaries({
+            sessionUser: session?.user as SessionUserWithStores | undefined,
+            tenantDetails,
+        }),
         [session?.user, tenantDetails],
     );
-    const loginStoreId = Number(session?.user?.storeId || 0);
-    const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || loginStoreId || 0);
+    const loginStoreId = normalizeStoreSwitchStoreId(session?.user?.storeId) || 0;
+    const currentStoreId = normalizeStoreSwitchStoreId(
+        activeStoreContext || storeDetails?.storeId || loginStoreId,
+    ) || 0;
+    const scopeKey = [session?.user?.id, session?.user?.tenantId, loginStoreId].map(String).join(':');
+    const scopeKeyRef = useRef(scopeKey);
+    scopeKeyRef.current = scopeKey;
 
     if (accessibleStoresList.length <= 1 || !userPermissions?.canSwitchStores) return null;
 
-    const resolveStoreName = (store: any) => {
+    const resolveStoreName = (store: StoreSummary) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
 
@@ -59,9 +76,23 @@ export default function StoreSwitcher() {
     });
 
     const handleSwitch = async (targetStoreId: number) => {
+        const normalizedTargetStoreId = normalizeStoreSwitchStoreId(targetStoreId);
+        if (
+            !normalizedTargetStoreId
+            || normalizedTargetStoreId === currentStoreId
+            || !accessibleStoresList.some((store) => getStoreSummaryId(store) === normalizedTargetStoreId)
+        ) {
+            return;
+        }
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
+        const initiatingScopeKey = scopeKey;
+        setIsSwitching(true);
+
         try {
-            if (Number(targetStoreId) === loginStoreId) {
+            if (normalizedTargetStoreId === loginStoreId) {
                 if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                if (scopeKeyRef.current !== initiatingScopeKey) return;
                 setActiveStoreContext(null);
                 return;
             }
@@ -70,15 +101,20 @@ export default function StoreSwitcher() {
                 ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetStoreId }),
+                body: JSON.stringify({ targetStoreId: normalizedTargetStoreId }),
             });
 
             await readAuthAccountResponse(res, 'switch_store');
+            if (scopeKeyRef.current !== initiatingScopeKey) return;
 
-            await refreshFirebaseAuthClaims(targetStoreId);
-            setActiveStoreContext(targetStoreId);
+            await refreshFirebaseAuthClaims(normalizedTargetStoreId);
+            if (scopeKeyRef.current !== initiatingScopeKey) return;
+            setActiveStoreContext(normalizedTargetStoreId);
         } catch (error) {
-            logAuthFailure(HEADER_STORE_SWITCH_FAILED, error, getHeaderStoreSwitchLogContext(targetStoreId));
+            logAuthFailure(HEADER_STORE_SWITCH_FAILED, error, getHeaderStoreSwitchLogContext(normalizedTargetStoreId));
+        } finally {
+            releaseStoreSwitchAttempt(attemptToken);
+            setIsSwitching(false);
         }
     };
 
@@ -89,6 +125,8 @@ export default function StoreSwitcher() {
                 value={currentStoreId}
                 onChange={handleSwitch}
                 options={options}
+                disabled={isSwitching}
+                loading={isSwitching}
                 style={{ minWidth: 180 }}
                 size="small"
                 variant="borderless"

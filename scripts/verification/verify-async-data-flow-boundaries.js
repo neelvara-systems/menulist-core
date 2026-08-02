@@ -2,7 +2,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const SOURCE_ROOTS = ['src', 'functions/src', 'functions-answerlattice/src'];
+const SOURCE_ROOTS = [
+  'src',
+  'functions/src',
+  'functions-answerlattice/src',
+  'functions-signaldesk/src',
+];
 const ASYNC_PROMISE_EXECUTOR = /new\s+Promise(?:\s*<[^;{}()]+>)?\s*\(\s*async\b/g;
 const ASYNC_FOR_EACH = /\.forEach\s*\(\s*async\b/g;
 

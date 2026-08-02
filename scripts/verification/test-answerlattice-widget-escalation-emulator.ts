@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { Timestamp } from 'firebase-admin/firestore';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import {
     AnswerlatticeWidgetEscalationError,
     buildAnswerlatticeWidgetEscalationTicketId,
@@ -14,6 +14,7 @@ import {
 } from '../../src/lib/answerlattice/supportTicketLifecycle';
 
 const scope = { tId: 1, sId: 101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 
 const history = (overrides: Record<string, unknown> = {}) => ({
     pId: 'AL',

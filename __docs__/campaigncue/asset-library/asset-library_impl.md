@@ -26,6 +26,7 @@ Asset Library is the cross-feature media and output registry for CampaignCue. Fe
 - `POST /api/campaigncue/assets` strictly registers metadata, source, rights status, consent type, rights note, deduplicated tags, optional workspace Storage path, and validated usage refs. It rejects unknown fields and external/download URLs.
 - When a Storage path is supplied, registration verifies object metadata through CampaignCue Storage and never trusts client size or MIME values as file truth.
 - Shared Creative Editor exports register metadata through `POST /api/campaigncue/assets` after explicit owner export/save. The editor itself remains product-neutral, owns only browser-local document/canvas state, and does not write CampaignCue Firebase directly.
+- Video Reel Studio may register a compact `local-export` receipt after a successful device download. Because the render binary remains on the owner's device, that receipt must not show a remote Download action or claim durable media reuse without a verified Storage path.
 - CueLayers lets owners reuse uploaded flat images through the separate conservative reconstruction flow documented in `__docs__/campaigncue/cue-layers/README.md`; Asset Library remains the final reusable/export registry.
 - `storage-campaigncue.rules` scopes `campaigncue/assets/{workspaceId}/...` by CampaignCue workspace id and enforces type/size limits.
 - Render and report storage prefixes are read-only to clients and server-owned.

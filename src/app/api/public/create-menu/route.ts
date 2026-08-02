@@ -43,7 +43,9 @@ import { checkSafeMode } from '@lib/ops/safeMode';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
+import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
+import { normalizePublicCreateMenuPreviewDraft } from '@lib/publicCreateMenu/previewDraftResponse';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedFormDataBody, readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -53,7 +55,7 @@ import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from 'src/middleware/auth';
+import { type AuthenticatedHandler, withAuth } from 'src/middleware/auth';
 import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
@@ -79,6 +81,25 @@ const PUBLIC_MENU_ENTRY_POLL_FAILED = 'public_menu_entry_poll_failed';
 const PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED = 'public_menu_entry_storage_cleanup_failed';
 const PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED = 'public_menu_entry_collision_lookup_failed';
 const PUBLIC_MENU_ENTRY_DRAFT_PRICE_INVALID = 'public_menu_entry_draft_price_invalid';
+const PUBLIC_MENU_ENTRY_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const withPublicMenuEntryPrivateResponse = (handler: AuthenticatedHandler) => {
+    const authenticatedHandler = withAuth(handler);
+    return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => {
+        const response = await authenticatedHandler(...args);
+        Object.entries(PUBLIC_MENU_ENTRY_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+            response.headers.set(name, value);
+        });
+        return response;
+    };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
 
 function buildPublicMenuEntryLogContext(context: {
     draftToken?: unknown;
@@ -117,14 +138,14 @@ async function deletePublicMenuEntryStoragePath(
 
 const PublicMenuLinkSchema = z.object({
     growthAcquisition: z.object({
-        source: z.string().max(80),
-        medium: z.string().max(80),
-        campaign: z.string().max(80),
-    }).optional().nullable(),
+        source: z.string().trim().max(80),
+        medium: z.string().trim().max(80),
+        campaign: z.string().trim().max(80),
+    }).strict().optional().nullable(),
     permissionConfirmed: z.literal(true),
     sourceType: z.literal('menu_link'),
-    url: z.string().min(8).max(4000),
-});
+    url: z.string().trim().url().min(8).max(4000),
+}).strict();
 
 type PublicDraftSource = {
     contentType: string;
@@ -309,8 +330,8 @@ async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<N
 
     if (rateLimitResult.allowed) return null;
 
-    const waitSeconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
     const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+    const waitSeconds = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
     return NextResponse.json(
         {
             success: false,
@@ -318,15 +339,17 @@ async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<N
                 ? 'Menu setup is temporarily unavailable. Please try again in a minute.'
                 : 'Too many menu setup attempts. Please try again later.',
         },
-        {
-            status: providerUnavailable ? 503 : 429,
-            headers: {
-                'Retry-After': String(waitSeconds),
-                'X-RateLimit-Limit': String(rateLimitConfig.limit),
-                'X-RateLimit-Remaining': String(rateLimitResult.remaining),
-                'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+        providerUnavailable
+            ? { status: 503 }
+            : {
+                status: 429,
+                headers: {
+                    'Retry-After': String(waitSeconds),
+                    'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                    'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+                    'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+                },
             },
-        },
     );
 }
 
@@ -348,12 +371,14 @@ async function checkAuthenticatedPublicMenuEntryAdmission(userId: string): Promi
                 ? 'Menu setup is temporarily unavailable. Please try again in a minute.'
                 : 'Too many menu setup requests. Please wait a moment and try again.',
         },
-        {
-            status: providerUnavailable ? 503 : 429,
-            headers: {
-                'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))),
+        providerUnavailable
+            ? { status: 503 }
+            : {
+                status: 429,
+                headers: {
+                    'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))),
+                },
             },
-        },
     );
 }
 
@@ -840,7 +865,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
     }
 }
 
-export const POST = withAuth(async (req: NextRequest, session) => {
+export const POST = withPublicMenuEntryPrivateResponse(async (req: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
             { success: false, error: 'This feature is not available.' },
@@ -908,7 +933,8 @@ export const POST = withAuth(async (req: NextRequest, session) => {
         if (formDataResult.ok === false) return formDataResult.response;
 
         const formData = formDataResult.formData;
-        const imageFile = formData.get('image') as File | null;
+        const imageValue = formData.get('image');
+        const imageFile = imageValue instanceof File ? imageValue : null;
         const growthAcquisition = normalizeGrowthAcquisitionAttribution({
             source: formData.get('growthAcquisitionSource'),
             medium: formData.get('growthAcquisitionMedium'),
@@ -932,7 +958,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
     }
 });
 
-export const GET = withAuth(async (req: NextRequest, session) => {
+export const GET = withPublicMenuEntryPrivateResponse(async (req: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
             { success: false, error: 'This feature is not available.' },
@@ -971,12 +997,14 @@ export const GET = withAuth(async (req: NextRequest, session) => {
                         ? 'Menu preview is temporarily unavailable. Please try again in a minute.'
                         : 'Too many preview checks. Please wait a moment.',
                 },
-                {
-                    status: providerUnavailable ? 503 : 429,
-                    headers: {
-                        'Retry-After': String(Math.max(1, Math.ceil((statusRateLimit.resetAt - Date.now()) / 1000))),
+                providerUnavailable
+                    ? { status: 503 }
+                    : {
+                        status: 429,
+                        headers: {
+                            'Retry-After': String(Math.max(1, Math.ceil((statusRateLimit.resetAt - Date.now()) / 1000))),
+                        },
                     },
-                },
             );
         }
 
@@ -989,7 +1017,14 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        const draft = draftDoc.data()!;
+        const draftData = draftDoc.data();
+        if (!isRecord(draftData)) {
+            return NextResponse.json(
+                { success: false, error: 'Draft not found or expired.' },
+                { status: 404 },
+            );
+        }
+        const draft = draftData;
 
         if (draft.createdByUId !== userId) {
             return NextResponse.json(
@@ -1022,26 +1057,43 @@ export const GET = withAuth(async (req: NextRequest, session) => {
         const responseStatus = draft.extractionStatus === 'completed' && !extractedData
             ? 'failed'
             : draft.extractionStatus;
+        const draftSource = normalizePublicDraftSourceForProject(draft, normalizedDraftId, {
+            allowedBucket: storageAdmin.bucket().name,
+            allowLocalEmulator: process.env.NODE_ENV !== 'production',
+        });
+        const normalizedPreview = normalizePublicCreateMenuPreviewDraft({
+            status: responseStatus,
+            detectedBusinessName: draft.detectedBusinessName,
+            detectedBusinessType: draft.detectedBusinessType,
+            detectedBusinessCategory: draft.detectedBusinessCategory,
+            detectedCurrencyCode: draft.detectedCurrencyCode,
+            detectedBrandAccentColor: draft.detectedBrandAccentColor,
+            detectedImageBackgroundColor: draft.detectedImageBackgroundColor,
+            suggestedProjectName: draft.suggestedProjectName,
+            extractedBusinessProfile: draft.extractedBusinessProfile,
+            imageUrl: draftSource?.imageUrl,
+            sourceType: draft.sourceType,
+            error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
+            extractedData,
+        });
+        if (!normalizedPreview || !draftSource) {
+            logSecurityDiagnostic('public_menu_entry_draft_response_invalid', buildPublicMenuEntryLogContext({
+                draftToken: normalizedDraftId,
+                status: draft.extractionStatus,
+                userId,
+            }));
+            return NextResponse.json(
+                { success: false, error: PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE, status: 'failed' },
+                { status: 422 },
+            );
+        }
         const responseBody: Record<string, unknown> = {
             success: true,
-            status: responseStatus,
-            detectedBusinessName: draft.detectedBusinessName || null,
-            detectedBusinessType: draft.detectedBusinessType || null,
-            detectedBusinessCategory: draft.detectedBusinessCategory || null,
-            detectedCurrencyCode: draft.detectedCurrencyCode || null,
-            detectedBrandAccentColor: draft.detectedBrandAccentColor || null,
-            detectedImageBackgroundColor: draft.detectedImageBackgroundColor || null,
-            suggestedProjectName: draft.suggestedProjectName || null,
-            extractedBusinessProfile: draft.extractedBusinessProfile || null,
-            imageUrl: draft.imageUrl,
-            sourceType: draft.sourceType || 'image_upload',
-            error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
+            ...normalizedPreview,
             resultReady: responseStatus === 'completed' && Boolean(extractedData),
         };
 
-        if (!statusOnly) {
-            responseBody.extractedData = extractedData;
-        }
+        if (statusOnly) delete responseBody.extractedData;
 
         return NextResponse.json(responseBody);
     } catch (error) {

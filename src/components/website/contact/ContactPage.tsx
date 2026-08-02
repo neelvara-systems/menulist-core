@@ -13,6 +13,7 @@ import {
   readMenulistPublicContactResponseJson,
   type MenulistPublicContactTopic,
 } from '@lib/publicContact/contactClientResponse';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteLink from '../shared/WebsiteLink';
@@ -66,19 +67,20 @@ export default function ContactPage() {
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const successRef = useRef<HTMLDivElement>(null);
+  const submissionInFlightRef = useRef(false);
   const captchaRequired = isTurnstileClientEnabled();
   const whyPoints = Array.from({ length: WHY_COUNT }, (_, i) => t(`Contact.why${i}`));
   const proofItems = Array.from({ length: 3 }, (_, i) => t(`Contact.proof${i}`));
   const submitFailedMessage = t('Contact.submitFailed');
   const securityCheckMessage = t('Contact.securityCheckRequired');
   const contactSchema = z.object({
-    name: z.string().trim().min(2, t('Contact.formNameError')),
-    workEmail: z.string().trim().email(t('Contact.formEmailError')),
-    phoneNumber: z.string().optional(),
+    name: z.string().trim().min(2, t('Contact.formNameError')).max(120),
+    workEmail: z.string().trim().email(t('Contact.formEmailError')).max(180),
+    phoneNumber: z.string().max(40).optional(),
     helpTopic: z.enum(['general', 'demo', 'multi-location', 'pricing', 'other']).optional(),
-    message: z.string().trim().min(10, t('Contact.formMessageError')),
+    message: z.string().trim().min(10, t('Contact.formMessageError')).max(2000),
     agreeToTerms: z.boolean().refine(v => v === true, { message: t('Contact.formAgreeError') }),
-    website: z.string().optional(),
+    website: z.string().max(200).optional(),
   });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
@@ -97,6 +99,7 @@ export default function ContactPage() {
   }, [submitted]);
 
   const onSubmit = async (values: FormValues) => {
+    if (submissionInFlightRef.current) return;
     setSubmitError(null);
     const sourcePath = typeof window === 'undefined' ? '/contact' : window.location.pathname;
     const expectedHelpTopic = (values.helpTopic || 'general') as MenulistPublicContactTopic;
@@ -115,6 +118,7 @@ export default function ContactPage() {
       return;
     }
 
+    submissionInFlightRef.current = true;
     setSubmitting(true);
     try {
       const response = await fetch('/api/public/contact', {
@@ -148,10 +152,12 @@ export default function ContactPage() {
 
       reset();
       setSubmitted(true);
-    } catch {
+    } catch (error) {
       setSubmitError(submitFailedMessage);
+      logRuntimeFailure('website_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
     } finally {
+      submissionInFlightRef.current = false;
       setSubmitting(false);
     }
   };
@@ -246,6 +252,7 @@ export default function ContactPage() {
                     <label htmlFor="contact-name" style={labelStyle}>{t('Contact.formName')}</label>
                     <input
                       id="contact-name"
+                      maxLength={120}
                       autoComplete="name"
                       aria-invalid={Boolean(errors.name)}
                       aria-describedby={errors.name ? 'contact-name-error' : undefined}
@@ -262,6 +269,7 @@ export default function ContactPage() {
                       <label htmlFor="contact-email" style={labelStyle}>{t('Contact.formEmail')}</label>
                       <input
                         id="contact-email"
+                        maxLength={180}
                         type="email"
                         autoComplete="email"
                         aria-invalid={Boolean(errors.workEmail)}
@@ -276,6 +284,7 @@ export default function ContactPage() {
                       <label htmlFor="contact-phone" style={labelStyle}>{t('Contact.formPhone')}</label>
                       <input
                         id="contact-phone"
+                        maxLength={40}
                         type="tel"
                         autoComplete="tel"
                         {...register('phoneNumber')}
@@ -303,6 +312,7 @@ export default function ContactPage() {
                     <label htmlFor="contact-message" style={labelStyle}>{t('Contact.formMessage')}</label>
                     <textarea
                       id="contact-message"
+                      maxLength={2000}
                       aria-invalid={Boolean(errors.message)}
                       aria-describedby={errors.message ? 'contact-message-error' : undefined}
                       {...register('message')}
@@ -317,6 +327,7 @@ export default function ContactPage() {
                     <label htmlFor="contact-website">Website</label>
                     <input
                       id="contact-website"
+                      maxLength={200}
                       tabIndex={-1}
                       autoComplete="off"
                       {...register('website')}

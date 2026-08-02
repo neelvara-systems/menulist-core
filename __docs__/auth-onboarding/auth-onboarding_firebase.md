@@ -32,7 +32,7 @@ Accepted flow:
 - one subscription document write;
 - one session refresh read and one canonical store read during Firebase claim sync.
 
-Provider failure may add one compensation transaction and one cache invalidation attempt. Ambiguous provider creation may add at most three bounded 100-item provider pages. Ambiguous local persistence adds one exact subscription-document read and verifies both ML product aliases, both user aliases, both numeric tenant/store aliases, provider identity, and plan identity before cancellation/compensation.
+Provider failure may add one compensation transaction and one cache invalidation attempt. Ambiguous provider creation may add at most three bounded 100-item provider pages. Direct and recovered provider results must match the exact provider plan, quantity, total count and attempt/user/tenant/store/plan notes. A known exact attempt with an invalid commercial response or checkout URL adds one provider cancellation before local compensation; cancellation failure preserves the local workspace so it cannot become detached from a possibly live provider effect. Ambiguous local persistence adds one exact subscription-document read and verifies both ML product aliases, both user aliases, both numeric tenant/store aliases, provider identity, and plan identity before cancellation/compensation.
 
 ## Identity and compensation admission
 

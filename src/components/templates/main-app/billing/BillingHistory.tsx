@@ -1,5 +1,7 @@
 'use client'
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { BillingHistoryItem } from '@type/razorpay';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { formatDateTime } from '@util/dateTime';
@@ -28,10 +30,7 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
     const handleOpenInvoice = (record: BillingHistoryItem) => {
         if (!record.invoiceUrl) return;
         try {
-            const opened = window.open(record.invoiceUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_billing_invoice_open_blocked');
-            }
+            openIsolatedBrowserUrl(record.invoiceUrl);
         } catch (error) {
             logPaymentFailure('payment_desktop_billing_invoice_open_failed', error, {
                 ...diagnosticContext,

@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import {
     ANSWERLATTICE_ROUTES,
     ANSWERLATTICE_WIDGET_TABS,
@@ -29,6 +31,7 @@ import {
     hasAnswerlatticeSupportCopyFallback,
 } from '@lib/answerlattice/supportClipboard';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type { AnswerlatticeActivationSummary } from '@type/answerlattice';
 import {
@@ -51,7 +54,7 @@ import {
     theme,
 } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuCheckCircle2,
     LuClipboard,
@@ -294,6 +297,7 @@ const tagList = (items: string[], emptyText: string) => {
 };
 
 export default function AnswerlatticeInstallCenter() {
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const screens = Grid.useBreakpoint();
     const router = useRouter();
     const { token } = theme.useToken();
@@ -303,14 +307,34 @@ export default function AnswerlatticeInstallCenter() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [downloadingKit, setDownloadingKit] = useState(false);
+    const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    const loadRequestRef = useRef(0);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     const loadInstallState = useCallback(async (silent = false) => {
+        const requestScopeKey = cacheScopeKey;
+        const requestId = loadRequestRef.current + 1;
+        loadRequestRef.current = requestId;
+        if (!requestScopeKey) {
+            setWidgetConfig(null);
+            setActivationSummary(null);
+            setLoadedScopeKey(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         if (silent) {
             setRefreshing(true);
         } else {
             setLoading(true);
+            setWidgetConfig(null);
+            setActivationSummary(null);
+            setLoadedScopeKey(null);
+            setDownloadingKit(false);
         }
 
         try {
@@ -319,6 +343,7 @@ export default function AnswerlatticeInstallCenter() {
                 method: 'GET',
             });
             const widgetData = await readInstallWidgetConfigResponse(widgetResponse);
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
             setWidgetConfig(widgetData);
 
             let activationResponse: Response | null = null;
@@ -341,24 +366,35 @@ export default function AnswerlatticeInstallCenter() {
                         isAnswerlatticeActivationSummaryResponse,
                         ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED,
                     );
+                    if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
                     setActivationSummary(activationData.summary);
                 } catch (error) {
+                    if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
                     logRuntimeFailure('answerlattice_install_activation_summary_response_failed', error, {
                         surface: 'answerlattice_install_center',
                     });
                     setActivationSummary(null);
                 }
             }
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoadedScopeKey(requestScopeKey);
+            }
         } catch (error) {
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
+            setWidgetConfig(null);
+            setActivationSummary(null);
+            setLoadedScopeKey(requestScopeKey);
             logRuntimeFailure('answerlattice_install_setup_load_failed', error, {
                 surface: 'answerlattice_install_center',
             });
             message.error(ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
-    }, []);
+    }, [cacheScopeKey]);
 
     useEffect(() => {
         loadInstallState();
@@ -389,10 +425,7 @@ export default function AnswerlatticeInstallCenter() {
 
     const openInstallLink = useCallback((href: string, linkKey: string, linkLabel: string) => {
         try {
-            const opened = window.open(href, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('answerlattice_install_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(href);
         } catch (error) {
             logRuntimeFailure('answerlattice_install_link_open_failed', error, {
                 surface: 'answerlattice_install_center',
@@ -405,7 +438,8 @@ export default function AnswerlatticeInstallCenter() {
     }, []);
 
     const downloadAgentKit = useCallback(async () => {
-        if (downloadingKit) return;
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent || downloadingKit) return;
         setDownloadingKit(true);
         try {
             const response = await fetch('/api/answerlattice/widget-agent-kit', {
@@ -428,6 +462,7 @@ export default function AnswerlatticeInstallCenter() {
             if (blob.size === 0 || blob.size > ANSWERLATTICE_AGENT_KIT_MAX_BYTES) {
                 throw new Error('answerlattice_install_kit_size_invalid');
             }
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
 
             const objectUrl = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
@@ -439,14 +474,15 @@ export default function AnswerlatticeInstallCenter() {
             anchor.remove();
             window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
         } catch (error) {
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             logRuntimeFailure('answerlattice_install_kit_download_failed', error, {
                 surface: 'answerlattice_install_center',
             });
             message.error(ANSWERLATTICE_INSTALL_KIT_DOWNLOAD_FAILED);
         } finally {
-            setDownloadingKit(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setDownloadingKit(false);
         }
-    }, [downloadingKit]);
+    }, [cacheScopeKey, downloadingKit, scopeIsCurrent]);
 
     const allowedOrigins = widgetConfig?.allowedOrigins || [];
     const savedBlockedRoutes = widgetConfig?.config?.blockedRoutes || [];
@@ -514,7 +550,7 @@ export default function AnswerlatticeInstallCenter() {
         },
     ];
 
-    if (loading) {
+    if (loading || !scopeIsCurrent) {
         return <Skeleton active paragraph={{ rows: 12 }} />;
     }
 

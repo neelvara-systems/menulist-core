@@ -5,7 +5,7 @@ export type ActivePublicItemPriceAttribute = {
     active?: boolean;
     id?: unknown;
     name?: unknown;
-    price?: unknown;
+    price: string | number;
 };
 
 function hasDisplayPrice(value: unknown): value is string | number {
@@ -32,11 +32,18 @@ export function getActivePublicItemPriceAttributes(item: unknown): ActivePublicI
     try {
         for (const attribute of attributes) {
             if (!attribute || typeof attribute !== 'object' || Array.isArray(attribute)) continue;
+            const active = readOwnValue(attribute, 'active');
+            const price = readOwnValue(attribute, 'price');
             if (
-                readOwnValue(attribute, 'active') !== false
-                && hasDisplayPrice(readOwnValue(attribute, 'price'))
+                active !== false
+                && hasDisplayPrice(price)
             ) {
-                activeAttributes.push(attribute as ActivePublicItemPriceAttribute);
+                activeAttributes.push({
+                    ...(typeof active === 'boolean' ? { active } : {}),
+                    id: readOwnValue(attribute, 'id'),
+                    name: readOwnValue(attribute, 'name'),
+                    price,
+                });
             }
         }
     } catch {

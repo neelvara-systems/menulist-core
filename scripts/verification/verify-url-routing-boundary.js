@@ -18,6 +18,7 @@ const CONTROLLED_ENV_KEYS = [
   'NODE_ENV',
   'NEXT_PUBLIC_PLATFORM_DOMAIN',
   'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES',
+  'NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN',
 ];
 
 function read(relativePath) {
@@ -136,15 +137,15 @@ function verifyResolverRuntimeBoundary() {
     assert(localPlatform.type === 'platform', 'localhost must resolve as platform in local development');
     assert(localPlatform.isPlatform === true && localPlatform.isClient === false, 'localhost must not be tenant client traffic');
 
-    const localTenant = resolveDomain('mysalon.menulist.online:3000');
+    const localTenant = resolveDomain('mysalon.qa.menulist.digital:3000');
     assert(localTenant.type === 'subdomain', 'local generated tenant host must resolve as subdomain');
     assert(localTenant.subdomain === 'mysalon', 'local generated tenant host must preserve tenant subdomain');
     assert(localTenant.isClient === true, 'local generated tenant host must be client traffic');
 
-    const reservedDashboard = resolveDomain('app.menulist.online');
+    const reservedDashboard = resolveDomain('app.qa.menulist.digital');
     assert(reservedDashboard.type === 'platform', 'reserved app subdomain must not become tenant traffic');
 
-    const signalDeskHost = resolveDomain('signaldesk.menulist.online');
+    const signalDeskHost = resolveDomain('signaldesk.qa.menulist.digital');
     assert(signalDeskHost.type === 'platform', 'reserved SignalDesk subdomain must not become tenant traffic');
 
     const vercelAlias = resolveDomain('menulist-preview.vercel.app');
@@ -154,7 +155,7 @@ function verifyResolverRuntimeBoundary() {
     assert(customDomain.type === 'custom', 'unknown non-platform host must resolve as custom domain');
     assert(customDomain.customDomain === 'customer-owned-domain.example', 'custom domain resolver must preserve normalized hostname');
 
-    const trailingDotTenant = resolveDomain('mysalon.menulist.online.');
+    const trailingDotTenant = resolveDomain('mysalon.qa.menulist.digital.');
     assert(trailingDotTenant.type === 'subdomain', 'strict Host parsing must normalize trailing-dot tenant hostnames');
     assert(trailingDotTenant.subdomain === 'mysalon', 'trailing-dot tenant host must preserve tenant subdomain after normalization');
 
@@ -183,14 +184,14 @@ function verifyResolverRuntimeBoundary() {
     assert(!shouldBypassDomainRouting('/robots.txt'), 'tenant robots must not bypass middleware');
     assert(!shouldBypassDomainRouting('/sitemap.xml'), 'tenant sitemap must not bypass middleware');
 
-    const trustedTenant = resolveTenantRequestIdentity('mysalon.menulist.online:3000', {
+    const trustedTenant = resolveTenantRequestIdentity('mysalon.qa.menulist.digital:3000', {
       subdomain: 'mysalon',
       tenantType: 'subdomain',
     });
     assert(trustedTenant?.subdomain === 'mysalon', 'matching middleware tenant claims must preserve Host-derived identity');
     assert(trustedTenant?.routingClaimsValid === true, 'matching middleware tenant claims must validate');
 
-    const forgedTenant = resolveTenantRequestIdentity('mysalon.menulist.online:3000', {
+    const forgedTenant = resolveTenantRequestIdentity('mysalon.qa.menulist.digital:3000', {
       subdomain: 'another-store',
       tenantType: 'subdomain',
     });
@@ -265,7 +266,12 @@ function verifyResolverRuntimeBoundary() {
     resolveKnownProductIdByHostname,
     resolveProductSiteByHostname,
   }) => {
-    assert(resolveDomain('menulist.online').type === 'platform', 'preview MenuList host must resolve as platform');
+    assert(resolveDomain('qa.menulist.digital').type === 'platform', 'preview MenuList host must resolve as platform');
+    assert(resolveDomain('menulist.digital').type === 'platform', 'preview MenuList apex redirect host must resolve as platform');
+    assert(resolveDomain('www.menulist.digital').type === 'platform', 'preview MenuList www redirect host must resolve as platform');
+    assert(resolveKnownProductIdByHostname('qa.menulist.digital') === 'menulist', 'preview MenuList QA host must resolve to MenuList');
+    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'preview MenuList apex redirect host must resolve to MenuList');
+    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'preview MenuList www redirect host must resolve to MenuList');
 
     const answerlattice = resolveDomain('answerlattice.menulist.online');
     assert(answerlattice.type === 'product', 'preview Answerlattice host must resolve as product');
@@ -280,9 +286,9 @@ function verifyResolverRuntimeBoundary() {
     assert(neelvara.productSite?.id === 'neelvara', 'preview Neelvara host must preserve product id');
 
     const signaldesk = resolveDomain('signaldesk.menulist.online');
-    assert(signaldesk.type === 'platform', 'preview SignalDesk host must stay out of tenant routing before middleware app-host branch');
+    assert(signaldesk.type !== 'subdomain', 'preview SignalDesk host must stay out of MenuList tenant subdomain routing before middleware app-host branch');
 
-    const tenant = resolveDomain('joespizza.menulist.online');
+    const tenant = resolveDomain('joespizza.qa.menulist.digital');
     assert(tenant.type === 'subdomain' && tenant.subdomain === 'joespizza', 'preview tenant subdomain must resolve as client subdomain');
 
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.online') === 'signaldesk', 'known product host lookup must recognize preview SignalDesk');
@@ -323,8 +329,15 @@ function verifyResolverRuntimeBoundary() {
     assert(resolveDomain('menulist.ai').type === 'platform', 'production MenuList host must resolve as platform');
     assert(resolveDomain('app.menulist.ai').type === 'platform', 'production app host must resolve as platform');
 
-    const tenant = resolveDomain('joespizza.menulist.ai');
+    const tenant = resolveDomain('joespizza.menulist.online');
     assert(tenant.type === 'subdomain' && tenant.subdomain === 'joespizza', 'production tenant subdomain must resolve as client subdomain');
+    assert(resolveDomain('menulist.online').type === 'platform', 'production MenuList tenant apex redirect host must resolve as platform');
+    assert(resolveDomain('www.menulist.online').type === 'platform', 'production MenuList tenant www redirect host must resolve as platform');
+    assert(resolveKnownProductIdByHostname('menulist.online') === 'menulist', 'known product host lookup must reserve menulist.online for MenuList redirect handling');
+    assert(resolveKnownProductIdByHostname('www.menulist.online') === 'menulist', 'known product host lookup must reserve www.menulist.online for MenuList redirect handling');
+
+    const legacyMarketingSubdomain = resolveDomain('joespizza.menulist.ai');
+    assert(legacyMarketingSubdomain.type !== 'subdomain', 'production menulist.ai marketing subdomains must not resolve as customer tenants');
 
     const answerlattice = resolveDomain('answerlattice.com');
     assert(answerlattice.type === 'product' && answerlattice.productSite?.id === 'answerlattice', 'production Answerlattice domain must resolve as product');
@@ -332,8 +345,11 @@ function verifyResolverRuntimeBoundary() {
     const campaigncue = resolveDomain('campaigncue.ai');
     assert(campaigncue.type === 'product' && campaigncue.productSite?.id === 'campaigncue', 'production CampaignCue domain must resolve as product');
 
-    const discardedMyCodexDomain = resolveDomain('menulist.digital');
-    assert(discardedMyCodexDomain.type !== 'product', 'Discarded menulist.digital domain must not resolve as a product');
+    const digitalRedirectHost = resolveDomain('menulist.digital');
+    assert(digitalRedirectHost.type === 'platform', 'menulist.digital must resolve as a MenuList redirect/noindex platform host');
+    assert(resolveDomain('www.menulist.digital').type === 'platform', 'www.menulist.digital must resolve as a MenuList redirect/noindex platform host');
+    assert(resolveKnownProductIdByHostname('menulist.digital') === 'menulist', 'known product host lookup must reserve menulist.digital for MenuList redirect/noindex handling');
+    assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'known product host lookup must reserve www.menulist.digital for MenuList redirect/noindex handling');
 
     const custom = resolveDomain('restaurant.example');
     assert(custom.type === 'custom' && custom.isClient === true, 'restaurant custom domain must resolve as tenant client traffic');
@@ -384,7 +400,7 @@ function verifyResolverSourceBoundary() {
     'const platformBaseDomains = Array.from',
     'domain resolver Vercel host boundary',
   );
-  assertIncludes(resolver, 'PLATFORM_DOMAIN_ALIASES', 'domain resolver supported platform aliases');
+  assertIncludes(resolver, 'MENULIST_TENANT_BASE_DOMAINS', 'domain resolver supported tenant base domains');
   assertIncludes(resolver, 'RESERVED_SUBDOMAINS.includes(subdomain)', 'domain resolver reserved subdomain guard');
   assertIncludes(resolver, 'const normalizedAuthority = normalizeRequestAuthority(hostname);', 'domain resolver strict Host-authority normalization');
   assertIncludes(resolver, 'const normalizedHost = normalizedAuthority.hostname;', 'domain resolver must classify the normalized Host hostname');
@@ -407,6 +423,16 @@ function verifyResolverSourceBoundary() {
   assertIncludes(campaignCueDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'CampaignCue product hostname helper must use the strict Host authority parser');
   assertIncludes(neelvaraDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'Neelvara product hostname helper must use the strict Host authority parser');
   assertIncludes(middleware, 'normalizeRequestAuthority(hostname)?.hostname || \'\';', 'middleware local/product alias helpers must use the strict Host authority parser');
+  assertIncludes(middleware, 'MENULIST_PLATFORM_REDIRECT_DOMAINS.includes(normalizedHost)', 'middleware MenuList redirect-domain guard');
+  assertIncludes(middleware, 'function buildOriginPinnedRedirectUrl(targetUrl: string, request: NextRequest): URL', 'middleware cross-origin redirects must share an origin-pinned URL projector');
+  assertIncludes(middleware, 'url.pathname = request.nextUrl.pathname;', 'middleware redirect projector must assign the request path after fixing the destination origin');
+  assertNotIncludes(middleware, 'new URL(request.nextUrl.pathname, target.url)', 'middleware must not interpret attacker-shaped request paths as protocol-relative redirect origins');
+  const hostileRedirectPath = '//attacker.example/phish';
+  const pinnedRedirect = new URL('https://menulist.ai');
+  pinnedRedirect.pathname = hostileRedirectPath;
+  pinnedRedirect.search = '?next=%2Fowner';
+  assert(pinnedRedirect.origin === 'https://menulist.ai', 'origin-pinned redirect projection must retain the configured product origin');
+  assert(pinnedRedirect.pathname === hostileRedirectPath, 'origin-pinned redirect projection must retain the bounded request path as a path');
   assertNotIncludes(deploymentTargets, "hostname.split(':')[0]", 'deployment target helpers must not use colon-split Host parsing');
   assertNotIncludes(productDomains, "hostname.split(':')[0]", 'product domain helper must not use colon-split Host parsing');
   assertNotIncludes(answerlatticeDomains, "hostname.split(':')[0]", 'Answerlattice product hostname helper must not use colon-split Host parsing');

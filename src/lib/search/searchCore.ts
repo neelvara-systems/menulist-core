@@ -19,43 +19,44 @@
  * @see __docs__/answerlattice/help-center/
  */
 
+/**
+ * Answerlattice Unified Search — Core Pipeline
+ *
+ * THE single canonical search function that powers ALL Answerlattice search surfaces:
+ * - Help Center top search bar (authenticated, full features)
+ * - Embeddable Widget (API key auth, compact features)
+ * - Future: mobile, Slack bot, API v2, etc.
+ *
+ * Each surface calls this function through its own thin API route wrapper.
+ * The routes handle auth + rate limiting + response formatting.
+ * This function handles the retrieval pipeline.
+ *
+ * Architecture:
+ *   /api/helpCenter/search-kb  → withAuth()     → coreSearch()
+ *   /api/widget/search         → API key auth   → coreSearch()
+ *   /api/future/...            → custom auth    → coreSearch()
+ *
+ * @see __docs__/answerlattice/help-widget/
+ * @see __docs__/answerlattice/help-center/
+ */
 import { DB_COLLECTIONS } from '@constant/database';
 import { LOG_FILES } from '@constant/logging';
 import { ANSWERLATTICE_EMBEDDING_VECTOR_FIELD } from '@constant/answerlattice/ai';
 import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@database/aiSearchHistory/server';
 import { getCachedEmbedding, saveCachedEmbedding } from '@database/queryEmbeddings';
-import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeQuery } from '@lib/string';
-import {
-    EMBEDDING_CACHE_VERSION,
-    callGeminiChatWithMetadata,
-    callGeminiEmbeddingWithMetadata,
-    generateSearchQueryFromImageWithMetadata,
-} from '@lib/vectorEmbeddings';
+import { EMBEDDING_CACHE_VERSION, callGeminiChatWithMetadata, callGeminiEmbeddingWithMetadata, generateSearchQueryFromImageWithMetadata, } from '@lib/vectorEmbeddings';
 import type { GeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { getAnswerlatticeTimestampMillis, isCachedSearchResultFresh } from '@lib/answerlattice/cacheFreshness';
-import {
-    ANSWERLATTICE_HYBRID_EVIDENCE_QUERY_LIMIT,
-    fuseAnswerlatticeEvidenceRanks,
-    prepareAnswerlatticeHybridEvidenceQuery,
-    rankAnswerlatticeExactEntityEvidence,
-} from '@lib/answerlattice/hybridEvidenceRetrieval';
+import { ANSWERLATTICE_HYBRID_EVIDENCE_QUERY_LIMIT, fuseAnswerlatticeEvidenceRanks, prepareAnswerlatticeHybridEvidenceQuery, rankAnswerlatticeExactEntityEvidence, } from '@lib/answerlattice/hybridEvidenceRetrieval';
 import { normalizeAnswerlatticeProductSurfaceScopeId } from '@lib/answerlattice/productSurfaceContent';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
-import {
-    parseAnswerlatticeRetrievalRelease,
-    parseAnswerlatticeRetrievalSearchIndex,
-} from '@lib/answerlattice/retrievalContracts';
+import { parseAnswerlatticeRetrievalRelease, parseAnswerlatticeRetrievalSearchIndex, } from '@lib/answerlattice/retrievalContracts';
 import { ANSWERLATTICE_CACHE_SOURCES, AnswerlatticeCacheSourceVersions } from '@lib/answerlattice/cacheVersionManifest';
 import { getAnswerlatticeCacheVersionServer } from '@lib/answerlattice/cacheVersionServer';
-import {
-    ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH,
-    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
-    isAllowedAnswerlatticeChatImageMimeType,
-    normalizeAnswerlatticeChatImageMimeType,
-    stripDataUrlPrefix,
-} from '@lib/answerlattice/chatImagePolicy';
+import { ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH, ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES, isAllowedAnswerlatticeChatImageMimeType, normalizeAnswerlatticeChatImageMimeType, stripDataUrlPrefix, } from '@lib/answerlattice/chatImagePolicy';
 import { readResponseUint8ArrayWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { hashString } from '@util/hash';
@@ -310,7 +311,7 @@ const getPublishedKnowledgeBaseState = async (
     const cached = readTimedCache(publishedKbStateCache, cacheKey);
     if (cached !== undefined) return cached;
 
-    const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES)
+    const snapshot = await requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.KB_ARTICLES)
         .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
@@ -389,7 +390,7 @@ const getAnswerlatticeEntitySearchIndexServer = async (tId: number, sId: number)
     const cached = readTimedCache(entitySearchIndexCache, cacheKey);
     if (cached) return cached;
 
-    const snapshot = await firestoreAdmin
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
         .where('pId', '==', 'AL')
         .where('tId', '==', tId)
@@ -413,7 +414,7 @@ const getAnswerlatticeLatestReleaseServer = async (tId: number, sId: number): Pr
     const cached = readTimedCache(latestReleaseCache, cacheKey);
     if (cached !== undefined) return cached;
 
-    const snapshot = await firestoreAdmin
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
         .where('pId', '==', 'AL')
         .where('tId', '==', tId)
@@ -1514,7 +1515,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
 
     const vectorSearchStart = Date.now();
-    const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
+    const articlesRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.KB_ARTICLES);
 
     // Multi-tenant KB filtering is mandatory for every Answerlattice mount.
     const articleQuery = articlesRef

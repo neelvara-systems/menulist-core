@@ -376,12 +376,22 @@ assertIncludes(header, "event.key !== 'Tab'", 'mobile drawer focus trap');
 assertIncludes(header, 'menuButtonRef.current?.focus()', 'mobile drawer focus restoration');
 assertIncludes(header, 'const shouldCloseMobileNavigation = hasMounted && !isMobile;', 'mobile navigation desktop-resize close boundary');
 assertNotIncludes(header, 'shouldShowMobileNavigation', 'mobile navigation hydration-gated trigger');
+assertIncludes(header, 'xl:!hidden', 'mobile navigation desktop visibility boundary');
 assertIncludes(header, 'if (!isDrawerMounted) return undefined;', 'mobile drawer scoped body scroll lock');
 assertIncludes(header, 'const originalOverflow = document.body.style.overflow;', 'mobile drawer previous body scroll state capture');
 assertIncludes(header, 'document.body.style.overflow = originalOverflow;', 'mobile drawer previous body scroll state restoration');
 assertNotIncludes(header, "document.body.style.overflow = isDrawerMounted ? 'hidden' : '';", 'mobile drawer closed-state scroll overwrite');
 assertNotIncludes(header, 'onTouchStart={openDrawer}', 'mobile drawer duplicate touch activation');
-assertIncludes(header, '/resources/answerlattice-operating-guide', 'desktop and mobile Operating Guide navigation');
+assertIncludes(
+  header,
+  "{ label: 'Operating Guide', href: '/resources/answerlattice-operating-guide', icon: LuBookOpen }",
+  'desktop Operating Guide navigation',
+);
+assertIncludes(
+  header,
+  "{ label: 'Operating Guide', href: '/resources/answerlattice-operating-guide' }",
+  'mobile Operating Guide navigation',
+);
 assertNotIncludes(footer, 'The first 24/7 support layer', 'unsupported public category superlative');
 assertIncludes(footer, 'The governed support layer for founder-led SaaS.', 'public footer category');
 assertIncludes(footer, '/resources/answerlattice-operating-guide', 'footer Operating Guide navigation');

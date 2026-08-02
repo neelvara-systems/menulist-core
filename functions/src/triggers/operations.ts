@@ -117,6 +117,7 @@ const FORCE_REPUBLISH_FAILED_MESSAGE = 'Force republish could not be completed.'
 const BACKFILL_STORES_SUMMARY_FAILED_MESSAGE = 'Stores summary backfill could not be completed.';
 const STORES_SUMMARY_BACKFILL_MAX_STORES = 1_500;
 const STORES_SUMMARY_BACKFILL_MAX_PAYLOAD_BYTES = 850_000;
+const MENULIST_OWNER_APP_URL = 'https://app.menulist.ai';
 
 export function buildBackfillStoreSummaryEntry(
     storeDocumentId: string,
@@ -339,7 +340,7 @@ export const verifyMenuPublish = onCall(
                         storeId, tenantId,
                         eventType: 'STORE_PUBLISHED',
                         referenceId: `store-published-${storeId}`,
-                        metadata: { publicUrl: publicMenuUrl, dashboardUrl: 'https://menulist.ai' },
+                        metadata: { publicUrl: publicMenuUrl, dashboardUrl: MENULIST_OWNER_APP_URL },
                     });
                 } catch (messageError) {
                     logger.error('[verifyMenuPublish] Lifecycle success message failed', {
@@ -526,7 +527,10 @@ export const forceRepublish = onCall(
         timeoutSeconds: 60,
         memory: '256MiB' as const,
         maxInstances: FUNCTION_MAX_INSTANCES.callableLight,
-        secrets: SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        secrets: Array.from(new Set([
+            ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+            ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
+        ])),
     },
     async (request) => {
         const logger = functions.logger;

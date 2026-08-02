@@ -12,7 +12,7 @@ Answerlattice and MenuList share the same Vercel project, but product hostnames 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
 | Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://qa.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 The source-of-truth code for this matrix is `src/constants/deploymentTargets.ts`. Run `npm run verify:env-targets` after changing domain, Firebase, or deploy-script configuration.

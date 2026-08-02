@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import {
     applySignalDeskRateLimit,
     getBoundedSignalDeskStringContext,
+    getSignalDeskActionErrorStatus,
     getSignalDeskAccessLogContext,
     isSignalDeskMobileRequest,
     logSignalDeskFailure,
@@ -11,6 +12,7 @@ import {
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
     signalDeskPrivateJson,
+    type SignalDeskSessionInput,
     withSignalDeskPrivateHeaders,
 } from "@lib/signaldesk/apiGuards";
 import { recordSignalDeskMobileActionBlockedServer } from "@lib/signaldesk/server";
@@ -1005,6 +1007,11 @@ const TeamMemberSchema = z.object({
     userId: signalDeskDocumentIdSchema(180).optional(),
 });
 
+const assertUnhandledSignalDeskAction = (action: never): never => {
+    void action;
+    throw new Error("Unhandled SignalDesk action");
+};
+
 const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["action"]): SignalDeskPermission => {
     if (action === "seed-defaults") return "signaldesk.configure";
     if (action === "create-source-policy") return "signaldesk.configure";
@@ -1073,7 +1080,8 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "record-trust-partner-metrics") return "source.configure";
     if (action === "review-trust-partner-renewal") return "policy.approve";
     if (action === "upsert-team-member") return "signaldesk.configure";
-    return "target.review";
+    if (action === "capture-demand-signal") return "target.review";
+    return assertUnhandledSignalDeskAction(action);
 };
 
 type SignalDeskMobileActionClass =
@@ -1665,11 +1673,26 @@ const getSafeActionErrorMessage = (error: unknown) => {
     return "SignalDesk action failed";
 };
 
-const validatePayload = <Schema extends z.ZodTypeAny>(schema: Schema, payload: unknown, context: {
+type SignalDeskPayloadValidationContext = {
     action?: string;
     request: NextRequest;
-    session: any;
-}) => {
+    session: SignalDeskSessionInput;
+};
+
+type SignalDeskPayloadValidationResult<Output> =
+    | { response: ReturnType<typeof signalDeskPrivateJson>; success: false }
+    | { data: Output; success: true };
+
+function validatePayload<Schema extends z.ZodTypeAny>(
+    schema: Schema,
+    payload: unknown,
+    context: SignalDeskPayloadValidationContext,
+): SignalDeskPayloadValidationResult<z.output<Schema>>;
+function validatePayload(
+    schema: z.ZodTypeAny,
+    payload: unknown,
+    context: SignalDeskPayloadValidationContext,
+): SignalDeskPayloadValidationResult<unknown> {
     const validation = schema.safeParse(payload);
     if (validation.success !== true) {
         logSignalDeskValidationFailure({
@@ -1686,7 +1709,7 @@ const validatePayload = <Schema extends z.ZodTypeAny>(schema: Schema, payload: u
         data: validation.data,
         success: true as const,
     };
-};
+}
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const disabled = requireSignalDeskRuntime();
@@ -1717,18 +1740,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const accessResult = await requireSignalDeskAccess(request, session, permissionForAction(envelope.data.action));
     if ("response" in accessResult) return withSignalDeskPrivateHeaders(accessResult.response);
 
-    if (isSignalDeskMobileRequest(request)) {
-        const mobileAction = ActionEnvelopeSchema.shape.action.parse(envelope.data.action);
-        const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction] || "configure";
-        await recordSignalDeskMobileActionBlockedServer({
-            access: accessResult.access,
-            action: envelope.data.action,
-            actionClass,
-        });
-        return signalDeskPrivateJson({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
-    }
-
     try {
+        if (isSignalDeskMobileRequest(request)) {
+            const mobileAction = ActionEnvelopeSchema.shape.action.parse(envelope.data.action);
+            const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction];
+            await recordSignalDeskMobileActionBlockedServer({
+                access: accessResult.access,
+                action: envelope.data.action,
+                actionClass,
+            });
+            return signalDeskPrivateJson({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
+        }
+
         if (envelope.data.action === "seed-defaults") {
             return signalDeskPrivateJson({ data: await seedSignalDeskDefaultsServer(accessResult.access) });
         }
@@ -2477,21 +2500,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return signalDeskPrivateJson({ data: await upsertSignalDeskTeamMemberServer(accessResult.access, payload.data) });
         }
 
-        const payload = validatePayload(CaptureDemandSignalSchema, envelope.data.payload, {
-            action: envelope.data.action,
-            request,
-            session,
-        });
-        if (!payload.success) return payload.response;
-        return signalDeskPrivateJson({
-            data: await captureSignalDeskDemandSignalServer(accessResult.access, {
-                idempotencyKey: payload.data.idempotencyKey,
-                signalType: payload.data.signalType,
-                sourceSurface: payload.data.sourceSurface,
-                targetId: payload.data.targetId,
-                targetName: payload.data.targetName,
-            }),
-        });
+        if (envelope.data.action === "capture-demand-signal") {
+            const payload = validatePayload(CaptureDemandSignalSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return signalDeskPrivateJson({
+                data: await captureSignalDeskDemandSignalServer(accessResult.access, {
+                    idempotencyKey: payload.data.idempotencyKey,
+                    signalType: payload.data.signalType,
+                    sourceSurface: payload.data.sourceSurface,
+                    targetId: payload.data.targetId,
+                    targetName: payload.data.targetName,
+                }),
+            });
+        }
+        return assertUnhandledSignalDeskAction(envelope.data.action);
     } catch (error) {
         logSignalDeskFailure(
             "signaldesk_action_route_failed",
@@ -2504,6 +2530,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
         );
         const message = getSafeActionErrorMessage(error);
-        return signalDeskPrivateJson({ error: message }, { status: message === "SignalDesk action failed" ? 500 : 400 });
+        return signalDeskPrivateJson(
+            { error: message },
+            { status: message === "SignalDesk action failed" ? 500 : getSignalDeskActionErrorStatus(message) },
+        );
     }
 });

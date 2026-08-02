@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
-import { Timestamp } from "firebase/firestore";
 import React, { useEffect, useMemo, useState } from "react";
+import { toDate, type DateLike } from "@util/dateTime";
 import {
     createPublicCustomerTranslator,
     getPublicCustomerLocale,
@@ -9,7 +9,7 @@ import {
 
 interface LiveIndicatorProps {
     activeLanguage?: string;
-    modifiedOn?: Timestamp | Date | string | null;
+    modifiedOn?: DateLike;
     style?: React.CSSProperties;
     label?: string;
 }
@@ -63,25 +63,11 @@ function formatUpdateTime(
 /**
  * Normalizes various timestamp formats to a JS Date
  */
-function normalizeTimestamp(value: Timestamp | Date | string | null | undefined): Date | null {
-    if (!value) return null;
-
-    if (value instanceof Timestamp) {
-        return value.toDate();
-    } else if (typeof value === "string") {
-        return dayjs(value).toDate();
-    } else if (typeof value === "object" && value !== null) {
-        const seconds = (value as any).seconds || (value as any)._seconds;
-        const nanoseconds = (value as any).nanoseconds || (value as any)._nanoseconds;
-
-        if (seconds !== undefined) {
-            return new Date(seconds * 1000 + (nanoseconds || 0) / 1000000);
-        } else if (value instanceof Date) {
-            return value;
-        }
-        return new Date(value as any);
-    }
-    return value as Date;
+export function normalizeLiveIndicatorTimestamp(value: DateLike, nowMs = Date.now()): Date | null {
+    const normalized = toDate(value);
+    const timestampMs = normalized.getTime();
+    if (!Number.isFinite(timestampMs) || !Number.isFinite(nowMs) || timestampMs > nowMs) return null;
+    return normalized;
 }
 
 const LiveIndicator: React.FC<LiveIndicatorProps> = ({
@@ -99,7 +85,7 @@ const LiveIndicator: React.FC<LiveIndicatorProps> = ({
     const [hasValidDate, setHasValidDate] = useState(false);
 
     useEffect(() => {
-        const dateObj = normalizeTimestamp(modifiedOn);
+        const dateObj = normalizeLiveIndicatorTimestamp(modifiedOn);
         if (!dateObj) {
             setUpdateText(null);
             setHasValidDate(false);

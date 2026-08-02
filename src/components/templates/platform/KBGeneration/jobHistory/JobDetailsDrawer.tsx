@@ -1,3 +1,4 @@
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
 import {
@@ -37,10 +38,7 @@ const JobDetailsDrawer: React.FC<JobDetailsDrawerProps> = ({ open, onClose, job 
 
     const onClickDocument = (url: string, file: IngestionJobSourceFile) => {
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('answerlattice_kb_source_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
                 surface: 'kb_generation_job_details',

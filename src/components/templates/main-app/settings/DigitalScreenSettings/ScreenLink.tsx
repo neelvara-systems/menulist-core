@@ -1,5 +1,7 @@
 "use client";
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Screen Link Section
  * Per spec v2.0: Two URLs per store: Menu Board (default) and Highlights.
@@ -14,18 +16,22 @@ import {
     logScreenSettingsFailure,
 } from "@lib/screen/screenDiagnostics";
 import {
-    type DigitalScreenSeenTimestamp,
-} from "@lib/screen/screenTimestamp";
-import { getDigitalScreenHealth } from "@lib/screen/screenHealth";
+    getDigitalScreenModeHealth,
+    type DigitalScreenModeHealth,
+} from "@lib/screen/screenHealth";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode } from "react-icons/lu";
+import type { DigitalScreenSeenByMode } from "@type/campaigns";
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode, LuRefreshCw } from "react-icons/lu";
 
 const { Text, Title } = Typography;
 
 interface ScreenLinkProps {
+    contentVersion: number;
+    onRefresh: () => void;
+    refreshing: boolean;
+    screenSeenByMode?: DigitalScreenSeenByMode;
     screenUrl: string;
-    screenLastSeenAt?: DigitalScreenSeenTimestamp;
 }
 
 type ScreenMode = "menu" | "highlights";
@@ -35,6 +41,7 @@ interface ScreenModeCardProps {
     copied: boolean;
     description: string;
     icon: ReactNode;
+    health: DigitalScreenModeHealth;
     mode: ScreenMode;
     onCopy: () => void;
     onOpen: () => void;
@@ -57,6 +64,7 @@ function ScreenModeCard({
     copied,
     description,
     icon,
+    health,
     mode,
     onCopy,
     onOpen,
@@ -94,6 +102,13 @@ function ScreenModeCard({
                     )}
                 </div>
 
+                <div className="screen-mode-health">
+                    <Tag color={health.state === "current" ? "success" : health.state === "pending" || health.state === "stale" ? "warning" : "default"}>
+                        {health.summary}
+                    </Tag>
+                    <Text type="secondary">{health.detail}</Text>
+                </div>
+
                 <div className="screen-url-row">
                     <LuQrCode size={16} />
                     <Text ellipsis className="screen-compact-url">{compactUrl}</Text>
@@ -126,7 +141,13 @@ function ScreenModeCard({
     );
 }
 
-export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkProps) {
+export default function ScreenLink({
+    contentVersion,
+    onRefresh,
+    refreshing,
+    screenSeenByMode,
+    screenUrl,
+}: ScreenLinkProps) {
     const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
@@ -134,15 +155,19 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
     const highlightsUrl = `${screenUrl}?mode=highlights`;
     const menuCompactUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const highlightsCompactUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
-    const screenHealth = useMemo(() => getDigitalScreenHealth(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = screenHealth.state !== "link_ready";
+    const menuHealth = useMemo(
+        () => getDigitalScreenModeHealth(screenSeenByMode?.menu_board, contentVersion),
+        [contentVersion, screenSeenByMode?.menu_board],
+    );
+    const highlightsHealth = useMemo(
+        () => getDigitalScreenModeHealth(screenSeenByMode?.highlights, contentVersion),
+        [contentVersion, screenSeenByMode?.highlights],
+    );
+    const hasSeenSignal = Boolean(screenSeenByMode?.menu_board || screenSeenByMode?.highlights);
 
     const handleOpen = (url: string, type: ScreenMode) => {
         try {
-            const opened = window.open(url, "_blank", "noopener,noreferrer");
-            if (!opened) {
-                throw new Error("desktop_digital_screen_link_open_blocked");
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logScreenSettingsFailure("desktop_digital_screen_link_open_failed", error, {
                 surface: "desktop_digital_screen_settings",
@@ -191,9 +216,14 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                         Two screen types are ready for this store.
                     </Text>
                 </div>
-                <Tag color={screenHealth.state === "recent" ? "success" : screenHealth.state === "stale" ? "warning" : "default"}>
-                    {screenHealth.detail}
-                </Tag>
+                <Tooltip title="Refresh TV status">
+                    <Button
+                        aria-label="Refresh TV status"
+                        icon={<LuRefreshCw />}
+                        loading={refreshing}
+                        onClick={onRefresh}
+                    />
+                </Tooltip>
             </div>
 
             <div className="screen-mode-grid">
@@ -201,6 +231,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     compactUrl={menuCompactUrl}
                     copied={copiedMenu}
                     description="Full menu with categories and prices"
+                    health={menuHealth}
                     icon={<LuMonitor size={20} />}
                     mode="menu"
                     onCopy={() => void handleCopy(screenUrl, "menu")}
@@ -213,6 +244,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     compactUrl={highlightsCompactUrl}
                     copied={copiedHighlights}
                     description="Featured items and custom slides"
+                    health={highlightsHealth}
                     icon={<LuPlay size={20} />}
                     mode="highlights"
                     onCopy={() => void handleCopy(highlightsUrl, "highlights")}
@@ -229,28 +261,28 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                 <span>Leave the TV awake</span>
             </div>
 
-            <style jsx>{`
+            <style jsx global>{`
                 .screen-link-section {
                     display: flex;
                     flex-direction: column;
                     gap: 14px;
                 }
-                .screen-setup-header {
+                .screen-link-section .screen-setup-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     gap: 16px;
                 }
-                .screen-setup-subtitle {
+                .screen-link-section .screen-setup-subtitle {
                     display: block;
                     margin-top: 2px;
                 }
-                .screen-mode-grid {
+                .screen-link-section .screen-mode-grid {
                     display: grid;
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 14px;
                 }
-                .screen-mode-card {
+                .screen-link-section .screen-mode-card {
                     display: grid;
                     grid-template-columns: minmax(0, 1fr) 136px;
                     gap: 16px;
@@ -260,25 +292,35 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     border-radius: 8px;
                     background: ${token.colorBgContainer};
                 }
-                .screen-mode-card.menu {
+                .screen-link-section .screen-mode-card.menu {
                     border-top: 3px solid ${token.colorPrimary};
                 }
-                .screen-mode-card.highlights {
+                .screen-link-section .screen-mode-card.highlights {
                     border-top: 3px solid ${token.colorWarning};
                 }
-                .screen-mode-main {
+                .screen-link-section .screen-mode-main {
                     display: flex;
                     min-width: 0;
                     flex-direction: column;
                     gap: 14px;
                 }
-                .screen-mode-top {
+                .screen-link-section .screen-mode-health {
+                    display: flex;
+                    min-height: 28px;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+                .screen-link-section .screen-mode-health .ant-tag {
+                    margin: 0;
+                }
+                .screen-link-section .screen-mode-top {
                     display: grid;
                     grid-template-columns: 34px minmax(0, 1fr) auto;
                     align-items: start;
                     gap: 10px;
                 }
-                .screen-mode-icon {
+                .screen-link-section .screen-mode-icon {
                     display: inline-flex;
                     width: 34px;
                     height: 34px;
@@ -288,12 +330,12 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     background: ${token.colorFillAlter};
                     color: ${token.colorPrimary};
                 }
-                .screen-mode-tag {
+                .screen-link-section .screen-mode-tag {
                     margin: 0;
                     border-radius: 6px;
                     font-weight: 600;
                 }
-                .screen-preview {
+                .screen-link-section .screen-preview {
                     position: relative;
                     height: 78px;
                     overflow: hidden;
@@ -301,44 +343,44 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     background: #07101f;
                     border: 1px solid rgba(255, 255, 255, 0.1);
                 }
-                .screen-preview.menu {
+                .screen-link-section .screen-preview.menu {
                     padding: 12px;
                     display: flex;
                     flex-direction: column;
                     gap: 7px;
                 }
-                .preview-title,
-                .preview-category,
-                .preview-row {
+                .screen-link-section .preview-title,
+                .screen-link-section .preview-category,
+                .screen-link-section .preview-row {
                     display: block;
                     border-radius: 4px;
                 }
-                .preview-title {
+                .screen-link-section .preview-title {
                     width: 44%;
                     height: 8px;
                     background: #ffffff;
                 }
-                .preview-category {
+                .screen-link-section .preview-category {
                     width: 32%;
                     height: 6px;
                     background: #fbbf24;
                 }
-                .preview-row {
+                .screen-link-section .preview-row {
                     height: 7px;
                     background: rgba(255, 255, 255, 0.46);
                 }
-                .preview-row.short {
+                .screen-link-section .preview-row.short {
                     width: 72%;
                 }
-                .screen-preview.highlights {
+                .screen-link-section .screen-preview.highlights {
                     background: linear-gradient(135deg, #111827 0%, #273449 100%);
                 }
-                .preview-image {
+                .screen-link-section .preview-image {
                     position: absolute;
                     inset: 0;
                     background: linear-gradient(135deg, rgba(251, 191, 36, 0.52), rgba(96, 165, 250, 0.42));
                 }
-                .preview-caption {
+                .screen-link-section .preview-caption {
                     position: absolute;
                     left: 12px;
                     right: 44px;
@@ -347,7 +389,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     border-radius: 4px;
                     background: rgba(255, 255, 255, 0.92);
                 }
-                .preview-price {
+                .screen-link-section .preview-price {
                     position: absolute;
                     left: 12px;
                     bottom: 8px;
@@ -356,7 +398,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     border-radius: 4px;
                     background: #86efac;
                 }
-                .screen-url-row {
+                .screen-link-section .screen-url-row {
                     display: flex;
                     align-items: center;
                     gap: 8px;
@@ -366,12 +408,12 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     border-radius: 8px;
                     background: ${token.colorFillAlter};
                 }
-                .screen-compact-url {
+                .screen-link-section .screen-compact-url {
                     min-width: 0;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
                     font-size: 12px;
                 }
-                .screen-mode-qr {
+                .screen-link-section .screen-mode-qr {
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -383,12 +425,12 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     background: ${token.colorFillAlter};
                     text-align: center;
                 }
-                .screen-setup-steps {
+                .screen-link-section .screen-setup-steps {
                     display: grid;
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 8px;
                 }
-                .screen-setup-steps span {
+                .screen-link-section .screen-setup-steps span {
                     min-height: 34px;
                     padding: 8px 10px;
                     border-radius: 8px;
@@ -399,8 +441,22 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     text-align: center;
                 }
                 @media (max-width: 1080px) {
-                    .screen-mode-grid {
-                        grid-template-columns: 1fr;
+                    .screen-link-section .screen-mode-grid {
+                        grid-template-columns: minmax(0, 1fr);
+                    }
+                    .screen-link-section .screen-mode-card {
+                        min-width: 0;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .screen-link-section .screen-mode-card {
+                        grid-template-columns: minmax(0, 1fr);
+                    }
+                    .screen-link-section .screen-mode-qr {
+                        display: none;
+                    }
+                    .screen-link-section .screen-setup-steps {
+                        grid-template-columns: minmax(0, 1fr);
                     }
                 }
             `}</style>

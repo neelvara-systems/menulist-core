@@ -108,7 +108,9 @@ MESSAGING_ONBOARDING_PROVIDERS=whatsapp
 ENABLE_MESSAGING_ONBOARDING_TRACKING=true
 ```
 
-`NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` must be the site host only. The extraction
+`NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` must be the site host only. Use
+`https://qa.menulist.digital` for QA/staging and `https://menulist.ai` for
+production unless a later approved preview host changes it. The extraction
 watcher appends `/msg-preview/{sessionId}` when it builds the preview link.
 
 ## Answerlattice Function Secrets

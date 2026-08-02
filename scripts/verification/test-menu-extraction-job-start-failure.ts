@@ -24,6 +24,17 @@ assert.equal(
     'a definitive 4xx route rejection cannot have created a job and is cleanup-safe',
 );
 
+const unavailableBeforeJobCreation = {
+    code: 'menu_processing_job_start_rejected',
+    status: 503,
+};
+assert.equal(isDefinitiveMenuProcessingJobStartRejection(unavailableBeforeJobCreation), true);
+assert.equal(
+    shouldCleanupUploadedFilesAfterJobStartError(createMenuProcessingJobCallerError(unavailableBeforeJobCreation)),
+    true,
+    'the route only returns 503 before durable job creation, so uploaded files are cleanup-safe',
+);
+
 for (const ambiguous of [
     { code: 'menu_processing_job_start_rejected', status: 500 },
     { code: 'menu_processing_job_start_response_parse_failed', status: 200 },

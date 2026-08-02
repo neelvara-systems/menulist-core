@@ -17,7 +17,9 @@ import {
 import {
     findOnboardingProviderSubscriptionForAttempt,
     isOnboardingProviderSubscription,
+    isMatchingOnboardingProviderSubscription,
     isMatchingPersistedOnboardingSubscription,
+    isOwnedOnboardingProviderSubscriptionAttempt,
     resolveOnboardingPlanPrice,
     type OnboardingProviderSubscription,
 } from "@lib/onboarding/onboardingSubscriptionBoundary";
@@ -41,9 +43,10 @@ import { OnboardingSubscriptionSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { writeLogEntry } from "logs/utils";
 import { randomUUID } from "crypto";
+import { Timestamp as ClientTimestamp } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
-import { withAuth } from "../../../../middleware/auth";
+import { type AuthenticatedHandler, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
 const ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES = 16 * 1024;
@@ -53,11 +56,44 @@ const ONBOARDING_SUBSCRIPTION_COMPENSATION_FAILED_CODE = 'razorpay_onboarding_co
 const ONBOARDING_SUBSCRIPTION_COMPENSATION_CACHE_REVALIDATION_FAILED_CODE = 'razorpay_onboarding_compensation_cache_revalidation_failed';
 const ONBOARDING_SUBSCRIPTION_VALIDATION_FAILED_CODE = 'razorpay_onboarding_subscription_validation_failed';
 const ONBOARDING_SUBSCRIPTION_PERSISTENCE_FAILED_CODE = 'razorpay_onboarding_subscription_persistence_failed';
+const ONBOARDING_SUBSCRIPTION_PROVIDER_RESPONSE_INVALID_CODE = 'razorpay_onboarding_subscription_provider_response_invalid';
+const ONBOARDING_SUBSCRIPTION_CHECKOUT_URL_INVALID_CODE = 'razorpay_onboarding_subscription_checkout_url_invalid';
 const ONBOARDING_SUBSCRIPTION_PROVIDER_CANCELLATION_FAILED_CODE = 'razorpay_onboarding_provider_cancellation_failed';
 const ONBOARDING_SUBSCRIPTION_PROVIDER_RECOVERY_FAILED_CODE = 'razorpay_onboarding_provider_recovery_failed';
 const ONBOARDING_PROVIDER_RECOVERY_WINDOW_MS = 15 * 60 * 1000;
 const ONBOARDING_PROVIDER_RECOVERY_PAGE_SIZE = 100;
 const ONBOARDING_PROVIDER_RECOVERY_MAX_PAGES = 3;
+class OnboardingInvalidProviderCheckoutUrlError extends Error {
+    constructor() {
+        super('Invalid payment provider checkout URL');
+        this.name = 'OnboardingInvalidProviderCheckoutUrlError';
+    }
+}
+class OnboardingInvalidProviderSubscriptionError extends Error {
+    constructor() {
+        super('Invalid payment provider subscription response');
+        this.name = 'OnboardingInvalidProviderSubscriptionError';
+    }
+}
+const ONBOARDING_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value && typeof value === 'object' && !Array.isArray(value))
+);
+
+const withOnboardingPrivateResponse = (handler: AuthenticatedHandler) => {
+    const authenticatedHandler = withAuth(handler);
+    return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => {
+        const response = await authenticatedHandler(...args);
+        Object.entries(ONBOARDING_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+            response.headers.set(name, value);
+        });
+        return response;
+    };
+};
 
 const getOnboardingSubscriptionLogContext = (input: {
     businessIndustry?: unknown;
@@ -86,18 +122,18 @@ const getOnboardingSubscriptionLogContext = (input: {
 });
 
 const getOnboardingSubscriptionValidationContext = (
-    body: any,
+    body: unknown,
     errorMsg: string,
     userId: unknown,
 ) => ({
     ...getOnboardingSubscriptionLogContext({
-        businessIndustry: body?.businessIndustry,
-        businessName: body?.businessName,
-        currency: body?.currency,
-        interval: body?.interval,
-        planId: body?.planId,
+        businessIndustry: isRecord(body) ? body.businessIndustry : undefined,
+        businessName: isRecord(body) ? body.businessName : undefined,
+        currency: isRecord(body) ? body.currency : undefined,
+        interval: isRecord(body) ? body.interval : undefined,
+        planId: isRecord(body) ? body.planId : undefined,
         userId,
-        userType: body?.userType,
+        userType: isRecord(body) ? body.userType : undefined,
     }),
     bodyFieldCount: body && typeof body === 'object' && !Array.isArray(body)
         ? Object.keys(body).length
@@ -158,7 +194,7 @@ async function compensateOnboardingPaymentProviderFailure(params: {
     }
 }
 
-async function compensateOnboardingSubscriptionPersistenceFailure(params: {
+async function cancelProviderSubscriptionAndCompensateOnboarding(params: {
     businessIndustry?: unknown;
     businessName?: unknown;
     currency?: unknown;
@@ -166,6 +202,7 @@ async function compensateOnboardingSubscriptionPersistenceFailure(params: {
     interval?: unknown;
     planId?: unknown;
     providerSubscriptionId: string;
+    reason: string;
     storeId: number;
     tenantId: number;
     userId: string;
@@ -175,7 +212,7 @@ async function compensateOnboardingSubscriptionPersistenceFailure(params: {
         await razorpayClient.subscriptions.cancel(params.providerSubscriptionId, false);
     } catch (cancellationError) {
         logger.error(
-            '[Onboarding] Provider subscription cancellation after persistence failure failed',
+            '[Onboarding] Provider subscription cancellation after onboarding failure failed',
             new Error(ONBOARDING_SUBSCRIPTION_PROVIDER_CANCELLATION_FAILED_CODE),
             getRazorpayFailureLogData(
                 ONBOARDING_SUBSCRIPTION_PROVIDER_CANCELLATION_FAILED_CODE,
@@ -191,7 +228,7 @@ async function compensateOnboardingSubscriptionPersistenceFailure(params: {
 
     await compensateOnboardingPaymentProviderFailure({
         ...params,
-        reason: ONBOARDING_SUBSCRIPTION_PERSISTENCE_FAILED_CODE,
+        reason: params.reason,
     });
     return true;
 }
@@ -203,6 +240,7 @@ async function recoverOnboardingProviderSubscription(params: {
     startedAtMillis: number;
     storeId: number;
     tenantId: number;
+    totalCount: number;
     userId: string;
 }): Promise<OnboardingProviderSubscription | null> {
     const from = Math.max(
@@ -246,7 +284,7 @@ async function recoverOnboardingProviderSubscription(params: {
  * 5. Create Firestore subscription record
  * 6. Return subscription + new IDs for session update
  */
-export const POST = withAuth(async (request, session) => {
+export const POST = withOnboardingPrivateResponse(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     const userId = session.user.id;
     let onboardingLogContext = getOnboardingSubscriptionLogContext({ userId });
@@ -280,21 +318,23 @@ export const POST = withAuth(async (request, session) => {
 
         if (!rateLimitResult.allowed) {
             const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
-            logger.security('Onboarding Rate Limit Exceeded', {
+            logger.security(providerUnavailable ? 'Onboarding Rate Limit Unavailable' : 'Onboarding Rate Limit Exceeded', {
                 ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/onboarding/create-subscription',
                 error: providerUnavailable
                     ? 'Rate limit provider unavailable'
                     : 'Too many onboarding attempts',
-                currentAttempts: rateLimitResult.current,
-                resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+                ...(providerUnavailable ? {} : {
+                    currentAttempts: rateLimitResult.current,
+                    resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+                }),
             }, 'high');
 
             return NextResponse.json({
                 error: providerUnavailable
                     ? 'Onboarding is temporarily unavailable. Please try again later.'
                     : 'Too many onboarding attempts. Please try again later.',
-                resetAt: rateLimitResult.resetAt
+                ...(providerUnavailable ? {} : { resetAt: rateLimitResult.resetAt }),
             }, { status: providerUnavailable ? 503 : 429 });
         }
 
@@ -303,7 +343,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
+        const body: unknown = bodyResult.data;
         const validation = validateAPIInput(OnboardingSubscriptionSchema, body);
 
         if (!validation.success) {
@@ -454,6 +494,8 @@ export const POST = withAuth(async (request, session) => {
         let razorpayPlanId = '';
         let razorpaySubscription: OnboardingProviderSubscription;
         let providerCheckoutUrl = '';
+        let providerSubscriptionWithInvalidCheckoutUrl: string | null = null;
+        let providerSubscriptionWithInvalidContract: string | null = null;
         const totalCount: number = interval === 'MONTH' ? 36 : 3; // Monthly: 36 cycles (3 years), Yearly: 3 cycles (3 years)
         const onboardingAttemptId = randomUUID();
         const providerAttemptStartedAtMillis = Date.now();
@@ -487,12 +529,75 @@ export const POST = withAuth(async (request, session) => {
                     remainingCredits: 0, // New user, no carry-forward credits
                 },
             });
-            if (!isOnboardingProviderSubscription(providerSubscription)) {
-                throw new Error('Invalid payment provider subscription response');
+            if (!isOnboardingProviderSubscription(providerSubscription) || !isMatchingOnboardingProviderSubscription({
+                attemptId: onboardingAttemptId,
+                candidate: providerSubscription,
+                planId,
+                providerPlanId: razorpayPlanId,
+                storeId: result.storeId,
+                tenantId: result.tenantId,
+                totalCount,
+                userId,
+            })) {
+                if (isOwnedOnboardingProviderSubscriptionAttempt({
+                    attemptId: onboardingAttemptId,
+                    candidate: providerSubscription,
+                    planId,
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                    userId,
+                })) {
+                    providerSubscriptionWithInvalidContract = providerSubscription.id;
+                }
+                throw new OnboardingInvalidProviderSubscriptionError();
+            }
+            providerCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(providerSubscription.short_url) || '';
+            if (!providerCheckoutUrl) {
+                providerSubscriptionWithInvalidCheckoutUrl = providerSubscription.id;
+                throw new OnboardingInvalidProviderCheckoutUrlError();
             }
             razorpaySubscription = providerSubscription;
-            providerCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(providerSubscription.short_url) || '';
         } catch (providerError) {
+            if (
+                providerError instanceof OnboardingInvalidProviderSubscriptionError
+                && providerSubscriptionWithInvalidContract
+            ) {
+                await cancelProviderSubscriptionAndCompensateOnboarding({
+                    businessName,
+                    businessIndustry,
+                    currency,
+                    db,
+                    interval,
+                    planId,
+                    providerSubscriptionId: providerSubscriptionWithInvalidContract,
+                    reason: ONBOARDING_SUBSCRIPTION_PROVIDER_RESPONSE_INVALID_CODE,
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                    userId,
+                    userType,
+                });
+                throw providerError;
+            }
+            if (
+                providerError instanceof OnboardingInvalidProviderCheckoutUrlError
+                && providerSubscriptionWithInvalidCheckoutUrl
+            ) {
+                await cancelProviderSubscriptionAndCompensateOnboarding({
+                    businessName,
+                    businessIndustry,
+                    currency,
+                    db,
+                    interval,
+                    planId,
+                    providerSubscriptionId: providerSubscriptionWithInvalidCheckoutUrl,
+                    reason: ONBOARDING_SUBSCRIPTION_CHECKOUT_URL_INVALID_CODE,
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                    userId,
+                    userType,
+                });
+                throw providerError;
+            }
             try {
                 const recoveredSubscription = razorpayPlanId
                     ? await recoverOnboardingProviderSubscription({
@@ -502,16 +607,37 @@ export const POST = withAuth(async (request, session) => {
                         startedAtMillis: providerAttemptStartedAtMillis,
                         storeId: result.storeId,
                         tenantId: result.tenantId,
+                        totalCount,
                         userId,
                     })
                     : null;
                 if (recoveredSubscription) {
                     razorpaySubscription = recoveredSubscription;
                     providerCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(recoveredSubscription.short_url) || '';
+                    if (!providerCheckoutUrl) {
+                        await cancelProviderSubscriptionAndCompensateOnboarding({
+                            businessName,
+                            businessIndustry,
+                            currency,
+                            db,
+                            interval,
+                            planId,
+                            providerSubscriptionId: recoveredSubscription.id,
+                            reason: ONBOARDING_SUBSCRIPTION_CHECKOUT_URL_INVALID_CODE,
+                            storeId: result.storeId,
+                            tenantId: result.tenantId,
+                            userId,
+                            userType,
+                        });
+                        throw new OnboardingInvalidProviderCheckoutUrlError();
+                    }
                 } else {
                     throw providerError;
                 }
             } catch (recoveryError) {
+                if (recoveryError instanceof OnboardingInvalidProviderCheckoutUrlError) {
+                    throw recoveryError;
+                }
                 logger.error(
                     '[Onboarding] Provider subscription recovery failed',
                     new Error(ONBOARDING_SUBSCRIPTION_PROVIDER_RECOVERY_FAILED_CODE),
@@ -596,7 +722,7 @@ export const POST = withAuth(async (request, session) => {
             statuses: [
                 {
                     status: "pending",
-                    timestamp: admin.firestore.Timestamp.now() as any,
+                    timestamp: ClientTimestamp.now(),
                     amount: selectedPrice.price,
                     currency: currency,
                     remark: "Onboarding Subscription Initiated",
@@ -618,7 +744,7 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: result.tenantId,
                 userId,
             })) {
-                await compensateOnboardingSubscriptionPersistenceFailure({
+                await cancelProviderSubscriptionAndCompensateOnboarding({
                     businessName,
                     businessIndustry,
                     currency,
@@ -626,6 +752,7 @@ export const POST = withAuth(async (request, session) => {
                     interval,
                     planId,
                     providerSubscriptionId: razorpaySubscription.id,
+                    reason: ONBOARDING_SUBSCRIPTION_PERSISTENCE_FAILED_CODE,
                     storeId: result.storeId,
                     tenantId: result.tenantId,
                     userId,

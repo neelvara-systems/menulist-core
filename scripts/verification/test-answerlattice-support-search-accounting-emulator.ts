@@ -10,13 +10,14 @@ import {
     reserveAnswerlatticeAiOperationCapacity,
 } from '../../src/lib/answerlattice/aiAccounting';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import type { CoreSearchResult } from '../../src/lib/search/types';
 import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
 import { Timestamp } from 'firebase-admin/firestore';
 import { recoverAnswerlatticeAiCapacityReservations } from '../../functions-answerlattice/src/answerlattice/aiCapacityReservationRecovery';
 
 const scope = { tId: 91, sId: 901 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const subscriptionId = 'al-subscription-901';
 
 const result = (aiProviderUsed: boolean): CoreSearchResult => ({
@@ -82,8 +83,6 @@ async function operationCount(): Promise<number> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
-
     await seedSubscription(2);
     const deterministic = createAccounting('deterministic_001');
     await deterministic.settle(result(false), 12);

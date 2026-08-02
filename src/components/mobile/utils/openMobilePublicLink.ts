@@ -1,6 +1,7 @@
 'use client'
 
 import { Toast } from '../antd';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
     getBoundedMobileOwnerStringContext,
     logMobileOwnerFailure,
@@ -15,15 +16,12 @@ interface OpenMobilePublicLinkOptions {
 }
 
 export function openMobilePublicLink(url?: string | null, options: OpenMobilePublicLinkOptions = {}) {
-    if (!url || typeof window === 'undefined') return false;
+    if (!url) return false;
 
     // In installed PWAs, same-window public navigation remounts the owner shell
     // when the external view is dismissed. A blank context preserves shell state.
     try {
-        const opened = window.open(url, '_blank', 'noopener,noreferrer');
-        if (!opened) {
-            throw new Error('mobile_public_link_open_blocked');
-        }
+        openIsolatedBrowserUrl(url);
         return true;
     } catch (error) {
         logMobileOwnerFailure('mobile_public_link_open_failed', error, {

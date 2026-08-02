@@ -2,6 +2,9 @@ import { DEFAULT_PRODUCT_ID } from '@constant/product';
 
 export type OnboardingProviderSubscription = {
     id: string;
+    notes?: unknown;
+    plan_id?: unknown;
+    quantity?: unknown;
     short_url?: unknown;
     total_count?: unknown;
 };
@@ -20,6 +23,44 @@ const exactProviderNote = (value: unknown): string => (
     typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 );
 
+export function isMatchingOnboardingProviderSubscription(params: {
+    attemptId: string;
+    candidate: unknown;
+    planId: string;
+    providerPlanId: string;
+    storeId: number;
+    tenantId: number;
+    totalCount: number;
+    userId: string;
+}): boolean {
+    if (!isOwnedOnboardingProviderSubscriptionAttempt(params)) return false;
+    const record = params.candidate as OnboardingProviderSubscription;
+    return record.plan_id === params.providerPlanId
+        && record.quantity === 1
+        && record.total_count === params.totalCount;
+}
+
+export function isOwnedOnboardingProviderSubscriptionAttempt(params: {
+    attemptId: string;
+    candidate: unknown;
+    planId: string;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+}): boolean {
+    if (!isOnboardingProviderSubscription(params.candidate)) return false;
+    const record = params.candidate as Record<string, unknown>;
+    const notes = record.notes;
+    if (!notes || typeof notes !== 'object' || Array.isArray(notes)) return false;
+    const noteRecord = notes as Record<string, unknown>;
+    return exactProviderNote(noteRecord.onboardingAttemptId) === params.attemptId
+        && exactProviderNote(noteRecord.onboardingSource) === 'WEBSITE_ONBOARDING'
+        && exactProviderNote(noteRecord.planId) === params.planId
+        && exactProviderNote(noteRecord.storeId) === String(params.storeId)
+        && exactProviderNote(noteRecord.tenantId) === String(params.tenantId)
+        && exactProviderNote(noteRecord.userId) === params.userId;
+}
+
 export function findOnboardingProviderSubscriptionForAttempt(params: {
     attemptId: string;
     candidates: unknown;
@@ -27,23 +68,14 @@ export function findOnboardingProviderSubscriptionForAttempt(params: {
     providerPlanId: string;
     storeId: number;
     tenantId: number;
+    totalCount: number;
     userId: string;
 }): OnboardingProviderSubscription | null {
     if (!Array.isArray(params.candidates)) return null;
     for (const candidate of params.candidates) {
-        if (!isOnboardingProviderSubscription(candidate)) continue;
-        const record = candidate as Record<string, unknown>;
-        const notes = record.notes;
-        if (!notes || typeof notes !== 'object' || Array.isArray(notes)) continue;
-        const noteRecord = notes as Record<string, unknown>;
         if (
-            exactProviderNote(record.plan_id) === params.providerPlanId
-            && exactProviderNote(noteRecord.onboardingAttemptId) === params.attemptId
-            && exactProviderNote(noteRecord.onboardingSource) === 'WEBSITE_ONBOARDING'
-            && exactProviderNote(noteRecord.planId) === params.planId
-            && exactProviderNote(noteRecord.storeId) === String(params.storeId)
-            && exactProviderNote(noteRecord.tenantId) === String(params.tenantId)
-            && exactProviderNote(noteRecord.userId) === params.userId
+            isOnboardingProviderSubscription(candidate)
+            && isMatchingOnboardingProviderSubscription({ ...params, candidate })
         ) {
             return candidate;
         }

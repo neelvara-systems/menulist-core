@@ -28,7 +28,7 @@ function buildSitemapAlternates(path: string, baseUrl: string): MetadataRoute.Si
  * 
  * ARCHITECTURE:
  * Client digital menus are served via subdomains/custom domains:
- * - joespizza.menulist.ai → Client menu (subdomain)
+ * - joespizza.menulist.online → Client menu (subdomain)
  * - joespizza.com → Client menu (custom domain)
  * 
  * Each client has their own sitemap at their domain (see /app/client/sitemap.ts)
@@ -47,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // IMPORTANT: Client menus are NOT included in platform sitemap
     // Each client will have their own sitemap at their subdomain/custom domain
-    // e.g., joespizza.menulist.ai/sitemap.xml
+    // e.g., joespizza.menulist.online/sitemap.xml
 
     return platformPages;
 }

@@ -35,7 +35,7 @@ Businesses send fragmented links (PDF, Google Maps, Instagram, WhatsApp photos, 
 
 ```
 ALREADY BUILT:
-  OBP page (joespizza.menulist.ai/)     ← ✅ COMPLETE
+  OBP page (joespizza.menulist.online/)     ← ✅ COMPLETE
   QR infrastructure (tent cards, stickers) ← ✅ COMPLETE
   Copy link button (dashboard)            ← ✅ COMPLETE
   Schema.org enrichment                   ← ✅ COMPLETE

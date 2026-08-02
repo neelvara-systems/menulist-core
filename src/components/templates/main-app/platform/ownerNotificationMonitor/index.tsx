@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { PRODUCT_IDS } from '@constant/product';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerNotificationChannel, OwnerNotificationProductId } from '@data/shared/ownerNotificationRegistry';
@@ -316,10 +318,7 @@ export default function OwnerNotificationMonitor() {
 
         const whatsappWebHref = buildWhatsappWebHref(prefillDestination, prefillBody);
         try {
-            const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('owner_notification_monitor_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappWebHref);
         } catch (error) {
             logRuntimeFailure('owner_notification_monitor_whatsapp_open_failed', error, {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),

@@ -287,6 +287,8 @@ const campaignRecord = z.object({
             experimentVariable: z.enum(["channel", "timing", "offer", "photo", "cta", "format"]).optional(),
             confidence: z.literal("owner_reported"),
             recordedAt: z.unknown().optional(),
+            videoProjectId: boundedId.optional(),
+            videoRenderReceiptId: boundedId.optional(),
         }).strict().optional(),
     }).strict().optional(),
     createdAt: timestamp,

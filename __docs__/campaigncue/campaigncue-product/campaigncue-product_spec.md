@@ -8,7 +8,7 @@ The product exists because SMB owners usually do not know what to post, what to 
 
 ## Current Runtime Boundary
 
-The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, Campaign Proof Deck briefs, structured manual delivery cards, local creator test briefs, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, creator marketplace/CRM, creator contracts/payments, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
+The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, Campaign Proof Deck briefs, structured manual delivery cards, local creator test briefs, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, compact source-linked video projects and browser-render receipts, location records, read-only future provider posture, compact result memory, and dashboard summaries. The Video Reel Studio can compose approved text/image scenes and optional owner audio into a locally downloaded MP4 when natively supported or WebM otherwise. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, external video-render providers, synthetic people, creator marketplace/CRM, creator contracts/payments, billing checkout, provider metric import, and MenuList write-back remain disabled.
 
 ## Scope
 
@@ -17,7 +17,7 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | Business profile, brand kit, and Brand Playbook | Generic blank-canvas design tool |
 | Restaurant, salon, retail, service, fitness, clinic, and generic local-business recipes | MenuList menu editing |
 | Campaign cues and packs | Answerlattice support answers |
-| Static creative briefs, proof decks, scripts, local creator test briefs, and video/UGC briefs | Fake testimonials, fake review cards, or creator marketplace operations |
+| Static creative briefs, proof decks, scripts, local creator test briefs, video/UGC briefs, and approved in-house browser video composition | Fake testimonials, fake review cards, synthetic-customer UGC, or creator marketplace operations |
 | WhatsApp, Google, ads, calendar outputs | Ranking, sales, ROI guarantees |
 | Agency and multi-location workflows | Cross-client or cross-outlet data access |
 | Credits, jobs, trust checks, export fallback | Hidden generation cost |

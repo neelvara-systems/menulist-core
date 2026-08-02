@@ -185,24 +185,30 @@ export const POST = withAuth(async (request, session) => {
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
         const rateLimitResult = await checkRateLimit({
+            failClosedOnProviderError: true,
             key: `subscription:${productId}:${userRateLimitHash}:${tenantRateLimitHash}`,
             ...rateLimitConfig
         });
 
         if (!rateLimitResult.allowed) {
-            logger.security('Subscription Creation Rate Limit Exceeded', {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            logger.security(providerUnavailable ? 'Subscription Creation Rate Limit Provider Unavailable' : 'Subscription Creation Rate Limit Exceeded', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
-                error: 'Too many subscription attempts',
+                error: providerUnavailable ? 'Rate limit provider unavailable' : 'Too many subscription attempts',
                 productId,
-                currentAttempts: rateLimitResult.current,
-                resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+                ...(providerUnavailable ? {} : {
+                    currentAttempts: rateLimitResult.current,
+                    resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+                }),
             }, 'high');
 
             return NextResponse.json({
-                error: 'Too many subscription attempts. Please try again later.',
-                resetAt: rateLimitResult.resetAt
-            }, { status: 429 });
+                error: providerUnavailable
+                    ? 'Billing checkout is temporarily unavailable. Please try again.'
+                    : 'Too many subscription attempts. Please try again later.',
+                ...(providerUnavailable ? {} : { resetAt: rateLimitResult.resetAt }),
+            }, { status: providerUnavailable ? 503 : 429 });
         }
 
         if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {

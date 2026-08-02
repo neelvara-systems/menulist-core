@@ -1,6 +1,7 @@
 'use client';
 
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import {
     AnswerlatticeWorkflowIntegrationTestResponseSchema,
     AnswerlatticeWorkflowIntegrationsResponseSchema,
@@ -114,9 +115,12 @@ const readWorkflowIntegrationResponse = async <T,>(
 };
 
 export default function AnswerlatticeWorkflowNotifications() {
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const refreshTimerRef = useRef<number | null>(null);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    const loadRequestRef = useRef(0);
     const [form] = Form.useForm<WorkflowIntegrationsForm>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -125,6 +129,9 @@ export default function AnswerlatticeWorkflowNotifications() {
     const [health, setHealth] = useState<AnswerlatticeWorkflowIntegrationsResponse['health'] | null>(null);
     const [slackWebhookConfigured, setSlackWebhookConfigured] = useState(false);
     const [hasSavedAdapter, setHasSavedAdapter] = useState(false);
+    const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
     const applyResponse = useCallback((
         data: AnswerlatticeWorkflowIntegrationsResponse,
@@ -152,7 +159,22 @@ export default function AnswerlatticeWorkflowNotifications() {
     }, [form]);
 
     const loadIntegrations = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        const requestId = loadRequestRef.current + 1;
+        loadRequestRef.current = requestId;
+        if (!requestScopeKey) {
+            form.resetFields();
+            setEventTypes([]);
+            setHealth(null);
+            setSlackWebhookConfigured(false);
+            setHasSavedAdapter(false);
+            setLoadedScopeKey(null);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
+        setSaving(false);
+        setTesting(false);
         try {
             const response = await fetch('/api/answerlattice/integrations', {
                 ...ANSWERLATTICE_INTEGRATIONS_REQUEST_POLICY,
@@ -164,13 +186,24 @@ export default function AnswerlatticeWorkflowNotifications() {
                 value => AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse(value),
                 ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
             applyResponse(data);
+            setLoadedScopeKey(requestScopeKey);
         } catch {
+            if (currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId) return;
+            form.resetFields();
+            setEventTypes([]);
+            setHealth(null);
+            setSlackWebhookConfigured(false);
+            setHasSavedAdapter(false);
+            setLoadedScopeKey(requestScopeKey);
             message.error(ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (currentScopeKeyRef.current === requestScopeKey && loadRequestRef.current === requestId) {
+                setLoading(false);
+            }
         }
-    }, [applyResponse]);
+    }, [applyResponse, cacheScopeKey, form]);
 
     useEffect(() => {
         loadIntegrations();
@@ -182,9 +215,12 @@ export default function AnswerlatticeWorkflowNotifications() {
     }, [loadIntegrations]);
 
     const handleSave = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent) return;
         setSaving(true);
         try {
             const values = await form.validateFields();
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             const response = await fetch('/api/answerlattice/integrations', {
                 ...ANSWERLATTICE_INTEGRATIONS_REQUEST_POLICY,
                 method: 'PUT',
@@ -197,16 +233,21 @@ export default function AnswerlatticeWorkflowNotifications() {
                 value => AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse(value),
                 ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             applyResponse(data, { preserveHealth: true });
             message.success('Workflow notifications saved');
         } catch {
-            message.error(ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED);
+            if (currentScopeKeyRef.current === requestScopeKey) {
+                message.error(ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED);
+            }
         } finally {
-            setSaving(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setSaving(false);
         }
-    }, [applyResponse, form]);
+    }, [applyResponse, cacheScopeKey, form, scopeIsCurrent]);
 
     const handleTest = useCallback(async () => {
+        const requestScopeKey = cacheScopeKey;
+        if (!requestScopeKey || !scopeIsCurrent) return;
         setTesting(true);
         try {
             const response = await fetch('/api/answerlattice/integrations/test', {
@@ -219,6 +260,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                 value => AnswerlatticeWorkflowIntegrationTestResponseSchema.safeParse(value),
                 ANSWERLATTICE_INTEGRATIONS_TEST_FAILED,
             );
+            if (currentScopeKeyRef.current !== requestScopeKey) return;
             message.success(data.message);
             if (refreshTimerRef.current !== null) {
                 window.clearTimeout(refreshTimerRef.current);
@@ -228,11 +270,13 @@ export default function AnswerlatticeWorkflowNotifications() {
                 loadIntegrations();
             }, 2500);
         } catch {
-            message.error(ANSWERLATTICE_INTEGRATIONS_TEST_FAILED);
+            if (currentScopeKeyRef.current === requestScopeKey) {
+                message.error(ANSWERLATTICE_INTEGRATIONS_TEST_FAILED);
+            }
         } finally {
-            setTesting(false);
+            if (currentScopeKeyRef.current === requestScopeKey) setTesting(false);
         }
-    }, [loadIntegrations]);
+    }, [cacheScopeKey, loadIntegrations, scopeIsCurrent]);
 
     const eventTypeOptions = eventTypes.map(value => ({
         value,
@@ -272,7 +316,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                         <Button
                             icon={<LuSend size={14} />}
                             loading={testing}
-                            disabled={!hasSavedAdapter || loading}
+                            disabled={!scopeIsCurrent || !hasSavedAdapter || loading}
                             onClick={handleTest}
                         >
                             Send Test
@@ -281,7 +325,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                             type="primary"
                             icon={<LuSave size={14} />}
                             loading={saving}
-                            disabled={loading}
+                            disabled={!scopeIsCurrent || loading}
                             onClick={handleSave}
                         >
                             Save
@@ -289,7 +333,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                     </Space>
                 ) : null}
             >
-                {loading ? (
+                {loading || !scopeIsCurrent ? (
                     <Skeleton active paragraph={{ rows: 5 }} />
                 ) : (
                     <Flex vertical gap={16}>
@@ -429,7 +473,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                                     block
                                     icon={<LuSend size={14} />}
                                     loading={testing}
-                                    disabled={!hasSavedAdapter}
+                                    disabled={!scopeIsCurrent || !hasSavedAdapter}
                                     onClick={handleTest}
                                 >
                                     Send Test Notification
@@ -439,6 +483,7 @@ export default function AnswerlatticeWorkflowNotifications() {
                                     block
                                     icon={<LuSave size={14} />}
                                     loading={saving}
+                                    disabled={!scopeIsCurrent}
                                     onClick={handleSave}
                                 >
                                     Save Workflow Notifications

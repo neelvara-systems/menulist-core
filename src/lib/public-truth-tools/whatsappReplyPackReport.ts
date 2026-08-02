@@ -1,5 +1,10 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import { isLikelyPhoneNumber, normalizePhoneDigits } from './phoneValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   WhatsAppReplyBlock,
   WhatsAppReplyPackAction,
@@ -27,15 +32,18 @@ const ACTION_LABELS: Record<WhatsAppReplyPackAction, string> = {
   visit: 'Visit',
 };
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeMultiline(value?: string): string {
-  return (value || '')
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
     .replace(/\r\n/g, '\n')
     .split('\n')
-    .map((line) => trimToSingleLine(line))
+    .map((line) => trimToSingleLine(line, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText))
     .filter(Boolean)
     .join('\n')
     .trim();
@@ -243,17 +251,17 @@ function buildReplyBlocks(input: {
 }
 
 export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): WhatsAppReplyPackReport {
-  const actionLink = trimToSingleLine(input.actionLink);
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const actionLink = trimToSingleLine(input.actionLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const deliveryOrPickup = normalizeMultiline(input.deliveryOrPickup);
   const hours = trimToSingleLine(input.hours);
   const locationOrServiceArea = trimToSingleLine(input.locationOrServiceArea);
   const offerSummary = normalizeMultiline(input.offerSummary);
   const paymentInfo = normalizeMultiline(input.paymentInfo);
   const responseTime = trimToSingleLine(input.responseTime);
-  const whatsappNumber = trimToSingleLine(input.whatsappNumber);
+  const whatsappNumber = trimToSingleLine(input.whatsappNumber, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.phone);
   const phoneDigits = normalizePhoneDigits(whatsappNumber);
   const validPhone = isLikelyWhatsAppPhone(whatsappNumber);
   const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'whatsapp_reply_pack_current_customer_link');

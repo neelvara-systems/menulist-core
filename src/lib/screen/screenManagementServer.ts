@@ -17,7 +17,12 @@ import { getPublicScreenStateDocId } from "./publicScreenState";
 import { isCurrentScreenSeenPublicScope } from "./screenSeenScope";
 import { screenTimestampToMillis } from "./screenTimestamp";
 import { isValidScreenToken } from "./utils";
-import type { DigitalScreenState, ScreenSlide } from "@type/campaigns";
+import type {
+    DigitalScreenDisplayMode,
+    DigitalScreenSeenByMode,
+    DigitalScreenState,
+    ScreenSlide,
+} from "@type/campaigns";
 
 const MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
@@ -58,6 +63,31 @@ function getActiveOwnerSlides(value: unknown): ScreenSlide[] {
     return value.filter(isActiveOwnerSlide).slice(0, MAX_UPLOADS);
 }
 
+const DIGITAL_SCREEN_DISPLAY_MODES: DigitalScreenDisplayMode[] = [
+    "menu_board",
+    "highlights",
+];
+
+function isValidScreenSeenByMode(
+    value: unknown,
+    currentContentVersion: number,
+): value is DigitalScreenSeenByMode {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return Object.keys(record).every((key) => {
+        if (!DIGITAL_SCREEN_DISPLAY_MODES.includes(key as DigitalScreenDisplayMode)) {
+            return false;
+        }
+        const receipt = record[key];
+        if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return false;
+        const candidate = receipt as { contentVersion?: unknown; seenAt?: unknown };
+        return Number.isSafeInteger(candidate.contentVersion)
+            && Number(candidate.contentVersion) >= 1
+            && Number(candidate.contentVersion) <= currentContentVersion
+            && timestampToMillis(candidate.seenAt) !== null;
+    });
+}
+
 function normalizeExistingScreen(value: unknown): DigitalScreenState | null {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const screen = value as Partial<DigitalScreenState>;
@@ -77,6 +107,12 @@ function normalizeExistingScreen(value: unknown): DigitalScreenState | null {
     }
 
     if (screen.screenToken !== undefined && !isValidScreenToken(screen.screenToken)) {
+        return null;
+    }
+    if (
+        screen.screenSeenByMode !== undefined
+        && !isValidScreenSeenByMode(screen.screenSeenByMode, Number(screen.contentVersion))
+    ) {
         return null;
     }
 
@@ -106,6 +142,16 @@ function serializeOwnerState(
     }
 
     const screenLastSeenAtMs = timestampToMillis(screen.screenLastSeenAt);
+    const screenSeenByMode = screen.screenSeenByMode
+        ? Object.fromEntries(
+            Object.entries(screen.screenSeenByMode).flatMap(([mode, receipt]) => {
+                const seenAtMs = timestampToMillis(receipt?.seenAt);
+                return receipt && seenAtMs
+                    ? [[mode, { contentVersion: receipt.contentVersion, seenAtMs }]]
+                    : [];
+            }),
+        )
+        : undefined;
     return {
         contentVersion: screen.contentVersion,
         currentMinConfidence: screen.currentMinConfidence,
@@ -115,6 +161,9 @@ function serializeOwnerState(
         ownerOverrideEnabled: screen.ownerOverrideEnabled,
         pinnedSlides: getActiveOwnerSlides(screen.pinnedSlides).map(serializeOwnerSlide),
         ...(screenLastSeenAtMs ? { screenLastSeenAtMs } : {}),
+        ...(screenSeenByMode && Object.keys(screenSeenByMode).length > 0
+            ? { screenSeenByMode }
+            : {}),
         screenToken,
     };
 }

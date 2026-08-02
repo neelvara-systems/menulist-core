@@ -15,7 +15,11 @@
 1. Open **Use MenuList**
 2. Copy the **Menu Board** link
 3. Open the link on your TV's browser
-4. Enable fullscreen — your menu displays automatically and updates in real-time
+4. Enable fullscreen. Saved menu changes refresh on the screen after the
+   current version signal reaches the TV browser.
+5. Check the separate Menu Board or Highlights status. Use **Refresh TV status**
+   after opening a link; **Latest update seen** means that screen type opened the
+   current menu version, not that MenuList continuously monitors the TV.
 
 ### Download print materials
 

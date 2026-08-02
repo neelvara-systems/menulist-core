@@ -198,9 +198,13 @@ function verifyDeliveryRoute(deliverRoute) {
     '.limit(POS_SYNC_DELIVERY_LOG_RETENTION_SCAN_LIMIT)',
     'logsSnapshot.docs.slice(POS_SYNC_DELIVERY_LOG_RETENTION_LIMIT)',
     'POS_SYNC_DELIVERY_LOG_RETENTION_FAILED',
+    'getPosSyncDeliveryHttpStatus',
+    "{ status: getPosSyncDeliveryHttpStatus(success ? 'success' : deliveryStatus) }",
   ].forEach((token) => assertIncludes(deliverRoute, token, 'POS delivery route boundary'));
   assertNotIncludes(deliverRoute, '.offset(20)', 'POS delivery retention unbounded offset query');
   assertNotIncludes(deliverRoute, '.add(logEntry)', 'POS delivery non-atomic log write');
+  assertNotIncludes(deliverRoute, 'as Project', 'POS delivery persisted project input must remain runtime-projected rather than cast');
+  assertNotIncludes(deliverRoute, 'return NextResponse.json({\n            success,', 'POS delivery must not return an unconditional 200 after an upstream failure');
 
   assertOrder(
     deliverRoute,

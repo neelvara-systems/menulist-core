@@ -264,7 +264,7 @@ const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
     page: 'Print-ready Kit feature page',
     route: '/features/print-ready-kit',
     placement: 'print asset editor proof',
-    intent: 'Show the dedicated print asset editor as an approved cropped product screenshot.',
+    intent: 'Show the dedicated print asset editor as deterministic fictional product proof.',
     destination: 'public/images/website/print-ready-kit/print-assets-editor.jpg',
     component: 'src/components/website/features/PrintReadyKitProofGallery.tsx',
     format: 'jpg',
@@ -272,6 +272,7 @@ const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
     maxKb: 200,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
+      'scripts/website-assets/generate-product-proof-assets.mjs',
       'src/components/website/features/PrintReadyKitProofGallery.tsx',
       'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
     ],

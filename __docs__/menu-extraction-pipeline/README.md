@@ -59,9 +59,17 @@ Owner desktop/mobile listeners treat the job document as an untrusted runtime bo
 
 ## Security Contract
 
-Browser clients cannot create extraction jobs directly. Owner uploads go through the protected server route so auth, tenant access, project existence, Firebase Storage URL allowlisting, rate limits, SAFE_MODE, and menu-intake identity checks run before the job exists.
+Browser clients cannot create extraction jobs directly. Owner uploads go
+through the protected server route so auth, tenant access, project existence,
+Firebase Storage URL allowlisting, fail-closed rate limits, SAFE_MODE, and
+menu-intake identity checks run before the job exists. All protected route
+responses are private/no-store/nosniff; limiter infrastructure uncertainty is
+503 and remains distinct from 429 quota exhaustion.
 
-The protected owner route does not accept client-provided `source` or `sourceMetadata`. Retry jobs recover source lineage from the original failed server-owned job.
+The protected owner route does not accept client-provided `source`,
+`sourceMetadata`, or `retryCount`. Retry jobs recover source lineage and derive
+the next bounded retry count from the exact owned failed job. Legacy missing
+counts start at zero; malformed persisted retry state fails closed.
 
 The owner route accepts only the fixed `image_processing` action, rejects zero-byte or duplicate-identity file declarations, and canonicalizes business type/category against the maintained business registry before either value enters a dedupe fingerprint or worker prompt. Persisted project identity wins; canonical request context remains only as a legacy-project fallback. Retry loading reuses the same bounded file schema, so a malformed historical job cannot create a replacement job with empty, oversized, or duplicate file rows.
 

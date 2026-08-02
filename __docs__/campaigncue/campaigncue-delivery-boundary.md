@@ -61,7 +61,7 @@ The future connector must be server-only, explicitly owner-authorized, tenant/ad
 - No Google Business Profile publish.
 - No Meta, Instagram, or Facebook posting.
 - No Google Ads or Meta Ads mutation.
-- No video render/upload provider.
+- No video render/upload provider. Approved Video Studio projects may render locally in the browser and download manually; the binary is not published or uploaded by CampaignCue.
 - No owner-facing social account connection request.
 - No provider-connection write from the owner UI.
 - No Meta Ads MCP call, metric import, activity import, signal-health query, catalog operation, experiment operation, or ad mutation.

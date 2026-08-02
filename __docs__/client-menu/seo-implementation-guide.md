@@ -204,7 +204,7 @@ Based on current source behavior and general crawler requirements. External craw
 
 ### Implemented Multi-Tenant Architecture
 
-- [x] Subdomain support (`joespizza.menulist.ai`)
+- [x] Subdomain support (`joespizza.menulist.online`)
 - [x] Custom domain support (`joespizza.com`)
 - [x] Domain-based middleware routing
 - [x] Per-client sitemap.xml generation
@@ -228,11 +228,10 @@ Based on current source behavior and general crawler requirements. External craw
 
 ```
 menulist.ai/                      → Platform landing page
-menulist.ai/menu/[projectId]      → Client menus (PATH-BASED fallback)
 menulist.ai/sitemap.xml           → Platform pages ONLY
 
-joespizza.menulist.ai/            → Client menu (SUBDOMAIN) ✅
-joespizza.menulist.ai/sitemap.xml → Client's menu only ✅
+joespizza.menulist.online/            → Client menu (SUBDOMAIN) ✅
+joespizza.menulist.online/sitemap.xml → Client's menu only ✅
 
 joespizza.com/                    → Custom domain ✅
 joespizza.com/sitemap.xml         → Client's menu only ✅
@@ -290,13 +289,13 @@ src/app/
 ```typescript
 // In StoreDataType
 customDomain?: string;      // e.g., "joespizza.com"
-subdomain?: string;         // e.g., "joespizza" (→ joespizza.menulist.ai)
+subdomain?: string;         // e.g., "joespizza" (→ joespizza.menulist.online)
 domainVerified?: boolean;   // DNS verification status
 ```
 
 ### Why This Matters for SEO
 
-1. **Clean URLs** - `joespizza.com` vs `menulist.ai/menu/abc123`
+1. **Clean URLs** - `joespizza.com` or `joespizza.menulist.online` instead of platform path URLs
 2. **Dedicated sitemap** - Each client has their own
 3. **Proper canonicals** - No cross-domain confusion
 4. **Google Business Profile** - Clients can link their actual domain

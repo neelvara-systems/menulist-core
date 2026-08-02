@@ -1,5 +1,345 @@
 # MenuList — Changelog
 
+## August 1, 2026 - Exact Audit Category Fingerprints
+
+- Reviewed documentation and asset categories can now be recorded with guarded
+  per-file current hashes without weakening the manifest. The audit review-state
+  artifact uses a stable semantic self-fingerprint and repeated recording is
+  idempotent.
+
+## August 1, 2026 - Asset File Signature Normalization
+
+- Thirty-two `.png` screenshot, evidence, and public-background paths that
+  contained JPEG bytes now contain real PNG data, preserving existing paths
+  while aligning browser/tool content-type behavior with their extensions.
+
+## August 1, 2026 - Print-ready Public Proof Domain Correction
+
+- The Print-ready Kit editor proof is now generated locally from deterministic
+  fictional data and shows the active `menulist.online` tenant link instead of
+  a retired `menulist.ai` menu URL. AssetOS source fingerprints, approval
+  checks, size budgets and documentation are current again.
+
+## August 1, 2026 - CampaignCue Private Asset DTO Boundary
+
+- CampaignCue private asset records now project only the declared owner DTO,
+  reject unsupported usage channels, and validate upload-registration responses
+  against the active workspace before the UI consumes them. Optional browser
+  Firebase clients now expose their real nullable configuration state instead
+  of hiding it behind double assertions.
+
+## August 1, 2026 - SignalDesk Webhook Contract Test Registration
+
+- The signed-webhook authority and retention contract suite now has a stable
+  npm entrypoint, covering contact/delivery coupling, spoof rejection,
+  retention-held inbound handling and canonical event/channel-health shapes.
+
+## August 1, 2026 - SignalDesk Provider Adapter Regression Admission
+
+- The provider transport contract test now captures mocked requests through a
+  typed collection, restoring strict TypeScript execution of recipient,
+  acknowledgement, redirect, timeout and bounded-response checks.
+
+## August 1, 2026 - Answerlattice Review Update Return Contract
+
+- Knowledge Intake review mutations now return their precise updated review DTO
+  directly from the Firestore transaction, restoring strict TypeScript caller
+  compatibility and the full source-governance emulator regression matrix.
+
+## August 1, 2026 - SignalDesk Workflow Smoke Reply Contract
+
+- The local SignalDesk workflow smoke now reads the exact conversation identity
+  projected by message export before capturing a reply, matching the hardened
+  current-conversation lineage contract and restoring end-to-end emulator proof
+  through outcome, demand, audit and MenuList-truth isolation checks.
+
+## August 1, 2026 - Firebase Cost Snapshot Parity
+
+- The maintained scale/cost closeout now reports the live MenuList usage-map
+  totals, and its verifier dynamically reconciles every documented risk-band
+  count with the scanner output instead of certifying stale hard-coded values.
+
+## August 1, 2026 - SignalDesk Route Smoke Transport Boundary
+
+- Public-host SignalDesk route probes now model the canonical forwarded HTTPS
+  protocol before asserting product/path isolation, so a valid HTTP-to-HTTPS
+  redirect cannot be misreported as a public route leak. The production-built
+  smoke passes all 44 route, noindex, authentication and webhook/outcome checks.
+
+## August 1, 2026 - Provider Readiness And Support Evidence Admission
+
+- The Upstash readiness probe now rejects non-HTTPS, credential-bearing and
+  non-origin endpoints before constructing an authenticated client, and clears
+  its timeout after settlement. A subprocess regression proves unsafe values
+  fail without a network call or token disclosure.
+- Answerlattice Support Board fallback evidence now requires canonical scope
+  clarification or a bounded reference ID/title. Canonical answers cannot
+  become false unresolved cards, and source-less RAG/cache rows cannot become
+  false approved-answer gaps.
+- Answerlattice release-rule regression fixtures now seed active foreign-
+  tenant and same-tenant sibling-store workspaces, proving denials arise from
+  exact release scope rather than a missing-store prerequisite.
+
+## August 1, 2026 - Printable Template Summary Compatibility
+
+- Platform and owner printable-template catalogs now normalize malformed or
+  legacy optional summary fields before rendering: asset/family IDs,
+  thumbnails, descriptions, dates, versions and canvas dimensions cannot
+  poison selection or React layout state.
+- The Printable Asset Templates verifier pins the defensive consumer boundary
+  across both catalog surfaces.
+
+## August 1, 2026 - Share PDF Freshness Timestamp Boundary
+
+- The owner project Share modal now evaluates menu freshness through the
+  shared hardened date normalizer, including serialized Firestore seconds and
+  nanoseconds, and fails closed for malformed legacy values.
+- The Pricing Integrity source gate pins the shared boundary and rejects the
+  removed unsafe cast path.
+
+## August 1, 2026 - Embedded Support Widget Script Admission
+
+- The MenuList Answerlattice embed now accepts a configured script override
+  only when it is an absolute, credential-free, fragment-free HTTPS URL.
+  Invalid overrides fall back to the governed deployment-host resolver.
+- The focused reference-client contract pins this admission before the
+  third-party script component can receive the URL.
+
+## August 1, 2026 - Digital Screen Slide Failure Isolation
+
+- A broken owner-upload image now falls back only for that exact slide and URL;
+  timed rotation cannot carry its failure state into a later valid owner slide.
+- The full Digital Screens boundary, Firestore rules and Admin emulator suites
+  plus focused lint cover the public-output repair.
+
+## August 1, 2026 - CampaignCue Browser Video Teardown
+
+- Browser video rendering now stops canvas/audio tracks, pauses session audio,
+  revokes its temporary object URL and closes the AudioContext even when the
+  browser rejects MediaRecorder construction.
+- Locally rendered output must fit the same 250 MiB maximum as the durable
+  render-receipt contract before download begins.
+- The complete CampaignCue runtime, Video Reel contracts, Firestore and Storage
+  emulator suites and focused lint cover the repair. No provider call, media
+  upload, billing effect or deployment target was added.
+
+## August 1, 2026 - Public Menu Intake And Polling Boundaries
+
+- Authenticated image/link intake and preview polling now apply one private,
+  no-store, nosniff response policy across auth, validation, rate, success and
+  failure branches.
+- Limiter-provider outages return 503 without quota/reset headers; real 429
+  exhaustion retains bounded retry evidence.
+- Polling revalidates exact temporary Storage bucket/path/MIME/token/size truth
+  and projects detected/profile/source fields through the shared browser-safe
+  DTO before returning them. Malformed legacy drafts fail closed.
+- Multipart images require a real `File`; link and attribution input is strict,
+  trimmed and URL-valid before dedupe/acquisition/Storage work.
+- Public Menu, Menu Extraction, tenant-safety, exact TypeScript and focused lint
+  cover the repair. No Firebase infrastructure or deployment target changed.
+
+## August 1, 2026 - Public Menu Claim Current-Authority Convergence
+
+- Existing-account claim now locks the exact current user, rechecks identity,
+  lifecycle, revocation, tenant/store mapping and persisted store role, and uses
+  that role for in-transaction `PUBLISH_MENU` admission.
+- New-account claim locks and confirms eligible empty-scope current-user truth
+  before allocating tenant/store IDs, preventing concurrent onboarding paths
+  from creating multiple businesses from one stale session.
+- Malformed legacy public-presence/business-attribute maps, business identity
+  scalars and subdomains no longer cross into store/project/public URL truth.
+  Request input is strict and trimmed.
+- Every auth/claim response is private, no-store and nosniff. Limiter outages
+  omit quota timing while real 429 exhaustion retains bounded retry evidence.
+- The Public Menu Entry source/behavior suite, exact TypeScript and focused lint
+  cover the repair. No rules, indexes, Functions or deployment target changed.
+
+## August 1, 2026 - Owner Notification Manual-Recovery Convergence
+
+- Platform manual send now binds a stable action ID to the exact source event,
+  product, channel, normalized destination and reason. An exact replay resumes
+  or converges the deterministic event; changed action payload returns 409
+  before processing or provider work.
+- Disabled product notification runtime admission now returns 503 instead of
+  acknowledging an empty event. Selected, manual-send and handoff source events
+  pass through the shared persisted-event projector before scope resolution,
+  templates, processing or writes.
+- GET, POST, auth and error responses are private, no-store and nosniff.
+  Limiter-provider outages omit quota/reset metadata while real 429 exhaustion
+  keeps its bounded retry evidence.
+- A focused action-identity regression plus the owner-notification, ops-current-
+  authorization, MenuList tenant-safety, exact TypeScript and scoped lint gates
+  cover the repair. Normal creates add no read; only deterministic manual-send
+  replay adds one exact event read. No rules, indexes or Functions changed.
+
+## August 1, 2026 - Website Onboarding Provider-Effect Convergence
+
+- Website onboarding now accepts a direct or recovered Razorpay subscription
+  only when provider plan, quantity, total count and exact attempt/user/tenant/
+  store/plan notes all match server truth. A known exact attempt with invalid
+  commercial fields is cancelled before local workspace compensation; an
+  unrelated provider ID is never cancelled.
+- An allowlisted checkout URL is required before the pending subscription is
+  persisted. Missing or invalid provider URLs follow the same cancel-first
+  compensation order, so returning-owner recovery cannot inherit an empty
+  checkout link and local truth is not removed while a provider effect may
+  still be live.
+- All onboarding responses are private, no-store and nosniff. Limiter outages
+  omit quota/reset diagnostics and remain distinct from actual 429 exhaustion;
+  the same diagnostic separation now covers subscription creation, top-up
+  creation and both payment-verification routes.
+- Focused runtime/source tests, auth/onboarding gates, billing entitlement,
+  MenuList tenant safety, exact TypeScript and scoped lint cover the repair.
+  No Firestore rules, indexes, Functions, dependencies or deployment target
+  changed.
+
+## August 1, 2026 - Owner Menu Extraction Job Boundary
+
+- The protected owner job route now fails closed at both distributed limiter
+  boundaries and distinguishes temporary limiter outages (503) from actual
+  quota exhaustion (429). Every response, including auth and validation
+  failures, is private, no-store, and nosniff.
+- Retry count and scope are derived from the exact persisted failed job rather
+  than browser input. Malformed legacy retry state fails closed, while legacy
+  jobs with no retry count retain the first-retry compatibility path.
+- Persisted project/job/file/timestamp values are projected without `any` or
+  coercive identity comparisons. Invalid Storage sizes and hostile legacy
+  timestamp shapes cannot enter fingerprint reuse or abort the route.
+- Desktop and mobile now remove completed uploads after route-level 503
+  rejection, which always precedes job creation, while preserving uploads for
+  ambiguous 500, transport, or response-shape failures where a durable job may
+  already exist.
+- The complete Menu Extraction pipeline verifier, unit tests, Firestore
+  emulators, messaging lifecycle suites, exact TypeScript, focused lint and
+  diff hygiene cover the repair. No Firebase infrastructure or deployment
+  target changed.
+
+## August 1, 2026 - CampaignCue Protected API And Render Receipt Boundaries
+
+- All 18 protected CampaignCue API routes now use one product-owned auth
+  wrapper that applies private, no-store, nosniff response headers to auth,
+  CORS, scope, validation, rate, success, and failure branches.
+- The shared CampaignCue limiter now fails closed. Infrastructure uncertainty
+  returns 503 without owner quota metadata; actual quota exhaustion remains
+  429 and retains bounded retry headers.
+- Video render receipts use status-specific strict schemas. A receipt ID may
+  start once, and only its matching started attempt may complete or fail, so a
+  second idempotency key cannot restart or overwrite the durable audit state.
+  Persisted project reads enforce the same discriminated receipt contract.
+- The complete CampaignCue verifier, video contracts, Firestore rules, Storage
+  rules, exact TypeScript, focused lint, and diff checks cover the repair. No
+  provider, social, billing, rules, index, Function, or deployment boundary
+  changed.
+
+## August 1, 2026 - Answerlattice Article Entity Identity Boundary
+
+- Article entity extraction now accepts only the article ID and derives title,
+  category, content, and workspace authority exclusively from the persisted
+  article. Legacy missing fields can no longer be replaced by request-provided
+  prompt or accounting context.
+- Deterministic candidate IDs retain the existing ASCII normalization contract
+  while preserving Unicode letters, marks, and numbers. Distinct Arabic,
+  Indic, CJK, and other non-Latin names no longer collapse into one candidate
+  per entity type.
+- Limiter infrastructure outages return retryable HTTP 503 without quota-reset
+  metadata; actual quota exhaustion remains HTTP 429. Focused contract,
+  runtime-truth, and Firestore emulator tests cover these boundaries.
+
+## August 1, 2026 - CampaignCue In-House Video Reel Studio
+
+- The initial Topview-derived decision is now closed codebase-wise at 19 of 19 accepted capability groups while all 10 rejected groups remain absent. The completion pass adds private resumable image/video/audio upload, generated previews, authoritative MIME/magic-byte/generation verification, saved media reuse, deterministic checked-scene regeneration, separate narration and music, microphone narration, ducking, bounded scene review notes, progress checkpoints, cancellation, interrupted-render recovery, complete version/right-to-use evidence, video result memory, and source-free reusable structural blueprints.
+- The full CampaignCue aggregate passes with 1,954 runtime checks plus Firestore and Storage emulators; TypeScript, zero-warning lint, SecurityOS registry integrity, and documentation links pass. The required `campaigncue-qa` Storage-rules deploy was attempted and is operator-blocked because Firebase CLI authentication is unavailable. No Vercel deploy was run.
+- CampaignCue can now turn a checked video campaign output into a compact,
+  source-linked storyboard with three bounded directions, editable scenes,
+  captions, owner-controlled images and session-local audio, three aspect
+  ratios, version history, trust checks, and current-version approval.
+- An owned browser compositor renders branded text/image motion through Canvas,
+  MediaRecorder, and optional Web Audio, then downloads the actual supported
+  MP4 or WebM file. The binary and session media remain on the owner device;
+  compact project, audit, render-receipt, and optional Asset Library receipt
+  metadata are the only persisted state.
+- The protected Video Projects API adds strict action validation, bounded reads,
+  exact workspace/campaign/output binding, optimistic versioning, idempotency,
+  rate limiting, and server-only writes. Firestore rules allow scoped member
+  reads and continue denying client writes.
+- The owner Video/Reel workspace, mobile layout, public feature page, navigation,
+  help/website/Firebase docs, unit contract, and CampaignCue verifier now expose
+  the same in-house boundary. Topview, external render providers, social OAuth,
+  direct posting, synthetic customers, paid generation, and spend mutation
+  remain absent.
+- The completion cross-check added a real plain-text storyboard fallback,
+  explicit local-versus-library image replacement, removable session audio,
+  bounded validation-failure security logging, render-loop exception handling,
+  and truthful receipt-sync messaging after a successful device download.
+
+## August 1, 2026 - Digital Screens Exact-Version Output Confidence
+
+- Menu Board and Highlights now acknowledge their own canonical content version;
+  stale or cross-mode receipts cannot make an owner-facing screen status look
+  current. Desktop and mobile show separate bounded status with an explicit
+  owner-triggered refresh, while legacy aggregate daily signals remain readable.
+- The public acknowledgement route now validates exact legacy/current shapes,
+  rechecks token, store, tenant, lifecycle, and version in one transaction, and
+  remains idempotent per mode/version/UTC day. No device analytics or heartbeat
+  was added.
+- Failed owner-poster media now renders the store identity and menu QR fallback
+  instead of a mostly blank slide. The unused browser Firestore mirror writer
+  was removed; server/Admin transactions remain authoritative. Bearer TV routes
+  are now noindex/noarchive/noimageindex with no-referrer; public menu/OBP pages
+  remain the discovery surfaces.
+- Owner setup cards now apply their intended wrapper-scoped presentation across
+  child components. Below 640px, the same-device QR column collapses so status,
+  link, and actions remain readable without horizontal overflow.
+- Every global owner-card selector is now namespaced under the Digital Screens
+  wrapper. Output Center also uses independent exact-version Menu Board and
+  Highlights status with an explicit owner refresh instead of its legacy
+  aggregate Menu Board-only hint.
+- Lifecycle, Firestore emulator, SecurityOS-selected input-boundary, dedicated
+  Digital Screens, TypeScript, lint, docs, and cross-feature verification cover
+  the new invariants. No Firestore rule, index, Function, collection, Storage
+  path, dependency, or deploy target changed.
+
+## August 1, 2026 - Menu Intake Limiter Outage Boundary
+
+- Authenticated menu identity preflight now fails closed when the distributed
+  limiter provider is unavailable, before request parsing, project/store reads,
+  Storage access, or Gemini analysis.
+- Limiter infrastructure uncertainty returns retryable HTTP 503 without quota
+  metadata; actual owner quota exhaustion remains HTTP 429. Valid preflight,
+  tenant/store/project authority, upload cleanup, extraction, Firestore shape,
+  cache, and deployment behavior is unchanged.
+- The extraction and tenant-safety source gates lock the fail-closed policy and
+  status distinction.
+
+## August 1, 2026 - Razorpay Billing Limiter Outage Boundary
+
+- All authenticated subscription checkout, top-up checkout, cancel, pause,
+  resume, upgrade, subscription verification, and top-up verification routes
+  now fail closed when the distributed limiter provider is unavailable.
+- Limiter infrastructure uncertainty returns 503 before Razorpay or Firestore
+  work. Actual quota exhaustion remains 429 and retains reset/retry metadata.
+  Provider-outage diagnostics are not mislabeled as owner quota exhaustion.
+- The billing and tenant-safety source gates protect all eight routes. Valid
+  billing behavior, Firestore schemas/rules/indexes, Functions, provider
+  idempotency, dependencies, caches, and deployment targets are unchanged.
+
+## August 1, 2026 - Owner AI Settlement, Scope, and Output Boundaries
+
+- Business Copy and SEO now reserve paid capacity before Gemini, settle the
+  exact reservation after valid output, and refund every unsettled failure
+  path. Successful provider work can no longer be rejected solely because the
+  route omitted the accounting reservation required by the shared finalizer.
+- Campaign Caption verifies an optional project against the authenticated
+  tenant/store and an existing undeleted, unblocked project before paid work.
+  Provider JSON is projected to exact bounded caption fields and at most five
+  string hashtags; unknown or malformed provider fields never reach the owner
+  response or AI ledger summary.
+- The dormant Review Suggest paid-provider limiter fails closed and returns 503
+  for limiter infrastructure failure versus 429 for actual quota exhaustion.
+- Focused output, accounting, tenant-safety, TypeScript, lint, and diff checks
+  protect the corrected paths. No Firestore rules, indexes, Functions, caches,
+  dependencies, or deploy target changed.
+
 ## July 31, 2026 - SignalDesk Firestore Identity Boundary
 
 - Protected SignalDesk actions now reject whitespace-mutated, path-shaped,
@@ -31006,3 +31346,35 @@ TEMPLATE FOR NEW ENTRIES:
   arbitrary-host, and non-image legacy URLs fall back to the deterministic
   generated mark.
 - Rendered business names and icon size paths are strictly bounded and parsed.
+
+## August 1, 2026 — Answerlattice Paid Onboarding Recovery Boundary
+
+- Paid onboarding now requires the current persisted default-auth user and
+  transactionally revalidates the complete `productAccounts.AL` bridge.
+- Provider subscriptions cannot become local payment-pending truth without an
+  exact safe Razorpay hosted checkout URL.
+- Payment-pending retries require the original request fingerprint and repair
+  missing initial surfaces and summaries with create-only writes, preserving
+  existing owner-edited product-surface truth.
+- Limiter-provider outages return fixed 503 responses without quota timing.
+## August 1, 2026 — Reseller Onboarding Recovery Boundary
+
+- Reseller onboarding now revalidates the current actor and persists an exact
+  provisional operation with tenant/store/user truth before changing an
+  existing owner Auth profile or calling Razorpay.
+- Ambiguous Razorpay creation is recovered through exact attempt notes.
+  Incomplete bounded searches fail closed, preventing duplicate subscriptions.
+- Billing lost-ack verification distinguishes read outage from proven absence;
+  exact provisional operations upgrade atomically and replay does not recount
+  reseller totals.
+- Limiter-provider outages return fixed private 503 responses without quota
+  timing.
+## August 1, 2026 — SignalDesk Action Boundary Closure
+
+- SignalDesk action validation now preserves exact Zod output types, and all
+  permissions, mobile classes and server consumers are compile-time exhaustive.
+- Limiter outages no longer expose quota timing; only proven 429 exhaustion
+  emits retry/reset metadata.
+- Source-provider timeout/request failures return 503 instead of 400.
+- Blocked-mobile audit failures remain inside the route's bounded private error
+  path and never execute the requested mutation.

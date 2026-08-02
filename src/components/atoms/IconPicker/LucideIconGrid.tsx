@@ -1,6 +1,10 @@
 import { theme } from 'antd';
 import { useMemo } from 'react';
 import * as LuIcons from 'react-icons/lu';
+import {
+    normalizeLucideIconName,
+    normalizeSuggestedLucideIcons,
+} from './iconPickerContracts';
 
 interface LucideIconGridProps {
     onSelect: (iconName: string) => void;
@@ -11,6 +15,7 @@ interface LucideIconGridProps {
 }
 
 const allIcons = Object.keys(LuIcons);
+const allIconNames = new Set(allIcons);
 
 const LucideIconGrid = ({
     onSelect,
@@ -20,9 +25,14 @@ const LucideIconGrid = ({
     width = 400,
 }: LucideIconGridProps) => {
     const { token } = theme.useToken();
-    const filteredSuggestedIcons = useMemo(() => (
-        suggestedIcons.filter((iconName) => allIcons.includes(iconName))
-    ), [suggestedIcons]);
+    const filteredSuggestedIcons = useMemo(
+        () => normalizeSuggestedLucideIcons(suggestedIcons, allIconNames),
+        [suggestedIcons],
+    );
+    const normalizedSelectedIcon = useMemo(
+        () => normalizeLucideIconName(selectedIcon, allIconNames),
+        [selectedIcon],
+    );
 
     const filteredIcons = useMemo(() =>
         allIcons.filter(icon => icon.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -36,10 +46,9 @@ const LucideIconGrid = ({
                 background: token.colorBgContainer,
                 border: `1px solid ${token.colorBorderSecondary}`,
                 borderRadius: 18,
-                ['--icon-picker-panel-bg' as any]: token.colorBgContainer,
-                ['--icon-picker-input-bg' as any]: token.colorFillSecondary,
-                ['--icon-picker-input-border' as any]: token.colorFillSecondary,
+                maxWidth: '100%',
                 padding: 10,
+                width,
             }}
         >
             <div className="icon-grid-picker__scroll">
@@ -50,12 +59,13 @@ const LucideIconGrid = ({
                             {filteredSuggestedIcons.map((iconName) => {
                                 const Icon = LuIcons[iconName as keyof typeof LuIcons];
                                 const iconValue = `lu:${iconName}`;
-                                const isSelected = selectedIcon === iconValue;
+                                const isSelected = normalizedSelectedIcon === iconName;
 
                                 if (!Icon) return null;
 
                                 return (
                                     <button
+                                        aria-label={`Select ${iconName} icon`}
                                         key={iconName}
                                         className={`icon-picker-cell-container icon-picker-cell-container--suggested ${isSelected ? 'selected' : ''}`}
                                         onClick={() => onSelect(iconValue)}
@@ -87,12 +97,13 @@ const LucideIconGrid = ({
                             {filteredIcons.map((iconName) => {
                                 const Icon = LuIcons[iconName as keyof typeof LuIcons];
                                 const iconValue = `lu:${iconName}`;
-                                const isSelected = selectedIcon === iconValue;
+                                const isSelected = normalizedSelectedIcon === iconName;
 
                                 if (!Icon) return null;
 
                                 return (
                                     <button
+                                        aria-label={`Select ${iconName} icon`}
                                         key={iconName}
                                         className="icon-picker-cell-container icon-picker-cell-container--result"
                                         onClick={() => onSelect(iconValue)}

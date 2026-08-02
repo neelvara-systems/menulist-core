@@ -34,7 +34,10 @@ function assertOrder(source, tokens, label) {
 }
 
 function handlerSource(route, method) {
-  const startToken = `export const ${method} = withAuth`;
+  const privateStartToken = `export const ${method} = withOwnerNotificationPrivateResponse`;
+  const startToken = route.includes(privateStartToken)
+    ? privateStartToken
+    : `export const ${method} = withAuth`;
   const start = route.indexOf(startToken);
   assert(start >= 0, `Route must include ${startToken}`);
   const nextMethod = route.indexOf('export const ', start + startToken.length);
@@ -78,6 +81,13 @@ for (const [label, source] of [
     "return NextResponse.json({ error: 'Forbidden' }, { status: 403 });",
   ], label);
 }
+assertIncludes(ownerRoute, [
+  "'Cache-Control': 'private, no-store, max-age=0'",
+  "'X-Content-Type-Options': 'nosniff'",
+  'withOwnerNotificationPrivateResponse(async (request, session) =>',
+  'isMatchingOwnerNotificationManualSendEvent({',
+  'projectOwnerNotificationPersistedEvent(',
+], 'owner notification private response, action identity and persisted event boundary');
 
 assertOrder(muteRoute, [
   'const rateLimit = await checkRateLimit({',

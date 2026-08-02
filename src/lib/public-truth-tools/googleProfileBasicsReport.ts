@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   GoogleProfileBasicsCheckId,
   GoogleProfileBasicsEvidence,
@@ -18,8 +23,11 @@ const REQUIRED_CHECKS = new Set<GoogleProfileBasicsCheckId>([
   'menu_or_service_link',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function getGoogleProfileBasicsEvidenceText(evidence: GoogleProfileBasicsEvidence): string {
@@ -91,9 +99,9 @@ function getNextActionType(status: GoogleProfileBasicsReport['status']): GoogleP
 }
 
 export function buildGoogleProfileBasicsReport(input: GoogleProfileBasicsInput): GoogleProfileBasicsReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const websiteOrCustomerLink = trimToSingleLine(input.websiteOrCustomerLink);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const websiteOrCustomerLink = trimToSingleLine(input.websiteOrCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const hasWebsiteOrCustomerLink = websiteOrCustomerLink.length > 0;
   const validWebsiteOrCustomerLink = isValidHttpUrl(websiteOrCustomerLink, 'google_profile_basics_website_or_customer_link');
   const hasBusinessName = businessName.length >= 2;

@@ -8,6 +8,11 @@ import {
   normalizePhoneDigits,
 } from './phoneValidation';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   WhatsAppActionLinkCheckId,
   WhatsAppActionLinkEvidence,
@@ -29,12 +34,17 @@ const REQUIRED_CHECKS = new Set<WhatsAppActionLinkCheckId>([
   'fallback_action',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function trimMessage(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function isLikelyWhatsAppPhone(rawValue: string): boolean {
@@ -248,11 +258,11 @@ function getNextActionType(status: WhatsAppActionLinkReport['status']): WhatsApp
 }
 
 export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): WhatsAppActionLinkReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const whatsappNumber = trimToSingleLine(input.whatsappNumber);
-  const existingWhatsappLink = trimToSingleLine(input.existingWhatsappLink);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const whatsappNumber = trimToSingleLine(input.whatsappNumber, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.phone);
+  const existingWhatsappLink = trimToSingleLine(input.existingWhatsappLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const suggestedMessage = trimMessage(input.suggestedMessage);
   const enteredDigits = normalizePhoneDigits(whatsappNumber);
   const validLinkPhone = getValidLinkPhone(existingWhatsappLink);

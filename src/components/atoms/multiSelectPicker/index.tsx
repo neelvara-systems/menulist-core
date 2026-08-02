@@ -1,6 +1,6 @@
-import { DownOutlined } from '@ant-design/icons';
 import { Checkbox, Dropdown, Input, Space } from 'antd';
-import React, { useState } from 'react';
+import React, { type CSSProperties, useState } from 'react';
+import { LuChevronDown } from 'react-icons/lu';
 
 export interface Option {
     label: string;
@@ -12,7 +12,7 @@ interface MultiSelectPickerProps {
     value: string[];
     onChange: (values: string[]) => void;
     placeholder?: string;
-    width?: number;
+    width?: CSSProperties['width'];
     maxHeight?: number;
     searchPlaceholder?: string;
 }
@@ -111,7 +111,7 @@ const MultiSelectPicker: React.FC<MultiSelectPickerProps> = ({
                         </Checkbox>
                         <Checkbox.Group
                             value={value}
-                            onChange={(values) => onChange(values as string[])}
+                    onChange={(values) => onChange(values.filter((item): item is string => typeof item === 'string'))}
                             style={{ width: '100%' }}
                         >
                             <Space direction="vertical" style={{ width: '100%' }}>
@@ -157,7 +157,7 @@ const MultiSelectPicker: React.FC<MultiSelectPickerProps> = ({
                 }}>
                     {getSelectedLabels()}
                 </div>
-                <DownOutlined
+                <LuChevronDown
                     style={{
                         fontSize: '12px',
                         color: dropdownOpen ? '#4096ff' : '#8c8c8c',

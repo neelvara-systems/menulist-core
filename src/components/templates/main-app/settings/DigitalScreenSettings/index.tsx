@@ -20,20 +20,18 @@ import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { hasAnyPermission } from "@lib/permissions/permissionRequirements";
 import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
-import { getDigitalScreenHealth } from "@lib/screen/screenHealth";
-import type { DigitalScreenSeenTimestamp } from "@lib/screen/screenTimestamp";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
-import { ScreenSlide } from "@type/campaigns";
-import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
+import { DigitalScreenSeenByMode, ScreenSlide } from "@type/campaigns";
+import { Card, Divider, Empty, message, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { LuAlertCircle, LuCheckCircle, LuLink } from "react-icons/lu";
 import OwnerUploads from "./OwnerUploads";
 import ScreenLink from "./ScreenLink";
 
 const { Text } = Typography;
 
 interface ScreenSettingsData {
+    contentVersion: number;
     enabled: boolean;
     screenToken: string;
     screenUrl: string;
@@ -41,7 +39,7 @@ interface ScreenSettingsData {
     pinnedSlides: ScreenSlide[];
     maxUploads: number;
     uploadExpiryDays: number;
-    screenLastSeenAt?: DigitalScreenSeenTimestamp;
+    screenSeenByMode?: DigitalScreenSeenByMode;
 }
 
 export default function DigitalScreenSettings() {
@@ -55,11 +53,8 @@ export default function DigitalScreenSettings() {
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [refreshingStatus, setRefreshingStatus] = useState(false);
     const loadRequestRef = useRef(0);
-    const screenHealth = useMemo(
-        () => getDigitalScreenHealth(settings?.screenLastSeenAt),
-        [settings?.screenLastSeenAt],
-    );
 
     // Fetch settings on mount
     useEffect(() => {
@@ -73,10 +68,11 @@ export default function DigitalScreenSettings() {
         void fetchSettings();
     }, [canAccessDigitalScreens, publicBaseUrl]);
 
-    const fetchSettings = async () => {
+    const fetchSettings = async (background = false) => {
         const requestId = ++loadRequestRef.current;
         try {
-            setLoading(true);
+            if (background) setRefreshingStatus(true);
+            else setLoading(true);
 
             // Use DAL directly (follows existing pattern from projects/tickets)
             let screenState = await getScreenState();
@@ -87,6 +83,7 @@ export default function DigitalScreenSettings() {
             if (requestId !== loadRequestRef.current) return;
 
             setSettings({
+                contentVersion: screenState.contentVersion,
                 enabled: screenState.enabled,
                 screenToken: screenState.screenToken,
                 screenUrl: buildScreenUrl(screenState.screenToken, publicBaseUrl),
@@ -94,20 +91,31 @@ export default function DigitalScreenSettings() {
                 pinnedSlides: screenState.pinnedSlides || [],
                 maxUploads: FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS,
                 uploadExpiryDays: FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS,
-                screenLastSeenAt: screenState.screenLastSeenAt || null,
+                screenSeenByMode: screenState.screenSeenByMode,
             });
             setError(null);
+            return true;
         } catch (err) {
             if (requestId !== loadRequestRef.current) return;
-            setError('Unable to load screen settings');
+            if (!background) setError('Unable to load screen settings');
             logScreenSettingsFailure('digital_screen_settings_load_failed', err, {
                 ...getBoundedScreenStringContext('publicBaseUrl', publicBaseUrl),
                 ...getBoundedScreenStringContext('subdomain', storeDetails?.subdomain),
                 hasCustomDomain: Boolean(storeDetails?.customDomain),
             });
+            return false;
         } finally {
-            if (requestId === loadRequestRef.current) setLoading(false);
+            if (requestId === loadRequestRef.current) {
+                setLoading(false);
+                setRefreshingStatus(false);
+            }
         }
+    };
+
+    const handleRefreshStatus = async () => {
+        const refreshed = await fetchSettings(true);
+        if (refreshed) message.success("TV status refreshed");
+        else message.error("Unable to refresh TV status");
     };
 
     const handleOverrideToggle = async (enabled: boolean) => {
@@ -125,7 +133,12 @@ export default function DigitalScreenSettings() {
                 previousValue: settings?.ownerOverrideEnabled || false,
                 newValue: enabled,
             });
-            setSettings(prev => prev ? { ...prev, ownerOverrideEnabled: enabled } : null);
+            setSettings(prev => prev ? {
+                ...prev,
+                contentVersion: updateResult.screen.contentVersion,
+                ownerOverrideEnabled: enabled,
+                screenSeenByMode: updateResult.screen.screenSeenByMode,
+            } : null);
             message.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
         } catch (err) {
             logScreenSettingsFailure('digital_screen_settings_override_toggle_failed', err, {
@@ -146,6 +159,7 @@ export default function DigitalScreenSettings() {
                 pinnedSlides: prev.pinnedSlides.filter(s => s.id !== slideId)
             };
         });
+        void fetchSettings(true);
     };
 
     const handleSlideUploaded = () => {
@@ -176,19 +190,7 @@ export default function DigitalScreenSettings() {
 
     return (
         <Card
-            title={
-                <Space>
-                    <span>Digital Screen</span>
-                    {screenHealth.state === "recent"
-                        ? <LuCheckCircle style={{ color: token.colorSuccess }} />
-                        : screenHealth.state === "stale"
-                            ? <LuAlertCircle style={{ color: token.colorWarning }} />
-                            : <LuLink style={{ color: token.colorTextSecondary }} />}
-                    <Text type="secondary" style={{ fontSize: 14, fontWeight: 'normal' }}>
-                        {screenHealth.summary}
-                    </Text>
-                </Space>
-            }
+            title="Digital Screen"
             className="digital-screen-settings"
         >
             <div style={{
@@ -206,8 +208,11 @@ export default function DigitalScreenSettings() {
 
             {/* Screen Link Section */}
             <ScreenLink
+                contentVersion={settings.contentVersion}
+                onRefresh={() => void handleRefreshStatus()}
+                refreshing={refreshingStatus}
+                screenSeenByMode={settings.screenSeenByMode}
                 screenUrl={settings.screenUrl}
-                screenLastSeenAt={settings.screenLastSeenAt}
             />
 
             <Divider />

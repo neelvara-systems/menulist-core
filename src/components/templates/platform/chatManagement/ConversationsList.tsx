@@ -431,8 +431,7 @@ function ConversationsList() {
             // If selected session is no longer in filtered list, select first one
             setSelectedSession(filteredSessions.length > 0 ? filteredSessions[0] : null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filteredSessions]);
+    }, [filteredSessions, selectedSession]);
 
     // Filter popover state
     const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);

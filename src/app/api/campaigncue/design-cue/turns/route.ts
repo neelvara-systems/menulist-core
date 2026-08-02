@@ -9,6 +9,7 @@ import {
     parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueApiError,
@@ -19,9 +20,8 @@ import { getBoundedSecurityStringContext } from "@lib/security/securityDiagnosti
 import { logger } from "@lib/monitoring/logger";
 import { CampaignCueDesignCueTurnSchema } from "@lib/validation/campaigncueDesignCueSchemas";
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const POST = withAuth(async (request: NextRequest, session) => {
+export const POST = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;

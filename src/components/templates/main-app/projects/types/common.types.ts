@@ -19,7 +19,7 @@ export interface ConvertedImageType {
     size: number;
     type: string;
     url: string;
-    fileId: any;
+    fileId: string;
 }
 
 export type ItemForDropdown = ExtractedDataItem & {

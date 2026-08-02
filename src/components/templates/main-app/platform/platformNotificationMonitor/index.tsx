@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { FEATURE_FLAGS } from '@config/features';
 import type {
     PlatformNotificationChannel,
@@ -321,10 +323,7 @@ export default function PlatformNotificationMonitor() {
 
         const whatsappWebHref = buildWhatsappWebHref(prefillModal.destination, prefillModal.body);
         try {
-            const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('platform_notification_monitor_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappWebHref);
         } catch (error) {
             logRuntimeFailure('platform_notification_monitor_whatsapp_open_failed', error, {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),

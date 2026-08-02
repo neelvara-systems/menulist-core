@@ -12,13 +12,14 @@
 import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, message as antdMessage, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter } from 'next-intl';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { formatDateTime } from '@util/dateTime';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from './utils/businessSettingsDiagnostics';
+import type { StoreDataType } from '@type/platform/store';
 
 const { Text } = Typography;
 
@@ -31,7 +32,7 @@ const STATUS_OPTIONS = [
     { value: 'custom', label: 'Custom Message', icon: 'ℹ️', defaultMsg: '' },
 ] as const;
 
-function buildTempStatusLogContext(storeDetails: any, action: string, statusType?: unknown) {
+function buildTempStatusLogContext(storeDetails: Partial<StoreDataType> | null, action: string, statusType?: unknown) {
     return {
         action,
         ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
@@ -41,8 +42,8 @@ function buildTempStatusLogContext(storeDetails: any, action: string, statusType
 }
 
 interface TempStatusCardProps {
-    storeDetails: any;
-    setStoreDetails: (fn: (prev: any) => any) => void;
+    storeDetails: StoreDataType;
+    setStoreDetails: Dispatch<SetStateAction<StoreDataType | null>>;
 }
 
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
@@ -52,13 +53,22 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     const currentStatus = useActiveTempStatus(storedStatus);
     const isActive = Boolean(currentStatus);
 
-    const [statusType, setStatusType] = useState<string>('closed_today');
+    const [statusType, setStatusType] = useState<(typeof STATUS_OPTIONS)[number]['value']>('closed_today');
     const [customMessage, setCustomMessage] = useState('');
     const [expiresAt, setExpiresAt] = useState<dayjs.Dayjs | null>(dayjs().add(1, 'day').startOf('hour'));
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const currentScopeRef = useRef({ storeId: storeDetails.storeId, tenantId: storeDetails.tenantId });
+    const actionInFlightRef = useRef(false);
+    currentScopeRef.current = { storeId: storeDetails.storeId, tenantId: storeDetails.tenantId };
+    const isExpectedScope = useCallback((tenantId: unknown, storeId: unknown) => (
+        String(currentScopeRef.current.tenantId ?? '') === String(tenantId ?? '')
+        && String(currentScopeRef.current.storeId ?? '') === String(storeId ?? '')
+    ), []);
 
     const handleSet = useCallback(() => {
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
         if (!expiresAt) {
             setError('Please set an expiry time');
             return;
@@ -87,11 +97,17 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             okText: 'Show to customers',
             cancelText: 'Cancel',
             onOk: async () => {
+                if (actionInFlightRef.current || !isExpectedScope(expectedTenantId, expectedStoreId)) return;
+                actionInFlightRef.current = true;
                 setIsLoading(true);
                 setError(null);
 
                 // Optimistic update
-                setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
+                setStoreDetails((prev) => prev
+                    && String(prev.tenantId) === String(expectedTenantId)
+                    && String(prev.storeId) === String(expectedStoreId)
+                    ? { ...prev, tempStatus: newStatus }
+                    : prev);
 
                 try {
                     const res = await fetch('/api/store/temp-status', {
@@ -100,6 +116,8 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             action: 'set',
+                            expectedStoreId: String(expectedStoreId),
+                            expectedTenantId: String(expectedTenantId),
                             type: statusType,
                             message: statusType === 'custom' ? customMessage.trim() : undefined,
                             expiresAt: expiresAt.toISOString(),
@@ -107,6 +125,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     });
 
                     const result = await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
+                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
                     if (result.effectsPending) {
                         antdMessage.warning('Status saved. Customer pages may take a moment to refresh.');
                     } else {
@@ -114,7 +133,12 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     }
                 } catch (err) {
                     // Revert optimistic update
-                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: storedStatus }));
+                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+                    setStoreDetails((prev) => prev
+                        && String(prev.tenantId) === String(expectedTenantId)
+                        && String(prev.storeId) === String(expectedStoreId)
+                        ? { ...prev, tempStatus: storedStatus }
+                        : prev);
                     logBusinessSettingsFailure(
                         'desktop_temp_status_set_failed',
                         err,
@@ -122,13 +146,16 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     );
                     setError('Failed to set status');
                 } finally {
-                    setIsLoading(false);
+                    actionInFlightRef.current = false;
+                    if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
                 }
             },
         });
-    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter]);
+    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter, isExpectedScope]);
 
     const handleClear = useCallback(() => {
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
         const prevStatus = storeDetails?.tempStatus;
 
         Modal.confirm({
@@ -140,11 +167,14 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             okType: 'danger',
             cancelText: 'Cancel',
             onOk: async () => {
+                if (actionInFlightRef.current || !isExpectedScope(expectedTenantId, expectedStoreId)) return;
+                actionInFlightRef.current = true;
                 setIsLoading(true);
                 setError(null);
 
                 // Optimistic update
-                setStoreDetails((prev: any) => {
+                setStoreDetails((prev) => {
+                    if (!prev || String(prev.tenantId) !== String(expectedTenantId) || String(prev.storeId) !== String(expectedStoreId)) return prev;
                     const { tempStatus, ...rest } = prev || {};
                     return rest;
                 });
@@ -154,10 +184,15 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         ...AUTH_BROWSER_REQUEST_POLICY,
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'clear' }),
+                        body: JSON.stringify({
+                            action: 'clear',
+                            expectedStoreId: String(expectedStoreId),
+                            expectedTenantId: String(expectedTenantId),
+                        }),
                     });
 
                     const result = await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
+                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
                     if (result.effectsPending) {
                         antdMessage.warning('Status cleared. Customer pages may take a moment to refresh.');
                     } else {
@@ -165,7 +200,12 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     }
                 } catch (err) {
                     // Revert optimistic update
-                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+                    setStoreDetails((prev) => prev
+                        && String(prev.tenantId) === String(expectedTenantId)
+                        && String(prev.storeId) === String(expectedStoreId)
+                        ? { ...prev, tempStatus: prevStatus }
+                        : prev);
                     logBusinessSettingsFailure(
                         'desktop_temp_status_clear_failed',
                         err,
@@ -173,11 +213,12 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     );
                     setError('Failed to clear status');
                 } finally {
-                    setIsLoading(false);
+                    actionInFlightRef.current = false;
+                    if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
                 }
             },
         });
-    }, [storeDetails, setStoreDetails]);
+    }, [storeDetails, setStoreDetails, isExpectedScope]);
 
     const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
     const previewMessage = statusType === 'custom'

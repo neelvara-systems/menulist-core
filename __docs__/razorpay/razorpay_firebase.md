@@ -1,5 +1,12 @@
 # Razorpay — Firebase Cost Tracking
 
+> **August 1, 2026 billing limiter outage boundary:** all eight authenticated
+> checkout, subscription-mutation, and payment-verification routes fail closed
+> on distributed limiter uncertainty. A provider outage returns 503 before any
+> Razorpay call or Firestore read/write; actual quota exhaustion remains 429.
+> This changes no valid-request Firestore/provider count, schema, rule, index,
+> Function, cache, or deployment target.
+
 > **July 28, 2026:** the billing-record product-identity backfill remains dry-run by default and write mode remains project-confirmed. Its scope classifier now reconciles every present `tenantId`/`tId` and `storeId`/`sId` value before proposing a merge. Equal numeric/string legacy aliases remain compatible; conflicts or malformed present aliases are skipped. No backfill was executed.
 
 > **July 22, 2026:** paid-cycle entitlement parity retains the plan mirror for current-cycle cancelled/paused rows. Every owner, settlement, reconciliation, expiry, messaging, AI-recovery, and Founder Monitor subscription path now requires both exact MenuList aliases, with product-prefixed composites such as `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)`. The source requires MenuList rules/index/Function deployment; no app/Vercel deploy was performed here.
@@ -9,7 +16,7 @@
 > **July 29, 2026 master-store runtime authority:** MenuList client/Admin outlet entitlement fallback shares one exact tenant `storesList` projector. Coercive IDs, malformed/conflicting activity or master flags, duplicate IDs, multiple masters and ambiguous legacy rows return no master before the fallback subscription query. Valid current lists keep the same reads; no billing or provider write is added.
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** July 27, 2026
+**Last Updated:** August 1, 2026
 
 ---
 
@@ -52,7 +59,7 @@ The initial July 14 checkout/recovery hardening changed bounded reads and recove
 - Reseller offline renewal/add-location mutations now read the deterministic operation document plus current subscription (and profile when required) in one transaction, then write subscription, operation ledger, and profile counters once. Repeating the same UUID reads the existing operation result and performs no second capacity/revenue write.
 - Provider quantity reconciliation reuses the reconciler's existing provider fetch, subscription transaction read, and mismatch-only write; it adds no per-row operation when quantities agree. This existing Functions target requires redeployment. The July 14 scoped QA attempt completed lint/build but stopped before upload with Cloud Resource Manager HTTP 403 for the current caller.
 
-July 6 payment verification rate-limit boundary is Firebase-cost neutral for valid checkout verification. `/api/razorpay/verify-subscription` and `/api/razorpay/verify-topup` now run the shared `PAYMENT_VERIFICATION` limiter with HMAC-hashed authenticated user key material before bounded request-body parsing, Razorpay checkout signature checks, provider payment/order/subscription fetches, payment capture, subscription/top-up reads, or billing writes. The 20-per-hour user ceiling allows normal checkout completion, browser retry, and webhook race recovery while bounding repeated provider verification attempts. Rate-limited attempts stop with 429 before Firestore reads/writes or Razorpay provider calls. This adds no Firestore reads/writes/deletes for valid verification, no provider-call count changes for valid verification, no Storage operations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
+July 6 payment verification rate-limit boundary is Firebase-cost neutral for valid checkout verification. `/api/razorpay/verify-subscription` and `/api/razorpay/verify-topup` now run the shared `PAYMENT_VERIFICATION` limiter with HMAC-hashed authenticated user key material before bounded request-body parsing, Razorpay checkout signature checks, provider payment/order/subscription fetches, payment capture, subscription/top-up reads, or billing writes. The 20-per-hour user ceiling allows normal checkout completion, browser retry, and webhook race recovery while bounding repeated provider verification attempts. Actual quota exhaustion stops with 429; the August 1 correction additionally stops limiter infrastructure uncertainty with 503. Both paths execute before Firestore reads/writes or Razorpay provider calls. This adds no Firestore reads/writes/deletes for valid verification, no provider-call count changes for valid verification, no Storage operations, rules, indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
 
 July 5 past-due grace-period display fallback is Firebase-cost neutral. `getGracePeriodDisplayInfo()` centralizes owner-visible countdown/fallback metadata for Desktop Billing, Mobile Billing, and authenticated pricing subscription-management. Valid `pastDueSinceAt` records keep the same countdown; missing or malformed legacy `past_due` records show fixed "Grace period details unavailable." recovery copy. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, Razorpay provider calls, billing route calls, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 

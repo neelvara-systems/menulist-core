@@ -1,12 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { AiSearchHistory } from '@type/aiSearchHistory';
-import {
-    ANSWERLATTICE_CACHE_SOURCES,
-    AnswerlatticeCacheSource,
-    AnswerlatticeCacheSourceVersions,
-    normalizeCacheVersion,
-} from './cacheVersionManifest';
+import { ANSWERLATTICE_CACHE_SOURCES, AnswerlatticeCacheSource, AnswerlatticeCacheSourceVersions, normalizeCacheVersion, } from './cacheVersionManifest';
 import { getAnswerlatticeCacheVersionServer } from './cacheVersionServer';
 import { normalizeAnswerlatticeCanonicalAnswerId } from './governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
@@ -86,7 +81,7 @@ export const isCachedCanonicalAnswerFresh = async ({
     );
     if (manifestFresh !== undefined) return manifestFresh;
 
-    const doc = await firestoreAdmin
+    const doc = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
         .doc(normalizedCanonicalAnswerId)
         .get();
@@ -122,7 +117,7 @@ const isCachedArticleReferenceFresh = async (
     const articleId = normalizeAnswerlatticeKbArticleId(reference?.id);
     if (!articleId || !cachedAtMs) return false;
 
-    const doc = await firestoreAdmin
+    const doc = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.KB_ARTICLES)
         .doc(articleId)
         .get();

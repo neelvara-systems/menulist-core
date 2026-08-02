@@ -68,8 +68,7 @@ export const ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS = {
 } as const;
 
 export const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
 const isPlatformAdminSession = (session: any) => {

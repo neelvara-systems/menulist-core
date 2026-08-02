@@ -14,8 +14,10 @@ export function isDefinitiveMenuProcessingJobStartRejection(error: unknown): boo
     return candidate.code === MENU_PROCESSING_JOB_START_REJECTED_CODE
         && typeof candidate.status === 'number'
         && Number.isInteger(candidate.status)
-        && candidate.status >= 400
-        && candidate.status < 500;
+        && (
+            (candidate.status >= 400 && candidate.status < 500)
+            || candidate.status === 503
+        );
 }
 
 export function createMenuProcessingJobCallerError(error: unknown): MenuProcessingJobStartCallerError {

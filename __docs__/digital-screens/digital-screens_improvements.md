@@ -4,7 +4,7 @@
 **Source:** End-to-end codebase analysis (every file, every import)  
 **Goal:** Reduce Firebase cost without losing scale or performance  
 **Status:** 🔒 **CURRENT MATERIAL FINDINGS RESOLVED IN SOURCE** — Runtime/deploy certification remains external | Feature LOCKED
-**Last Updated:** July 29, 2026
+**Last Updated:** August 1, 2026
 
 ## Source Gate
 
@@ -31,17 +31,47 @@ Resolved:
 
 Browser dry-run evidence covered Menu Board at 1280x720, 1920x1080, and 768x1024 plus Highlights owner-poster and item-promotion states. The private control and Functions changes require the ordered QA migration/deploy runbook. Authenticated owner setup, real Firebase listener/reconnect behavior, physical-TV overscan/fullscreen/QR-distance checks, and deployed cache propagation remain release evidence rather than source claims.
 
+### August 1, 2026 render-confidence correction
+
+- replaced the ambiguous shared owner status with independent Menu Board and Highlights receipts for the exact canonical `contentVersion`;
+- rejected stale-version acknowledgements inside the same transaction that verifies private token, store/tenant identity, lifecycle, and block state;
+- kept legacy aggregate daily clients compatible while keying current browser markers by token, mode, version, and UTC day;
+- added owner-triggered desktop/mobile status refresh without polling or device inventory;
+- removed the unused browser Firestore mirror writer so only server/Admin transactions can construct public listener state;
+- isolated bearer TV URLs from discovery with route-level noindex/noarchive/noimageindex and no-referrer metadata; public menu/OBP pages remain the structured-data surface;
+- changed failed owner-poster media from a mostly blank slide to the existing store identity and menu QR fallback;
+- corrected owner setup card style scope across the child-card boundary and collapsed the same-device QR column below 640px; a 390x844 device-emulation dry run confirmed zero horizontal overflow;
+- namespaced every global owner-card selector under `.screen-link-section` so generic preview/highlight classes cannot affect unrelated UI, and replaced Output Center's aggregate Menu Board-only hint with independent exact-version status plus explicit refresh for both modes;
+- expanded lifecycle, emulator, source-boundary, and documentation gates around these invariants.
+
+This is a reliability and owner-trust correction inside the locked v2.3 boundary. It does not add device analytics, screen dashboards, scheduling, templates, per-screen settings, a collection, index, rule, Function, or Storage path.
+
+### Competitor/trend disposition after code cross-check
+
+| Market capability | MenuList decision | Codebase reason |
+| --- | --- | --- |
+| Screen render confidence | Adopted in bounded form | Exact-version per-mode open receipts relieve owner uncertainty without device inventory or analytics. |
+| Premium readable boards | Already active; reliability fix only | 720p/1080p/portrait capacity, fixed contrast, deterministic ordering, price alignment, QR labels, OBP accent restraint, and reduced-motion handling are already governed. |
+| Branded/scannable QR | Already active; do not duplicate | TV outputs use the canonical public menu QR; Print Assets owns printable branded artifacts and permanent public menu routing owns rename continuity. |
+| Search/AI discovery markup | Keep on public menu/OBP only | Public menu pages already emit governed Schema.org menu/business data. Bearer screen URLs are now noindex/no-referrer and must not become duplicate discovery pages. |
+| POS-assisted truth intake | Keep outside Digital Screens | Existing POS Sync is a bounded upstream integration. Screens consume canonical MenuList truth and do not become a POS control surface. |
+| Social/export handoffs | Keep in existing Share/Output surfaces | A TV setup flow should not grow channel publishing or campaign operations. |
+| Scheduling, templates, playlists, widgets, video walls | Reject | These add signage management and owner decisions without improving canonical menu truth. |
+| Per-screen analytics, A/B tests, dynamic pricing | Reject | They introduce device identity, optimization pressure, and public price-trust risk outside MenuList positioning. |
+
+The next evidence priority is physical-device certification and production monitoring, not another owner-facing feature: real TV browser boot/reconnect, glare/overscan, QR scan distance, tenant-specific OBP color contrast, and deployed version-to-receipt latency.
+
 ---
 
 ## Current Cost Baseline
 
 | Scale          | Current Range | Notes |
 | -------------- | ------------- | ----- |
-| 100 screens    | $0.03-$0.05/mo | Projection hit rate determines lower vs upper bound |
-| 1,000 screens  | $0.28-$0.43/mo | Valid projection avoids the project summary read and project fallback read; seen signal uses cached public store eligibility |
-| 10,000 screens | $2.88-$4.32/mo | Edge cache hits can reduce raw reads further |
+| 100 active TV-mode links    | $0.04-$0.11/mo | Includes exact-version acknowledgements under 1-5 daily content changes |
+| 1,000 active TV-mode links  | $0.45-$1.09/mo | Projection hits reduce cold render reads; shared store/mode/version receipts collapse duplicate writes |
+| 10,000 active TV-mode links | $4.50-$10.98/mo | Edge cache hits can reduce raw render reads further |
 
-**Verdict:** Current cost remains negligible. Valid `screen.menuProjection` with base menu slug context reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits, while fallback still shows actual menu items when projection is stale or unavailable. The daily seen signal can add one cached public store eligibility read so inactive, deleted, blocked, or tenant-blocked stores do not refresh liveness state.
+**Verdict:** Current cost remains negligible. Valid `screen.menuProjection` with base menu slug context reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits, while fallback still shows actual menu items when projection is stale or unavailable. Exact-version acknowledgements trade a few bounded transaction reads/writes for truthful per-mode owner confidence; inactive, deleted, blocked, tenant-blocked, or stale-version requests still fail closed.
 
 ---
 
@@ -404,12 +434,12 @@ const checkHealth = async () => {
 
 **Owner setup:**
 
-- `ScreenLink.tsx` now renders separate Menu Board and Highlights setup cards with compact URLs, QR blocks, copy/open actions, and last-seen status.
+- `ScreenLink.tsx` now renders separate Menu Board and Highlights setup cards with compact URLs, QR blocks, copy/open actions, exact-version per-mode status, and owner-triggered refresh.
 - `ScreenLink.tsx` now detects blocked Menu Board / Highlights browser opens and logs bounded link metadata only.
-- `DigitalScreenSettings/index.tsx` passes `screenLastSeenAt`, renames the override to "Only custom slides", and makes clear that Menu Board is unaffected.
+- `DigitalScreenSettings/index.tsx` passes canonical `contentVersion` plus `screenSeenByMode`, renames the override to "Only custom slides", and makes clear that Menu Board is unaffected.
 - `DigitalScreenSettings/index.tsx` now logs settings load and owner-only override failures through bounded diagnostics; shared owner-control tracking is quiet on success and bounded on failure.
 - Historical July 2026 state: `CurrentSlides.tsx` described custom slide content accurately. The duplicate component was removed on July 29; `OwnerUploads.tsx` is now the single custom-slide list.
-- `MobileDigitalScreensScreen.tsx` now mirrors desktop setup with TV status, compact screen cards, custom slide controls, owner-only toggle copy, and bounded blocked-open diagnostics for screen-link previews.
+- `MobileDigitalScreensScreen.tsx` mirrors desktop setup with separate current-version status, manual refresh, compact screen cards, custom slide controls, owner-only toggle copy, and bounded blocked-open diagnostics for screen-link previews.
 
 **TV output:**
 

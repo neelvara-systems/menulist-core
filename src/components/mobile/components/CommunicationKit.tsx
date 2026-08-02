@@ -1,6 +1,7 @@
 'use client';
 
 import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -231,10 +232,7 @@ function MobileMessageCard({
     const handleWhatsAppOpen = () => {
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_communication_kit_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
         } catch (error) {
             logMobileOwnerFailure('mobile_communication_kit_whatsapp_open_failed', error, {
                 ...buildCommunicationKitLogContext('whatsapp_open'),

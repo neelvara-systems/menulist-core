@@ -418,6 +418,12 @@ function verifyApiSecurityAndActions() {
   const actions = read("src/app/api/signaldesk/actions/route.ts");
   assertIncludes(actions, "const mobileAction = ActionEnvelopeSchema.shape.action.parse(envelope.data.action);", "SignalDesk mobile action class uses an exact schema discriminator");
   assertIncludes(actions, "SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction]", "SignalDesk mobile action class exact registry lookup");
+  assertNotIncludes(actions, 'SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction] || "configure"', "SignalDesk mobile classification cannot silently default a new action");
+  assertIncludes(actions, 'if (action === "capture-demand-signal") return "target.review";', "SignalDesk demand-signal permission is explicit");
+  assertIncludes(actions, "return assertUnhandledSignalDeskAction(action);", "SignalDesk permission dispatch is compile-time exhaustive");
+  assertIncludes(actions, 'if (envelope.data.action === "capture-demand-signal") {', "SignalDesk demand-signal dispatch is explicit");
+  assertIncludes(actions, "return assertUnhandledSignalDeskAction(envelope.data.action);", "SignalDesk server dispatch is compile-time exhaustive");
+  assertNotIncludes(actions, "session: any;", "SignalDesk action validation context cannot erase the authenticated session type");
   const access = read("src/lib/signaldesk/access.ts");
   const accessContracts = read("src/lib/signaldesk/accessContracts.ts");
   const auditContracts = read("src/lib/signaldesk/auditContracts.ts");
@@ -440,6 +446,7 @@ function verifyApiSecurityAndActions() {
   const overviewHook = read("src/hooks/signaldesk/useSignalDeskOverview.ts");
   const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
   const apiGuards = read("src/lib/signaldesk/apiGuards.ts");
+  assertNotIncludes(apiGuards, "session: any", "SignalDesk shared API guards cannot erase the authenticated session type");
   const clientDal = read("src/database/signaldesk/index.ts");
   const webhookRoute = read("src/app/api/signaldesk/webhooks/[provider]/route.ts");
   const webhookContracts = read("src/lib/signaldesk/webhookContracts.ts");
@@ -498,14 +505,27 @@ function verifyApiSecurityAndActions() {
   assertIncludes(apiGuards, "readBoundedJsonBody", "SignalDesk API guard bounded JSON body reader");
   assertIncludes(apiGuards, "failClosedOnProviderError: true", "SignalDesk shared API limiter fails closed on provider uncertainty");
   assertIncludes(apiGuards, 'input.reason === "provider_unavailable"', "SignalDesk shared API limiter distinguishes provider outage");
-  assertIncludes(apiGuards, 'status: providerUnavailable ? 503 as const : 429 as const', "SignalDesk limiter outage and quota status contract");
-  assertIncludes(apiGuards, 'code: providerUnavailable ? "RATE_LIMIT_UNAVAILABLE" as const : "RATE_LIMITED" as const', "SignalDesk limiter bounded response code contract");
+  assertIncludes(apiGuards, 'code: "RATE_LIMIT_UNAVAILABLE" as const', "SignalDesk limiter outage response code contract");
+  assertIncludes(apiGuards, 'status: 503 as const', "SignalDesk limiter outage status contract");
+  assertIncludes(apiGuards, 'code: "RATE_LIMITED" as const', "SignalDesk limiter quota response code contract");
+  assertIncludes(apiGuards, 'status: 429 as const', "SignalDesk limiter quota status contract");
+  assertIncludes(apiGuards, '...(decision.providerUnavailable ? {} : { retryAfter: decision.retryAfter })', "SignalDesk limiter outage omits quota timing from its body");
+  assertIncludes(apiGuards, '...(decision.providerUnavailable ? {} : {', "SignalDesk limiter outage omits quota timing headers");
   assert(
     actions.indexOf("const rateLimit = await applySignalDeskRateLimit")
       < actions.indexOf("await recordSignalDeskMobileActionBlockedServer"),
     "SignalDesk actions route must rate-limit before mobile blocked-audit writes",
   );
+  assert(
+    actions.indexOf("try {", actions.indexOf("const accessResult = await requireSignalDeskAccess"))
+      < actions.indexOf("await recordSignalDeskMobileActionBlockedServer"),
+    "SignalDesk actions route must contain blocked-mobile audit failures inside its private error boundary",
+  );
   assertIncludes(apiGuards, "const SIGNALDESK_JSON_BODY_MAX_BYTES = 256 * 1024;", "SignalDesk JSON body cap");
+  assertIncludes(apiGuards, '"SOURCE_PROVIDER_REQUEST_FAILED"', "SignalDesk provider request failure is classified retryable");
+  assertIncludes(apiGuards, '"SOURCE_PROVIDER_TIMEOUT"', "SignalDesk provider timeout is classified retryable");
+  assertIncludes(apiGuards, "SIGNALDESK_RETRYABLE_ACTION_ERRORS.has(message) ? 503 : 400", "SignalDesk action status distinguishes transient provider failure");
+  assertIncludes(actions, "getSignalDeskActionErrorStatus(message)", "SignalDesk action route applies the shared transient error status");
   assertNotIncludes(apiGuards, "request.json()", "SignalDesk API guard raw JSON parser");
   assertIncludes(apiGuards, "Invalid JSON - SignalDesk API", "SignalDesk invalid JSON security log");
   assertIncludes(apiGuards, "status: bodyResult.response.status", "SignalDesk invalid JSON bounded status log");
@@ -2528,6 +2548,7 @@ function verifyFirebaseIsolation() {
 
   assertIncludes(firebaseConfig, '"source": "functions-signaldesk"', "SignalDesk Firebase functions source");
   assertIncludes(routeSmoke, 'process.env.SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE === "1"', "Route smoke requires an explicit local fail-closed rate-limit allowance");
+  assertIncludes(routeSmoke, 'headers["x-forwarded-proto"] = "https"', "Public-host route smoke must model canonical HTTPS before asserting product/path isolation");
   assertIncludes(routeSmoke, "unsignedWebhook.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE", "Route smoke verifies safe webhook behavior when the local limiter is unavailable");
   assertIncludes(routeSmoke, "unsignedOutcome.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE", "Route smoke verifies safe outcome behavior when the local limiter is unavailable");
   assertIncludes(firebaseConfig, '"codebase": "signaldesk"', "SignalDesk Firebase functions codebase");

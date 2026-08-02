@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -39,6 +39,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildHoursCheckReport } from '@/lib/public-truth-tools/hoursCheckReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   HoursCheckId,
   HoursCheckInput,
@@ -166,6 +167,7 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<HoursCheckHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -315,6 +317,8 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('hours_check_handoff_submitted', eventContext);
 
@@ -357,10 +361,13 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('hours_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -467,6 +474,7 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
           <label>
             <span>{t('handoff.name')}</span>
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -475,6 +483,7 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
           <label>
             <span>{t('handoff.email')}</span>
             <input
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -486,6 +495,7 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
         <label>
           <span>{t('handoff.phone')}</span>
           <input
+            maxLength={40}
             value={handoff.phoneNumber}
             onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
             autoComplete="tel"
@@ -497,6 +507,7 @@ function HoursCheckReportCard({ report }: { report: HoursCheckReport }) {
           <label htmlFor="hours-check-website">{t('handoff.website')}</label>
           <input
             id="hours-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -639,6 +650,7 @@ export default function HoursCheckPage() {
                 <label>
                   <span>{t('fields.businessName')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
                     autoComplete="organization"
@@ -647,6 +659,7 @@ export default function HoursCheckPage() {
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))}
                     autoComplete="address-level2"
@@ -657,6 +670,7 @@ export default function HoursCheckPage() {
               <label>
                 <span>{t('fields.timeZone')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText}
                   value={form.timeZone}
                   onChange={(event) => setForm((current) => ({ ...current, timeZone: event.target.value }))}
                   autoComplete="off"
@@ -666,6 +680,7 @@ export default function HoursCheckPage() {
               <label>
                 <span>{t('fields.regularHoursText')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.regularHoursText}
                   onChange={(event) => setForm((current) => ({ ...current, regularHoursText: event.target.value }))}
                   rows={4}
@@ -675,6 +690,7 @@ export default function HoursCheckPage() {
               <label>
                 <span>{t('fields.closedDaysText')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText}
                   value={form.closedDaysText}
                   onChange={(event) => setForm((current) => ({ ...current, closedDaysText: event.target.value }))}
                 />
@@ -718,6 +734,7 @@ export default function HoursCheckPage() {
               <label>
                 <span>{t('fields.specialHoursText')}</span>
                 <textarea
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText}
                   value={form.specialHoursText}
                   onChange={(event) => setForm((current) => ({ ...current, specialHoursText: event.target.value }))}
                   rows={3}
@@ -727,6 +744,7 @@ export default function HoursCheckPage() {
               <label>
                 <span>{t('fields.currentCustomerLink')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                   value={form.currentCustomerLink}
                   onChange={(event) => setForm((current) => ({ ...current, currentCustomerLink: event.target.value }))}
                   inputMode="url"
@@ -778,7 +796,7 @@ export default function HoursCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <HoursCheckReportCard report={report} /> : <EmptyReport />}
+            {hasChecked ? <HoursCheckReportCard key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

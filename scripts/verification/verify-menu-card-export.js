@@ -791,11 +791,16 @@ const mobileMenu = fs.readFileSync(path.join(root, 'src/components/mobile/screen
 const mobileMenuCommandSheet = fs.readFileSync(path.join(root, 'src/components/mobile/components/MobileMenuCommandSheet.tsx'), 'utf8');
 [
   'onPrintMenu?: () => void',
+  "const tPrint = useTranslations('MobileShare');",
   "key: 'print-menu'",
-  "title: 'Print Menu'",
+  "title: tPrint('menuPdf')",
+  "description: tPrint('menuPdfDesc')",
 ].forEach((token) => {
   if (!mobileMenuCommandSheet.includes(token)) failures.push(`Mobile Menu command sheet missing token: ${token}`);
 });
+if (mobileMenuCommandSheet.includes("title: 'Print Menu'")) {
+  failures.push('Mobile Menu command sheet must not hard-code the localized Print Menu title');
+}
 
 const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobileMoreScreen.tsx'), 'utf8');
 [
@@ -954,7 +959,7 @@ if (featureRegistry.includes('ENABLE_PDF_SURFACE')) {
 });
 const legacyMenuPdfQrBoundary = fs.readFileSync(path.join(root, 'scripts/verification/test-legacy-menu-pdf-qr-boundary.ts'), 'utf8');
 [
-  "resolveLegacyMenuPdfIncludeQr('https://menulist.ai/client/store/menu', undefined, true)",
+  "resolveLegacyMenuPdfIncludeQr('https://demo.menulist.online/menu', undefined, true)",
   "resolveLegacyMenuPdfIncludeQr(invalid, true, true), false",
 ].forEach((token) => {
   if (!legacyMenuPdfQrBoundary.includes(token)) failures.push(`Legacy Menu PDF QR regression missing token: ${token}`);
@@ -1029,14 +1034,13 @@ if (desktopUseMenuList.includes('result.assets[')) {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList missing bounded diagnostic code: ${token}`);
 });
 [
-  "window.open(url, '_blank', 'noopener,noreferrer')",
-  "throw new Error('use_menulist_open_blocked')",
+  "openIsolatedBrowserUrl(url)",
   "getBoundedUseMenuListStringContext('url', url)",
   "getBoundedUseMenuListStringContext('label', label)",
 ].forEach((token) => {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList missing bounded open handoff token: ${token}`);
 });
-if (desktopUseMenuList.includes("window.open(url, '_blank');")) {
+if (desktopUseMenuList.includes("openIsolatedBrowserUrl(url, '_blank');")) {
   failures.push("Desktop Use MenuList must not open output links without noopener,noreferrer");
 }
 [

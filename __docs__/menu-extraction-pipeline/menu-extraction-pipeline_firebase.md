@@ -25,6 +25,17 @@ Owner job reads and cancellation/review updates require both exact job ownership
 
 Client reads, cancellation, and preview-review updates remain available through the existing owner job rules. Cancellation updates are field-restricted to status/timestamp fields so browser clients cannot mutate server-owned job payloads while cancelling.
 
+August 1 owner-job admission hardening is Firebase-cost neutral for valid
+requests. The app route uses the same `FILE_UPLOAD` and `AI_EXPENSIVE` profiles
+but fails closed before downstream work when limiter state is unavailable.
+Retry requests add no new read: the existing original-job read now derives the
+next bounded `retryCount` and rejects malformed persisted state rather than
+trusting a browser counter. Runtime projection of project/job/timestamp and
+Storage metadata adds no operation. Route-level 503 upload cleanup deletes only
+the already-authorized owner upload objects that otherwise have no durable job
+reference. No Firestore rule, index, Storage rule, collection, Cloud Function
+or deployment target changed.
+
 The browser review helper also fails closed before any project write: it rejects missing jobs, non-`preview_ready` jobs, project mismatches, tenant/store mismatches, and user mismatches. Discard uses the same validation before marking a preview job cancelled.
 
 ## Storage Prefixes

@@ -67,6 +67,19 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 
 ## Production-Readiness Source Gate
 
+August 1, 2026 onboarding recovery boundary:
+
+- Every reseller request revalidates the current persisted MenuList actor before
+  provisioning. Existing owner Auth credentials are changed only after a
+  fingerprinted provisional operation commits with tenant/store/user truth.
+- Online onboarding records the provider attempt before calling Razorpay.
+  Ambiguous outcomes remain retryable and are recovered by exact operation
+  notes; incomplete bounded searches fail closed instead of creating a possible
+  duplicate subscription.
+- Lost billing acknowledgements distinguish verification-read outages from
+  proven absence. Exact provisional operations upgrade atomically to final
+  subscription/ledger/profile truth and replay cannot recount the onboarding.
+
 `npm run verify:reseller-dashboard-boundary` is the first-class local verifier for this feature. It source-checks reseller route admission order, platform/reseller role separation, UUID retry boundaries, transaction-atomic subscription/ledger/profile writes, offline-cap enforcement, deferred online revenue recognition, bounded request/response parsing, safe Razorpay checkout URLs, desktop/mobile onboarding/renewal/location parity, and docs parity. The focused pure and Firestore-emulator tests are `npm run test:reseller-onboarding-boundary`, `npm run test:reseller-onboarding-billing:emulator`, `npm run test:reseller-confirm-payment-boundary`, and `npm run test:reseller-confirm-payment:emulator`.
 
 This is a local source gate only. It does not perform Razorpay sandbox payment smoke, authenticated browser QA, physical-device mobile QA, Firebase deploys, Vercel deploys, production builds, live Firestore writes, or provider calls.

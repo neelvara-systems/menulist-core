@@ -14,7 +14,7 @@ Audit continuity marker: current-authority and payment-effect hardening remains 
 2. NextAuth creates or resolves one `users` record and issues the server session. New self-serve owner records are active and verified but have no tenant/store scope.
 3. The owner selects a plan and supplies the business details on the responsive pricing flow.
 4. `POST /api/onboarding/create-subscription` re-reads and locks the exact current user in the same transaction that allocates tenant/store IDs. It creates the tenant, master store, default roles, store summary, counters, optional referral attribution, and owner mapping atomically.
-5. The route creates or recovers one Razorpay subscription for the exact onboarding attempt, persists one local pending subscription, and returns only the subscription ID plus tenant/store IDs. If the local write acknowledgement is ambiguous, recovery succeeds only when both ML product aliases, both user aliases, and both numeric tenant/store aliases exactly agree with the new scope.
+5. The route creates or recovers one Razorpay subscription for the exact onboarding attempt. Provider plan, quantity, total count and attempt/user/tenant/store/plan notes must all match before local persistence. An exact owned attempt with an invalid commercial contract or checkout URL is cancelled before local workspace compensation; an unrelated provider ID is never cancelled. The route persists one local pending subscription and returns only the subscription ID plus tenant/store IDs. If the local write acknowledgement is ambiguous, recovery succeeds only when both ML product aliases, both user aliases, and both numeric tenant/store aliases exactly agree with the new scope.
 6. The browser refreshes NextAuth from current Firestore truth and opens Razorpay. Payment verification or the webhook moves the local subscription to the provider-confirmed state.
 7. `/api/auth/set-claims` re-reads the current user and canonical store, then mints Firebase claims for the exact tenant/store membership and store role.
 8. A returning owner with a pending onboarding subscription sees a clear payment-pending state and can resume the allowlisted Razorpay checkout from Pricing or Billing.
@@ -47,9 +47,10 @@ All entries converge on the same NextAuth session, Firebase claim sync, user/sto
 | --- | --- |
 | Concurrent onboarding requests | One user transaction wins; later attempts receive conflict before another allocation |
 | Razorpay create response is ambiguous | Bounded provider search accepts only the exact attempt/plan/user/tenant/store match |
+| Exact owned Razorpay response has the wrong plan/count/quantity or no allowlisted checkout URL | The known provider subscription is cancelled; local workspace compensation proceeds only after cancellation succeeds |
 | Razorpay creation fails | Tenant/store/user/referral state is compensated and public cache invalidation is attempted |
 | Local subscription write reports failure after provider success | The route re-reads the exact provider document; only matching provider, user, tenant, store, and plan identity is accepted, otherwise provider cancellation and local compensation are attempted |
-| Checkout is dismissed | Pending subscription remains visible; the owner can complete the same allowlisted payment link from Pricing or Billing |
+| Checkout is dismissed | A previously validated pending subscription remains visible; the owner can complete the same allowlisted payment link from Pricing or Billing |
 | Claim cache invalidation fails after commit | Failure is logged; the claim remains successful and Firebase claim mirroring continues |
 | Firebase claim mirror fails after account claim | Failure is logged; normal sign-in `/api/auth/set-claims` repairs the mirror |
 | Claim/OTP limiter provider is unavailable | Public identity-changing or paid OTP work returns 503 before side effects |

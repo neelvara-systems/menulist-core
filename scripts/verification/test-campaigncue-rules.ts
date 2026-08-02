@@ -61,6 +61,16 @@ const campaignDoc = (id: string, workspace: string) => ({
     workspaceId: workspace,
 });
 
+const videoProjectDoc = (id: string, workspace: string) => ({
+    id,
+    workspaceId: workspace,
+    campaignId: 'campaign-1',
+    outputId: 'output-video-1',
+    status: 'draft',
+    version: 1,
+    updatedAt: NOW,
+});
+
 const platformCatalog = (catalogId: string) => ({
     businessCategory: 'food',
     catalogId,
@@ -130,6 +140,18 @@ async function run(): Promise<void> {
                 campaignDoc('campaign-1', ownerWorkspaceId),
             );
             await setDoc(
+                doc(db, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1'),
+                videoProjectDoc('video-1', ownerWorkspaceId),
+            );
+            await setDoc(
+                doc(db, 'campaigncueWorkspaces', otherWorkspaceId, 'videoProjects', 'video-2'),
+                videoProjectDoc('video-2', otherWorkspaceId),
+            );
+            await setDoc(
+                doc(db, 'campaigncueWorkspaces', disabledWorkspaceId, 'videoProjects', 'video-disabled'),
+                videoProjectDoc('video-disabled', disabledWorkspaceId),
+            );
+            await setDoc(
                 doc(db, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1'),
                 { createdAt: NOW, id: 'cost-1', workspaceId: ownerWorkspaceId },
             );
@@ -184,7 +206,12 @@ async function run(): Promise<void> {
         await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
         await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
         await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', otherWorkspaceId)));
+        await assertFails(getDoc(doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
+        await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
+        await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'videoProjects', 'video-disabled')));
+        await assertFails(getDoc(doc(publicDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
         await assertFails(getDoc(doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
         await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
         await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
@@ -204,6 +231,14 @@ async function run(): Promise<void> {
             sourceInputDoc('platform-source', ownerWorkspaceId),
         ));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'idempotencyKeys', 'key-1')));
+        await assertFails(setDoc(
+            doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'forged-video'),
+            videoProjectDoc('forged-video', ownerWorkspaceId),
+        ));
+        await assertFails(setDoc(
+            doc(platformDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'platform-video'),
+            videoProjectDoc('platform-video', ownerWorkspaceId),
+        ));
 
         await assertSucceeds(getDoc(doc(platformDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1')));

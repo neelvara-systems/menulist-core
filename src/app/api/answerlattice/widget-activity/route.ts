@@ -8,13 +8,16 @@ export const dynamic = 'force-dynamic';
  * search-history rows for dashboard verification and support review.
  */
 
-import { FEATURE_FLAGS } from '@config/features';
+import {
+    FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeScopeDocumentId,
+    resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
@@ -42,8 +45,7 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
 const canonicalIsoTimestampToMillis = (value: string): number | null => {
@@ -60,22 +62,36 @@ const normalizeTimestampMillis = (millis: unknown): number | null => {
     return Number.isFinite(date.getTime()) ? millis : null;
 };
 
-const timestampLikeToMillis = (value: any): number | null => {
+const timestampLikeToMillis = (value: unknown): number | null => {
     if (!value) return null;
-    if (typeof value.toMillis === 'function') {
-        return normalizeTimestampMillis(value.toMillis());
-    }
-    if (typeof value.toDate === 'function') {
-        return normalizeTimestampMillis(value.toDate().getTime());
-    }
-    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) return normalizeTimestampMillis(value.seconds * 1000);
     if (value instanceof Date) return normalizeTimestampMillis(value.getTime());
     if (typeof value === 'number') return normalizeTimestampMillis(value);
     if (typeof value === 'string') return canonicalIsoTimestampToMillis(value);
+    if (typeof value !== 'object') return null;
+
+    const timestamp = value as {
+        seconds?: unknown;
+        toDate?: unknown;
+        toMillis?: unknown;
+    };
+    try {
+        if (typeof timestamp.toMillis === 'function') {
+            return normalizeTimestampMillis(timestamp.toMillis.call(value));
+        }
+        if (typeof timestamp.toDate === 'function') {
+            const date = timestamp.toDate.call(value);
+            return date instanceof Date ? normalizeTimestampMillis(date.getTime()) : null;
+        }
+    } catch {
+        return null;
+    }
+    if (typeof timestamp.seconds === 'number' && Number.isFinite(timestamp.seconds)) {
+        return normalizeTimestampMillis(timestamp.seconds * 1000);
+    }
     return null;
 };
 
-const toIsoString = (value: any): string | null => {
+const toIsoString = (value: unknown): string | null => {
     const millis = timestampLikeToMillis(value);
     if (millis === null) return null;
     const date = new Date(millis);
@@ -83,7 +99,7 @@ const toIsoString = (value: any): string | null => {
     return date.toISOString();
 };
 
-const toMillis = (value: any): number => {
+const toMillis = (value: unknown): number => {
     return timestampLikeToMillis(value) || 0;
 };
 
@@ -92,10 +108,13 @@ const serializeActivityItem = (docSnapshot: FirebaseFirestore.QueryDocumentSnaps
     const references = Array.isArray(data.references) ? data.references : [];
     const answer = typeof data.craftedAnswer === 'string' ? data.craftedAnswer.trim() : '';
     const evidenceLinks = Array.isArray(data.debugEvidenceLinks)
-        ? data.debugEvidenceLinks.slice(0, 3).map((link: any) => ({
-            url: typeof link?.url === 'string' ? link.url.slice(0, 1000) : '',
-            label: typeof link?.label === 'string' ? link.label.slice(0, 80) : null,
-        })).filter((link: { url: string }) => /^https:\/\//i.test(link.url))
+        ? data.debugEvidenceLinks.slice(0, 3).map((link: unknown) => {
+            const record = link && typeof link === 'object' ? link as Record<string, unknown> : {};
+            return {
+                url: typeof record.url === 'string' ? record.url.slice(0, 1000) : '',
+                label: typeof record.label === 'string' ? record.label.slice(0, 80) : null,
+            };
+        }).filter((link: { url: string }) => /^https:\/\//i.test(link.url))
         : [];
 
     return {

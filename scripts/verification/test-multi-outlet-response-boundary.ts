@@ -18,6 +18,7 @@ const createResponse = {
     outletSlug: 'south-outlet',
     quantity: 2,
     storeId: 12,
+    storeKey: 'south_outlet',
     success: true,
     tenantName: 'Example Group',
 };
@@ -27,6 +28,10 @@ assert.equal(isOutletCreateResponse({ ...createResponse, storeId: 12.5 }), false
 assert.equal(isOutletCreateResponse({ ...createResponse, storeId: Number.MAX_SAFE_INTEGER + 1 }), false);
 assert.equal(isOutletCreateResponse({ ...createResponse, outletSlug: '../other-outlet' }), false);
 assert.equal(isOutletCreateResponse({ ...createResponse, tenantName: '   ' }), false);
+assert.equal(isOutletCreateResponse({ ...createResponse, storeKey: '   ' }), false);
+assert.equal(isOutletCreateResponse(Object.fromEntries(
+    Object.entries(createResponse).filter(([key]) => key !== 'storeKey'),
+)), false);
 assert.equal(isOutletCreateResponse({
     ...createResponse,
     outletPolicy: { priceOverride: true },

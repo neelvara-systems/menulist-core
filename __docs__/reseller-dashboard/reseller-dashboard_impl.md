@@ -6,6 +6,22 @@
 **Last Updated:** July 25, 2026
 **Audience:** Developers
 
+August 1, 2026 onboarding authority and recovery corrections:
+
+- Reseller sessions now require both the current persisted MenuList user and
+  the exact active reseller profile before side effects. Platform sessions keep
+  the current platform-user authority check.
+- Tenant/store/user creation commits a fingerprinted provisional operation
+  before an existing Firebase Auth profile is changed. Exact retry revalidates
+  the operation and current resources, then repairs claims/profile without
+  recreating the business.
+- Razorpay attempt notes carry exact operation/fingerprint/scope/tier/quantity.
+  Provider timeouts stay in recovery; complete bounded search is required
+  before absence permits another create, and multiple matches fail closed.
+- Billing persistence recovery uses settled reads. Read outage returns 503;
+  proven absence alone permits cancellation/compensation. The atomic writer
+  upgrades only an exact provisional operation and preserves replay counters.
+
 July 14, 2026 payment lifecycle corrections:
 
 - Initial onboarding billing validates exact operation/subscription/reseller/profile document IDs, payment mode and safe paise before composing Firestore refs. Inside the transaction, the profile must belong to the ledger reseller; present counters/cap must be exact safe integers; all counter additions are overflow-safe and written as exact next values.

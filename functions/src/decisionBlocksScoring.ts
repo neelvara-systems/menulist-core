@@ -1606,6 +1606,7 @@ export const computeDecisionBlocksScores = onSchedule({
         SECRETS.GEMINI_AI_KEY_4,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
     ],
 }, async (event) => {
     initSentry();
@@ -2770,6 +2771,7 @@ export const triggerStoreNightlyScheduler = onCall({
         SECRETS.GEMINI_AI_KEY_4,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
     ],
 }, async (request) => {
     initSentry();
@@ -3146,6 +3148,7 @@ export const triggerDecisionBlocksScoring = onCall({
         SECRETS.GEMINI_AI_KEY_4,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
     ],
 }, async (request) => {
     initSentry();

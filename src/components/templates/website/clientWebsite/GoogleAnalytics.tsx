@@ -5,9 +5,9 @@ import { useEffect } from 'react';
 
 declare global {
     interface Window {
-        gtag: (...args: any[]) => void;
+        gtag: (...args: unknown[]) => void;
         gaId?: string;
-        dataLayer: any[];
+        dataLayer: unknown[];
     }
 }
 
@@ -32,7 +32,7 @@ const GoogleAnalytics = ({ storeDetails }: GoogleAnalyticsProps) => {
         if (typeof window.gtag !== 'function') {
             window.gtag = function gtag() {
                 window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push(arguments);
+                window.dataLayer.push(Array.from(arguments));
             };
         }
     }, [gaId]);

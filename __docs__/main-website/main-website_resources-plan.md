@@ -50,7 +50,7 @@ June 2, 2026 update; analytics wording refreshed June 26, 2026; checklist-copy h
 
 | Area | Current repo truth | Evidence |
 | --- | --- | --- |
-| Canonical website host | Production discovery canonical is `https://menulist.ai`; `menulist.online` is preview/alias context, not the canonical sitemap target. | `__docs__/main-website/main-website_seo-aeo.md:12`, `src/lib/seo/discoveryPolicy.ts:128` |
+| Canonical website host | Production discovery canonical is `https://menulist.ai`. `menulist.online` is the production customer-link root: exact apex/`www` redirect to `menulist.ai`, while tenant subdomains under `*.menulist.online` serve customer menus/OBP. MenuList QA uses `qa.menulist.digital`. | `__docs__/main-website/main-website_seo-aeo.md:12`, `src/constants/deploymentTargets.ts` |
 | Current website routes | Active platform routes, resource routes, and industry pages are registered through `PLATFORM_DISCOVERY_PAGES` and resource/locale route registries. | `src/lib/seo/discoveryPolicy.ts`, `src/content/websiteResources/`, `src/content/websiteIndustries.ts` |
 | Sitemap architecture | Platform sitemap is generated from `PLATFORM_DISCOVERY_PAGES`; client menus stay out of the platform sitemap. | `src/app/sitemap.ts:20`, `src/app/sitemap.ts:30` |
 | Static discovery file | `public/sitemap.xml` is also verified directly by the agent-readiness script. | `scripts/verification/verify-agent-readiness.js:134`, `scripts/verification/verify-agent-readiness.js:176` |
@@ -64,7 +64,7 @@ June 2, 2026 update; analytics wording refreshed June 26, 2026; checklist-copy h
 | Website i18n rule | Website copy uses the `Website` namespace through `useTranslations`. | `.codex/workflows/website.md:16` |
 | Website validation | Agent-readiness verification is a first-class check for discovery changes. | `__docs__/main-website/main-website_seo-aeo.md:292` |
 
-Live preview note: the current preview homepage at `https://www.menulist.online/` already carries the correct official-source message, problem framing, AI/search caveat, and current customer-surface proof. The Resources plan should extend that message, not replace it.
+Deployment note: smoke the production website on `https://menulist.ai`; smoke MenuList QA/staging on `https://qa.menulist.digital`. Do not use `menulist.online` as a website preview host because its exact apex/`www` hosts are reserved for production redirects and `*.menulist.online` is reserved for customer public menu/OBP links.
 
 ---
 
@@ -783,7 +783,7 @@ See `main-website_resources-localization-plan.md` for the reviewed resource tran
 | Static or interactive Menu Source Audit? | Static HTML checklist first. Add client-side interaction only if it stays anonymous and does not create backend cost. |
 | Gated templates or ungated resources? | Ungated first. Do not add an email gate until there is a separate consent and follow-up plan. |
 | Public website events only? | Yes. Avoid Firebase customer analytics writes for resource traffic. |
-| Public launch domain for smoke test? | Use `menulist.ai` as canonical; `menulist.online` can be preview verification only. |
+| Public launch domain for smoke test? | Use `menulist.ai` as canonical; use `qa.menulist.digital` for MenuList QA. Do not smoke MenuList website preview on `menulist.online`. |
 
 ---
 

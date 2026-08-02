@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 const outputDir = path.join(repoRoot, 'public/images/website/product-proof');
+const printReadyOutputDir = path.join(repoRoot, 'public/images/website/print-ready-kit');
 const notesDir = path.join(repoRoot, '__docs__/main-website/asset-production/stage-08-product-proof');
 const generationDate = new Date().toISOString().slice(0, 10);
 
@@ -291,7 +292,7 @@ function drawAiApprovalAsset() {
     lineHeight: 29,
   });
 
-  const app = browserFrame(ctx, 72, 190, 850, 610, 'owner.menulist.ai / ai-menu-manager');
+  const app = browserFrame(ctx, 72, 190, 850, 610, 'app.menulist.ai / ai-menu-manager');
   drawNav(ctx, app.x, app.y, app.h, 1);
 
   const chatX = app.x + 220;
@@ -361,7 +362,7 @@ function drawBusinessHealthAsset() {
     lineHeight: 29,
   });
 
-  const app = browserFrame(ctx, 72, 190, 850, 610, 'owner.menulist.ai / business-health');
+  const app = browserFrame(ctx, 72, 190, 850, 610, 'app.menulist.ai / business-health');
   drawNav(ctx, app.x, app.y, app.h, 3);
 
   const panelX = app.x + 220;
@@ -472,15 +473,94 @@ function drawOwnerPhoneDashboardAsset() {
   return canvas;
 }
 
+function drawPrintReadyEditorAsset() {
+  const { canvas, ctx } = makeCanvas(1600, 900, '#111827');
+
+  rounded(ctx, 0, 0, 1600, 72, 0, '#0b1220');
+  text(ctx, 'MenuList', 30, 22, { size: 22, weight: 800, color: C.white });
+  text(ctx, 'Print-ready editor', 162, 24, { size: 18, weight: 800, color: '#dbeafe' });
+  pill(ctx, 'Fictional demo data', 338, 18, { fill: '#172033', stroke: '#334155', color: '#cbd5e1', size: 12 });
+  pill(ctx, 'Download image', 1270, 17, { fill: '#172033', stroke: '#475569', color: C.white, size: 13 });
+  pill(ctx, 'Print PDF', 1430, 17, { fill: C.blue, stroke: C.blue, color: C.white, size: 13 });
+
+  rounded(ctx, 18, 90, 220, 790, 18, '#0f172a', '#263449');
+  text(ctx, 'EDIT TOOLS', 42, 116, { size: 12, weight: 800, color: C.soft });
+  const tools = [
+    ['Template', 'Choose a print layout'],
+    ['Background', 'Colour or image'],
+    ['Business text', 'Name and message'],
+    ['QR code', 'Current menu link'],
+    ['Logo', 'Business identity'],
+    ['Styles', 'Spacing and border'],
+  ];
+  tools.forEach(([label, detail], index) => {
+    const y = 154 + index * 92;
+    rounded(ctx, 34, y, 188, 72, 14, index === 3 ? '#173b75' : '#172033', index === 3 ? '#3b82f6' : '#263449');
+    text(ctx, label, 52, y + 14, { size: 15, weight: 800, color: C.white });
+    text(ctx, detail, 52, y + 40, { size: 11, color: '#94a3b8' });
+  });
+
+  rounded(ctx, 262, 90, 1000, 790, 18, '#1f2937', '#334155');
+  text(ctx, 'A6 portrait · 1240 x 1748', 292, 116, { size: 13, color: '#cbd5e1', weight: 700 });
+  shadow(ctx, 34, 'rgba(0, 0, 0, 0.35)', 0, 18);
+  rounded(ctx, 510, 150, 500, 680, 8, '#fffaf0', '#e7d8b6', 2);
+  clearShadow(ctx);
+  rounded(ctx, 536, 176, 448, 628, 4, null, '#c6a85b', 3);
+  pill(ctx, 'CURRENT MENU', 672, 204, { fill: '#f4ecd4', stroke: '#d8c28b', color: '#725c20', size: 11 });
+  text(ctx, demo.business, 760, 270, { size: 31, weight: 800, align: 'center' });
+  text(ctx, 'Scan to view our current menu', 760, 322, { size: 17, weight: 700, color: '#5b6472', align: 'center' });
+
+  rounded(ctx, 624, 380, 272, 272, 18, C.white, '#d8c28b', 2);
+  for (let row = 0; row < 13; row += 1) {
+    for (let col = 0; col < 13; col += 1) {
+      const finder = (row < 4 && col < 4) || (row < 4 && col > 8) || (row > 8 && col < 4);
+      const patterned = ((row * 7 + col * 11 + row * col) % 5) < 2;
+      if (!finder && !patterned) continue;
+      ctx.fillStyle = C.ink;
+      ctx.fillRect(644 + col * 18, 400 + row * 18, 13, 13);
+    }
+  }
+  text(ctx, `${demo.url}/menu`, 760, 674, { size: 15, weight: 700, color: '#475569', align: 'center' });
+  pill(ctx, 'Owner-approved public link', 657, 722, { fill: C.greenSoft, stroke: '#bbf7d0', color: C.greenDark, size: 12 });
+
+  rounded(ctx, 1284, 90, 298, 790, 18, '#0f172a', '#263449');
+  text(ctx, 'QR CODE', 1310, 116, { size: 12, weight: 800, color: C.soft });
+  text(ctx, 'Current destination', 1310, 164, { size: 14, weight: 800, color: C.white });
+  rounded(ctx, 1310, 198, 246, 72, 12, '#172033', '#334155');
+  text(ctx, demo.url, 1326, 214, { size: 12, weight: 700, color: '#dbeafe', maxWidth: 214, lineHeight: 18 });
+  text(ctx, '/menu', 1326, 240, { size: 12, color: '#93c5fd' });
+  text(ctx, 'Print size', 1310, 308, { size: 14, weight: 800, color: C.white });
+  pill(ctx, 'A6 portrait', 1310, 342, { fill: '#172033', stroke: '#334155', color: '#dbeafe', size: 13 });
+  text(ctx, 'Link state', 1310, 416, { size: 14, weight: 800, color: C.white });
+  pill(ctx, 'Current', 1310, 450, { fill: '#123d2b', stroke: '#166534', color: '#bbf7d0', size: 13 });
+  rounded(ctx, 1310, 524, 246, 126, 14, '#172033', '#334155');
+  text(ctx, 'Safe export', 1328, 544, { size: 15, weight: 800, color: C.white });
+  text(ctx, 'The generated file uses the current owner-approved menu link.', 1328, 578, {
+    size: 12,
+    color: '#94a3b8',
+    maxWidth: 208,
+    lineHeight: 18,
+  });
+  return canvas;
+}
+
 async function save(canvas, filename) {
   const buffer = canvas.toBuffer('image/webp');
   const out = path.join(outputDir, filename);
   await fs.writeFile(out, buffer);
-  return { filename, bytes: buffer.length };
+  return { filename, bytes: buffer.length, publicPath: `public/images/website/product-proof/${filename}` };
+}
+
+async function savePrintReadyJpeg(canvas, filename) {
+  const buffer = canvas.toBuffer('image/jpeg', 88);
+  const out = path.join(printReadyOutputDir, filename);
+  await fs.writeFile(out, buffer);
+  return { filename, bytes: buffer.length, publicPath: `public/images/website/print-ready-kit/${filename}` };
 }
 
 async function main() {
   await fs.mkdir(outputDir, { recursive: true });
+  await fs.mkdir(printReadyOutputDir, { recursive: true });
   await fs.mkdir(notesDir, { recursive: true });
   menuListLogoImage = await loadImage(path.join(repoRoot, 'public/icons/android-chrome-512x512.png')).catch(() => null);
 
@@ -488,6 +568,7 @@ async function main() {
   outputs.push(await save(drawAiApprovalAsset(), 'ai-menu-manager-approval-card.webp'));
   outputs.push(await save(drawBusinessHealthAsset(), 'business-health-stable-check.webp'));
   outputs.push(await save(drawOwnerPhoneDashboardAsset(), 'owner-phone-dashboard.webp'));
+  outputs.push(await savePrintReadyJpeg(drawPrintReadyEditorAsset(), 'print-assets-editor.jpg'));
 
   const note = [
     '# Stage 8 Product Proof Demo Asset Pack',
@@ -498,13 +579,14 @@ async function main() {
     '',
     '## Generated Files',
     '',
-    ...outputs.map((item) => `- public/images/website/product-proof/${item.filename} (${Math.round(item.bytes / 1024)} KB)`),
+    ...outputs.map((item) => `- ${item.publicPath} (${Math.round(item.bytes / 1024)} KB)`),
     '',
     '## Alignment Notes',
     '',
     '- AI Menu Manager visual mirrors the owner message -> prepared card -> approval -> receipt contract.',
     '- Business Health visual mirrors the stable latest-check state, No action needed language, public-status availability, and safe handoff posture.',
     '- Owner phone dashboard visual mirrors the mobile owner output pattern: health state, share link, public-link readiness, and tab navigation.',
+    '- Print-ready editor visual is deterministic fictional proof of the current menu-link, layout, and safe export controls.',
     '- Business details, menu items, prices, and URLs are fictional demo values. No invented activity counts or performance percentages are shown.',
     '',
     '## Public Usage Rule',

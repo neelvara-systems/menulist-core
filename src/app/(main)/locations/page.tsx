@@ -12,6 +12,12 @@ import OutletRenameModal from '@organisms/OutletRenameModal';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import {
+    claimStoreSwitchAttempt,
+    getStoreSummaryId,
+    normalizeStoreSwitchStoreId,
+    releaseStoreSwitchAttempt,
+} from '@lib/multiOutlet/storeSwitchAccess';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import {
     createMultiOutletStatusError,
@@ -24,7 +30,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
-import { useContext, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -67,6 +73,11 @@ export default function LocationsPage() {
     // T2-N-01: outlet rename modal state.
     const [renameTarget, setRenameTarget] = useState<any | null>(null);
     const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
+    const locationScopeKey = `${storeDetails?.tenantId ?? ''}:${storeDetails?.storeId ?? ''}:${activeStoreContext ?? ''}`;
+    const locationScopeKeyRef = useRef(locationScopeKey);
+    const activeStoreContextRef = useRef(activeStoreContext);
+    locationScopeKeyRef.current = locationScopeKey;
+    activeStoreContextRef.current = activeStoreContext;
     const canManageLocations = canManageLocationSettings({
         isMasterUser,
         storeDetails,
@@ -91,41 +102,58 @@ export default function LocationsPage() {
     const activeCount = storesList.filter((s: any) => s.active !== false).length;
     const activeOutletCount = storesList.filter((s: any) => !s.isMaster && s.active !== false).length;
     const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
-
     // Billing summary
     const amount = activeSubscription?.amount || 0;
     const currency = activeSubscription?.currency || 'INR';
     const totalCost = amount * activeCount;
 
     const handleSwitchStore = async (targetStoreId: number) => {
-        const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
-        if (Number(targetStoreId) === currentStoreId) return;
-        if (Number(targetStoreId) === Number(masterStoreId)) {
-            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
-            setActiveStoreContext(null);
-            return;
-        }
+        const normalizedTargetStoreId = normalizeStoreSwitchStoreId(targetStoreId);
+        const currentStoreId = normalizeStoreSwitchStoreId(activeStoreContext || storeDetails?.storeId);
+        if (
+            !normalizedTargetStoreId
+            || normalizedTargetStoreId === currentStoreId
+            || !storesList.some((store: any) => (
+                getStoreSummaryId(store) === normalizedTargetStoreId && store.active !== false
+            ))
+        ) return;
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
+        const initiatingScopeKey = locationScopeKey;
 
         try {
+            if (normalizedTargetStoreId === masterStoreId) {
+                if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+                if (locationScopeKeyRef.current !== initiatingScopeKey) return;
+                setActiveStoreContext(null);
+                return;
+            }
+
             const res = await fetch('/api/auth/switch-store', {
                 ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetStoreId }),
+                body: JSON.stringify({ targetStoreId: normalizedTargetStoreId }),
             });
             await readAuthAccountResponse(res, 'switch_store');
-            await refreshFirebaseAuthClaims(targetStoreId);
-            setActiveStoreContext(targetStoreId);
+            if (locationScopeKeyRef.current !== initiatingScopeKey) return;
+            await refreshFirebaseAuthClaims(normalizedTargetStoreId);
+            if (locationScopeKeyRef.current !== initiatingScopeKey) return;
+            setActiveStoreContext(normalizedTargetStoreId);
         } catch (error) {
+            if (locationScopeKeyRef.current !== initiatingScopeKey) return;
             logMultiOutletFailure('desktop_location_store_switch_failed', error, {
-                ...getBoundedMultiOutletStringContext('targetStoreId', targetStoreId),
+                ...getBoundedMultiOutletStringContext('targetStoreId', normalizedTargetStoreId),
                 ...getBoundedMultiOutletStringContext('currentStoreId', storeDetails?.storeId),
             });
             message.error('Store switch failed');
+        } finally {
+            releaseStoreSwitchAttempt(attemptToken);
         }
     };
 
     const handleDeactivateOutlet = (record: any) => {
+        const confirmationScopeKey = locationScopeKey;
         Modal.confirm({
             title: 'Deactivate outlet?',
             content: `This turns off ${record.name || `Store ${record.storeId}`} and removes it from normal store switching. Billing quantity is reduced when billing removal is enabled.`,
@@ -133,6 +161,10 @@ export default function LocationsPage() {
             okButtonProps: { danger: true },
             onOk: async () => {
                 const outletStoreId = Number(record.storeId);
+                if (locationScopeKeyRef.current !== confirmationScopeKey) return;
+                const requiresClaimTransition = Number(activeStoreContextRef.current) === outletStoreId;
+                const attemptToken = requiresClaimTransition ? claimStoreSwitchAttempt() : undefined;
+                if (requiresClaimTransition && attemptToken === null) return;
                 setDeactivatingStoreId(outletStoreId);
                 try {
                     const res = await fetch('/api/outlets/deactivate', {
@@ -164,6 +196,7 @@ export default function LocationsPage() {
                         message.error('Outlet deactivation failed');
                         return;
                     }
+                    if (locationScopeKeyRef.current !== confirmationScopeKey) return;
                     setTenantDetails((previous: any) => previous?.storesList
                         ? {
                             ...previous,
@@ -174,8 +207,9 @@ export default function LocationsPage() {
                             )),
                         }
                         : previous);
-                    if (Number(activeStoreContext) === Number(outletStoreId)) {
+                    if (requiresClaimTransition) {
                         if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+                        if (locationScopeKeyRef.current !== confirmationScopeKey) return;
                         setActiveStoreContext(null);
                     }
                     if (data.billingReductionPending) {
@@ -188,12 +222,14 @@ export default function LocationsPage() {
                         message.success('Outlet deactivated');
                     }
                 } catch (error) {
+                    if (locationScopeKeyRef.current !== confirmationScopeKey) return;
                     logMultiOutletFailure('desktop_location_deactivate_failed', error, {
                         ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
                         ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
                     });
                     message.error('Outlet deactivation failed');
                 } finally {
+                    if (typeof attemptToken === 'number') releaseStoreSwitchAttempt(attemptToken);
                     setDeactivatingStoreId(null);
                 }
             },

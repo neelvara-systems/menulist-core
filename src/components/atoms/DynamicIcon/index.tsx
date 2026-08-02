@@ -1,14 +1,14 @@
 import React from 'react';
-import { FaCreditCard, FaUser } from 'react-icons/fa';
+import { LuCreditCard, LuUser } from 'react-icons/lu';
 
 interface DynamicIconProps {
     icon: string;
     style?: React.CSSProperties;
 }
 
-const iconMap: { [key: string]: React.ComponentType<any> } = {
-    FaCreditCard,
-    FaUser,
+const iconMap: Record<string, React.ComponentType<{ style?: React.CSSProperties }>> = {
+    FaCreditCard: LuCreditCard,
+    FaUser: LuUser,
 };
 
 const DynamicIcon: React.FC<DynamicIconProps> = ({ icon, style }) => {

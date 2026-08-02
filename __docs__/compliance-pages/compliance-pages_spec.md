@@ -49,7 +49,7 @@ Auto-generated privacy, terms, and refund/cancellation pages served at fixed rou
 - `abc.com/privacy` — Privacy Policy
 - `abc.com/terms` — Terms & Conditions
 - `abc.com/refund` — Refund & Cancellation Policy
-- `brand.menulist.ai/privacy` — Same pages on subdomain
+- `brand.menulist.online/privacy` — Same pages on subdomain
 
 **Key principle:** These are **compliance artifacts**, not product surfaces. They must be invisible, boring, and impossible to misuse.
 

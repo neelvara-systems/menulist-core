@@ -96,8 +96,8 @@ public/locales/menulist.ai/*.json
 ```typescript
 export interface MenuKitInput {
   storeName: string;
-  menuUrl: string; // Full URL: {subdomain}.menulist.ai/{slug}
-  shortLink: string; // Display: menulist.ai/{slug}
+  menuUrl: string; // Full URL: {subdomain}.menulist.online/{slug}
+  shortLink: string; // Display: hosted link or custom domain URL
   logoUrl?: string; // Optional store logo
   brandColor?: string; // Store/OBP accent color
   lastPublishedAt?: Date; // For "Updated on" footer

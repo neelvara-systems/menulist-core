@@ -24,6 +24,10 @@ import { buildGoogleProfileBasicsReport } from '../../src/lib/public-truth-tools
 import { buildMenuReadabilityReport } from '../../src/lib/public-truth-tools/menuReadabilityReport';
 import { buildPublicTruthCheckReport } from '../../src/lib/public-truth-tools/publicTruthCheckReport';
 import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+} from '../../src/lib/public-truth-tools/publicTruthToolInputLimits';
+import {
   isPublicHttpsUrl,
   parsePublicHttpsUrl,
 } from '../../src/lib/public-truth-tools/publicUrlValidation';
@@ -43,6 +47,20 @@ function getCheckResult(
 ): string | undefined {
   return checks.find((check) => check.id === id)?.result;
 }
+
+assert.equal(
+  boundPublicTruthToolInput(
+    `bounded${'x'.repeat(PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText)}ignored`,
+    PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+  ).length,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+  'public-tool runtime inputs must be truncated before normalization work',
+);
+assert.equal(
+  boundPublicTruthToolInput(null, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText),
+  '',
+  'non-string public-tool runtime inputs must normalize to an empty string',
+);
 
 assert.equal(
   EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
@@ -511,6 +529,32 @@ const whatsAppReply = buildWhatsAppReplyPackReport({
 });
 assert.equal(getCheckResult(whatsAppReply.checks, 'whatsapp_number'), 'missing');
 assert.equal(whatsAppReply.previewLink, null);
+
+const oversizedWhatsAppReply = buildWhatsAppReplyPackReport({
+  mode: 'self_report',
+  actionLink: '',
+  businessName: `Cafe ${'x'.repeat(PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName)}ignored-business-name`,
+  cityOrArea: 'Pune',
+  currentCustomerLink: '',
+  deliveryOrPickup: '',
+  hours: '',
+  locationOrServiceArea: '',
+  offerSummary: `${'x'.repeat(PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)}ignored-offer-marker`,
+  paymentInfo: '',
+  preferredAction: 'visit',
+  responseTime: '',
+  whatsappNumber: '',
+});
+assert.equal(
+  oversizedWhatsAppReply.businessName.length,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName,
+  'report builders must retain the business-name runtime boundary even when called outside the UI',
+);
+assert.equal(
+  oversizedWhatsAppReply.copyBlocks.some((block) => block.body.includes('ignored-offer-marker')),
+  false,
+  'report builders must discard long-text content beyond the runtime boundary',
+);
 
 const invalidWhatsAppReplyLinks = buildWhatsAppReplyPackReport({
   mode: 'self_report',

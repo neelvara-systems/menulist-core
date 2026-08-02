@@ -33,7 +33,7 @@ export interface ManifestStoreInput {
     themeColor?: string;
     /** Background color for splash screen — hex. */
     backgroundColor?: string;
-    /** Origin of this tenant, e.g., "https://joespizza.menulist.ai". Currently unused
+    /** Origin of this tenant, e.g., "https://joespizza.menulist.online". Currently unused
      *  by buildManifest() — kept for forward-compat with absolute-URL shortcuts. */
     origin?: string;
     /** Store-level launch URL path, defaults to '/'. */

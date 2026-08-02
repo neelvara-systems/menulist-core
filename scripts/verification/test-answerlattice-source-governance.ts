@@ -7,10 +7,11 @@ import {
     updateKnowledgeIntakeReviewItem,
     updateKnowledgeSourceGovernance,
 } from '../../src/lib/answerlattice/knowledgeIntake';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const scope = { tId: 21, sId: 2101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const actor = { id: 'owner-21', email: 'owner@example.com', name: 'Owner' };
 const jobId = 'SOURCEGOVERNANCEJOB1';
 const otherJobId = 'SOURCEGOVERNANCEOTHR';
@@ -45,9 +46,6 @@ const governanceInput = (requestId: string, conflictSourceIds: string[] = []) =>
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') {
-        throw new Error('Answerlattice emulator Firestore is not configured');
-    }
     Object.assign(FEATURE_FLAGS as any, {
         ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE: true,
         ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE: false,

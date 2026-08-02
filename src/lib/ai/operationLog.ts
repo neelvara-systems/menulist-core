@@ -4,7 +4,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID, ECOMSAI_PLATFORM_USER_NAME } from "@constant/user";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
-import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 
@@ -602,7 +602,10 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
     );
     const data = buildAiOperationDocument(input);
 
-    const docRef = await (shouldWriteAnswerlatticeOperation ? answerlatticeFirestoreAdmin : firestoreAdmin)
+    const operationStore = shouldWriteAnswerlatticeOperation
+        ? requireAnswerlatticeFirestoreAdmin()
+        : firestoreAdmin;
+    const docRef = await operationStore
         .collection(scope.collectionName)
         .doc(scope.tenantDocumentId)
         .collection(scope.storeDocumentId)

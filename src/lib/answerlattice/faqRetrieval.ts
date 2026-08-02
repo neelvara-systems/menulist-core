@@ -2,7 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq, type AnswerlatticeRelatedFaqRef, type AnswerlatticeSurfaceContentItem } from '@type/answerlattice';
 import type { AnswerlatticeContextPayload } from '@type/answerlattice';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
 import type { CoreSearchReference } from '@lib/search/types';
 import { ANSWERLATTICE_FAQ_PUBLIC_LIMIT, normalizeAnswerlatticeRetrievalFaq } from './faqContent';
@@ -175,7 +175,7 @@ const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: numbe
     const cached = readFaqsFromCache(cacheKey);
     if (cached) return cached;
 
-    const snapshot = await answerlatticeFirestoreAdmin
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
@@ -198,7 +198,7 @@ const loadPublishedFaqById = async (
     faqId: string,
     scope: { tId: number; sId: number },
 ): Promise<AnswerlatticeFaq | null> => {
-    const snap = await answerlatticeFirestoreAdmin
+    const snap = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
         .doc(faqId)
         .get();
@@ -351,7 +351,7 @@ const loadLinkedArticleReference = async (
     if (!articleId) return [];
 
     try {
-        const snap = await answerlatticeFirestoreAdmin
+        const snap = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.KB_ARTICLES)
             .doc(articleId)
             .get();

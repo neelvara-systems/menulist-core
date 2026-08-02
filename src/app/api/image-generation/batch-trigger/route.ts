@@ -20,8 +20,10 @@ import { checkBatchOperationLimit } from '@lib/rateLimit/helpers';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { BatchImageGenerationRequestSchema } from '@lib/validation/apiSchemas';
-import { GenerateImageViaApiPayloadBatchType } from '@template/main-app/projects/types';
+import {
+    type BatchImageGenerationRequest,
+    BatchImageGenerationRequestSchema,
+} from '@lib/validation/apiSchemas';
 import { getISOStringDate } from '@util/dateTime';
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
@@ -72,7 +74,12 @@ function summarizeFailedTask(result: PromiseSettledResult<unknown>) {
     return { failureCode: IMAGE_BATCH_TASK_ENQUEUE_REJECTED };
 }
 
-function getBatchGenerationConfigSummary(config: Record<string, any> | undefined | null) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getBatchGenerationConfigSummary(config: Record<string, unknown> | undefined | null) {
+    const referenceImage = isRecord(config?.referanceImage) ? config.referanceImage : null;
     return {
         aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
         colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
@@ -82,7 +89,7 @@ function getBatchGenerationConfigSummary(config: Record<string, any> | undefined
         hasForegroundColor: Boolean(config?.foregroundColor),
         hasNegativePrompt: Boolean(config?.negativePrompt),
         hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
-        hasReferenceImage: Boolean(config?.referanceImage?.url),
+        hasReferenceImage: typeof referenceImage?.url === 'string' && referenceImage.url.length > 0,
         isMultiMode: Boolean(config?.isMultiMode),
         lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
         moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
@@ -120,7 +127,7 @@ function getBatchPromptEstimate({
     generationConfig,
     itemsList,
     projectId,
-}: Required<Pick<GenerateImageViaApiPayloadBatchType, 'generationConfig' | 'itemsList' | 'projectId'>> & Pick<GenerateImageViaApiPayloadBatchType, 'businessType'>) {
+}: Pick<BatchImageGenerationRequest, 'businessType' | 'generationConfig' | 'itemsList' | 'projectId'>) {
     return itemsList.reduce((summary, itemDetails) => {
         const prompts = getImagePrompts({
             businessType: businessType || '',
@@ -168,11 +175,15 @@ export const POST = withAuth(async (request, session) => {
         const bodyResult = await readBoundedJsonBody(request, BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES);
         if (bodyResult.ok === false) return bodyResult.response;
 
-        const rawData = bodyResult.data as any;
+        const rawData = bodyResult.data;
+        const rawRecord = isRecord(rawData) ? rawData : null;
+        const rawGenerationConfig = isRecord(rawRecord?.generationConfig)
+            ? rawRecord.generationConfig
+            : null;
         requestLogContext = getBatchImageRouteLogContext({
-            itemCount: Array.isArray(rawData?.itemsList) ? rawData.itemsList.length : 0,
-            jobId: rawData?.jobId,
-            projectId: rawData?.projectId,
+            itemCount: Array.isArray(rawRecord?.itemsList) ? rawRecord.itemsList.length : 0,
+            jobId: rawRecord?.jobId,
+            projectId: rawRecord?.projectId,
         });
         const validation = validateAPIInput(BatchImageGenerationRequestSchema, rawData);
 
@@ -191,8 +202,9 @@ export const POST = withAuth(async (request, session) => {
                 error: errorMsg,
                 attemptedData: {
                     ...requestLogContext,
-                    hasGenerationConfig: !!rawData?.generationConfig,
-                    hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                    hasGenerationConfig: Boolean(rawGenerationConfig),
+                    hasReferenceImage: isRecord(rawGenerationConfig?.referanceImage)
+                        && typeof rawGenerationConfig.referanceImage.url === 'string',
                 },
             });
             return NextResponse.json({
@@ -201,7 +213,7 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { generationConfig, projectId: requestedProjectId, itemsList, businessType, jobId: requestedJobId } = validation.data as unknown as Required<Pick<GenerateImageViaApiPayloadBatchType, 'generationConfig' | 'itemsList' | 'jobId'>> & GenerateImageViaApiPayloadBatchType;
+        const { generationConfig, projectId: requestedProjectId, itemsList, businessType, jobId: requestedJobId } = validation.data;
         const projectScope = normalizeImageBatchProjectId(requestedProjectId);
         const jobId = normalizeImageBatchJobId(requestedJobId);
         if (!projectScope || !jobId) {
@@ -334,7 +346,7 @@ export const POST = withAuth(async (request, session) => {
             logType: 'BATCH_GENERATION_TASK_STARTED',
             error: null,
             data: {
-                generationConfigSummary: getBatchGenerationConfigSummary(generationConfig as Record<string, any>),
+                generationConfigSummary: getBatchGenerationConfigSummary(generationConfig),
                 itemCount: itemsList.length,
                 itemsWithIdCount: itemsList.filter((item) => Boolean(item.id)).length,
                 jobId,
@@ -347,7 +359,13 @@ export const POST = withAuth(async (request, session) => {
             IMAGE_BATCH_TASK_ENQUEUE_CONCURRENCY,
             async (itemDetails) => {
                 const [result] = await Promise.allSettled([
-                    enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })
+                    enqueueImageGenerationTask({
+                        jobId,
+                        generationConfig,
+                        projectId,
+                        businessType: businessType || '',
+                        itemDetails,
+                    })
                         .catch(e => {
                             logRuntimeFailure(IMAGE_BATCH_TASK_ENQUEUE_FAILED, e, getBatchImageRouteLogContext({
                                 itemCount: itemsList.length,

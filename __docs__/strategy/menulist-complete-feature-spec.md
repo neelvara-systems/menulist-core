@@ -19,7 +19,7 @@
 ```
 STEP 1: Customer scans QR code on table
          ↓
-STEP 2: Browser opens: joespizza.menulist.ai
+STEP 2: Browser opens: joespizza.menulist.online
          ↓
 STEP 3: System resolves domain → finds store → loads menu data
          ↓
@@ -37,7 +37,7 @@ STEP 7: Decision made in 15 seconds (vs 60-90 seconds without)
 ### Phase 1: Domain Resolution
 
 ```
-Customer visits: joespizza.menulist.ai
+Customer visits: joespizza.menulist.online
                         ↓
 Middleware intercepts request
                         ↓
@@ -233,9 +233,9 @@ The public menu page that customers see when scanning QR codes.
 
 | Method               | Example                        |
 | -------------------- | ------------------------------ |
-| **Subdomain**        | `joespizza.menulist.ai`        |
+| **Subdomain**        | `joespizza.menulist.online`        |
 | **Custom Domain**    | `joespizza.com`                |
-| **Multi-Menu Slugs** | `joespizza.menulist.ai/drinks` |
+| **Multi-Menu Slugs** | `joespizza.menulist.online/drinks` |
 
 ### Key Features
 
@@ -678,7 +678,7 @@ Complete isolation between different businesses using the same platform.
 ### Domain Routing
 
 - Platform: `menulist.ai`
-- Client subdomains: `{store}.menulist.ai`
+- Client subdomains: `{store}.menulist.online`
 - Custom domains: `{custom}.com`
 
 ---

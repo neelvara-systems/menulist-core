@@ -1,4 +1,6 @@
 'use client';
+
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { FEATURE_FLAGS } from '@config/features';
 import { normalizeBaseUrl } from '@constant/urls';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
@@ -386,10 +388,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
     const handleOpenActiveDomain = () => {
         if (!activeDomainUrl) return;
         try {
-            const opened = window.open(activeDomainUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_custom_domain_open_blocked');
-            }
+            openIsolatedBrowserUrl(activeDomainUrl);
         } catch (error) {
             logStoreDataFailure(
                 'desktop_custom_domain_open_failed',
@@ -574,7 +573,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
 
             <Paragraph type="secondary" style={{ marginBottom: 16 }}>
                 Connect your own domain (like <strong>yourbusiness.com</strong>) to your MenuList page.
-                Customers will see your domain instead of menulist.ai.
+                Customers will see your domain instead of your MenuList hosted link.
             </Paragraph>
 
             {/* ── State: No domain ── */}
@@ -730,7 +729,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                                     </a>
                                 </Text>
                                 <Text type="secondary">
-                                    Visitors to your menulist.ai link will automatically redirect here.
+                                    Visitors to your MenuList hosted link will automatically redirect here.
                                 </Text>
                             </Space>
                         }
@@ -878,10 +877,7 @@ function CompliancePagesSection({
     const handleOpenPage = () => {
         if (!pageUrl) return;
         try {
-            const opened = window.open(pageUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_compliance_page_open_blocked');
-            }
+            openIsolatedBrowserUrl(pageUrl);
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_compliance_page_open_failed',

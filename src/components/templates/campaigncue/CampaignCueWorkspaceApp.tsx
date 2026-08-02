@@ -155,6 +155,7 @@ import {
     LuX,
 } from "react-icons/lu";
 import PackTemplatePicker from "./PackTemplatePicker";
+import CampaignCueVideoStudio from "./CampaignCueVideoStudio";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
 
 const CreativeEditor = dynamic(() => import("@/modules/creative-editor/CreativeEditor"), {
@@ -5225,7 +5226,22 @@ export default function CampaignCueWorkspaceApp() {
                             )}
                         </section>
                     ) : null}
-                    {tab === "video" ? renderChannelStudio("video") : null}
+                    {tab === "video" ? (
+                        <>
+                            <CampaignCueVideoStudio
+                                key={data.workspace.workspaceId}
+                                assets={data.assets}
+                                campaigns={data.campaigns}
+                                onAssetRegistered={(asset) => updateOverview((current) => ({
+                                    ...current,
+                                    assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
+                                }))}
+                                onNotice={setNotice}
+                                workspaceId={data.workspace.workspaceId}
+                            />
+                            {renderChannelStudio("video")}
+                        </>
+                    ) : null}
                     {tab === "ugc" ? renderChannelStudio("ugc") : null}
                     {tab === "whatsapp" ? renderChannelStudio("whatsapp") : null}
                     {tab === "google" ? renderChannelStudio("google_local") : null}
@@ -5538,6 +5554,7 @@ export default function CampaignCueWorkspaceApp() {
                                         >
                                             <option value="image">Image</option>
                                             <option value="video">Video</option>
+                                            <option value="audio">Audio</option>
                                             <option value="document">Document</option>
                                             <option value="logo">Logo</option>
                                             <option value="export">Export</option>

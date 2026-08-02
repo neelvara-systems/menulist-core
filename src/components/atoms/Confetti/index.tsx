@@ -1,4 +1,5 @@
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeAnimationDimension } from '../animationPresentation';
 
 // Define the type for a single confetti particle
 interface ConfettiParticle {
@@ -30,6 +31,8 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
     // Ref to store the timestamp of the last animation frame
     const lastFrameTime = useRef<number>(0);
     const nextParticleId = useRef(0);
+    const resolvedHeight = normalizeAnimationDimension(totalHeight);
+    const resolvedWidth = normalizeAnimationDimension(totalWidth);
 
     // Function to generate a random color for confetti (lighter palette)
     const getRandomColor = (): string => {
@@ -96,8 +99,8 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
 
         // Particles from bottom-left
         for (let i = 0; i < numParticlesPerSide; i++) {
-            const startX = Math.random() * (totalWidth * 0.1); // Within 10% of left edge
-            const startY = totalHeight - (Math.random() * (totalHeight * 0.05)); // Within 5% of bottom edge
+            const startX = Math.random() * (resolvedWidth * 0.1); // Within 10% of left edge
+            const startY = resolvedHeight - (Math.random() * (resolvedHeight * 0.05)); // Within 5% of bottom edge
 
             // Initial velocity to push towards top-center
             const initialVx = Math.random() * 8 + 5; // Positive velocity to move right
@@ -108,8 +111,8 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
 
         // Particles from bottom-right
         for (let i = 0; i < numParticlesPerSide; i++) {
-            const startX = totalWidth - (Math.random() * (totalWidth * 0.1)); // Within 10% of right edge
-            const startY = totalHeight - (Math.random() * (totalHeight * 0.05)); // Within 5% of bottom edge
+            const startX = resolvedWidth - (Math.random() * (resolvedWidth * 0.1)); // Within 10% of right edge
+            const startY = resolvedHeight - (Math.random() * (resolvedHeight * 0.05)); // Within 5% of bottom edge
 
             // Initial velocity to push towards top-center
             const initialVx = Math.random() * -8 - 5; // Negative velocity to move left
@@ -119,7 +122,7 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
         }
 
         setConfetti((prevConfetti) => [...prevConfetti, ...newConfettiParticles]);
-    }, []);
+    }, [resolvedHeight, resolvedWidth]);
 
     // Animation loop using requestAnimationFrame
     const animateConfetti = useCallback((currentTime: number) => {
@@ -130,28 +133,29 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
         setConfetti((prevConfetti) => {
             const updatedConfetti = prevConfetti
                 .map((p) => {
+                    const nextParticle = { ...p };
                     // Apply gravity
-                    p.vy += p.gravity * deltaTime * 60; // Scale gravity by deltaTime
+                    nextParticle.vy += nextParticle.gravity * deltaTime * 60; // Scale gravity by deltaTime
                     // Apply drag
-                    p.vx *= Math.pow(p.drag, deltaTime * 60);
-                    p.vy *= Math.pow(p.drag, deltaTime * 60);
+                    nextParticle.vx *= Math.pow(nextParticle.drag, deltaTime * 60);
+                    nextParticle.vy *= Math.pow(nextParticle.drag, deltaTime * 60);
 
                     // Update position
-                    p.x += p.vx * deltaTime * 60;
-                    p.y += p.vy * deltaTime * 60;
+                    nextParticle.x += nextParticle.vx * deltaTime * 60;
+                    nextParticle.y += nextParticle.vy * deltaTime * 60;
 
                     // Update rotation
-                    p.rotation += p.rotationSpeed * p.spin * deltaTime * 60;
+                    nextParticle.rotation += nextParticle.rotationSpeed * nextParticle.spin * deltaTime * 60;
 
                     // Fade out as it falls
                     // Start fading earlier for a more natural fall-off
-                    if (p.y > totalHeight * 0.5) { // Start fading from mid-screen
-                        p.opacity -= 0.02 * deltaTime * 60;
+                    if (nextParticle.y > resolvedHeight * 0.5) { // Start fading from mid-screen
+                        nextParticle.opacity -= 0.02 * deltaTime * 60;
                     }
 
-                    return p;
+                    return nextParticle;
                 })
-                .filter((p) => p.opacity > 0 && p.y < totalHeight + 50); // Remove off-screen or faded particles
+                .filter((p) => p.opacity > 0 && p.y < resolvedHeight + 50); // Remove off-screen or faded particles
 
             return updatedConfetti;
         });
@@ -162,12 +166,12 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
         } else {
             animationFrameId.current = null; // Stop animation if no particles
         }
-    }, [confetti.length]); // Re-run if confetti count changes to stop/start animation
+    }, [confetti.length, resolvedHeight]); // Re-run if confetti count or bounds change to stop/start animation
 
     // Effect to trigger confetti only once on component mount
     useEffect(() => {
         triggerConfetti();
-    }, []);
+    }, [triggerConfetti]);
 
     // Effect to manage the animation loop
     useEffect(() => {

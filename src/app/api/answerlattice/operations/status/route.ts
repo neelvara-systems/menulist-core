@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
-import { FEATURE_FLAGS } from '@config/features';
+import {
+    FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_DB_COLLECTIONS } from '@constant/answerlattice/database';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
@@ -9,7 +10,7 @@ import {
     getAnswerlatticeSettlementLocalTime,
     normalizeAnswerlatticeBusinessDayEndTime,
     normalizeAnswerlatticeTimeZone,
-} from '@lib/answerlattice/schedulerSettings';
+    } from '@lib/answerlattice/schedulerSettings';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { normalizeAnswerlatticeOperationsMetric } from '@lib/answerlattice/activationDashboardResponseClient';
@@ -18,8 +19,9 @@ import {
     normalizeAnswerlatticeScopeDocumentId,
     normalizeConsistentAnswerlatticeScopeDocumentIds,
     resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+    } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { AnswerlatticeOwnerOperationStatus } from '@type/answerlattice';
@@ -44,26 +46,43 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
-const toIso = (value: any): string | null => {
+const toIso = (value: unknown): string | null => {
     if (!value) return null;
-    const date = typeof value?.toDate === 'function'
-        ? value.toDate()
-        : typeof value?.seconds === 'number'
-            ? new Date(value.seconds * 1000)
-            : new Date(value);
+    let date: Date;
+    if (value instanceof Date) {
+        date = value;
+    } else if (typeof value === 'string' || typeof value === 'number') {
+        date = new Date(value);
+    } else if (typeof value === 'object') {
+        const timestamp = value as { seconds?: unknown; toDate?: unknown };
+        try {
+            if (typeof timestamp.toDate === 'function') {
+                const projected = timestamp.toDate.call(value);
+                if (!(projected instanceof Date)) return null;
+                date = projected;
+            } else if (typeof timestamp.seconds === 'number' && Number.isFinite(timestamp.seconds)) {
+                date = new Date(timestamp.seconds * 1000);
+            } else {
+                return null;
+            }
+        } catch {
+            return null;
+        }
+    } else {
+        return null;
+    }
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const normalizeStatus = (value: any, fallback: AnswerlatticeOwnerOperationStatus | null = null): AnswerlatticeOwnerOperationStatus | null => {
+const normalizeStatus = (value: unknown, fallback: AnswerlatticeOwnerOperationStatus | null = null): AnswerlatticeOwnerOperationStatus | null => {
     const status = String(value || '').trim() as AnswerlatticeOwnerOperationStatus;
     return VALID_STATUSES.has(status) ? status : fallback;
 };
 
-const ownerSafeError = (value: any): string | null => {
+const ownerSafeError = (value: unknown): string | null => {
     const message = String(value || '').trim();
     return message ? 'Daily governance failed. Check platform logs.' : null;
 };
@@ -79,9 +98,17 @@ const ownerSafeWorkspaceDetails = (value: unknown) => {
     };
 };
 
-const resolveSchedule = (storeData: Record<string, any>, stateData: Record<string, any>) => {
-    const timeZone = normalizeAnswerlatticeTimeZone(storeData.timeZone || stateData.timeZone);
-    const businessDayEndTime = normalizeAnswerlatticeBusinessDayEndTime(storeData.businessDayEndTime || stateData.businessDayEndTime);
+const resolveSchedule = (storeData: Record<string, unknown>, stateData: Record<string, unknown>) => {
+    const timeZone = normalizeAnswerlatticeTimeZone(
+        typeof storeData.timeZone === 'string'
+            ? storeData.timeZone
+            : typeof stateData.timeZone === 'string' ? stateData.timeZone : undefined,
+    );
+    const businessDayEndTime = normalizeAnswerlatticeBusinessDayEndTime(
+        typeof storeData.businessDayEndTime === 'string'
+            ? storeData.businessDayEndTime
+            : typeof stateData.businessDayEndTime === 'string' ? stateData.businessDayEndTime : undefined,
+    );
     const settlementLocalTime = getAnswerlatticeSettlementLocalTime(businessDayEndTime);
     return {
         timeZone,
@@ -158,13 +185,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const workspaceState = workspaceStateSnap.exists ? workspaceStateSnap.data() || {} : {};
         const governanceTask = schedulerState.tasks?.governance_nightly || {};
         const schedule = resolveSchedule(storeData, workspaceState);
-        const latestRuns = (runLogSnap.docs || []).flatMap((docSnap: any) => {
+        const latestRuns = (runLogSnap.docs || []).flatMap((docSnap: FirebaseFirestore.QueryDocumentSnapshot) => {
             const data = docSnap.data() || {};
             const tenantRun = Array.isArray(data.tenantRuns)
-                ? data.tenantRuns.find((run: any) => (
-                    normalizeAnswerlatticeScopeDocumentId(run.tId) === tId
-                    && normalizeAnswerlatticeScopeDocumentId(run.sId) === sId
-                ))
+                ? data.tenantRuns.find((run: unknown) => {
+                    const record = run && typeof run === 'object' ? run as Record<string, unknown> : {};
+                    return normalizeAnswerlatticeScopeDocumentId(record.tId) === tId
+                        && normalizeAnswerlatticeScopeDocumentId(record.sId) === sId;
+                }) as Record<string, unknown> | undefined
                 : null;
             if (!tenantRun) return [];
             return [{

@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { Alert, Button, Card, Input, Space, Tag, Typography, notification, theme } from 'antd';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import {
@@ -242,10 +244,7 @@ export default function CompliancePagesSection({
 
     const handleOpenPage = () => {
         try {
-            const opened = window.open(pageUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_compliance_page_open_blocked');
-            }
+            openIsolatedBrowserUrl(pageUrl);
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_compliance_page_open_failed',

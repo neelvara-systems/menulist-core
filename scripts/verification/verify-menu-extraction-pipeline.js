@@ -238,12 +238,18 @@ contains(
     'files: JobFilesSchema',
     'const retryFilesResult = JobFilesSchema.safeParse(retryData.files);',
     'if (!retryFilesResult.success)',
+    'const previousRetryCount = retryData.retryCount === undefined',
+    'Number.isSafeInteger(retryData.retryCount)',
+    'retryCount: previousRetryCount + 1',
     'action: z.literal(AI_ACTIONS_TYPES.IMAGE_PROCESSING).optional()',
     'getTrustedBusinessContext',
-    'getBusinessTypeConfig(projectData.businessType)',
-    'normalizeBusinessCategory(projectData.businessCategory)',
+    'typeof projectData.businessType === "string"',
+    'typeof projectData.businessCategory === "string"',
+    'getBusinessTypeConfig(persistedBusinessType)',
+    'normalizeBusinessCategory(persistedBusinessCategory)',
     'action: AI_ACTIONS_TYPES.IMAGE_PROCESSING',
     '...trustedBusinessContext',
+    '...(retryContext ? { retryCount: retryContext.retryCount } : {})',
   ],
   'Owner job request rejects empty files and persists only the fixed extraction action plus canonical business context',
 );
@@ -843,6 +849,25 @@ ordered(
   'Owner job API rate-limits/body-caps requests, validates project state, and blocks oversized project saves before expensive extraction work',
 );
 
+contains(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'export const POST = withMenuExtractionAuth(',
+    '"Cache-Control": "private, no-store, max-age=0"',
+    '"X-Content-Type-Options": "nosniff"',
+    'parseGate.reason === "provider_unavailable"',
+    'rateLimit.reason === "provider_unavailable"',
+  ],
+  'Owner job API stamps private responses and distinguishes limiter outages from quota exhaustion',
+);
+
+occursAtLeast(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  'failClosedOnProviderError: true',
+  2,
+  'Owner job API fails closed at both request and expensive-operation rate-limit boundaries',
+);
+
 notContains(
   'src/app/api/menu-extraction/jobs/route.ts',
   [
@@ -858,8 +883,10 @@ notContains(
     'source: z.string()',
     'sourceMetadata: z.record',
     'validation.data.sourceMetadata',
+    'retryCount: z.number()',
+    'validation.data.retryCount',
   ],
-  'Owner job API does not accept client-owned source metadata',
+  'Owner job API does not accept client-owned source metadata or retry counters',
 );
 
 contains(
@@ -1392,16 +1419,18 @@ contains(
     'Number.isInteger(candidate.status)',
     'candidate.status >= 400',
     'candidate.status < 500',
+    'candidate.status === 503',
     'cleanupUploadedFilesAfterJobStartRejection = true',
     'shouldCleanupUploadedFilesAfterJobStartError',
   ],
-  'Job-start cleanup classification is limited to definitive 4xx route rejections',
+  'Job-start cleanup classification includes definitive 4xx rejections and route-level 503 responses that precede durable job creation',
 );
 
 contains(
   'scripts/verification/test-menu-extraction-job-start-failure.ts',
   [
     "status: 403",
+    "status: 503",
     "status: 500",
     "status: 200",
     "new Error('network failure')",
@@ -1720,6 +1749,9 @@ contains(
     'const storeScope = normalizeMenuIntakeScopeDocumentId(ids.sId);',
     'verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)',
     'getRateLimitForFeature("AI_OPERATION")',
+    'failClosedOnProviderError: true',
+    'rateLimit.reason === "provider_unavailable"',
+    'status: providerUnavailable ? 503 : 429',
     'const tenantRateLimitHash = hashPublicRateLimitValue(tenantScope.documentId);',
     'const storeRateLimitHash = hashPublicRateLimitValue(storeScope.documentId);',
     'normalizeMenuExtractionProjectId',
@@ -1774,7 +1806,7 @@ notContains(
 
 contains(
   '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
-  ['require the persisted `canUseMenuExtraction` capability', 'includes `canManageStore`', 'only for a definitive 4xx route rejection', 'remain non-destructive'],
+  ['require the persisted `canUseMenuExtraction` capability', 'includes `canManageStore`', 'only for a definitive 4xx', 'route rejection', 'invalid 200 response shapes remain', 'non-destructive'],
   'Menu extraction implementation docs record current permission and suggestion-write authority',
 );
 
@@ -2057,7 +2089,7 @@ contains(
     'getBoundedCreateMenuSuccessStringContext(\'rawClaim\', rawClaim)',
     "setHandoffError(t('CreateMenuSuccess.copyFailed'))",
     "setHandoffError(t('CreateMenuSuccess.whatsAppFailed'))",
-    "const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
+    "openIsolatedBrowserUrl(whatsappUrl)",
     'messageLength: message.length',
     'whatsappUrlLength: whatsappUrl.length',
   ],
@@ -2113,8 +2145,7 @@ contains(
 ordered(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
   [
-    "const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
-    "throw new Error('public_create_menu_success_whatsapp_open_blocked')",
+    "openIsolatedBrowserUrl(whatsappUrl)",
     'recordStarterSignal(STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED);',
     "logCreateMenuSuccessFailure('public_create_menu_success_whatsapp_open_failed'",
   ],
@@ -2124,7 +2155,7 @@ ordered(
 notContains(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
   [
-    "window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')",
+    "openIsolatedBrowserUrl(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')",
     'menuUrlSample',
     'officialPageUrlSample',
     'messageSample',
@@ -2170,7 +2201,7 @@ contains(
     '.doc(tenantDocumentId)',
     '.collection(storeDocumentId)',
     'const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);',
-    'let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};',
+    'let existingSummaryProjectsForDefaultDemotion: Record<string, Record<string, unknown>> = {};',
     'existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists',
     'Object.entries(existingSummaryProjectsForDefaultDemotion).forEach',
     'storeTenantScope?.numericId !== tenantId',
@@ -3633,7 +3664,7 @@ contains(
     'const copied = document.execCommand("copy");',
     'messageLength: message.length',
     'whatsappUrlLength: whatsappUrl.length',
-    'window.open(whatsappUrl, "_blank", "noopener,noreferrer")',
+    'openIsolatedBrowserUrl(whatsappUrl)',
   ],
   'Messaging preview page uses fixed publish/fix/share failure copy and bounded handoff diagnostics',
 );
@@ -3646,7 +3677,7 @@ notContains(
     'await navigator.clipboard.writeText(publishResult.publicUrl);\n      setShareError(null);',
     'await navigator.clipboard.writeText(publicUrl);\n    return;\n  }',
     'document.execCommand("copy");\n    document.body.removeChild(textarea);',
-    'window.open(`https://wa.me/?text=${msg}`, \'_blank\')',
+    'openIsolatedBrowserUrl(`https://wa.me/?text=${msg}`, \'_blank\')',
     'sessionIdSample',
     'publicUrlSample',
     'messageSample',
@@ -4636,8 +4667,7 @@ contains(
   'src/components/templates/main-app/projects/editorView/components/FileImagePreview.tsx',
   [
     'project_file_source_link_open_failed',
-    "throw new Error('project_file_source_link_open_blocked')",
-    "const opened = window.open(sourceUrl, '_blank', 'noopener,noreferrer')",
+    "openIsolatedBrowserUrl(sourceUrl)",
     "getBoundedRuntimeStringContext('sourceUrl', sourceUrl)",
     "getBoundedRuntimeStringContext('fileName', file.name)",
     "getBoundedRuntimeStringContext('fileType', file.type)",

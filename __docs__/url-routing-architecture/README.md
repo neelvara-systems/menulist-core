@@ -38,7 +38,7 @@ Core URL routing infrastructure for MenuList's public pages:
 - **Product-domain separation** (`menulist.ai` = MenuList, `neelvara.com` = Neelvara, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue; MyCodex has no active public domain)
 - **Product site vs product app separation** (`src/app/sites/[productId]` is public website only; owner/product dashboards live in product route groups such as `src/app/(answerlattice)/answerlattice` or `src/app/(campaigncue)/campaigncue`)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
-- **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
+- **Multi-store location routing** (`brand.menulist.online/pune/menu`)
 - **safe outlet path segments** for brand OBP location cards, outlet OBP links, sitemap outlet entries, and outlet canonical redirects
 - **safe project path segments** for menu lookup, sitemap project URLs, old-slug redirects, canonical menu URLs, and OBP menu CTA links
 - **public language parameter parse fallback** that preserves valid `?lang=` links but returns the original URL unchanged if URL parsing fails
@@ -126,7 +126,7 @@ Requests are classified before tenant routing:
 | `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
 | `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
 | `signaldesk.menulist.online` | Private app host | `/signaldesk` |
-| `brand.menulist.ai` | Tenant | `/client` |
+| `brand.menulist.online` | Tenant | `/client` |
 | Verified restaurant custom domain | Tenant | `/client` |
 
 MyCodex currently has no active public domain. Do not add a MyCodex custom domain unless the private-host decision is reopened and `src/constants/deploymentTargets.ts` is updated first.
@@ -168,7 +168,7 @@ This separation keeps public SEO/discovery surfaces away from authenticated owne
 #### Tenant Route Flow
 
 ```
-Customer opens: storypizza.menulist.ai/pune/menu
+Customer opens: storypizza.menulist.online/pune/menu
                                 │
                     ┌───────────┴───────────┐
                     │     MIDDLEWARE          │
@@ -211,20 +211,20 @@ The public menu resolver at `src/app/client/[[...slug]]/page.tsx` follows the sa
 
 | URL                                | Behavior                     |
 | ---------------------------------- | ---------------------------- |
-| `joespizza.menulist.ai/`           | OBP (store identity page)    |
-| `joespizza.menulist.ai/menu`       | Owner-claimed Menu project or explicit-default alias |
-| `joespizza.menulist.ai/drinks-bar` | Project "Drinks Bar"         |
+| `joespizza.menulist.online/`           | OBP (store identity page)    |
+| `joespizza.menulist.online/menu`       | Owner-claimed Menu project or explicit-default alias |
+| `joespizza.menulist.online/drinks-bar` | Project "Drinks Bar"         |
 | `joespizza.com/`                   | Same via custom domain       |
 
 #### Multi-Store Chain (5% of users)
 
 | URL                                    | Behavior                         |
 | -------------------------------------- | -------------------------------- |
-| `storypizza.menulist.ai/`              | Brand OBP (location selector)    |
-| `storypizza.menulist.ai/menu`          | Master store's default menu      |
-| `storypizza.menulist.ai/pune`          | Pune outlet OBP                  |
-| `storypizza.menulist.ai/pune/menu`     | Pune outlet's default menu       |
-| `storypizza.menulist.ai/pune/bar-menu` | Pune outlet's "Bar Menu" project |
+| `storypizza.menulist.online/`              | Brand OBP (location selector)    |
+| `storypizza.menulist.online/menu`          | Master store's default menu      |
+| `storypizza.menulist.online/pune`          | Pune outlet OBP                  |
+| `storypizza.menulist.online/pune/menu`     | Pune outlet's default menu       |
+| `storypizza.menulist.online/pune/bar-menu` | Pune outlet's "Bar Menu" project |
 | `storypizza.com/`                      | Same via custom domain           |
 
 ### Current Caching Layers
@@ -510,9 +510,9 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 
 **URL patterns:**
 
-- `storypizza.menulist.ai/` → Brand OBP (store selector with all outlets)
-- `storypizza.menulist.ai/pune` → Pune outlet OBP (via outletSlug routing, ADR-11)
-- `storypizza.menulist.ai/pune/food-menu` → Pune outlet's "Food Menu" project
+- `storypizza.menulist.online/` → Brand OBP (store selector with all outlets)
+- `storypizza.menulist.online/pune` → Pune outlet OBP (via outletSlug routing, ADR-11)
+- `storypizza.menulist.online/pune/food-menu` → Pune outlet's "Food Menu" project
 
 **Detection:** `OBPContent.tsx` checks `countActiveStoresForTenant()` against active canonical store documents for that tenant → if >1, renders `BrandOBPContent` instead of single-store OBP. Public mode/location selection does not trust the client-writable global store summary.
 
@@ -600,12 +600,12 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 | **ADR-8**  | CDN cache: `s-maxage=60, stale-while-revalidate=300`        | ~80% cache hit rate, reduces Firebase reads                              |
 | **ADR-9**  | Subdomain uniqueness pre-check before transaction           | Globally unique subdomains, race-safe via storeId suffix                 |
 | **ADR-10** | Client resolver reads projectsSummary (not legacy metadata) | Slug field unreachable from legacy collection, 1 read vs N               |
-| **ADR-11** | Outlet path routing via outletSlug                          | `brand.menulist.ai/pune/food-menu` → outlet store resolution             |
+| **ADR-11** | Outlet path routing via outletSlug                          | `brand.menulist.online/pune/food-menu` → outlet store resolution             |
 
 **URL patterns:**
 
-- Single-store: `brand.menulist.ai/{projectSlug}`
-- Multi-store: `brand.menulist.ai/{outletSlug}/{projectSlug}`
+- Single-store: `brand.menulist.online/{projectSlug}`
+- Multi-store: `brand.menulist.online/{outletSlug}/{projectSlug}`
 
 ---
 
@@ -684,7 +684,7 @@ For each tenant:
 ### Initially Rejected, Now Accepted
 
 - **Brand-level subdomain ownership** — initially rejected as "over-engineering." After deeper validation (industry research, SEO best practices, competitive analysis), confirmed as correct. See `_archive/architecture-validation.md`.
-- **Multi-store location paths** (`brand.menulist.ai/pune/menu`) — initially rejected because current code is store-level. Now accepted because current code was accidental, not designed.
+- **Multi-store location paths** (`brand.menulist.online/pune/menu`) — initially rejected because current code is store-level. Now accepted because current code was accidental, not designed.
 
 ### Already Built (ChatGPT Didn't Know)
 

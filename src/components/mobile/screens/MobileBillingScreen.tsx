@@ -11,12 +11,18 @@ import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePay
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
     CANCELLATION_REASON,
     CANCELLATION_REASON_OPTIONS,
     type CancellationReasonCode,
 } from '@lib/billing/cancellationReasons';
-import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
+import {
+    claimStoreSwitchAttempt,
+    getAccessibleStoreSummaries,
+    getStoreSummaryId,
+    releaseStoreSwitchAttempt,
+} from '@lib/multiOutlet/storeSwitchAccess';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, toDate } from '@util/dateTime';
@@ -404,9 +410,18 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
+        if (
+            targetStoreId === billingStoreId
+            || !accessibleBillingStores.some((store) => getStoreSummaryId(store) === targetStoreId)
+        ) return;
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
+        const initiatingScopeKey = billingScopeKey;
+
         try {
             if (targetStoreId === loginStoreId) {
                 if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                if (billingScopeKeyRef.current !== initiatingScopeKey) return;
                 subscriptionRequestSequenceRef.current += 1;
                 billingHistoryRequestSequenceRef.current += 1;
                 setActiveSubscription(null);
@@ -425,7 +440,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 body: JSON.stringify({ targetStoreId }),
             });
             await readAuthAccountResponse(res, 'switch_store');
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             await refreshFirebaseAuthClaims(targetStoreId);
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             subscriptionRequestSequenceRef.current += 1;
             billingHistoryRequestSequenceRef.current += 1;
             setActiveSubscription(null);
@@ -435,12 +452,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });
         } catch (err) {
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             logPaymentFailure('payment_mobile_billing_store_switch_failed', err, buildMobileBillingPaymentLogContext('store_switch', {
                 returningToLoginStore: targetStoreId === loginStoreId,
                 ...getBoundedPaymentStringContext('targetStoreId', targetStoreId),
                 ...getBoundedPaymentStringContext('loginStoreId', loginStoreId),
             }));
             Toast.show({ content: 'Failed to switch store', duration: 2000 });
+        } finally {
+            releaseStoreSwitchAttempt(attemptToken);
         }
     };
 
@@ -451,10 +471,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     ) => {
         if (!url) return;
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_billing_external_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logPaymentFailure('payment_mobile_billing_external_link_open_failed', error, buildMobileBillingPaymentLogContext('external_link_open', {
                 linkKind,

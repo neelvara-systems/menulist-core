@@ -39,6 +39,11 @@ Upload UI
 
 Protected by `withAuth()`.
 
+As of August 1, 2026, distributed limiter uncertainty fails closed before body
+parsing, Firestore reads, Storage access, or Gemini work. A limiter-provider
+outage returns retryable HTTP 503 without quota metadata; actual owner quota
+exhaustion remains HTTP 429.
+
 Desktop and mobile call this route through `runMenuIntakeIdentityPreflight()`, which sends the browser request with same-origin credentials, `no-store` cache policy, and manual redirect handling before the 32KB bounded acknowledgement parser accepts the response shape.
 
 Input:

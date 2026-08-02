@@ -5,29 +5,13 @@
  * must not be written to MenuList or Answerlattice Firebase projects. An
  * explicit shared-mode override is accepted only outside production.
  */
-
 import { admin } from "./firebaseAdminCompat";
 import * as fs from "fs";
 import * as path from "path";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-import {
-    CAMPAIGNCUE_DEFAULT_FIREBASE_APP_NAME,
-    CAMPAIGNCUE_DEFAULT_FIREBASE_CREDENTIAL_PREFIX,
-    CAMPAIGNCUE_FIREBASE_APP_NAME,
-    CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX,
-    CAMPAIGNCUE_FIREBASE_ENV,
-    type CampaignCueAdminCredentialPrefix,
-} from "@constant/campaigncue/firebase";
-import {
-    campaigncueFirebaseProjectId,
-    campaigncueFirestoreDatabaseId,
-    isExpectedCampaignCueProjectId,
-    shouldUseSharedCampaignCueFirebase,
-} from "./campaigncueConfig";
-import {
-    getBoundedFirebaseAdminStringContext,
-    logFirebaseAdminFailure,
-} from "./firebaseAdminDiagnostics";
+import { CAMPAIGNCUE_DEFAULT_FIREBASE_APP_NAME, CAMPAIGNCUE_DEFAULT_FIREBASE_CREDENTIAL_PREFIX, CAMPAIGNCUE_FIREBASE_APP_NAME, CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX, CAMPAIGNCUE_FIREBASE_ENV, type CampaignCueAdminCredentialPrefix, } from "@constant/campaigncue/firebase";
+import { campaigncueFirebaseProjectId, campaigncueFirestoreDatabaseId, isExpectedCampaignCueProjectId, shouldUseSharedCampaignCueFirebase, } from "./campaigncueConfig";
+import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from "./firebaseAdminDiagnostics";
 
 const getCampaignCueProjectId = () => campaigncueFirebaseProjectId;
 
@@ -195,9 +179,29 @@ const campaigncueFirestoreAdmin = campaigncueAdminApp
     ? (campaigncueFirestoreDatabaseId
         ? getAdminFirestore(campaigncueAdminApp, campaigncueFirestoreDatabaseId)
         : getAdminFirestore(campaigncueAdminApp))
-    : (null as unknown as admin.firestore.Firestore);
-const campaigncueStorageAdmin = campaigncueAdminApp ? admin.storage(campaigncueAdminApp) : (null as unknown as admin.storage.Storage);
-const campaigncueAuthAdmin = campaigncueAdminApp ? admin.auth(campaigncueAdminApp) : (null as unknown as admin.auth.Auth);
+    : null;
+const campaigncueStorageAdmin = campaigncueAdminApp ? admin.storage(campaigncueAdminApp) : null;
+const campaigncueAuthAdmin = campaigncueAdminApp ? admin.auth(campaigncueAdminApp) : null;
+
+function requireCampaignCueAdminService<T>(service: T | null, serviceName: string): T {
+    if (!service) {
+        throw new Error(`CampaignCue Firebase Admin ${serviceName} is unavailable.`);
+    }
+    return service;
+}
+
+const requireCampaignCueFirestoreAdmin = () => requireCampaignCueAdminService(
+    campaigncueFirestoreAdmin,
+    'Firestore',
+);
+const requireCampaignCueStorageAdmin = () => requireCampaignCueAdminService(
+    campaigncueStorageAdmin,
+    'Storage',
+);
+const requireCampaignCueAuthAdmin = () => requireCampaignCueAdminService(
+    campaigncueAuthAdmin,
+    'Auth',
+);
 
 export {
     admin,
@@ -205,4 +209,7 @@ export {
     campaigncueAuthAdmin,
     campaigncueFirestoreAdmin,
     campaigncueStorageAdmin,
+    requireCampaignCueAuthAdmin,
+    requireCampaignCueFirestoreAdmin,
+    requireCampaignCueStorageAdmin,
 };

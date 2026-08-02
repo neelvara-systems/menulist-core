@@ -3,6 +3,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { buildAnswerlatticeEntityPrefixTokens } from './entitySearchTokens';
+import { normalizeAnswerlatticeEntityCandidateIdentityName } from './entityCandidateIdentity';
 import { ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT } from './faqContent';
 import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
 import { ANSWERLATTICE_PRODUCT_SURFACE_LIMIT } from './productSurfaceContent';
@@ -1016,7 +1017,7 @@ export async function upsertAnswerlatticeExtractedEntityCandidate(params: {
     const { scope } = params;
     await ensureOntologyCounter(scope);
     const db = getDb();
-    const normalizedName = params.candidate.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const normalizedName = normalizeAnswerlatticeEntityCandidateIdentityName(params.candidate.name);
     const candidateId = `candidate_${sha(`${scope.tId}:${scope.sId}:${params.candidate.type}:${normalizedName}`).slice(0, 32)}`;
     const candidateRef = db.collection(CANDIDATE_COLLECTION).doc(candidateId);
     const counterRef = getCounterRef(scope);

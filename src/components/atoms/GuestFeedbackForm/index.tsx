@@ -46,7 +46,7 @@ interface GuestFeedbackFormProps {
     projectId: string;
     sId: number;
     source: 'menu_footer' | 'feedback_qr' | 'direct_link';
-    storeDetails?: Record<string, any>;
+    storeDetails?: Partial<StoreDataType>;
     storeName?: string;
     tagline?: string;
     tId: number;
@@ -454,7 +454,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         <div className={styles.menuFooter}>
             <MenuFooter
                 activeLanguage={activeLanguage}
-                storeDetails={storeDetails as StoreDataType}
+                storeDetails={storeDetails}
                 moodConfig={moodConfig}
                 projectId={projectId}
                 feedbackEnabled

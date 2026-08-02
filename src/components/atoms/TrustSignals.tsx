@@ -20,7 +20,10 @@ import {
     getPublicCustomerLocale,
 } from '@lib/localization/publicCustomerMessages';
 import { localizePublicHoursText } from '@lib/localization/publicHoursText';
-import { getTrustSignalFreshnessText } from '@lib/menu/trustSignalFreshness';
+import {
+    getTrustSignalFreshnessText,
+    getTrustSignalLocationText,
+} from '@lib/menu/trustSignalFreshness';
 import { resolveHoursOutput } from '@lib/outputControl';
 import type { StoreSpecialHours } from '@type/platform/store';
 
@@ -28,14 +31,14 @@ interface TrustSignalsProps {
     activeLanguage?: string;
     businessType: string;
     businessCategory?: string | null;
-    lastPublishedAt: any; // Date | Timestamp | { seconds: number } | string | null
+    lastPublishedAt: unknown;
     locationArea?: string | null;
     city?: string | null;
     workingHours?: Record<string, string>;
     specialHours?: StoreSpecialHours;
     timeZone?: string;
     /** When hours were last updated — used for confidence-gated rendering */
-    hoursLastUpdatedAt?: any;
+    hoursLastUpdatedAt?: unknown;
     theme?: {
         background: string;
         mutedColor: string;
@@ -49,17 +52,6 @@ interface TrustSignalsProps {
      * "updated today" twice.
      */
     showContextLine?: boolean;
-}
-
-/**
- * Build location string from area and city.
- * Returns null if neither available.
- */
-function getLocationText(area?: string | null, city?: string | null): string | null {
-    if (area && city && area !== city) return `${area}, ${city}`;
-    if (area) return area;
-    if (city) return city;
-    return null;
 }
 
 const SEPARATOR_STYLE = { color: '#cbd5e1' };
@@ -116,7 +108,7 @@ export default function TrustSignals({
         updatedOn: (date) => t('menu.updatedOn', { date }),
         updatedToday: t('menu.updatedToday'),
     });
-    const locationText = getLocationText(locationArea, city);
+    const locationText = getTrustSignalLocationText(locationArea, city);
 
     // Compute operational status — confidence-gated when output control is enabled
     let statusText: string | null = null;

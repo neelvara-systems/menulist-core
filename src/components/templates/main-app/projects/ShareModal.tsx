@@ -1,11 +1,12 @@
 import { Alert, Button, Card, Divider, Flex, Form, Input, Modal, Typography, message, theme } from 'antd';
 import { getBoundedExportStringContext, logExportFailure } from '@lib/export/exportDiagnostics';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { LuFileJson, LuSheet } from 'react-icons/lu';
 import { Project } from './types';
 import { getOutputJson } from './utils/excelUtils';
 
 const SHARE_ENDPOINT_INVALID_MESSAGE = 'Use a public HTTPS API URL.';
+const SHARE_ENDPOINT_URL_MAX_LENGTH = 2_048;
 const SHARE_ENDPOINT_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
     credentials: 'omit' as RequestCredentials,
@@ -30,6 +31,7 @@ function isBlockedShareEndpointHost(hostname: string) {
 }
 
 function normalizeShareEndpointUrl(value: string) {
+    if (value.length > SHARE_ENDPOINT_URL_MAX_LENGTH) return null;
     try {
         const url = new URL(value.trim());
         if (url.protocol !== 'https:') return null;
@@ -53,8 +55,24 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
     const [form] = Form.useForm();
     const [isSharing, setIsSharing] = useState(false);
     const { token } = theme.useToken();
+    const actionInFlightRef = useRef(false);
+    const modalEpochRef = useRef(0);
+    const previousOpenRef = useRef(isOpen);
+    const currentScopeRef = useRef({ isOpen, projectId: projectData.projectId });
+    if (previousOpenRef.current !== isOpen) {
+        previousOpenRef.current = isOpen;
+        modalEpochRef.current += 1;
+    }
+    currentScopeRef.current = { isOpen, projectId: projectData.projectId };
+
+    const isExpectedScope = useCallback((projectId: unknown, modalEpoch: number) => (
+        currentScopeRef.current.isOpen
+        && modalEpochRef.current === modalEpoch
+        && String(currentScopeRef.current.projectId ?? '') === String(projectId ?? '')
+    ), []);
 
     const handleClose = () => {
+        modalEpochRef.current += 1;
         form.resetFields();
         onClose();
         setIsSharing(false);
@@ -69,6 +87,10 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
             message.error(SHARE_ENDPOINT_INVALID_MESSAGE);
             return;
         }
+        if (actionInFlightRef.current) return;
+        const expectedProjectId = projectData.projectId;
+        const expectedModalEpoch = modalEpochRef.current;
+        actionInFlightRef.current = true;
         try {
             setIsSharing(true);
             const data = getOutputJson(projectData);
@@ -88,18 +110,23 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            message.success('Data shared successfully!');
-            handleClose();
+            if (isExpectedScope(expectedProjectId, expectedModalEpoch)) {
+                message.success('Data shared successfully!');
+                handleClose();
+            }
         } catch (error) {
             logExportFailure('project_share_endpoint_post_failed', error, {
                 ...getBoundedExportStringContext('apiUrl', apiUrl),
-                ...getBoundedExportStringContext('projectId', projectData.projectId),
+                ...getBoundedExportStringContext('projectId', expectedProjectId),
                 categoryCount,
                 itemCount,
                 responseStatus,
             });
-            message.error('Failed to share data. Please check the API URL and try again.');
+            if (isExpectedScope(expectedProjectId, expectedModalEpoch)) {
+                message.error('Failed to share data. Please check the API URL and try again.');
+            }
         } finally {
+            actionInFlightRef.current = false;
             setIsSharing(false);
         }
     };
@@ -131,7 +158,7 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
                         }
                     }]}
                 >
-                    <Input.TextArea placeholder="https://yourapi.domain.com/menu-data" />
+                    <Input.TextArea maxLength={SHARE_ENDPOINT_URL_MAX_LENGTH} placeholder="https://yourapi.domain.com/menu-data" />
                 </Form.Item>
 
                 <Alert

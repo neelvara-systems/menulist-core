@@ -90,7 +90,7 @@ async function getEntityBundleManifest(params: BundledEntitiesParams) {
 
 async function loadEntityBundleObject(path: string, params: BundledEntitiesParams) {
     try {
-        return await loadAnswerlatticeBundleObjectServer<{ entities?: any[] }>(path);
+        return await loadAnswerlatticeBundleObjectServer<{ entities?: unknown[] }>(path);
     } catch (error) {
         logRuntimeFailure('answerlattice_public_entities_bundle_object_load_failed', error, getEntityRegistryLogContext(params));
         return null;

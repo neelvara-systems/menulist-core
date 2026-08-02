@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -15,10 +17,7 @@ interface ArticleMetadataProps {
 const ArticleMetadata = ({ article }: ArticleMetadataProps) => {
     const handleSourceOpen = (source: KnowledgeBaseArticleSource) => {
         try {
-            const opened = window.open(source.url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('answerlattice_kb_source_open_blocked');
-            }
+            openIsolatedBrowserUrl(source.url);
         } catch (error) {
             logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
                 surface: 'kb_generation_reconciliation_metadata',

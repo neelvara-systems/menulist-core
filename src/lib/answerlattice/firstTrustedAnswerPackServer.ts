@@ -29,7 +29,7 @@ import {
     reserveAnswerlatticeIntakeUsage,
 } from '@lib/answerlattice/intakeUsageLedger';
 import { normalizeAnswerlatticeRoutePath } from '@lib/answerlattice/compiledContext';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeGeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
@@ -58,7 +58,7 @@ export type AnswerlatticeProductStarterPackDependencies = {
     generateContent?: (prompt: string) => Promise<PackProviderResponse>;
 };
 
-const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
+const getAnswerlatticeStarterPackDb = () => requireAnswerlatticeFirestoreAdmin();
 const JOBS = DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS;
 const SOURCES = DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES;
 const REVIEW_ITEMS = DB_COLLECTIONS.ANSWERLATTICE_INTAKE_REVIEW_ITEMS;
@@ -94,8 +94,8 @@ const sha256 = (value: string) => crypto.createHash('sha256').update(value).dige
 const now = () => Timestamp.now();
 
 const getSummaryId = (scope: PackScope) => `knowledgeIntakeSummary_${scope.tId}_${scope.sId}`;
-const jobRef = (jobId: string) => db.collection(JOBS).doc(jobId);
-const reviewItemRef = (itemId: string) => db.collection(REVIEW_ITEMS).doc(itemId);
+const jobRef = (jobId: string) => getAnswerlatticeStarterPackDb().collection(JOBS).doc(jobId);
+const reviewItemRef = (itemId: string) => getAnswerlatticeStarterPackDb().collection(REVIEW_ITEMS).doc(itemId);
 
 const assertEnabled = () => {
     if (
@@ -473,6 +473,7 @@ const loadCachedPack = async (
     job: AnswerlatticeKnowledgeIntakeJob,
     sourceHash: string,
 ): Promise<AnswerlatticeProductStarterPackResult | null> => {
+    const db = getAnswerlatticeStarterPackDb();
     const run = job.launchPackRun;
     if (run?.status !== 'completed' || run.sourceHash !== sourceHash || run.reviewItemIds?.length !== ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE) {
         return null;
@@ -523,6 +524,7 @@ const markRunFailed = async (
     sourceHash: string,
     actor?: PackActor,
 ) => {
+    const db = getAnswerlatticeStarterPackDb();
     await db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(jobRef(jobId));
         if (!snapshot.exists) return;
@@ -549,9 +551,7 @@ export async function generateAnswerlatticeProductStarterPack(
     dependencies: AnswerlatticeProductStarterPackDependencies = {},
 ): Promise<AnswerlatticeProductStarterPackResult> {
     assertEnabled();
-    if (!db || typeof (db as unknown as { collection?: unknown }).collection !== 'function') {
-        throw new Error('Answerlattice Firebase is not configured.');
-    }
+    const db = getAnswerlatticeStarterPackDb();
     const scope = assertScope(scopeInput);
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(jobIdInput);
     if (!jobId) throw new Error('Knowledge intake job not found.');

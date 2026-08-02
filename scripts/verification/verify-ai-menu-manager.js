@@ -614,12 +614,12 @@ const resolverFixtureContext = {
   projectName: 'Bar Menu',
   storeName: 'Grill Zilla',
   publicLinks: {
-    customerAppInstallUrl: 'https://grillzilla.menulist.ai/?pwa=install',
-    digitalScreenHighlightsUrl: 'https://grillzilla.menulist.ai/screen/screen-token?mode=highlights',
-    digitalScreenUrl: 'https://grillzilla.menulist.ai/screen/screen-token',
-    menuUrl: 'https://grillzilla.menulist.ai/bar-menu',
-    officialPageUrl: 'https://grillzilla.menulist.ai',
-    tenantBaseUrl: 'https://grillzilla.menulist.ai',
+    customerAppInstallUrl: 'https://grillzilla.menulist.online/?pwa=install',
+    digitalScreenHighlightsUrl: 'https://grillzilla.menulist.online/screen/screen-token?mode=highlights',
+    digitalScreenUrl: 'https://grillzilla.menulist.online/screen/screen-token',
+    menuUrl: 'https://grillzilla.menulist.online/bar-menu',
+    officialPageUrl: 'https://grillzilla.menulist.online',
+    tenantBaseUrl: 'https://grillzilla.menulist.online',
   },
   menuDesign: { accentColor: '#22c55e', mood: 'clean', layout: 'card', showCategoryIcons: true, showCategoryTabs: false, showImages: true, showItemPrices: true },
   decisionBlocks: { enablePopular: false, enableQuickPick: true, enableBestValue: true },
@@ -1370,16 +1370,17 @@ assert(aiMenuManagerEmulator.includes('a conflicting deterministic proposal must
 const desktopRoute = read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx');
 const desktopProposalCard = read('src/components/templates/main-app/aiMenuManager/cards/AiMenuProposalCard.tsx');
 const localActionUrl = read('src/lib/ai-menu-manager/localActionUrl.ts');
+const isolatedBrowserUrl = read('src/lib/browser/openIsolatedBrowserUrl.ts');
 assert(localActionUrl.includes('AI_MENU_MANAGER_LOCAL_ACTION_URL_INVALID'), 'AMM local-action URL helper must throw a fixed invalid URL code');
 assert(localActionUrl.includes("url.protocol === 'https:'"), 'AMM local-action URL helper must allow HTTPS URLs');
 assert(localActionUrl.includes("url.protocol === 'http:' && isKnownLocalDevelopmentHost(url)"), 'AMM local-action URL helper must allow known local-dev HTTP URLs only');
 assert(localActionUrl.includes('url.username || url.password'), 'AMM local-action URL helper must reject credentialed URLs');
-assert(localActionUrl.includes("host.endsWith('.menulist.ai')"), 'AMM local-action URL helper must preserve local tenant-host testing support');
+assert(localActionUrl.includes("host.endsWith('.qa.menulist.digital')"), 'AMM local-action URL helper must preserve QA tenant-host testing support');
+assert(!localActionUrl.includes("host.endsWith('.menulist.ai')"), 'AMM local-action URL helper must not preserve legacy .ai tenant-host testing');
 assert(desktopProposalCard.includes("action.type === 'copy_url'"), 'Desktop AMM cards must support copy_url local actions');
 assert(desktopProposalCard.includes("action.type === 'copy_text'"), 'Desktop AMM cards must support copy_text local actions');
 assert(desktopProposalCard.includes("action.type === 'download_text'"), 'Desktop AMM cards must support download_text local actions');
 assert(desktopProposalCard.includes('ai_menu_manager_local_action_failed'), 'Desktop AMM cards must log bounded local-action failures');
-assert(desktopProposalCard.includes('ai_menu_manager_local_action_open_blocked'), 'Desktop AMM cards must detect blocked local-action URL opens');
 assert(desktopProposalCard.includes('ai_menu_manager_local_action_copy_unavailable'), 'Desktop AMM cards must reject unavailable local copy handoffs');
 assert(desktopProposalCard.includes('ai_menu_manager_local_action_copy_fallback_failed'), 'Desktop AMM cards must reject failed textarea copy fallback');
 assert(desktopProposalCard.includes('hasRuntimeClipboardWrite') && desktopProposalCard.includes('hasRuntimeCopyFallback'), 'Desktop AMM cards must use shared runtime copy support checks');
@@ -1387,14 +1388,15 @@ assert(desktopProposalCard.includes('let clipboardWriteError: unknown;') && desk
 assert(desktopProposalCard.includes('clipboardWriteRejected: Boolean(clipboardWriteError)'), 'Desktop AMM cards must preserve Clipboard rejection context in unavailable-copy failures');
 assert(desktopProposalCard.includes('normalizeAiMenuManagerLocalActionUrl'), 'Desktop AMM cards must normalize local-action URLs');
 assert(desktopProposalCard.includes('copyTextToClipboard(normalizeAiMenuManagerLocalActionUrl(action.value))'), 'Desktop AMM cards must normalize copy_url actions');
-assert(desktopProposalCard.includes('const actionUrl = normalizeAiMenuManagerLocalActionUrl(action.value);'), 'Desktop AMM cards must normalize open/QR local-action URLs');
-assert(desktopProposalCard.includes("const opened = window.open(actionUrl, '_blank', 'noopener,noreferrer')"), 'Desktop AMM cards must use safe normalized local-action URL opens');
+assert(desktopProposalCard.includes('const actionUrl = normalizeAiMenuManagerLocalActionUrl(action.value);'), 'Desktop AMM cards must normalize QR local-action URLs');
+assert(desktopProposalCard.includes('openAiMenuManagerLocalActionUrl(action.value)'), 'Desktop AMM cards must use the shared normalized no-opener URL handoff');
 assert(desktopProposalCard.includes("getBoundedRuntimeStringContext('actionValue', action.value)"), 'Desktop AMM cards must bound local-action values in diagnostics');
 assert(desktopProposalCard.includes("getBoundedRuntimeStringContext('cardId', card.cardId)"), 'Desktop AMM cards must bound card ids in local-action diagnostics');
 assert(desktopProposalCard.includes('hasClipboardWrite: hasRuntimeClipboardWrite()') && desktopProposalCard.includes('hasCopyFallback: hasRuntimeCopyFallback()'), 'Desktop AMM local-action diagnostics must include copy support metadata');
 assert(desktopProposalCard.includes("const copied = document.execCommand('copy');"), 'Desktop AMM cards must inspect textarea copy fallback acknowledgement');
 assert(!desktopProposalCard.includes("\n                window.open(action.value, '_blank', 'noopener,noreferrer');\n                return;"), 'Desktop AMM cards must not silently open local-action URLs');
 assert(!desktopProposalCard.includes("window.open(action.value, '_blank', 'noopener,noreferrer')"), 'Desktop AMM cards must not open unnormalized local-action URLs');
+assert(!desktopProposalCard.includes('window.open('), 'Desktop AMM cards must not misread the intentionally severed noopener window handle as a blocked popup');
 assert(!desktopProposalCard.includes("if (navigator.clipboard?.writeText) {\n        await navigator.clipboard.writeText(value);\n        return;\n    }"), 'Desktop AMM cards must not fail rejected Clipboard API writes before textarea fallback');
 assert(!desktopProposalCard.includes("document.execCommand('copy');\n    document.body.removeChild(textarea);"), 'Desktop AMM cards must not treat failed textarea copy fallback as success');
 assert(desktopRoute.includes('sessionProjectIdRef'), 'Desktop AMM must track session ids per selected project');
@@ -1466,7 +1468,6 @@ assert(mobileProposalCard.includes("action.type === 'copy_url'"), 'Mobile AMM ca
 assert(mobileProposalCard.includes("action.type === 'copy_text'"), 'Mobile AMM cards must support copy_text local actions');
 assert(mobileProposalCard.includes("action.type === 'download_text'"), 'Mobile AMM cards must support download_text local actions');
 assert(mobileProposalCard.includes('mobile_ai_menu_manager_local_action_failed'), 'Mobile AMM cards must log bounded local-action failures');
-assert(mobileProposalCard.includes('mobile_ai_menu_manager_local_action_open_blocked'), 'Mobile AMM cards must detect blocked local-action URL opens');
 assert(mobileProposalCard.includes('mobile_ai_menu_manager_local_action_copy_unavailable'), 'Mobile AMM cards must reject unavailable local copy handoffs');
 assert(mobileProposalCard.includes('mobile_ai_menu_manager_local_action_copy_fallback_failed'), 'Mobile AMM cards must reject failed textarea copy fallback');
 assert(mobileProposalCard.includes('hasRuntimeClipboardWrite') && mobileProposalCard.includes('hasRuntimeCopyFallback'), 'Mobile AMM cards must use shared runtime copy support checks');
@@ -1474,14 +1475,20 @@ assert(mobileProposalCard.includes('let clipboardWriteError: unknown;') && mobil
 assert(mobileProposalCard.includes('clipboardWriteRejected: Boolean(clipboardWriteError)'), 'Mobile AMM cards must preserve Clipboard rejection context in unavailable-copy failures');
 assert(mobileProposalCard.includes('normalizeAiMenuManagerLocalActionUrl'), 'Mobile AMM cards must normalize local-action URLs');
 assert(mobileProposalCard.includes('copyTextToClipboard(normalizeAiMenuManagerLocalActionUrl(action.value))'), 'Mobile AMM cards must normalize copy_url actions');
-assert(mobileProposalCard.includes('const actionUrl = normalizeAiMenuManagerLocalActionUrl(action.value);'), 'Mobile AMM cards must normalize open/QR local-action URLs');
-assert(mobileProposalCard.includes("const opened = window.open(actionUrl, '_blank', 'noopener,noreferrer')"), 'Mobile AMM cards must use safe normalized local-action URL opens');
+assert(mobileProposalCard.includes('const actionUrl = normalizeAiMenuManagerLocalActionUrl(action.value);'), 'Mobile AMM cards must normalize QR local-action URLs');
+assert(mobileProposalCard.includes('openAiMenuManagerLocalActionUrl(action.value)'), 'Mobile AMM cards must use the shared normalized no-opener URL handoff');
 assert(mobileProposalCard.includes("getBoundedRuntimeStringContext('actionValue', action.value)"), 'Mobile AMM cards must bound local-action values in diagnostics');
 assert(mobileProposalCard.includes("getBoundedRuntimeStringContext('cardId', card.cardId)"), 'Mobile AMM cards must bound card ids in local-action diagnostics');
 assert(mobileProposalCard.includes('hasClipboardWrite: hasRuntimeClipboardWrite()') && mobileProposalCard.includes('hasCopyFallback: hasRuntimeCopyFallback()'), 'Mobile AMM local-action diagnostics must include copy support metadata');
 assert(mobileProposalCard.includes("const copied = document.execCommand('copy');"), 'Mobile AMM cards must inspect textarea copy fallback acknowledgement');
 assert(!mobileProposalCard.includes("\n                window.open(action.value, '_blank', 'noopener,noreferrer');\n                return;"), 'Mobile AMM cards must not silently open local-action URLs');
 assert(!mobileProposalCard.includes("window.open(action.value, '_blank', 'noopener,noreferrer')"), 'Mobile AMM cards must not open unnormalized local-action URLs');
+assert(!mobileProposalCard.includes('window.open('), 'Mobile AMM cards must not misread the intentionally severed noopener window handle as a blocked popup');
+assert(localActionUrl.includes("import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';"), 'AMM local-action URL handoff must use the shared isolated browser helper');
+assert(localActionUrl.includes('openIsolatedBrowserUrl(actionUrl);'), 'AMM local-action URL handoff must pass only its normalized URL to the shared helper');
+assert(isolatedBrowserUrl.includes("anchor.rel = 'noopener noreferrer'"), 'Shared AMM browser handoff must isolate the new browsing context');
+assert(isolatedBrowserUrl.includes("anchor.target = '_blank'"), 'Shared AMM browser handoff must open in a new browsing context');
+assert(isolatedBrowserUrl.includes('anchor.remove();'), 'Shared AMM browser handoff must clean up its temporary DOM node');
 assert(!mobileProposalCard.includes("if (navigator.clipboard?.writeText) {\n        await navigator.clipboard.writeText(value);\n        return;\n    }"), 'Mobile AMM cards must not fail rejected Clipboard API writes before textarea fallback');
 assert(!mobileProposalCard.includes("document.execCommand('copy');\n    document.body.removeChild(textarea);"), 'Mobile AMM cards must not treat failed textarea copy fallback as success');
 assert(mobileScreen.includes('useMobileProjects'), 'Mobile AMM must use existing mobile project provider');

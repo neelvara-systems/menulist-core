@@ -209,7 +209,7 @@ async function sendStalenessMessage(params: {
         data: {
             ownerName: params.ownerName,
             businessName: params.businessName,
-            dashboardLink: `https://menulist.ai/dashboard`,
+            dashboardLink: `https://app.menulist.ai`,
         },
     });
     

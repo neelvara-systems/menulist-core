@@ -5,7 +5,7 @@
  * Uses actual store.modifiedOn timestamp for accurate freshness signals to AI
  * crawlers.
  *
- * Example: joespizza.menulist.ai/sitemap.xml → Just Joe's Pizza OBP + menus.
+ * Example: joespizza.menulist.online/sitemap.xml → Just Joe's Pizza OBP + menus.
  *
  * ─── T1-N-01 (A-08 + R5 PUBLIC-ROUTING-DOCTRINE) ───────────────────────
  * Sitemap rules (locked):

@@ -253,7 +253,7 @@ export type StoreDataType = {
     };
 
     // Multi-tenant Domain Settings
-    subdomain?: string; // e.g., "joespizza" → joespizza.menulist.ai
+    subdomain?: string; // e.g., "joespizza" → joespizza.menulist.online
     customDomain?: string; // e.g., "joespizza.com"
     domainVerified?: boolean; // DNS verification status
     primaryProjectId?: string; // Default project to show on domain
@@ -289,7 +289,7 @@ export type StoreDataType = {
     // @see __docs__/url-routing-architecture/README.md ADR-1
 
     /** URL path segment for outlet routing under brand subdomain.
-     *  e.g., "pune" → brand.menulist.ai/pune
+     *  e.g., "pune" → brand.menulist.online/pune
      *  Auto-generated from outlet name during creation.
      *  Only set on outlet stores (isMaster=false). Master store has subdomain instead. */
     outletSlug?: string;

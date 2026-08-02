@@ -9,6 +9,7 @@
 
 "use client";
 
+import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { secureError } from "@lib/security/secureLogger";
@@ -303,10 +304,7 @@ export default function MsgPreviewPage() {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     try {
-      const openedWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      if (!openedWindow) {
-        throw new Error("msg_preview_success_whatsapp_open_blocked");
-      }
+      openIsolatedBrowserUrl(whatsappUrl);
       setShareError(null);
     } catch (err) {
       logMsgPreviewClientFailure("msg_preview_success_whatsapp_open_failed", err, {

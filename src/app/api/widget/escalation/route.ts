@@ -38,7 +38,7 @@ const WidgetEscalationRequestSchema = z.object({
 
 const jsonResponse = (
     request: NextRequest,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     init?: ResponseInit,
 ): NextResponse => {
     const response = NextResponse.json(body, init);

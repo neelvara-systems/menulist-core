@@ -851,6 +851,10 @@ function verifyWebsiteAnalyticsBoundary() {
   const plausibleScript = read('src/components/shared/analytics/PlausibleAnalyticsScript.tsx');
   const publicAnalyticsContext = read('src/lib/website/publicAnalyticsContext.ts');
   const clarityAnalytics = read('src/components/website/ClarityAnalytics.tsx');
+  const clientPage = read('src/app/client/[[...slug]]/page.tsx');
+  const clientRenderer = read('src/components/templates/website/clientWebsite/index.tsx');
+  const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const mobileSeoAnalytics = read('src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx');
   const resourceAnalytics = read('src/components/website/resources/ResourceAnalytics.tsx');
   const resourceTrackedLink = read('src/components/website/resources/ResourceTrackedLink.tsx');
   const articleSection = read('src/components/website/resources/ArticleSection.tsx');
@@ -1068,6 +1072,12 @@ function verifyWebsiteAnalyticsBoundary() {
     'process.env.NEXT_PUBLIC_CLARITY_ID ||',
     'Clarity analytics permissive env fallback',
   );
+  assertIncludes(clientPage, "function getGoogleVerificationMetadata(storeData: any): Pick<Metadata, 'verification'>", 'App Router Search Console metadata boundary');
+  assertIncludes(clientPage, 'normalizeGoogleSearchConsoleVerification(storeData?.analytics?.googleSearchConsole)', 'public Search Console verification token projection');
+  assertIncludes(clientPage, '...getGoogleVerificationMetadata(metadataStore)', 'outlet/project Search Console metadata projection');
+  assertNotIncludes(clientRenderer, '<GoogleSearchConsole', 'legacy client next/head Search Console projection');
+  assertIncludes(businessSettings, 'normalizeGoogleSearchConsoleVerification(next.googleSearchConsole)', 'desktop Search Console write normalization');
+  assertIncludes(mobileSeoAnalytics, 'normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole)', 'mobile Search Console write normalization');
   assertIncludes(
     mainWebsiteImpl,
     'Microsoft Clarity remains MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID`',

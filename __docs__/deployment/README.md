@@ -1,7 +1,7 @@
 # Deployment — Documentation Hub
 
 > **Category:** Infrastructure  
-> **Last Updated:** July 27, 2026
+> **Last Updated:** August 1, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This hub links deployment runbooks; current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
@@ -11,7 +11,7 @@
 
 | Document | Purpose |
 |----------|---------|
-| [menulist-staging-qa-setup.md](./menulist-staging-qa-setup.md) | First execution guide for MenuList local/staging setup only: `menulist.online`, Firebase `menulist-qa`, Vercel Preview env, QA provider keys, Firebase QA secrets, and smoke checks |
+| [menulist-staging-qa-setup.md](./menulist-staging-qa-setup.md) | First execution guide for MenuList local/staging setup only: `qa.menulist.digital`, `*.qa.menulist.digital`, Firebase `menulist-qa`, Vercel Preview env, QA provider keys, Firebase QA secrets, and smoke checks |
 | [initial-account-domain-firebase-setup-guide.md](./initial-account-domain-firebase-setup-guide.md) | Owner-facing one-time setup guide for domain purchase, Workspace, Google Cloud/Firebase projects, Vercel, DNS, provider accounts, env placement, and staging-before-production order |
 | [three-product-environment-setup.md](./three-product-environment-setup.md) | Technical product/domain/account/env setup checklist for Neelvara, MenuList, Answerlattice, CampaignCue, SignalDesk, and MyCodex |
 | [production-deployment-checklist.md](./production-deployment-checklist.md) | Guarded production handoff checklist; routes external gates through the production-readiness runbook and does not authorize deploys without active approval |

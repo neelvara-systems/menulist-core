@@ -28,8 +28,19 @@ assertKind('negative FAQ is unresolved evidence', {
 assertKind('source-backed RAG is an approved-answer gap', {
     answerSource: 'rag',
     resolutionOutcome: 'resolved',
-    references: [{ id: 'article-1' }],
+    references: [{ id: 'article-1', title: 'Billing limits' }],
 }, 'approved_answer_gap');
+
+assertKind('resolved RAG without a valid source is not a gap', {
+    answerSource: 'rag',
+    resolutionOutcome: 'resolved',
+    references: [{ id: 'article-1' }],
+}, null);
+
+assertKind('unresolved RAG without a valid source is unresolved evidence', {
+    answerSource: 'rag',
+    references: [{ id: 'article-1' }],
+}, 'unresolved');
 
 assertKind('empty result is unresolved evidence', {
     answerSource: 'empty',
@@ -38,9 +49,20 @@ assertKind('empty result is unresolved evidence', {
 
 assertKind('clarification request is unresolved evidence', {
     answerSource: 'empty',
-    clarification: { field: 'plan' },
+    clarification: { type: 'scope_context', requiredContext: ['plan'] },
     references: [],
 }, 'unresolved');
+
+assertKind('malformed clarification is not evidence', {
+    answerSource: 'canonical',
+    clarification: {},
+    references: [],
+}, null);
+
+assertKind('malformed references do not create an approved-answer gap', {
+    answerSource: 'canonical',
+    references: [null, {}, { id: 'article-1' }, { id: 'article-1', title: '' }],
+}, null);
 
 const escalated = assertKind('escalated result is unresolved evidence', {
     answerSource: 'rag',

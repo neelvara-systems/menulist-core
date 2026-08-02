@@ -2,7 +2,7 @@
 
 > Status: one-time infrastructure setup runbook
 > Scope: Neelvara Systems, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex
-> Last updated: July 27, 2026
+> Last updated: August 1, 2026
 > Launch boundary: not current launch certification or deploy approval. This setup checklist cannot certify a release; production deployment approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
 This document is the setup checklist for fresh company, domain, staging/local,
@@ -16,16 +16,21 @@ dedicated MenuList QA guide:
 Start with the owner-facing setup sequence before filling env values:
 [Initial Account, Domain, Firebase, And Vercel Setup Guide](./initial-account-domain-firebase-setup-guide.md).
 
-July 29, 2026 owner corrections:
+Current owner corrections:
 
-- `menulist.digital` is no longer a setup dependency. Treat that domain as
-  discarded for new infrastructure setup.
+- `qa.menulist.digital` is the MenuList QA/staging app host and
+  `*.qa.menulist.digital` is the MenuList QA tenant-test host family.
+- `menulist.digital` apex and `www.menulist.digital` are not product/public
+  hosts; redirect them to `menulist.ai` or serve a noindex internal page.
+- `menulist.online` is not MenuList staging. It is the production customer
+  tenant family (`*.menulist.online`) plus exact apex/`www` redirects to
+  `menulist.ai`.
 - SignalDesk should use the `menulist.online` domain family unless a later
   contract explicitly changes it.
 - MenuList product env names should move to `MENULIST_*`; public browser keys
   use `NEXT_PUBLIC_MENULIST_*` because Next.js requires `NEXT_PUBLIC_`.
-- SignalDesk env names should move from `SIGNALDESK_*` to
-  `SIGNALDESK_*`.
+- SignalDesk env names use `SIGNALDESK_*`. Do not create
+  `MENULIST_SIGNALDESK_*` env keys.
 
 Use this as the blind-follow setup guide, with one caveat: domain availability
 must be verified in the registrar checkout at purchase time because availability
@@ -146,11 +151,18 @@ Complete these in order. Do not skip to production until QA passes.
 4. [ ] Store staging Gemini values in Vercel staging and Firebase Secret Manager for `menulist-qa`.
 5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist`.
 6. [ ] Store Answerlattice Gemini values in `ANSWERLATTICE_GEMINI_AI_KEY` and SignalDesk Gemini values in `SIGNALDESK_GEMINI_AI_KEY` for the matching Vercel environment.
-7. [ ] Add `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `ANSWERLATTICE_GEMINI_AI_KEY_2`, and `SIGNALDESK_GEMINI_AI_KEY_2` style rotation keys only when real rotation/failover keys exist. Do not treat them as quota scaling when they belong to the same Google project.
+7. [ ] Create every Firebase-declared AI rotation secret name before deploying
+   the matching Functions target. Prefer separate real failover keys for
+   `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, and
+   `ANSWERLATTICE_GEMINI_AI_KEY_2` style slots; if a slot temporarily uses the
+   same provider/account value, record it as a rotate-later placeholder and do
+   not treat it as quota scaling.
 8. [ ] Configure budget alerts, spend monitoring, and model/project quota checks for the Google Cloud project that owns each Gemini key.
 9. [ ] Deploy MenuList QA Functions after secrets exist:
    ```bash
-   firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
+   npm run verify:functions-deploy-preflight
+   npm --prefix functions run build
+   npm --prefix functions run deploy:menulist-qa
    ```
 10. [ ] Deploy Answerlattice QA Functions after project access is fixed:
    ```bash
@@ -198,7 +210,7 @@ Complete these in order. Do not skip to production until QA passes.
 
 | Product | Code | Local URL | Staging URL | Staging Firebase | Production URL | Production Firebase |
 | --- | --- | --- | --- | --- | --- | --- |
-| MenuList | `ML` | `http://localhost:3000/` | `https://menulist.online` | `menulist-qa` | `https://menulist.ai` | `menulist` |
+| MenuList | `ML` | `http://localhost:3000/` | `https://qa.menulist.digital` | `menulist-qa` | `https://menulist.ai`; owner app `https://app.menulist.ai`; customer tenants `*.menulist.online` | `menulist` |
 | Neelvara | none | `http://localhost:3000/__neelvara/` | `https://neelvara.menulist.online` | none | `https://neelvara.com` | none |
 | Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
 | CampaignCue | `CC` | `http://localhost:3000/__campaigncue/` | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
@@ -215,8 +227,8 @@ Code references:
 
 Current live DNS/HTTP spot check from July 27, 2026:
 
-- `menulist.ai`, `answerlattice.com`, `menulist.online`, and product staging
-  subdomains under `menulist.online` resolve/respond.
+- `menulist.ai`, `answerlattice.com`, `qa.menulist.digital`, and product
+  staging subdomains under `menulist.online` resolve/respond.
 - `neelvara.com` and `campaigncue.ai` do not resolve
   from this environment yet. Verify purchase/ownership and Vercel DNS before
   treating those production hosts as live.
@@ -384,8 +396,13 @@ domains across personal accounts.
 | Domain | Purpose | Action |
 | --- | --- | --- |
 | `neelvara.com` | Neelvara Systems parent/entity trust website | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
-| `menulist.ai` | MenuList production website/app/customer hosts | Already resolves; retain and connect/verify in Vercel |
-| `menulist.online` | QA/staging host for shared app and product subdomains | Already resolves; retain |
+| `menulist.ai` | MenuList production marketing/platform root | Already resolves; retain and connect/verify in Vercel |
+| `app.menulist.ai` | MenuList production owner/staff authenticated app | Subdomain only; configure in Vercel/DNS |
+| `*.menulist.online` | MenuList production customer menu/OBP tenant links | Wildcard/subdomains only; configure in Vercel/DNS |
+| `menulist.online` | Production redirect to `menulist.ai`; SignalDesk and sister-product staging subdomains also use this domain family | Already resolves; retain |
+| `qa.menulist.digital` | MenuList QA/staging app | Already owned; configure in Vercel/DNS for MenuList QA |
+| `*.qa.menulist.digital` | MenuList QA tenant test links | Wildcard/subdomains only; configure in Vercel/DNS |
+| `menulist.digital` | Apex is not product/public; redirect to `menulist.ai` or noindex internal page | Already owned; do not use for MyCodex |
 | `answerlattice.com` | Answerlattice production website/app | Already resolves; retain and connect/verify in Vercel |
 | `campaigncue.ai` | CampaignCue production website/app | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
 | `canonica.app` | Legacy Answerlattice name if already owned | Retain only as redirect to `answerlattice.com`; do not create Canonica accounts |
@@ -454,6 +471,7 @@ delivery before using production SMTP.
 Open the registrar or DNS provider for each domain:
 
 - `neelvara.com`
+- `menulist.digital`
 - `menulist.online`
 - `menulist.ai`
 - `answerlattice.com`
@@ -463,8 +481,8 @@ Expected hostnames:
 
 | Hostname | Environment | Product |
 | --- | --- | --- |
-| `menulist.online` | staging | MenuList |
-| `www.menulist.online` | staging | MenuList |
+| `qa.menulist.digital` | staging | MenuList |
+| `*.qa.menulist.digital` | staging | MenuList tenant tests |
 | `neelvara.menulist.online` | staging | Neelvara |
 | `answerlattice.menulist.online` | staging | Answerlattice |
 | `campaigncue.menulist.online` | staging | CampaignCue |
@@ -474,7 +492,11 @@ Expected hostnames:
 | `app.menulist.ai` | production | MenuList app alias |
 | `help.menulist.ai` | production | MenuList help alias |
 | `support.menulist.ai` | production | MenuList support alias |
-| `*.menulist.ai` | production | MenuList customer/public subdomains |
+| `*.menulist.online` | production | MenuList customer/public subdomains |
+| `menulist.online` | production redirect | Redirect to `menulist.ai` |
+| `www.menulist.online` | production redirect | Redirect to `menulist.ai` |
+| `menulist.digital` | noindex/redirect | Not product/public |
+| `www.menulist.digital` | noindex/redirect | Not product/public |
 | `neelvara.com` | production | Neelvara |
 | `www.neelvara.com` | production | Neelvara |
 | `answerlattice.com` | production | Answerlattice |
@@ -710,8 +732,8 @@ Authorized domains:
 
 | Project | Domains |
 | --- | --- |
-| `menulist-qa` | `localhost`, `menulist.online`, `www.menulist.online` |
-| `menulist` | `menulist.ai`, `www.menulist.ai` |
+| `menulist-qa` | `localhost`, `qa.menulist.digital`, tested QA tenant hosts such as `demo.qa.menulist.digital` |
+| `menulist` | `menulist.ai`, `www.menulist.ai`, `app.menulist.ai` |
 | `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
@@ -783,8 +805,7 @@ Staging/local JavaScript origins:
 
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
-- `https://menulist.online`
-- `https://www.menulist.online`
+- `https://qa.menulist.digital`
 - `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
@@ -793,6 +814,7 @@ Production JavaScript origins:
 
 - `https://menulist.ai`
 - `https://www.menulist.ai`
+- `https://app.menulist.ai`
 - `https://answerlattice.com`
 - `https://www.answerlattice.com`
 - `https://campaigncue.ai`
@@ -809,13 +831,12 @@ Add these redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `http://127.0.0.1:3000/api/auth/callback/google`
-- `https://menulist.online/api/auth/callback/google`
-- `https://www.menulist.online/api/auth/callback/google`
+- `https://qa.menulist.digital/api/auth/callback/google`
 - `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
 - `https://menulist.ai/api/auth/callback/google`
-- `https://www.menulist.ai/api/auth/callback/google`
+- `https://app.menulist.ai/api/auth/callback/google`
 - `https://answerlattice.com/api/auth/callback/google`
 - `https://www.answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
@@ -857,10 +878,11 @@ Set these identity values:
 
 ```env
 NEXT_PUBLIC_ENV=preview
-NEXT_PUBLIC_APP_URL=https://menulist.online
-NEXT_PUBLIC_DEPLOYMENT_URL=https://menulist.online
-NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.online,www.menulist.online
+NEXT_PUBLIC_APP_URL=https://qa.menulist.digital
+NEXT_PUBLIC_DEPLOYMENT_URL=https://qa.menulist.digital
+NEXT_PUBLIC_PLATFORM_DOMAIN=qa.menulist.digital
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=qa.menulist.digital
+NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=qa.menulist.digital
 ```
 
 Use QA Firebase values:
@@ -881,7 +903,8 @@ NEXT_PUBLIC_ENV=production
 NEXT_PUBLIC_APP_URL=https://menulist.ai
 NEXT_PUBLIC_DEPLOYMENT_URL=https://menulist.ai
 NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.ai,www.menulist.ai
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.ai,www.menulist.ai,app.menulist.ai
+NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online
 ```
 
 Use production Firebase values:
@@ -1224,7 +1247,7 @@ Checklist:
 - [ ] Set staging MenuList Functions secrets:
       `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
 - [ ] Add staging webhook endpoint:
-      `https://menulist.online/api/razorpay/webhook`.
+      `https://qa.menulist.digital/api/razorpay/webhook`.
 - [ ] Use Razorpay Live Mode for production.
 - [ ] Generate live key id and secret.
 - [ ] Set production Vercel env with live values.
@@ -1308,8 +1331,8 @@ Checklist:
 
 Staging App Check domains:
 
-- `menulist.online`
-- `www.menulist.online`
+- `qa.menulist.digital`
+- tested QA tenant hosts such as `demo.qa.menulist.digital`
 - `answerlattice.menulist.online`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
@@ -1318,6 +1341,8 @@ Production App Check domains:
 
 - `menulist.ai`
 - `www.menulist.ai`
+- `app.menulist.ai`
+- production tenant hosts under `*.menulist.online` if the public customer runtime uses App Check on those pages
 - `answerlattice.com`
 - `www.answerlattice.com`
 - `campaigncue.ai`
@@ -1499,7 +1524,7 @@ Open: https://uptimerobot.com/
 
 Checklist:
 
-- [ ] Add monitor for `https://menulist.online`.
+- [ ] Add monitor for `https://qa.menulist.digital`.
 - [ ] Add monitor for `https://answerlattice.menulist.online`.
 - [ ] Add monitor for `https://campaigncue.menulist.online`.
 - [ ] Add monitor for `https://signaldesk.menulist.online`.
@@ -1552,7 +1577,8 @@ MenuList staging:
 ```bash
 firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive
 npm run verify:functions-deploy-preflight
-firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
+npm --prefix functions run build
+npm --prefix functions run deploy:menulist-qa
 ```
 
 MenuList production Firebase infrastructure deploys require staging evidence and explicit production approval in the active session. For the current Storage rules cutover, record Gate 2A QA evidence in `__docs__/production-readiness/external-certification-runbook.md` before production Storage rules deploy approval.
@@ -1562,7 +1588,7 @@ MenuList production:
 ```bash
 firebase deploy --project menulist --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive
 npm run verify:functions-deploy-preflight
-firebase deploy --project menulist --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
+firebase deploy --project menulist --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish --non-interactive
 ```
 
 For MenuList production-readiness certification, use the exact Gate 1 evidence
@@ -1704,8 +1730,9 @@ After Vercel redeploy and Firebase deploys:
 
 MenuList staging:
 
-- [ ] Open `https://menulist.online`.
-- [ ] Open `https://menulist.online/api/version`.
+- [ ] Open `https://qa.menulist.digital`.
+- [ ] Open `https://qa.menulist.digital/api/version`.
+- [ ] Open a QA tenant test host such as `https://demo.qa.menulist.digital`.
 - [ ] Sign in.
 - [ ] Create/update a menu/project.
 - [ ] Confirm public menu/OBP cache invalidates after writes.

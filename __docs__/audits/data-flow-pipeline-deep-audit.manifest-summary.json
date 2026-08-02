@@ -1,80 +1,65 @@
 {
-  "generatedAt": "2026-07-31T18:09:12.198Z",
-  "repositoryHead": "685370dbe099ceb1e87c90f55ce64f8e3d8e0a65",
-  "totalDiscoveredFiles": 8875,
+  "generatedAt": "2026-08-01T21:17:28.233Z",
+  "repositoryHead": "9747b09b706187a3f1643cb4033fc55e2c0a46e1",
+  "totalDiscoveredFiles": 8912,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 8562,
+  "inScopeFiles": 8599,
   "excludedFiles": 313,
   "byCategory": {
-    "documentation/contract": 3289,
-    "shared-runtime": 1128,
-    "ui-component": 1036,
-    "verifier/test": 705,
-    "asset/public-output": 544,
+    "documentation/contract": 3292,
+    "shared-runtime": 1145,
+    "ui-component": 1039,
+    "verifier/test": 711,
+    "asset/public-output": 545,
     "nextjs-entrypoint": 375,
     "runtime/support": 342,
     "firebase-functions": 316,
-    "api-route": 228,
-    "constant/config/data": 140,
+    "api-route": 231,
+    "constant/config/data": 141,
     "configuration/data": 99,
     "data-access-layer": 98,
-    "hook/state-flow": 79,
-    "type/schema-contract": 69,
+    "hook/state-flow": 80,
+    "type/schema-contract": 70,
     "presentation/public-output": 50,
-    "script/maintenance": 44,
+    "script/maintenance": 45,
     "security-rules": 8,
     "redux-state": 7,
     "test": 4,
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "inventory-only": 4182,
-    "reviewed": 2741,
-    "in-progress": 1639
+    "reviewed": 8599
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "inventory-only": 2823,
-      "in-progress": 390,
-      "reviewed": 76
+      "reviewed": 3292
     },
     "shared-runtime": {
-      "reviewed": 740,
-      "in-progress": 388
+      "reviewed": 1145
     },
     "ui-component": {
-      "inventory-only": 731,
-      "in-progress": 230,
-      "reviewed": 75
+      "reviewed": 1039
     },
     "verifier/test": {
-      "reviewed": 322,
-      "in-progress": 280,
-      "inventory-only": 103
+      "reviewed": 711
     },
     "asset/public-output": {
-      "inventory-only": 523,
-      "reviewed": 21
+      "reviewed": 545
     },
     "nextjs-entrypoint": {
-      "reviewed": 314,
-      "in-progress": 61
+      "reviewed": 375
     },
     "runtime/support": {
       "reviewed": 342
     },
     "firebase-functions": {
-      "in-progress": 163,
-      "reviewed": 152,
-      "inventory-only": 1
+      "reviewed": 316
     },
     "api-route": {
-      "reviewed": 167,
-      "in-progress": 61
+      "reviewed": 231
     },
     "constant/config/data": {
-      "reviewed": 139,
-      "inventory-only": 1
+      "reviewed": 141
     },
     "configuration/data": {
       "reviewed": 99
@@ -83,18 +68,16 @@
       "reviewed": 98
     },
     "hook/state-flow": {
-      "in-progress": 43,
-      "reviewed": 36
+      "reviewed": 80
     },
     "type/schema-contract": {
-      "reviewed": 69
+      "reviewed": 70
     },
     "presentation/public-output": {
       "reviewed": 50
     },
     "script/maintenance": {
-      "in-progress": 23,
-      "reviewed": 21
+      "reviewed": 45
     },
     "security-rules": {
       "reviewed": 8

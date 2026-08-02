@@ -1,9 +1,23 @@
 import { APP_THEME_COLOR } from '@constant/common';
 import { Button, Tooltip } from 'antd';
-import { RiSparkling2Line } from 'react-icons/ri';
+import type { ButtonProps, TooltipProps } from 'antd';
+import type { ReactNode } from 'react';
+import { LuSparkles } from 'react-icons/lu';
 import styles from './aiButtonIcon.module.scss';
 
-function AIButtonIcon({ Icon = RiSparkling2Line, label = "", type = "default", onClick = () => { }, tooltip = "", loading = false, size = "default", shape = 'square', tooltipDir = "top" }: any) {
+type AIButtonIconProps = {
+    icon?: ReactNode;
+    label?: ReactNode;
+    type?: ButtonProps['type'];
+    onClick?: ButtonProps['onClick'];
+    tooltip?: ReactNode;
+    loading?: ButtonProps['loading'];
+    size?: ButtonProps['size'];
+    shape?: ButtonProps['shape'];
+    tooltipDir?: TooltipProps['placement'];
+};
+
+function AIButtonIcon({ icon = <LuSparkles />, label = "", type = "default", onClick, tooltip = "", loading = false, size = "middle", shape = 'default', tooltipDir = "top" }: AIButtonIconProps) {
     return (
         <div className={styles.proUserIconWrap}>
             <Tooltip title={tooltip} placement={tooltipDir}>
@@ -17,7 +31,7 @@ function AIButtonIcon({ Icon = RiSparkling2Line, label = "", type = "default", o
                     style={{
                         backgroundImage: `radial-gradient(circle at 5px 5px, ${APP_THEME_COLOR} 1px, transparent 0)`,
                     }}
-                    icon={<Icon style={{ color: APP_THEME_COLOR }} />}>
+                    icon={<span style={{ color: APP_THEME_COLOR, display: 'inline-flex' }}>{icon}</span>}>
                     {label}
                 </Button>
             </Tooltip>

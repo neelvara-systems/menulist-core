@@ -2,6 +2,7 @@
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 import { Button, Flex, Result, Typography } from "antd";
 import { useEffect, useRef, useState } from 'react';
 import { LuHelpCircle, LuRefreshCw } from "react-icons/lu";
@@ -52,10 +53,7 @@ export default function Error({ error, reset }: {
         };
 
         try {
-            const opened = window.open(HELP_ROUTE, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new globalThis.Error('app_error_help_open_blocked');
-            }
+            openIsolatedBrowserUrl(HELP_ROUTE);
         } catch (openError) {
             logRuntimeFailure(APP_ERROR_HELP_OPEN_FAILED, openError, diagnosticContext);
             try {

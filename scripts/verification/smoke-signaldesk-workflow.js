@@ -200,12 +200,17 @@ async function main() {
 
   const exportResult = await exportSignalDeskMessageServer(access, draftResult.approval.approvalId);
   assert(exportResult.status === "exported", "Export did not create an exported handoff");
+  const exportedTarget = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  const conversationId = exportedTarget.data()?.latestConversationId;
+  assert(
+    typeof conversationId === "string" && conversationId.length >= 3,
+    "Export did not project a current conversation onto the target",
+  );
 
   const reply = await captureSignalDeskReplyServer(access, {
-    channel: "email",
+    conversationId,
     idempotencyKey: `smoke-reply-${targetId}`,
     message: "Yes, send details.",
-    targetId,
   });
   assert(reply.state === "interested", `Expected interested reply, received ${reply.state}`);
 

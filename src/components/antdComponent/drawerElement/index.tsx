@@ -1,9 +1,9 @@
 import { Button, Drawer, DrawerProps, Flex, Space, Typography } from "antd";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { LuX } from "react-icons/lu";
 
 type DrawerElementProps = DrawerProps & {
-    footerActions?: any[]
+    footerActions?: ReactNode[]
 }
 const DrawerElement = ({ children, footerActions, ...props }: DrawerElementProps) => {
     return <Drawer
@@ -34,4 +34,4 @@ const DrawerElement = ({ children, footerActions, ...props }: DrawerElementProps
     </Drawer>
 }
 
-export default DrawerElement    
+export default DrawerElement

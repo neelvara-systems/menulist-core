@@ -575,7 +575,7 @@ for (const store of storesForThisHour) {
 
 ### Manual Test: Track Event
 
-1. Open menu at `{subdomain}.menulist.ai`
+1. Open menu at `{subdomain}.menulist.online`
 2. Open browser DevTools → Network
 3. Filter for `POST /api/public/analytics/track`
 4. Scroll, click items, use filters

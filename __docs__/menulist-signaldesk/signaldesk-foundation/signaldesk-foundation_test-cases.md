@@ -6,6 +6,17 @@
 
 ## Access Tests
 
+August 1 additions:
+
+- Limiter-provider outage returns fixed private 503 without quota retry/reset
+  timing; proven exhaustion returns 429 with retry metadata.
+- Source-provider timeout/request transport failure returns retryable 503;
+  invalid or business-rejected actions remain 400.
+- Adding an action without permission, mobile and server mappings fails the
+  TypeScript/source gate; there is no default action consumer.
+- If blocked-mobile audit persistence fails, the requested mutation still does
+  not run and the action route emits its bounded private failure response.
+
 | Test | Expected |
 | --- | --- |
 | Unauthenticated user opens `/signaldesk` | Blocked. |

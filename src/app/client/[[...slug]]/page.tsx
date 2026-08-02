@@ -2,21 +2,21 @@
  * Client Page - Multi-Tenant Entry Point
  *
  * This page handles all client requests from:
- * - Subdomains: joespizza.menulist.ai
+ * - Subdomains: joespizza.menulist.online
  * - Custom domains: joespizza.com
  *
  * The domain information is passed via headers set by middleware.
  *
  * URL Routing (when ENABLE_OBP = true):
- * - joespizza.menulist.ai/           → Official Business Page (OBP)
- * - joespizza.menulist.ai/menu        → Default menu (reserved slug)
- * - joespizza.menulist.ai/food-menu   → "Food Menu" project
+ * - joespizza.menulist.online/           → Official Business Page (OBP)
+ * - joespizza.menulist.online/menu        → Default menu (reserved slug)
+ * - joespizza.menulist.online/food-menu   → "Food Menu" project
  * - joespizza.com/                    → OBP (custom domain)
  * - joespizza.com/menu                → Default menu
  *
  * URL Routing (when ENABLE_OBP = false — current behavior):
- * - joespizza.menulist.ai/            → Default menu (isDefault=true or first project)
- * - joespizza.menulist.ai/food-menu   → "Food Menu" project
+ * - joespizza.menulist.online/            → Default menu (isDefault=true or first project)
+ * - joespizza.menulist.online/food-menu   → "Food Menu" project
  * - joespizza.com/                    → Custom domain default menu
  */
 
@@ -24,7 +24,7 @@ import { getMoodWithBrandColor, resolveMenuDesignConfig } from "@config/designSy
 import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
-import { PLATFORM_DOMAIN } from "@constant/urls";
+import { MENULIST_TENANT_BASE_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
@@ -48,6 +48,7 @@ import {
     type PublicCustomerTranslator,
 } from "@lib/localization/publicCustomerMessages";
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
+import { normalizeGoogleSearchConsoleVerification } from "@lib/analytics/preferences";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { projectPublicDecisionBlocks } from "@lib/decisionBlocks/publicProjection";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
@@ -694,6 +695,11 @@ function getComplianceMetadata(
         : undefined;
 }
 
+function getGoogleVerificationMetadata(storeData: any): Pick<Metadata, 'verification'> {
+    const google = normalizeGoogleSearchConsoleVerification(storeData?.analytics?.googleSearchConsole);
+    return google ? { verification: { google } } : {};
+}
+
 // Generate metadata for SEO
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
     const searchParams = await props.searchParams;
@@ -735,6 +741,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             hasPublishedMenu: Boolean(storeData?.lastPublishedAt || storeData?.primaryProjectId),
         });
         return {
+            ...getGoogleVerificationMetadata(storeData),
             title: publicCustomerT('menu.notFinalizedYet', { businessName: storeName }),
             description: publicCustomerT('menu.contactBusinessCurrentMenu'),
             robots: buildPublicTruthRobots(starterIndexDecision),
@@ -778,7 +785,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     const imageUrl = storeData.logo || DEFAULT_PUBLIC_PREVIEW_IMAGE;
 
     // Build canonical URL based on domain type
-    const requestBase = origin || (subdomain ? `https://${subdomain}.${PLATFORM_DOMAIN}` : '');
+    const requestBase = origin || (subdomain ? `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}` : '');
     const canonicalBase = customDomain
         ? `https://${customDomain}`
         : requestBase;
@@ -837,6 +844,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
         });
 
         return {
+            ...getGoogleVerificationMetadata(storeData),
             title: complianceTitle,
             description: complianceDescription,
             keywords: getResolvedStoreKeywords(
@@ -1075,6 +1083,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             title = typeof contextMetadata.title === 'string' ? contextMetadata.title : title;
             description = contextMetadata.description || description;
             return {
+                ...getGoogleVerificationMetadata(metadataStore),
                 title,
                 description,
                 keywords: getResolvedStoreKeywords(
@@ -1131,6 +1140,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     }
 
     return {
+        ...getGoogleVerificationMetadata(metadataStore),
         title,
         description,
         keywords: getResolvedStoreKeywords(
@@ -1902,7 +1912,7 @@ async function MenuContent({
         && storeData.subdomain
         && storeData.subdomain.toLowerCase() !== subdomain.toLowerCase()
     ) {
-        const canonical = `https://${storeData.subdomain}.${PLATFORM_DOMAIN}${requestedPublicPath}`;
+        const canonical = `https://${storeData.subdomain}.${MENULIST_TENANT_BASE_DOMAIN}${requestedPublicPath}`;
         redirect(appendPublicLanguageParam(canonical, requestedLanguage));
     }
 
@@ -1915,8 +1925,8 @@ async function MenuContent({
     }
 
     // URL Routing Architecture — Gap 2: Outlet routing via outletSlug.
-    // For multi-store brands: brand.menulist.ai/{outletSlug} or
-    // brand.menulist.ai/{outletSlug}/{projectSlug}. When the first slug matches
+    // For multi-store brands: brand.menulist.online/{outletSlug} or
+    // brand.menulist.online/{outletSlug}/{projectSlug}. When the first slug matches
     // an outlet's outletSlug, switch storeData to that outlet and use the
     // remaining path segment as the project slug.
     //
@@ -2064,7 +2074,7 @@ async function MenuContent({
     if (safeRedirectSlug && requestedProjectSlug && safeRedirectSlug !== requestedProjectSlug) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : origin || `https://${subdomain}.${PLATFORM_DOMAIN}`;
+            : origin || `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`;
         const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
         redirect(appendPublicLanguageParam(`${baseUrl}${outletPrefix}/${safeRedirectSlug}`, requestedLanguage));
     }
@@ -2108,7 +2118,7 @@ async function MenuContent({
     const baseUrl =
         tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : origin || `https://${subdomain}.${PLATFORM_DOMAIN}`;
+            : origin || `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`;
 
     // Add slug to canonical if not default project.
     // G-05 / R5 Layer 2 canonical (§9 + §8 PUBLIC-ROUTING-DOCTRINE):

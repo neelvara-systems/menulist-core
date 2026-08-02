@@ -22,16 +22,16 @@ assert.equal(normalizeMessagingPreviewScore('100'), null);
 
 assert.deepEqual(
   normalizeMessagingPreviewPublishedResult({
-    dashboardUrl: 'https://menulist.ai/signin?claim=secret',
+    dashboardUrl: 'https://app.menulist.ai/signin?claim=secret',
     extraSecret: 'must-not-leak',
-    publicUrl: 'https://shop.menulist.ai/',
+    publicUrl: 'https://shop.menulist.online/',
     storeId: 10,
     tenantId: 20,
     userId: 'internal-user',
   }),
   {
-    dashboardUrl: 'https://menulist.ai/signin?claim=secret',
-    publicUrl: 'https://shop.menulist.ai/',
+    dashboardUrl: 'https://app.menulist.ai/signin?claim=secret',
+    publicUrl: 'https://shop.menulist.online/',
     storeId: 10,
     tenantId: 20,
   },
@@ -39,7 +39,7 @@ assert.deepEqual(
 assert.equal(
   normalizeMessagingPreviewPublishedResult({
     dashboardUrl: 'javascript:alert(1)',
-    publicUrl: 'https://shop.menulist.ai/',
+    publicUrl: 'https://shop.menulist.online/',
   }),
   null,
 );

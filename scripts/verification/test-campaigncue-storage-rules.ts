@@ -136,6 +136,16 @@ async function run(): Promise<void> {
             BYTES,
             { contentType: 'image/svg+xml' },
         ));
+        const audioPath = 'campaigncue/assets/cc_1_101/uploads/music.mp3';
+        await assertSucceeds(uploadBytes(ref(ownerStorage, audioPath), BYTES, { contentType: 'audio/mpeg' }));
+        await assertSucceeds(getBytes(ref(ownerStorage, audioPath)));
+        await assertFails(uploadBytes(ref(ownerStorage, audioPath), new Uint8Array([9]), { contentType: 'audio/mpeg' }));
+        await assertFails(uploadBytes(
+            ref(ownerStorage, 'campaigncue/assets/cc_1_101/uploads/audio.exe'),
+            BYTES,
+            { contentType: 'application/x-msdownload' },
+        ));
+        await assertSucceeds(deleteObject(ref(ownerStorage, audioPath)));
         await assertSucceeds(deleteObject(ref(ownerStorage, assetPath)));
 
         await testEnv.withSecurityRulesDisabled(async (context) => {

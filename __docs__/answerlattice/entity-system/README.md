@@ -143,7 +143,7 @@ Found? → Return Canonical Answer
 Not Found? → RAG Fallback (entity-enriched)
 ```
 
-The post-save trigger runs only when ontology is enabled. It is non-blocking and best effort: article save remains authoritative if extraction fails, failed or incomplete extraction preserves current links, confirmed empty extraction can clear stale links, a source change during provider latency returns conflict without applying stale links, and new entity candidates still require review.
+The post-save trigger runs only when ontology is enabled. It sends only the stored article ID; the protected route reloads title, category, content, and scope from persisted truth. It is non-blocking and best effort: article save remains authoritative if extraction fails, failed or incomplete extraction preserves current links, confirmed empty extraction can clear stale links, a source change during provider latency returns conflict without applying stale links, and new entity candidates still require review. Deterministic candidate identity remains backward compatible for ASCII names and preserves Unicode letters and numbers so distinct non-Latin names cannot merge.
 
 ---
 

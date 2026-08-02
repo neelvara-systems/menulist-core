@@ -7,40 +7,29 @@ export const dynamic = 'force-dynamic';
  * widget configuration subset; no workspace details, origins, or secrets.
  */
 
+/**
+ * Answerlattice Widget Runtime Config
+ *
+ * Public read-only endpoint used by the loader script. Returns only the public
+ * widget configuration subset; no workspace details, origins, or secrets.
+ */
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    buildWidgetRuntimeStatusWrite,
-    getWidgetRuntimeStatusFromStoreData,
-    sanitizeWidgetRuntimeTelemetry,
-    shouldUpdateWidgetRuntimeStatus,
-} from '@lib/answerlattice/widgetRuntimeStatus';
+import { buildWidgetRuntimeStatusWrite, getWidgetRuntimeStatusFromStoreData, sanitizeWidgetRuntimeTelemetry, shouldUpdateWidgetRuntimeStatus, } from '@lib/answerlattice/widgetRuntimeStatus';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import { getAnswerlatticeBundleRefPath } from '@lib/answerlattice/compiledContext';
 import { normalizeAnswerlatticeActiveTriggerCount } from '@lib/answerlattice/predictiveSupportContracts';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import {
-    ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
-    ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
-    normalizeAnswerlatticeWidgetConfigVersion,
-    normalizeWidgetConfig,
-} from '@lib/answerlattice/widgetConfig';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION, ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS, normalizeAnswerlatticeWidgetConfigVersion, normalizeWidgetConfig, } from '@lib/answerlattice/widgetConfig';
 import { createAnswerlatticeWidgetRuntimeAuthorization } from '@lib/answerlattice/widgetRuntimeTokenServer';
-import {
-    generateETag,
-    handlePublicApiCorsPreflight,
-    hashApiKey,
-    hasPublicApiCredentialScope,
-    isRequestOriginAllowed,
-    validatePublicApiKey,
-    withPublicApiCors,
-} from '@lib/publicApi/auth';
+import { generateETag, handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors, } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
+import type { Firestore } from 'firebase-admin/firestore';
 
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 const CONFIG_CACHE_TTL_MS = Math.min(
@@ -50,7 +39,7 @@ const CONFIG_CACHE_TTL_MS = Math.min(
 const MAX_RUNTIME_CONFIG_CACHE_ENTRIES = 500;
 
 type RuntimeConfigCacheEntry = {
-    body: Record<string, any>;
+    body: Record<string, unknown>;
     etag: string;
     expiresAt: number;
 };
@@ -63,7 +52,7 @@ const buildCacheKey = (apiKey: string, origin: string | null): string => (
 
 const buildResponse = (
     request: NextRequest,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     etag: string,
 ): NextResponse => {
     if (request.headers.get('if-none-match') === etag) {
@@ -99,7 +88,7 @@ const buildErrorResponse = (
 
 const rememberRuntimeConfig = (
     cacheKey: string,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     etag: string,
 ): void => {
     if (runtimeConfigCache.size >= MAX_RUNTIME_CONFIG_CACHE_ENTRIES) {
@@ -115,7 +104,7 @@ const rememberRuntimeConfig = (
 };
 
 const hasActivePredictiveTriggers = async (
-    db: any,
+    db: Firestore,
     tId: number,
     sId: number,
 ): Promise<boolean> => {
@@ -130,17 +119,44 @@ const hasActivePredictiveTriggers = async (
     const activeTriggerCount = normalizeAnswerlatticeActiveTriggerCount(data.activeTriggerCount);
     if (activeTriggerCount !== null) return activeTriggerCount > 0;
     if (data.activeTriggerCount === undefined && data.triggers && typeof data.triggers === 'object') {
-        return Object.values(data.triggers).some((trigger: any) => trigger?.status === 'active');
+        return Object.values(data.triggers).some((trigger: unknown) => (
+            trigger !== null
+            && typeof trigger === 'object'
+            && 'status' in trigger
+            && trigger.status === 'active'
+        ));
     }
     return false;
 };
 
-const toIsoTimestamp = (value: any): string | null => {
+const toIsoTimestamp = (value: unknown): string | null => {
     if (!value) return null;
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    try {
+        if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+        if (typeof value === 'object') {
+            const toDate = Reflect.get(value, 'toDate');
+            if (typeof toDate === 'function') {
+                const date = Reflect.apply(toDate, value, []);
+                return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+            }
+            const seconds = Reflect.get(value, 'seconds');
+            if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+                const date = new Date(seconds * 1000);
+                return Number.isNaN(date.getTime()) ? null : date.toISOString();
+            }
+        }
+        if (typeof value === 'string' || typeof value === 'number') {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+        }
+    } catch {
+        return null;
+    }
+    return null;
+};
+
+const getAnswerlatticeDb = (): Firestore | null => {
+    return answerlatticeFirestoreAdmin;
 };
 
 const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
@@ -179,10 +195,11 @@ const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
 };
 
 const getPredictiveSupportCapability = async (
-    db: any,
+    db: Firestore | null,
     tId: number,
     sId: number,
 ): Promise<boolean> => {
+    if (!db) return false;
     try {
         return await hasActivePredictiveTriggers(db, tId, sId);
     } catch (error) {
@@ -340,14 +357,14 @@ export async function GET(request: NextRequest) {
 
         const runtimeStatus = getWidgetRuntimeStatusFromStoreData(storeData);
         const nextRuntimeStatus = sanitizeWidgetRuntimeTelemetry(request);
-        const db = answerlatticeFirestoreAdmin as any;
+        const db = getAnswerlatticeDb();
         if (
             db
             && typeof db.collection === 'function'
             && shouldUpdateWidgetRuntimeStatus(runtimeStatus, nextRuntimeStatus)
         ) {
             try {
-                await answerlatticeFirestoreAdmin
+                await requireAnswerlatticeFirestoreAdmin()
                     .collection(DB_COLLECTIONS.STORES)
                     .doc(String(sId))
                     .set(buildWidgetRuntimeStatusWrite(nextRuntimeStatus), { merge: true });

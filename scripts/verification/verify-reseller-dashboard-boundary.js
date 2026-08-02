@@ -92,7 +92,6 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     `key: \`${rateLimitKey}:\${resellerRateLimitHash}\``,
     'failClosedOnProviderError: true',
     "rateLimitResult.reason === 'provider_unavailable'",
-    "status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429",
     'withResellerPrivateHeaders',
     'return resellerPrivateJson(',
     'if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);',
@@ -102,6 +101,15 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     'logResellerApiFailure',
     "requiredPlatformRole: 'RESELLER'",
   ].forEach((token) => assertIncludes(route, token, routeLabel));
+  assert(
+    route.includes("status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429")
+      || (
+        route.includes("if (rateLimitResult.reason === 'provider_unavailable')")
+        && route.includes('{ status: 503 }')
+        && route.includes('{ status: 429 }')
+      ),
+    `${routeLabel} must separate fail-closed provider outages from quota exhaustion`,
+  );
 
   assertOrder(route, [
     'FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD',
@@ -371,13 +379,21 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'razorpayClient.subscriptions.create({',
     'getFirebaseAuthErrorCode(error)',
     "catch((error: unknown): null => {",
-    '.catch((): null => null)',
     'await compensateResellerOnboardingFailure({',
     'createResellerOnboardingBilling({',
     'getResellerOnboardingOperationFingerprint({',
     'isMatchingResellerOnboardingOperation({',
     'normalizeRazorpaySubscriptionCheckoutUrl(replaySubscription.shortUrl)',
-    'projectResellerProviderSubscription(providerSubscription)',
+    'projectResellerProviderSubscriptionForAttempt(',
+    'getMatchingResellerOnboardingProvisioningOperation({',
+    'isMatchingResellerOnboardingProvisioningResources({',
+    "status: 'provider_provisioning'",
+    'return { searchComplete: false, subscription: null };',
+    'if (!recovery.searchComplete)',
+    'const [subscriptionRead, operationRead] = await Promise.allSettled([',
+    'logResellerApiFailure(RESELLER_ONBOARD_AUTH_FINALIZATION_FAILED',
+    "logResellerApiFailure('reseller_onboard_provider_recovery_pending'",
+    "logResellerApiFailure('reseller_onboard_billing_commit_verification_failed'",
     "throw new Error('Razorpay subscription response is invalid.')",
     'const replayPaidAt = resellerMutationDate(operation.validFrom);',
     'isMatchingResellerOnboardingReplayResources({',
@@ -394,6 +410,7 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'profileRevenueRecognized: true',
     'isActiveResellerProfileForSession({',
     'getCurrentPlatformUser(session)',
+    'getCurrentUser(session)',
     "billingMode: 'auto'",
     "billingMode: 'manual'",
     'manualPaymentConfirmed: true',
@@ -450,7 +467,8 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'createResellerOnboardingBillingServer',
     'firestoreAdmin.runTransaction(async (firestoreTransaction) =>',
     'firestoreTransaction.create(\n            subscriptionRef,',
-    'firestoreTransaction.create(transactionRef,',
+    'firestoreTransaction.create(transactionRef, persistedOperation);',
+    'firestoreTransaction.set(transactionRef, persistedOperation);',
     'currentActiveOfflineStores >= cap',
     'profile.authUserId !== params.transaction.resellerId',
     'isNonNegativeSafeInteger(params.transaction.amountExpected)',
@@ -933,7 +951,7 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'hasExpectedTenantId',
     'copyResellerTextToClipboard(checkoutUrl)',
     'normalizeRazorpaySubscriptionCheckoutUrl(link)',
-    "window.open(checkoutUrl, '_blank', 'noopener,noreferrer')",
+    "openIsolatedBrowserUrl(checkoutUrl)",
     'RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES = 8 * 1024',
     "fetch('/api/reseller/renew'",
     'isValidRenewResponse(data',
@@ -1005,7 +1023,7 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'style={{ minHeight: 44',
     'copyMobileResellerDashboardText(link)',
     'normalizeRazorpaySubscriptionCheckoutUrl(transaction.subscriptionShortUrl)',
-    "window.open(link, '_blank', 'noopener,noreferrer')",
+    "openIsolatedBrowserUrl(link)",
     'MOBILE_RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES = 8 * 1024',
     "fetch('/api/reseller/renew'",
     'isValidMobileRenewResponse(data',

@@ -1,15 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    ANSWERLATTICE_PUBLIC_API_PURPOSE,
-    buildAnswerlatticePublicApiKeySummary,
-    classifyAnswerlatticePublicApiKeyRotationReplay,
-    normalizeAnswerlatticePublicApiScopes,
-    type AnswerlatticePublicApiKeySummary,
-    type AnswerlatticePublicApiScope,
-} from '@lib/answerlattice/publicApiContracts';
+import { ANSWERLATTICE_PUBLIC_API_PURPOSE, buildAnswerlatticePublicApiKeySummary, classifyAnswerlatticePublicApiKeyRotationReplay, normalizeAnswerlatticePublicApiScopes, type AnswerlatticePublicApiKeySummary, type AnswerlatticePublicApiScope, } from '@lib/answerlattice/publicApiContracts';
 import { isAnswerlatticeActiveStoreInScope } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export type AnswerlatticePublicApiKeyScope = {
@@ -33,8 +26,7 @@ export class AnswerlatticePublicApiKeyStoreError extends Error {
 }
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    if (!answerlatticeFirestoreAdmin) {
         throw new AnswerlatticePublicApiKeyStoreError(
             'firebase_unavailable',
             'Answerlattice Firebase is not configured',
@@ -94,7 +86,7 @@ export async function readAnswerlatticePublicApiKeySummary(
 ): Promise<AnswerlatticePublicApiKeySummary | null> {
     const db = getAnswerlatticeDb();
     const storeDocumentId = String(scope.storeId);
-    const snapshot = await db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).get();
+    const snapshot = await requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).get();
     if (!snapshot.exists) {
         throw new AnswerlatticePublicApiKeyStoreError(
             'workspace_mismatch',
@@ -125,7 +117,7 @@ export async function rotateAnswerlatticePublicApiKey(
     const db = getAnswerlatticeDb();
     const actorId = normalizeActorId(actor);
     const storeDocumentId = String(scope.storeId);
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+    const storeRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
     const scopes = normalizeAnswerlatticePublicApiScopes(credential.scopes);
     const createdAt = new Date(credential.createdAt);
     if (
@@ -150,9 +142,9 @@ export async function rotateAnswerlatticePublicApiKey(
         scopes,
     };
     const nextSummary = buildAnswerlatticePublicApiKeySummary(publicApi)!;
-    const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
+    const auditRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
 
-    return db.runTransaction(async (transaction) => {
+    return requireAnswerlatticeFirestoreAdmin().runTransaction(async (transaction) => {
         const snapshot = await transaction.get(storeRef);
         if (!snapshot.exists) {
             throw new AnswerlatticePublicApiKeyStoreError(
@@ -204,10 +196,10 @@ export async function revokeAnswerlatticePublicApiKey(
     const db = getAnswerlatticeDb();
     const actorId = normalizeActorId(actor);
     const storeDocumentId = String(scope.storeId);
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
-    const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
+    const storeRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+    const auditRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
 
-    await db.runTransaction(async (transaction) => {
+    await requireAnswerlatticeFirestoreAdmin().runTransaction(async (transaction) => {
         const snapshot = await transaction.get(storeRef);
         if (!snapshot.exists) {
             throw new AnswerlatticePublicApiKeyStoreError(

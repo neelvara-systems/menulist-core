@@ -309,7 +309,7 @@ MenuList:
 Received. Please confirm business name, city, and list type.
 
 MenuList:
-Preview ready: menulist.ai/urban-glow
+Preview ready: urban-glow.menulist.online
 
 Owner:
 Looks correct.

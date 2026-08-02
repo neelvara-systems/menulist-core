@@ -333,7 +333,7 @@ NODE
 
 ### Readiness Decision
 
-The confirmed code-side noindex gap is fixed. Canonical host alignment is not solved in code because the repo still treats `menulist.ai` as production and `menulist.online` as preview; changing that requires owner/deployment/DNS decision before Search Console. The later June 23 pending cross-check fixed the stale public menu soft-index risk by noindexing missing project slug fallback pages while preserving the customer fallback ladder.
+The confirmed code-side noindex gap is fixed. Historical note: this pass was written before the owner finalized the split between the production website, production customer-link root, and QA host. Current repo contract is `menulist.ai` for production website, `*.menulist.online` for production customer menus/OBP, exact `menulist.online`/`www.menulist.online` redirects to `menulist.ai`, and `qa.menulist.digital` plus `*.qa.menulist.digital` for MenuList QA. The later June 23 pending cross-check fixed the stale public menu soft-index risk by noindexing missing project slug fallback pages while preserving the customer fallback ladder.
 
 ---
 

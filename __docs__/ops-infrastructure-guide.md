@@ -134,7 +134,7 @@ import { verifyMenuPublish } from '@lib/firebase/functions';
 void verifyMenuPublish({
   storeId: 'store123',
   tenantId: 'tenant456',
-  publicMenuUrl: 'https://joespizza.menulist.ai/menu',
+  publicMenuUrl: 'https://joespizza.menulist.online/menu',
 });
 ```
 

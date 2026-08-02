@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   PriceAvailabilityGapCheckId,
   PriceAvailabilityGapEvidence,
@@ -17,12 +22,17 @@ const REQUIRED_CHECKS = new Set<PriceAvailabilityGapCheckId>([
   'current_customer_link',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeSourceText(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function hasUsefulSource(value: string): boolean {
@@ -154,10 +164,10 @@ function getNextActionType(status: PriceAvailabilityGapReport['status']): PriceA
 }
 
 export function buildPriceAvailabilityGapReport(input: PriceAvailabilityGapInput): PriceAvailabilityGapReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
   const sourceText = normalizeSourceText(input.sourceText);
-  const publicUrl = trimToSingleLine(input.publicUrl);
+  const publicUrl = trimToSingleLine(input.publicUrl, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const sourceExists = hasUsefulSource(sourceText);
   const hasPublicUrl = publicUrl.length > 0;
   const validPublicUrl = isValidHttpUrl(publicUrl, 'price_availability_gap_public_url');

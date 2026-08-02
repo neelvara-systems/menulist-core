@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
 import {
@@ -19,6 +19,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildCustomerFaqReplyPackReport } from '@/lib/public-truth-tools/customerFaqReplyPackReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   CustomerFaqReplyBlock,
   CustomerFaqReplyPackAction,
@@ -77,15 +78,24 @@ type ReportActionStatus =
   | 'share_copy_failed';
 
 function downloadTextFile(filename: string, value: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('customer_faq_reply_pack_download_unavailable');
+  }
+
   const blob = new Blob([value], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  try {
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+  } finally {
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
 }
 
 function getSafeReportFilename(report: CustomerFaqReplyPackReport): string {
@@ -142,6 +152,7 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<CustomerFaqReplyPackHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -180,6 +191,8 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
       ...current,
       [key]: value,
     }));
+    setHandoffStatus((current) => (current === 'submitted' ? 'idle' : current));
+    setHandoffError(null);
   }
 
   async function handleCopyBlock(block: CustomerFaqReplyBlock) {
@@ -279,6 +292,8 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
       messageLength: message.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('customer_faq_reply_pack_handoff_submitted', eventContext);
 
@@ -331,6 +346,8 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
       setHandoffError(t('handoff.submitFailed'));
       logRuntimeFailure('customer_faq_reply_pack_contact_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -403,6 +420,7 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
           <label>
             {t('handoff.name')}
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -412,6 +430,7 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
             {t('handoff.email')}
             <input
               type="email"
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -420,6 +439,7 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
           <label>
             {t('handoff.phone')}
             <input
+              maxLength={40}
               value={handoff.phoneNumber}
               onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
               autoComplete="tel"
@@ -430,6 +450,7 @@ function CustomerFaqReplyPackReportCard({ report }: { report: CustomerFaqReplyPa
             <label htmlFor="customer-faq-reply-pack-website">{t('handoff.website')}</label>
             <input
               id="customer-faq-reply-pack-website"
+              maxLength={500}
               value={handoff.website}
               onChange={(event) => updateHandoff('website', event.target.value)}
               tabIndex={-1}
@@ -572,15 +593,15 @@ export default function CustomerFaqReplyPackPage() {
               <div className="ws-public-truth-check-form-grid">
                 <label>
                   {t('fields.businessName')}
-                  <input value={form.businessName} onChange={(event) => updateField('businessName', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName} value={form.businessName} onChange={(event) => updateField('businessName', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.cityOrArea')}
-                  <input value={form.cityOrArea} onChange={(event) => updateField('cityOrArea', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea} value={form.cityOrArea} onChange={(event) => updateField('cityOrArea', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.currentCustomerLink')}
-                  <input value={form.currentCustomerLink} onChange={(event) => updateField('currentCustomerLink', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url} value={form.currentCustomerLink} onChange={(event) => updateField('currentCustomerLink', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.preferredAction')}
@@ -595,36 +616,36 @@ export default function CustomerFaqReplyPackPage() {
                 </label>
                 <label>
                   {t('fields.menuOrServices')}
-                  <input value={form.menuOrServices} onChange={(event) => updateField('menuOrServices', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText} value={form.menuOrServices} onChange={(event) => updateField('menuOrServices', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.hours')}
-                  <input value={form.hours} onChange={(event) => updateField('hours', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText} value={form.hours} onChange={(event) => updateField('hours', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.prices')}
-                  <input value={form.prices} onChange={(event) => updateField('prices', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText} value={form.prices} onChange={(event) => updateField('prices', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.locationContact')}
-                  <input value={form.locationContact} onChange={(event) => updateField('locationContact', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText} value={form.locationContact} onChange={(event) => updateField('locationContact', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.actionLink')}
-                  <input value={form.actionLink} onChange={(event) => updateField('actionLink', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url} value={form.actionLink} onChange={(event) => updateField('actionLink', event.target.value)} />
                 </label>
                 <label>
                   {t('fields.availabilityNotes')}
-                  <input value={form.availabilityNotes} onChange={(event) => updateField('availabilityNotes', event.target.value)} />
+                  <input maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText} value={form.availabilityNotes} onChange={(event) => updateField('availabilityNotes', event.target.value)} />
                 </label>
               </div>
               <label>
                 {t('fields.customerQuestions')}
-                <textarea value={form.customerQuestions} onChange={(event) => updateField('customerQuestions', event.target.value)} />
+                <textarea maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText} value={form.customerQuestions} onChange={(event) => updateField('customerQuestions', event.target.value)} />
               </label>
               <label>
                 {t('fields.answerSource')}
-                <textarea value={form.answerSource} onChange={(event) => updateField('answerSource', event.target.value)} />
+                <textarea maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText} value={form.answerSource} onChange={(event) => updateField('answerSource', event.target.value)} />
               </label>
               <div className="ws-public-truth-check-actions">
                 <button type="submit">{t('runCheck')}</button>
@@ -637,7 +658,7 @@ export default function CustomerFaqReplyPackPage() {
 
       {hasChecked ? (
         <AnimateStaggerChild>
-          <CustomerFaqReplyPackReportCard report={report} />
+          <CustomerFaqReplyPackReportCard key={report.generatedAt} report={report} />
         </AnimateStaggerChild>
       ) : (
         <EmptyReport />

@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** July 29, 2026
+**Last Updated:** August 1, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -348,6 +348,23 @@ July 6 follow-up: Batch image project/job ID boundary. `src/lib/ai/imageBatchIdB
 July 5 follow-up: `/api/seo` now records unrecoverable provider-response parse failures through capped `seo_provider_response_parse_failed` diagnostics with fixed `return_seo_generation_failed` policy. The route strips JSON fences, accepts extractable object-fragment JSON before failure, and returns the existing generic SEO failure without writing a usable operation row or consuming credits when the provider response is unusable. Diagnostic metadata is limited to action/request/model/store/tenant/user/source/category/item presence-length/count fields plus response length, trimmed length, candidate length, parse stage, fenced-response flag, and object-fragment flag. Local accounting-error logs record bounded transaction/result summaries instead of full transaction objects. Raw provider response text, prompt/menu/store copy, generated metadata, store/tenant/user IDs, response preview text, full transaction objects, and exception text are not logged.
 
 July 26 follow-up: parsed SEO provider JSON must also pass `src/lib/ai/seoOutput.ts` before accounting or response. Meta title, description, and tagline must be strings with usable normalized content; keywords must be a non-empty string array. Control characters and repeated whitespace are removed, public field limits are applied, and keywords are deduplicated and capped. Objects, mixed keyword arrays, missing/empty required fields, arrays, and primitives fail with the generic SEO generation error rather than being coerced into public metadata such as `"[object Object]"`. The browser service applies the same exact normalizer and reuses the authoritative request DTO, preventing client/server contract drift.
+
+August 1 accounting and caption boundary follow-up: `/api/business-copy` and
+`/api/seo` now execute the positive-unit route contract that the shared
+accounting finalizer already required: reserve the effective subscription
+before Gemini, settle that exact reservation after valid projected output, and
+refund it from `finally` on provider, parse, projection, or settlement failure.
+Previously those routes performed provider work without a reservation, so the
+shared finalizer correctly rejected the result and the owner received a 500
+after provider cost had already been incurred. `/api/campaigns/caption` now
+validates a supplied project ID against the authenticated tenant/store and an
+existing undeleted, unblocked project before capacity or provider work. Its
+provider response is projected through `src/lib/ai/campaignCaptionOutput.ts` to
+exactly `caption`, `shortCaption`, and at most five bounded string hashtags;
+unknown provider fields and malformed field types cannot reach accounting or
+the client. The dormant `/api/reviews/suggest` paid-provider limiter now fails
+closed and distinguishes infrastructure outage (503) from quota exhaustion
+(429).
 
 July 5 follow-up: `/api/business-copy` now records unrecoverable provider-response parse failures through capped `business_copy_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_business_copy_failed` policy. The route still strips JSON fences, accepts extractable object-fragment JSON before retry, retries once on unrecoverable parse failure, and returns the existing generic Business Copy failure after an unrecoverable retry without writing a usable operation row or consuming credits. Diagnostic metadata is limited to action/request/model/store/tenant/user/source/category/item presence-length/count fields plus response length, trimmed length, candidate length, parse stage, fenced-response flag, and object-fragment flag. Local accounting-error logs record bounded transaction/result summaries instead of full transaction objects. Raw provider response text, prompt/menu/store copy, generated copy, store/tenant/user IDs, response preview text, full transaction objects, and exception text are not logged.
 

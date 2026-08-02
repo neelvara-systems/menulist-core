@@ -73,12 +73,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   const rateLimit = await checkRateLimit({
     key: `menu-intake:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...rateLimitConfig,
+    failClosedOnProviderError: true,
   });
   if (!rateLimit.allowed) {
     const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    const providerUnavailable = rateLimit.reason === "provider_unavailable";
     return NextResponse.json(
-      { error: "Too many checks. Please wait before trying again.", retryAfter: waitSeconds },
-      { status: 429, headers: { "Retry-After": String(waitSeconds) } },
+      providerUnavailable
+        ? { error: "Menu checks are temporarily unavailable. Please try again." }
+        : { error: "Too many checks. Please wait before trying again.", retryAfter: waitSeconds },
+      {
+        status: providerUnavailable ? 503 : 429,
+        headers: { "Retry-After": String(waitSeconds) },
+      },
     );
   }
 

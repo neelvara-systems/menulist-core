@@ -1,3 +1,4 @@
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { FEATURE_FLAGS } from '@config/features';
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -15,6 +16,7 @@ import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } fro
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import { toDate, type DateLike } from '@util/dateTime';
 import {
     MENULIST_ANSWERLATTICE_EVENTS,
     MENULIST_ANSWERLATTICE_TARGETS,
@@ -22,7 +24,6 @@ import {
     getMenuListAnswerlatticeTargetProps,
 } from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { Alert, Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa6';
@@ -42,10 +43,10 @@ interface ShareModalProps {
     storeLogo?: string;
     storeData?: Record<string, any>;
     // Multi-tenant domain settings
-    subdomain?: string;       // e.g., "joespizza" → joespizza.menulist.ai
+    subdomain?: string;       // e.g., "joespizza" → joespizza.menulist.online
     customDomain?: string;    // e.g., "joespizza.com"
     // PDF freshness awareness (Pricing Integrity)
-    menuModifiedOn?: Timestamp | null;
+    menuModifiedOn?: DateLike;
     // BusinessType for category-aware labels
     businessType?: string;
     // PDF Export data
@@ -122,9 +123,8 @@ function ShareModal({
     // PDF freshness: Check if menu was modified since last PDF download
     const isMenuUpdatedSincePdf = useMemo(() => {
         if (!menuModifiedOn || !lastPdfDownloadAt) return false;
-        const modifiedMs = menuModifiedOn instanceof Timestamp
-            ? menuModifiedOn.toMillis()
-            : (menuModifiedOn as any)?.seconds ? (menuModifiedOn as any).seconds * 1000 : 0;
+        const modifiedMs = toDate(menuModifiedOn).getTime();
+        if (!Number.isFinite(modifiedMs)) return false;
         return modifiedMs > lastPdfDownloadAt;
     }, [lastPdfDownloadAt, menuModifiedOn]);
 
@@ -233,10 +233,7 @@ function ShareModal({
             }
 
             const socialShareUrl = urls[platform];
-            const opened = window.open(socialShareUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('project_share_social_handoff_blocked');
-            }
+            openIsolatedBrowserUrl(socialShareUrl);
         } catch (error) {
             logExportFailure('project_share_social_handoff_failed', error, getShareModalLogContext('social_handoff', {
                 ...getBoundedExportStringContext('platform', platform),

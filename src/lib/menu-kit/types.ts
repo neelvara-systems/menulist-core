@@ -11,8 +11,8 @@ import type { OfferingLabels } from './businessTypeLabels';
 
 export interface MenuKitInput {
     storeName: string;
-    menuUrl: string;           // Full URL: {subdomain}.menulist.ai/{slug}
-    shortLink: string;         // Display-friendly: menulist.ai/{slug}
+    menuUrl: string;           // Full URL: {subdomain}.menulist.online/{slug}
+    shortLink: string;         // Display-friendly hosted link
     logoUrl?: string;          // Optional store logo
     brandColor?: string;       // Store/OBP accent color for print/social surfaces
     lastPublishedAt?: Date;    // For "Updated on" footer
@@ -45,7 +45,7 @@ export const STAFF_SCRIPT = 'Menu? Please scan the QR on the table or at the cou
  * Appended to QR-encoded URLs so analytics can distinguish
  * which physical/digital placement drives the most scans.
  *
- * Example: menulist.ai/slug?utm_source=menu_kit&utm_medium=table_tent
+ * Example: yourstore.menulist.online/menu?utm_source=menu_kit&utm_medium=table_tent
  */
 export const MENU_KIT_UTM_SOURCES: Record<string, string> = {
     tableTent: 'table_tent',

@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { FEATURE_FLAGS } from '@config/features';
 import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
@@ -211,10 +213,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         const msg = `${storeName} — menu, timings & contact:\n${obpWhatsAppUrl}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('obp_link_card_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
             recordOBPShare('whatsapp', 'track_whatsapp');
         } catch (error) {
             logStoreDataFailure('obp_link_card_whatsapp_open_failed', error, buildOBPLinkCardLogContext('whatsapp_open', {
@@ -227,10 +226,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
 
     const handleOpen = () => {
         try {
-            const opened = window.open(obpOpenUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('obp_link_card_open_blocked');
-            }
+            openIsolatedBrowserUrl(obpOpenUrl);
         } catch (error) {
             logStoreDataFailure('obp_link_card_open_failed', error, buildOBPLinkCardLogContext('open_link', {
                 ...getBoundedStoreStringContext('openUrl', obpOpenUrl),

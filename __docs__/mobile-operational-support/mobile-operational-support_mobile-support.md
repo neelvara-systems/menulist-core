@@ -264,7 +264,7 @@ All mobile screens write data in **identical format** to desktop:
 **Source:** `__docs__/projects/b2c-view/`  
 **Route:** `src/app/(website)/menu/[projectId]/page.tsx`
 
-The B2C View is the **customer-facing** digital menu page. It runs as a public Next.js page at `/{subdomain}.menulist.ai/{slug}` — it is **NOT** inside the owner MobileShell.
+The B2C View is the **customer-facing** digital menu page. It runs as a public Next.js page at `/{subdomain}.menulist.online/{slug}` — it is **NOT** inside the owner MobileShell.
 
 | Aspect                 | Status          | Notes                                          |
 | ---------------------- | --------------- | ---------------------------------------------- |

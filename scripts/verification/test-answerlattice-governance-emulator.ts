@@ -19,13 +19,14 @@ import {
     prepareAnswerlatticeProposalImpact,
     type AnswerlatticeGovernanceAccess,
 } from '../../src/lib/answerlattice/governanceServer';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const access: AnswerlatticeGovernanceAccess = {
     scope: { tenantId: 1, storeId: 101 },
     user: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
 };
+const db = requireAnswerlatticeFirestoreAdmin();
 
 const baseAnswer = {
     title: 'How billing retries work',
@@ -73,7 +74,6 @@ const relationId = (fromEntityId: string, toEntityId: string, relationType: stri
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db) throw new Error('Answerlattice Firestore Admin is required');
 
     for (const collectionName of [
         DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,

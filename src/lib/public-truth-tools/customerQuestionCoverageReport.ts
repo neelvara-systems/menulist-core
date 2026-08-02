@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   CustomerQuestionCoverageCheckId,
   CustomerQuestionCoverageEvidence,
@@ -36,12 +41,17 @@ const SOURCE_PATTERNS: Record<string, RegExp> = {
   prices: /(?:₹|\$|€|£|\b(?:rs|inr|usd|aed|gbp|eur)\b|\d+\s?(?:\/-|rs|inr|₹)|\d+\.\d{2}|\bstarting at\b|\bfrom\s+\d+)/i,
 };
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeLongText(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function hasUsefulText(value: string, minLength: number): boolean {
@@ -168,11 +178,11 @@ function getNextActionType(status: CustomerQuestionCoverageReport['status']): Cu
 }
 
 export function buildCustomerQuestionCoverageReport(input: CustomerQuestionCoverageInput): CustomerQuestionCoverageReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
   const sourceText = normalizeLongText(input.sourceText);
   const commonQuestions = normalizeLongText(input.commonQuestions);
-  const publicUrl = trimToSingleLine(input.publicUrl);
+  const publicUrl = trimToSingleLine(input.publicUrl, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const sourceExists = hasUsefulText(sourceText, 50);
   const questionsExist = hasUsefulText(commonQuestions, 12);
   const hasPublicUrl = publicUrl.length > 0;

@@ -53,7 +53,7 @@ export const MetricCardGroup: React.FC<MetricCardGroupProps> = ({
   return (
     <Row gutter={gutter} className={className}>
       {metrics.map((metric, index) => (
-        <Col key={metric.title || index} {...colSpan}>
+        <Col key={`${metric.title}:${index}`} {...colSpan}>
           <MetricCard {...metric} loading={loading} />
         </Col>
       ))}

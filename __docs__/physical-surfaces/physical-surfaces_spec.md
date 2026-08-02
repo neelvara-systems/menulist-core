@@ -83,7 +83,7 @@ A printable card (A6 or A5) placed on tables/counters with:
 │                                     │
 │          [QR CODE]                  │
 │                                     │
-│   joespizza.menulist.ai             │
+│   joespizza.menulist.online             │
 └─────────────────────────────────────┘
 ```
 

@@ -131,6 +131,11 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'const TEMP_STATUS_ACTION_MAX_BODY_BYTES = 4 * 1024;',
   'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
   'RequestSchema.safeParse(body)',
+  'expectedStoreId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+  'expectedTenantId: z.string().trim().min(1).max(TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH)',
+  'const expectedStoreId = normalizeSessionDocumentId(validation.data.expectedStoreId);',
+  'const expectedTenantId = normalizeSessionDocumentId(validation.data.expectedTenantId);',
+  'if (expectedStoreId !== storeId || expectedTenantId !== tenantId)',
   'new Date(expiresAt).getTime() <= Date.now()',
   'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
   'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
@@ -160,6 +165,7 @@ requireOrder(
       "getRateLimitForFeature('DATA_WRITE')",
     'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
     'RequestSchema.safeParse(body)',
+    'if (expectedStoreId !== storeId || expectedTenantId !== tenantId)',
     'db.runTransaction(async (transaction) =>',
     'requireAnyStorePermissionForStoreData(',
     'transaction.update(storeRef, storeUpdate)',
@@ -217,13 +223,17 @@ forbidToken(clientResponse, '.json().catch', 'Temporary Status client response p
   "readTempStatusResponse(res, 'clear'",
   'desktop_temp_status_set_failed',
   'desktop_temp_status_clear_failed',
-  "setStoreDetails((prev: any) => ({ ...prev, tempStatus: storedStatus }))",
-  "setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }))",
+  'actionInFlightRef.current',
+  'isExpectedScope(expectedTenantId, expectedStoreId)',
+  'String(prev.tenantId) === String(expectedTenantId)',
+  'String(prev.storeId) === String(expectedStoreId)',
   "setError('Failed to set status')",
   "setError('Failed to clear status')",
 ].forEach((token) => requireToken(desktopCard, token, 'Desktop Temporary Status card'));
 requireOccurrenceAtLeast(desktopCard, "fetch('/api/store/temp-status'", 2, 'Desktop Temporary Status route calls');
 requireOccurrenceAtLeast(desktopCard, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Desktop Temporary Status request policy');
+requireOccurrenceAtLeast(desktopCard, 'expectedStoreId: String(expectedStoreId)', 2, 'Desktop Temporary Status initiating-store corroboration');
+requireOccurrenceAtLeast(desktopCard, 'expectedTenantId: String(expectedTenantId)', 2, 'Desktop Temporary Status initiating-tenant corroboration');
 requireOrder(
   desktopCard,
   ["readTempStatusResponse(res, 'set'", "antdMessage.success('Temporary status is live.')"],
@@ -259,6 +269,8 @@ forbidToken(desktopCard, 'err.message ||', 'Desktop Temporary Status card');
 requireOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile Temporary Status attempt-owned rollback');
 requireOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile Temporary Status route calls');
 requireOccurrenceAtLeast(mobileTempStatus, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile Temporary Status request policy');
+requireOccurrenceAtLeast(mobileTempStatus, 'expectedStoreId: String(expectedStoreId)', 2, 'Mobile Temporary Status initiating-store corroboration');
+requireOccurrenceAtLeast(mobileTempStatus, 'expectedTenantId: String(expectedTenantId)', 2, 'Mobile Temporary Status initiating-tenant corroboration');
 requireOrder(
   mobileTempStatus,
   ["readTempStatusResponse(res, 'set'", 'Toast.show({'],
@@ -283,11 +295,15 @@ forbidToken(mobileTempStatus, "throw new Error('Failed to clear status')", 'Mobi
   'mobile_today_temp_status_set_failed',
   'mobile_today_temp_status_clear_failed',
   "surface: 'mobile_today_hours'",
+  'tempStatusActionInFlightRef.current',
+  'isExpectedTempStatusScope(expectedTenantId, expectedStoreId)',
   "readTempStatusResponse(res, 'set'",
   "readTempStatusResponse(res, 'clear'",
 ].forEach((token) => requireToken(mobileHours, token, 'Mobile Today Temporary Status shortcuts'));
 requireOccurrenceAtLeast(mobileHours, "fetch('/api/store/temp-status'", 3, 'Mobile Today Temporary Status route calls');
 requireOccurrenceAtLeast(mobileHours, '...AUTH_BROWSER_REQUEST_POLICY', 3, 'Mobile Today Temporary Status request policy');
+requireOccurrenceAtLeast(mobileHours, 'expectedStoreId: String(expectedStoreId)', 3, 'Mobile Today Temporary Status initiating-store corroboration');
+requireOccurrenceAtLeast(mobileHours, 'expectedTenantId: String(expectedTenantId)', 3, 'Mobile Today Temporary Status initiating-tenant corroboration');
 [
   "readTempStatusResponse(res, 'set'",
   "readTempStatusResponse(res, 'clear'",
@@ -360,7 +376,9 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
 ].forEach((token) => requireToken(obpResolvedSurface, token, 'OBP Temporary Status output'));
 
 [
-  "import { getActivePublicTempStatus, normalizePublicBusinessAttributes } from '@lib/publicApi/businessProjection';",
+  'getActivePublicTempStatus,',
+  'normalizePublicBusinessAttributes,',
+  "} from '@lib/publicApi/businessProjection';",
   'const activeTempStatus = FEATURE_FLAGS.ENABLE_TEMP_STATUS',
   '? getActivePublicTempStatus(storeData.tempStatus)',
   'tempStatus: activeTempStatus',

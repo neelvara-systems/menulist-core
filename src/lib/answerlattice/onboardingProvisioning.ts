@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 
 export const ANSWERLATTICE_ONBOARDING_STATUS = {
     PAYMENT_PENDING: 'payment_pending',
@@ -181,6 +182,16 @@ export function isAnswerlatticeTerminalProviderSubscriptionStatus(status: unknow
     return ANSWERLATTICE_TERMINAL_PROVIDER_SUBSCRIPTION_STATUSES.has(
         normalizeString(status).toLowerCase(),
     );
+}
+
+export function getAnswerlatticeProviderSubscriptionCheckoutUrl(
+    candidate: AnswerlatticeProviderSubscriptionCandidate,
+): string | null {
+    try {
+        return normalizeRazorpaySubscriptionCheckoutUrl(candidate.short_url);
+    } catch {
+        return null;
+    }
 }
 
 export function shouldHoldAnswerlatticeOnboardingProviderRecovery(params: {

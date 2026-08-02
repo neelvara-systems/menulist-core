@@ -2,16 +2,9 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { normalizeHostedHelpDomain } from '@constant/answerlattice/hostedHelp';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    normalizeAnswerlatticeScopeDocumentId,
-    normalizeConsistentAnswerlatticeScopeDocumentIds,
-} from '@lib/answerlattice/sessionScope';
-import {
-    type AnswerlatticeHostedHelpConfig,
-    type AnswerlatticeHostedHelpDomainVerification,
-    normalizeHostedHelpConfig,
-} from '@lib/answerlattice/hostedHelpConfig';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeScopeDocumentId, normalizeConsistentAnswerlatticeScopeDocumentIds, } from '@lib/answerlattice/sessionScope';
+import { type AnswerlatticeHostedHelpConfig, type AnswerlatticeHostedHelpDomainVerification, normalizeHostedHelpConfig, } from '@lib/answerlattice/hostedHelpConfig';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
@@ -57,8 +50,7 @@ export function resolveAnswerlatticeHostedHelpRegistryScope(value: unknown): {
 }
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    if (!answerlatticeFirestoreAdmin) {
         throw new Error('Answerlattice Firestore Admin is not configured');
     }
     return answerlatticeFirestoreAdmin;
@@ -86,7 +78,7 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     const normalizedDomain = normalizeHostedHelpDomain(domain);
     if (!normalizedDomain) return null;
 
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES)
         .doc(normalizedDomain)
         .get();

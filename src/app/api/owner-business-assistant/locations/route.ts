@@ -171,7 +171,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
   return privateJson({
     data: {
-      generatedAt: summarySnap.exists ? summarySnap.data()?.generatedAt || null : null,
+      generatedAt: summarySnap.exists
+        ? cleanString(summarySnap.data()?.generatedAt, 80) || null
+        : null,
       stores,
     },
     cache: {

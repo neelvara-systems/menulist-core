@@ -330,11 +330,13 @@ for (const route of billableRoutes) {
   assert(!imageEditingRoute.includes("part.inlineData.mimeType.split('/')"), 'image editing must not construct an image MIME type from an untrusted suffix');
 
   const paidProviderReservationRoutes = [
+    ['src/app/api/business-copy/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/reviews/suggest/route.ts', 'const result = await model.generateContent({'],
     ['src/app/api/campaigns/caption/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/menu-card-export/design-advisor/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/descriptions/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/translations/route.ts', 'response = await genAIClient.models.generateContent({'],
+    ['src/app/api/seo/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/image-editing/route.ts', 'const imageEditGemeiniResponse = await editImageViaFlash({'],
     ['src/app/api/image-generation/route.ts', 'const promptRun = await runImageGenerationPrompts({'],
   ];
@@ -1339,6 +1341,7 @@ for (const route of billableRoutes) {
   assert(!diagnostics.includes("return String(value || '').slice"), 'AI response preview helper must not return raw response text');
 
   const campaignCaptionRoute = read('src/app/api/campaigns/caption/route.ts');
+  const campaignCaptionOutput = read('src/lib/ai/campaignCaptionOutput.ts');
   const campaignCaptionPrompt = read('src/services/gemini/prompts/v1/campaignCaption.prompt.ts');
   const campaignCaptionTransactionStart = campaignCaptionRoute.indexOf('const transactionObject: any = {');
   const campaignCaptionTransactionEnd = campaignCaptionRoute.indexOf('let remainingBalance', campaignCaptionTransactionStart);
@@ -1354,11 +1357,21 @@ for (const route of billableRoutes) {
     'parseCampaignCaptionProviderResponse(response.text',
     'campaign_caption_non_object_response',
     'getCampaignCaptionResponseSummary',
+    'normalizeCampaignCaptionGenerationResult(providerData)',
     'clientResponse: getCampaignCaptionResponseSummary(generatedData)',
     'promptSummary',
   ].forEach((token) => {
     assert(campaignCaptionRoute.includes(token), `campaign caption route includes provider-response boundary token ${token}`);
   });
+  ['caption: string', 'hashtags: string[]', 'shortCaption: string', ').slice(0, 5)'].forEach((token) => {
+    assert(campaignCaptionOutput.includes(token), `campaign caption output boundary includes ${token}`);
+  });
+  assert(campaignCaptionRoute.includes('const generatedData = {'), 'campaign caption route returns a normalized exact provider DTO');
+  assert(!campaignCaptionRoute.includes('let generatedData: any'), 'campaign caption route does not trust an untyped provider DTO');
+  const reviewSuggestRoute = read('src/app/api/reviews/suggest/route.ts');
+  assert(reviewSuggestRoute.includes('failClosedOnProviderError: true'), 'review suggestion paid-provider admission fails closed when the limiter is unavailable');
+  assert(reviewSuggestRoute.includes("rateLimitResult.reason === 'provider_unavailable'"), 'review suggestion distinguishes limiter outage from quota exhaustion');
+  assert(reviewSuggestRoute.includes('status: providerUnavailable ? 503 : 429'), 'review suggestion returns retryable unavailable status for limiter outages');
   assert(campaignCaptionRoute.includes('responseTextLength'), 'campaign caption parse diagnostics keep response length metadata');
   assert(campaignCaptionRoute.includes('responseTextPresent: Boolean(response.text)'), 'campaign caption parse diagnostics keep response presence metadata');
   assert(!campaignCaptionRoute.includes('JSON.parse(response.text)'), 'campaign caption route must parse provider responses through bounded parser');
@@ -2284,6 +2297,15 @@ for (const route of billableRoutes) {
   });
 
   const singleImageRoute = read('src/app/api/image-generation/route.ts');
+  const imagePrompt = read('src/app/api/image-generation/prompt.ts');
+  const apiSchemas = read('src/lib/validation/apiSchemas.ts');
+  assert(!singleImageRoute.includes('as unknown as GenerateImageViaApiPayloadType'), 'single image generation must use its validated runtime DTO without a double assertion');
+  assert(!singleImageRoute.includes('const rawData = bodyResult.data as any'), 'single image generation raw input must remain unknown until validation');
+  assert(!singleImageRoute.includes('let transactionObject: any'), 'single image generation accounting must retain an explicit transaction type');
+  assert(singleImageRoute.includes('let accountingFailureLogged = false;'), 'single image generation must track accounting diagnostics without mutating thrown values');
+  assert(!singleImageRoute.includes('__imageGenerationLogged'), 'single image generation must not mutate a provider or accounting error object');
+  assert(imagePrompt.includes("const details = inputJson.itemDetails || {};"), 'single image prompt construction must support the schema-valid missing-item-details case');
+  assert(apiSchemas.includes("projectId: z.string().max(160).refine((value) => normalizeMultiOutletProjectId(value)?.projectId === value)"), 'single image generation schema must require exact tenant/store-bearing project identity');
   assert(singleImageRoute.includes('referenceImageStorageScope'), 'single image generation passes reference image storage scope');
   assert(singleImageRoute.includes('sId: session.sId'), 'single image generation scopes reference images to session store');
   assert(singleImageRoute.includes('tId: session.tId'), 'single image generation scopes reference images to session tenant');
@@ -2849,7 +2871,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
       'const taskConfigStatus = getImageGenerationTaskConfigStatus();',
       'if (!taskConfigStatus.ready)',
       'const capacityCheck = await checkAICapacity(',
-      'enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })',
+      "businessType: businessType || '',",
     ],
     'checks Cloud Tasks config before capacity reads and enqueue fanout',
   );
@@ -2864,6 +2886,9 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 	  assert(!taskStartLog.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), `${route} must not write raw generation config payloads to local batch-trigger logs`);
 	  assert(!taskStartLog.includes('itemIds: itemsList.map((item) => item.id)'), `${route} must not write raw item ID arrays to local batch-trigger logs`);
 	  assert(!source.includes('message: errorMessage'), `${route} must not return raw exception messages`);
+  assert(!source.includes('as unknown as Required<Pick<GenerateImageViaApiPayloadBatchType'), `${route} must use the validated batch DTO without a double assertion`);
+  assert(!source.includes('const rawData = bodyResult.data as any'), `${route} raw input must remain unknown until validation`);
+  assert(!source.includes('Record<string, any>'), `${route} config summaries must retain unknown boundaries`);
   assert(!source.includes('writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId'), `${route} validation local logs must not write raw project IDs into local log fields`);
   assert(source.includes('attemptedData: {\n                    ...requestLogContext,'), `${route} validation local logs reuse bounded request context`);
   assert(!source.includes('result.reason instanceof Error ? result.reason.message'), `${route} must not log raw rejected task messages`);
@@ -2938,6 +2963,9 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(!source.includes('logger.error'), `${route} must not raw-log worker failures`);
   assert(!source.includes("logger.warn('Batch image generation task skipped - job not found'"), `${route} must not use ad hoc missing-job skip warnings`);
   assert(!source.includes('Batch image generation API error'), `${route} must not use legacy raw worker failure message`);
+  assert(!source.includes('as unknown as GenerateImageViaApiPayloadBatchType'), `${route} must use the validated worker DTO without a double assertion`);
+  assert(!source.includes('const rawData = bodyResult.data as any'), `${route} raw input must remain unknown until validation`);
+  assert(!source.includes('Record<string, any>'), `${route} config summaries must retain unknown boundaries`);
   assert(!source.includes('Failed to update batch job with error status'), `${route} must not use legacy raw job-update failure message`);
   assert(!source.includes('Processing failed for ${itemDetails.name}-${itemDetails.id}: ${errorMessage}'), `${route} must not return raw worker exception messages`);
   assert(!source.includes('Image generation completed for item ${itemDetails.name}-${itemDetails.id}'), `${route} must not return raw item identifiers on success`);

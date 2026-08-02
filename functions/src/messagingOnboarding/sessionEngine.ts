@@ -1768,7 +1768,7 @@ export async function handleMessage(
       userIdMasked: maskUserId(msg.userId),
       metadata: { storeId: existingStore.storeId },
     });
-    const dashboardUrl = "https://menulist.ai/login";
+    const dashboardUrl = "https://app.menulist.ai/signin";
     return MESSAGES.EXISTING_STORE(dashboardUrl);
   }
 

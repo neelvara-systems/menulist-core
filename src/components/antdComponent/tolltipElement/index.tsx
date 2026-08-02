@@ -1,9 +1,10 @@
 import { Tooltip } from 'antd'
+import type { CSSProperties, ReactNode } from 'react';
 
 type TooltipPropsType = {
-    title: string,
-    children: any,
-    styles?: any
+    title?: ReactNode,
+    children: ReactNode,
+    styles?: CSSProperties
 }
 
 function TolltipElement({ title = "", children }: TooltipPropsType) {

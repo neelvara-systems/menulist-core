@@ -36,7 +36,7 @@ To find your link:
 
 1. Open your MenuList dashboard
 2. Look for "Your Official Business Link" at the top
-3. Your link looks like: **yourbusiness.menulist.ai**
+3. Your link looks like: **yourbusiness.menulist.online**
 
 ---
 

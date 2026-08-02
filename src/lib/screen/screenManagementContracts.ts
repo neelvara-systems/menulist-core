@@ -1,13 +1,25 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { normalizeScreenImageUrl } from "@lib/screen/screenContent";
 import { isValidScreenToken } from "@lib/screen/utils";
-import type { ScreenSlide } from "@type/campaigns";
+import type {
+    DigitalScreenDisplayMode,
+    ScreenSlide,
+} from "@type/campaigns";
 
 export const FIRESTORE_TIMESTAMP_MAX_MILLISECONDS = 253_402_300_799_999;
 
 export type DigitalScreenOwnerSlideTransport = Omit<ScreenSlide, "validUntil"> & {
     validUntilMs?: number;
 };
+
+export interface DigitalScreenModeSeenReceiptTransport {
+    contentVersion: number;
+    seenAtMs: number;
+}
+
+export type DigitalScreenSeenByModeTransport = Partial<
+    Record<DigitalScreenDisplayMode, DigitalScreenModeSeenReceiptTransport>
+>;
 
 export interface DigitalScreenOwnerStateTransport {
     contentVersion: number;
@@ -18,6 +30,7 @@ export interface DigitalScreenOwnerStateTransport {
     ownerOverrideEnabled: boolean;
     pinnedSlides: DigitalScreenOwnerSlideTransport[];
     screenLastSeenAtMs?: number;
+    screenSeenByMode?: DigitalScreenSeenByModeTransport;
     screenToken: string;
 }
 
@@ -66,6 +79,32 @@ const isDigitalScreenOwnerSlideTransport = (
         && isValidTimestampMilliseconds(slide.validUntilMs);
 };
 
+const DIGITAL_SCREEN_DISPLAY_MODES: DigitalScreenDisplayMode[] = [
+    "menu_board",
+    "highlights",
+];
+
+const isDigitalScreenModeSeenReceiptTransport = (
+    value: unknown,
+): value is DigitalScreenModeSeenReceiptTransport => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const receipt = value as Partial<DigitalScreenModeSeenReceiptTransport>;
+    return Number.isSafeInteger(receipt.contentVersion)
+        && Number(receipt.contentVersion) >= 1
+        && isValidTimestampMilliseconds(receipt.seenAtMs);
+};
+
+const isDigitalScreenSeenByModeTransport = (
+    value: unknown,
+): value is DigitalScreenSeenByModeTransport => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return Object.keys(record).every((key) => (
+        DIGITAL_SCREEN_DISPLAY_MODES.includes(key as DigitalScreenDisplayMode)
+        && isDigitalScreenModeSeenReceiptTransport(record[key])
+    ));
+};
+
 export function isDigitalScreenOwnerStateTransport(
     value: unknown,
 ): value is DigitalScreenOwnerStateTransport {
@@ -86,6 +125,13 @@ export function isDigitalScreenOwnerStateTransport(
         && screen.pinnedSlides.every(isDigitalScreenOwnerSlideTransport)
         && (screen.screenLastSeenAtMs === undefined
             || isValidTimestampMilliseconds(screen.screenLastSeenAtMs))
+        && (screen.screenSeenByMode === undefined
+            || (
+                isDigitalScreenSeenByModeTransport(screen.screenSeenByMode)
+                && Object.values(screen.screenSeenByMode).every((receipt) => (
+                    receipt.contentVersion <= Number(screen.contentVersion)
+                ))
+            ))
         && typeof screen.screenToken === "string"
         && isValidScreenToken(screen.screenToken);
 }

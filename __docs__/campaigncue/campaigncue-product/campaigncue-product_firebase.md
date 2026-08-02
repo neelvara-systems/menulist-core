@@ -76,7 +76,7 @@ The current implementation adds an export/download-first CampaignCue runtime:
 - CampaignCue and CueLayers Admin writes use the shared hardened Firestore serializer with optional `undefined` object fields omitted. Persisted read decoders normalize legacy optional `null` fields to absence, reject malformed required/scalar/scope fields, and keep invalid records out of owner output and mutation calculations.
 - Provider setup/manual confirmation writes are not active; `/api/campaigncue/integrations` is read-only posture.
 - The owner workspace UI merges successful mutation responses locally instead of reloading the full overview after every save/action.
-- Social account connection, direct provider calls, paid generation, rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost.
+- Social account connection, direct provider calls, paid generation, external/cloud-rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost. In-house browser video rendering writes only compact `videoProjects` state and receipts; final media bytes stay on the owner's device.
 
 No CampaignCue Cloud Function or scheduler cost is introduced in this pass.
 

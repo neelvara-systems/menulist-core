@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createTimestampedRuntimeId } from '@lib/runtime/randomId';
@@ -923,10 +925,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         if (!url) return;
 
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('answerlattice_widget_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logRuntimeFailure('answerlattice_widget_link_open_failed', error, {
                 surface: 'widget_client',

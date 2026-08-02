@@ -24,6 +24,7 @@ Assets should use:
 - Paginate asset grids.
 - `GET /api/campaigncue/assets` uses a workspace-only guard read plus a bounded asset query instead of loading the full CampaignCue overview.
 - Metadata-only registration uses one workspace guard read and writes one asset plus one event in one batch.
+- A local Video Studio export uses the same metadata-only registration path after download; it adds no Storage write and does not make the local binary remotely retrievable.
 - Registration with a campaign usage reference adds one direct campaign read; it does not scan campaigns.
 - Registration with a Storage path adds one Storage metadata lookup so persisted size/type come from the object rather than the browser. It does not upload or duplicate the object.
 - `GET /api/campaigncue/assets` and overview/decision reads use the same one bounded asset query and strict in-memory projection; malformed rows add no repair write.

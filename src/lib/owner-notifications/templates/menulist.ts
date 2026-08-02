@@ -1,3 +1,4 @@
+import { DASHBOARD_URL } from '@constant/urls';
 import type { OwnerNotificationTemplate } from '../types';
 
 const VERSION = '2026-06-02';
@@ -103,7 +104,7 @@ export function renderMenuListOwnerNotification(
     const nextBillingDate = escapeHtml(textValue(metadata.nextBillingDate, 'See dashboard'));
     const renewalDate = escapeHtml(textValue(metadata.renewalDate, 'See dashboard'));
     const publicUrl = urlValue(metadata.publicUrl);
-    const dashboardUrl = urlValue(metadata.dashboardUrl) || 'https://menulist.ai';
+    const dashboardUrl = urlValue(metadata.dashboardUrl) || DASHBOARD_URL;
     const publishFailureReason = publishFailureReasonText(metadata.failureReason);
     const menuStaleReason = menuStaleReasonText(metadata.reason);
 

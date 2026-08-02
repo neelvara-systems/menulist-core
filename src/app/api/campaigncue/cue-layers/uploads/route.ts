@@ -7,6 +7,7 @@ import {
     parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueCueLayersApiError,
@@ -15,9 +16,8 @@ import {
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { CampaignCueCueLayerUploadSchema } from "@lib/validation/campaigncueCueLayersSchemas";
 import { type NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const POST = withAuth(async (request: NextRequest, session) => {
+export const POST = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;

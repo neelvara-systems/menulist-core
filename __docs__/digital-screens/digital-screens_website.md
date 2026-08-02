@@ -45,7 +45,7 @@ Use your counter TV for the full menu. Use your waiting area TV for rotating hig
 
 Open one link on your TV. Bookmark it. Press fullscreen. The display then follows the saved source through the screen refresh path.
 
-> **Visual:** Calendar showing 30 days — "Last manual update: Never needed"
+> **Visual:** Menu save flowing to QR, web, and TV — "No separate screen editing"
 
 ### 5. Works with Any Screen
 

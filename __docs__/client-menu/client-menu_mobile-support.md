@@ -7,7 +7,7 @@
 
 ## Feature Admission Test
 
-Not applicable — this is a CUSTOMER-facing feature, not an owner-operational feature. It runs as a public Next.js page at `/{subdomain}.menulist.ai/{slug}`, separate from the owner dashboard MobileShell.
+Not applicable — this is a CUSTOMER-facing feature, not an owner-operational feature. It runs as a public Next.js page at `/{subdomain}.menulist.online/{slug}`, separate from the owner dashboard MobileShell.
 
 ---
 

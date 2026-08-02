@@ -278,6 +278,9 @@ function verifyPublicPageAndForm() {
   assertNotIncludes(notFoundPage, 'Page Not Found', 'Guest Feedback not-found English hardcode');
 
   assertIncludes(form, 'GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY', 'Guest Feedback form request policy');
+  assertIncludes(form, 'storeDetails?: Partial<StoreDataType>;', 'Guest Feedback form browser-safe partial store contract');
+  assertIncludes(form, 'storeDetails={storeDetails}', 'Guest Feedback form direct public store projection handoff');
+  assertNotIncludes(form, 'storeDetails as StoreDataType', 'Guest Feedback form must not widen a public projection through a cast');
   assertIncludes(form, "cache: 'no-store' as RequestCache", 'Guest Feedback form no-store policy');
   assertIncludes(form, "credentials: 'same-origin' as RequestCredentials", 'Guest Feedback form credential policy');
   assertIncludes(form, "redirect: 'manual' as RequestRedirect", 'Guest Feedback form redirect policy');

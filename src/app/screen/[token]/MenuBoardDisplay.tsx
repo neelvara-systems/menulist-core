@@ -20,6 +20,7 @@
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
+import { useDigitalScreenSeenSignal } from "@/hooks/useDigitalScreenSeenSignal";
 import {
   formatScreenPrice,
   getScreenDietType,
@@ -56,12 +57,6 @@ import styles from "./screenDisplay.module.scss";
 
 // Auto-pagination timing (per spec: 15-20 seconds per page)
 const PAGE_DURATION_MS = 12000;
-const SCREEN_SEEN_REQUEST_POLICY = {
-  cache: "no-store" as RequestCache,
-  credentials: "same-origin" as RequestCredentials,
-  redirect: "manual" as RequestRedirect,
-};
-
 // Per ChatGPT review v3: Cap total rendered items to prevent layout overflow on TVs
 const MAX_TOTAL_ITEMS = 500;
 
@@ -201,6 +196,14 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     storeId,
   } = initialData;
   const cacheKey = `menulist-menuboard-data-${token}`;
+
+  useDigitalScreenSeenSignal({
+    contentVersion: initialVersion,
+    diagnosticPrefix: "digital_screen_menuboard",
+    mode: "menu_board",
+    storeId,
+    token,
+  });
 
   // Server data is authoritative online. A matching local snapshot is used
   // only during an offline boot so a withdrawn menu cannot reappear.
@@ -455,57 +458,6 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     );
     return () => clearInterval(fallbackRefresh);
   }, [isOffline, token]);
-
-  // Daily seen signal (same as ScreenDisplay — once per day per screen)
-  useEffect(() => {
-    const todayKey = `screen_seen_${token}_${new Date().toISOString().slice(0, 10)}`;
-    let alreadySeenToday = false;
-    try {
-      alreadySeenToday = localStorage.getItem(todayKey) === "1";
-    } catch (error) {
-      logScreenDisplayFailure(
-        "digital_screen_menuboard_seen_storage_read_failed",
-        error,
-        {
-          ...getBoundedScreenStringContext("token", token),
-          ...getBoundedScreenStringContext("storeId", storeId),
-        },
-      );
-    }
-    if (!alreadySeenToday) {
-      fetch("/api/screen/seen", {
-        ...SCREEN_SEEN_REQUEST_POLICY,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, storeId }),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            logScreenDisplayFailure(
-              "digital_screen_menuboard_seen_signal_rejected",
-              new Error("screen_seen_signal_rejected"),
-              {
-                ...getBoundedScreenStringContext("token", token),
-                ...getBoundedScreenStringContext("storeId", storeId),
-                responseStatus: response.status,
-              },
-            );
-            return;
-          }
-          localStorage.setItem(todayKey, "1");
-        })
-        .catch((error) => {
-          logScreenDisplayFailure(
-            "digital_screen_menuboard_seen_signal_failed",
-            error,
-            {
-              ...getBoundedScreenStringContext("token", token),
-              ...getBoundedScreenStringContext("storeId", storeId),
-            },
-          );
-        });
-    }
-  }, [token, storeId]);
 
   // Online/offline detection
   useEffect(() => {

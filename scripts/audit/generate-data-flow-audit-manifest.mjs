@@ -12,6 +12,7 @@ const MANIFEST_PATH = path.join(AUDIT_DIR, 'data-flow-pipeline-deep-audit.manife
 const EXCLUSIONS_PATH = path.join(AUDIT_DIR, 'data-flow-pipeline-deep-audit.exclusions.csv');
 const SUMMARY_PATH = path.join(AUDIT_DIR, 'data-flow-pipeline-deep-audit.manifest-summary.json');
 const REVIEW_STATE_PATH = path.join(AUDIT_DIR, 'data-flow-pipeline-deep-audit.review-state.json');
+const REVIEW_STATE_FILE = '__docs__/audits/data-flow-pipeline-deep-audit.review-state.json';
 
 const TEXT_EXTENSIONS = new Set([
   '.cjs', '.css', '.csv', '.html', '.js', '.jsx', '.json', '.md', '.mjs',
@@ -326,6 +327,14 @@ function csvCell(value) {
 }
 
 function fileDigest(file, content) {
+  if (file === REVIEW_STATE_FILE) {
+    assertNoDuplicateJsonObjectKeys(content, 'Audit review state');
+    const canonical = JSON.parse(content);
+    if (canonical[REVIEW_STATE_FILE] && typeof canonical[REVIEW_STATE_FILE] === 'object') {
+      canonical[REVIEW_STATE_FILE].reviewedSha256 = '<canonical-self-fingerprint>';
+    }
+    return createHash('sha256').update(`${JSON.stringify(canonical, null, 2)}\n`).digest('hex');
+  }
   const buffer = content ? Buffer.from(content, 'utf8') : readFileSync(path.join(ROOT, file));
   return createHash('sha256').update(buffer).digest('hex');
 }

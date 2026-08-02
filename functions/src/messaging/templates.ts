@@ -104,7 +104,7 @@ function storePublished(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const publicUrl = urlValue(meta.publicUrl);
-  const dashboardUrl = urlValue(meta.dashboardUrl) || 'https://menulist.ai';
+  const dashboardUrl = urlValue(meta.dashboardUrl) || 'https://app.menulist.ai';
   return {
     subject: `Your menu is now live — ${storeName}`,
     html: wrap(`

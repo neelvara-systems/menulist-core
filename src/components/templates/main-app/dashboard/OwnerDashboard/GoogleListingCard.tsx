@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * GoogleListingCard — Dashboard status indicator for Google link
  *
@@ -129,10 +131,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
 
     const handleOpenGoogle = () => {
         try {
-            const opened = window.open('https://business.google.com/', '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('owner_dashboard_google_listing_open_blocked');
-            }
+            openIsolatedBrowserUrl('https://business.google.com/');
         } catch (error) {
             logStoreDataFailure('owner_dashboard_google_listing_open_failed', error, buildGoogleListingCardLogContext('open_google_profile', {
                 target: 'google_business_profile',

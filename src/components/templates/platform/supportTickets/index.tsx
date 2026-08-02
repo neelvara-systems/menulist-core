@@ -26,6 +26,15 @@ const SupportTickets = () => {
     const deletedTicketsViewRef = useRef<PlatformTicketsViewRef>(null);
     const { cachedItems, setAllItems } = useTicketCache({ audience: 'platform' });
     const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
+    const componentActiveRef = useRef(true);
+    const deletedTicketsLoadInFlightRef = useRef(false);
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     // Helper function to update both state and cache
     const updateTicketsAndCache = useCallback((updatedTickets: SupportTicketType[]) => {
@@ -58,30 +67,39 @@ const SupportTickets = () => {
         };
 
         const setupListener = async () => {
-            const listener = await subscribeSupportTickets(
-                (updatedTickets) => {
-                    if (!mounted) return;
-                    updateTicketsAndCache(updatedTickets);
-                    setLoading(false);
-                    stopInitialLoader();
-                },
-                () => {
-                    if (!mounted) return;
-                    message.error('Failed to sync tickets in real-time');
-                    setLoading(false);
-                    stopInitialLoader();
-                }
-            );
+            let listener: (() => void) | null = null;
+            try {
+                listener = await subscribeSupportTickets(
+                    (updatedTickets) => {
+                        if (!mounted) return;
+                        updateTicketsAndCache(updatedTickets);
+                        setLoading(false);
+                        stopInitialLoader();
+                    },
+                    () => {
+                        if (!mounted) return;
+                        message.error('Failed to sync tickets in real-time');
+                        setLoading(false);
+                        stopInitialLoader();
+                    }
+                );
+            } catch {
+                if (!mounted) return;
+                message.error('Failed to sync tickets in real-time');
+                setLoading(false);
+                stopInitialLoader();
+                return;
+            }
 
             if (!mounted) {
-                listener();
+                listener?.();
                 return;
             }
 
             unsubscribe = listener;
         };
 
-        setupListener();
+        void setupListener();
 
         return () => {
             mounted = false;
@@ -95,24 +113,27 @@ const SupportTickets = () => {
     }, [dispatch, updateTicketsAndCache]);
 
     // Fetch deleted tickets when trash view is accessed
-    const fetchDeletedTickets = async () => {
+    const fetchDeletedTickets = useCallback(async () => {
+        if (deletedTicketsLoadInFlightRef.current) return;
+        deletedTicketsLoadInFlightRef.current = true;
         dispatch(startLoader('Loading deleted tickets...'));
         try {
             const response = await getDeletedSupportTickets(100);
-            setDeletedTickets(response);
-        } catch (error) {
-            message.error('Failed to load deleted tickets.');
+            if (componentActiveRef.current) setDeletedTickets(response);
+        } catch {
+            if (componentActiveRef.current) message.error('Failed to load deleted tickets.');
         } finally {
+            deletedTicketsLoadInFlightRef.current = false;
             dispatch(stopLoader('Loading deleted tickets...'));
         }
-    };
+    }, [dispatch]);
 
     // Fetch deleted tickets when switching to trash view
     useEffect(() => {
         if (activeView === 'trash') {
-            fetchDeletedTickets();
+            void fetchDeletedTickets();
         }
-    }, [activeView]);
+    }, [activeView, fetchDeletedTickets]);
 
     const options = [
         {
@@ -209,7 +230,7 @@ const SupportTickets = () => {
                         setDeletedTickets(updated);
                         // Active tickets are already maintained by the live listener.
                         // Refresh only the lazy-loaded trash view after restore/delete actions.
-                        fetchDeletedTickets();
+                        void fetchDeletedTickets();
                     }}
                     isTrashView={true}
                 />

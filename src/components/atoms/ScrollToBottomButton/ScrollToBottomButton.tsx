@@ -54,13 +54,15 @@ export const useScrollToBottom = ({
             return;
         }
 
+        const normalizedThreshold = Number.isFinite(threshold) ? Math.max(threshold, 0) : 200;
         const handleScroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = container;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
             // Show button if user scrolled up more than threshold from bottom
-            setShowScrollButton(distanceFromBottom > threshold);
+            setShowScrollButton(distanceFromBottom > normalizedThreshold);
         };
 
+        handleScroll();
         container.addEventListener('scroll', handleScroll);
         return () => container.removeEventListener('scroll', handleScroll);
     }, [hasMessages, threshold, scrollContainerRef]);

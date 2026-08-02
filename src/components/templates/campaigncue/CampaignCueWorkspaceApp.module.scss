@@ -582,6 +582,191 @@
   gap: 10px;
 }
 
+.primaryButton,
+.iconButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.primaryButton {
+  padding: 10px 14px;
+  background: var(--cc-primary, #24564d);
+  color: #fff;
+}
+
+.iconButton {
+  width: 44px;
+  padding: 0;
+  border-color: var(--cc-border, #d8d2c5);
+  background: var(--cc-panel, #fffdfa);
+  color: var(--cc-text, #243b35);
+}
+
+.primaryButton:disabled,
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.videoStudioStatus {
+  min-height: 24px;
+  color: var(--cc-primary, #24564d);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.videoStudioStatus span[data-tone="red"] {
+  color: var(--cc-error-text, #9b341f);
+}
+
+.videoProjectPicker,
+.videoProjectEditor,
+.videoProjectSidebar,
+.videoSceneList {
+  display: grid;
+  gap: 12px;
+}
+
+.videoStudioLayout {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.videoProjectSidebar {
+  position: sticky;
+  top: 92px;
+  border: 1px solid var(--cc-border, #ddd8cc);
+  border-radius: 8px;
+  background: var(--cc-panel, #fffdfa);
+  padding: 14px;
+}
+
+.videoProjectSidebar label,
+.videoProjectControls label,
+.videoSceneFields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--cc-text-muted, #40524d);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.videoProjectSidebar select,
+.videoProjectControls input,
+.videoProjectControls select,
+.videoSceneFields input,
+.videoSceneFields select,
+.videoSceneFields textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--cc-border, #d8d2c5);
+  border-radius: 8px;
+  background: var(--cc-surface, #fff);
+  color: var(--cc-text, #142420);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.videoSceneFields textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.videoProjectControls,
+.videoSceneFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.videoTimelineHeader,
+.videoStudioActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.videoTimelineHeader div {
+  display: grid;
+  gap: 2px;
+}
+
+.videoTimelineHeader strong {
+  color: var(--cc-text, #142420);
+  font-size: 15px;
+}
+
+.videoTimelineHeader span,
+.videoSceneCard .titleBlock span {
+  color: var(--cc-text-muted, #667085);
+  font-size: 12px;
+}
+
+.videoSceneCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--cc-border, #ddd8cc);
+  border-radius: 8px;
+  background: var(--cc-panel, #fffdfa);
+  padding: 14px;
+  box-shadow: var(--cc-shadow, 0 12px 32px rgba(31, 41, 51, 0.05));
+}
+
+.videoFileControl {
+  min-height: 44px;
+  align-content: center;
+  border: 1px dashed var(--cc-border, #d8d2c5);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.videoAssetPreview {
+    width: 100%;
+    max-width: 240px;
+    aspect-ratio: 16 / 9;
+    border: 1px solid rgba(109, 93, 252, 0.22);
+    border-radius: 12px;
+    object-fit: cover;
+    background: #141225;
+}
+
+.videoFileControl input {
+  border: 0;
+  padding: 4px 0 0;
+}
+
+.videoRightsConfirmation {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--cc-border, #d8d2c5);
+  border-radius: 8px;
+  background: var(--cc-panel, #fffdfa);
+  padding: 10px 12px;
+  color: var(--cc-text, #142420);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.videoRightsConfirmation input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
 .empty,
 .statePanel {
   display: grid;
@@ -768,11 +953,13 @@
 
 @media (max-width: 980px) {
   .hero,
-  .editorWorkspace {
+  .editorWorkspace,
+  .videoStudioLayout {
     grid-template-columns: 1fr;
   }
 
-  .editorOwnerPanel {
+  .editorOwnerPanel,
+  .videoProjectSidebar {
     position: static;
     max-height: none;
   }
@@ -781,7 +968,9 @@
   .detailGrid,
   .stepGrid,
   .twoGrid,
-  .formGrid {
+  .formGrid,
+  .videoProjectControls,
+  .videoSceneFields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -795,14 +984,18 @@
   .topActions,
   .button,
   .ghostButton,
-  .dangerButton {
+  .dangerButton,
+  .primaryButton,
+  .videoStudioActions > * {
     width: 100%;
   }
 
   .grid,
   .stepGrid,
   .twoGrid,
-  .formGrid {
+  .formGrid,
+  .videoProjectControls,
+  .videoSceneFields {
     grid-template-columns: 1fr;
   }
 

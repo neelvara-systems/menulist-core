@@ -36,6 +36,7 @@ import {
   isSupportedMenuIntakeMimeType,
   MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE,
   MenuIntakeIdentityServerError,
+  type MenuIntakeIdentityServerResult,
   runMenuIntakeIdentityCheck,
 } from "@lib/menu-extraction/menuIntakeIdentityServer";
 import { normalizeMenuExtractionJobId } from "@lib/menu-extraction/jobIdBoundary";
@@ -54,7 +55,7 @@ import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import crypto from "crypto";
 import { Timestamp } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
-import { verifyTenantAccess, withAuth } from "src/middleware/auth";
+import { type AuthenticatedHandler, verifyTenantAccess, withAuth } from "src/middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
@@ -65,6 +66,28 @@ const OWNER_UPLOAD_DEDUPE_VERSION = 1;
 const OWNER_UPLOAD_COMPLETED_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_ERROR =
   "This menu is already large. Reset it or create a new menu before uploading more files.";
+const MENU_EXTRACTION_PRIVATE_RESPONSE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0",
+  "X-Content-Type-Options": "nosniff",
+} as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value && typeof value === "object" && !Array.isArray(value))
+);
+
+const withMenuExtractionResponseHeaders = <T extends NextResponse>(response: T): T => {
+  Object.entries(MENU_EXTRACTION_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+    response.headers.set(name, value);
+  });
+  return response;
+};
+
+const withMenuExtractionAuth = (handler: AuthenticatedHandler) => {
+  const authenticatedHandler = withAuth(handler);
+  return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => (
+    withMenuExtractionResponseHeaders(await authenticatedHandler(...args))
+  );
+};
 
 const getMenuExtractionJobRouteLogContext = (params: {
   jobId?: unknown;
@@ -125,7 +148,6 @@ const RequestSchema = z.object({
   jobMode: z.enum(["SINGLE_STORE", "MASTER_PROJECT", "OUTLET_LINKED"]).optional(),
   projectId: MenuExtractionProjectIdSchema,
   retriedFromJobId: MenuExtractionJobIdSchema.optional(),
-  retryCount: z.number().int().min(0).max(10).optional(),
   targetLanguages: z.array(TargetLanguageSchema).min(1).max(12),
 });
 
@@ -172,12 +194,13 @@ function getStoragePathFromDownloadUrl(value: string): string | null {
 type RetryContext = {
   files: MenuIntakeFileInput[];
   forceReview: boolean;
+  retryCount: number;
   source: "menu_link_import" | "owner_upload";
   sourceMetadata?: Record<string, unknown>;
 };
 
 type ExistingJobMatch = {
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   id: string;
 };
 
@@ -247,7 +270,7 @@ function estimateJsonUtf8Bytes(value: unknown): number {
   }
 }
 
-function getProjectedProjectDocumentSize(projectData: Record<string, any>, incomingFileCount: number) {
+function getProjectedProjectDocumentSize(projectData: Record<string, unknown>, incomingFileCount: number) {
   const currentBytes = estimateJsonUtf8Bytes(projectData);
   const maximumReservedHeadroomBytes =
     MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES -
@@ -267,14 +290,20 @@ function getProjectedProjectDocumentSize(projectData: Record<string, any>, incom
 }
 
 function getTrustedBusinessContext(
-  projectData: Record<string, any>,
+  projectData: Record<string, unknown>,
   requestData: { businessCategory?: string; businessType?: string },
 ): { businessCategory?: string; businessType?: string } {
-  const projectType = getBusinessTypeConfig(projectData.businessType);
+  const persistedBusinessType = typeof projectData.businessType === "string"
+    ? projectData.businessType
+    : undefined;
+  const persistedBusinessCategory = typeof projectData.businessCategory === "string"
+    ? projectData.businessCategory
+    : undefined;
+  const projectType = getBusinessTypeConfig(persistedBusinessType);
   const requestType = getBusinessTypeConfig(requestData.businessType);
   const businessType = projectType?.value || requestType?.value;
   const businessCategoryInput =
-    normalizeBusinessCategory(projectData.businessCategory) ||
+    normalizeBusinessCategory(persistedBusinessCategory) ||
     normalizeBusinessCategory(requestData.businessCategory);
   const businessCategory = businessType
     ? resolveStoreBusinessCategory(businessType, businessCategoryInput)
@@ -316,11 +345,21 @@ async function findExistingActiveJob(projectId: string, userId: string): Promise
 
 function getJobTimestampMillis(value: unknown): number | null {
   if (!value) return null;
-  if (typeof (value as any).toMillis === "function") return (value as any).toMillis();
-  if (typeof (value as any).seconds === "number") return (value as any).seconds * 1000;
   if (value instanceof Date) return value.getTime();
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  return null;
+  if (!isRecord(value)) return null;
+  const toMillis = value.toMillis;
+  if (typeof toMillis === "function") {
+    try {
+      const millis = Reflect.apply(toMillis, value, []);
+      return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+    } catch {
+      return null;
+    }
+  }
+  return typeof value.seconds === "number" && Number.isFinite(value.seconds)
+    ? value.seconds * 1000
+    : null;
 }
 
 function normalizeDedupeText(value: unknown): string {
@@ -352,13 +391,14 @@ async function getOwnerUploadFileFingerprint(
   const md5Hash = typeof metadata.md5Hash === "string" ? metadata.md5Hash : "";
   const crc32c = typeof metadata.crc32c === "string" ? metadata.crc32c : "";
   const contentHash = md5Hash || crc32c;
-  if (!contentHash) return null;
+  const size = Number(metadata.size ?? file.size);
+  if (!contentHash || !Number.isFinite(size) || size <= 0 || size > MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE) return null;
 
   return {
     contentHash,
     contentHashType: md5Hash ? "md5" : "crc32c",
     contentType: String(metadata.contentType || file.type || "").toLowerCase(),
-    size: Number(metadata.size || file.size || 0),
+    size,
   };
 }
 
@@ -392,7 +432,7 @@ async function buildOwnerUploadSourceFingerprint(params: {
   };
 
   return {
-    fileFingerprints: fileFingerprints as OwnerUploadFileFingerprint[],
+    fileFingerprints: fileFingerprints.filter((value): value is OwnerUploadFileFingerprint => value !== null),
     fingerprint: crypto.createHash("sha256").update(JSON.stringify(fingerprintInput)).digest("hex"),
     targetLanguageCodes,
     version: OWNER_UPLOAD_DEDUPE_VERSION,
@@ -403,12 +443,13 @@ async function deleteUnreferencedOwnerUploadFiles(params: {
   files: MenuIntakeFileInput[];
   ids: { sId: string; tId: string };
   reason: string;
-  reusedJobData?: Record<string, any> | null;
+  reusedJobData?: Record<string, unknown> | null;
 }): Promise<void> {
+  const reusedFiles = Array.isArray(params.reusedJobData?.files) ? params.reusedJobData.files : [];
   const reusedUrls = new Set(
-    Array.isArray(params.reusedJobData?.files)
-      ? params.reusedJobData.files.map((file: any) => String(file?.url || "")).filter(Boolean)
-      : [],
+    reusedFiles.flatMap((file) => (
+      isRecord(file) && typeof file.url === "string" && file.url ? [file.url] : []
+    )),
   );
 
   const deletions = params.files.map(async (file) => {
@@ -457,7 +498,8 @@ async function findReusableCompletedOwnerJob(params: {
     .map((doc) => ({ id: doc.id, data: doc.data() || {} }))
     .filter((job) => {
       const completedAt = getJobTimestampMillis(job.data.completedAt || job.data.updatedAt);
-      const destinationType = job.data.destinationType || job.data.destination?.type;
+      const destination = isRecord(job.data.destination) ? job.data.destination : null;
+      const destinationType = job.data.destinationType || destination?.type;
       const projectChangedAfterExtraction = completedAt !== null &&
         typeof params.projectLastUpdatedAtMillis === "number" &&
         params.projectLastUpdatedAtMillis > completedAt + 2 * 60 * 1000;
@@ -499,17 +541,30 @@ async function loadRetryContext(params: {
     throw new MenuIntakeIdentityServerError(400, "Only failed extraction jobs can be retried.");
   }
 
-  if (retryData.error?.retryable === false) {
+  const retryError = isRecord(retryData.error) ? retryData.error : null;
+  if (retryError?.retryable === false) {
     throw new MenuIntakeIdentityServerError(400, "This extraction job cannot be retried.");
   }
 
   if (
-    String(retryData.projectId || "") !== params.projectId ||
-    String(retryData.tId || "") !== params.ids.tId ||
-    String(retryData.sId || "") !== params.ids.sId ||
-    String(retryData.uId || "") !== params.ids.uId
+    retryData.projectId !== params.projectId ||
+    retryData.tId !== params.ids.tId ||
+    retryData.sId !== params.ids.sId ||
+    retryData.uId !== params.ids.uId
   ) {
     throw new MenuIntakeIdentityServerError(403, "Original extraction job does not belong to this menu.");
+  }
+
+  const previousRetryCount = retryData.retryCount === undefined
+    ? 0
+    : typeof retryData.retryCount === "number" &&
+      Number.isSafeInteger(retryData.retryCount) &&
+      retryData.retryCount >= 0 &&
+      retryData.retryCount < 10
+      ? retryData.retryCount
+      : null;
+  if (previousRetryCount === null) {
+    throw new MenuIntakeIdentityServerError(400, "Original extraction retry state is invalid.");
   }
 
   const retryFilesResult = JobFilesSchema.safeParse(retryData.files);
@@ -527,14 +582,15 @@ async function loadRetryContext(params: {
   return {
     files: retryFiles,
     forceReview: retryData.forceReview === true,
+    retryCount: previousRetryCount + 1,
     source: normalizeProjectJobSource(retryData.source),
-    sourceMetadata: retryData.sourceMetadata && typeof retryData.sourceMetadata === "object"
+    sourceMetadata: isRecord(retryData.sourceMetadata)
       ? retryData.sourceMetadata
       : undefined,
   };
 }
 
-export const POST = withAuth(async (request: NextRequest, session) => {
+export const POST = withMenuExtractionAuth(async (request: NextRequest, session) => {
   const safeModeResponse = await checkSafeMode();
   if (safeModeResponse) return safeModeResponse;
 
@@ -554,8 +610,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   const parseGate = await checkRateLimit({
     key: `menu-extraction-job-request:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...getRateLimitForFeature("FILE_UPLOAD"),
+    failClosedOnProviderError: true,
   });
   if (!parseGate.allowed) {
+    if (parseGate.reason === "provider_unavailable") {
+      return NextResponse.json(
+        { success: false, error: "Menu upload is temporarily unavailable. Please try again later." },
+        { status: 503 },
+      );
+    }
     const waitSeconds = Math.max(1, Math.ceil((parseGate.resetAt - Date.now()) / 1000));
     return NextResponse.json(
       { success: false, error: "Too many upload requests. Please wait before trying again.", retryAfter: waitSeconds },
@@ -661,7 +724,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       });
     }
 
-    const targetLanguages = normalizeTargetLanguages(validation.data.targetLanguages as Array<{ code: string; name: string }>);
+    const targetLanguages = normalizeTargetLanguages(validation.data.targetLanguages);
     let ownerUploadFingerprint = !validation.data.retriedFromJobId &&
       jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD &&
       validation.data.forceReview !== true
@@ -743,8 +806,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const rateLimit = await checkRateLimit({
       key: `menu-extraction-job:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
       ...getRateLimitForFeature("AI_EXPENSIVE"),
+      failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
+      if (rateLimit.reason === "provider_unavailable") {
+        return NextResponse.json(
+          { success: false, error: "Menu extraction is temporarily unavailable. Please try again later." },
+          { status: 503 },
+        );
+      }
       const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
       return NextResponse.json(
         { success: false, error: "Too many extraction attempts. Please wait before trying again.", retryAfter: waitSeconds },
@@ -752,8 +822,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       );
     }
 
-    let filesForJob = requestedFiles as MenuIntakeFileInput[];
-    let identityCheck: any = null;
+    let filesForJob = requestedFiles;
+    let identityCheck: MenuIntakeIdentityServerResult | null = null;
 
     if (FEATURE_FLAGS.ENABLE_MENU_INTAKE_IDENTITY && jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD) {
       identityCheck = await runMenuIntakeIdentityCheck({
@@ -847,7 +917,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       projectId,
       ...trustedBusinessContext,
       ...(validation.data.retriedFromJobId ? { retriedFromJobId: validation.data.retriedFromJobId } : {}),
-      ...(validation.data.retryCount != null ? { retryCount: validation.data.retryCount } : {}),
+      ...(retryContext ? { retryCount: retryContext.retryCount } : {}),
       sId: ids.sId,
       source: jobSource,
       ...(ownerUploadFingerprint ? {
@@ -876,7 +946,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
           reusedJobData: jobCreation.match.data,
         });
       }
-      if (String(jobCreation.match.data.uId || "") !== ids.uId) {
+      if (jobCreation.match.data.uId !== ids.uId) {
         return NextResponse.json(
           { success: false, error: "Another menu extraction is already running." },
           { status: 409 },

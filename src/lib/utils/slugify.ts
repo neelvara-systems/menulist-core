@@ -2,7 +2,7 @@
  * Slugify Utility
  * 
  * Converts project names to URL-safe slugs.
- * Used for path-based routing: joespizza.menulist.ai/food-menu
+ * Used for path-based routing: joespizza.menulist.online/food-menu
  */
 
 import { FEATURE_FLAGS } from '@config/features';

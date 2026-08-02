@@ -4,6 +4,7 @@ import {
     answerlatticeProviderSubscriptionMatchesAttempt,
     buildAnswerlatticeOnboardingRequestFingerprint,
     findAnswerlatticeProviderSubscriptionForAttempt,
+    getAnswerlatticeProviderSubscriptionCheckoutUrl,
     getAnswerlatticeOnboardingPositiveInteger,
     getAnswerlatticeOnboardingTimestampMillis,
     isAnswerlatticeTerminalProviderSubscriptionStatus,
@@ -212,6 +213,27 @@ assert.equal(
     null,
     'credential-bearing checkout URLs must fail closed',
 );
+assert.equal(
+    getAnswerlatticeProviderSubscriptionCheckoutUrl({ short_url: 'https://rzp.io/rzp/Dqdqx3h' }),
+    'https://rzp.io/rzp/Dqdqx3h',
+    'an exact hosted provider checkout must be admitted before local finalization',
+);
+for (const short_url of [undefined, null, '', 'https://example.com/checkout', 'javascript:alert(1)']) {
+    assert.equal(
+        getAnswerlatticeProviderSubscriptionCheckoutUrl({ short_url }),
+        null,
+        'missing or untrusted provider checkout URLs must not become durable payment-pending truth',
+    );
+}
+const hostileProviderCheckoutCandidate: Parameters<typeof getAnswerlatticeProviderSubscriptionCheckoutUrl>[0] = {};
+Object.defineProperty(hostileProviderCheckoutCandidate, 'short_url', {
+    get() {
+        throw new Error('hostile provider checkout getter');
+    },
+});
+assert.doesNotThrow(() => {
+    assert.equal(getAnswerlatticeProviderSubscriptionCheckoutUrl(hostileProviderCheckoutCandidate), null);
+});
 
 const validOnboardResponse = {
     apiKey: `al_${'a'.repeat(32)}`,

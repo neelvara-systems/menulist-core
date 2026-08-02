@@ -1,142 +1,36 @@
-import {
-    CAMPAIGNCUE_APPROVAL_ID_PREFIX,
-    CAMPAIGNCUE_ASSET_ID_PREFIX,
-    CAMPAIGNCUE_CAMPAIGN_ID_PREFIX,
-    CAMPAIGNCUE_COLLECTIONS,
-    CAMPAIGNCUE_DASHBOARD_SUMMARY_ID,
-    CAMPAIGNCUE_EVENT_ID_PREFIX,
-    CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS,
-    CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES,
-    CAMPAIGNCUE_PAGE_SIZE,
-    CAMPAIGNCUE_SCHEDULE_ID_PREFIX,
-    CAMPAIGNCUE_WORKSPACE_ID_PREFIX,
-} from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_APPROVAL_ID_PREFIX, CAMPAIGNCUE_ASSET_ID_PREFIX, CAMPAIGNCUE_CAMPAIGN_ID_PREFIX, CAMPAIGNCUE_COLLECTIONS, CAMPAIGNCUE_DASHBOARD_SUMMARY_ID, CAMPAIGNCUE_EVENT_ID_PREFIX, CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS, CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES, CAMPAIGNCUE_PAGE_SIZE, CAMPAIGNCUE_SCHEDULE_ID_PREFIX, CAMPAIGNCUE_WORKSPACE_ID_PREFIX, } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_CHANNEL_LABELS } from "@constant/campaigncue/channels";
-import {
-    CAMPAIGNCUE_DAY_ONE_DELIVERY,
-    CAMPAIGNCUE_DELIVERY_MODE,
-    CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS,
-    CAMPAIGNCUE_EXPORT_ACTIONS,
-    CAMPAIGNCUE_FUTURE_PROVIDER_LAYER,
-    CAMPAIGNCUE_PROVIDER_POSTURES,
-} from "@constant/campaigncue/delivery";
+import { CAMPAIGNCUE_DAY_ONE_DELIVERY, CAMPAIGNCUE_DELIVERY_MODE, CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS, CAMPAIGNCUE_EXPORT_ACTIONS, CAMPAIGNCUE_FUTURE_PROVIDER_LAYER, CAMPAIGNCUE_PROVIDER_POSTURES, } from "@constant/campaigncue/delivery";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
-import {
-    campaignCueOutputIntentSupportsOwnerGoal,
-    getCampaignCueOutputPickerItem,
-} from "@constant/campaigncue/outputPicker";
+import { campaignCueOutputIntentSupportsOwnerGoal, getCampaignCueOutputPickerItem, } from "@constant/campaigncue/outputPicker";
 import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
+import { CAMPAIGNCUE_VIDEO_PROJECT_ID_PREFIX, CAMPAIGNCUE_VIDEO_STUDIO, } from "@constant/campaigncue/videoReel";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
-import {
-    CAMPAIGNCUE_DEFAULT_LOCALE,
-    CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
-    CAMPAIGNCUE_DEFAULT_TIMEZONE,
-} from "@constant/campaigncue/workspace";
+import { CAMPAIGNCUE_DEFAULT_LOCALE, CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR, CAMPAIGNCUE_DEFAULT_TIMEZONE, } from "@constant/campaigncue/workspace";
 import { DB_COLLECTIONS } from "@constant/database";
-import { SIGNIN_URL } from "@constant/urls";
+import { MENULIST_TENANT_BASE_DOMAIN, SIGNIN_URL } from "@constant/urls";
 import { FEATURE_FLAGS } from "@config/features";
-import {
-    buildCampaignCueDailyDesk,
-    dailyDeskRecipeForBusiness,
-    uniqueCompactStrings,
-} from "@lib/campaigncue/dailyDesk";
+import { buildCampaignCueDailyDesk, dailyDeskRecipeForBusiness, uniqueCompactStrings, } from "@lib/campaigncue/dailyDesk";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
-import {
-    isCampaignCueWorkspaceStoragePath,
-    parseCampaignCueAssetRecord,
-} from "@lib/campaigncue/assetBoundary";
-import {
-    assertCampaignCueIdempotencyClaimOwnership,
-    buildCampaignCueIdempotencyRequestHash,
-    CampaignCueIdempotencyIdentityError,
-    getCampaignCueIdempotencyClaimDecision,
-    type CampaignCueIdempotencyRecord,
-} from "@lib/campaigncue/idempotency";
-import {
-    assertCampaignCueBusinessBrainRecordScope,
-    assertCampaignCueStoreRecordScope,
-    assertCampaignCueWorkspaceRecordScope,
-    CampaignCueWorkspaceScopeError,
-} from "@lib/campaigncue/workspaceScope";
-import {
-    parseCampaignCueAnalyticsSummaryRecord,
-    parseCampaignCueCampaignRecord,
-    parseCampaignCueLocationRecord,
-    parseCampaignCueScheduleRecord,
-    parseCampaignCueSourceInputRecord,
-    parseCampaignCueSourceSnapshotRecord,
-    parseCampaignCueTrustReportRecord,
-} from "@lib/campaigncue/recordBoundary";
+import { isCampaignCueWorkspaceStoragePath, parseCampaignCueAssetRecord, } from "@lib/campaigncue/assetBoundary";
+import { assertCampaignCueIdempotencyClaimOwnership, buildCampaignCueIdempotencyRequestHash, CampaignCueIdempotencyIdentityError, getCampaignCueIdempotencyClaimDecision, type CampaignCueIdempotencyRecord, } from "@lib/campaigncue/idempotency";
+import { assertCampaignCueBusinessBrainRecordScope, assertCampaignCueStoreRecordScope, assertCampaignCueWorkspaceRecordScope, CampaignCueWorkspaceScopeError, } from "@lib/campaigncue/workspaceScope";
+import { parseCampaignCueAnalyticsSummaryRecord, parseCampaignCueCampaignRecord, parseCampaignCueLocationRecord, parseCampaignCueScheduleRecord, parseCampaignCueSourceInputRecord, parseCampaignCueSourceSnapshotRecord, parseCampaignCueTrustReportRecord, } from "@lib/campaigncue/recordBoundary";
 import { getUnresolvedCampaignCueOutputIntentRequirements } from "@lib/campaigncue/pack-templates/factSlotReadiness";
-import {
-    buildCampaignCuePatternCueBrief,
-    buildCampaignCuePatternCueObservation,
-    getLatestCampaignCuePatternCueSource,
-    isCampaignCuePatternCueSourceInput,
-} from "@lib/campaigncue/patternCue";
-import {
-    buildCampaignCueExperimentSuggestion,
-    buildCampaignCuePackFreshness,
-    evaluateCampaignCuePackFreshness,
-    isCampaignCueDecisionSourceInput,
-    isCampaignCueOperatingPulseCurrent,
-    normalizeCampaignCueCommercialPolicy,
-    normalizeCampaignCueLanguagePolicy,
-    normalizeCampaignCueOperatingPulse,
-    normalizeCampaignCuePresenceProfile,
-} from "@lib/campaigncue/operatingLoop";
-import {
-    admin,
-    campaigncueFirestoreAdmin as firestoreAdmin,
-    campaigncueStorageAdmin,
-} from "@lib/firebase/campaigncueFirebaseAdmin";
+import { buildCampaignCuePatternCueBrief, buildCampaignCuePatternCueObservation, getLatestCampaignCuePatternCueSource, isCampaignCuePatternCueSourceInput, } from "@lib/campaigncue/patternCue";
+import { buildCampaignCueExperimentSuggestion, buildCampaignCuePackFreshness, evaluateCampaignCuePackFreshness, isCampaignCueDecisionSourceInput, isCampaignCueOperatingPulseCurrent, normalizeCampaignCueCommercialPolicy, normalizeCampaignCueLanguagePolicy, normalizeCampaignCueOperatingPulse, normalizeCampaignCuePresenceProfile, } from "@lib/campaigncue/operatingLoop";
+import { buildCampaignCueVideoProject, canApplyCampaignCueVideoRenderReceipt, evaluateCampaignCueVideoTrust, getCampaignCueVideoAssetIds, getCampaignCueVideoSourceTrustGate, parseCampaignCueVideoProjectRecord, } from "@lib/campaigncue/videoReel";
+import { admin, campaigncueAuthAdmin, campaigncueFirestoreAdmin as firestoreAdmin, campaigncueStorageAdmin, requireCampaignCueAuthAdmin, requireCampaignCueFirestoreAdmin, requireCampaignCueStorageAdmin, } from "@lib/firebase/campaigncueFirebaseAdmin";
 import { firestoreAdmin as menuListFirestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { logger } from "@lib/monitoring/logger";
-import type {
-    CampaignCueActionType,
-    CampaignCueAnalyticsSummary,
-    CampaignCueAsset,
-    CampaignCueBrandPlaybook,
-    CampaignCueBusinessBrain,
-    CampaignCueCampaign,
-    CampaignCueChannel,
-    CampaignCueCommercialGate,
-    CampaignCueDeliveryPolicy,
-    CampaignCueLaunchReadiness,
-    CampaignCueLocation,
-    CampaignCueMetricConfidence,
-    CampaignCueOutput,
-    CampaignCueOutputFields,
-    CampaignCueOverview,
-    CampaignCueOpportunity,
-    CampaignCueProviderConnection,
-    CampaignCueProviderMode,
-    CampaignCueProviderStatus,
-    CampaignCueSchedule,
-    CampaignCueSourceFact,
-    CampaignCueSourceInput,
-    CampaignCueSourceSnapshot,
-    CampaignCueTrustFinding,
-    CampaignCueTrustGate,
-    CampaignCueTrustReport,
-    CampaignCueWorkspace,
-} from "@type/campaigncue";
-import type {
-    CampaignCueAssetInput,
-    CampaignCueBusinessPatchInput,
-    CampaignCueCampaignActionInput,
-    CampaignCueCreateCampaignInput,
-    CampaignCueLocationInput,
-    CampaignCueSourceInputData,
-} from "@lib/validation/campaigncueSchemas";
+import type { CampaignCueActionType, CampaignCueAnalyticsSummary, CampaignCueAsset, CampaignCueBrandPlaybook, CampaignCueBusinessBrain, CampaignCueCampaign, CampaignCueChannel, CampaignCueCommercialGate, CampaignCueDeliveryPolicy, CampaignCueLaunchReadiness, CampaignCueLocation, CampaignCueMetricConfidence, CampaignCueOutput, CampaignCueOutputFields, CampaignCueOverview, CampaignCueOpportunity, CampaignCueProviderConnection, CampaignCueProviderMode, CampaignCueProviderStatus, CampaignCueSchedule, CampaignCueSourceFact, CampaignCueSourceInput, CampaignCueSourceSnapshot, CampaignCueTrustFinding, CampaignCueTrustGate, CampaignCueTrustReport, CampaignCueWorkspace, } from "@type/campaigncue";
+import type { CampaignCueAssetInput, CampaignCueBusinessPatchInput, CampaignCueCampaignActionInput, CampaignCueCreateCampaignInput, CampaignCueLocationInput, CampaignCueSourceInputData, } from "@lib/validation/campaigncueSchemas";
+import type { CampaignCueVideoProjectMutationData } from "@lib/validation/campaigncueVideoSchemas";
+import type { CampaignCueVideoProject, CampaignCueVideoScene, } from "@type/campaigncueVideo";
 import { createHash } from "crypto";
-import {
-    getBoundedErrorCode,
-    getBoundedErrorStatus,
-    getBoundedErrorName,
-} from '@lib/monitoring/boundedLogContext';
+import { getBoundedErrorCode, getBoundedErrorStatus, getBoundedErrorName, } from '@lib/monitoring/boundedLogContext';
 
 export interface CampaignCueSessionScope {
     email?: string;
@@ -146,9 +40,21 @@ export interface CampaignCueSessionScope {
     userId: string;
 }
 
+export async function createCampaignCueFirebaseTokenServer(scope: CampaignCueSessionScope) {
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
+    const token = await requireCampaignCueAuthAdmin().createCustomToken(scope.userId, {
+        productId: CAMPAIGNCUE_PRODUCT_CODE,
+        tenantId: scope.tId,
+        storeId: scope.sId,
+    });
+    return { token, workspaceId: workspace.workspaceId, expiresInSeconds: 3600 };
+}
+
 const nowTimestamp = () => admin.firestore.Timestamp.now();
 const CAMPAIGNCUE_IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000;
-type CampaignCueFirestoreBatch = ReturnType<typeof firestoreAdmin.batch>;
+type CampaignCueFirestoreBatch = ReturnType<
+    ReturnType<typeof requireCampaignCueFirestoreAdmin>["batch"]
+>;
 
 const compactString = (value: unknown, fallback = ""): string => {
     if (typeof value === "string") return value.trim() || fallback;
@@ -365,7 +271,7 @@ export const buildCampaignCueWorkspaceId = (scope: Pick<CampaignCueSessionScope,
 );
 
 const workspaceRef = (workspaceId: string) => (
-    firestoreAdmin.collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES).doc(workspaceId)
+    requireCampaignCueFirestoreAdmin().collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES).doc(workspaceId)
 );
 
 const workspaceSubcollection = (workspaceId: string, collection: string) => (
@@ -398,7 +304,7 @@ function buildPublicMenuUrl(storeData: any): string | undefined {
     if (directUrl.startsWith("http://") || directUrl.startsWith("https://")) return directUrl;
     const subdomain = compactString(storeData?.subdomain || storeData?.storeUrlSlug || storeData?.slug);
     if (!subdomain) return undefined;
-    return `https://${subdomain}.menulist.ai`;
+    return `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`;
 }
 
 function buildDefaultItems(storeData: any) {
@@ -1084,7 +990,7 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
     const workspaceId = buildCampaignCueWorkspaceId(scope);
     const storeData = await readStoreData(scope);
     const ref = workspaceRef(workspaceId);
-    const workspace = await firestoreAdmin.runTransaction(async (transaction) => {
+    const workspace = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const workspaceSnap = await transaction.get(ref);
         if (workspaceSnap.exists) {
             return normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
@@ -1109,7 +1015,7 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
         };
     }
 
-    return firestoreAdmin.runTransaction(async (transaction) => {
+    return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const sourceRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
             .doc(defaultSourceSnapshotId);
         const summaryRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
@@ -1274,15 +1180,15 @@ export function buildCampaignCueOpportunities(params: {
             id: "cue_video_prompt",
             workspaceId,
             businessBrainId: businessBrain.businessBrainId,
-            title: "Short reel brief",
-            reason: "A brief-mode reel is available without video provider credentials.",
+            title: "Short reel project",
+            reason: "A source-backed reel plan can become an in-house browser-rendered video without provider credentials.",
             type: "video_prompt",
             priority: 74,
             channels: ["video", "creative", "ugc"],
             sourceReferences,
             status: "open",
-            actionLabel: "Create reel brief",
-            ownerBenefit: "Give staff or a creator a short shoot plan without paying for rendered video.",
+            actionLabel: "Create reel plan",
+            ownerBenefit: "Give staff a shoot plan or turn the checked output into an in-house browser-rendered short video.",
             evidence: [
                 primaryService?.name || primaryItem?.name || "Featured item or service",
                 businessBrain.locality || "Location not set",
@@ -1722,6 +1628,36 @@ export async function listCampaignCueAssetsServer(scope: CampaignCueSessionScope
     return listCampaignCueAssetRecords(workspace.workspaceId);
 }
 
+export async function listCampaignCueVideoProjectsServer(
+    scope: CampaignCueSessionScope,
+): Promise<CampaignCueVideoProject[]> {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_VIDEO_STUDIO) return [];
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
+    const snap = await workspaceSubcollection(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.VIDEO_PROJECTS)
+        .orderBy("updatedAt", "desc")
+        .limit(CAMPAIGNCUE_VIDEO_STUDIO.MAX_PROJECTS_PER_LOAD)
+        .get();
+    const projects: CampaignCueVideoProject[] = [];
+    let invalidCount = 0;
+    for (const doc of snap.docs) {
+        try {
+            projects.push(parseCampaignCueVideoProjectRecord(doc.data(), {
+                projectId: doc.id,
+                workspaceId: workspace.workspaceId,
+            }));
+        } catch {
+            invalidCount += 1;
+        }
+    }
+    if (invalidCount) {
+        logCampaignCueServerError("CampaignCue invalid video projects omitted", new Error("video_project_invalid"), {
+            invalidCount,
+            workspaceId: workspace.workspaceId,
+        });
+    }
+    return projects;
+}
+
 export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessionScope): Promise<CampaignCueSourceInput[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
     const sourceInputs = await listSubcollection(
@@ -1803,7 +1739,7 @@ function buildLaunchReadiness(): CampaignCueLaunchReadiness {
             id: "direct_provider_actions",
             label: "Future provider posting",
             status: "manual",
-            detail: "Direct WhatsApp send, Google publish, ad spend, social posting, paid generation, and video render are not part of the active product.",
+            detail: "Direct WhatsApp send, Google publish, ad spend, social posting, paid generation, and external video-render providers are not part of the active product. Approved videos can be composed locally in the browser.",
         },
     ];
     return {
@@ -1966,7 +1902,7 @@ function buildVideoShotPlan(businessBrain: CampaignCueBusinessBrain, thing: stri
         `0-2s hook: show ${thing} or the business entrance${location}.`,
         "3-7s proof: show a close product shot, service action, menu/booking proof, or staff preparation moment.",
         "8-12s context: show the business name, location cue, or owner-approved source detail.",
-        "Final frame: show the CTA clearly; do not imply CampaignCue rendered or published the video.",
+        "Final frame: show the CTA clearly. Video Studio may render it locally after approval; CampaignCue does not publish it.",
     ].join("\n");
 }
 
@@ -2018,7 +1954,7 @@ function lineForChannel(params: {
             `B-roll checklist: ${buildBrollChecklist(businessBrain, thing)}.`,
             `Product placement: ${productPlacementBrief(businessBrain, thing)}`,
             patternBrief,
-            "Boundary: this is a shoot/edit brief only, not a rendered video or provider upload.",
+            "Boundary: this output is the source-linked shoot/edit brief. The owner can open it in Video Studio, approve the current version, and render locally without a provider upload.",
             ctaLine.trim(),
             brandDirection.trim(),
         ].filter(Boolean).join("\n\n");
@@ -2251,7 +2187,7 @@ function outputFieldsForChannel(params: {
         channel === "ugc" ? "Dialogue/action beats do not invent personal experience" : undefined,
         channel === "video" || channel === "ugc" ? (patternCue ? "Example format is adapted without copying source wording, footage, music, or creator identity" : undefined) : undefined,
         channel === "ugc" ? "Paid or incentivized creator participation has disclosure guidance" : undefined,
-        channel === "video" ? "Shot list remains a brief; no rendered video is implied" : undefined,
+        channel === "video" ? "This output remains the checked brief; a real file exists only after separate Video Studio approval and local render" : undefined,
         brandLine ? "Brand direction and avoid list are checked" : undefined,
         ...recipe.guardrails.slice(0, 2),
     ], 8);
@@ -2616,6 +2552,438 @@ async function readCampaign(workspaceId: string, campaignId: string): Promise<Ca
     }
 }
 
+const campaignCueVideoProjectRef = (workspaceId: string, projectId: string) => (
+    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.VIDEO_PROJECTS).doc(projectId)
+);
+
+const getCampaignCueVideoAssets = async (
+    transaction: FirebaseFirestore.Transaction,
+    workspaceId: string,
+    scenes: CampaignCueVideoScene[],
+    audio: CampaignCueVideoProject["audio"],
+) => {
+    const assetIds = getCampaignCueVideoAssetIds(scenes, audio);
+    const snaps = await Promise.all(assetIds.map((assetId) => (
+        transaction.get(workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS).doc(assetId))
+    )));
+    return snaps.map((snap, index) => {
+        if (!snap.exists) {
+            throw new CampaignCueDecisionGateError("A selected video asset is unavailable.");
+        }
+        return parseCampaignCueAssetRecord({
+            assetId: assetIds[index],
+            value: snap.data(),
+            workspaceId,
+        });
+    });
+};
+
+export async function mutateCampaignCueVideoProjectServer(params: {
+    input: CampaignCueVideoProjectMutationData;
+    scope: CampaignCueSessionScope;
+}): Promise<{ project: CampaignCueVideoProject; replayed?: boolean }> {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_VIDEO_STUDIO) {
+        throw new CampaignCueDecisionGateError("CampaignCue Video Studio is unavailable.");
+    }
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
+    const workspaceId = workspace.workspaceId;
+    const { idempotencyKey, ...requestInput } = params.input;
+    const idempotencyAction = `video_project_${params.input.action}`;
+    const idempotency = await checkIdempotency({
+        action: idempotencyAction,
+        idempotencyKey,
+        requestIdentity: { action: idempotencyAction, input: requestInput },
+        scope: params.scope,
+        workspaceId,
+    });
+    if (idempotency.replay?.resultId) {
+        const replaySnap = await campaignCueVideoProjectRef(workspaceId, idempotency.replay.resultId).get();
+        if (!replaySnap.exists) {
+            throw new CampaignCueIdempotencyConflictError("The saved video project retry result is unavailable.");
+        }
+        return {
+            project: parseCampaignCueVideoProjectRecord(replaySnap.data(), {
+                projectId: replaySnap.id,
+                workspaceId,
+            }),
+            replayed: true,
+        };
+    }
+
+    const projectId = params.input.action === "create"
+        ? buildId(CAMPAIGNCUE_VIDEO_PROJECT_ID_PREFIX)
+        : params.input.projectId;
+    const projectRef = campaignCueVideoProjectRef(workspaceId, projectId);
+    const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
+        .doc(idempotencyKey);
+    const eventRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS)
+        .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
+
+    const project = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
+        const [idempotencySnap, currentWorkspace] = await Promise.all([
+            transaction.get(idempotencyRef),
+            assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
+        assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+            action: idempotencyAction,
+            actorId: params.scope.userId,
+            requestHash: idempotency.requestHash,
+        }, idempotency.claimId as string);
+        const now = nowTimestamp();
+        let next: CampaignCueVideoProject;
+        let campaignId: string;
+        let outputId: string;
+        let renderStatus: string | undefined;
+        let resultSignalId: string | undefined;
+
+        if (params.input.action === "create") {
+            const createInput = params.input;
+            const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS)
+                .doc(createInput.campaignId);
+            const businessRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
+                .doc(defaultBusinessBrainId);
+            const [existingProjectSnap, campaignSnap, businessSnap] = await Promise.all([
+                transaction.get(projectRef),
+                transaction.get(campaignRef),
+                transaction.get(businessRef),
+            ]);
+            if (existingProjectSnap.exists || !campaignSnap.exists || !businessSnap.exists) {
+                throw new CampaignCueDecisionGateError("The video project source is unavailable.");
+            }
+            const campaign = parseCampaignCueCampaignRecord(campaignSnap.data(), {
+                campaignId: createInput.campaignId,
+                workspaceId,
+            });
+            const output = campaign.outputs.find((item) => (
+                item.id === createInput.outputId && item.channel === "video"
+            ));
+            if (!output) {
+                throw new CampaignCueDecisionGateError("Choose a video output from the current campaign.");
+            }
+            const businessBrain = normalizeCampaignCueBusinessBrain(
+                assertCampaignCueBusinessBrainRecordScope(businessSnap.data(), workspaceId),
+            );
+            next = buildCampaignCueVideoProject({
+                actorId: params.scope.userId,
+                aspectRatio: createInput.aspectRatio,
+                businessBrain,
+                campaign,
+                id: projectId,
+                now,
+                output,
+            });
+            campaignId = campaign.id;
+            outputId = output.id;
+        } else {
+            const mutationInput = params.input;
+            const projectSnap = await transaction.get(projectRef);
+            if (!projectSnap.exists) {
+                throw new CampaignCueDecisionGateError("This video project is unavailable.");
+            }
+            const current = parseCampaignCueVideoProjectRecord(projectSnap.data(), { projectId, workspaceId });
+            if (current.version !== mutationInput.expectedVersion) {
+                throw new CampaignCueDecisionGateError("This video changed in another session. Refresh before saving again.");
+            }
+            const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(current.campaignId);
+            const campaignSnap = await transaction.get(campaignRef);
+            if (!campaignSnap.exists) {
+                throw new CampaignCueDecisionGateError("The source campaign is unavailable.");
+            }
+            const campaign = parseCampaignCueCampaignRecord(campaignSnap.data(), {
+                campaignId: current.campaignId,
+                workspaceId,
+            });
+            const output = campaign.outputs.find((item) => item.id === current.outputId && item.channel === "video");
+            if (!output) {
+                throw new CampaignCueDecisionGateError("The source video output is unavailable.");
+            }
+            campaignId = current.campaignId;
+            outputId = current.outputId;
+
+            if (mutationInput.action === "save") {
+                if (!current.variants.some((variant) => variant.id === mutationInput.selectedVariantId)) {
+                    throw new CampaignCueDecisionGateError("Choose one of the current video directions.");
+                }
+                const scenes = mutationInput.scenes.map((scene) => ({
+                    ...scene,
+                    sourceReferences: [...current.sourceReferences],
+                }));
+                const assets = await getCampaignCueVideoAssets(transaction, workspaceId, scenes, mutationInput.audio);
+                const invalidSceneAsset = assets.find((asset) => (
+                    scenes.some((scene) => scene.enabled && scene.assetId === asset.id)
+                    && !["image", "logo", "video"].includes(asset.assetType)
+                ));
+                const invalidAudioAsset = assets.find((asset) => (
+                    (mutationInput.audio.voiceover.assetId === asset.id || mutationInput.audio.backgroundMusic.assetId === asset.id)
+                    && asset.assetType !== "audio"
+                ));
+                if (invalidSceneAsset || invalidAudioAsset) {
+                    throw new CampaignCueDecisionGateError("A selected video project asset has the wrong media type.");
+                }
+                const trust = evaluateCampaignCueVideoTrust({
+                    assets,
+                    campaignTrustGate: getCampaignCueVideoSourceTrustGate(campaign.trustGate, output.trustGate),
+                    scenes,
+                    sourceReferences: current.sourceReferences,
+                });
+                const version = current.version + 1;
+                next = {
+                    ...current,
+                    title: mutationInput.title,
+                    status: "draft",
+                    version,
+                    aspectRatio: mutationInput.aspectRatio,
+                    selectedVariantId: mutationInput.selectedVariantId,
+                    scenes,
+                    captions: mutationInput.captions,
+                    audio: mutationInput.audio,
+                    trustGate: trust.gate,
+                    trustFindings: trust.findings,
+                    approval: undefined,
+                    reviewNotes: current.reviewNotes.map((note) => note.status === "open" ? note : { ...note }),
+                    versions: [...current.versions, {
+                        version,
+                        aspectRatio: mutationInput.aspectRatio,
+                        selectedVariantId: mutationInput.selectedVariantId,
+                        scenes,
+                        captions: mutationInput.captions,
+                        audio: mutationInput.audio,
+                        trustGate: trust.gate,
+                        trustFindings: trust.findings,
+                        reviewedAssetIds: getCampaignCueVideoAssetIds(scenes, mutationInput.audio),
+                        createdAt: now,
+                        createdByUserId: params.scope.userId,
+                    }].slice(-CAMPAIGNCUE_VIDEO_STUDIO.MAX_HISTORY),
+                    updatedAt: now,
+                };
+            } else if (mutationInput.action === "approve" || mutationInput.action === "reject") {
+                const role = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+                if (!role || !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(role)) {
+                    throw new CampaignCueDecisionGateError("Your CampaignCue role cannot approve or reject this video.");
+                }
+                if (mutationInput.action === "approve" && (current.trustGate === "blocked" || current.trustGate === "needs_fix")) {
+                    throw new CampaignCueDecisionGateError("Fix the current video checks before approving it.");
+                }
+                if (mutationInput.action === "approve" && current.reviewNotes.some((note) => note.status === "open")) {
+                    throw new CampaignCueDecisionGateError("Resolve the open review notes before approving this video.");
+                }
+                next = {
+                    ...current,
+                    status: mutationInput.action === "approve" ? "approved" : "rejected",
+                    approval: {
+                        actorId: params.scope.userId,
+                        version: current.version,
+                        note: mutationInput.note,
+                        decidedAt: now,
+                    },
+                    updatedAt: now,
+                };
+            } else if (mutationInput.action === "add_review_note") {
+                if (mutationInput.sceneId && !current.scenes.some((scene) => scene.id === mutationInput.sceneId)) {
+                    throw new CampaignCueDecisionGateError("The selected review scene is unavailable.");
+                }
+                if (current.reviewNotes.length >= CAMPAIGNCUE_VIDEO_STUDIO.MAX_REVIEW_NOTES) {
+                    throw new CampaignCueDecisionGateError("Resolve or remove older review notes before adding another.");
+                }
+                next = {
+                    ...current,
+                    status: "draft",
+                    approval: undefined,
+                    reviewNotes: [...current.reviewNotes, {
+                        id: buildId("cc_video_note"),
+                        sceneId: mutationInput.sceneId,
+                        message: mutationInput.message,
+                        status: "open",
+                        authorId: params.scope.userId,
+                        createdAt: now,
+                    }],
+                    updatedAt: now,
+                };
+            } else if (mutationInput.action === "resolve_review_note") {
+                const note = current.reviewNotes.find((item) => item.id === mutationInput.noteId);
+                if (!note || note.status !== "open") {
+                    throw new CampaignCueDecisionGateError("This review note is no longer open.");
+                }
+                const role = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+                if (note.authorId !== params.scope.userId && (!role || !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(role))) {
+                    throw new CampaignCueDecisionGateError("Your CampaignCue role cannot resolve this review note.");
+                }
+                next = {
+                    ...current,
+                    reviewNotes: current.reviewNotes.map((item) => item.id === note.id ? {
+                        ...item,
+                        status: "resolved",
+                        resolvedAt: now,
+                        resolvedBy: params.scope.userId,
+                    } : item),
+                    updatedAt: now,
+                };
+            } else if (mutationInput.action === "render_progress") {
+                const receipt = current.renderReceipts.find((item) => item.id === mutationInput.receiptId);
+                if (
+                    !receipt
+                    || receipt.status !== "started"
+                    || receipt.attempt !== mutationInput.attempt
+                    || mutationInput.progressPercent <= receipt.progressPercent
+                ) {
+                    throw new CampaignCueDecisionGateError("This render checkpoint is stale or unavailable.");
+                }
+                renderStatus = "started";
+                next = {
+                    ...current,
+                    renderReceipts: current.renderReceipts.map((item) => item.id === receipt.id ? {
+                        ...item,
+                        progressPercent: mutationInput.progressPercent,
+                        heartbeatAt: now,
+                    } : item),
+                    updatedAt: now,
+                };
+            } else if (mutationInput.action === "record_result") {
+                const receipt = current.renderReceipts.find((item) => (
+                    item.id === mutationInput.renderReceiptId && item.status === "completed"
+                ));
+                if (!receipt) throw new CampaignCueDecisionGateError("Choose a completed render before recording its result.");
+                const isUseful = mutationInput.signalId === "useful";
+                const isNotUseful = mutationInput.signalId === "not_useful";
+                resultSignalId = mutationInput.signalId;
+                const resultMemory: CampaignCueVideoProject["resultMemory"] = {
+                    signalId: mutationInput.signalId,
+                    renderReceiptId: receipt.id,
+                    note: mutationInput.note,
+                    recordedBy: params.scope.userId,
+                    recordedAt: now,
+                };
+                next = {
+                    ...current,
+                    resultMemory,
+                    reusableBlueprint: isUseful ? {
+                        sourceProjectId: current.id,
+                        sourceVersion: current.version,
+                        label: `${current.title} structure`.slice(0, 120),
+                        aspectRatio: current.aspectRatio,
+                        captions: current.captions,
+                        scenes: current.scenes.map(({ purpose, enabled, durationSeconds, motion, transition }) => ({
+                            purpose, enabled, durationSeconds, motion, transition,
+                        })),
+                    } : undefined,
+                    updatedAt: now,
+                };
+                transaction.set(campaignRef, sanitizeForAdminFirestore({
+                    resultMemory: {
+                        ...(campaign.resultMemory || {}),
+                        lastSignalId: mutationInput.signalId,
+                        lastNote: mutationInput.note || `Owner marked a video render as ${mutationInput.signalId.replace(/_/g, " ")}.`,
+                        lastRecordedAt: now,
+                        usefulCount: Number(campaign.resultMemory?.usefulCount || 0) + (isUseful ? 1 : 0),
+                        notUsefulCount: Number(campaign.resultMemory?.notUsefulCount || 0) + (isNotUseful ? 1 : 0),
+                        lastReceipt: {
+                            signalId: mutationInput.signalId,
+                            channel: "video",
+                            metrics: {},
+                            evidenceNote: mutationInput.note,
+                            confidence: "owner_reported",
+                            recordedAt: now,
+                            videoProjectId: current.id,
+                            videoRenderReceiptId: receipt.id,
+                        },
+                    },
+                    updatedAt: now,
+                }), { merge: true });
+                transaction.set(
+                    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
+                        .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID),
+                    { ownerReportedOutcomeCount: admin.firestore.FieldValue.increment(1), updatedAt: now },
+                    { merge: true },
+                );
+            } else {
+                if (mutationInput.action !== "render_receipt") {
+                    throw new CampaignCueDecisionGateError("This video project action is unavailable.");
+                }
+                const renderInput = mutationInput;
+                if (
+                    current.status !== "approved"
+                    || current.approval?.version !== current.version
+                    || current.trustGate === "blocked"
+                    || current.trustGate === "needs_fix"
+                ) {
+                    throw new CampaignCueDecisionGateError("Approve the current checked video version before rendering.");
+                }
+                if (current.reviewNotes.some((note) => note.status === "open")) {
+                    throw new CampaignCueDecisionGateError("Resolve the open review notes before rendering this video.");
+                }
+                const existingReceipt = current.renderReceipts.find((item) => item.id === renderInput.receipt.id);
+                if (!canApplyCampaignCueVideoRenderReceipt(existingReceipt, renderInput.receipt)) {
+                    throw new CampaignCueDecisionGateError("The matching render attempt could not be found.");
+                }
+                const receipt = {
+                    ...(existingReceipt || {}),
+                    ...renderInput.receipt,
+                    createdAt: existingReceipt?.createdAt || now,
+                    heartbeatAt: now,
+                    rightsEvidence: "rightsEvidence" in renderInput.receipt
+                        ? renderInput.receipt.rightsEvidence
+                        : existingReceipt?.rightsEvidence || {
+                            assetIds: getCampaignCueVideoAssetIds(current.scenes, current.audio),
+                            sessionMediaUsed: false,
+                            sessionMediaRightsConfirmed: false,
+                        },
+                    credit: "credit" in renderInput.receipt
+                        ? renderInput.receipt.credit
+                        : existingReceipt?.credit || {
+                            estimated: 0, reserved: 0, captured: 0, refunded: 0, currency: "credits" as const,
+                        },
+                    completedAt: renderInput.receipt.status === "started" ? undefined : now,
+                };
+                renderStatus = renderInput.receipt.status;
+                next = {
+                    ...current,
+                    renderReceipts: [
+                        ...current.renderReceipts.filter((item) => item.id !== receipt.id),
+                        receipt,
+                    ].slice(-CAMPAIGNCUE_VIDEO_STUDIO.MAX_RENDER_RECEIPTS),
+                    updatedAt: now,
+                };
+            }
+        }
+
+        const admitted = parseCampaignCueVideoProjectRecord(
+            sanitizeForAdminFirestore(next),
+            { projectId, workspaceId },
+        );
+        transaction.set(projectRef, sanitizeForAdminFirestore(admitted));
+        transaction.set(eventRef, sanitizeForAdminFirestore({
+            id: eventRef.id,
+            workspaceId,
+            actorId: params.scope.userId,
+            action: idempotencyAction,
+            campaignId,
+            channel: "video",
+            outputId,
+            metadata: {
+                projectId,
+                projectVersion: admitted.version,
+                projectStatus: admitted.status,
+                renderStatus,
+                resultSignalId,
+            },
+            confidence: "observed",
+            createdAt: now,
+        }));
+        transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+            action: idempotencyAction,
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            requestHash: idempotency.requestHash,
+            resultId: projectId,
+            status: "completed",
+            updatedAt: now,
+        }), { merge: true });
+        return admitted;
+    });
+
+    return { project };
+}
+
 async function checkIdempotency(params: {
     action: string;
     idempotencyKey: string;
@@ -2628,7 +2996,7 @@ async function checkIdempotency(params: {
     const claimId = buildId("idem_claim");
     const nowMillis = Date.now();
     try {
-        const result = await firestoreAdmin.runTransaction<{
+        const result = await requireCampaignCueFirestoreAdmin().runTransaction<{
             claimId: string | null;
             replay: CampaignCueIdempotencyRecord | null;
         }>(async (transaction) => {
@@ -2692,7 +3060,7 @@ async function completeIdempotency(params: {
     const claimId = params.claimId;
     const requestHash = params.requestHash;
     const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey);
-    await firestoreAdmin.runTransaction(async (transaction) => {
+    await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const snap = await transaction.get(ref);
         assertCampaignCueIdempotencyClaimOwnership(snap.exists ? snap.data() : null, {
             action: params.action,
@@ -3104,7 +3472,7 @@ export async function createCampaignCueCampaignServer(params: {
 
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(params.input.idempotencyKey);
-    const committed = await firestoreAdmin.runTransaction(async (transaction) => {
+    const committed = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const businessDocument = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
             .doc(defaultBusinessBrainId);
         const analyticsDocument = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
@@ -3246,7 +3614,7 @@ async function recordCampaignCueApprovalActionTransactional(params: {
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
     const now = nowTimestamp();
 
-    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+    const result = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const campaignSnap = await transaction.get(campaignRef);
         if (!campaignSnap.exists) {
             return { error: "Campaign not found", status: 404 as const };
@@ -3545,7 +3913,7 @@ export async function recordCampaignCueActionServer(params: {
     const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
         .doc(defaultSourceSnapshotId);
 
-    return firestoreAdmin.runTransaction(async (transaction) => {
+    return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const currentSnap = await transaction.get(campaignRef);
         if (idempotency.claimId && idempotency.requestHash) {
             const idempotencySnap = await transaction.get(idempotencyRef);
@@ -3724,6 +4092,54 @@ function assertCampaignCueAssetBinding(
     }
 }
 
+const CAMPAIGNCUE_ASSET_MIME_TYPES: Record<CampaignCueAsset["assetType"], ReadonlySet<string>> = {
+    image: new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+    logo: new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+    video: new Set(["video/mp4", "video/quicktime", "video/webm"]),
+    audio: new Set(["audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg", "audio/webm"]),
+    document: new Set(["application/pdf", "application/json", "application/zip", "text/plain"]),
+    export: new Set(["video/mp4", "video/webm", "application/pdf", "application/json", "application/zip", "text/plain"]),
+};
+
+const isCampaignCueMediaHeaderValid = (mimeType: string, bytes: Buffer): boolean => {
+    if (mimeType === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (mimeType === "image/png") return bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    if (mimeType === "image/webp") return bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+    if (mimeType === "image/gif") return ["GIF87a", "GIF89a"].includes(bytes.subarray(0, 6).toString("ascii"));
+    if (["video/mp4", "video/quicktime", "audio/mp4"].includes(mimeType)) return bytes.subarray(4, 8).toString("ascii") === "ftyp";
+    if (["video/webm", "audio/webm"].includes(mimeType)) return bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+    if (mimeType === "audio/mpeg") return bytes.subarray(0, 3).toString("ascii") === "ID3" || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
+    if (mimeType === "audio/wav") return bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WAVE";
+    if (mimeType === "audio/ogg") return bytes.subarray(0, 4).toString("ascii") === "OggS";
+    return true;
+};
+
+const verifyCampaignCueStoredFile = async (params: {
+    allowedMimeTypes: ReadonlySet<string>;
+    maxBytes: number;
+    storagePath: string;
+}) => {
+    const file = requireCampaignCueStorageAdmin().bucket().file(params.storagePath);
+    const [metadata] = await file.getMetadata();
+    const sizeBytes = Number(metadata.size);
+    const mimeType = String(metadata.contentType || "").toLowerCase();
+    const storageGeneration = String(metadata.generation || "");
+    if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > params.maxBytes) {
+        throw new CampaignCueDecisionGateError("This asset file size is unavailable or unsupported.");
+    }
+    if (!params.allowedMimeTypes.has(mimeType)) {
+        throw new CampaignCueDecisionGateError("This asset file type does not match its CampaignCue media category.");
+    }
+    if (!/^[1-9][0-9]{0,29}$/.test(storageGeneration)) {
+        throw new CampaignCueDecisionGateError("This asset file version is unavailable.");
+    }
+    const [header] = await file.download({ start: 0, end: 31 });
+    if (!isCampaignCueMediaHeaderValid(mimeType, header)) {
+        throw new CampaignCueDecisionGateError("This asset file content does not match its declared type.");
+    }
+    return { mimeType, sizeBytes, storageGeneration };
+};
+
 export async function createCampaignCueAssetServer(params: {
     input: CampaignCueAssetInput;
     scope: CampaignCueSessionScope;
@@ -3742,24 +4158,43 @@ export async function createCampaignCueAssetServer(params: {
     let file: CampaignCueAsset["file"];
     if (params.input.storagePath) {
         try {
-            const [metadata] = await campaigncueStorageAdmin.bucket().file(params.input.storagePath).getMetadata();
-            const sizeBytes = Number(metadata.size);
-            const mimeType = metadata.contentType || params.input.mimeType;
-            const storageGeneration = String(metadata.generation || "");
-            if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 0 || sizeBytes > CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES) {
-                throw new CampaignCueDecisionGateError("This asset file size is unavailable or unsupported.");
+            const source = await verifyCampaignCueStoredFile({
+                allowedMimeTypes: CAMPAIGNCUE_ASSET_MIME_TYPES[params.input.assetType],
+                maxBytes: CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES,
+                storagePath: params.input.storagePath,
+            });
+            if (params.input.mimeType && params.input.mimeType.toLowerCase() !== source.mimeType) {
+                throw new CampaignCueDecisionGateError("This asset file type changed before registration.");
             }
-            if (mimeType && mimeType.length > 120) {
-                throw new CampaignCueDecisionGateError("This asset file type is unsupported.");
+            if (params.input.sizeBytes !== undefined && params.input.sizeBytes !== source.sizeBytes) {
+                throw new CampaignCueDecisionGateError("This asset file size changed before registration.");
             }
-            if (!/^[1-9][0-9]{0,29}$/.test(storageGeneration)) {
-                throw new CampaignCueDecisionGateError("This asset file version is unavailable.");
+            let preview: Awaited<ReturnType<typeof verifyCampaignCueStoredFile>> | undefined;
+            if (params.input.previewStoragePath) {
+                if (!isCampaignCueWorkspaceStoragePath(params.input.previewStoragePath, workspaceId)) {
+                    throw new CampaignCueDecisionGateError("This asset preview does not belong to the current CampaignCue workspace.");
+                }
+                preview = await verifyCampaignCueStoredFile({
+                    allowedMimeTypes: new Set(["image/png", "image/webp", "image/jpeg"]),
+                    maxBytes: 1024 * 1024,
+                    storagePath: params.input.previewStoragePath,
+                });
+                if (params.input.previewMimeType !== preview.mimeType || params.input.previewSizeBytes !== preview.sizeBytes) {
+                    throw new CampaignCueDecisionGateError("This asset preview changed before registration.");
+                }
             }
             file = {
                 storagePath: params.input.storagePath,
-                storageGeneration,
-                mimeType,
-                sizeBytes,
+                storageGeneration: source.storageGeneration,
+                mimeType: source.mimeType,
+                sizeBytes: source.sizeBytes,
+                previewStoragePath: params.input.previewStoragePath,
+                previewStorageGeneration: preview?.storageGeneration,
+                previewMimeType: preview?.mimeType as "image/png" | "image/webp" | "image/jpeg" | undefined,
+                previewSizeBytes: preview?.sizeBytes,
+                width: params.input.width,
+                height: params.input.height,
+                durationSeconds: params.input.durationSeconds,
             };
         } catch (error) {
             if (error instanceof CampaignCueDecisionGateError) throw error;
@@ -3822,7 +4257,7 @@ export async function createCampaignCueAssetServer(params: {
         .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
-    await firestoreAdmin.runTransaction(async (transaction) => {
+    await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const [idempotencySnap, campaignSnap] = await Promise.all([
             transaction.get(idempotencyRef),
             params.input.campaignId
@@ -3876,6 +4311,24 @@ export async function createCampaignCueAssetServer(params: {
     return asset;
 }
 
+export async function createCampaignCueAssetPreviewServer(params: {
+    assetId: string;
+    scope: CampaignCueSessionScope;
+}) {
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
+    const snap = await workspaceSubcollection(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS).doc(params.assetId).get();
+    if (!snap.exists) throw new CampaignCueAssetAccessError("Asset not found.", 404);
+    const asset = parseCampaignCueAssetRecord({ assetId: snap.id, value: snap.data(), workspaceId: workspace.workspaceId });
+    if (asset.status === "blocked" || !asset.file?.previewStoragePath || !asset.file.previewStorageGeneration) {
+        throw new CampaignCueAssetAccessError("This asset does not have an available preview.", 409);
+    }
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    const [url] = await requireCampaignCueStorageAdmin().bucket().file(asset.file.previewStoragePath, {
+        generation: asset.file.previewStorageGeneration,
+    }).getSignedUrl({ action: "read", expires: expiresAt });
+    return { assetId: asset.id, expiresAt, mimeType: asset.file.previewMimeType, url };
+}
+
 export async function createCampaignCueAssetDownloadServer(params: {
     assetId: string;
     scope: CampaignCueSessionScope;
@@ -3903,7 +4356,7 @@ export async function createCampaignCueAssetDownloadServer(params: {
         throw new CampaignCueAssetAccessError("This legacy asset must be registered again before download.", 409);
     }
     const expiresAt = Date.now() + 15 * 60 * 1000;
-    const [url] = await campaigncueStorageAdmin.bucket().file(storagePath, {
+    const [url] = await requireCampaignCueStorageAdmin().bucket().file(storagePath, {
         generation: storageGeneration,
     }).getSignedUrl({
         action: "read",
@@ -3966,7 +4419,7 @@ export async function createCampaignCueSourceInputServer(params: {
         .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
-    return firestoreAdmin.runTransaction(async (transaction) => {
+    return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const [idempotencySnap, businessSnap, sourceSnapshotSnap] = await Promise.all([
             transaction.get(idempotencyRef),
             transaction.get(businessRef),
@@ -4100,7 +4553,7 @@ export async function createCampaignCueLocationServer(params: {
         .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
-    await firestoreAdmin.runTransaction(async (transaction) => {
+    await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const [idempotencySnap] = await Promise.all([
             transaction.get(idempotencyRef),
             assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
@@ -4184,7 +4637,7 @@ export async function patchCampaignCueBusinessServer(params: {
         .doc(defaultSourceSnapshotId);
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
-    return firestoreAdmin.runTransaction(async (transaction) => {
+    return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const [idempotencySnap, businessSnap, sourceSnapshotSnap, currentWorkspace] = await Promise.all([
             transaction.get(idempotencyRef),
             transaction.get(businessRef),

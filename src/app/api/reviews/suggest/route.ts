@@ -178,14 +178,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     // Rate limiting — 10 suggestions per minute per user
     const userRateLimitHash = hashPublicRateLimitValue(session.uId);
     const rateLimitResult = await checkRateLimit({
+        failClosedOnProviderError: true,
         key: `review-suggest:${userRateLimitHash}`,
         limit: 10,
         window: 60,
     });
     if (!rateLimitResult.allowed) {
+        const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
         return NextResponse.json(
-            { error: 'Rate limit exceeded. Please try again in a minute.' },
-            { status: 429 },
+            {
+                error: providerUnavailable
+                    ? 'Review suggestions are temporarily unavailable. Please try again.'
+                    : 'Rate limit exceeded. Please try again in a minute.',
+            },
+            { status: providerUnavailable ? 503 : 429 },
         );
     }
 

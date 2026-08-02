@@ -38,7 +38,7 @@ export type AnswerlatticeWidgetKeyStoreResult = {
 };
 
 const getDb = () => {
-    if (!answerlatticeFirestoreAdmin || typeof (answerlatticeFirestoreAdmin as any).collection !== 'function') {
+    if (!answerlatticeFirestoreAdmin) {
         throw new Error('Answerlattice Firebase is not configured');
     }
     return answerlatticeFirestoreAdmin;

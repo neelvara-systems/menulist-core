@@ -51,6 +51,10 @@ const notificationSource = readFileSync(
     resolve(process.cwd(), 'src/components/organisms/headerComponent/notificationsModal/index.tsx'),
     'utf8',
 );
+const headerSource = readFileSync(
+    resolve(process.cwd(), 'src/components/organisms/headerComponent/index.tsx'),
+    'utf8',
+);
 for (const source of [profileSource, notificationSource]) {
     assert.ok(source.includes('open={isOpen}'));
     assert.ok(source.includes('onOpenChange={setIsOpen}'));
@@ -59,5 +63,11 @@ for (const source of [profileSource, notificationSource]) {
 }
 assert.ok(!notificationSource.includes('Mark All Read'));
 assert.ok(!notificationSource.includes('View All Notifications'));
+assert.ok(headerSource.includes('const userData = session?.user;'));
+assert.ok(headerSource.includes("sessionStatus === 'loading'"));
+assert.ok(headerSource.includes('aria-label="Loading account"'));
+assert.ok(headerSource.includes('aria-label="Sign in"'));
+assert.ok(!headerSource.includes('useState<any>(session?.user)'));
+assert.ok(!headerSource.includes("objectNullCheck(userData, 'email')"));
 
 console.log('Header navigation boundary tests passed.');

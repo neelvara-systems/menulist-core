@@ -8,9 +8,11 @@ service firebase.storage {
 
     match /campaigncue/assets/{workspaceId}/{allPaths=**} {
       allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+      allow create: if isCampaignCueWorkspaceMember(workspaceId)
+        && resource == null
         && isCampaignCueAssetType()
         && request.resource.size <= 250 * 1024 * 1024;
+      allow update: if false;
       allow delete: if isCampaignCueWorkspaceMember(workspaceId);
     }
 
@@ -145,6 +147,7 @@ service firebase.storage {
     function isCampaignCueAssetType() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
         || request.resource.contentType.matches('video/(mp4|quicktime|webm)')
+        || request.resource.contentType.matches('audio/(mpeg|mp4|wav|ogg|webm)')
         || request.resource.contentType.matches('application/(pdf|json|zip)')
         || request.resource.contentType == 'text/plain';
     }

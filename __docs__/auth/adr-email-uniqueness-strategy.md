@@ -30,7 +30,7 @@ Google OAuth returns one email per Google account. When a user signs in with Goo
 
 ### 3. Single Dashboard (Architecture)
 
-There is ONE dashboard at `menulist.ai`. Brand subdomains (`abc.menulist.ai`) are for the **public-facing digital menu**, not the dashboard. When a user logs in, their tenant/store context is determined from their user document — not from the URL.
+There is ONE owner dashboard at `app.menulist.ai`. Brand subdomains (`abc.menulist.online`) are for the **public-facing digital menu**, not the dashboard. When a user logs in, their tenant/store context is determined from their user document — not from the URL.
 
 ### 4. Industry Standard
 

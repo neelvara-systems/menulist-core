@@ -66,7 +66,7 @@ Custom Domain Request → Middleware → /client/privacy
                                    → /client/terms
                                    → /client/refund
 
-Subdomain Request → brand.menulist.ai/privacy → same pages
+Subdomain Request → brand.menulist.online/privacy → same pages
 
 Generation: Pure template substitution (zero AI, zero cost)
 Storage: compliancePages collection (1 doc per store)

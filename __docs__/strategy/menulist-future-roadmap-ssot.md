@@ -192,7 +192,7 @@ MenuList has truth but truth must spread everywhere automatically — Google, Ma
 - **GBP Sync:** `ENABLE_GBP_SYNC: false` — OAuth, nightly sync, hours drift detection. Fully built, pending Google API approval.
 - **SEO/AEO:** Schema.org enrichment shipped (Feb 16, 2026) — geo, sameAs, priceRange, dietary info, availability. Makes pages AI-readable for ChatGPT/Gemini/Perplexity citations.
 - **QR codes:** Built and working (physical surfaces)
-- **Shareable links:** Subdomain system working (e.g., `joespizza.menulist.ai`)
+- **Shareable links:** Subdomain system working (e.g., `joespizza.menulist.online`)
 - **WhatsApp share:** Buttons exist on OBP and menu pages
 
 ### Cascade Expert Validation (with Web Research)

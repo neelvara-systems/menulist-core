@@ -8,7 +8,11 @@ import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { normalizeBusinessCopyGenerationResult } from "@lib/ai/businessCopyOutput";
 import { summarizeAiProviderUsage } from "@lib/ai/providerUsage";
-import { checkAICapacity } from "@lib/ai/capacityCheck";
+import {
+    checkAICapacity,
+    refundAiCapacityReservationSafely,
+    reserveAiCapacity,
+} from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -142,6 +146,7 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     const action = AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION;
     const requestId = crypto.randomUUID();
+    let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
         const { checkSafeMode } = await import('@lib/ops/safeMode');
@@ -204,6 +209,16 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
+        capacityReservation = await reserveAiCapacity({
+            action,
+            pId: session.pId ?? session.user?.pId ?? session.user?.productId,
+            sId: session.sId,
+            source: '/api/business-copy',
+            subscription: capacityCheck.subscription!,
+            tId: session.tId,
+            uId: session.uId ?? session.user?.id,
+            unitsToReserve: capacityCheck.unitsRequired,
+        });
 
         const startTime = Date.now();
         let response;
@@ -399,12 +414,14 @@ export const POST = withAuth(async (request, session) => {
         let remainingBalance = null;
         try {
             const accounting = await finalizeAiOperationAccounting({
+                capacityReservation,
                 capacitySubscription: capacityCheck.subscription,
                 context: { userId, requestId, action, storeId: session.sId, tenantId: session.tId },
                 input: transactionObject,
                 logLabel: 'Business copy generation',
                 session,
             });
+            capacityReservation = null;
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
@@ -462,6 +479,11 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Business copy generation failed' }, { status: 500 });
+    } finally {
+        await refundAiCapacityReservationSafely(capacityReservation, 'business_copy_request_did_not_settle', {
+            endpoint: '/api/business-copy',
+            requestId,
+        });
     }
 });
 

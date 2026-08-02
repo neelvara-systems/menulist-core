@@ -6,6 +6,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { mutateDigitalScreenOwnerStateServer } from '@lib/screen/screenManagementServer';
 import { getPrivateScreenControlDocId } from '@lib/screen/privateScreenControl';
 import { getPublicScreenStateDocId } from '@lib/screen/publicScreenState';
+import { commitCurrentScreenSeen } from '@lib/screen/screenSeenServer';
 
 const TENANT_A = '101';
 const TENANT_B = '202';
@@ -54,6 +55,35 @@ async function run(): Promise<void> {
     assert.equal(initialized?.enabled, true);
     assert.equal(typeof initialized?.screenToken, 'string');
     assert.equal((await controlRef.get()).data()?.tenantId, TENANT_A);
+    const screenToken = initialized?.screenToken || '';
+    assert.equal(
+        await commitCurrentScreenSeen({
+            controlRef,
+            mode: 'menu_board',
+            requestedContentVersion: 1,
+            screenRef: summaryRef,
+            storeId: STORE_ID,
+            token: screenToken,
+        }),
+        'recorded',
+    );
+    assert.equal(
+        (await summaryRef.get()).data()?.screen?.screenSeenByMode?.menu_board?.contentVersion,
+        1,
+        'The exact Menu Board version must be stored in the canonical screen state',
+    );
+    assert.equal(
+        await commitCurrentScreenSeen({
+            controlRef,
+            mode: 'menu_board',
+            requestedContentVersion: 1,
+            screenRef: summaryRef,
+            storeId: STORE_ID,
+            token: screenToken,
+        }),
+        'already_seen',
+        'Repeated same-day receipts must remain idempotent',
+    );
 
     const validUntilMs = Date.now() + 24 * 60 * 60 * 1000;
     await mutateDigitalScreenOwnerStateServer(
@@ -72,6 +102,30 @@ async function run(): Promise<void> {
                 validUntilMs,
             },
         },
+    );
+    assert.equal(
+        await commitCurrentScreenSeen({
+            controlRef,
+            mode: 'menu_board',
+            requestedContentVersion: 1,
+            screenRef: summaryRef,
+            storeId: STORE_ID,
+            token: screenToken,
+        }),
+        'stale_version',
+        'A TV must not acknowledge an older version after canonical content changes',
+    );
+    assert.equal(
+        await commitCurrentScreenSeen({
+            controlRef,
+            mode: 'highlights',
+            requestedContentVersion: 2,
+            screenRef: summaryRef,
+            storeId: STORE_ID,
+            token: screenToken,
+        }),
+        'recorded',
+        'Highlights must keep an independent receipt for the current version',
     );
     await assert.rejects(
         mutateDigitalScreenOwnerStateServer(

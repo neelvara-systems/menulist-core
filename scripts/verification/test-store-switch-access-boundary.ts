@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {
     canUserAccessStore,
+    claimStoreSwitchAttempt,
     getAccessibleStoreSummaries,
     getMappedStoreIdsForUser,
     getStoreSummaryId,
     normalizeStoreSwitchStoreId,
+    releaseStoreSwitchAttempt,
 } from '../../src/lib/multiOutlet/storeSwitchAccess';
 import {
     ACTIVE_STORE_CONTEXT_STORAGE_KEY,
@@ -66,6 +68,19 @@ const accessible = getAccessibleStoreSummaries({
     },
 });
 assert.deepEqual(accessible.map(getStoreSummaryId), [1, 4]);
+
+const firstStoreSwitchAttempt = claimStoreSwitchAttempt();
+assert.notEqual(firstStoreSwitchAttempt, null);
+if (firstStoreSwitchAttempt === null) throw new Error('first store-switch attempt was not admitted');
+assert.equal(claimStoreSwitchAttempt(), null, 'a second mounted switch surface cannot claim concurrent Firebase claim work');
+assert.equal(releaseStoreSwitchAttempt(firstStoreSwitchAttempt + 1), false, 'a foreign attempt cannot release the active claim');
+assert.equal(claimStoreSwitchAttempt(), null, 'a foreign release must leave the active claim owned');
+assert.equal(releaseStoreSwitchAttempt(firstStoreSwitchAttempt), true);
+const nextStoreSwitchAttempt = claimStoreSwitchAttempt();
+assert.notEqual(nextStoreSwitchAttempt, null);
+if (nextStoreSwitchAttempt === null) throw new Error('next store-switch attempt was not admitted');
+assert.notEqual(nextStoreSwitchAttempt, firstStoreSwitchAttempt, 'attempt tokens must not be reused');
+assert.equal(releaseStoreSwitchAttempt(nextStoreSwitchAttempt), true);
 
 const baseSession = {
     expires: '2026-08-01T00:00:00.000Z',

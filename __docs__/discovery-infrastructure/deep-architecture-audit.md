@@ -191,8 +191,8 @@ Menu page (`page.tsx:504-582`):
 
 | Requirement | Status | Evidence |
 |------------|--------|----------|
-| Business canonical URL | ✅ | `{subdomain}.menulist.ai` — `store.ts:112` |
-| Menu canonical URL | ✅ | `{subdomain}.menulist.ai/menu` |
+| Business canonical URL | ✅ | `{subdomain}.menulist.online` — `store.ts:112` |
+| Menu canonical URL | ✅ | `{subdomain}.menulist.online/menu` |
 | Custom domains | ✅ | `store.customDomain` — `store.ts:113` |
 | Slug permanence | ✅ | `previousSlugs[]` max 5 + 301 redirects — `project.types.ts:84` |
 | Slug lock | ✅ | `slugLockedAt: Timestamp` — `project.types.ts:87` |
@@ -234,7 +234,7 @@ Menu page (`page.tsx:504-582`):
 | Public API v1 (menu) | ✅ | `GET /api/public/v1/menu` — full menu data |
 | POS Webhook Sync | ✅ | Push-based menu data delivery — feature-flagged |
 | Schema.org JSON-LD | ✅ | On every public page |
-| Per-store sitemap | ✅ | `{subdomain}.menulist.ai/sitemap.xml` |
+| Per-store sitemap | ✅ | `{subdomain}.menulist.online/sitemap.xml` |
 
 **GAPS:**
 1. **No `.well-known` endpoints** — NOT FOUND IN CODEBASE → LOW risk (llms.txt serves same purpose)

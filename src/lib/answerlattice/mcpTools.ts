@@ -367,7 +367,7 @@ export async function handleAnswerlatticeMcpToolCall(
     sId: number,
     expectedBundleVersion: number,
     name: AnswerlatticeMcpToolName,
-    args: Record<string, unknown>,
+    args: unknown,
 ) {
     try {
         const parsed = parseAnswerlatticeMcpToolArguments(name, args);

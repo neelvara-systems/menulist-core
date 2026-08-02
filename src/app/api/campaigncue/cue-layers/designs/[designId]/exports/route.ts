@@ -5,6 +5,7 @@ import {
     parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueCueLayersApiError,
@@ -16,9 +17,8 @@ import {
     CampaignCueCueLayerIdSchema,
 } from "@lib/validation/campaigncueCueLayersSchemas";
 import { type NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const POST = withAuth(async (
+export const POST = withCampaignCueAuth(async (
     request: NextRequest,
     session,
     params?: { designId?: string },

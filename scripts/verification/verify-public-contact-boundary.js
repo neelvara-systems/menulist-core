@@ -103,6 +103,8 @@ requireTokens(opsRoute, [
   'resolveCurrentSessionUserDocumentId(session)',
   "getRateLimitForFeature('DATA_READ')",
   "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
+  "rateLimit.reason === 'provider_unavailable'",
+  'status: providerUnavailable ? 503 : 429',
   '.orderBy(\'createdOn\', \'desc\')',
   '.limit(scanLimit)',
   'Math.min(Math.max(limit * 3, 60), 120)',

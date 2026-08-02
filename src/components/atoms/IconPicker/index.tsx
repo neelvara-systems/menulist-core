@@ -117,6 +117,7 @@ const IconPicker = ({
                 <Input
                     allowClear
                     className="icon-picker-header-search"
+                    maxLength={80}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={activeMode === 'icons' ? 'Search icon for category...' : 'Search emoji for category...'}
                     prefix={<LuSearch size={16} />}

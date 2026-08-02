@@ -124,6 +124,7 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
 } as const;
 
 const PLATFORM_ALIAS_VAR = 'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES';
+const MENULIST_TENANT_BASE_DOMAIN_VAR = 'NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN';
 const MYCODEX_AUTH_VARS = [
     'MYCODEX_BASIC_AUTH_USER',
     'MYCODEX_BASIC_AUTH_PASSWORD',
@@ -361,6 +362,14 @@ export function validateEnvironment(): EnvValidationResult {
     const expectedPlatformDomain = getProductDeploymentTarget('menulist', stage).domains[0];
     if (stage !== 'local' && platformDomain && expectedPlatformDomain && platformDomain !== expectedPlatformDomain) {
         const message = `NEXT_PUBLIC_PLATFORM_DOMAIN must be ${expectedPlatformDomain} for ${stage} MenuList (currently ${platformDomain})`;
+        if (isVercel) missing.push(message);
+        else warnings.push(message);
+    }
+
+    const tenantBaseDomain = getEnvValue(MENULIST_TENANT_BASE_DOMAIN_VAR);
+    const expectedTenantBaseDomain = getProductDeploymentTarget('menulist', stage).tenantDomains?.[0];
+    if (stage !== 'local' && expectedTenantBaseDomain && tenantBaseDomain !== expectedTenantBaseDomain) {
+        const message = `${MENULIST_TENANT_BASE_DOMAIN_VAR} must be ${expectedTenantBaseDomain} for ${stage} MenuList customer links`;
         if (isVercel) missing.push(message);
         else warnings.push(message);
     }

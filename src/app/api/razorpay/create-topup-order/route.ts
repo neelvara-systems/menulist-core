@@ -164,23 +164,27 @@ export const POST = withAuth(async (request, session) => {
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
         const rateLimitResult = await checkRateLimit({
+            failClosedOnProviderError: true,
             key: `topup:${productId}:${userRateLimitHash}:${tenantRateLimitHash}`,
             ...rateLimitConfig
         });
 
         if (!rateLimitResult.allowed) {
-            logger.security('Topup Order Rate Limit Exceeded', {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            logger.security(providerUnavailable ? 'Topup Order Rate Limit Provider Unavailable' : 'Topup Order Rate Limit Exceeded', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
-                error: 'Too many topup attempts',
+                error: providerUnavailable ? 'Rate limit provider unavailable' : 'Too many topup attempts',
                 productId,
-                currentAttempts: rateLimitResult.current,
+                ...(providerUnavailable ? {} : { currentAttempts: rateLimitResult.current }),
             }, 'high');
 
             return NextResponse.json({
-                error: 'Too many topup attempts. Please try again later.',
-                resetAt: rateLimitResult.resetAt
-            }, { status: 429 });
+                error: providerUnavailable
+                    ? 'Billing checkout is temporarily unavailable. Please try again.'
+                    : 'Too many topup attempts. Please try again later.',
+                ...(providerUnavailable ? {} : { resetAt: rateLimitResult.resetAt }),
+            }, { status: providerUnavailable ? 503 : 429 });
         }
 
         if (isAnswerlatticeBillingProduct(productId) && !(await canManageAnswerlatticeBillingMutation(session, request))) {

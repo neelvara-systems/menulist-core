@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 
 import { PRODUCT_IDS } from '@constant/product';
 import { FEATURE_FLAGS } from '@config/features';
+import { projectOwnerNotificationPersistedEvent } from '@data/shared/ownerNotificationDeliveryBoundary';
 import {
   getOwnerNotificationRegistryEntry,
   OWNER_NOTIFICATION_COLLECTIONS,
@@ -37,8 +38,6 @@ import {
   resolveOwnerNotificationFormattingContext,
 } from '@lib/owner-notifications/formatters';
 import {
-  normalizeMenuListOwnerNotificationScopeDocumentId,
-  normalizeOwnerNotificationRecipientDocumentId,
   resolveOwnerNotificationRecipient,
   resolveOwnerNotificationScope,
 } from '@lib/owner-notifications/recipientResolver';
@@ -61,6 +60,11 @@ import type {
   OwnerNotificationOpsStatusFilter,
 } from '@lib/ops/ownerNotificationTypes';
 import { buildOwnerNotificationWindow } from '@lib/ops/notificationOpsSnapshotBoundary';
+import {
+  buildOwnerNotificationManualSendFingerprint,
+  isMatchingOwnerNotificationManualSendEvent,
+  type OwnerNotificationManualSendIdentity,
+} from '@lib/ops/ownerNotificationManualAction';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -73,7 +77,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
-import { withAuth } from '../../../../middleware/auth';
+import { type AuthenticatedHandler, withAuth } from '../../../../middleware/auth';
 
 const EVENT_STATUSES: OwnerNotificationEventStatus[] = [
   'pending',
@@ -99,6 +103,10 @@ const PRODUCT_IDS_FOR_OPS: OwnerNotificationProductId[] = [
 const STATUS_FILTERS: OwnerNotificationOpsStatusFilter[] = ['all', ...EVENT_STATUSES, 'invalid'];
 const DELIVERY_DETAIL_LIMIT = 12;
 const OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OWNER_NOTIFICATION_PRIVATE_RESPONSE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+  'X-Content-Type-Options': 'nosniff',
+} as const;
 const SAFE_METADATA_PREVIEW_KEYS = new Set([
   'amount',
   'currency',
@@ -113,6 +121,17 @@ const BOUNDED_METADATA_PREVIEW_KEYS = new Set([
   'subscriptionId',
   'workspaceName',
 ]);
+
+const withOwnerNotificationPrivateResponse = (handler: AuthenticatedHandler) => {
+  const authenticatedHandler = withAuth(handler, { requiredPlatformRole: 'PLATFORM' });
+  return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => {
+    const response = await authenticatedHandler(...args);
+    Object.entries(OWNER_NOTIFICATION_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+      response.headers.set(name, value);
+    });
+    return response;
+  };
+};
 
 const OwnerNotificationEventIdSchema = z.string()
   .trim()
@@ -210,41 +229,6 @@ type ManualSendSourceEvent = Pick<
   'productId' | 'triggerType' | 'tenantId' | 'storeId' | 'workspaceId' | 'recipientRole' | 'metadata'
 >;
 
-function normalizeManualSendSourceEvent(
-  value: unknown,
-  productId: OwnerNotificationProductId,
-): ManualSendSourceEvent | null {
-  if (!isUnknownRecord(value) || value.productId !== productId) return null;
-  const triggerType = typeof value.triggerType === 'string' ? value.triggerType.trim() : '';
-  if (!triggerType || !getOwnerNotificationRegistryEntry(productId, triggerType)) return null;
-
-  if (productId === PRODUCT_IDS.MENULIST) {
-    const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(value.tenantId);
-    const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(value.storeId);
-    if (!tenantScope || !storeScope) return null;
-    return {
-      productId,
-      triggerType,
-      tenantId: tenantScope.documentId,
-      storeId: storeScope.documentId,
-      recipientRole: normalizeActionRecipientRole(value.recipientRole, productId, triggerType),
-      metadata: isUnknownRecord(value.metadata) ? value.metadata : {},
-    };
-  }
-
-  const tenantId = normalizeOwnerNotificationRecipientDocumentId(value.tenantId);
-  const workspaceId = normalizeOwnerNotificationRecipientDocumentId(value.workspaceId ?? value.storeId);
-  if (!tenantId || !workspaceId) return null;
-  return {
-    productId,
-    triggerType,
-    tenantId,
-    workspaceId,
-    recipientRole: normalizeActionRecipientRole(value.recipientRole, productId, triggerType),
-    metadata: isUnknownRecord(value.metadata) ? value.metadata : {},
-  };
-}
-
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
 }
@@ -253,14 +237,21 @@ function safeId(input: string): string {
   return sha256(input).slice(0, 40);
 }
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
   if (!value) return null;
   try {
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'string' || typeof value === 'number') {
       const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    if (!isUnknownRecord(value)) return null;
+    if (typeof value.toDate === 'function') {
+      const date = Reflect.apply(value.toDate, value, []);
+      return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+    }
+    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) {
+      const date = new Date(value.seconds * 1000);
       return Number.isNaN(date.getTime()) ? null : date.toISOString();
     }
   } catch {
@@ -300,7 +291,7 @@ function isPhone(value: string): boolean {
   return phone.length >= 10 && phone.length <= 15;
 }
 
-function sanitizeForFirestore(value: any): any {
+function sanitizeForFirestore<T>(value: T) {
   return sanitizeFirestoreValue(value, {
     dateTransform: (date) => date.toISOString(),
     undefinedObjectValue: 'omit',
@@ -313,7 +304,14 @@ function normalizeDestinationForAudit(channel: OwnerNotificationChannel, destina
 }
 
 function cleanOpsText(value: unknown, max = 260): string {
-  return String(value || '')
+  const scalar = typeof value === 'string'
+    ? value
+    : typeof value === 'number' && Number.isFinite(value)
+      ? String(value)
+      : typeof value === 'boolean'
+        ? String(value)
+        : '';
+  return scalar
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -343,8 +341,8 @@ function getOwnerNotificationErrorSummary(value: unknown): string | null {
     : `Stored error present (${normalized.length} chars).`;
 }
 
-function sanitizeMetadataPreview(metadata: any): Record<string, string | number | boolean | null> {
-  if (!metadata || typeof metadata !== 'object') return {};
+function sanitizeMetadataPreview(metadata: unknown): Record<string, string | number | boolean | null> {
+  if (!isUnknownRecord(metadata)) return {};
 
   return Object.keys(metadata).reduce<Record<string, string | number | boolean | null>>((acc, key) => {
     const value = metadata[key];
@@ -366,7 +364,7 @@ function sanitizeMetadataPreview(metadata: any): Record<string, string | number 
   }, {});
 }
 
-function normalizeChannels(value: any): OwnerNotificationChannel[] {
+function normalizeChannels(value: unknown): OwnerNotificationChannel[] {
   if (!Array.isArray(value)) return [];
   return value.filter((channel): channel is OwnerNotificationChannel => channel === 'email' || channel === 'whatsapp');
 }
@@ -412,7 +410,7 @@ function serializeDeliveryDoc(
   const attempt = Number(data.attempt);
   return {
     id: doc.id,
-    eventId: String(data.eventId || '-'),
+    eventId: cleanOpsText(data.eventId || '-', 120),
     productId: expectedProductId,
     triggerType: cleanOpsText(data.triggerType || '-', 120),
     channel: data.channel === 'email' || data.channel === 'whatsapp' ? data.channel : 'invalid',
@@ -508,8 +506,11 @@ async function getDetail(params: {
     return { deliveries: [] };
   }
 
-  const persistedEvent = eventSnap.data() as OwnerNotificationEventDoc;
-  if (persistedEvent.productId !== params.productId) {
+  const persistedEvent = projectOwnerNotificationPersistedEvent(
+    eventSnap.data(),
+    params.productId,
+  );
+  if (!persistedEvent) {
     return { deliveries: [] };
   }
   const rawEvent: OwnerNotificationEventDoc = {
@@ -571,12 +572,17 @@ async function getDetail(params: {
   };
 }
 
-function getOperatorId(session: any): string {
-  return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
+function getOperatorId(session: unknown): string {
+  if (!isUnknownRecord(session)) return 'platform';
+  const user = isUnknownRecord(session.user) ? session.user : {};
+  for (const value of [session.uId, user.id, user.email]) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return 'platform';
 }
 
 function getOperatorEmailMasked(value: unknown): string | null {
-  const email = String(value || '').trim();
+  const email = typeof value === 'string' ? value.trim() : '';
   return email && isEmail(email) ? maskEmail(email) : null;
 }
 
@@ -594,20 +600,29 @@ async function loadRawEvent(
   const normalizedEventId = requireOwnerNotificationEventId(eventId);
   const snap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(normalizedEventId).get();
   if (!snap.exists) return null;
-  return normalizeManualSendSourceEvent(snap.data(), productId);
+  return projectOwnerNotificationPersistedEvent(snap.data(), productId);
 }
 
 async function runManualSend(params: {
+  db: Firestore;
   event: ManualSendSourceEvent;
   eventId: string;
   channel: OwnerNotificationChannel;
   destination: string;
   reason?: string;
   actionId: string;
-}): Promise<OwnerNotificationOpsActionResult> {
+}): Promise<OwnerNotificationOpsActionResult | 'conflict' | 'unavailable'> {
   const eventId = requireOwnerNotificationEventId(params.eventId);
   const normalizedDestination = normalizeDestinationForAudit(params.channel, params.destination);
-  const result = await enqueueOwnerNotification({
+  const identity: OwnerNotificationManualSendIdentity = {
+    actionId: params.actionId,
+    channel: params.channel,
+    destination: normalizedDestination,
+    eventId,
+    productId: params.event.productId,
+    reason: params.reason,
+  };
+  const enqueueResult = await enqueueOwnerNotification({
     productId: params.event.productId,
     triggerType: params.event.triggerType,
     tenantId: params.event.tenantId,
@@ -627,6 +642,7 @@ async function runManualSend(params: {
       ...params.event.metadata,
       manualRecipientOverride: true,
       originalEventId: eventId,
+      manualActionFingerprint: buildOwnerNotificationManualSendFingerprint(identity),
       manualReason: params.reason || null,
       manualRequestedAt: new Date().toISOString(),
     }),
@@ -634,19 +650,37 @@ async function runManualSend(params: {
       runtime: 'next',
       path: 'src/app/api/ops/owner-notifications/route.ts:manualSend',
     },
-  }, { processImmediately: true, processExisting: false });
+  }, { processImmediately: false, processExisting: false });
+
+  const manualEventId = normalizeOwnerNotificationEventId(enqueueResult.eventId);
+  if (!manualEventId) return 'unavailable';
+  if (enqueueResult.created === false) {
+    const persistedEvent = await params.db
+      .collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
+      .doc(manualEventId)
+      .get();
+    if (
+      !persistedEvent.exists
+      || !isMatchingOwnerNotificationManualSendEvent({
+        expected: identity,
+        persisted: persistedEvent.data(),
+      })
+    ) return 'conflict';
+  }
+
+  const result = await processOwnerNotificationEvent(params.event.productId, manualEventId);
 
   return {
     ok: true,
     action: 'manualSend',
     eventId,
-    manualEventId: 'eventId' in result ? result.eventId : undefined,
+    manualEventId,
     status: result.status,
     sent: 'sent' in result ? result.sent : 0,
     failed: 'failed' in result ? result.failed : 0,
     skipped: 'skipped' in result ? result.skipped : 0,
-    replayed: result.created === false,
-    message: result.created === false
+    replayed: enqueueResult.created === false,
+    message: enqueueResult.created === false
       ? `Manual ${params.channel} send was already processed`
       : `Manual ${params.channel} send was processed`,
   };
@@ -678,8 +712,11 @@ async function recordManualHandoff(params: {
   const committed = await params.db.runTransaction(async (transaction) => {
     const currentEventSnapshot = await transaction.get(eventRef);
     if (!currentEventSnapshot.exists) return null;
-    const currentEvent = currentEventSnapshot.data() as OwnerNotificationEventDoc;
-    if (currentEvent.productId !== params.productId) return null;
+    const currentEvent = projectOwnerNotificationPersistedEvent(
+      currentEventSnapshot.data(),
+      params.productId,
+    );
+    if (!currentEvent) return null;
     const existingDeliverySnapshot = await transaction.get(deliveryRef);
     if (existingDeliverySnapshot.exists) {
       const existingDelivery = existingDeliverySnapshot.data() || {};
@@ -747,7 +784,7 @@ async function recordManualHandoff(params: {
   };
 }
 
-export const GET = withAuth(async (request, session) => {
+export const GET = withOwnerNotificationPrivateResponse(async (request, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD) {
     return NextResponse.json({ error: 'Owner notification ops dashboard is disabled' }, { status: 404 });
   }
@@ -771,22 +808,26 @@ export const GET = withAuth(async (request, session) => {
     failClosedOnProviderError: true,
   });
   if (!rateLimitResult.allowed) {
-    const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+    const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+    const retryAfter = providerUnavailable
+      ? null
+      : Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
     logger.security('Owner Notification Ops Read Rate Limited', {
       ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
-      providerUnavailable: rateLimitResult.reason === 'provider_unavailable',
+      providerUnavailable,
+      ...(retryAfter === null ? {} : { retryAfter }),
     }, 'medium');
     return NextResponse.json(
       {
-        error: rateLimitResult.reason === 'provider_unavailable'
+        error: providerUnavailable
           ? 'Owner notification access is temporarily unavailable'
           : 'Too many owner notification refreshes',
-        retryAfter,
+        ...(retryAfter === null ? {} : { retryAfter }),
       },
       {
-        status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429,
-        headers: { 'Retry-After': String(retryAfter) },
+        status: providerUnavailable ? 503 : 429,
+        headers: retryAfter === null ? {} : { 'Retry-After': String(retryAfter) },
       },
     );
   }
@@ -866,9 +907,9 @@ export const GET = withAuth(async (request, session) => {
     });
     return NextResponse.json({ error: 'Failed to load owner notification ops snapshot' }, { status: 500 });
   }
-}, { requiredPlatformRole: 'PLATFORM' });
+});
 
-export const POST = withAuth(async (request, session) => {
+export const POST = withOwnerNotificationPrivateResponse(async (request, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD) {
     return NextResponse.json({ error: 'Owner notification ops dashboard is disabled' }, { status: 404 });
   }
@@ -882,21 +923,26 @@ export const POST = withAuth(async (request, session) => {
     failClosedOnProviderError: true,
   });
   if (!rateLimitResult.allowed) {
-    const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+    const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+    const retryAfter = providerUnavailable
+      ? null
+      : Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
     logger.security('Owner Notification Ops Rate Limited', {
       ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
+      providerUnavailable,
+      ...(retryAfter === null ? {} : { retryAfter }),
     }, 'medium');
     return NextResponse.json(
       {
-        error: rateLimitResult.reason === 'provider_unavailable'
+        error: providerUnavailable
           ? 'Owner notification recovery is temporarily unavailable'
           : 'Too many owner notification recovery actions',
-        retryAfter,
+        ...(retryAfter === null ? {} : { retryAfter }),
       },
       {
-        status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429,
-        headers: { 'Retry-After': String(retryAfter) },
+        status: providerUnavailable ? 503 : 429,
+        headers: retryAfter === null ? {} : { 'Retry-After': String(retryAfter) },
       },
     );
   }
@@ -927,14 +973,14 @@ export const POST = withAuth(async (request, session) => {
   });
   if (bodyResult.ok === false) return bodyResult.response;
 
-  const body = bodyResult.data as any;
+  const body: unknown = bodyResult.data;
   const validation = validateAPIInput(PostActionSchema, body);
   if (validation.success === false) {
     logger.security('Owner Notification Ops Action Validation Failed', {
       ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
       error: validation.error,
-      ...getBoundedOpsStringContext('action', body?.action),
+      ...getBoundedOpsStringContext('action', isUnknownRecord(body) ? body.action : undefined),
     }, 'medium');
     return NextResponse.json({ error: 'Invalid owner notification action' }, { status: 400 });
   }
@@ -979,6 +1025,7 @@ export const POST = withAuth(async (request, session) => {
       }
 
       const result = await runManualSend({
+        db,
         event,
         eventId,
         channel: validation.data.channel,
@@ -986,6 +1033,12 @@ export const POST = withAuth(async (request, session) => {
         reason: validation.data.reason,
         actionId: validation.data.actionId,
       });
+      if (result === 'conflict') {
+        return NextResponse.json({ error: 'Owner notification action ID conflict' }, { status: 409 });
+      }
+      if (result === 'unavailable') {
+        return NextResponse.json({ error: 'Owner notification runtime is unavailable' }, { status: 503 });
+      }
       return NextResponse.json(result);
     }
 
@@ -1024,4 +1077,4 @@ export const POST = withAuth(async (request, session) => {
     });
     return NextResponse.json({ error: 'Owner notification recovery action failed' }, { status: 500 });
   }
-}, { requiredPlatformRole: 'PLATFORM' });
+});

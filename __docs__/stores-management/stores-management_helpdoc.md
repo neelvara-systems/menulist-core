@@ -45,7 +45,7 @@ Stores represent your physical business locations. Each store has its own QR cod
 1. Contact MenuList support with your desired domain
 2. We'll configure the DNS settings
 3. Once verified, your menu appears at your custom domain
-4. Your subdomain (yourstore.menulist.ai) still works as a fallback
+4. Your subdomain (yourstore.menulist.online) still works as a fallback
 
 ### How to update your store's SEO settings
 

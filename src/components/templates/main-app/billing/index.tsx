@@ -13,7 +13,12 @@ import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePay
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
-import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
+import {
+    claimStoreSwitchAttempt,
+    getAccessibleStoreSummaries,
+    getStoreSummaryId,
+    releaseStoreSwitchAttempt,
+} from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BillingHistoryItem, Currency } from '@type/razorpay';
@@ -179,9 +184,18 @@ function BillingPage() {
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
+        if (
+            targetStoreId === billingStoreId
+            || !accessibleBillingStores.some((store) => getStoreSummaryId(store) === targetStoreId)
+        ) return;
+        const attemptToken = claimStoreSwitchAttempt();
+        if (attemptToken === null) return;
+        const initiatingScopeKey = billingScopeKey;
+
         try {
             if (targetStoreId === loginStoreId) {
                 if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                if (billingScopeKeyRef.current !== initiatingScopeKey) return;
                 subscriptionRequestSequenceRef.current += 1;
                 billingHistoryRequestSequenceRef.current += 1;
                 setActiveSubscription(null);
@@ -197,19 +211,24 @@ function BillingPage() {
                 body: JSON.stringify({ targetStoreId }),
             });
             await readAuthAccountResponse(res, 'switch_store');
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             await refreshFirebaseAuthClaims(targetStoreId);
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             subscriptionRequestSequenceRef.current += 1;
             billingHistoryRequestSequenceRef.current += 1;
             setActiveSubscription(null);
             setBillingHistory([]);
             setActiveStoreContext(targetStoreId);
         } catch (error) {
+            if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             logPaymentFailure('payment_desktop_billing_store_switch_failed', error, buildBillingPaymentLogContext('store_switch', {
                 returningToLoginStore: targetStoreId === loginStoreId,
                 ...getBoundedPaymentStringContext('targetStoreId', targetStoreId),
                 ...getBoundedPaymentStringContext('loginStoreId', loginStoreId),
             }));
             message.error('Store switch failed');
+        } finally {
+            releaseStoreSwitchAttempt(attemptToken);
         }
     };
 

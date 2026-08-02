@@ -13,7 +13,7 @@ import {
 } from '@lib/answerlattice/onboardingProvisioningServer';
 import {
     answerlatticeAdminApp,
-    answerlatticeFirestoreAdmin,
+    requireAnswerlatticeFirestoreAdmin,
 } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { deleteApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -21,6 +21,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
     throw new Error('FIRESTORE_EMULATOR_HOST is required.');
 }
+const db = requireAnswerlatticeFirestoreAdmin();
 
 const scope: AnswerlatticeProvisioningScope = {
     attemptId: 'alo_contract_attempt',
@@ -45,7 +46,6 @@ const scopedDocument = {
 };
 
 async function seedProvisioningScope(): Promise<void> {
-    const db = answerlatticeFirestoreAdmin;
     await Promise.all([
         db.collection(DB_COLLECTIONS.TENANTS).doc(String(scope.tenantId)).set(scopedDocument),
         db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).set({
@@ -62,11 +62,6 @@ async function seedProvisioningScope(): Promise<void> {
 }
 
 async function run(): Promise<void> {
-    const db = answerlatticeFirestoreAdmin;
-    if (!db || typeof (db as any).collection !== 'function') {
-        throw new Error('Answerlattice emulator Firestore is not configured.');
-    }
-
     await seedProvisioningScope();
     assert.equal(
         answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, productId: PRODUCT_IDS.MENULIST }, scope),

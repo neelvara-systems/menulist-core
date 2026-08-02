@@ -1,41 +1,14 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    answerlatticeAdminApp,
-    answerlatticeFirestoreAdmin,
-} from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeAdminApp, answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
-import type {
-    AnswerlatticeProductSurface,
-    AnswerlatticeFaq,
-    AnswerlatticeRelatedArticleRef,
-    AnswerlatticeRelatedChangelogRef,
-    AnswerlatticeRelatedFaqRef,
-    AnswerlatticeSurfaceContentItem,
-    AnswerlatticeSurfaceContentSummary,
-    AnswerlatticeContextPayload,
-    AnswerlatticeSurfaceTicketStats,
-} from '@type/answerlattice';
+import type { AnswerlatticeProductSurface, AnswerlatticeFaq, AnswerlatticeRelatedArticleRef, AnswerlatticeRelatedChangelogRef, AnswerlatticeRelatedFaqRef, AnswerlatticeSurfaceContentItem, AnswerlatticeSurfaceContentSummary, AnswerlatticeContextPayload, AnswerlatticeSurfaceTicketStats, } from '@type/answerlattice';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { isAnswerlatticeChangelogEntryPublished } from '@lib/answerlattice/changelogContracts';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import type { SupportTicketType } from '@type/supportTicket';
-import {
-    getAnswerlatticeSupportTicketDisplayId,
-    parseAnswerlatticeSupportTicketDocument,
-} from '@lib/answerlattice/supportTicketLifecycle';
-import {
-    ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
-    buildPublicRelatedContent,
-    getAnswerlatticeProductSurfaceTimestampMillis,
-    getContextContentSummaryDocId,
-    mergeSurfaceContext,
-    normalizeAnswerlatticeSurfaceContentSummary,
-    normalizeStoredAnswerlatticeProductSurface,
-    requireAnswerlatticeProductSurfaceScope,
-    resolveSurfaceContentForContext,
-    scoreContentForSurface,
-} from './productSurfaceContent';
+import { getAnswerlatticeSupportTicketDisplayId, parseAnswerlatticeSupportTicketDocument, } from '@lib/answerlattice/supportTicketLifecycle';
+import { ANSWERLATTICE_PRODUCT_SURFACE_LIMIT, buildPublicRelatedContent, getAnswerlatticeProductSurfaceTimestampMillis, getContextContentSummaryDocId, mergeSurfaceContext, normalizeAnswerlatticeSurfaceContentSummary, normalizeStoredAnswerlatticeProductSurface, requireAnswerlatticeProductSurfaceScope, resolveSurfaceContentForContext, scoreContentForSurface, } from './productSurfaceContent';
 
 const SUMMARY_CACHE_TTL_MS = 60_000;
 const MAX_SUMMARY_CACHE_ENTRIES = 300;
@@ -114,7 +87,7 @@ const buildTicketStats = (tickets: SupportTicketType[]): AnswerlatticeSurfaceTic
 });
 
 async function loadActiveSurfaces(tId: number, sId: number): Promise<AnswerlatticeProductSurface[]> {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
@@ -133,7 +106,7 @@ async function loadActiveSurfaces(tId: number, sId: number): Promise<Answerlatti
 }
 
 async function loadPublishedArticles(tId: number, sId: number): Promise<KnowledgeBaseArticleType[]> {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.KB_ARTICLES)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
@@ -148,7 +121,7 @@ async function loadPublishedArticles(tId: number, sId: number): Promise<Knowledg
 }
 
 async function loadPublishedFaqs(tId: number, sId: number): Promise<AnswerlatticeFaq[]> {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
@@ -166,7 +139,7 @@ async function loadPublishedFaqs(tId: number, sId: number): Promise<Answerlattic
 }
 
 async function loadRecentChangelogEntries(tId: number, sId: number): Promise<Array<ChangelogEntry & { pageId: string }>> {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${tId}/${sId}`)
         .orderBy('pageNumber', 'desc')
         .limit(MAX_CHANGELOG_PAGES_FOR_SUMMARY)
@@ -184,7 +157,7 @@ async function loadRecentChangelogEntries(tId: number, sId: number): Promise<Arr
 }
 
 async function loadRecentTickets(tId: number, sId: number): Promise<SupportTicketType[]> {
-    const snapshot = await getAnswerlatticeDb()
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.SUPPORT_TICKETS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
@@ -300,7 +273,7 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
     };
 
     const docId = getContextContentSummaryDocId(tId, sId);
-    await getAnswerlatticeDb()
+    await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(docId)
         .set(summary);
@@ -319,7 +292,7 @@ export async function getProductSurfaceContentSummaryServer(tId: number, sId: nu
     if (cached) summaryCache.delete(cacheKey);
 
     const docId = getContextContentSummaryDocId(scope.tId, scope.sId);
-    const snap = await getAnswerlatticeDb()
+    const snap = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(docId)
         .get();

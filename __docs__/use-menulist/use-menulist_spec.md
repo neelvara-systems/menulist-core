@@ -60,6 +60,10 @@ Two screen link cards:
 1. **Menu Board** — `/screen/{token}` — full menu with prices
 2. **Highlights** — `/screen/{token}?mode=highlights` — rotating promotional slides
 
+Each card shows only its own exact-version open status: **Waiting for TV**,
+**Latest update seen**, **Update not seen**, or **Check TV**. The section has an
+owner-triggered status refresh; one mode must never make the other look current.
+
 ### 4.4 Print for Your Restaurant
 Individual asset cards with Preview + Download:
 - Print Assets (focused route for printable files)

@@ -120,8 +120,8 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 | URL Pattern                      | Example                        | Behavior         |
 | -------------------------------- | ------------------------------ | ---------------- |
-| `{subdomain}.menulist.ai`        | `joespizza.menulist.ai`        | Official Business Page |
-| `{subdomain}.menulist.ai/{slug}` | `joespizza.menulist.ai/drinks` | Specific project |
+| `{subdomain}.menulist.online`        | `joespizza.menulist.online`        | Official Business Page |
+| `{subdomain}.menulist.online/{slug}` | `joespizza.menulist.online/drinks` | Specific project |
 | `{custom-domain}`                | `joespizza.com`                | Official Business Page |
 | `{custom-domain}/{slug}`         | `joespizza.com/bar-menu`       | Specific project |
 

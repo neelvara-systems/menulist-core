@@ -158,6 +158,7 @@ This allows querying Answerlattice-specific tenants without a separate collectio
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-01 | 1.7.3 | Added current default-auth admission and transaction-current bridge authority, required an exact provider checkout before finalization, bound payment-pending replay to the original fingerprint, and replayed bootstrap with create-only persistence |
 | 2026-07-28 | 1.7.2 | Rejected contradictory pending-subscription payload scope before transaction work and projected all four canonical workspace aliases from provisioning authority |
 | 2026-07-19 | 1.7.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email fail-closed admission, HTTP(S)-only product URLs, and route-wide private responses |
 | 2026-07-19 | 1.7.0 | Added durable provider-recovery state, 15-minute unknown-outcome hold, created-only exact provider admission, local-finalization rollback boundary, strict recovered-summary parsing, private response headers, and emulator proof |

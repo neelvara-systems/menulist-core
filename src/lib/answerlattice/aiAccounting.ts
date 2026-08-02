@@ -21,7 +21,7 @@ import {
     getNonNegativeCreditInteger,
     getPositiveCreditInteger,
 } from '@data/shared/aiCreditScalarContract';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { createHash } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -113,7 +113,7 @@ type FinalizeAnswerlatticeAiAccountingResult = {
     unitsConsumed: number;
 };
 
-const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
+const getAnswerlatticeAccountingDb = () => requireAnswerlatticeFirestoreAdmin();
 const ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS = 10 * 60 * 1000;
 
 const getAnswerlatticeAccountingContextShape = (context?: Record<string, unknown>) => ({
@@ -161,6 +161,7 @@ async function refreshMonthlyCreditsIfNeeded(
     getExactSubscriptionCredits(subscription);
     if (!normalizedSubscriptionId) return null;
 
+    const db = getAnswerlatticeAccountingDb();
     const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
     return db.runTransaction(async (transaction) => {
         const subscriptionSnap = await transaction.get(subscriptionRef);
@@ -281,6 +282,7 @@ export async function consumeAnswerlatticeAICapacity(
         throw new Error('Answerlattice workspace is not available.');
     }
 
+    const db = getAnswerlatticeAccountingDb();
     const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
 
@@ -436,6 +438,7 @@ const getAnswerlatticeAccountingIdentity = (
     scope: AnswerlatticeAiScope,
     idempotencyKey: unknown,
 ) => {
+    const db = getAnswerlatticeAccountingDb();
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     const normalizedIdempotencyKey = normalizeAccountingIdempotencyKey(idempotencyKey);
@@ -491,6 +494,7 @@ export async function reserveAnswerlatticeAiOperationCapacity(params: {
     subscription: FirestoreSubscriptionDoc;
     unitsToReserve: number;
 }): Promise<AnswerlatticeAiCapacityReservation> {
+    const db = getAnswerlatticeAccountingDb();
     const unitsToReserve = getPositiveCreditInteger(params.unitsToReserve);
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(params.subscription.id);
     if (
@@ -685,6 +689,7 @@ export async function settleAnswerlatticeAiOperationReservation(params: {
     input: AiOperationLogInput;
     reservation: AnswerlatticeAiCapacityReservation;
 }): Promise<FinalizeAnswerlatticeAiAccountingResult> {
+    const db = getAnswerlatticeAccountingDb();
     const operation = buildAiOperationLog(params.input);
     if (operation.unitsConsumed !== params.reservation.unitsReserved || operation.action !== params.reservation.action) {
         throw new Error('Answerlattice AI capacity settlement identity is invalid.');
@@ -770,6 +775,7 @@ export async function refundAnswerlatticeAiOperationReservation(params: {
     reason: string;
     reservation: AnswerlatticeAiCapacityReservation;
 }): Promise<void> {
+    const db = getAnswerlatticeAccountingDb();
     if (typeof params.reason !== 'string' || !/^[a-z0-9_-]{3,80}$/.test(params.reason)) {
         throw new Error('Answerlattice AI capacity refund reason is invalid.');
     }
@@ -882,6 +888,7 @@ async function finalizeIdempotentAnswerlatticeAiOperation({
     scope: AnswerlatticeAiScope;
     unitsConsumed: number;
 }): Promise<FinalizeAnswerlatticeAiAccountingResult> {
+    const db = getAnswerlatticeAccountingDb();
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(capacitySubscription.id);
@@ -1145,7 +1152,7 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
 
         if (transactionId && remainingBalance) {
             try {
-                await db
+                await getAnswerlatticeAccountingDb()
                     .collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
                     .doc(tenantScope.documentId)
                     .collection(storeScope.documentId)

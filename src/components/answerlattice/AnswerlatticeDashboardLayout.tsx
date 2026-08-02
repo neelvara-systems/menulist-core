@@ -178,9 +178,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
                 if (!cancelled) setFirebaseAuthReady(result.ready !== false);
             })
             .catch((error) => {
-                if (process.env.NODE_ENV !== 'production') {
-                    logFirebaseBootstrapFailure('answerlattice_dashboard_firebase_auth_sync_failed', error, getFirebaseAuthSessionLogContext(session));
-                }
+                logFirebaseBootstrapFailure('answerlattice_dashboard_firebase_auth_sync_failed', error, getFirebaseAuthSessionLogContext(session));
                 if (!cancelled) {
                     setFirebaseAuthError(true);
                     setFirebaseAuthReady(false);

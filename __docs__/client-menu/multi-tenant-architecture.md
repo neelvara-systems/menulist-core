@@ -6,7 +6,7 @@
 
 MenuListAi uses a **domain-based multi-tenant architecture** that allows restaurant clients to access their digital menus via:
 
-- **Subdomains**: `joespizza.menulist.ai`
+- **Subdomains**: `joespizza.menulist.online`
 - **Custom Domains**: `joespizza.com`
 
 This guide covers the complete implementation, UX recommendations, and setup instructions.
@@ -34,7 +34,7 @@ This guide covers the complete implementation, UX recommendations, and setup ins
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         INCOMING REQUEST                             │
 │                                                                      │
-│   menulist.ai    joespizza.menulist.ai    joespizza.com             │
+│   menulist.ai    joespizza.menulist.online    joespizza.com             │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -85,7 +85,7 @@ const domainInfo = resolveDomain(hostname);
 | `menulist.ai`           | `platform`  | `/app/(website)/*`     |
 | `www.menulist.ai`       | `platform`  | `/app/(website)/*`     |
 | `app.menulist.ai`       | `platform`  | Reserved for dashboard |
-| `joespizza.menulist.ai` | `subdomain` | `/app/client/*`       |
+| `joespizza.menulist.online` | `subdomain` | `/app/client/*`       |
 | `joespizza.com`         | `custom`    | `/app/client/*`       |
 | `localhost:3000`        | `localhost` | Platform (dev)         |
 
@@ -100,7 +100,7 @@ www, app, api, admin, dashboard, mail, blog, help, support, status
 ### 4. Tenant Host and Header Flow
 
 ```
-Request: joespizza.menulist.ai
+Request: joespizza.menulist.online
     ↓
 Middleware deletes caller-supplied routing headers and forwards trusted claims:
     x-tenant-subdomain: "joespizza"
@@ -170,13 +170,13 @@ Based on industry research (Linktree, Carrd, Notion, etc.):
 │                                                             │
 │  Choose your subdomain:                                     │
 │  ┌──────────────────┐                                       │
-│  │ joespizza        │ .menulist.ai                         │
+│  │ joespizza        │ .menulist.online                     │
 │  └──────────────────┘                                       │
 │                                                             │
 │  ✓ Available!                                               │
 │                                                             │
 │  Your menu will be live at:                                 │
-│  https://joespizza.menulist.ai                              │
+│  https://joespizza.menulist.online                              │
 │                                                             │
 │  [Save Subdomain]                                           │
 └─────────────────────────────────────────────────────────────┘
@@ -212,7 +212,7 @@ Based on industry research (Linktree, Carrd, Notion, etc.):
 ┌─────────────────────────────────────────────────────────────┐
 │  Share Your Menu                                            │
 │                                                             │
-│  🔗 https://joespizza.menulist.ai                           │
+│  🔗 https://joespizza.menulist.online                           │
 │     [Copy] [Open]                                           │
 │                                                             │
 │  [QR Code]                                                  │
@@ -231,7 +231,7 @@ Based on industry research (Linktree, Carrd, Notion, etc.):
 2. Enters desired subdomain (e.g., "joespizza")
 3. System checks availability in real-time
 4. User clicks "Save" → Instant activation
-5. Menu is live at `joespizza.menulist.ai`
+5. Menu is live at `joespizza.menulist.online`
 
 ### Self-Service Custom Domain
 
@@ -279,7 +279,7 @@ Index 2: customDomain ASC, domainVerified ASC, active ASC
 
 ### For Subdomains (Automatic)
 
-Subdomains like `*.menulist.ai` are handled automatically via Vercel's wildcard DNS.
+Subdomains like `*.menulist.online` are handled automatically via Vercel's wildcard DNS.
 
 ### For Custom Domains (Owner DNS + MenuList/Vercel API)
 
@@ -328,7 +328,7 @@ await fetch("https://api.vercel.com/v10/projects/{projectId}/domains", {
 ### Production Testing
 
 1. Set `subdomain` field in Firestore for a test store
-2. Visit `https://{subdomain}.menulist.ai`
+2. Visit `https://{subdomain}.menulist.online`
 3. Verify menu loads with correct SEO metadata
 
 ---
@@ -393,7 +393,7 @@ const tenant = await getTenantFromHeaders("ClientPage");
 // ShareModal generates URLs based on domain settings
 const getShareUrl = () => {
   if (customDomain) return `https://${customDomain}`;
-  if (subdomain) return `https://${subdomain}.menulist.ai`;
+  if (subdomain) return `https://${subdomain}.menulist.online`;
   return `${window.location.origin}/menu/${projectId}`; // localhost fallback
 };
 ```

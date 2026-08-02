@@ -1644,6 +1644,11 @@ function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
     'data-last-updated={lastUpdatedIso}',
   ].forEach((token) => assertIncludes(component, token, 'Public menu footer freshness diagnostics'));
 
+  assertIncludes(component, 'storeDetails?: Partial<StoreDataType>;', 'Public menu footer minimized store contract');
+  assertIncludes(component, "lastPublishedAt?: StoreDataType['lastPublishedAt'];", 'Public menu footer canonical timestamp contract');
+  assertIncludes(component, 'timestamp: unknown,', 'Public menu footer runtime timestamp boundary');
+  assertNotIncludes(component, 'lastPublishedAt?: any', 'Public menu footer erased timestamp type');
+
   [
     'data-last-updated={lastPublishedAt?.toDate?.()?.toISOString?.() || lastPublishedAt}',
     'if (isNaN(date.getTime())) return \'\';',
@@ -2431,6 +2436,7 @@ function verifyDigitalScreenReloadDiagnosticsAreBounded() {
   const screenUtils = read('src/lib/screen/utils.ts');
   const screenDisplay = read('src/app/screen/[token]/ScreenDisplay.tsx');
   const menuBoardDisplay = read('src/app/screen/[token]/MenuBoardDisplay.tsx');
+  const seenHook = read('src/hooks/useDigitalScreenSeenSignal.ts');
   const uploadScreenSlideBlock = campaignsDal.slice(campaignsDal.indexOf('export const uploadScreenSlide'));
 
   assertIncludes(campaignsDal, 'export const isDigitalScreenSlideUploadResult', 'Digital screen slide upload result guard');
@@ -2452,27 +2458,23 @@ function verifyDigitalScreenReloadDiagnosticsAreBounded() {
   assertNotIncludes(screenUtils, "} catch { /* proceed anyway if localStorage fails */ }", 'Digital screen guarded reload silent localStorage catch');
 
   [
-    [screenDisplay, 'digital_screen_display_seen_signal_rejected', 'Highlights display'],
-    [menuBoardDisplay, 'digital_screen_menuboard_seen_signal_rejected', 'Menu Board display'],
-  ].forEach(([content, failureCode, label]) => {
-    assertIncludes(content, failureCode, `${label} seen-signal rejection diagnostic`);
-    assertIncludes(content, 'SCREEN_SEEN_REQUEST_POLICY', `${label} seen-signal request policy`);
-    assertIncludes(content, 'cache: "no-store"', `${label} seen-signal request bypasses browser cache`);
-    assertIncludes(content, 'credentials: "same-origin"', `${label} seen-signal request keeps credentials same-origin`);
-    assertIncludes(content, 'redirect: "manual"', `${label} seen-signal request does not follow redirects`);
-    assertIncludes(content, '...SCREEN_SEEN_REQUEST_POLICY', `${label} uses seen-signal request policy`);
-    assertIncludes(content, 'if (!response.ok)', `${label} seen-signal response status guard`);
-    assertIncludes(content, 'responseStatus: response.status', `${label} seen-signal bounded response status`);
-    assert(
-      content.indexOf('if (!response.ok)') < content.indexOf('localStorage.setItem(todayKey, "1");'),
-      `${label} must check screen seen response status before caching the daily marker`,
-    );
-    assertNotIncludes(
-      content,
-      '.then(() => {\n                    localStorage.setItem(todayKey, "1");',
-      `${label} must not cache the daily seen marker without checking response status`,
-    );
+    [screenDisplay, 'diagnosticPrefix: "digital_screen_display"', 'Highlights display'],
+    [menuBoardDisplay, 'diagnosticPrefix: "digital_screen_menuboard"', 'Menu Board display'],
+  ].forEach(([content, diagnosticPrefix, label]) => {
+    assertIncludes(content, diagnosticPrefix, `${label} seen-signal diagnostic prefix`);
   });
+  assertIncludes(seenHook, '`${diagnosticPrefix}_seen_signal_rejected`', 'Shared screen seen-signal rejection diagnostic');
+  assertIncludes(seenHook, 'SCREEN_SEEN_REQUEST_POLICY', 'Shared seen-signal request policy');
+  assertIncludes(seenHook, 'cache: "no-store"', 'Shared seen-signal request bypasses browser cache');
+  assertIncludes(seenHook, 'credentials: "same-origin"', 'Shared seen-signal request keeps credentials same-origin');
+  assertIncludes(seenHook, 'redirect: "manual"', 'Shared seen-signal request does not follow redirects');
+  assertIncludes(seenHook, '...SCREEN_SEEN_REQUEST_POLICY', 'Shared display uses seen-signal request policy');
+  assertIncludes(seenHook, 'if (!response.ok)', 'Shared seen-signal response status guard');
+  assertIncludes(seenHook, 'responseStatus: response.status', 'Shared seen-signal bounded response status');
+  assert(
+    seenHook.indexOf('if (!response.ok)') < seenHook.indexOf('localStorage.setItem(marker, "1");'),
+    'Shared display must check screen seen response status before caching the daily marker',
+  );
 }
 
 function verifyMenuEditorDiagnosticsAreBounded() {
@@ -4356,7 +4358,8 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     "String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')",
     "String(previous?.storeId ?? '') !== String(expectedStoreId)",
   ].forEach((token) => assertIncludes(mobileDomainSettings, token, 'Mobile domain settings tenant/store settlement guard'));
-  assertIncludes(mobileDomainSettings, "window.open(domainUrl, '_blank', 'noopener,noreferrer')", 'Mobile domain settings safe external open');
+  assertIncludes(mobileDomainSettings, 'openIsolatedBrowserUrl(domainUrl)', 'Mobile domain settings isolated external open');
+  assertNotIncludes(mobileDomainSettings, 'window.open(', 'Mobile domain settings no-opener handle acknowledgement');
   assertNotIncludes(mobileDomainSettings, 'await navigator.clipboard.writeText(domainUrl);\n            setDomainLinkCopied(true);', 'Mobile domain settings domain copy must not use unguarded Clipboard API success');
   assertNotIncludes(mobileDomainSettings, 'await navigator.clipboard.writeText(record.value);\n            setCopiedDnsValue', 'Mobile domain settings DNS copy must not use unguarded Clipboard API success');
   assertNotIncludes(mobileDomainSettings, "document.execCommand('copy');\n            setDomainLinkCopied(true);", 'Mobile domain settings textarea fallback must not assume domain-copy success');
@@ -4427,8 +4430,8 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     "String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')",
   ].forEach((token) => assertIncludes(desktopBusinessSettings, token, 'Desktop domain settings parent tenant/store settlement guard'));
   assertNotIncludes(desktopBusinessSettings, 'updateStore(storeUpdate).then(() =>', 'Desktop domain settings parent must not update local state from unchecked store write');
-  assertIncludes(desktopDomainSettings, "window.open(subdomainUrl, '_blank', 'noopener,noreferrer')", 'Desktop domain settings safe subdomain open');
-  assertIncludes(desktopDomainSettings, "window.open(domainUrl, '_blank', 'noopener,noreferrer')", 'Desktop domain settings safe custom-domain open');
+  assertIncludes(desktopDomainSettings, "openIsolatedBrowserUrl(subdomainUrl)", 'Desktop domain settings safe subdomain open');
+  assertIncludes(desktopDomainSettings, "openIsolatedBrowserUrl(domainUrl)", 'Desktop domain settings safe custom-domain open');
   assertIncludes(desktopDomainSettings, 'readJsonResponseWithLimit<DesktopDomainSettingsSubdomainAvailabilityResponse>', 'Desktop domain settings bounded subdomain response parser');
   assertIncludes(desktopDomainSettings, 'DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES', 'Desktop domain settings subdomain response byte cap');
   assertNotIncludes(desktopDomainSettings, "axios.get(`/api/subdomain/check", 'Desktop domain settings subdomain check must not use unbounded axios response');
@@ -4712,12 +4715,11 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'getMobileOwnerStoreLogContext', 'Mobile owner diagnostics bounded store context');
   assertIncludes(diagnostics, 'logMobileOwnerFailure', 'Mobile owner diagnostics normalized failure logger');
   assertIncludes(openMobilePublicLink, 'mobile_public_link_open_failed', 'Mobile public link helper blocked-open diagnostics');
-  assertIncludes(openMobilePublicLink, 'mobile_public_link_open_blocked', 'Mobile public link helper blocked-open code');
-  assertIncludes(openMobilePublicLink, "const opened = window.open(url, '_blank', 'noopener,noreferrer')", 'Mobile public link helper safe blank open');
+  assertIncludes(openMobilePublicLink, 'openIsolatedBrowserUrl(url)', 'Mobile public link helper isolated blank open');
   assertIncludes(openMobilePublicLink, "getBoundedMobileOwnerStringContext('source', options.source)", 'Mobile public link helper bounded source context');
   assertIncludes(openMobilePublicLink, "getBoundedMobileOwnerStringContext('publicLinkUrl', url)", 'Mobile public link helper bounded URL context');
   assertIncludes(openMobilePublicLink, "Toast.show({ content: 'Unable to open link'", 'Mobile public link helper fixed owner feedback');
-  assertNotIncludes(openMobilePublicLink, "\n    window.open(url, '_blank', 'noopener,noreferrer');\n", 'Mobile public link helper silent open');
+  assertNotIncludes(openMobilePublicLink, 'window.open(', 'Mobile public link helper no-opener handle acknowledgement');
   assertIncludes(mobileProjectSheet, "source: 'mobile_project_selector'", 'Mobile project selector public-link source label');
   assertIncludes(mobileFeedback, "source: 'mobile_feedback'", 'Mobile feedback public-link source label');
   assertIncludes(mobileDesignEditor, "source: 'mobile_design_editor'", 'Mobile design editor public-link source label');
@@ -4851,7 +4853,7 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobileCommunicationKit, 'nativeShareMessageLength: nativeShareMessage.length', 'Mobile Communication Kit bounded native share message length');
   assertIncludes(mobileCommunicationKit, 'whatsappMessageLength: whatsappMessage.length', 'Mobile Communication Kit bounded WhatsApp message length');
   assertIncludes(mobileCommunicationKit, 'whatsappUrlLength: whatsappUrl.length', 'Mobile Communication Kit bounded WhatsApp URL length');
-  assertIncludes(mobileCommunicationKit, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'Mobile Communication Kit safe WhatsApp open');
+  assertIncludes(mobileCommunicationKit, 'openIsolatedBrowserUrl(whatsappUrl)', 'Mobile Communication Kit isolated WhatsApp open');
   [
     'mobile_official_page_save_failed',
     'mobile_official_page_cover_upload_failed',
@@ -4886,7 +4888,6 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
     'mobile_analytics_settings_save_failed',
     'mobile_seo_settings_save_failed',
     'mobile_seo_analytics_external_link_open_failed',
-    'mobile_seo_analytics_external_link_open_blocked',
   ].forEach((failureCode) => {
     assertIncludes(mobileSeoAnalytics, failureCode, 'Mobile SEO/analytics settings diagnostics');
   });
@@ -4896,7 +4897,7 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobileSeoAnalytics, 'enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft)', 'Mobile analytics enabled tracking count context');
   assertIncludes(mobileSeoAnalytics, 'localizedDraftLanguageCount: Object.keys(localizedSeoDrafts).length', 'Mobile SEO localized draft count context');
   assertIncludes(mobileSeoAnalytics, 'filledSeoDraftLanguageCount: countFilledSeoDraftLanguages(localizedSeoDrafts)', 'Mobile SEO filled language count context');
-  assertIncludes(mobileSeoAnalytics, "const opened = window.open(url, '_blank', 'noopener,noreferrer')", 'Mobile SEO/analytics external link safe open');
+  assertIncludes(mobileSeoAnalytics, 'openIsolatedBrowserUrl(url)', 'Mobile SEO/analytics isolated external link open');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('source', source)", 'Mobile SEO/analytics external link bounded source context');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('externalLinkUrl', url)", 'Mobile SEO/analytics external link bounded URL context');
   assertNotIncludes(mobileSeoAnalytics, 'function openExternalLink(url: string)', 'Mobile SEO/analytics external link opens must use the bounded handler');
@@ -5007,8 +5008,8 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(obpLinkCard, "const copied = document.execCommand('copy');", 'OBPLinkCard textarea copy acknowledgement');
   assertIncludes(obpLinkCard, 'whatsappMessageLength: msg.length', 'OBPLinkCard bounded WhatsApp message length');
   assertIncludes(obpLinkCard, 'whatsappUrlLength: whatsappUrl.length', 'OBPLinkCard bounded WhatsApp URL length');
-  assertIncludes(obpLinkCard, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'OBPLinkCard safe WhatsApp open');
-  assertIncludes(obpLinkCard, "window.open(obpOpenUrl, '_blank', 'noopener,noreferrer')", 'OBPLinkCard safe direct open');
+  assertIncludes(obpLinkCard, "openIsolatedBrowserUrl(whatsappUrl)", 'OBPLinkCard safe WhatsApp open');
+  assertIncludes(obpLinkCard, "openIsolatedBrowserUrl(obpOpenUrl)", 'OBPLinkCard safe direct open');
   assertIncludes(businessSettings, 'business_settings_presence_screen_links_load_failed', 'Business Settings embedded presence screen-link diagnostics');
   assertIncludes(businessSettings, "getBoundedBusinessSettingsStringContext('obpLink', obpLink)", 'Business Settings embedded presence bounded OBP context');
   assertNotIncludes(businessSettings, 'business_settings_presence_copy_failed', 'Business Settings must not keep obsolete embedded presence copy fallback diagnostics');
@@ -5034,7 +5035,7 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(googleListingGuide, 'So Google points customers to your MenuList-approved page.', 'GoogleListingGuide owner-managed Google handoff copy');
   assertIncludes(googleListingGuide, 'Google controls when profile edits appear.', 'GoogleListingGuide bounded Google profile edit timing copy');
   assertIncludes(googleListingGuide, "const copied = document.execCommand('copy');", 'GoogleListingGuide textarea copy acknowledgement');
-  assertIncludes(googleListingGuide, "window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')", 'GoogleListingGuide safe Google open');
+  assertIncludes(googleListingGuide, "openIsolatedBrowserUrl('https://business.google.com/')", 'GoogleListingGuide safe Google open');
   assertNotIncludes(
     googleListingGuide,
     'So customers always see the correct menu and information when they find you on Google.',
@@ -5063,8 +5064,7 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(googleListingCard, 'hasClipboardWrite', 'Owner dashboard Google listing clipboard support metadata');
   assertIncludes(googleListingCard, 'hasCopyFallback', 'Owner dashboard Google listing fallback support metadata');
   assertIncludes(googleListingCard, "const copied = document.execCommand('copy');", 'Owner dashboard Google listing textarea copy acknowledgement');
-  assertIncludes(googleListingCard, "window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')", 'Owner dashboard Google listing safe Google open');
-  assertIncludes(googleListingCard, "throw new Error('owner_dashboard_google_listing_open_blocked')", 'Owner dashboard Google listing blocked-open diagnostic');
+  assertIncludes(googleListingCard, "openIsolatedBrowserUrl('https://business.google.com/')", 'Owner dashboard Google listing safe Google open');
 
   assertIncludes(ownerDashboard, 'Official customer source is active', 'Owner Dashboard official-source behavior framing');
   assertIncludes(ownerDashboard, 'Your customer link is ready.', 'Owner Dashboard customer-link adoption guidance');
@@ -5125,7 +5125,7 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   }
   assertIncludes(desktopUseMenuList, 'use_menulist_screen_links_load_failed', 'Desktop Use MenuList screen-link diagnostics');
   assertIncludes(desktopUseMenuList, 'use_menulist_open_failed', 'Desktop Use MenuList direct-open diagnostics');
-  assertIncludes(desktopUseMenuList, "window.open(url, '_blank', 'noopener,noreferrer')", 'Desktop Use MenuList safe output link open');
+  assertIncludes(desktopUseMenuList, "openIsolatedBrowserUrl(url)", 'Desktop Use MenuList safe output link open');
   assertIncludes(desktopUseMenuList, "getBoundedUseMenuListStringContext('url', url)", 'Desktop Use MenuList bounded direct-open URL context');
   assertIncludes(desktopUseMenuList, "getBoundedUseMenuListStringContext('label', label)", 'Desktop Use MenuList bounded direct-open label context');
   assertNotIncludes(desktopUseMenuList, "window.open(url, '_blank');", 'Desktop Use MenuList unsafe direct output open');
@@ -5158,7 +5158,7 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   assertIncludes(shareLinkCard, "const copied = document.execCommand('copy');", 'ShareLinkCard textarea copy acknowledgement');
   assertIncludes(shareLinkCard, 'whatsappMessageLength: msg.length', 'ShareLinkCard bounded WhatsApp message length');
   assertIncludes(shareLinkCard, 'whatsappUrlLength: whatsappUrl.length', 'ShareLinkCard bounded WhatsApp URL length');
-  assertIncludes(shareLinkCard, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'ShareLinkCard safe WhatsApp open');
+  assertIncludes(shareLinkCard, "openIsolatedBrowserUrl(whatsappUrl)", 'ShareLinkCard safe WhatsApp open');
   assertIncludes(shareLinkCard, 'directUrlLength: directUrl.length', 'ShareLinkCard bounded direct URL length');
   assertIncludes(desktopUseMenuList, 'diagnosticContext={getOutputDiagnosticContext()}', 'Desktop Use MenuList communication kit bounded context handoff');
   [
@@ -5181,7 +5181,7 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
 	  assertIncludes(desktopCommunicationKit, "const copied = document.execCommand('copy');", 'Desktop Communication Kit textarea copy acknowledgement');
 	  assertIncludes(desktopCommunicationKit, 'whatsappMessageLength: whatsappMessage.length', 'Desktop Communication Kit bounded WhatsApp message length');
   assertIncludes(desktopCommunicationKit, 'whatsappUrlLength: whatsappUrl.length', 'Desktop Communication Kit bounded WhatsApp URL length');
-  assertIncludes(desktopCommunicationKit, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'Desktop Communication Kit safe WhatsApp open');
+  assertIncludes(desktopCommunicationKit, "openIsolatedBrowserUrl(whatsappUrl)", 'Desktop Communication Kit safe WhatsApp open');
   [
     'use_menulist_presence_official_link_copy_failed',
     'use_menulist_presence_external_open_failed',
@@ -5202,7 +5202,7 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   assertIncludes(desktopPresence, "getBoundedUseMenuListStringContext('obpLink', data.obpLink)", 'Desktop Presence Monitor bounded OBP URL context');
   assertIncludes(desktopPresence, "getBoundedUseMenuListStringContext('openUrl', surface?.openUrl)", 'Desktop Presence Monitor bounded external URL context');
   assertIncludes(desktopPresence, "getBoundedUseMenuListStringContext('surfaceKey', surface?.dalKey)", 'Desktop Presence Monitor bounded surface key context');
-  assertIncludes(desktopPresence, "window.open(surface.openUrl, '_blank', 'noopener,noreferrer')", 'Desktop Presence Monitor safe external open');
+  assertIncludes(desktopPresence, "openIsolatedBrowserUrl(surface.openUrl)", 'Desktop Presence Monitor safe external open');
   assertIncludes(desktopPresence, 'manualActiveCount', 'Desktop Presence Monitor bounded surface count context');
   assertIncludes(desktopPresence, 'copyUseMenuListPresenceLink', 'Desktop Presence Monitor copy acknowledgement helper');
   assertIncludes(desktopPresence, 'USE_MENULIST_PRESENCE_COPY_UNAVAILABLE', 'Desktop Presence Monitor unavailable clipboard code');
@@ -5214,7 +5214,7 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   assertIncludes(mobilePresence, "getBoundedMobileOwnerStringContext('obpLink', obpLink)", 'Mobile Presence Monitor bounded OBP URL context');
   assertIncludes(mobilePresence, "getBoundedMobileOwnerStringContext('openUrl', surface?.openUrl)", 'Mobile Presence Monitor bounded external URL context');
   assertIncludes(mobilePresence, "getBoundedMobileOwnerStringContext('surfaceKey', surface?.dalKey)", 'Mobile Presence Monitor bounded surface key context');
-  assertIncludes(mobilePresence, "window.open(surface.openUrl, '_blank', 'noopener,noreferrer')", 'Mobile Presence Monitor safe external open');
+  assertIncludes(mobilePresence, 'openIsolatedBrowserUrl(surface.openUrl)', 'Mobile Presence Monitor isolated external open');
   assertIncludes(mobilePresence, 'manualActiveCount', 'Mobile Presence Monitor bounded surface count context');
   assertIncludes(mobilePresence, 'copyMobilePresenceLink', 'Mobile Presence Monitor copy acknowledgement helper');
   assertIncludes(mobilePresence, 'MOBILE_PRESENCE_COPY_UNAVAILABLE', 'Mobile Presence Monitor unavailable clipboard code');
@@ -5310,7 +5310,7 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertIncludes(shareModal, 'copyExportTextToClipboard(copyUrl)', 'Project share modal direct copy acknowledgement');
   assertIncludes(shareModal, 'hasClipboardWrite: hasExportClipboardWrite()', 'Project share modal clipboard support metadata');
   assertIncludes(shareModal, 'hasCopyFallback: hasExportCopyFallback()', 'Project share modal fallback support metadata');
-  assertIncludes(shareModal, "window.open(socialShareUrl, '_blank', 'noopener,noreferrer')", 'Project share modal safe social open');
+  assertIncludes(shareModal, "openIsolatedBrowserUrl(socialShareUrl)", 'Project share modal safe social open');
   assertIncludes(shareModal, 'directUrlLength: directUrl.length', 'Project share modal bounded direct URL length');
   assertIncludes(shareModal, 'copyUrlLength: copyUrl.length', 'Project share modal bounded copy URL length');
   assertIncludes(shareModal, 'onClick={handleOpenDirectLink}', 'Project share modal direct-open handler');
@@ -5329,7 +5329,7 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertIncludes(menuKitSection, 'hasClipboardWrite: hasExportClipboardWrite()', 'Project share Menu Kit clipboard support metadata');
   assertIncludes(menuKitSection, 'hasCopyFallback: hasExportCopyFallback()', 'Project share Menu Kit fallback support metadata');
   assertIncludes(menuKitSection, 'whatsappUrlLength: whatsappUrl.length', 'Project share Menu Kit bounded WhatsApp URL length');
-  assertIncludes(menuKitSection, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'Project share Menu Kit safe WhatsApp open');
+  assertIncludes(menuKitSection, "openIsolatedBrowserUrl(whatsappUrl)", 'Project share Menu Kit safe WhatsApp open');
   assertIncludes(menuKitSection, 'staffScriptLength: labels.staffScript.length', 'Project share Menu Kit bounded staff-script length');
   assertIncludes(legacyQrView, 'project_share_legacy_qr_download_failed', 'Legacy project QR download diagnostics');
   assertIncludes(legacyQrView, 'getLegacyQrDownloadLogContext', 'Legacy project QR bounded context helper');
@@ -5357,8 +5357,7 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertIncludes(legacySocialShare, 'hasClipboardWrite: hasExportClipboardWrite()', 'Legacy project social share clipboard support metadata');
   assertIncludes(legacySocialShare, 'hasCopyFallback: hasExportCopyFallback()', 'Legacy project social share fallback support metadata');
   assertIncludes(legacySocialShare, 'project_share_legacy_social_open_failed', 'Legacy project social share bounded diagnostics');
-  assertIncludes(legacySocialShare, "throw new Error('project_share_legacy_social_open_blocked')", 'Legacy project social share blocked-open code');
-  assertIncludes(legacySocialShare, "window.open(socialShareUrl, '_blank', 'noopener,noreferrer')", 'Legacy project social share safe browser open');
+  assertIncludes(legacySocialShare, "openIsolatedBrowserUrl(socialShareUrl)", 'Legacy project social share safe browser open');
   assertIncludes(legacySocialShare, "getBoundedExportStringContext('platform', platform.name)", 'Legacy project social share bounded platform');
   assertIncludes(legacySocialShare, "getBoundedExportStringContext('platform', platform)", 'Legacy project social share bounded copy platform');
   assertIncludes(legacySocialShare, "getBoundedExportStringContext('shareUrl', shareUrl)", 'Legacy project social share bounded share URL');
@@ -5468,8 +5467,8 @@ function verifyFeedbackInboxDiagnosticsAreBounded() {
 	  assertIncludes(feedbackQrDownload, "getBoundedFeedbackInboxStringContext('feedbackUrl', feedbackUrl)", 'Feedback QR bounded feedback URL context');
 	  assertIncludes(feedbackQrDownload, "getBoundedFeedbackInboxStringContext('projectId', projectId)", 'Feedback QR bounded project context');
 	  assertIncludes(feedbackQrDownload, 'qrDataUrlLength: qrDataUrl?.length || 0', 'Feedback QR bounded QR data length');
-  assertIncludes(feedbackQrDownload, "window.open(directUrl, '_blank', 'noopener,noreferrer')", 'Feedback QR direct open safe flags');
-  assertIncludes(feedbackQrDownload, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'Feedback QR WhatsApp open safe flags');
+  assertIncludes(feedbackQrDownload, "openIsolatedBrowserUrl(directUrl)", 'Feedback QR direct open safe flags');
+  assertIncludes(feedbackQrDownload, "openIsolatedBrowserUrl(whatsappUrl)", 'Feedback QR WhatsApp open safe flags');
   assertNotIncludes(feedbackQrDownload, "if (hasFeedbackClipboardWrite()) {\n            await navigator.clipboard.writeText(value);\n            return;\n        }", 'Feedback QR Clipboard API rejection must not skip acknowledged fallback');
   assertNotIncludes(feedbackInbox, 'console.error(', 'Feedback inbox direct error logging');
   assertNotIncludes(feedbackInbox, 'console.warn(', 'Feedback inbox direct warn logging');
@@ -5606,8 +5605,7 @@ function verifyHelpChatDiagnosticsAreBounded() {
   assertIncludes(chatErrorBoundary, 'componentStackFrameCount', 'HelpChat error boundary component stack count metadata');
   assertNotIncludes(chatHandlers, 'navigator.clipboard.writeText(textToCopy)\n                .then', 'HelpChat message copy direct clipboard promise chain');
   assertIncludes(messageBubble, 'help_chat_related_article_open_failed', 'HelpChat related article open diagnostics');
-  assertIncludes(messageBubble, 'help_chat_related_article_open_blocked', 'HelpChat related article blocked-open code');
-  assertIncludes(messageBubble, "const opened = window.open(helpCenterArticleRouting(articleId), '_blank', 'noopener,noreferrer')", 'HelpChat related article safe internal route open');
+  assertIncludes(messageBubble, "openIsolatedBrowserUrl(helpCenterArticleRouting(articleId))", 'HelpChat related article safe internal route open');
   assertIncludes(messageBubble, "getBoundedHelpChatStringContext('messageId', message.id)", 'HelpChat related article bounded message context');
   assertIncludes(messageBubble, "getBoundedHelpChatStringContext('articleId', article?.id)", 'HelpChat related article bounded article context');
   assertIncludes(messageBubble, 'articleRoutePresent: true', 'HelpChat related article route-presence context');
@@ -5750,6 +5748,10 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(tempStatusCard, 'AUTH_BROWSER_REQUEST_POLICY', 'Desktop temporary status shared authenticated browser request policy');
   assertOccurrenceAtLeast(tempStatusCard, "fetch('/api/store/temp-status'", 2, 'Desktop temporary status API calls');
   assertOccurrenceAtLeast(tempStatusCard, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Desktop temporary status mutations spread shared browser request policy');
+  assertOccurrenceAtLeast(tempStatusCard, 'expectedStoreId: String(expectedStoreId)', 2, 'Desktop temporary status initiating-store corroboration');
+  assertOccurrenceAtLeast(tempStatusCard, 'expectedTenantId: String(expectedTenantId)', 2, 'Desktop temporary status initiating-tenant corroboration');
+  assertIncludes(tempStatusCard, 'actionInFlightRef.current', 'Desktop temporary status immediate duplicate-action guard');
+  assertIncludes(tempStatusCard, 'isExpectedScope(expectedTenantId, expectedStoreId)', 'Desktop temporary status exact-scope async settlement');
   assertNotIncludes(tempStatusCard, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Desktop temporary status inline request policy');
   [
     'mobile_temp_status_set_failed',
@@ -5762,6 +5764,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileTempStatus, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile temporary status shared authenticated browser request policy');
   assertOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile temporary status API calls');
   assertOccurrenceAtLeast(mobileTempStatus, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile temporary status mutations spread shared browser request policy');
+  assertOccurrenceAtLeast(mobileTempStatus, 'expectedStoreId: String(expectedStoreId)', 2, 'Mobile temporary status initiating-store corroboration');
+  assertOccurrenceAtLeast(mobileTempStatus, 'expectedTenantId: String(expectedTenantId)', 2, 'Mobile temporary status initiating-tenant corroboration');
   assertNotIncludes(mobileTempStatus, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'return <MobileTempStatusScreenContent key={scopeKey} {...props} />;', 'Mobile temporary status exact tenant/store keyed mount');
   assertIncludes(mobileTempStatus, 'tempStatusActionInFlightRef.current', 'Mobile temporary status immediate duplicate-action guard');
@@ -5770,6 +5774,10 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileHours, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile Today temporary status shared authenticated browser request policy');
   assertOccurrenceAtLeast(mobileHours, "fetch('/api/store/temp-status'", 3, 'Mobile Today temporary status API calls');
   assertOccurrenceAtLeast(mobileHours, '...AUTH_BROWSER_REQUEST_POLICY', 3, 'Mobile Today temporary status mutations spread shared browser request policy');
+  assertOccurrenceAtLeast(mobileHours, 'expectedStoreId: String(expectedStoreId)', 3, 'Mobile Today temporary status initiating-store corroboration');
+  assertOccurrenceAtLeast(mobileHours, 'expectedTenantId: String(expectedTenantId)', 3, 'Mobile Today temporary status initiating-tenant corroboration');
+  assertIncludes(mobileHours, 'tempStatusActionInFlightRef.current', 'Mobile Today temporary status immediate duplicate-action guard');
+  assertIncludes(mobileHours, 'isExpectedTempStatusScope(expectedTenantId, expectedStoreId)', 'Mobile Today temporary status exact-scope async settlement');
   assertNotIncludes(mobileHours, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile Today temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'logMobileOwnerFailure', 'Mobile temporary status bounded failure logger');
   assertNotIncludes(mobileTempStatus, "throw new Error('Failed to set status')", 'Mobile temporary status raw set error');
@@ -5794,14 +5802,13 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileHours, 'previous?.hoursLastUpdatedAt === hoursLastUpdatedAt', 'Mobile Today rollback ownership marker');
   assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_save_failed', 'Mobile advanced settings save diagnostics');
   assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_external_link_open_failed', 'Mobile advanced settings external-link diagnostics');
-  assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_external_link_open_blocked', 'Mobile advanced settings blocked-open diagnostic');
   assertIncludes(mobileAdvancedSettings, 'hasSocialMediaUpdate: Boolean(updates.socialMedia)', 'Mobile advanced settings bounded social update context');
   assertIncludes(mobileAdvancedSettings, "hasFeedbackEnabledUpdate: Object.prototype.hasOwnProperty.call(updates, 'feedbackEnabled')", 'Mobile advanced settings bounded feedback toggle context');
   assertIncludes(mobileAdvancedSettings, 'hasFeedbackDefaultsUpdate: Boolean(updates.feedbackDefaults)', 'Mobile advanced settings bounded feedback defaults context');
-  assertIncludes(mobileAdvancedSettings, "const opened = window.open(normalized, '_blank', 'noopener,noreferrer')", 'Mobile advanced settings social link safe open');
+  assertIncludes(mobileAdvancedSettings, 'openIsolatedBrowserUrl(normalized)', 'Mobile advanced settings isolated social link open');
   assertIncludes(mobileAdvancedSettings, "getBoundedMobileOwnerStringContext('platformKey', platformKey)", 'Mobile advanced settings social link bounded platform context');
   assertIncludes(mobileAdvancedSettings, "getBoundedMobileOwnerStringContext('socialUrl', normalized)", 'Mobile advanced settings social link bounded URL context');
-  assert(!/^\s*window\.open\(normalized, '_blank', 'noopener,noreferrer'\);/m.test(mobileAdvancedSettings), 'Mobile advanced settings social link opens must check blocked windows');
+  assertNotIncludes(mobileAdvancedSettings, 'window.open(', 'Mobile advanced settings no-opener handle acknowledgement');
 	[
     [compliancePages, 'standalone compliance pages section'],
     [customDomainTab, 'custom domain compliance section'],
@@ -5833,7 +5840,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
 	    assertOccurrenceAtLeast(content, 'AUTH_BROWSER_REQUEST_POLICY', 4, `${label} compliance API calls share browser request policy`);
 	    assertOccurrenceAtLeast(content, '...AUTH_BROWSER_REQUEST_POLICY', 2, `${label} compliance mutations spread shared browser request policy`);
 	    assertIncludes(content, "getBoundedBusinessSettingsStringContext('pageUrl', pageUrl)", `${label} bounded page URL context`);
-	    assertIncludes(content, "window.open(pageUrl, '_blank', 'noopener,noreferrer')", `${label} safe page open`);
+	    assertIncludes(content, "openIsolatedBrowserUrl(pageUrl)", `${label} safe page open`);
     assertNotIncludes(content, "fetch('/api/compliance', {\n                cache: 'no-store'", `${label} inline compliance request policy`);
     assertNotIncludes(content, 'if (!result?.success)', `${label} must not accept generic compliance mutation success`);
     assertNotIncludes(content, 'err.response?.data?.error', `${label} raw API response text`);
@@ -5847,7 +5854,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(customDomainTab, "getBoundedStoreStringContext('openUrl', activeDomainUrl)", 'Custom domain active-domain bounded open URL context');
   assertIncludes(customDomainTab, "getBoundedStoreStringContext('copyValue', text)", 'Custom domain active-domain bounded copy URL context');
   assertIncludes(customDomainTab, "getBoundedStoreStringContext('dnsRecordValue', record?.value)", 'Custom domain DNS bounded copy value context');
-  assertIncludes(customDomainTab, "window.open(activeDomainUrl, '_blank', 'noopener,noreferrer')", 'Custom domain active-domain safe open');
+  assertIncludes(customDomainTab, "openIsolatedBrowserUrl(activeDomainUrl)", 'Custom domain active-domain safe open');
   assertIncludes(customDomainTab, "await navigator.clipboard.writeText(text);", 'Custom domain copy waits for clipboard acknowledgement');
   assertIncludes(customDomainTab, 'copyDesktopCustomDomainTextToClipboard(text)', 'Custom domain copy uses acknowledgement helper');
   assertIncludes(customDomainTab, 'desktop_custom_domain_copy_clipboard_unavailable', 'Custom domain copy unavailable failure code');
@@ -5932,7 +5939,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileCompliancePages, 'compliancePagesRequests.get(scope.key) !== request', 'Mobile compliance stale same-scope response rejection');
   assertIncludes(mobileCompliancePages, 'currentScopeKeyRef.current !== scope.key', 'Mobile compliance stale tenant mutation settlement guard');
   assertIncludes(mobileCompliancePages, "getBoundedBusinessSettingsStringContext('pageUrl', pageUrl)", 'Mobile compliance bounded page URL context');
-  assertIncludes(mobileCompliancePages, "window.open(pageUrl, '_blank', 'noopener,noreferrer')", 'Mobile compliance safe page open');
+  assertIncludes(mobileCompliancePages, "openIsolatedBrowserUrl(pageUrl)", 'Mobile compliance safe page open');
   assertNotIncludes(mobileCompliancePages, 'if (!response.ok) return null;', 'Mobile compliance silent load rejection');
   assertNotIncludes(mobileCompliancePages, "fetch('/api/compliance', {\n        cache: 'no-store'", 'Mobile compliance inline load request policy');
   assertNotIncludes(mobileCompliancePages, "fetch('/api/compliance', {\n                cache: 'no-store'", 'Mobile compliance inline mutation request policy');
@@ -6063,7 +6070,7 @@ function verifyTodayCampaignDiagnosticsAreBounded() {
   assertIncludes(actionExecutor, '...getCampaignClipboardSupportContext()', 'Today WhatsApp copy support metadata');
   assertIncludes(actionExecutor, "throw new Error('Campaign action failed')", 'Today campaign surface failure uses fixed local text');
   assertNotIncludes(actionExecutor, 'if (!result.success)', 'Today campaign surface actions must not accept generic success without surface and method acknowledgement.');
-  assertIncludes(actionExecutor, "window.open(shareUrl, '_blank', 'noopener,noreferrer')", 'Today WhatsApp open safe flags');
+  assertIncludes(actionExecutor, "openIsolatedBrowserUrl(shareUrl)", 'Today WhatsApp open safe flags');
   assertIncludes(actionExecutor, 'shareUrlLength: shareUrl.length', 'Today WhatsApp bounded share URL length');
   assertIncludes(executionSurfaces, 'campaign_whatsapp_status_share_failed', 'Campaign WhatsApp status diagnostics');
   assertIncludes(executionSurfaces, 'campaign_whatsapp_message_copy_failed', 'Campaign WhatsApp message diagnostics');
@@ -6159,6 +6166,43 @@ function verifyPublicContactUsesBoundedServerRoute() {
   const publicApiMiddleware = read('src/middleware/publicApi.ts');
   const rules = read('firestore.rules');
   const rateLimitConfigs = read('src/lib/rateLimit/configs.ts');
+  const publicToolInputBoundary = read('src/lib/public-truth-tools/publicTruthToolInputLimits.ts');
+  const publicToolContactPages = [
+    'src/components/website/bookingInquiryReadinessCheck/BookingInquiryReadinessCheckPage.tsx',
+    'src/components/website/businessFactsCopyPack/BusinessFactsCopyPackPage.tsx',
+    'src/components/website/customerFaqReplyPack/CustomerFaqReplyPackPage.tsx',
+    'src/components/website/customerLinkPreview/CustomerLinkPreviewPage.tsx',
+    'src/components/website/customerQuestionCoverageCheck/CustomerQuestionCoverageCheckPage.tsx',
+    'src/components/website/googleProfileBasicsChecklist/GoogleProfileBasicsChecklistPage.tsx',
+    'src/components/website/hoursCheck/HoursCheckPage.tsx',
+    'src/components/website/menuPdfCleanupCheck/MenuPdfCleanupCheckPage.tsx',
+    'src/components/website/menuReadabilityCheck/MenuReadabilityCheckPage.tsx',
+    'src/components/website/photoGapCheck/PhotoGapCheckPage.tsx',
+    'src/components/website/priceAvailabilityGapCheck/PriceAvailabilityGapCheckPage.tsx',
+    'src/components/website/publicTruthCheck/PublicTruthCheckPage.tsx',
+    'src/components/website/qrLinkHealthCheck/QrLinkHealthCheckPage.tsx',
+    'src/components/website/socialBioLinkCheck/SocialBioLinkCheckPage.tsx',
+    'src/components/website/whatsappActionLinkCheck/WhatsAppActionLinkCheckPage.tsx',
+    'src/components/website/whatsappReplyPack/WhatsAppReplyPackPage.tsx',
+  ].map((relativePath) => [relativePath, read(relativePath)]);
+  const publicToolReportBuilders = [
+    'bookingInquiryReadinessReport.ts',
+    'businessFactsCopyPackReport.ts',
+    'customerFaqReplyPackReport.ts',
+    'customerLinkPreviewReport.ts',
+    'customerQuestionCoverageReport.ts',
+    'googleProfileBasicsReport.ts',
+    'hoursCheckReport.ts',
+    'menuPdfCleanupReport.ts',
+    'menuReadabilityReport.ts',
+    'photoGapCheckReport.ts',
+    'priceAvailabilityGapReport.ts',
+    'publicTruthCheckReport.ts',
+    'qrLinkHealthReport.ts',
+    'socialBioLinkCheckReport.ts',
+    'whatsappActionLinkReport.ts',
+    'whatsappReplyPackReport.ts',
+  ].map((fileName) => [fileName, read(`src/lib/public-truth-tools/${fileName}`)]);
 
   assertIncludes(route, 'readBoundedJsonBody(request, MENULIST_PUBLIC_CONTACT_MAX_BODY_BYTES', 'MenuList contact bounded body parsing');
   assertIncludes(route, "checkPublicRateLimit(request, 'MENULIST_CONTACT_FORM', {", 'MenuList contact public rate limit');
@@ -6206,6 +6250,14 @@ function verifyPublicContactUsesBoundedServerRoute() {
   assertIncludes(contactPage, 'logInvalidMenulistPublicContactResponse', 'MenuList contact page invalid acknowledgement diagnostic helper');
   assertIncludes(contactPage, 'website_contact_response_parse_failed', 'MenuList contact page response parse diagnostic');
   assertIncludes(contactPage, 'website_contact_response_invalid', 'MenuList contact page invalid response diagnostic');
+  assertIncludes(contactPage, 'if (submissionInFlightRef.current) return;', 'MenuList contact page synchronous duplicate-submit refusal');
+  assertIncludes(contactPage, 'submissionInFlightRef.current = true;', 'MenuList contact page claims the contact request before fetch');
+  assertIncludes(contactPage, 'submissionInFlightRef.current = false;', 'MenuList contact page releases the contact request after settlement');
+  assertIncludes(contactPage, "logRuntimeFailure('website_contact_submit_failed'", 'MenuList contact page contained network failure diagnostic');
+  assertIncludes(contactPage, '.max(120)', 'MenuList contact page name bound matches the route');
+  assertIncludes(contactPage, '.max(180)', 'MenuList contact page email bound matches the route');
+  assertIncludes(contactPage, '.max(40)', 'MenuList contact page phone bound matches the route');
+  assertIncludes(contactPage, '.max(2000)', 'MenuList contact page message bound matches the route');
   assertNotIncludes(contactPage, '!result?.accepted', 'MenuList contact page must not accept generic accepted flag.');
   assertNotIncludes(contactPage, 'response.json().catch(() => null)', 'MenuList contact page must not silently swallow response parse failures');
   assertNotIncludes(contactPage, "import('@/database/landingPage/enquiries')", 'MenuList contact page direct DAL import');
@@ -6213,6 +6265,47 @@ function verifyPublicContactUsesBoundedServerRoute() {
   assertNotIncludes(contactPage, "throw new Error(result?.error", 'MenuList contact page must not throw raw API response text');
   assertNotIncludes(contactPage, 'e instanceof Error ? e.message', 'MenuList contact page must not show raw exception messages');
   assertNotIncludes(contactPage, 'console.error', 'MenuList contact page direct console logging');
+
+  assertIncludes(publicToolInputBoundary, 'longText: 8_000', 'Public-tool long-text runtime cap');
+  assertIncludes(publicToolInputBoundary, 'url: 2_048', 'Public-tool URL runtime cap');
+  assertIncludes(publicToolInputBoundary, 'value.slice(0, maxLength)', 'Public-tool pre-normalization runtime bound');
+
+  publicToolContactPages.forEach(([relativePath, source]) => {
+    assertIncludes(source, 'const handoffSubmissionInFlightRef = useRef(false);', `${relativePath} synchronous submission lock`);
+    assertIncludes(source, 'if (handoffSubmissionInFlightRef.current) return;', `${relativePath} duplicate submission refusal`);
+    assertIncludes(source, 'handoffSubmissionInFlightRef.current = true;', `${relativePath} submission claim`);
+    assertIncludes(source, 'handoffSubmissionInFlightRef.current = false;', `${relativePath} submission release`);
+    assertIncludes(source, 'key={report.generatedAt} report={report}', `${relativePath} report-revision keyed handoff state`);
+    assertIncludes(source, 'logRuntimeFailure(', `${relativePath} contained network failure diagnostic`);
+    assertIncludes(source, 'responseLogContext', `${relativePath} bounded contact diagnostic context`);
+    assertIncludes(source, "setHandoffStatus((current) => (current === 'submitted' ? 'idle' : current));", `${relativePath} edited handoff state clears prior success`);
+    assertIncludes(source, 'maxLength={120}', `${relativePath} route-parity name bound`);
+    assertIncludes(source, 'maxLength={180}', `${relativePath} route-parity email bound`);
+    assertIncludes(source, 'maxLength={40}', `${relativePath} route-parity phone bound`);
+    assertIncludes(source, 'maxLength={500}', `${relativePath} bounded honeypot input`);
+    assertIncludes(source, 'PUBLIC_TRUTH_TOOL_INPUT_LIMITS', `${relativePath} shared primary-input bounds`);
+    const unboundedTextControls = [...source.matchAll(/<(?:input|textarea)\b[\s\S]*?\/>/g)]
+      .map((match) => match[0])
+      .filter((tag) => !/type="(?:checkbox|radio)"/.test(tag))
+      .filter((tag) => !/maxLength=/.test(tag));
+    assert(
+      unboundedTextControls.length === 0,
+      `${relativePath} text controls must declare a maxLength; found ${unboundedTextControls.length}`,
+    );
+    assertNotIncludes(source, "} catch {\n      setHandoffStatus('error');", `${relativePath} silent handoff failure`);
+  });
+
+  const customerFaqReplyPackPage = publicToolContactPages.find(([relativePath]) => (
+    relativePath.endsWith('/customerFaqReplyPack/CustomerFaqReplyPackPage.tsx')
+  ))?.[1] || '';
+  assertIncludes(customerFaqReplyPackPage, "throw new Error('customer_faq_reply_pack_download_unavailable')", 'Customer FAQ download runtime guard');
+  assertIncludes(customerFaqReplyPackPage, 'window.URL.revokeObjectURL(url);', 'Customer FAQ download object URL cleanup');
+  assertOrder(customerFaqReplyPackPage, 'try {', 'window.URL.revokeObjectURL(url);', 'Customer FAQ download cleanup ownership');
+
+  publicToolReportBuilders.forEach(([fileName, source]) => {
+    assertIncludes(source, 'boundPublicTruthToolInput', `${fileName} runtime input bound`);
+    assertIncludes(source, 'PUBLIC_TRUTH_TOOL_INPUT_LIMITS', `${fileName} shared runtime input limits`);
+  });
 
   assertIncludes(rateLimitConfigs, 'MENULIST_CONTACT_FORM', 'MenuList contact rate-limit config');
   assertIncludes(contactResponseHelper, 'MENULIST_PUBLIC_CONTACT_RESPONSE_JSON_MAX_BYTES = 8 * 1024', 'MenuList public contact helper response byte cap');

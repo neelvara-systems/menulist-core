@@ -250,6 +250,10 @@ export const useArticleCache = () => {
         // Primary method - use this!
         getArticle,
 
+        // Expose the exact workspace cache scope so consumers that retain
+        // resolved articles in component state can reject prior-scope data.
+        cacheScopeKey: scopeKey,
+
         // Low-level cache operations (if needed)
         addArticleToCache,
         moveArticleToEnd,

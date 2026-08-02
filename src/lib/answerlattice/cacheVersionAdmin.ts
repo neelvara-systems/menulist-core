@@ -1,16 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { FieldValue } from 'firebase-admin/firestore';
-import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 
-import {
-    AnswerlatticeCacheSource,
-} from './cacheVersionManifest';
-import {
-    getAnswerlatticeInvalidationCacheSources,
-    getAnswerlatticeMissingBundleManifestBase,
-    getAnswerlatticeMissingSourceVersionsBase,
-    readAnswerlatticeInvalidationOwnership,
-} from './invalidationOwnership';
+import { AnswerlatticeCacheSource, } from './cacheVersionManifest';
+import { getAnswerlatticeInvalidationCacheSources, getAnswerlatticeMissingBundleManifestBase, getAnswerlatticeMissingSourceVersionsBase, readAnswerlatticeInvalidationOwnership, } from './invalidationOwnership';
 
 type CacheVersionBumpMetadata = {
     reason?: string;
@@ -44,6 +37,7 @@ export const bumpAnswerlatticeCacheVersionAdmin = async (
     if (metadata?.sourceType) data.lastSourceType = String(metadata.sourceType).slice(0, 80);
 
     const scope = { tId: tenantId, sId: storeId };
+    const firestoreAdmin = requireAnswerlatticeFirestoreAdmin();
     await firestoreAdmin.runTransaction(async transaction => {
         const ownership = await readAnswerlatticeInvalidationOwnership({
             cacheSources: getAnswerlatticeInvalidationCacheSources({

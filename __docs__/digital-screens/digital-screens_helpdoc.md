@@ -1,6 +1,6 @@
 # Digital Screens — Help Documentation
 
-**Last Updated:** July 29, 2026
+**Last Updated:** August 1, 2026
 
 ## Source Gate
 
@@ -37,7 +37,7 @@ Both use your current MenuList menu source. Saved menu changes refresh connected
 5. Bookmark it so it opens automatically when the TV turns on
 6. Your full menu with prices appears immediately. Done.
 
-Before the first TV signal, status says **Link ready**. A recent daily signal says **Seen recently**. A signal older than the supported window says **Check TV**. These are operational hints, not a live heartbeat.
+Each screen card has its own status. **Waiting for TV** means that screen link has not opened yet. **Latest update seen** means that screen type opened the current MenuList content version recently. **Update not seen** means MenuList changed after that screen type last opened. **Check TV** means its receipt is old or invalid. Use the refresh icon after opening the link on the TV. These are open receipts, not a heartbeat or a guarantee for every TV sharing the link.
 
 ### How to Set Up Two TVs (Menu Board + Highlights)
 
@@ -174,7 +174,7 @@ Yes. Digital Screens automatically use the accent color from your Official Busin
 2. Verify the screen URL is correct (copy it again from Settings)
 3. Make sure your menu has active items
 4. Refresh the browser on the screen
-5. The screen shows a brand fallback (your store logo + QR code) — it should never be truly blank
+5. The screen shows a brand fallback (your store name/logo + QR code) when menu content is empty or a custom poster fails to load — it should never be truly blank
 
 ### Content looks outdated
 

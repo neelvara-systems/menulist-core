@@ -7,29 +7,32 @@ export const dynamic = 'force-dynamic';
  * reads the sanitized public subset from /api/widget/config.
  */
 
-import { FEATURE_FLAGS } from '@config/features';
+import {
+    FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope,
+    resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
 import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
     buildAnswerlatticeWidgetKeySummaries,
     normalizeAnswerlatticeWidgetApiState,
-} from '@lib/answerlattice/widgetKeyManager';
+    } from '@lib/answerlattice/widgetKeyManager';
 import {
     ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
     normalizeAnswerlatticeWidgetConfigVersion,
     parseWidgetConfigSaveInput,
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
-} from '@lib/answerlattice/widgetConfig';
+    } from '@lib/answerlattice/widgetConfig';
 import { saveAnswerlatticeWidgetConfigAdmin } from '@lib/answerlattice/widgetConfigStore';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -45,8 +48,7 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 const WIDGET_CONFIG_SAVE_MAX_BODY_BYTES = 32 * 1024;
 const widgetConfigJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
@@ -61,7 +63,7 @@ const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
     return response;
 };
 
-const buildConfigResponse = (storeData: Record<string, any>) => ({
+const buildConfigResponse = (storeData: Record<string, unknown>) => ({
     schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
     config: normalizeWidgetConfig(storeData.widgetConfig),
     allowedOrigins: normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins),

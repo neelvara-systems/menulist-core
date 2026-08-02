@@ -186,7 +186,7 @@ export const CampaignCueCampaignActionSchema = z.object({
 export const CampaignCueAssetSchema = z.object({
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     name: z.string().trim().min(2).max(120),
-    assetType: z.enum(["image", "video", "document", "logo", "export"]),
+    assetType: z.enum(["image", "video", "audio", "document", "logo", "export"]),
     source: z.enum(["upload", "generated", "imported", "manual"]).default("manual"),
     rightsStatus: z.enum(["confirmed", "needs_review", "restricted"]).default("needs_review"),
     rightsNote: z.string().trim().max(400).optional(),
@@ -196,10 +196,22 @@ export const CampaignCueAssetSchema = z.object({
     storagePath: z.string().trim().regex(/^[a-zA-Z0-9/_:.-]+$/).max(500).optional(),
     mimeType: z.string().trim().max(120).optional(),
     sizeBytes: z.number().int().min(0).max(CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES).optional(),
+    previewStoragePath: z.string().trim().regex(/^[a-zA-Z0-9/_:.-]+$/).max(500).optional(),
+    previewMimeType: z.enum(["image/png", "image/webp", "image/jpeg"]).optional(),
+    previewSizeBytes: z.number().int().min(1).max(1024 * 1024).optional(),
+    width: z.number().int().min(1).max(16_384).optional(),
+    height: z.number().int().min(1).max(16_384).optional(),
+    durationSeconds: z.number().finite().min(0).max(6 * 60 * 60).optional(),
     campaignId: CampaignCueIdSchema.optional(),
     outputId: CampaignCueIdSchema.optional(),
     channel: CampaignCueChannelSchema.optional(),
 }).strict().superRefine((value, ctx) => {
+    if (value.previewStoragePath && !value.storagePath) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A preview requires a source file", path: ["previewStoragePath"] });
+    }
+    if (value.previewStoragePath && (!value.previewMimeType || value.previewSizeBytes === undefined)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Preview type and size are required", path: ["previewStoragePath"] });
+    }
     if (!value.campaignId && (value.outputId || value.channel)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,

@@ -149,8 +149,6 @@ export interface CreateJobParams {
     jobMode?: ExtractionJobMode;
     /** ID of the original failed job this retry was created from */
     retriedFromJobId?: string;
-    /** Retry attempt number (0 = first attempt, 1 = first retry, etc.) */
-    retryCount?: number;
     /** Force review even if project has no existing menu items. */
     forceReview?: boolean;
     /** Owner confirmed the menu-intake identity warning before extraction. */
@@ -239,7 +237,6 @@ const getMenuProcessingJobStartLogContext = (params: {
     jobMode: ExtractionJobMode;
     projectId: string;
     retriedFromJobId?: string;
-    retryCount?: number;
     targetLanguagesCount: number;
 }) => ({
     ...getMenuProcessingProjectLogContext(params.projectId),
@@ -249,7 +246,6 @@ const getMenuProcessingJobStartLogContext = (params: {
     hasRetrySource: Boolean(params.retriedFromJobId),
     identityOverrideConfirmed: params.identityOverrideConfirmed === true,
     jobMode: params.jobMode,
-    retryCount: typeof params.retryCount === 'number' ? params.retryCount : 0,
     targetLanguagesCount: params.targetLanguagesCount,
 });
 
@@ -295,7 +291,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         businessType,
         jobMode = "SINGLE_STORE",
         retriedFromJobId,
-        retryCount,
         forceReview,
         identityOverrideConfirmed,
     } = params;
@@ -318,7 +313,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         jobMode,
         projectId: normalizedProjectId,
         retriedFromJobId,
-        retryCount,
         targetLanguagesCount: targetLanguages.length,
     });
 
@@ -346,7 +340,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             ...(forceReview ? { forceReview: true } : {}),
             ...(identityOverrideConfirmed ? { identityOverrideConfirmed: true } : {}),
             ...(retriedFromJobId ? { retriedFromJobId } : {}),
-            ...(retryCount != null ? { retryCount } : {}),
         }),
     });
 
@@ -425,7 +418,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
                 targetLanguagesCount: targetLanguages.length,
                 jobMode,
                 hasRetrySource: Boolean(retriedFromJobId),
-                retryCount: typeof retryCount === 'number' ? retryCount : 0,
             });
             // Clean up tracking on error
             activeTriggers.delete(jobId);

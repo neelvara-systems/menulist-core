@@ -2,6 +2,7 @@ import {
     screenTimestampToDate,
     type DigitalScreenSeenTimestamp,
 } from "./screenTimestamp";
+import type { DigitalScreenModeSeenReceipt } from "@type/campaigns";
 
 const RECENT_SCREEN_WINDOW_MS = 36 * 60 * 60 * 1000;
 const MAX_SCREEN_CLOCK_SKEW_MS = 5 * 60 * 1000;
@@ -11,6 +12,18 @@ export type DigitalScreenHealthState = "link_ready" | "recent" | "stale";
 export interface DigitalScreenHealth {
     detail: string;
     state: DigitalScreenHealthState;
+    summary: string;
+}
+
+export type DigitalScreenModeHealthState =
+    | "current"
+    | "link_ready"
+    | "pending"
+    | "stale";
+
+export interface DigitalScreenModeHealth {
+    detail: string;
+    state: DigitalScreenModeHealthState;
     summary: string;
 }
 
@@ -24,6 +37,70 @@ function formatSeenDetail(date: Date, nowMs: number): string {
 
     const days = Math.floor(hours / 24);
     return `Seen ${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function formatOpenedDetail(date: Date, nowMs: number): string {
+    return formatSeenDetail(date, nowMs).replace(/^Seen/, "Opened");
+}
+
+export function getDigitalScreenModeHealth(
+    receipt: DigitalScreenModeSeenReceipt | undefined,
+    currentContentVersion: number,
+    nowMs = Date.now(),
+): DigitalScreenModeHealth {
+    if (!receipt) {
+        return {
+            detail: "Waiting for this TV link",
+            state: "link_ready",
+            summary: "Waiting for TV",
+        };
+    }
+
+    const date = screenTimestampToDate(receipt.seenAt);
+    if (
+        !date
+        || !Number.isSafeInteger(receipt.contentVersion)
+        || receipt.contentVersion < 1
+        || receipt.contentVersion > currentContentVersion
+    ) {
+        return {
+            detail: "TV status needs checking",
+            state: "stale",
+            summary: "Check TV",
+        };
+    }
+
+    if (receipt.contentVersion < currentContentVersion) {
+        return {
+            detail: "Open the TV link to load the latest update",
+            state: "pending",
+            summary: "Update not seen",
+        };
+    }
+
+    const ageMs = nowMs - date.getTime();
+    if (ageMs < -MAX_SCREEN_CLOCK_SKEW_MS) {
+        return {
+            detail: "TV time needs checking",
+            state: "stale",
+            summary: "Check TV",
+        };
+    }
+
+    const detail = formatOpenedDetail(date, nowMs);
+    if (ageMs <= RECENT_SCREEN_WINDOW_MS) {
+        return {
+            detail,
+            state: "current",
+            summary: "Latest update seen",
+        };
+    }
+
+    return {
+        detail,
+        state: "stale",
+        summary: "Check TV",
+    };
 }
 
 export function getDigitalScreenHealth(

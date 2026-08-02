@@ -25,6 +25,8 @@ async function run(): Promise<void> {
         };
         await environment.withSecurityRulesDisabled(async (context) => {
             await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore(), { tenantId: 1, storeId: 102 });
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore(), { tenantId: 2, storeId: 202 });
             await setDoc(doc(context.firestore(), 'answerlattice_releases', 'release-1'), release);
         });
         const ownerDb = environment.authenticatedContext('owner-1', {
@@ -33,8 +35,12 @@ async function run(): Promise<void> {
         const otherDb = environment.authenticatedContext('owner-2', {
             role: 'OWNER', tenantId: '2', storeId: '202', uId: 'owner-2',
         }).firestore();
+        const siblingStoreDb = environment.authenticatedContext('owner-3', {
+            role: 'OWNER', tenantId: '1', storeId: '102', uId: 'owner-3',
+        }).firestore();
 
         await assertSucceeds(getDoc(doc(ownerDb, 'answerlattice_releases', 'release-1')));
+        await assertFails(getDoc(doc(siblingStoreDb, 'answerlattice_releases', 'release-1')));
         await assertFails(getDoc(doc(otherDb, 'answerlattice_releases', 'release-1')));
         await assertFails(setDoc(doc(ownerDb, 'answerlattice_releases', 'release-client'), release));
         await assertFails(updateDoc(doc(ownerDb, 'answerlattice_releases', 'release-1'), { status: 'active' }));

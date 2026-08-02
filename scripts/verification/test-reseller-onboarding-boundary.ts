@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+    getMatchingResellerOnboardingProvisioningOperation,
     getResellerOnboardingOperationFingerprint,
     isMatchingResellerOnboardingOperation,
+    isMatchingResellerOnboardingProvisioningResources,
     isMatchingResellerOnboardingReplayResources,
 } from '../../src/lib/reseller/resellerOnboardingOperation';
 import { isActiveResellerProfileForSession } from '../../src/lib/reseller/resellerProfileAuthority';
@@ -46,6 +48,83 @@ assert.equal(isMatchingResellerOnboardingOperation({
     operationData: { ...operation, resellerId: 'another_reseller' },
     operationId,
     resellerId: 'reseller_auth_uid',
+}), false);
+
+const provisioningOperation = {
+    action: 'ONBOARD',
+    authUid: 'owner_auth_uid',
+    operationFingerprint: fingerprint,
+    operationId,
+    resellerId: 'reseller_auth_uid',
+    status: 'provider_provisioning',
+    storeId: 41,
+    tenantId: 31,
+    userId: 'owner_user_id',
+};
+const projectedProvisioningOperation = getMatchingResellerOnboardingProvisioningOperation({
+    fingerprint,
+    operationData: provisioningOperation,
+    operationId,
+    resellerId: 'reseller_auth_uid',
+});
+assert.ok(projectedProvisioningOperation);
+assert.deepEqual(projectedProvisioningOperation, {
+    authUid: 'owner_auth_uid',
+    storeId: 41,
+    tenantId: 31,
+    userId: 'owner_user_id',
+});
+for (const operationData of [
+    { ...provisioningOperation, status: 'active' },
+    { ...provisioningOperation, authUid: '' },
+    { ...provisioningOperation, userId: 'owner/user' },
+    { ...provisioningOperation, storeId: '41' },
+    { ...provisioningOperation, resellerId: 'another_reseller' },
+]) {
+    assert.equal(getMatchingResellerOnboardingProvisioningOperation({
+        fingerprint,
+        operationData,
+        operationId,
+        resellerId: 'reseller_auth_uid',
+    }), null);
+}
+assert.equal(isMatchingResellerOnboardingProvisioningResources({
+    operation: projectedProvisioningOperation,
+    ownerEmail: 'owner@example.com',
+    ownerUsername: '919999999999',
+    resellerId: 'reseller_auth_uid',
+    storeData: {
+        active: true,
+        resellerId: 'reseller_auth_uid',
+        tId: 31,
+        tenantId: 31,
+    },
+    userData: {
+        email: 'owner@example.com',
+        firebaseUid: 'owner_auth_uid',
+        storeId: 41,
+        tenantId: 31,
+        username: '919999999999',
+    },
+}), true);
+assert.equal(isMatchingResellerOnboardingProvisioningResources({
+    operation: projectedProvisioningOperation,
+    ownerEmail: 'owner@example.com',
+    ownerUsername: '919999999999',
+    resellerId: 'reseller_auth_uid',
+    storeData: {
+        active: true,
+        resellerId: 'reseller_auth_uid',
+        tId: 31,
+        tenantId: 31,
+    },
+    userData: {
+        email: 'owner@example.com',
+        firebaseUid: 'owner_auth_uid',
+        storeId: 42,
+        tenantId: 31,
+        username: '919999999999',
+    },
 }), false);
 
 const replaySubscription = {

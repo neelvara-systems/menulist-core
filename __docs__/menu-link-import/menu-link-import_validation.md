@@ -92,8 +92,8 @@ This report preserves May/June validation evidence only. It does not prove the c
   - reload QA exposed a restored-job project mismatch; the projects page now reselects the job project and only opens review when active job, selected project, and loaded project match,
   - applying review wrote one source file `Imported menu link.txt`, 70 categories, and 488 items,
   - owner publish succeeded through the normal publish warning path,
-  - copied share URL was `https://habibis.menulist.ai/qa-godirekt-dynamic-202605250938?entry_source=copy_link`,
-  - Chrome profile blocked the remote `habibis.menulist.ai` tab with `net::ERR_BLOCKED_BY_CLIENT`, but the local tenant-host route returned HTTP 200 and rendered imported menu content with title `QA Godirekt Dynamic 202605250938 | Grill Zilla`.
+  - copied share URL was `https://habibis.qa.menulist.digital/qa-godirekt-dynamic-202605250938?entry_source=copy_link`,
+  - Chrome profile blocked the remote `habibis.qa.menulist.digital` tab with `net::ERR_BLOCKED_BY_CLIENT`, but the local tenant-host route returned HTTP 200 and rendered imported menu content with title `QA Godirekt Dynamic 202605250938 | Grill Zilla`.
 - Direct source-acquisition smoke after the final fixes verified:
   - `https://demo2.godirekt.in/spark/app/#/menu` returns `sourceKind: "rendered_html_text"` with final URL preserving `#/menu`,
   - `https://demo2.godirekt.in/spark/app/#/mainpage` returns `NO_MENU_CONTENT_FOUND`,

@@ -4,7 +4,7 @@
 > **Created:** Jan 3, 2026  
 > **Strategy Doc:** [social-content-product-strategy.md](./social-content-product-strategy.md) (FROZEN)
 > **3-Year Architecture Freeze:** YES - No re-architecture for 3+ years after launch  
-> **Implementation Status:** July 1, 2026 - Today live. Weekly Growth Pack code exists but is paused behind a disabled flag. Today action and weekly-pack copy diagnostics are bounded, campaign copy success requires Clipboard API success or acknowledged textarea fallback success, and campaign caption generation requires the existing menu output permissions before AI capacity/provider work.
+> **Implementation Status:** August 1, 2026 - Today live. Weekly Growth Pack code exists but is paused behind a disabled flag. Today action and weekly-pack copy diagnostics are bounded, campaign copy success requires Clipboard API success or acknowledged textarea fallback success, and campaign caption generation requires menu output permission plus exact supplied-project ownership before AI capacity/provider work. Caption provider output is projected to the declared public DTO.
 
 > **Launch boundary:** This implementation note is social-content source evidence, not current production certification. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, Today/mobile/browser QA, campaign AI provider smoke where enabled, and deploy evidence for the target environment.
 
@@ -954,7 +954,8 @@ src/
 | `src/services/gemini/prompts/v1/campaignCaption.prompt.ts`           | ✅         | Campaign caption Gemini prompt (v1) with prompt-field normalization |
 | `src/services/gemini/prompts/index.ts`                               | ✅ Updated | Added campaignCaption to registry         |
 | `src/lib/validation/apiSchemas.ts`                                   | ✅ Updated | Added campaign Zod schemas                |
-| `src/app/api/campaigns/caption/route.ts`                             | ✅         | Caption generation API with auth, Safe Mode, rate limit, bounded body, validation, menu output permission guard, tenant check, capacity, phrase guard, and accounting |
+| `src/app/api/campaigns/caption/route.ts`                             | ✅         | Caption generation API with auth, Safe Mode, rate limit, bounded body, validation, menu output permission, exact optional-project ownership, capacity reservation, exact output projection, phrase guard, and accounting |
+| `src/lib/ai/campaignCaptionOutput.ts`                                | ✅         | Exact bounded `caption` / `shortCaption` / hashtag provider-output DTO |
 | Social Content generation API                                        | Removed   | Old route deleted; no hidden flag or dead endpoint remains |
 | `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts` | ✅ Updated | Re-exports shared read hook only |
 

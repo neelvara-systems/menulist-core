@@ -17,7 +17,8 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/answerlattice/client-onboarding/
  */
 
-import { FEATURE_FLAGS } from '@config/features';
+import {
+    FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
@@ -30,12 +31,13 @@ import {
     answerlatticeProviderSubscriptionMatchesAttempt,
     buildAnswerlatticeOnboardingRequestFingerprint,
     findAnswerlatticeProviderSubscriptionForAttempt,
+    getAnswerlatticeProviderSubscriptionCheckoutUrl,
     getAnswerlatticeOnboardingPositiveInteger,
     getAnswerlatticeOnboardingTimestampMillis,
     isAnswerlatticeTerminalProviderSubscriptionStatus,
     shouldHoldAnswerlatticeOnboardingProviderRecovery,
     type AnswerlatticeProviderSubscriptionCandidate,
-} from '@lib/answerlattice/onboardingProvisioning';
+    } from '@lib/answerlattice/onboardingProvisioning';
 import {
     AnswerlatticeOnboardingConflictError,
     answerlatticeProvisioningOwnershipMatches,
@@ -43,26 +45,29 @@ import {
     markAnswerlatticeOnboardingProviderRecoveryPending,
     persistAnswerlatticePendingSubscription,
     type AnswerlatticeProvisioningScope,
-} from '@lib/answerlattice/onboardingProvisioningServer';
+    } from '@lib/answerlattice/onboardingProvisioningServer';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
-import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY,
+    normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import {
     getContextContentSummaryDocId,
     parseProductSurfaceSaveInput,
-} from '@lib/answerlattice/productSurfaceContent';
+    } from '@lib/answerlattice/productSurfaceContent';
 import { upsertAnswerlatticeTenantSummaryAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
 import {
     initializeAnswerlatticeCompiledContextControlPlaneAdmin,
     markAnswerlatticeCompiledContextSourceChangedAdmin,
-} from '@lib/answerlattice/compiledSourceVersionsAdmin';
+    } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import {
     normalizeAnswerlatticeBusinessDayEndTime,
     normalizeAnswerlatticeTimeZone,
-} from '@lib/answerlattice/schedulerSettings';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+    } from '@lib/answerlattice/schedulerSettings';
+import { answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { getCurrentUser, isCurrentUserRecordEligible } from '@lib/auth/currentPlatformUser';
 import { createTenantStoreInTransaction } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -168,12 +173,14 @@ const parseAnswerlatticePendingOnboardingSummary = (
     const amount = getAnswerlatticeOnboardingPositiveInteger(raw.amount);
     const planId = typeof raw.planId === 'string' ? raw.planId.trim() : '';
     const plan = getAnswerlatticePlanById(planId, 'MONTH');
+    const shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(raw.shortUrl);
     if (
         !subscriptionId
         || providerSubscriptionId !== subscriptionId
         || !currency
         || amount === null
         || !plan
+        || !shortUrl
         || raw.status !== 'pending'
         || raw.pId !== PRODUCT_IDS.ANSWERLATTICE
         || normalizeAnswerlatticeScopeDocumentId(raw.tId) !== scope.tenantId
@@ -186,7 +193,7 @@ const parseAnswerlatticePendingOnboardingSummary = (
         amount,
         currency,
         plan,
-        shortUrl: normalizeRazorpaySubscriptionCheckoutUrl(raw.shortUrl),
+        shortUrl,
         subscriptionId,
     };
 };
@@ -281,14 +288,10 @@ const bootstrapInitialProductSurfaces = async (params: {
     sId: number;
     userId: string;
     surfaceKeys: string[];
-}): Promise<number> => {
+}): Promise<{ createdCount: number; surfaceCount: number }> => {
     const surfaceKeys = normalizeOnboardingSurfaces(params.surfaceKeys);
     const userId = requireAnswerlatticeOnboardingUserId(params.userId);
-    const batch = params.db.batch();
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    const surfaceSummary: Record<string, any> = {};
-
-    surfaceKeys.forEach((surfaceKey) => {
+    const surfaces = surfaceKeys.map((surfaceKey) => {
         const template = ONBOARDING_SURFACE_TEMPLATES[surfaceKey];
         const parsed = parseProductSurfaceSaveInput({
             key: surfaceKey,
@@ -305,54 +308,67 @@ const bootstrapInitialProductSurfaces = async (params: {
             visibility: { helpWidget: true, helpCenter: true, changelog: true },
         }, { tId: params.tId, sId: params.sId });
         const docId = `${params.tId}_${params.sId}_${parsed.key}`;
-        const docRef = params.db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).doc(docId);
-
-        batch.set(docRef, {
-            ...parsed,
-            createdOn: now,
-            modifiedOn: now,
-            createdBy: userId,
-            modifiedBy: userId,
-            uId: userId,
-            onboardingSource: 'ANSWERLATTICE_ONBOARDING',
-        }, { merge: true });
-
-        surfaceSummary[parsed.key] = {
-            key: parsed.key,
-            label: parsed.label,
-            routePatterns: parsed.routePatterns,
-            feature: parsed.feature,
-            page: parsed.page,
-            workflow: parsed.workflow,
-            entityHints: parsed.entityHints,
-            entityIds: [],
-            tags: parsed.tags,
-            visibility: parsed.visibility,
-            articles: [],
-            changelogs: [],
-            tickets: { total: 0, open: 0, recentDisplayIds: [] },
+        return {
+            docRef: params.db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).doc(docId),
+            parsed,
         };
     });
-
-    batch.set(
-        params.db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getContextContentSummaryDocId(params.tId, params.sId)),
-        {
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            tId: params.tId,
-            sId: params.sId,
-            generatedAt: now,
-            source: 'client_onboarding_surface_bootstrap',
-            surfaceCount: surfaceKeys.length,
-            articleCount: 0,
-            changelogCount: 0,
-            ticketCount: 0,
-            surfaces: surfaceSummary,
-        },
-        { merge: true },
-    );
-
-    await batch.commit();
-    return surfaceKeys.length;
+    const summaryRef = params.db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getContextContentSummaryDocId(params.tId, params.sId));
+    return params.db.runTransaction(async (transaction) => {
+        const [surfaceSnapshots, summarySnapshot] = await Promise.all([
+            Promise.all(surfaces.map(({ docRef }) => transaction.get(docRef))),
+            transaction.get(summaryRef),
+        ]);
+        const now = admin.firestore.Timestamp.now();
+        const surfaceSummary: Record<string, unknown> = {};
+        let createdCount = 0;
+        surfaces.forEach(({ docRef, parsed }, index) => {
+            const snapshot = surfaceSnapshots[index];
+            if (!snapshot.exists) {
+                transaction.create(docRef, {
+                    ...parsed,
+                    createdOn: now,
+                    modifiedOn: now,
+                    createdBy: userId,
+                    modifiedBy: userId,
+                    uId: userId,
+                    onboardingSource: 'ANSWERLATTICE_ONBOARDING',
+                });
+                createdCount += 1;
+            }
+            surfaceSummary[parsed.key] = {
+                key: parsed.key,
+                label: parsed.label,
+                routePatterns: parsed.routePatterns,
+                feature: parsed.feature,
+                page: parsed.page,
+                workflow: parsed.workflow,
+                entityHints: parsed.entityHints,
+                entityIds: [],
+                tags: parsed.tags,
+                visibility: parsed.visibility,
+                articles: [],
+                changelogs: [],
+                tickets: { total: 0, open: 0, recentDisplayIds: [] },
+            };
+        });
+        if (!summarySnapshot.exists) {
+            transaction.create(summaryRef, {
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: params.tId,
+                sId: params.sId,
+                generatedAt: now,
+                source: 'client_onboarding_surface_bootstrap',
+                surfaceCount: surfaceKeys.length,
+                articleCount: 0,
+                changelogCount: 0,
+                ticketCount: 0,
+                surfaces: surfaceSummary,
+            });
+        }
+        return { createdCount, surfaceCount: surfaceKeys.length };
+    });
 };
 
 const getAnswerlatticeDb = () => {
@@ -360,7 +376,7 @@ const getAnswerlatticeDb = () => {
         ? admin.firestore()
         : answerlatticeFirestoreAdmin;
 
-    return db && typeof (db as any).collection === 'function' ? db : null;
+    return db && typeof (db as { collection?: unknown }).collection === 'function' ? db : null;
 };
 
 const getAnswerlatticeUserForOnboarding = async (
@@ -370,7 +386,7 @@ const getAnswerlatticeUserForOnboarding = async (
 ) => {
     const directSnapshot = await db.collection(DB_COLLECTIONS.USERS).doc(userId).get();
     if (directSnapshot.exists) {
-        return { id: directSnapshot.id, ...directSnapshot.data() } as Record<string, any>;
+        return { id: directSnapshot.id, ...(directSnapshot.data() || {}) } as Record<string, unknown>;
     }
 
     const normalizedEmail = String(email || '').toLowerCase().trim();
@@ -386,11 +402,11 @@ const getAnswerlatticeUserForOnboarding = async (
         throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
     }
     const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as Record<string, any>;
+    return { id: doc.id, ...doc.data() } as Record<string, unknown>;
 };
 
 const getProvisioningScopeFromUser = (
-    user: Record<string, any>,
+    user: Record<string, unknown>,
     userId: string,
 ): AnswerlatticeOnboardingResumeScope | null => {
     const tenantId = normalizeAnswerlatticeScopeDocumentId(user.tenantId);
@@ -413,8 +429,13 @@ const getProvisioningScopeFromUser = (
         return null;
     }
 
-    const storeName = Array.isArray(user.stores)
-        ? String(user.stores.find((store: any) => Number(store?.storeId) === storeId)?.name || '')
+    const matchingStore = Array.isArray(user.stores)
+        ? user.stores.find((store) => (
+            isPlainRecord(store) && normalizeAnswerlatticeScopeDocumentId(store.storeId) === storeId
+        ))
+        : undefined;
+    const storeName = isPlainRecord(matchingStore) && typeof matchingStore.name === 'string'
+        ? matchingStore.name.trim()
         : '';
     return {
         attemptId,
@@ -481,50 +502,156 @@ const writeAnswerlatticeOnboardingLog = async (
     }
 };
 
+class AnswerlatticeOnboardingAccessEndedError extends Error {
+    constructor() {
+        super('Answerlattice onboarding access ended');
+        this.name = 'AnswerlatticeOnboardingAccessEndedError';
+    }
+}
+
 const syncDefaultAuthProductAccount = async (params: {
     userId: string;
-    session: any;
+    session: unknown;
     tenantId: number;
     storeId: number;
     storeName: string;
 }) => {
     const userId = requireAnswerlatticeOnboardingUserId(params.userId);
-    const now = admin.firestore.Timestamp.now();
-    const role = getOwnerRoleId();
-    const rootTenantMissing = !params.session?.user?.tenantId;
-    const rootStoreMissing = !params.session?.user?.storeId;
-    const answerlatticeProductAccount = {
-        tenantId: params.tenantId,
-        storeId: params.storeId,
-        role,
-        platformRole: params.session?.user?.platformRole || 'OWNER',
-        storeIds: [params.storeId],
-        updatedAt: now,
-    };
-    const defaultUserUpdate: Record<string, any> = {
-        productAccounts: {
-            [ANSWERLATTICE_PRODUCT_ACCOUNT_KEY]: answerlatticeProductAccount,
-        },
-        modifiedOn: now,
-    };
+    const defaultDb = admin.firestore();
+    await defaultDb.runTransaction(async (transaction) => {
+        const userRef = defaultDb.collection(DB_COLLECTIONS.USERS).doc(userId);
+        const userSnapshot = await transaction.get(userRef);
+        const userData = userSnapshot.data();
+        if (
+            !userSnapshot.exists
+            || !isCurrentUserRecordEligible({
+                documentId: userSnapshot.id,
+                session: params.session,
+                userData,
+            })
+        ) {
+            throw new AnswerlatticeOnboardingAccessEndedError();
+        }
 
-    if (rootTenantMissing && rootStoreMissing) {
-        defaultUserUpdate.tenantId = params.tenantId;
-        defaultUserUpdate.storeId = params.storeId;
-        defaultUserUpdate.pId = PRODUCT_IDS.ANSWERLATTICE;
-        defaultUserUpdate.productId = PRODUCT_IDS.ANSWERLATTICE;
-        defaultUserUpdate.role = role;
-        defaultUserUpdate.stores = [{
-            storeId: params.storeId,
-            name: params.storeName,
-            role,
-        }];
-    }
+        const currentUserData = userData as Record<string, unknown>;
+        if (
+            currentUserData.productAccounts !== undefined
+            && !isPlainRecord(currentUserData.productAccounts)
+        ) {
+            throw new AnswerlatticeOnboardingAccessEndedError();
+        }
+        const productAccounts = isPlainRecord(currentUserData.productAccounts)
+            ? currentUserData.productAccounts
+            : {};
+        const existingProductAccount = productAccounts[ANSWERLATTICE_PRODUCT_ACCOUNT_KEY];
+        if (existingProductAccount !== undefined) {
+            if (
+                !isPlainRecord(existingProductAccount)
+                || normalizeAnswerlatticeScopeDocumentId(existingProductAccount.tenantId) !== params.tenantId
+                || normalizeAnswerlatticeScopeDocumentId(existingProductAccount.storeId) !== params.storeId
+            ) {
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
+            }
+        }
 
-    await admin.firestore()
-        .collection(DB_COLLECTIONS.USERS)
-        .doc(userId)
-        .set(defaultUserUpdate, { merge: true });
+        const now = admin.firestore.Timestamp.now();
+        const role = getOwnerRoleId();
+        const defaultUserUpdate: Record<string, unknown> = {
+            productAccounts: {
+                ...productAccounts,
+                [ANSWERLATTICE_PRODUCT_ACCOUNT_KEY]: {
+                    active: true,
+                    isVerified: true,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tenantId: params.tenantId,
+                    storeId: params.storeId,
+                    role,
+                    platformRole: 'OWNER',
+                    storeIds: [params.storeId],
+                    updatedAt: now,
+                },
+            },
+            modifiedOn: now,
+        };
+        const rootTenantMissing = currentUserData.tenantId === undefined || currentUserData.tenantId === null || currentUserData.tenantId === '';
+        const rootStoreMissing = currentUserData.storeId === undefined || currentUserData.storeId === null || currentUserData.storeId === '';
+        if (rootTenantMissing && rootStoreMissing) {
+            defaultUserUpdate.tenantId = params.tenantId;
+            defaultUserUpdate.storeId = params.storeId;
+            defaultUserUpdate.pId = PRODUCT_IDS.ANSWERLATTICE;
+            defaultUserUpdate.productId = PRODUCT_IDS.ANSWERLATTICE;
+            defaultUserUpdate.role = role;
+            defaultUserUpdate.stores = [{
+                storeId: params.storeId,
+                name: params.storeName,
+                role,
+            }];
+        }
+
+        transaction.set(userRef, defaultUserUpdate, { merge: true });
+    });
+};
+
+const repairAnswerlatticePostFinalizationState = async (params: {
+    businessDayEndTime: string;
+    db: FirebaseFirestore.Firestore;
+    storeId: number;
+    surfaceKeys: string[];
+    tenantId: number;
+    timeZone: string;
+    userId: string;
+}): Promise<number> => {
+    let initialSurfaceCount = 0;
+    let createdSurfaceCount = 0;
+    await bootstrapInitialProductSurfaces({
+        db: params.db,
+        tId: params.tenantId,
+        sId: params.storeId,
+        userId: params.userId,
+        surfaceKeys: params.surfaceKeys,
+    }).then((result) => {
+        initialSurfaceCount = result.surfaceCount;
+        createdSurfaceCount = result.createdCount;
+    }).catch((surfaceError) => {
+        logRuntimeFailure('answerlattice_onboard_initial_surface_bootstrap_failed', surfaceError, {
+            ...getBoundedRuntimeStringContext('tenantId', params.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', params.storeId),
+            ...getBoundedRuntimeStringContext('userId', params.userId),
+        });
+    });
+    await upsertAnswerlatticeTenantSummaryAdmin({
+        tId: params.tenantId,
+        sId: params.storeId,
+        source: 'client_onboarding',
+        active: true,
+        hasEntities: false,
+        timeZone: params.timeZone,
+        businessDayEndTime: params.businessDayEndTime,
+    }).catch((summaryError) => {
+        logRuntimeFailure('answerlattice_onboard_tenant_summary_sync_failed', summaryError, {
+            ...getBoundedRuntimeStringContext('tenantId', params.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', params.storeId),
+            ...getBoundedRuntimeStringContext('userId', params.userId),
+        });
+    });
+    await initializeAnswerlatticeCompiledContextControlPlaneAdmin(params.tenantId, params.storeId, {
+        reason: 'client_onboarding',
+        sourceType: 'answerlattice_workspace',
+    }).then(async () => {
+        if (createdSurfaceCount > 0) {
+            await markAnswerlatticeCompiledContextSourceChangedAdmin('surfaces', params.tenantId, params.storeId, {
+                reason: 'initial_surfaces_created',
+                sourceType: 'answerlattice_product_surfaces',
+            });
+        }
+    }).catch((bundleInitError) => {
+        logRuntimeFailure('answerlattice_onboard_context_control_plane_init_failed', bundleInitError, {
+            ...getBoundedRuntimeStringContext('tenantId', params.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', params.storeId),
+            ...getBoundedRuntimeStringContext('userId', params.userId),
+        });
+    });
+    return initialSurfaceCount;
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -559,16 +686,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         if (!rateLimitResult.allowed) {
             const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            if (providerUnavailable) {
+                return answerlatticeOnboardingJson({
+                    code: 'ANSWERLATTICE_ONBOARDING_TEMPORARILY_UNAVAILABLE',
+                    error: 'Answerlattice onboarding is temporarily unavailable. Please try again later.',
+                }, { status: 503 });
+            }
             const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
             return answerlatticeOnboardingJson({
-                code: providerUnavailable
-                    ? 'ANSWERLATTICE_ONBOARDING_TEMPORARILY_UNAVAILABLE'
-                    : 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED',
-                error: providerUnavailable
-                    ? 'Answerlattice onboarding is temporarily unavailable. Please try again later.'
-                    : 'Too many attempts. Please try again later.',
+                code: 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED',
+                error: 'Too many attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt,
-            }, { status: providerUnavailable ? 503 : 429, headers: { 'Retry-After': String(retryAfter) } });
+            }, { status: 429, headers: { 'Retry-After': String(retryAfter) } });
         }
 
         const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES, {
@@ -639,15 +768,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             supportEmail: supportEmail || '',
             timeZone: schedulerTimeZone,
         });
-        const existingProductAccount = (session.user as any)?.productAccounts?.[ANSWERLATTICE_PRODUCT_ACCOUNT_KEY];
+        const currentAuthUser = await getCurrentUser(session);
+        if (!currentAuthUser || currentAuthUser.documentId !== userId) {
+            throw new AnswerlatticeOnboardingAccessEndedError();
+        }
+        if (
+            currentAuthUser.userData.productAccounts !== undefined
+            && !isPlainRecord(currentAuthUser.userData.productAccounts)
+        ) {
+            throw new AnswerlatticeOnboardingAccessEndedError();
+        }
+        const currentProductAccounts = isPlainRecord(currentAuthUser.userData.productAccounts)
+            ? currentAuthUser.userData.productAccounts
+            : {};
+        const existingProductAccount = currentProductAccounts[ANSWERLATTICE_PRODUCT_ACCOUNT_KEY];
         const existingAnswerlatticeUser = await getAnswerlatticeUserForOnboarding(db, userId, session.user.email);
         const existingStatus = String(existingAnswerlatticeUser?.onboardingStatus || '');
         const existingScope = existingAnswerlatticeUser
             ? getProvisioningScopeFromUser(existingAnswerlatticeUser, userId)
             : null;
-        const sessionHasAnswerlatticeAccount = Boolean(
-            existingProductAccount?.tenantId && existingProductAccount?.storeId,
-        );
+        const sessionHasAnswerlatticeAccount = isPlainRecord(existingProductAccount)
+            && Boolean(existingProductAccount.tenantId && existingProductAccount.storeId);
         if (
             sessionHasAnswerlatticeAccount
             && existingStatus !== ANSWERLATTICE_ONBOARDING_STATUS.PAYMENT_PENDING
@@ -658,6 +799,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PAYMENT_PENDING && existingScope) {
+            if (existingScope.requestFingerprint !== requestFingerprint) {
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_SETUP_REQUEST_CHANGED');
+            }
             const storeSnapshot = await db.collection(DB_COLLECTIONS.STORES).doc(String(existingScope.storeId)).get();
             const storeData = storeSnapshot.data() || {};
             if (
@@ -679,6 +823,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeId: existingScope.storeId,
                 storeName: String(storeData.productName || storeData.name || existingScope.storeName || 'Answerlattice'),
             });
+            const initialSurfaceCount = await repairAnswerlatticePostFinalizationState({
+                businessDayEndTime: schedulerBusinessDayEndTime,
+                db,
+                storeId: existingScope.storeId,
+                surfaceKeys: normalizedSurfaces,
+                tenantId: existingScope.tenantId,
+                timeZone: schedulerTimeZone,
+                userId,
+            });
             return answerlatticeOnboardingJson({
                 apiKey: null,
                 billing: {
@@ -686,6 +839,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     currency: summary.currency,
                     interval: 'MONTH',
                 },
+                initialSurfaceCount,
                 plan: {
                     id: summary.plan.planId,
                     isBeta: false,
@@ -1009,7 +1163,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (providerTotalCount === null) {
             throw new Error('answerlattice_onboarding_provider_total_count_invalid');
         }
-        const shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '';
+        const shortUrl = getAnswerlatticeProviderSubscriptionCheckoutUrl(razorpaySubscription);
+        if (!shortUrl) {
+            throw new Error('answerlattice_onboarding_provider_checkout_url_invalid');
+        }
         const creditsLastResetMonth = new Date().getFullYear() * 100 + (new Date().getMonth() + 1);
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
             paymentProvider: 'razorpay',
@@ -1101,53 +1258,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeId: result.storeId,
             storeName: result.storeName,
         });
-        let initialSurfaceCount = 0;
-        await bootstrapInitialProductSurfaces({
-            db,
-            tId: result.tenantId,
-            sId: result.storeId,
-            userId,
-            surfaceKeys: normalizedSurfaces,
-        }).then((count) => {
-            initialSurfaceCount = count;
-        }).catch((surfaceError) => {
-            logRuntimeFailure('answerlattice_onboard_initial_surface_bootstrap_failed', surfaceError, {
-                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
-                ...getBoundedRuntimeStringContext('storeId', result.storeId),
-                ...getBoundedRuntimeStringContext('userId', userIdForLog),
-            });
-        });
-        await upsertAnswerlatticeTenantSummaryAdmin({
-            tId: result.tenantId,
-            sId: result.storeId,
-            source: 'client_onboarding',
-            active: true,
-            hasEntities: false,
-            timeZone: schedulerTimeZone,
+        const initialSurfaceCount = await repairAnswerlatticePostFinalizationState({
             businessDayEndTime: schedulerBusinessDayEndTime,
-        }).catch((summaryError) => {
-            logRuntimeFailure('answerlattice_onboard_tenant_summary_sync_failed', summaryError, {
-                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
-                ...getBoundedRuntimeStringContext('storeId', result.storeId),
-                ...getBoundedRuntimeStringContext('userId', userIdForLog),
-            });
-        });
-        await initializeAnswerlatticeCompiledContextControlPlaneAdmin(result.tenantId, result.storeId, {
-            reason: 'client_onboarding',
-            sourceType: 'answerlattice_workspace',
-        }).then(async () => {
-            if (initialSurfaceCount > 0) {
-                await markAnswerlatticeCompiledContextSourceChangedAdmin('surfaces', result.tenantId, result.storeId, {
-                    reason: 'initial_surfaces_created',
-                    sourceType: 'answerlattice_product_surfaces',
-                });
-            }
-        }).catch((bundleInitError) => {
-            logRuntimeFailure('answerlattice_onboard_context_control_plane_init_failed', bundleInitError, {
-                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
-                ...getBoundedRuntimeStringContext('storeId', result.storeId),
-                ...getBoundedRuntimeStringContext('userId', userIdForLog),
-            });
+            db,
+            storeId: result.storeId,
+            surfaceKeys: normalizedSurfaces,
+            tenantId: result.tenantId,
+            timeZone: schedulerTimeZone,
+            userId,
         });
         await writeAnswerlatticeOnboardingLog('ANSWERLATTICE_ONBOARD_COMPLETE', {
             initialSurfaceCount,
@@ -1170,13 +1288,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             recovered: resumedProvisioning,
             subscription: {
                 id: providerSubscriptionId,
-                shortUrl: shortUrl || null,
-                status: razorpaySubscription.status || 'created',
+                shortUrl,
+                status: 'created',
             },
             widgetKeyNeedsRotation: false,
             workspaceCreated: true,
         });
     } catch (error) {
+        if (error instanceof AnswerlatticeOnboardingAccessEndedError) {
+            logRuntimeFailure('answerlattice_onboard_current_authority_rejected', error, {
+                ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            });
+            return answerlatticeOnboardingJson(
+                {
+                    code: 'ANSWERLATTICE_ONBOARDING_ACCESS_ENDED',
+                    error: 'Account access has ended. Sign in again before retrying setup.',
+                },
+                { status: 403 },
+            );
+        }
         if (error instanceof AnswerlatticeOnboardingConflictError) {
             const messages = {
                 ANSWERLATTICE_ACCOUNT_EXISTS: 'You already have an account. Go to your dashboard.',

@@ -51,13 +51,18 @@ assertIncludes(
 );
 assertIncludes(
   launchPrerequisites,
-  'Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/menulist-qa had HTTP Error: 403, The caller does not have permission',
-  'Launch prerequisites current Cloud Resource Manager blocker',
+  'Error: Failed to authenticate, have you run firebase login?',
+  'Launch prerequisites current Firebase CLI authentication blocker',
 );
 assertIncludes(
   audit,
-  'Cloud Resource Manager HTTP 403 caller permission before upload',
+  'The current Firebase CLI environment is not authenticated, so current MenuList QA deploy attempts stop before predeploy or upload with `Error: Failed to authenticate, have you run firebase login?`',
   'Production audit current Functions deploy blocker',
+);
+assertIncludes(
+  runbook,
+  'Current operator boundary refreshed August 1, 2026: Firebase CLI is not authenticated',
+  'Gate 1 current Firebase CLI authentication blocker',
 );
 assertIncludes(
   runbook,

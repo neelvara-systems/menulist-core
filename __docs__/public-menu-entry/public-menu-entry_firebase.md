@@ -35,6 +35,12 @@ Public create-menu claim target document-ID boundary hardening is Firebase-cost 
 
 The browser preview projector and request-lifecycle guards add no Firebase operation. Canonical response normalization occurs after the existing bounded HTTP read; an aborted status request does not schedule another poll or mutate current state. The immediate claim single-flight guard prevents duplicate browser POSTs, while the route's transaction receipt remains the durable idempotency authority.
 
+The server polling projector also adds no Firebase operation: it validates the
+already-read draft source envelope against configured Storage identity and
+normalizes the response in memory. Provider-outage responses omit quota/reset
+headers; real exhaustion retains them. All authenticated intake and poll
+responses are explicitly private/no-store/nosniff.
+
 The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before the existing `recordStarterActivationSignal` call, evicts a known mismatch, and keys browser acknowledgement by exact tenant/store/signal; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write. Success query URLs are browser-output-only and now require the active MenuList platform root or exact tenant subdomain; this adds no read, write, delete, Storage, Function, rule, index, cache, or deployment effect.
 
 ## Scale decisions
@@ -42,7 +48,7 @@ The browser last-claim handoff is session-only and adds no Firebase operation. I
 - Cheap burst admission prevents 10MB parsing, Firestore dedupe queries, Storage, acquisition, and provider work during abuse or limiter outage.
 - The daily quota runs after reusable-source proof, so valid retries do not consume new-source capacity.
 - Polling is finite and below the backend limiter; no snapshot listener is needed for a short-lived funnel.
-- Existing claim permission reuses the store transaction read instead of adding another Firestore read.
+- Existing claim permission reuses the store transaction read and adds one exact current-user transaction read so stale role, scope, lifecycle or revocation state cannot authorize a write. New-account claim likewise adds one exact current-user transaction read before tenant/store allocation.
 - The compact project summary provides collision/default handling without scanning nested projects.
 - Cleanup is capped at 100 and retry-safe. If backlog growth is observed, adjust the existing scheduler batch/cadence with metrics; do not add a queue pre-emptively.
 - Claimed source retention is necessary because the created project references that URL. Only the duplicate receipt document expires.

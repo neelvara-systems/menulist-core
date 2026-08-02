@@ -1,4 +1,3 @@
-import type { Project } from '@template/main-app/projects/types/project.types';
 import type { StoreDataType } from '@type/platform/store';
 import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
 import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
@@ -49,7 +48,12 @@ export interface OwnerActionLayerSummary {
 
 interface BuildOwnerActionLayerInput {
     now?: Date;
-    project?: Project | null;
+    project?: {
+        active?: unknown;
+        deleted?: unknown;
+        lastPublishedAt?: unknown;
+        projectId?: unknown;
+    } | null;
     storeDetails?: Partial<StoreDataType> | null;
 }
 

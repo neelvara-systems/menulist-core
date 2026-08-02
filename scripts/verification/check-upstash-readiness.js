@@ -8,17 +8,30 @@ if (!url || !token) {
   process.exit(2);
 }
 
-let host;
+let endpoint;
 try {
-  host = new URL(url).hostname;
+  endpoint = new URL(url);
+  if (
+    endpoint.protocol !== 'https:'
+    || !endpoint.hostname
+    || endpoint.username
+    || endpoint.password
+    || endpoint.search
+    || endpoint.hash
+    || (endpoint.pathname && endpoint.pathname !== '/')
+  ) {
+    throw new Error('UPSTASH_READINESS_URL_UNSAFE');
+  }
 } catch {
-  console.error('Upstash readiness failed: URL is invalid');
+  console.error('Upstash readiness failed: URL must be a credential-free HTTPS origin');
   process.exit(1);
 }
+const host = endpoint.hostname;
 
 const timeoutMs = 3000;
+let timeoutId;
 const timeout = new Promise((_, reject) => {
-  setTimeout(() => reject(new Error('UPSTASH_READINESS_TIMEOUT')), timeoutMs);
+  timeoutId = setTimeout(() => reject(new Error('UPSTASH_READINESS_TIMEOUT')), timeoutMs);
 });
 
 (async () => {
@@ -38,5 +51,7 @@ const timeout = new Promise((_, reject) => {
       reason: error instanceof Error ? error.message : 'UPSTASH_READINESS_FAILED',
     }));
     process.exitCode = 1;
+  } finally {
+    clearTimeout(timeoutId);
   }
 })();

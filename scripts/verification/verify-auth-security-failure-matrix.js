@@ -147,7 +147,7 @@ const assertNoUnsafeBlankWindowOpen = () => {
 
     sourceFiles.forEach((relativePath) => {
         read(relativePath).split('\n').forEach((line, index) => {
-            if (!line.includes('window.open(')) return;
+            if (!line.includes('openIsolatedBrowserUrl(')) return;
             if (!/['_"]_blank['_"]/.test(line)) return;
             assert(
                 line.includes('noopener,noreferrer'),
@@ -1439,6 +1439,7 @@ const mobileBasicSettingsScreen = read('src/components/mobile/screens/MobileBasi
 const mobileBusinessCopySetupScreen = read('src/components/mobile/screens/MobileBusinessCopySetupScreen.tsx');
 const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
 const storeSwitcher = read('src/components/molecules/StoreSwitcher/index.tsx');
+const outletContextBanner = read('src/components/atoms/OutletContextBanner/index.tsx');
 const mobileItemEditSheet = read('src/components/mobile/sheets/ItemEditSheet.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
 const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
@@ -2323,7 +2324,7 @@ assertIncludes(appError, "getBoundedRuntimeStringContext('userAgent'", 'App rout
 assertIncludes(appError, "getBoundedRuntimeStringContext('digest'", 'App route error boundary must bound digest diagnostics.');
 assertIncludes(appError, 'app_error_help_open_failed', 'App route error boundary must code help-tab open failures.');
 assertIncludes(appError, 'app_error_help_redirect_failed', 'App route error boundary must code help fallback navigation failures.');
-assertIncludes(appError, "window.open(HELP_ROUTE, '_blank', 'noopener,noreferrer')", 'App route error boundary must use a safe help-tab open.');
+assertIncludes(appError, "openIsolatedBrowserUrl(HELP_ROUTE)", 'App route error boundary must use a safe help-tab open.');
 assertIncludes(appError, 'window.location.assign(HELP_ROUTE)', 'App route error boundary must fall back to same-tab help navigation.');
 assertIncludes(appError, "getBoundedRuntimeStringContext('helpRoute'", 'App route error boundary must bound help-route diagnostics.');
 assertIncludes(globalPagesError, 'global_pages_error_boundary_rendered', 'Global pages error boundary must code crash diagnostics.');
@@ -2371,7 +2372,8 @@ assertIncludes(analyticsExportButton, 'analytics_export_failed', 'Analytics expo
 assertIncludes(analyticsExportButton, 'getBoundedRuntimeStringContext', 'Analytics export button must log bounded filename context.');
 assertIncludes(analyticsExportButton, "import { escapeCSVValue } from '@util/exportUtils';", 'Analytics export button must use the shared CSV cell sanitizer.');
 assertIncludes(analyticsExportButton, 'headers.map(escapeCSVValue).join', 'Analytics export button must sanitize CSV header cells.');
-assertIncludes(analyticsExportButton, 'return escapeCSVValue(row[header]);', 'Analytics export button must sanitize CSV row cells.');
+assertIncludes(analyticsExportButton, 'escapeCSVValue(Object.prototype.hasOwnProperty.call(row, header)', 'Analytics export button must sanitize CSV row cells.');
+assertIncludes(analyticsExportButton, 'Reflect.get(row, header)', 'Analytics export button must read admitted structural row cells without requiring an index signature.');
 assert(!analyticsExportButton.includes('String(value === null || value === undefined ?'), 'Analytics export button must not keep private CSV escaping that bypasses spreadsheet formula protection.');
 assert(!analyticsExportButton.includes('PDF export coming soon!'), 'Analytics export button must not promise unsupported PDF export.');
 assertIncludes(businessCopyLocalization, 'business_copy_batch_translation_failed', 'Business copy localization must code batch translation failures.');
@@ -3741,6 +3743,18 @@ assert(!mobileMoreScreen.includes("logger.error('[MobileMore] Store switch faile
 });
 assertIncludes(storeSwitcher, 'AUTH_ACCOUNT_REQUEST_POLICY', 'Header StoreSwitcher must use the shared auth account request policy.');
 assertIncludes(storeSwitcher, "readAuthAccountResponse(res, 'switch_store')", 'Header StoreSwitcher must validate the switch-store response envelope.');
+assertIncludes(storeSwitcher, 'claimStoreSwitchAttempt()', 'Header StoreSwitcher must synchronously claim the browser-wide switch attempt.');
+assertIncludes(storeSwitcher, 'releaseStoreSwitchAttempt(attemptToken)', 'Header StoreSwitcher must release the exact browser-wide switch attempt.');
+assertIncludes(storeSwitcher, 'scopeKeyRef.current !== initiatingScopeKey', 'Header StoreSwitcher must not settle after its initiating scope changes.');
+assertIncludes(storeSwitchAccess, 'if (activeStoreSwitchAttemptToken !== null) return null;', 'Shared store switch attempt boundary must refuse concurrent Firebase claim refreshes.');
+assertIncludes(storeSwitchAccess, 'if (activeStoreSwitchAttemptToken !== token) return false;', 'Shared store switch attempt boundary must reject foreign releases.');
+assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_claims_refresh_missing_user', 'Firebase claim mutation refresh must fail closed without the current browser actor.');
+assert(!firebaseAuthSyncHelper.includes('if (!firebaseAuth?.currentUser) return { ready: false };'), 'Firebase claim mutation refresh must not resolve without acknowledgement.');
+assertIncludes(outletContextBanner, 'await refreshFirebaseAuthClaims(loginStoreId);', 'Outlet context banner must refresh the HQ Firebase claim before local context changes.');
+assertIncludes(outletContextBanner, 'claimStoreSwitchAttempt()', 'Outlet context banner must claim the browser-wide switch attempt.');
+assertIncludes(outletContextBanner, 'releaseStoreSwitchAttempt(attemptToken)', 'Outlet context banner must release the exact switch attempt.');
+assertIncludes(outletContextBanner, 'returnScopeKeyRef.current !== initiatingScopeKey', 'Outlet context banner must not settle after its initiating scope changes.');
+assert(!outletContextBanner.includes('onClick={() => setActiveStoreContext(null)}'), 'Outlet context banner must not clear local scope without refreshing claims.');
 assert(!storeSwitcher.includes('throw new Error(data.error'), 'Header StoreSwitcher must not throw raw switch-store response text.');
 assert(!storeSwitcher.includes("logger.error('[StoreSwitcher] Switch failed'"), 'Header StoreSwitcher must not raw-log switch failures.');
 assert(!storeSwitcher.includes('import { logger }'), 'Header StoreSwitcher must not import raw logger diagnostics.');
@@ -4050,6 +4064,9 @@ assertIncludes(phoneOtpPanel, 'isSuccessfulPhoneOtpStartResponse(data, purpose)'
 assertIncludes(phoneOtpPanel, 'isSuccessfulPhoneOtpVerifyResponse(data, challengeId)', 'Phone OTP verify must require action, challenge, and login-token acknowledgement.');
 assertIncludes(phoneOtpPanel, "value.action === 'start'", 'Phone OTP start acknowledgement must include the start action.');
 assertIncludes(phoneOtpPanel, 'value.purpose === expectedPurpose', 'Phone OTP start acknowledgement must echo the requested purpose.');
+assertIncludes(phoneOtpPanel, 'isValidPhoneOtpResendAfterSeconds(value.resendAfterSeconds)', 'Phone OTP start acknowledgement must validate the resend cooldown.');
+assertIncludes(phoneOtpPanel, 'setCooldown(data.resendAfterSeconds);', 'Phone OTP panel must use only the validated resend cooldown.');
+assert(!phoneOtpPanel.includes('Number(data.resendAfterSeconds || 60)'), 'Phone OTP panel must not coerce an untrusted resend cooldown.');
 assertIncludes(phoneOtpPanel, "value.action === 'verify'", 'Phone OTP verify acknowledgement must include the verify action.');
 assertIncludes(phoneOtpPanel, 'value.challengeId === expectedChallengeId', 'Phone OTP verify acknowledgement must echo the current challenge id.');
 assert(!phoneOtpPanel.includes('response.json().catch(() => ({})'), 'Phone OTP panel must not silently swallow start/verify response parse failures.');

@@ -4,7 +4,7 @@
  * Resolves incoming requests to the correct tenant based on:
  * 1. Product website domain (e.g., answerlattice.com or campaigncue.ai → product website)
  * 2. Custom domain (e.g., joespizza.com → client menu)
- * 3. Subdomain (e.g., joespizza.menulist.ai → client menu)
+ * 3. Subdomain (e.g., joespizza.menulist.online → client menu)
  * 4. Platform domain (e.g., menulist.ai → MenuList website)
  *
  * @see src/constants/urls.ts — Single source of truth for all platform URLs
@@ -17,8 +17,7 @@ import {
 } from "@constant/productDomains";
 import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
 import {
-    PLATFORM_DOMAIN,
-    PLATFORM_DOMAIN_ALIASES,
+    MENULIST_TENANT_BASE_DOMAINS,
     PLATFORM_DOMAINS,
     RESERVED_SUBDOMAINS,
 } from "@constant/urls";
@@ -31,7 +30,7 @@ export type DomainType = 'platform' | 'product' | 'subdomain' | 'custom' | 'loca
 export interface ResolvedDomain {
     type: DomainType;
     hostname: string;
-    subdomain?: string;        // e.g., "joespizza" from joespizza.menulist.ai
+    subdomain?: string;        // e.g., "joespizza" from joespizza.menulist.online
     customDomain?: string;     // e.g., "joespizza.com"
     productSite?: ProductDomainConfig; // e.g., answerlattice.com → Answerlattice config
     isPlatform: boolean;
@@ -159,11 +158,12 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
         };
     }
 
-    // Check if it's a subdomain of any supported platform base domain
-    // (production + aliases like menulist.online).
+    // Check if it's a customer subdomain of any supported tenant base domain.
+    // Production tenant links live under menulist.online, while QA tenant links
+    // live under qa.menulist.digital.
     const platformBaseDomains = Array.from(
         new Set(
-            [PLATFORM_DOMAIN, ...PLATFORM_DOMAIN_ALIASES]
+            MENULIST_TENANT_BASE_DOMAINS
                 .map((domain) => domain.replace(/^www\./, ''))
                 .filter(Boolean)
         )

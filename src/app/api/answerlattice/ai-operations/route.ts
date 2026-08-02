@@ -8,14 +8,9 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import {
-    AI_OPERATION_DATE_FILTER_MAX_LENGTH,
-    isAiOperationHistoryCursorAdmissible,
-    isValidAiOperationCursorId,
-    normalizeAiOperationHistoryDateRange,
-} from '@lib/ai/operationHistoryQuery';
+import { AI_OPERATION_DATE_FILTER_MAX_LENGTH, isAiOperationHistoryCursorAdmissible, isValidAiOperationCursorId, normalizeAiOperationHistoryDateRange, } from '@lib/ai/operationHistoryQuery';
 import { projectAiOperationHistoryFields } from '@lib/ai/operationHistoryProjection';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -122,7 +117,7 @@ async function getCursorDoc(
 ) {
     if (!cursorId) return null;
 
-    const cursorDoc = await answerlatticeFirestoreAdmin
+    const cursorDoc = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
         .doc(String(tenantId))
         .collection(String(storeId))
@@ -287,7 +282,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             return privateJson({ error: 'Invalid date filter' }, { status: 400 });
         }
 
-        let query: FirebaseFirestore.Query = answerlatticeFirestoreAdmin
+        let query: FirebaseFirestore.Query = requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
             .doc(String(tenantId))
             .collection(String(storeId))

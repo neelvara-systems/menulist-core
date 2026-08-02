@@ -7,7 +7,6 @@
 
 import { Card, Typography, Tooltip } from 'antd';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
 
 const { Title, Text } = Typography;
 
@@ -15,10 +14,10 @@ const { Title, Text } = Typography;
 // TYPES
 // ================================================================
 
-interface HourData {
+export interface HourData {
   hour: number;
   count: number;
-  intensity: number; // 0-100
+  intensity?: number;
 }
 
 interface PeakHoursHeatmapProps {
@@ -26,6 +25,25 @@ interface PeakHoursHeatmapProps {
   title?: string;
   subtitle?: string;
 }
+
+export interface NormalizedHourData extends HourData {
+  intensity: number;
+}
+
+export const normalizePeakHoursData = (data: HourData[]): NormalizedHourData[] => {
+  const counts = new Array<number>(24).fill(0);
+  data.forEach((item) => {
+    if (!Number.isInteger(item?.hour) || item.hour < 0 || item.hour > 23) return;
+    if (!Number.isFinite(item.count) || item.count < 0) return;
+    counts[item.hour] += item.count;
+  });
+  const peakCount = Math.max(0, ...counts);
+  return counts.map((count, hour) => ({
+    hour,
+    count,
+    intensity: peakCount > 0 ? (count / peakCount) * 100 : 0,
+  }));
+};
 
 // ================================================================
 // COMPONENT
@@ -36,11 +54,10 @@ export function PeakHoursHeatmap({
   title = 'Peak Activity Hours',
   subtitle = '24-hour activity distribution',
 }: PeakHoursHeatmapProps) {
-  const maxCount = useMemo(() => Math.max(...data.map(d => d.count)), [data]);
-  const peakHour = useMemo(() => 
-    data.reduce((prev, current) => (current.count > prev.count ? current : prev)),
-    [data]
-  );
+  const normalizedData = normalizePeakHoursData(data);
+  const peakHour = normalizedData.reduce((prev, current) => (
+    current.count > prev.count ? current : prev
+  ));
 
   return (
     <Card
@@ -66,7 +83,7 @@ export function PeakHoursHeatmap({
             marginBottom: 24,
           }}
         >
-          {data.map((hourData, index) => (
+          {normalizedData.map((hourData, index) => (
             <motion.div
               key={hourData.hour}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -174,12 +191,12 @@ export function PeakHoursHeatmap({
             </li>
             <li>
               <Text>
-                Busiest period: {getBusiestPeriod(data)}
+                Busiest period: {getBusiestPeriod(normalizedData)}
               </Text>
             </li>
             <li>
               <Text>
-                Quietest period: {getQuietestPeriod(data)}
+                Quietest period: {getQuietestPeriod(normalizedData)}
               </Text>
             </li>
           </ul>

@@ -4,6 +4,16 @@
 **Created:** June 23, 2026
 **Last Updated:** July 22, 2026
 
+## Action Admission and Error Boundary - August 1, 2026
+
+- The complete action route and shared API guard were re-read.
+- Exact Zod output typing, exhaustive permission/mobile/server action mapping,
+  limiter-outage metadata separation, retryable provider status and
+  blocked-mobile audit failure containment are source-gated.
+- The complete SignalDesk verifier passes 4,164 checks; exact TypeScript and
+  focused ESLint pass.
+- No rules, indexes, Functions, provider calls or deployment were changed.
+
 ## Daily Activation Operator Loop - July 22, 2026
 
 - Verified Today consumes the existing ranked mission and live bounded summaries, removes resolved reply/approval work, deduplicates by target, caps the queue at five, and keeps discovery secondary.

@@ -62,9 +62,9 @@ assert.deepEqual(normalizeMessagingHealthSessionSample({
 assert.deepEqual(normalizeMessagingHealthSessionSample({
   processingRuns: 1,
   publishedResult: {
-    dashboardUrl: 'https://menulist.ai/signin',
+    dashboardUrl: 'https://app.menulist.ai/signin',
     projectId: '1-default-1',
-    publicUrl: 'https://example.menulist.ai',
+    publicUrl: 'https://example.menulist.online',
     storeId: 1,
     tenantId: 1,
     userId: 'owner-1',

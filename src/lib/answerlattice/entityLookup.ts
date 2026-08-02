@@ -1,15 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    answerlatticeAdminApp,
-    answerlatticeFirestoreAdmin,
-} from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeAdminApp, answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
-import {
-    parseAnswerlatticeRetrievalEntity,
-    parseAnswerlatticeRetrievalSearchIndex,
-} from './retrievalContracts';
+import { parseAnswerlatticeRetrievalEntity, parseAnswerlatticeRetrievalSearchIndex, } from './retrievalContracts';
 import { answerlatticeTokenize } from './tokenizer';
 import type { AnswerlatticeEntity, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 
@@ -90,7 +84,7 @@ const getEntityDocsById = async (
     if (!normalizedEntityIds.length) return new Map();
 
     const docs = await Promise.all(
-        normalizedEntityIds.map(entityId => db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get()),
+        normalizedEntityIds.map(entityId => requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get()),
     );
     const entities = new Map<string, AnswerlatticeEntity>();
 
@@ -125,7 +119,7 @@ export async function searchAnswerlatticeEntityLookupOptions(
     if (queryTokens.length === 0) return [];
 
     const db = getAnswerlatticeAdminDb();
-    const indexRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX);
+    const indexRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX);
     const prefixSnapshot = await indexRef
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)

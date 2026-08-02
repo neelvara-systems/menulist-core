@@ -19,7 +19,7 @@ Your MenuList account comes with an official business link — a clean page show
 - Your business info (name, phone, address) entered in Business Settings
 
 ### Your Official Link
-Your link is: **yourbusiness.menulist.ai**
+Your link is: **yourbusiness.menulist.online**
 
 Find it in your dashboard under Business Settings → Official Page.
 

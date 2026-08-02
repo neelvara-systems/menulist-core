@@ -1,12 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 
-import {
-    AnswerlatticeCacheSource,
-    getAnswerlatticeCacheVersionDocId,
-    normalizeCacheVersion,
-} from './cacheVersionManifest';
+import { AnswerlatticeCacheSource, getAnswerlatticeCacheVersionDocId, normalizeCacheVersion, } from './cacheVersionManifest';
 
 export const getAnswerlatticeCacheVersionServer = async (
     source: AnswerlatticeCacheSource,
@@ -19,7 +15,7 @@ export const getAnswerlatticeCacheVersionServer = async (
         return undefined;
     }
 
-    const doc = await firestoreAdmin
+    const doc = await requireAnswerlatticeFirestoreAdmin()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
         .doc(getAnswerlatticeCacheVersionDocId(source, tenantId, storeId))
         .get();

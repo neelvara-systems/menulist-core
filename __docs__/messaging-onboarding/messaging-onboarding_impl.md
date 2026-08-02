@@ -500,7 +500,7 @@ Each provider download uses an attempt-unique Storage object. Session-create and
     storeId: number;
     projectId: string;
     userId: string;
-    publicUrl: string; // e.g., spice-garden.menulist.ai
+    publicUrl: string; // e.g., spice-garden.menulist.online
     dashboardUrl: string; // e.g., menulist.ai/login
   } | null;
 
@@ -1465,7 +1465,7 @@ Do not use dummy WhatsApp secrets. Missing real provider credentials are an oper
 
 | Variable                           | Purpose                    | Where  |
 | ---------------------------------- | -------------------------- | ------ |
-| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Required base URL for preview pages. Dev/staging uses `https://menulist.online`; production must set the production preview host explicitly. | Function runtime env |
+| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Required base URL for preview pages. Dev/staging uses `https://qa.menulist.digital`; production uses `https://menulist.ai` unless a later approved preview host changes it. | Function runtime env |
 
 ---
 

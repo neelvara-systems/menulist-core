@@ -131,8 +131,8 @@ ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage
 
 | Requirement | Status | Evidence |
 |------------|--------|----------|
-| Restaurant canonical URL | ✅ DONE | `{subdomain}.menulist.ai` — stable subdomain per business |
-| Menu canonical URL | ✅ DONE | `{subdomain}.menulist.ai/menu` — dedicated menu endpoint |
+| Restaurant canonical URL | ✅ DONE | `{subdomain}.menulist.online` — stable subdomain per business |
+| Menu canonical URL | ✅ DONE | `{subdomain}.menulist.online/menu` — dedicated menu endpoint |
 | Custom domains | ✅ DONE | `{custom-domain}/menu` — custom domain support |
 | URL slug policy | ✅ DONE | `project.slug` — permanent, lowercase, hyphen-separated |
 | Slug permanence | ✅ DONE | `previousSlugs[]` (max 5) — 301 redirect chain |
@@ -157,7 +157,7 @@ ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage
 | Requirement | Status | Evidence |
 |------------|--------|----------|
 | Stable entity identity | ✅ DONE | storeId, projectId, item IDs — all permanent |
-| Public entity URL | ✅ DONE | `{subdomain}.menulist.ai` — canonical business URL |
+| Public entity URL | ✅ DONE | `{subdomain}.menulist.online` — canonical business URL |
 | sameAs (social links) | ✅ DONE | `buildSameAs()` — Instagram, Facebook, website |
 | GBP integration | ⚠️ FOUNDATION ONLY | `ENABLE_GBP_SYNC: false`; token DAL still throws until API access is approved |
 | Entity attributes | ✅ DONE | 60+ store fields, businessAttributes, priceRange, geo |

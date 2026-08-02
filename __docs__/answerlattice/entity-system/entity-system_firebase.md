@@ -81,7 +81,7 @@ When ontology is enabled, article create and content, title, or category updates
 | Entity extraction | EXTERNAL | 1 model call |
 | AI accounting | WRITE | Existing accounting operation writes |
 | Revalidate source and matched entities | READ | 1 article point read plus one point read per matched entity inside the final transaction |
-| New entity candidates | READ+WRITE | Bounded governed upserts after source revalidation; failures remain review-work failures, not article truth |
+| New entity candidates | READ+WRITE | Bounded governed upserts after source revalidation; deterministic IDs preserve the existing ASCII identity contract and keep Unicode letters/numbers distinct, while failures remain review-work failures rather than article truth |
 | Persist confirmed article `entityIds` | WRITE | 0-1 article writes with at most 10 normalized active entity IDs; a confirmed empty match may clear stale links |
 | Invalidate KB cache/context versions | WRITE | Cache-version, source-version, and bundle-stale writes in the same transaction only when links changed |
 

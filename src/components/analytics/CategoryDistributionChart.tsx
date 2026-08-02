@@ -7,7 +7,7 @@
 
 import { Card, Typography } from 'antd';
 import { motion } from 'framer-motion';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, type PieLabelRenderProps } from 'recharts';
 
 const { Title, Text } = Typography;
 
@@ -15,11 +15,15 @@ const { Title, Text } = Typography;
 // TYPES
 // ================================================================
 
-interface CategoryData {
+export interface CategoryData {
   name: string;
   count: number;
+  percentage?: number;
+  [key: string]: string | number | undefined;
+}
+
+export interface NormalizedCategoryData extends CategoryData {
   percentage: number;
-  [key: string]: string | number; // Index signature for recharts compatibility
 }
 
 interface CategoryDistributionChartProps {
@@ -45,6 +49,27 @@ const COLORS = [
   '#fa8c16', // Orange variant
 ];
 
+export const normalizeCategoryDistribution = (data: CategoryData[]): NormalizedCategoryData[] => {
+  const countsByName = new Map<string, number>();
+  data.forEach((item) => {
+    const name = typeof item?.name === 'string' ? item.name.trim() : '';
+    const count = Number(item?.count);
+    if (!name || !Number.isFinite(count) || count < 0) return;
+    countsByName.set(name, (countsByName.get(name) ?? 0) + count);
+  });
+  const total = Array.from(countsByName.values()).reduce((sum, count) => sum + count, 0);
+  return Array.from(countsByName, ([name, count]) => ({
+    name,
+    count,
+    percentage: total > 0 ? (count / total) * 100 : 0,
+  }));
+};
+
+const toFiniteChartNumber = (value: unknown): number | null => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
 // ================================================================
 // COMPONENT
 // ================================================================
@@ -56,17 +81,21 @@ export function CategoryDistributionChart({
   height = 300,
   chartType = 'donut',
 }: CategoryDistributionChartProps) {
-  const total = data.reduce((sum, item) => sum + item.count, 0);
+  const normalizedData = normalizeCategoryDistribution(data);
+  const total = normalizedData.reduce((sum, item) => sum + item.count, 0);
 
   // Custom label renderer
-  const renderCustomLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-  }: any) => {
+  const renderCustomLabel = (props: PieLabelRenderProps) => {
+    const cx = toFiniteChartNumber(props.cx);
+    const cy = toFiniteChartNumber(props.cy);
+    const midAngle = toFiniteChartNumber(props.midAngle);
+    const innerRadius = toFiniteChartNumber(props.innerRadius);
+    const outerRadius = toFiniteChartNumber(props.outerRadius);
+    const percent = toFiniteChartNumber(props.percent);
+    if (
+      cx === null || cy === null || midAngle === null
+      || innerRadius === null || outerRadius === null || percent === null
+    ) return null;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
     const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
@@ -109,7 +138,7 @@ export function CategoryDistributionChart({
         <ResponsiveContainer width="100%" height={height}>
           <PieChart>
             <Pie
-              data={data}
+              data={normalizedData}
               cx="50%"
               cy="50%"
               labelLine={false}
@@ -121,7 +150,7 @@ export function CategoryDistributionChart({
               animationBegin={0}
               animationDuration={800}
             >
-              {data.map((entry, index) => (
+              {normalizedData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
@@ -139,18 +168,18 @@ export function CategoryDistributionChart({
                 borderRadius: 4,
                 padding: 12,
               }}
-              formatter={(value: any, name: string, props: any) => [
-                `${value.toLocaleString()} (${props.payload.percentage.toFixed(1)}%)`,
-                name,
+              formatter={(value, name, props) => [
+                `${Number(value).toLocaleString()} (${Number(props.payload.percentage).toFixed(1)}%)`,
+                String(name),
               ]}
             />
             <Legend
               verticalAlign="bottom"
               height={36}
               iconType="circle"
-              formatter={(value, entry: any) => (
+              formatter={(value) => (
                 <span style={{ fontSize: 13, color: '#595959' }}>
-                  {value} ({entry.payload.percentage.toFixed(1)}%)
+                  {value} ({(normalizedData.find((item) => item.name === String(value))?.percentage ?? 0).toFixed(1)}%)
                 </span>
               )}
             />
@@ -163,7 +192,7 @@ export function CategoryDistributionChart({
             Top Categories:
           </Text>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.slice(0, 5).map((category, index) => (
+            {normalizedData.slice(0, 5).map((category, index) => (
               <motion.div
                 key={category.name}
                 initial={{ opacity: 0, x: -20 }}

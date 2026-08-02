@@ -12,7 +12,7 @@ import {
     getAnswerlatticeSourceVersionsDocId,
     isAnswerlatticeContextBundleManifestForScope,
 } from '../../src/lib/answerlattice/compiledContext';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 
 const access: AnswerlatticeAccessContext = {
     canUseManagement: true,
@@ -24,6 +24,7 @@ const access: AnswerlatticeAccessContext = {
     storeName: 'Example',
     user: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
 };
+const db = requireAnswerlatticeFirestoreAdmin();
 
 const entityInput = (slug: string, name = slug) => ({
     type: 'feature' as const,
@@ -41,7 +42,6 @@ const slugIndexId = (slug: string) => `entity_slug_${sha(`1:101:${slug}`).slice(
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db) throw new Error('Answerlattice Firestore Admin is required');
     for (const collection of [
         'answerlattice_entities', 'answerlattice_entitySlugIndex', 'answerlattice_entityRelations',
         'answerlattice_entitySearchIndex', 'answerlattice_entityCandidates', 'answerlattice_canonicalAnswers',
@@ -252,6 +252,33 @@ async function run(): Promise<void> {
     assert.equal(candidateReplay.created, false);
     const candidateDoc = (await db.collection('answerlattice_entityCandidates').doc(candidateCreate.candidateId).get()).data();
     assert.equal(candidateDoc?.frequency?.articles, 1, 'reprocessing the same article must not inflate frequency');
+    const arabicCandidateOne = await upsertAnswerlatticeExtractedEntityCandidate({
+        scope: { tId: 1, sId: 101 },
+        actorLabel: 'system:test',
+        candidate: {
+            ...candidate,
+            name: 'سجل الإصدارات',
+            description: 'يمثل سجل إصدارات المنتج.',
+        },
+        sourceArticleId: 'article-1',
+    });
+    const arabicCandidateTwo = await upsertAnswerlatticeExtractedEntityCandidate({
+        scope: { tId: 1, sId: 101 },
+        actorLabel: 'system:test',
+        candidate: {
+            ...candidate,
+            name: 'إدارة الفواتير',
+            description: 'تمثل عملية إدارة فواتير المنتج.',
+        },
+        sourceArticleId: 'article-1',
+    });
+    assert.notEqual(
+        arabicCandidateOne.candidateId,
+        arabicCandidateTwo.candidateId,
+        'distinct non-Latin candidate names must not collapse to one deterministic ID',
+    );
+    assert.equal((await db.collection('answerlattice_entityCandidates').doc(arabicCandidateOne.candidateId).get()).exists, true);
+    assert.equal((await db.collection('answerlattice_entityCandidates').doc(arabicCandidateTwo.candidateId).get()).exists, true);
     const promoted = await executeAnswerlatticeOntologyAction({
         action: 'promote_candidate', requestId: 'ontology_promote_1', candidateId: candidateCreate.candidateId,
     }, access);

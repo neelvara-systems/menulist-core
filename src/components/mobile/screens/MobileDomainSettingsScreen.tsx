@@ -1,9 +1,10 @@
 'use client'
 
-import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
+import { getMenuUrl, MENULIST_TENANT_BASE_DOMAIN, normalizeBaseUrl } from '@constant/urls';
 import { assertStoreUpdateSucceeded, checkCustomDomainAvailability, updateStore } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -674,10 +675,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
         if (!activeDomain) return;
         const domainUrl = normalizeBaseUrl(activeDomain);
         try {
-            const opened = window.open(domainUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_domain_settings_domain_open_blocked');
-            }
+            openIsolatedBrowserUrl(domainUrl);
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_domain_open_failed', error, {
                 ...buildMobileDomainSettingsLogContext('open_active_domain'),
@@ -779,7 +777,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                     />
                                 ) : null}
                                 <AntInput
-                                    addonAfter={`.${PLATFORM_DOMAIN}`}
+                                    addonAfter={`.${MENULIST_TENANT_BASE_DOMAIN}`}
                                     onChange={(event) => {
                                         setSubdomainValue(event.target.value.toLowerCase().trim());
                                         setAvailability(null);

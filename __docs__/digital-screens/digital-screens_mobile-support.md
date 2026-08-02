@@ -1,6 +1,6 @@
 # Digital Screens — Mobile Support
 
-**Last Updated:** July 29, 2026 (v6 — private control permission boundary, truthful health, safe artwork preview, and lifecycle parity)
+**Last Updated:** August 1, 2026 (v7 — private control permission boundary, per-mode exact-version health, status refresh, safe artwork preview, and lifecycle parity)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can set up and manage TV screens from phone
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated mobile support and desktop/mobile parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
@@ -24,7 +24,8 @@
 | --------------------------------- | ----------------------------------- | ------ |
 | Get Menu Board URL                | `MobileDigitalScreensScreen`        | ✅     |
 | Get Highlights URL                | `MobileDigitalScreensScreen`        | ✅     |
-| TV last-seen status               | `MobileDigitalScreensScreen`        | ✅     |
+| Per-mode latest-version status    | `MobileDigitalScreensScreen`        | ✅ independent Menu Board / Highlights receipts |
+| Refresh TV status                 | `MobileDigitalScreensScreen`        | ✅ owner-triggered authenticated read |
 | Compact URL cards                 | `MobileDigitalScreensScreen`        | ✅     |
 | Copy URLs to clipboard            | `MobileDigitalScreensScreen`        | ✅ bounded clipboard diagnostics |
 | Preview screen (opens in browser) | `MobileDigitalScreensScreen`        | ✅ bounded blocked-open diagnostics |
@@ -47,7 +48,8 @@
 - Same `FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED` gate
 - Same `canManageDigitalScreens` permission boundary; Mobile More, Share, the Digital Screens screen itself, and mobile Menu Manager do not load or reveal bearer screen links without it, and access removal invalidates an in-flight settings load
 - Same `DIGITAL_SCREENS_MAX_UPLOADS` and `DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS` values; mobile no longer carries independent `3` / `14` constants
-- Shows the same `Link ready` / `Seen recently` / `Check TV` health projection from `screenLastSeenAt`; it does not label a daily signal as a live connection
+- Shows `Waiting for TV` / `Latest update seen` / `Update not seen` / `Check TV` separately for Menu Board and Highlights using that mode's canonical-version `screenSeenByMode` receipt; opening one link never marks the other link healthy and no receipt is labelled a live connection
+- The refresh icon performs one owner-triggered authenticated state read. It does not poll, create a device dashboard, or add a background mobile cost.
 - The shared image-adjust preview shows the Digital Screen safe area and reserved QR/attribution regions before upload
 - Records the same `screenOverride` owner-control signal as desktop while still requiring the mutation acknowledgement before changing local UI state
 - `getScreenState()` returns active custom slides only, and the next shared mutation prunes expired Firestore references so old slides cannot permanently consume mobile upload capacity

@@ -2,6 +2,7 @@
 
 **Source reviewed:** `/Users/danny/.codex/attachments/30e2c59c-5600-4a99-82ca-aafb51cbded3/pasted-text.txt`
 **Important caveat:** The attachment includes the opening product/MVP concept, then detailed Points 26-29. It references Points 1-25 as already covered, but the detailed standalone text for Points 17-25 is not present in the file. This audit maps all visible concept/module references and the detailed Points 26-29.
+**Video capability caveat:** This document proves coverage of the earlier product-concept material; it is not evidence that the later July 13 Topview-derived in-house video capability decision is complete. The current verdict for that decision lives in [Video Reel Studio validation](./video-reel-studio/video-reel-studio_validation.md).
 
 ## Explicit 29-Point Checklist
 
@@ -18,7 +19,7 @@
 | 9 | Opportunity Engine | [opportunity-engine](./opportunity-engine/README.md) | Covered with source, readiness, calendar, asset, and analytics cues. |
 | 10 | Campaign Studio | [campaign-studio](./campaign-studio/README.md) | Covered with goal-first campaign pack creation. |
 | 11 | Creative Studio | [creative-studio](./creative-studio/README.md) | Covered with static creative, variants, exports, and trust handoff. |
-| 12 | Video/Reel Studio | [video-reel-studio](./video-reel-studio/README.md) | Covered with brief mode, rendered mode, manual shoot fallback, and credit controls. |
+| 12 | Video/Reel Studio | [video-reel-studio](./video-reel-studio/README.md) | Covered for the current deterministic browser-composition runtime. Later Topview-derived capability parity remains partial; see the feature validation record. |
 | 13 | UGC Script Studio | [ugc-script-studio](./ugc-script-studio/README.md) | Covered with scripts, creator briefs, disclosure, and fake-testimonial guardrails. |
 | 14 | WhatsApp Sales Studio | [whatsapp-sales-studio](./whatsapp-sales-studio/README.md) | Covered with consent, opt-out, manual export, template/direct-send separation. |
 | 15 | Google/Local Search Studio | [google-local-studio](./google-local-studio/README.md) | Covered as Google Local Studio with local posts, manual export, and no ranking claims. |
@@ -88,9 +89,9 @@
 | Separate product, not MenuList | Product id, docs, routes, public shell, app shell, CampaignCue Firebase config/rules/index/storage files, and product-domain entries exist. MenuList store profile is read-only source bootstrap only. | Aligned. |
 | Business data should drive output | Business Brain is created from signed-in store/session source and owner inputs; campaign packs use Business Brain source references. | Aligned for current runtime. |
 | Marketing banner/static creative creator | Current runtime produces creative briefs and channel copy inside campaign packs. It does not render PNG/JPG banners or template images yet. | Covered as architecture and manual brief runtime; rendered asset generation intentionally inactive. |
-| UGC/video creator | Current runtime produces creator-safe UGC scripts, dialogue/action beat sheets, product-placement notes, camera plans, B-roll checklists, and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
+| UGC/video creator | Current runtime produces creator-safe UGC scripts, dialogue/action beat sheets, product-placement notes, camera plans, B-roll checklists, and reel briefs. Video Reel Studio now creates approved text/image motion with burned-in captions and optional owner audio through the local browser compositor, using native MP4 where supported and WebM otherwise. It does not create avatars, synthetic customers, AI voice cloning, or provider-rendered footage. | Covered for the earlier product-concept brief and current deterministic composition scope. Partial against the later Topview-derived decision because durable media intake, fuller scene regeneration, separate voiceover/music, collaborative video review, durable render lifecycle depth, version-specific consent history, and video-specific result reuse are incomplete. |
 | Campaign pack generator | Campaign creation produces source-backed multi-channel packs for WhatsApp, Google local, creative, video, UGC, ads, and calendar. | Aligned. |
-| Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, register assets, and open supported assets in the shared Creative Editor. Design Cue provides deterministic editor patches, and CueLayers supports flat-safe uploaded image editing. Video subtitle/MP4 rendering remains inactive. | Aligned to export/download-first decision. |
+| Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, register assets, and open supported assets in the shared Creative Editor. Design Cue provides deterministic editor patches, CueLayers supports flat-safe uploaded image editing, and Video Reel Studio burns project captions into locally rendered MP4 when supported or WebM otherwise. | Aligned to export/download-first decision. |
 | Data advantage over generic tools | Runtime avoids blank-prompt flow by deriving opportunities and outputs from Business Brain/readiness. | Aligned. |
 | Local-business categories | Business Brain and Daily Campaign Desk support restaurant, salon, retail, local service, fitness, clinic, multi-location, agency client, and generic local-business paths. | Aligned for current vertical recipe runtime. |
 | Local-language variants | Business Brain stores locale/preferred language, and Campaign Pack ZIPs now include a deterministic language handoff note with protected facts for manual translation. Generated translation variants are not active until translation/model providers and fact-safety fixtures exist. | Aligned as a safe handoff boundary. |
@@ -100,14 +101,14 @@
 | API boundaries | Protected CampaignCue APIs exist with auth, tenant/store scope, validation, rate limits, idempotency, safe Firebase-unavailable error, direct bounded reads, and no direct provider APIs. | Aligned. |
 | UX flows | Workspace has screens for the expected owner areas and mobile-responsive shell behavior; inactive provider/billing/rendering flows show manual/setup posture. | Aligned to current runtime. |
 | Success metrics | Analytics summary records observed campaign counts, exports, approvals, fallback, and used actions. Provider metrics and business outcomes are not imported. | Aligned to confidence-labeled measurement decision. |
-| Risks and guardrails | Provider mutation, billing, direct send, ad spend, rendered video, and MenuList write-back remain blocked by flags and server posture. | Aligned. |
+| Risks and guardrails | Provider mutation, billing, direct send, ad spend, external/cloud video rendering, synthetic likenesses, and MenuList write-back remain blocked by flags and server posture. Local video rendering is approval-gated and download-only. | Aligned. |
 
-## Not Active By Design
+## Not Active In The Current Runtime
 
-These items are present as product architecture or docs contracts but are not active in the current codebase because our validated decision was a safe export/download-first runtime:
+These items are present as product architecture or docs contracts but are not active in the current codebase. Export/download-only is still the delivery boundary, but it does not by itself make every inactive production capability an intentional rejection. The dedicated video validation record separates accepted-but-partial capabilities from true non-goals:
 
 - Provider-rendered PNG/JPG banner generation and automated visual template generation.
-- MP4 video assembly, avatar generation, AI voiceover, and automatic subtitles.
+- Foundational generative-video footage, avatar generation, AI voice cloning, speech-to-text caption generation, and provider/cloud rendering.
 - Direct WhatsApp send, Google publish, Meta/Google ad mutation, and provider webhooks.
 - Credit reservation/capture/refund and billing checkout.
 - 30-day asset generation with paid provider fanout.
@@ -128,6 +129,6 @@ After the initial ChatGPT product conversation, CampaignCue was tightened from "
 | The editor is secondary and shared. | [../shared-creative-editor](../shared-creative-editor/README.md), [design-cue](./design-cue/README.md), [cue-layers](./cue-layers/README.md) | Aligned: CampaignCue uses the shared editor through adapters; Design Cue and CueLayers do not create a second editor runtime. |
 | The public site must explain the full pack scope. | [campaigncue-product_website.md](./campaigncue-product/campaigncue-product_website.md), `src/app/sites/campaigncue/page.tsx` | Aligned: the homepage now names print/staff and email/SMS/QR handoff outputs in addition to WhatsApp, Google, social, video, UGC, and ads. |
 
-## No Missed Critical Conceptual Items Found
+## Coverage Conclusion
 
-The visible ChatGPT conversation items are represented in the CampaignCue docs package and the current implementation boundary. The remaining differences are deliberate runtime blocks from the later CampaignCue decisions: provider spend, rendered media, billing, direct send/publish, bulk jobs, and cross-client/location automation require external setup, cost controls, and security gates before activation.
+The visible attachment items are represented in the CampaignCue docs package and current implementation boundary. This does not establish full parity with later decisions. In particular, the July 13 in-house video benchmark has seven partially implemented capability groups recorded in [Video Reel Studio validation](./video-reel-studio/video-reel-studio_validation.md). Provider spend, direct send/publish, synthetic people, cloning, and ad mutation remain intentionally blocked; accepted production capabilities must not be hidden inside that reject list.

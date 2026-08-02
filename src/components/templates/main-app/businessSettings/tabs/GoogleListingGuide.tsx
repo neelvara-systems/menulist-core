@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * GoogleListingGuide — Pre-API bridge for GBP link control
  *
@@ -168,10 +170,7 @@ export default function GoogleListingGuide({
 
     const handleOpenGoogle = () => {
         try {
-            const opened = window.open('https://business.google.com/', '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('google_listing_guide_open_blocked');
-            }
+            openIsolatedBrowserUrl('https://business.google.com/');
         } catch (error) {
             logStoreDataFailure('google_listing_guide_open_failed', error, buildGoogleListingGuideLogContext('open_google_profile', {
                 target: 'google_business_profile',

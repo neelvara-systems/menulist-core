@@ -46,9 +46,9 @@ assert.deepEqual(wrapCanvasText(canvasContext, 'Menu', 100, Number.NaN), []);
 
 const printableInput = {
     assetTypeId: 'entrance_poster' as const,
-    menuUrl: 'https://menulist.ai/client/boundary-cafe',
+    menuUrl: 'https://boundary-cafe.menulist.online/menu',
     outputFormat: 'png' as const,
-    shortLink: 'menulist.ai/client/boundary-cafe',
+    shortLink: 'boundary-cafe.menulist.online/menu',
     storeName: 'Boundary Cafe',
     templateFamilyId: 'modern-calm' as const,
 };
@@ -80,14 +80,14 @@ const normalizedPrintableInput = normalizePrintableAssetRenderInput({
     projectId: '../another-project',
     shortLink: 'stale.example/private',
 });
-assert.equal(normalizedPrintableInput?.shortLink, 'menulist.ai/client/boundary-cafe');
+assert.equal(normalizedPrintableInput?.shortLink, 'boundary-cafe.menulist.online/menu');
 assert.equal(normalizedPrintableInput?.contactName?.length, 240);
 assert.equal(normalizedPrintableInput?.feedbackUrl, undefined);
 assert.equal(normalizedPrintableInput?.logoUrl, undefined);
 assert.equal(normalizedPrintableInput?.projectId, undefined);
 assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, assetTypeId: 'unknown' }), null);
 assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, templateFamilyId: 'unknown' }), null);
-assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, menuUrl: 'http://menulist.ai/menu' }), null);
+assert.equal(normalizePrintableAssetRenderInput({ ...printableInput, menuUrl: 'http://demo.menulist.online/menu' }), null);
 assert.throws(
     () => admitPrintableAssetEditorDocument({
         ...printableDocument,

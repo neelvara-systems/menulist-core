@@ -28,6 +28,7 @@ export const CAMPAIGNCUE_COLLECTIONS = {
     CUE_LAYER_QUALITY_REPORTS: "cueLayerQualityReports",
     CUE_LAYER_COST_RECORDS: "cueLayerCostRecords",
     CUE_LAYER_REVIEW_SAMPLES: "cueLayerReviewSamples",
+    VIDEO_PROJECTS: "videoProjects",
 } as const;
 
 export const CAMPAIGNCUE_DASHBOARD_SUMMARY_ID = "dashboard";

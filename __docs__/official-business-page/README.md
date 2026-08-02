@@ -38,7 +38,7 @@ Businesses share fragmented links (PDF, Zomato, Instagram, Google Drive) when cu
 
 ## Solution
 
-MenuList auto-generates an Official Business Page at the business's subdomain root (`joespizza.menulist.ai`). It shows business identity, live open/closed status, and a primary "View Menu" CTA that opens the existing digital menu. Store data changes refresh through the same public cache path used by the menu, with the current cache window documented as 60 seconds.
+MenuList auto-generates an Official Business Page at the business's subdomain root (`joespizza.menulist.online`). It shows business identity, live open/closed status, and a primary "View Menu" CTA that opens the existing digital menu. Store data changes refresh through the same public cache path used by the menu, with the current cache window documented as 60 seconds.
 
 Owner editing is partitioned by exact tenant/store scope. Desktop and MobileShell discard Official Page drafts when that scope changes; an admitted save cannot settle optimistic state, rollback, success copy, or cleanup state into another selected store. Media cleanup defers while a store save is in flight so a newly uploaded cover/gallery object cannot be deleted immediately before its URL is committed. If an upload finishes after its editor has become obsolete, the unreferenced object is removed instead of being attached to the next store or left as an abandoned draft.
 
@@ -54,9 +54,9 @@ Layer 1: Official Business Page (identity)     ← NEW
        └── Layer 2: Digital Menu (consumption)  ← EXISTING (unchanged)
 
 Routing:
-  joespizza.menulist.ai/           → OBP (when ENABLE_OBP = true)
-  joespizza.menulist.ai/menu       → Digital Menu (default project)
-  joespizza.menulist.ai/{slug}     → Specific project menu
+  joespizza.menulist.online/           → OBP (when ENABLE_OBP = true)
+  joespizza.menulist.online/menu       → Digital Menu (default project)
+  joespizza.menulist.online/{slug}     → Specific project menu
   joespizza.com/                   → OBP (custom domain, same behavior)
 
 Data Source:

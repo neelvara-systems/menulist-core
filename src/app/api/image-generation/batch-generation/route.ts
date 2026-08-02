@@ -36,8 +36,6 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import {
     type BatchImageAccountingInput,
     BatchImageGenerationJobType,
-    GenerateImageViaApiPayloadBatchType,
-    GenerateImageViaApiPayloadItemDetailsType,
 } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
@@ -45,7 +43,10 @@ import { timingSafeEqual } from "crypto";
 import { AI_MODEL_TYPE, GeneratedImagePayload, IMAGE_AI_MODELS, runImageGenerationPrompts } from "../generators";
 import { getImagePrompts } from "../prompt";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { BatchImageGenerationWorkerRequestSchema } from "@lib/validation/apiSchemas";
+import {
+    type BatchImageGenerationWorkerRequest,
+    BatchImageGenerationWorkerRequestSchema,
+} from "@lib/validation/apiSchemas";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 import { storageAdmin } from '@lib/firebase/firebaseAdmin';
 
@@ -73,7 +74,11 @@ class NonRetryableBatchImageError extends Error {
 
 type BatchWorkerLogContext = Record<string, boolean | number | string | null | undefined>;
 
-function summarizeBatchItem(item: GenerateImageViaApiPayloadItemDetailsType) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function summarizeBatchItem(item: BatchImageGenerationWorkerRequest['itemDetails']) {
     return {
         attributeCount: item.attributes?.length || 0,
         hasDescription: Boolean(item.description),
@@ -120,7 +125,8 @@ function summarizeUploadedGeneratedImages(images: Array<{ mimeType: string; uplo
     }));
 }
 
-function summarizeBatchGenerationConfig(config: Record<string, any> | undefined | null) {
+function summarizeBatchGenerationConfig(config: Record<string, unknown> | undefined | null) {
+    const referenceImage = isRecord(config?.referanceImage) ? config.referanceImage : null;
     return {
         aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
         colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
@@ -130,7 +136,7 @@ function summarizeBatchGenerationConfig(config: Record<string, any> | undefined 
         hasForegroundColor: Boolean(config?.foregroundColor),
         hasNegativePrompt: Boolean(config?.negativePrompt),
         hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
-        hasReferenceImage: Boolean(config?.referanceImage?.url),
+        hasReferenceImage: typeof referenceImage?.url === 'string' && referenceImage.url.length > 0,
         isMultiMode: Boolean(config?.isMultiMode),
         lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
         moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
@@ -296,24 +302,26 @@ export async function POST(request: Request) {
     const bodyResult = await readBoundedJsonBody(request, BATCH_IMAGE_WORKER_MAX_BODY_BYTES);
     if (bodyResult.ok === false) return bodyResult.response;
 
-    const rawData = bodyResult.data as any;
+    const rawData = bodyResult.data;
+    const rawRecord = isRecord(rawData) ? rawData : null;
+    const rawItemDetails = isRecord(rawRecord?.itemDetails) ? rawRecord.itemDetails : null;
     const validation = validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData);
     if (!validation.success) {
         const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
         await writeMissingParamsLogEntry(LOG_FILE, userIdForLog, undefined, undefined, {
             error: errorMsg,
             attemptedData: getBatchWorkerLogContext({
-                itemId: rawData?.itemDetails?.id,
-                itemName: rawData?.itemDetails?.name,
-                jobId: rawData?.jobId,
-                projectId: rawData?.projectId,
+                itemId: rawItemDetails?.id,
+                itemName: rawItemDetails?.name,
+                jobId: rawRecord?.jobId,
+                projectId: rawRecord?.projectId,
             }),
-            hasGenerationConfig: !!rawData?.generationConfig,
+            hasGenerationConfig: isRecord(rawRecord?.generationConfig),
         });
         return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
     }
 
-    const { generationConfig, projectId: requestedProjectId, itemDetails, businessType, jobId: requestedJobId } = validation.data as unknown as GenerateImageViaApiPayloadBatchType & { itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string } };
+    const { generationConfig, projectId: requestedProjectId, itemDetails, businessType, jobId: requestedJobId } = validation.data;
     const projectScope = normalizeImageBatchProjectId(requestedProjectId);
     const jobId = normalizeImageBatchJobId(requestedJobId);
     if (!projectScope || !jobId) {
@@ -563,7 +571,7 @@ export async function POST(request: Request) {
             projectId,
             logType: 'BATCH_GENERATION_IMAGE_GEN_STARTED',
             data: {
-                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
+                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig),
                 item: summarizeBatchItem(itemDetails),
                 jobId,
                 promptCount: promptsToExecute.length,

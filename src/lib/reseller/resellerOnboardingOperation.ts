@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import {
     isMenuListPublicEntityEligible,
@@ -46,6 +47,84 @@ export type MatchingResellerOnboardingOperation = {
     subscriptionId: string;
     tenantId: number;
 };
+
+export type MatchingResellerOnboardingProvisioningOperation = {
+    authUid: string;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+};
+
+const isExactNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string'
+    && value.length > 0
+    && value === value.trim()
+    && isValidFirestoreDocumentId(value)
+);
+
+export function getMatchingResellerOnboardingProvisioningOperation(params: {
+    fingerprint: string;
+    operationData: unknown;
+    operationId: string;
+    resellerId: string;
+}): MatchingResellerOnboardingProvisioningOperation | null {
+    if (!params.operationData || typeof params.operationData !== 'object' || Array.isArray(params.operationData)) {
+        return null;
+    }
+    const data = params.operationData as Record<string, unknown>;
+    if (
+        data.action !== 'ONBOARD'
+        || data.status !== 'provider_provisioning'
+        || data.operationId !== params.operationId
+        || data.operationFingerprint !== params.fingerprint
+        || data.resellerId !== params.resellerId
+        || !isExactNonEmptyString(data.authUid)
+        || !isExactNonEmptyString(data.userId)
+        || typeof data.storeId !== 'number'
+        || !Number.isSafeInteger(data.storeId)
+        || data.storeId <= 0
+        || typeof data.tenantId !== 'number'
+        || !Number.isSafeInteger(data.tenantId)
+        || data.tenantId <= 0
+    ) {
+        return null;
+    }
+    return {
+        authUid: data.authUid,
+        storeId: data.storeId,
+        tenantId: data.tenantId,
+        userId: data.userId,
+    };
+}
+
+export function isMatchingResellerOnboardingProvisioningResources(params: {
+    operation: MatchingResellerOnboardingProvisioningOperation;
+    ownerEmail: string;
+    ownerUsername: string;
+    resellerId: string;
+    storeData: unknown;
+    userData: unknown;
+}): boolean {
+    if (
+        !params.storeData
+        || typeof params.storeData !== 'object'
+        || Array.isArray(params.storeData)
+        || !params.userData
+        || typeof params.userData !== 'object'
+        || Array.isArray(params.userData)
+    ) return false;
+    const store = params.storeData as Record<string, unknown>;
+    const user = params.userData as Record<string, unknown>;
+    const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([store.tenantId, store.tId]);
+    return isMenuListPublicEntityEligible(store)
+        && storeTenantScope?.numericId === params.operation.tenantId
+        && store.resellerId === params.resellerId
+        && user.firebaseUid === params.operation.authUid
+        && user.tenantId === params.operation.tenantId
+        && user.storeId === params.operation.storeId
+        && user.email === params.ownerEmail
+        && user.username === params.ownerUsername;
+}
 
 export function getMatchingResellerOnboardingOperation(params: {
     fingerprint: string;

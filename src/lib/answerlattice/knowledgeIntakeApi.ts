@@ -3,26 +3,13 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { projectActiveAnswerlatticeSubscriptionForRead } from '@lib/answerlattice/subscriptionReadBoundary';
-import {
-    getAnswerlatticeSecurityLogContext,
-    getBoundedAnswerlatticeStringContext,
-} from '@lib/answerlattice/diagnostics';
+import { getAnswerlatticeSecurityLogContext, getBoundedAnswerlatticeStringContext, } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import {
-    isAnswerlatticeStoreInScope,
-    normalizeAnswerlatticeScopeDocumentId,
-    resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
-import {
-    answerlatticeAdminApp,
-    answerlatticeFirestoreAdmin,
-} from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { isAnswerlatticeStoreInScope, normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope, } from '@lib/answerlattice/sessionScope';
+import { answerlatticeAdminApp, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -308,9 +295,7 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     if (!answerlatticeAdminApp) {
         return { allowed: false, status: 503, message: 'Answerlattice Firebase is not configured.' };
     }
-    const db = answerlatticeFirestoreAdmin;
-
-    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(sId)).get();
+    const storeSnap = await requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.STORES).doc(String(sId)).get();
     if (!storeSnap.exists) {
         return { allowed: false, status: 404, message: 'Answerlattice workspace is not available.' };
     }
@@ -326,7 +311,7 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     const summarySubscriptionId = String(storeSubscription.id || storeSubscription.providerSubscriptionId || '').trim();
     const normalizedSummarySubscriptionId = normalizeAnswerlatticeSubscriptionId(summarySubscriptionId);
     if (normalizedSummarySubscriptionId) {
-        const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
+        const subscriptionSnap = await requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
         if (subscriptionSnap.exists) {
             if (projectActiveAnswerlatticeSubscriptionForRead(
                 subscriptionSnap.data(),
@@ -339,7 +324,7 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
         }
     }
 
-    const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+    const subscriptionSnap = await requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tenantId', '==', tId)

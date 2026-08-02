@@ -66,7 +66,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
-import { PrecomputedDecisionBlocks, Project } from '../../types';
+import { ExtractedDataCategory, ExtractedDataItem, PrecomputedDecisionBlocks, Project } from '../../types';
 import {
     DEFAULTS,
     getMoodWithBrandColor,
@@ -393,16 +393,16 @@ function MenuPageNew({
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<ExtractedDataItem | null>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
     const [linkNotice, setLinkNotice] = useState<string | null>(null);
     const linkNoticeTimerRef = useRef<number | null>(null);
-    const [activeCategory, setActiveCategory] = useState<any>(null);
-    const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
+    const [activeCategory, setActiveCategory] = useState<ExtractedDataCategory | null>(null);
+    const [pendingBrowseCategory, setPendingBrowseCategory] = useState<ExtractedDataCategory | null>(null);
     const [isCommandLayerPinned, setIsCommandLayerPinned] = useState(false);
     const [stickyControlsHeight, setStickyControlsHeight] = useState(0);
-    const selectedItemRef = useRef<any>(null);
+    const selectedItemRef = useRef<ExtractedDataItem | null>(null);
 
     useEffect(() => {
         activeCategoryIdRef.current = activeCategory?.id || null;
@@ -1013,7 +1013,7 @@ function MenuPageNew({
     }, [projectData?.files]);
 
     const visibleItems = useMemo(() => {
-        return allItems.filter((item: any) =>
+        return allItems.filter((item) =>
             item.active !== false && typeof item.category === 'string' && categoriesById.has(item.category),
         );
     }, [allItems, categoriesById]);
@@ -1029,14 +1029,14 @@ function MenuPageNew({
         };
 
         visibleItems
-            .filter((item: any) => item?.active !== false)
+            .filter((item) => item?.active !== false)
             .slice(0, 8)
-            .forEach((item: any) => {
+            .forEach((item) => {
                 const label = getMenuText(item.name);
                 if (label) addSuggestion(String(item.id || label), label, 'item');
             });
 
-        allCategories.slice(0, 4).forEach((category: any) => {
+        allCategories.slice(0, 4).forEach((category) => {
             const label = getMenuText(category.name);
             if (label) addSuggestion(String(category.id || label), label, 'category');
         });
@@ -1283,7 +1283,7 @@ function MenuPageNew({
     const historyPushedRef = useRef(false);
     const modalCloseFallbackTimerRef = useRef<number | null>(null);
 
-    const buildItemUrl = useCallback((item: any) => {
+    const buildItemUrl = useCallback((item: ExtractedDataItem) => {
         if (typeof window === 'undefined') return '';
         const basePath = getMenuBasePath();
         return buildCanonicalItemUrl(`${window.location.origin}${basePath}`, item?.id, activeLanguage);
@@ -1294,7 +1294,7 @@ function MenuPageNew({
         return `${window.location.origin}${getMenuBasePath()}${getMenuLanguageSearch()}`;
     }, [getMenuBasePath, getMenuLanguageSearch]);
 
-    const applyClientDocumentMeta = useCallback((item?: any | null, explicitUrl?: string) => {
+    const applyClientDocumentMeta = useCallback((item?: ExtractedDataItem | null, explicitUrl?: string) => {
         if (previewMode || typeof document === 'undefined' || typeof window === 'undefined') return;
 
         const storeName =
@@ -1329,7 +1329,7 @@ function MenuPageNew({
                     businessName: storeName,
                 }))
             : storeDescription;
-        const url = explicitUrl || (itemName ? buildItemUrl(item) : buildBaseMenuUrl());
+        const url = explicitUrl || (itemName && item ? buildItemUrl(item) : buildBaseMenuUrl());
         const imageUrl = itemName
             ? getPrimaryPublicMenuImage(item) || fallbackImage
             : fallbackImage;
@@ -1349,7 +1349,7 @@ function MenuPageNew({
     }, [allCategories, buildBaseMenuUrl, buildItemUrl, getMenuText, previewMode, projectData, storeDetails, t]);
 
     // G14 - Handle item click with history state
-    const handleItemClick = useCallback((item: any) => {
+    const handleItemClick = useCallback((item: ExtractedDataItem) => {
         setIsSearchFocused(false);
         const categoryId = typeof item.category === 'string' ? item.category : '';
         const category = categoriesById.get(categoryId);
@@ -1411,7 +1411,7 @@ function MenuPageNew({
         }
     }, [analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, categoriesById, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getUnavailableItemNotice, previewMode, projectData?.projectId, showItemPrices, showLinkNotice, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
-    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link') => {
+    const handleItemShare = useCallback((item: ExtractedDataItem | null, method: 'native_share' | 'copy_link') => {
         if (
             previewMode ||
             !analyticsPreferences.trackMenuViews ||

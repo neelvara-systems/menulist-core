@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LuAlertTriangle,
@@ -40,6 +40,7 @@ import {
   createShareableToolReportUrl,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import { buildPhotoGapCheckReport } from '@/lib/public-truth-tools/photoGapCheckReport';
+import { PUBLIC_TRUTH_TOOL_INPUT_LIMITS } from '@/lib/public-truth-tools/publicTruthToolInputLimits';
 import type {
   PhotoGapBusinessType,
   PhotoGapCheckId,
@@ -180,6 +181,7 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
   const [reportActionStatus, setReportActionStatus] = useState<ReportActionStatus>('idle');
   const [handoff, setHandoff] = useState<PhotoGapHandoffForm>(INITIAL_HANDOFF_FORM);
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatus>('idle');
+  const handoffSubmissionInFlightRef = useRef(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
@@ -329,6 +331,8 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
       sourcePathLength: sourcePath.length,
     };
 
+    if (handoffSubmissionInFlightRef.current) return;
+    handoffSubmissionInFlightRef.current = true;
     setHandoffStatus('submitting');
     trackWebsiteMarketingEvent('photo_gap_check_handoff_submitted', eventContext);
 
@@ -371,10 +375,13 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
       setHandoff(INITIAL_HANDOFF_FORM);
       setHandoffStatus('submitted');
       trackWebsiteMarketingEvent('photo_gap_check_handoff_accepted', eventContext);
-    } catch {
+    } catch (error) {
       setHandoffStatus('error');
       setHandoffError(t('handoff.submitFailed'));
+      logRuntimeFailure('public_tool_contact_submit_failed', error, responseLogContext);
       resetCaptcha();
+    } finally {
+      handoffSubmissionInFlightRef.current = false;
     }
   }
 
@@ -481,6 +488,7 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
           <label>
             <span>{t('handoff.name')}</span>
             <input
+              maxLength={120}
               value={handoff.name}
               onChange={(event) => updateHandoff('name', event.target.value)}
               autoComplete="name"
@@ -489,6 +497,7 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
           <label>
             <span>{t('handoff.email')}</span>
             <input
+              maxLength={180}
               value={handoff.workEmail}
               onChange={(event) => updateHandoff('workEmail', event.target.value)}
               autoComplete="email"
@@ -500,6 +509,7 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
         <label>
           <span>{t('handoff.phone')}</span>
           <input
+            maxLength={40}
             value={handoff.phoneNumber}
             onChange={(event) => updateHandoff('phoneNumber', event.target.value)}
             autoComplete="tel"
@@ -511,6 +521,7 @@ function PhotoGapReportCard({ report }: { report: PhotoGapCheckReport }) {
           <label htmlFor="photo-gap-check-website">{t('handoff.website')}</label>
           <input
             id="photo-gap-check-website"
+            maxLength={500}
             value={handoff.website}
             onChange={(event) => updateHandoff('website', event.target.value)}
             tabIndex={-1}
@@ -665,6 +676,7 @@ export default function PhotoGapCheckPage() {
                 <label>
                   <span>{t('fields.businessName')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName}
                     value={form.businessName}
                     onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
                     autoComplete="organization"
@@ -673,6 +685,7 @@ export default function PhotoGapCheckPage() {
                 <label>
                   <span>{t('fields.cityOrArea')}</span>
                   <input
+                    maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea}
                     value={form.cityOrArea}
                     onChange={(event) => setForm((current) => ({ ...current, cityOrArea: event.target.value }))}
                     autoComplete="address-level2"
@@ -700,6 +713,7 @@ export default function PhotoGapCheckPage() {
               <label>
                 <span>{t('fields.currentCustomerLink')}</span>
                 <input
+                  maxLength={PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url}
                   value={form.currentCustomerLink}
                   onChange={(event) => setForm((current) => ({ ...current, currentCustomerLink: event.target.value }))}
                   inputMode="url"
@@ -753,7 +767,7 @@ export default function PhotoGapCheckPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="card">
-            {hasChecked ? <PhotoGapReportCard report={report} /> : <EmptyReport />}
+            {hasChecked ? <PhotoGapReportCard key={report.generatedAt} report={report} /> : <EmptyReport />}
           </AnimateOnScroll>
         </div>
       </section>

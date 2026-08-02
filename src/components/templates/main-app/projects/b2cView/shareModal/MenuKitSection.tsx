@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Menu Kit Section — Share Modal Integration
  *
@@ -21,8 +23,8 @@ import {
 } from '@lib/export/exportDiagnostics';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { toDate, type DateLike } from '@util/dateTime';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuMapPin, LuMessageCircle, LuPackage, LuShare2 } from 'react-icons/lu';
 
@@ -33,7 +35,7 @@ interface MenuKitSectionProps {
     menuUrl: string;
     shortLink: string;
     logoUrl?: string;
-    menuModifiedOn?: Timestamp | null;
+    menuModifiedOn?: DateLike;
     businessType?: string;
     businessCategory?: string;
     activePlanType?: string | null;
@@ -62,11 +64,9 @@ export default function MenuKitSection({
         setSupportsNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
     }, []);
 
-    const parseTimestamp = (ts: Timestamp | null | undefined): Date | undefined => {
-        if (!ts) return undefined;
-        if (ts instanceof Timestamp) return ts.toDate();
-        if ((ts as any)?.seconds) return new Date((ts as any).seconds * 1000);
-        return undefined;
+    const parseTimestamp = (value: DateLike): Date | undefined => {
+        const date = toDate(value);
+        return Number.isFinite(date.getTime()) ? date : undefined;
     };
 
     const getMenuKitExportLogContext = () => ({
@@ -182,10 +182,7 @@ export default function MenuKitSection({
         const msg = `${labels.shareMessagePrefix}\n${menuUrl}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('project_share_menu_kit_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
         } catch (error) {
             logExportFailure('project_share_menu_kit_whatsapp_open_failed', error, {
                 ...getMenuKitExportLogContext(),

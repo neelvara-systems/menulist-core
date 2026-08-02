@@ -20,7 +20,7 @@
 | `platformSummary` | WRITE | 3 | Update counters, Answerlattice tenant scheduler registry, and compact context summary |
 | `storesSummary` | WRITE | 1 | Store summary used by scheduler/discovery flows |
 | `users` | WRITE | 1 | Create/update Answerlattice-project user tenant/store |
-| Default auth `users` | WRITE | 1 | Add only `productAccounts.AL` bridge while keeping MenuList root tenant/store |
+| Default auth `users` | READ/WRITE | 2 reads + 1 write | Current-user admission plus transaction-current `productAccounts.AL` bridge; existing MenuList root tenant/store remains unchanged |
 | `subscriptions` | WRITE | 1 | Create subscription record |
 
 **Normal successful onboarding is a bounded one-time path, but it is not a two-read path.** Current source performs roughly 11 or more document/query reads and about 13-18 writes before optional transaction retries, email fallback, collision probes, summary/bootstrap helpers, or provider-recovery work. Firestore may retry transactions, so billed reads are not a fixed promise.
@@ -38,6 +38,8 @@ Resumable provisioning adds correctness reads only on retries or failures:
 - a new attempt after compensation clears stale provider/recovery fields on the reused user document;
 - pending subscription, store summary, widget-key state, and tenant/store/user statuses commit in one transaction;
 - payment-pending recovery reads the scoped store and returns the existing checkout with no new subscription or widget-key write;
+- payment-pending recovery requires the original request fingerprint, transactionally revalidates the current default-auth bridge, and retries missing surface/summary/control-plane bootstrap;
+- bootstrap reads the bounded selected surface documents plus compact summary in one transaction, creates only missing rows, and leaves existing owner-edited surface/summary truth unchanged;
 - compensation runs only when provider creation is proven not to have occurred or the exact owned provider checkout is confirmed terminal; it reads the exact attempt-owned tenant/store/user and optional subscription, then deactivates only that scope and updates compact summaries.
 
 The shared allocator creates a provisional `storesSummary` row. A recovery-pending scope remains active so it can be resumed, while compensation marks it inactive. Paid AI and Knowledge Intake still require active/trialing subscription entitlement, and the Answerlattice scheduler registry is published only by post-finalization summary work.
@@ -106,6 +108,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-01 | 1.8.4 | Added current-auth/bridge transaction reads and bounded non-destructive payment-pending bootstrap repair costs |
 | 2026-07-28 | 1.8.3 | Documented exact pending-subscription payload admission, canonical four-alias projection, and no-write behavior on scope conflict |
 | 2026-07-19 | 1.8.2 | Corrected workspace-profile cost and atomic downstream synchronization after the Feature 29 audit |
 | 2026-07-19 | 1.8.1 | Documented duplicate-email read cap, terminal-checkout compensation, known-provider preservation, retry-field cleanup, and zero-read URL/response hardening |

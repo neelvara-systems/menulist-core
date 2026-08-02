@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * FeedbackQrDownload Component
  * 
@@ -189,10 +191,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     const handleOpenLink = () => {
         const directUrl = withSrc('direct');
         try {
-            const opened = window.open(directUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_feedback_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(directUrl);
         } catch (error) {
             logFeedbackInboxFailure('desktop_feedback_link_open_failed', error, buildFeedbackQrLogContext('open_link', {
                 ...getBoundedFeedbackInboxStringContext('directUrl', directUrl),
@@ -205,10 +204,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
         const shareMessage = `Share your feedback for ${storeName}\n${withSrc('whatsapp')}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_feedback_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
         } catch (error) {
             logFeedbackInboxFailure('desktop_feedback_whatsapp_open_failed', error, buildFeedbackQrLogContext('open_whatsapp', {
                 shareMessageLength: shareMessage.length,

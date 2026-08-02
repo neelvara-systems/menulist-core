@@ -213,6 +213,14 @@ assertIncludes(component, 'href={report.nextAction.href}', 'Shareable Tool Repor
 assertIncludes(component, 'copyRuntimeTextToClipboard(window.location.href)', 'Shareable Tool Reports link copy action');
 assertIncludes(component, 'downloadTextFile(getSafeReportFilename(report), reportText)', 'Shareable Tool Reports download action');
 assertIncludes(component, "fetch('/api/public/contact'", 'Shareable Tool Reports consented contact handoff');
+assertIncludes(component, 'if (deliveryInFlightRef.current) return;', 'Shareable Tool Reports synchronous duplicate-submit refusal');
+assertIncludes(component, 'deliveryInFlightRef.current = true;', 'Shareable Tool Reports in-flight claim before contact request');
+assertIncludes(component, 'deliveryInFlightRef.current = false;', 'Shareable Tool Reports in-flight release after contact settlement');
+assertIncludes(component, 'setReportRevision((current) => current + 1);', 'Shareable Tool Reports hash identity revision');
+assertIncludes(component, '<ToolReportLoaded key={reportRevision} report={report} />', 'Shareable Tool Reports form and async-state remount per hash identity');
+assertIncludes(component, 'maxLength={120}', 'Shareable Tool Reports browser name bound');
+assertIncludes(component, 'maxLength={180}', 'Shareable Tool Reports browser email bound');
+assertIncludes(component, 'maxLength={40}', 'Shareable Tool Reports browser phone bound');
 assertIncludes(component, "redirect: 'manual'", 'Shareable Tool Reports contact handoff request policy');
 assertIncludes(component, "cache: 'no-store'", 'Shareable Tool Reports contact handoff request policy');
 assertIncludes(component, "credentials: 'same-origin'", 'Shareable Tool Reports contact handoff request policy');

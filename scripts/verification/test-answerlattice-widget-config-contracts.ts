@@ -146,6 +146,13 @@ assert.ok(!widgetKeyRoute.includes('Delete an old key before creating another.')
 assert.ok(publicWidgetConfigRoute.includes('const buildErrorResponse'));
 assert.ok(publicWidgetConfigRoute.includes("'Cache-Control': 'no-store'"));
 assert.ok(publicWidgetConfigRoute.includes("buildErrorResponse(request, { error: 'Origin not allowed' }, 403)"));
+assert.ok(publicWidgetConfigRoute.includes('body: Record<string, unknown>'));
+assert.ok(publicWidgetConfigRoute.includes('return answerlatticeFirestoreAdmin;'));
+assert.ok(publicWidgetConfigRoute.includes('const toIsoTimestamp = (value: unknown): string | null =>'));
+assert.ok(publicWidgetConfigRoute.includes('Reflect.apply(toDate, value, [])'));
+assert.ok(!publicWidgetConfigRoute.includes('Record<string, any>'));
+assert.ok(!publicWidgetConfigRoute.includes('answerlatticeFirestoreAdmin as any'));
+assert.ok(!publicWidgetConfigRoute.includes('(trigger: any)'));
 assert.ok(widgetActivityRoute.includes("'Cache-Control': 'private, no-store'"));
 assert.ok(widgetActivityRoute.includes('canonicalIsoTimestampToMillis'));
 assert.ok(widgetActivityRoute.includes('if (!Number.isFinite(date.getTime())) return null;'));

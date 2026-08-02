@@ -6,6 +6,7 @@ import {
     extractEntitiesFromArticles,
     extractPlainTextFromTipTap,
 } from '../../src/lib/answerlattice/entityExtraction';
+import { normalizeAnswerlatticeEntityCandidateIdentityName } from '../../src/lib/answerlattice/entityCandidateIdentity';
 
 const article = {
     title: 'Webhook retries',
@@ -15,6 +16,12 @@ const article = {
 const scope = { tId: 71, sId: 701 };
 
 async function run() {
+    assert.equal(normalizeAnswerlatticeEntityCandidateIdentityName('Invoice Recovery'), 'invoice recovery');
+    assert.equal(normalizeAnswerlatticeEntityCandidateIdentityName('سجل الإصدارات'), 'سجل الإصدارات');
+    assert.notEqual(
+        normalizeAnswerlatticeEntityCandidateIdentityName('سجل الإصدارات'),
+        normalizeAnswerlatticeEntityCandidateIdentityName('إدارة الفواتير'),
+    );
     let persistedCandidateCount = 0;
     const persistCandidate = async () => {
         persistedCandidateCount += 1;
@@ -189,6 +196,10 @@ async function run() {
         'The standalone non-persisting helper must not invoke the disabled browser candidate writer',
     );
     assert.match(routeSource, /buildArticleSourceFingerprint\(currentArticle\) !== sourceFingerprint/);
+    assert.doesNotMatch(routeSource, /content: z\.any\(\)/);
+    assert.doesNotMatch(routeSource, /persistedArticle\.title \|\| article\.title/);
+    assert.doesNotMatch(routeSource, /persistedArticle\.categoryTitle \|\| article\.categoryTitle/);
+    assert.match(routeSource, /if \(providerUnavailable\) \{[\s\S]*?\{ status: 503 \}/);
     assert.match(routeSource, /\{ persistCandidates: false \}/);
     assert.match(routeSource, /readAnswerlatticeInvalidationOwnership\(\{/);
     assert.match(routeSource, /getAnswerlatticeMissingBundleManifestBase\(scope\)/);

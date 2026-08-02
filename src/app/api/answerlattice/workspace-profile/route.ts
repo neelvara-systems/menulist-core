@@ -58,8 +58,7 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 const WORKSPACE_PROFILE_SAVE_MAX_BODY_BYTES = 32 * 1024;
 

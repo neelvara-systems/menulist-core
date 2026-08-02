@@ -31,8 +31,8 @@ export const CAMPAIGNCUE_CHANNEL_STUDIO_COPY: Partial<Record<CampaignCueChannelC
     },
     video: {
         eyebrow: "Video/Reel Studio",
-        title: "Reel briefs",
-        empty: "Create a campaign pack with video selected to prepare a brief-mode reel script.",
+        title: "Reel projects",
+        empty: "Create a campaign pack with video selected, then turn its checked reel plan into a local browser render.",
     },
     whatsapp: {
         eyebrow: "WhatsApp Sales Studio",

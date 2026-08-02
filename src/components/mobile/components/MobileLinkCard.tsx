@@ -62,21 +62,22 @@ export default function MobileLinkCard({
                 </Card>
 
                 <Flex gap={compact ? 8 : 10}>
-                    <ActionTile compact={compact} icon={<LuCopy size={18} />} onClick={onCopy} />
-                    {onShare ? <ActionTile compact={compact} icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
-                    <ActionTile compact={compact} icon={<LuQrCode size={18} />} onClick={onShowQr} />
-                    <ActionTile compact={compact} icon={<LuExternalLink size={18} />} onClick={onOpen} />
+                    <ActionTile ariaLabel={`Copy ${label}`} compact={compact} icon={<LuCopy size={18} />} onClick={onCopy} />
+                    {onShare ? <ActionTile ariaLabel={`Share ${label}`} compact={compact} icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                    <ActionTile ariaLabel={`Show QR code for ${label}`} compact={compact} icon={<LuQrCode size={18} />} onClick={onShowQr} />
+                    <ActionTile ariaLabel={`Open ${label}`} compact={compact} icon={<LuExternalLink size={18} />} onClick={onOpen} />
                 </Flex>
             </Flex>
         </Card>
     );
 }
 
-function ActionTile({ compact, icon, onClick }: { compact?: boolean; icon: React.ReactNode; onClick: () => void }) {
+function ActionTile({ ariaLabel, compact, icon, onClick }: { ariaLabel: string; compact?: boolean; icon: React.ReactNode; onClick: () => void }) {
     const { token } = theme.useToken();
 
     return (
         <Button
+            ariaLabel={ariaLabel}
             fill="outline"
             onClick={onClick}
             size="small"

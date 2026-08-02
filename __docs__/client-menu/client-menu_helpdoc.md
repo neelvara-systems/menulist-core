@@ -72,7 +72,7 @@ Your digital menu is what customers see when they scan your QR code. It shows th
 ### How to set up your QR code
 
 1. Your QR code is automatically created when you create a store
-2. Your menu URL is: `yourstore.menulist.ai`
+2. Your menu URL is: `yourstore.menulist.online`
 3. Print the QR code and place it where customers can scan
 4. Anyone scanning it sees your live menu
 
@@ -82,7 +82,7 @@ Your digital menu is what customers see when they scan your QR code. It shows th
 
 1. Go to **Projects**
 2. Click **Create New Project** for each menu (e.g., "Drinks", "Desserts")
-3. Each menu gets its own URL: `yourstore.menulist.ai/drinks`
+3. Each menu gets its own URL: `yourstore.menulist.online/drinks`
 4. Set one as **Default** — this is what customers see when they scan without a specific link
 
 ---

@@ -30,22 +30,10 @@ import {
     LuUnlink,
 } from 'react-icons/lu';
 import { MenuBarProps } from './types';
-
-const normalizeTextUrl = (value: string) => {
-    const url = value.trim();
-    if (!url || url.startsWith('//')) return '';
-    if (url.startsWith('/') || url.startsWith('#')) return url;
-    if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
-    return `https://${url}`;
-};
-
-const normalizeImageUrl = (value: string) => {
-    const url = value.trim();
-    if (!url || url.startsWith('//')) return '';
-    if (url.startsWith('/')) return url;
-    if (/^https?:/i.test(url)) return url;
-    return '';
-};
+import {
+    normalizeTiptapImageUrl,
+    normalizeTiptapLinkUrl,
+} from '@lib/tiptap/urlPolicy';
 
 const emptyEditorState = {
     activeBlock: 'paragraph',
@@ -135,7 +123,7 @@ const MenuBar: React.FC<MenuBarProps> = ({ editor }) => {
     };
 
     const applyLink = () => {
-        const nextUrl = normalizeTextUrl(linkUrl);
+        const nextUrl = normalizeTiptapLinkUrl(linkUrl, { assumeHttps: true });
         if (!nextUrl) {
             void message.warning('Enter a valid link.');
             return;
@@ -147,7 +135,7 @@ const MenuBar: React.FC<MenuBarProps> = ({ editor }) => {
     };
 
     const applyImage = () => {
-        const nextUrl = normalizeImageUrl(imageUrl);
+        const nextUrl = normalizeTiptapImageUrl(imageUrl);
         if (!nextUrl) {
             void message.warning('Use a valid image URL.');
             return;
@@ -377,6 +365,7 @@ const MenuBar: React.FC<MenuBarProps> = ({ editor }) => {
             >
                 <Input
                     autoFocus
+                    maxLength={2048}
                     placeholder="https://example.com"
                     value={linkUrl}
                     onChange={(event) => setLinkUrl(event.target.value)}
@@ -394,6 +383,7 @@ const MenuBar: React.FC<MenuBarProps> = ({ editor }) => {
             >
                 <Input
                     autoFocus
+                    maxLength={2048}
                     placeholder="https://example.com/image.png"
                     value={imageUrl}
                     onChange={(event) => setImageUrl(event.target.value)}

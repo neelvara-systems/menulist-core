@@ -38,7 +38,7 @@ Three independent lenses, doctrine set aside:
 
 ## Part 1: The Honest Truth About Current OBP
 
-If I look at OBP from scratch — as a customer landing on `joespizza.menulist.ai` for the first time — here's what I see and what's missing:
+If I look at OBP from scratch — as a customer landing on `joespizza.menulist.online` for the first time — here's what I see and what's missing:
 
 ### What OBP Does Well (Keep These)
 
@@ -352,7 +352,7 @@ OBP (identity + trust)
 Menu / actions / calls
 ```
 
-Root URL ownership (`restaurant.menulist.ai/`) matters because it becomes:
+Root URL ownership (`restaurant.menulist.online/`) matters because it becomes:
 
 - Instagram bio link
 - Google Business Profile website field

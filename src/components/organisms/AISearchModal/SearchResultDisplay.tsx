@@ -4,6 +4,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterTabRouting } from '@constant/navigations';
 import { getArticleById } from '@database/knowledgeBase/articles';
 import ArticleView from '@organisms/ArticleView';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { Button, Divider, List, message, theme, Typography } from 'antd';
 import { useRef, useState } from 'react';
@@ -24,19 +25,25 @@ interface SearchResultDisplayProps {
 
 export default function SearchResultDisplay({ state, isTyping, answerContainerRef, handleSkipTyping, handleRegenerate }: SearchResultDisplayProps) {
     const { token } = theme.useToken();
+    const cacheScopeKey = useAnswerlatticeCacheScope();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
     const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
     const [resolvedArticles, setResolvedArticles] = useState<Record<string, KnowledgeBaseArticleType>>({});
+    const [resolvedArticlesScopeKey, setResolvedArticlesScopeKey] = useState<string | null>(null);
     const previewRequestRef = useRef(0);
+    const currentScopeKeyRef = useRef(cacheScopeKey);
+    currentScopeKeyRef.current = cacheScopeKey;
+    const visibleResolvedArticles = resolvedArticlesScopeKey === cacheScopeKey ? resolvedArticles : {};
 
     const toggleArticlePreview = async (articleId: string) => {
         const requestId = previewRequestRef.current + 1;
+        const requestScopeKey = cacheScopeKey;
         previewRequestRef.current = requestId;
         if (expandedArticleId === articleId) {
             setExpandedArticleId(null);
             return;
         }
-        if (resolvedArticles[articleId]) {
+        if (visibleResolvedArticles[articleId]) {
             setExpandedArticleId(articleId);
             return;
         }
@@ -44,12 +51,15 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
         setLoadingArticleId(articleId);
         try {
             const article = await getArticleById(articleId);
-            if (previewRequestRef.current !== requestId) return;
+            if (previewRequestRef.current !== requestId || currentScopeKeyRef.current !== requestScopeKey) return;
             if (!article) {
                 message.warning('This help article is no longer available.');
                 return;
             }
-            setResolvedArticles(current => ({ ...current, [articleId]: article }));
+            setResolvedArticles(current => (
+                resolvedArticlesScopeKey === requestScopeKey ? { ...current, [articleId]: article } : { [articleId]: article }
+            ));
+            setResolvedArticlesScopeKey(requestScopeKey);
             setExpandedArticleId(articleId);
         } catch {
             if (previewRequestRef.current === requestId) {
@@ -115,7 +125,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                         dataSource={state.data.references}
                         renderItem={(item: SearchDisplayResultReferenceType, index) => {
                             const isExpanded = expandedArticleId === item.article.id;
-                            const resolvedArticle = resolvedArticles[item.article.id];
+            const resolvedArticle = visibleResolvedArticles[item.article.id];
                             const articleHref = helpCenterArticleRouting(getHelpCenterArticleRouteSegment(item.article));
                             return (
                                 <div style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, padding: '8px 0' }}>

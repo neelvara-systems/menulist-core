@@ -57,5 +57,5 @@ A: The automatic pages provide a standard informational policy. For specific leg
 **Q: Can I add an About page?**  
 A: Your Official Business Page already displays your business story, hours, photos, and contact details — serving as your about page.
 
-**Q: Will these pages appear on my menulist.ai subdomain too?**  
-A: Yes. Privacy, terms, and refund pages are available on both your custom domain and your menulist.ai subdomain.
+**Q: Will these pages appear on my MenuList hosted link too?**
+A: Yes. Privacy, terms, and refund pages are available on both your custom domain and your `menulist.online` hosted link.

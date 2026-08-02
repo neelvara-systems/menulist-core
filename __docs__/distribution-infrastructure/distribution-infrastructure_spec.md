@@ -372,7 +372,7 @@ function calculateConfidence(menu: Menu): MenuConfidence {
 **Generated assets:**
 1. QR code PNG (300x300, 600x600)
 2. Print-ready PDF (A4, table tent format)
-3. Short URL (`menulist.ai/m/{slug}`)
+3. Hosted public URL (`{store}.menulist.online/{slug}`)
 
 **Storage:**
 ```
@@ -388,7 +388,7 @@ stores/{storeId}/qr/
 
 **Message template:**
 ```
-Your official menu is now live at menulist.ai/m/{slug}
+Your official menu is now live at {store}.menulist.online/{slug}
 
 Use this QR for tables & counter:
 {qr_download_link}

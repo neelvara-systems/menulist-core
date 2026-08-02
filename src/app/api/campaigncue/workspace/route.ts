@@ -7,6 +7,7 @@ import {
     parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
+    withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueApiError,
@@ -20,9 +21,8 @@ import {
     type CampaignCueBusinessPatchInput,
 } from "@lib/validation/campaigncueSchemas";
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/middleware/auth";
 
-export const GET = withAuth(async (request: NextRequest, session) => {
+export const GET = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
@@ -50,7 +50,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     }
 });
 
-export const PATCH = withAuth(async (request: NextRequest, session) => {
+export const PATCH = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;

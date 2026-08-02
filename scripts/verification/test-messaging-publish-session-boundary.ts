@@ -278,9 +278,9 @@ function main(): void {
   const live = normalizeMessagingPublishSession({
     ...source,
     publishedResult: {
-      dashboardUrl: 'https://menulist.ai/login',
+      dashboardUrl: 'https://app.menulist.ai/signin',
       projectId: '1-default-2',
-      publicUrl: 'https://demo.menulist.ai/menu',
+      publicUrl: 'https://demo.menulist.online/menu',
       storeId: 2,
       tenantId: 1,
       userId: 'owner-1',
@@ -303,9 +303,9 @@ function main(): void {
   assert.equal(normalizeMessagingPublishSession({
     ...source,
     publishedResult: {
-      dashboardUrl: 'https://menulist.ai/signin',
+      dashboardUrl: 'https://app.menulist.ai/signin',
       projectId: '9-default-8',
-      publicUrl: 'https://demo.menulist.ai',
+      publicUrl: 'https://demo.menulist.online',
       storeId: 2,
       tenantId: 1,
       userId: 'owner-1',
@@ -314,9 +314,9 @@ function main(): void {
     stateHistory: [...source.stateHistory, { state: 'LIVE', timestamp: new Date() }],
   }, SESSION_ID, BUCKET), null, 'Published project identity must match its tenant/store result');
   assert.equal(normalizeMessagingPublishedResult({
-    dashboardUrl: 'https://menulist.ai/signin',
+    dashboardUrl: 'https://app.menulist.ai/signin',
     projectId: '9-default-8',
-    publicUrl: 'https://demo.menulist.ai',
+    publicUrl: 'https://demo.menulist.online',
     storeId: 2,
     tenantId: 1,
     userId: 'owner-1',

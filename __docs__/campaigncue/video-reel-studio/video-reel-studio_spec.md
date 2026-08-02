@@ -2,40 +2,70 @@
 
 ## Summary
 
-Video Reel Studio creates short-form video campaign plans and, where configured, rendered video assets. The default output is a usable reel pack: hook, shot list, caption, overlays, CTA, timing, and channel notes.
+Video Reel Studio turns one checked CampaignCue video output into a source-locked short-video project. Owners can edit a lightweight timeline, use private Asset Library image/video/audio or session-only media, regenerate one checked scene at a time, collaborate through bounded review notes, approve the project, and download a real 9:16, 1:1, or 16:9 video produced by CampaignCue's browser compositor.
 
-## Goals
+## Owner Outcome
 
-- Help a local business create short videos without blank-page planning.
-- Keep video claims grounded in approved business facts.
-- Support both rendered output and manual shooting/editing briefs.
-- Make scripts usable by owners, staff, agencies, or creators.
+An owner can go from a checked campaign pack to a usable short video without opening a professional editor, buying provider credits, or connecting a social account.
 
 ## Requirements
 
 | Requirement | Acceptance |
 | --- | --- |
-| Reel pack default | Output includes hook, shot list, caption, overlays, CTA, and timing. |
-| Manual-first fallback | If video rendering is unavailable, the owner still gets a complete shoot/edit brief. |
-| Phone-camera structure | Brief-mode output includes camera plan, product/service placement, B-roll checklist, and final-frame CTA guidance. |
-| Pattern Cue | Owner may submit one public example plus format notes. The reel brief receives an abstract structure and original hooks while source wording, media, music, and identity remain excluded. |
-| Proof deck reference | Campaign Pack Output may summarize reel direction in the Campaign Proof Deck as a review reference only. |
-| Source lock | Product/service facts, offers, location, pricing, and dates remain locked. |
-| Channel fit | Instagram Reel, TikTok-style short, YouTube Short, story, and ad video use separate rules. |
-| Version history | Each script/render version is stored and reviewable. |
-| Approval gate | No publish/export handoff happens without owner approval. |
+| Brief to project | A video campaign output creates a persisted project with hook, script, scenes, overlays, caption, CTA, and source references. |
+| Text to motion | A project with no media still renders a branded motion-typography video. |
+| Image to motion | An owner-selected image can be animated with pan or zoom during the current browser render. |
+| Owned clip composition | A private Asset Library or session-local video clip can play inside one scene without being copied to a provider. |
+| Pattern adaptation | Pattern Cue may influence abstract pacing and structure; source wording, footage, music, likeness, and creator identity are not copied. |
+| Scene control and regeneration | Owners can edit text, timing, motion, transition, order, and visibility for at most eight scenes. Regenerating one scene deterministically changes its checked copy direction, motion, transition, and timing without inventing facts or footage. |
+| Bounded variants | Each project exposes no more than three deterministic hook/caption directions. |
+| Brand consistency | The project snapshots approved business name, primary colour, voice, and source references. |
+| Captions and audio | Captions can be burned into the render. Separate narration and background-music tracks may use rights-confirmed Asset Library audio or session files; owners can record non-cloned narration locally, set both levels, and enable automatic background ducking. Session media requires explicit right-to-use confirmation. |
+| Private media intake | Owners can upload bounded image, video, or audio directly to private CampaignCue Storage, generate a local preview thumbnail, register authoritative Storage metadata, and reuse only admitted Asset Library ids. |
+| Timeline-lite | The UI shows ordered scenes, duration, total runtime, and move/add/remove controls without a professional multi-track editor. |
+| Native aspect variants | Owners may save and render 9:16, 1:1, and 16:9 variants from one project. |
+| Version history | Each material save increments the project version and retains a bounded, reviewable snapshot history. |
+| Version evidence | Each retained snapshot includes the trust findings and durable asset ids reviewed for that version. Each render receipt records whether session-media rights were confirmed. |
+| Trust gate | Source freshness, campaign trust, missing CTA, unconfirmed asset rights, and synthetic-likeness boundaries are checked before approval/export. |
+| Owner approval | Render/download remains blocked until the current version is approved. Editing an approved project returns it to review. |
+| Review notes | Workspace collaborators can add bounded project or scene notes. Open notes block approval; authorized reviewers or the note author can resolve them. |
+| Render jobs | Started, checkpointed, completed, failed, cancelled, and interrupted browser attempts record a bounded job receipt with zero-credit reservation/capture/refund values. A failed or cancelled attempt never deletes the storyboard. |
+| Result and reuse | An owner can link a completed render to the campaign result memory. A useful result creates a structural reusable layout with no copied source text, asset, or old campaign identity. |
+| Manual fallback | The current storyboard downloads as a plain-text file even when the browser cannot record Canvas video. |
+| Zero provider credits | The in-house compositor records zero provider calls and zero provider credits. |
+| Manual delivery | The result downloads to the device. CampaignCue does not publish, send, boost, or mutate spend. |
+
+## Supported Input Modes
+
+- `campaign_to_video`: source-backed campaign output to storyboard and video.
+- `text_to_video`: copy and brand tokens to motion typography.
+- `image_to_video`: owner-controlled image plus campaign copy to motion.
+- `reference_to_video`: abstract Pattern Cue pacing applied to original source-backed content.
+
+These modes describe CampaignCue composition workflows. They do not claim a foundational generative-video model.
+
+## Supported Output Presets
+
+- Portrait `9:16` for Reels, Shorts, and story-style placements.
+- Square `1:1` for feed posts and reusable campaign assets.
+- Landscape `16:9` for widescreen placements.
+- Browser-selected encoding: MP4 only when the browser reports native MediaRecorder support; otherwise WebM. The UI must show the actual file type before download.
 
 ## Non-Goals
 
-- It is not a professional video editor.
-- It does not guarantee platform reach.
-- It does not treat a proof deck or shot list as rendered video output.
-- It does not create fake customer reactions, fake staff claims, or unverifiable results.
-- It does not present AI avatars, stock people, or fictional customers as real customer experiences.
-- It does not monitor creator accounts, copy viral videos, or guarantee reach.
+- Professional timeline, colour grading, masking, keyframe curves, or multi-track mixing.
+- Film, drama, cinematic-scene, or long-form generation.
+- Public avatar or model marketplace.
+- Fake or synthetic customer testimonials, reactions, staff claims, or likenesses.
+- Face swap, body swap, watermark removal, virtual try-on, AI livestreams, or viral-video cloning.
+- Third-party footage/music scraping, voice cloning, or rights clearance.
+- Provider rendering, automatic posting, social OAuth, ad creation, or spend mutation.
+- Guaranteed reach, virality, bookings, revenue, or platform acceptance.
 
-## Risks
+## Failure Contract
 
-- Rendered video can be expensive and slow.
-- Platform music, likeness, and rights restrictions require strict warnings.
-- Bad inputs can create impractical shot lists for small teams.
+- Unsupported browser recording returns a clear fallback, keeps the project, and leaves plain-text storyboard download available.
+- Image/video/audio decode failure returns a clear retry message and preserves the project. The owner may remove or replace the file and render again; CampaignCue does not silently omit selected media.
+- Render failure records a failed receipt and exposes `Try again` without charging credits.
+- Owner cancellation records a cancelled receipt; an interrupted started attempt can be closed before retrying.
+- A stale, blocked, rejected, or unapproved project cannot render.

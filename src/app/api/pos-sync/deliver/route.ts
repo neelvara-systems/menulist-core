@@ -16,6 +16,7 @@ import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import {
+    getPosSyncDeliveryHttpStatus,
     getNextPosSyncMenuVersion,
     POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
     resolvePosSyncDeliveryOutcome,
@@ -35,7 +36,6 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from "@lib/security/securityDiagnostics";
-import type { Project } from "@template/main-app/projects/types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
@@ -240,7 +240,7 @@ export const POST = withAuth(async (request, session) => {
                 || currentWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
             ) return null;
 
-            const projectData = projectDoc.data() as Project | undefined;
+            const projectData = projectDoc.data();
             if (!projectDoc.exists || !projectData || projectData.deleted === true) return null;
             const secret = resolvePosSyncSecretInTransaction({
                 transaction,
@@ -262,7 +262,7 @@ export const POST = withAuth(async (request, session) => {
                 projectData: {
                     ...projectData,
                     projectId: projectDoc.id,
-                } as Project,
+                },
                 secretVersion: secret.version,
                 webhookSecret: secret.secret,
                 webhookUrl: String(currentPosSync.webhookUrl),
@@ -440,14 +440,17 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        return NextResponse.json({
-            success,
-            deliveryId,
-            menuVersion: newVersion,
-            responseCode,
-            duration,
-            error: ownerError,
-        });
+        return NextResponse.json(
+            {
+                success,
+                deliveryId,
+                menuVersion: newVersion,
+                responseCode,
+                duration,
+                error: ownerError,
+            },
+            { status: getPosSyncDeliveryHttpStatus(success ? 'success' : deliveryStatus) },
+        );
     } catch (error) {
         logSecurityFailure(POS_SYNC_DELIVERY_ROUTE_FAILED, error, buildPosSyncSecurityContext(storeId, tenantId, projectId));
         return NextResponse.json({ error: "Internal error" }, { status: 500 });

@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 /**
  * Use MenuList — Output Center (v2)
  *
@@ -38,8 +40,7 @@ import {
     hasFeedbackPresenceReadiness,
     hasPublishedMenuProject,
 } from '@lib/menuPresence/presenceReadiness';
-import type { DigitalScreenSeenTimestamp } from '@lib/screen/screenTimestamp';
-import { getDigitalScreenHealth } from '@lib/screen/screenHealth';
+import { getDigitalScreenModeHealth } from '@lib/screen/screenHealth';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import {
@@ -63,7 +64,7 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
+import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -83,6 +84,7 @@ import {
     LuPlaySquare,
     LuPrinter,
     LuQrCode,
+    LuRefreshCw,
     LuShield,
 } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
@@ -168,6 +170,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const [generatingKit, setGeneratingKit] = useState(false);
     const [generatingAsset, setGeneratingAsset] = useState<string | null>(null);
     const [previewingAsset, setPreviewingAsset] = useState<string | null>(null);
+    const [refreshingDigitalScreenStatus, setRefreshingDigitalScreenStatus] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const qrSectionRef = useRef<HTMLDivElement | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
@@ -299,13 +302,15 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             // Get screen state
             let screenToken: string | null = null;
-            let screenLastSeenAt: DigitalScreenSeenTimestamp = null;
+            let screenContentVersion: number | null = null;
+            let screenSeenByMode: UseMenuListData['screenSeenByMode'];
             if (canAccessDigitalScreens) {
                 try {
                     const screenState = await getScreenState();
                     if (screenState) {
                         screenToken = screenState.screenToken;
-                        screenLastSeenAt = screenState.screenLastSeenAt || null;
+                        screenContentVersion = screenState.contentVersion;
+                        screenSeenByMode = screenState.screenSeenByMode;
                     }
                 } catch (error) {
                     logUseMenuListFailure('use_menulist_screen_links_load_failed', error, {
@@ -359,7 +364,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 screenToken,
                 menuBoardLink: screenToken ? buildScreenUrl(screenToken, obpLink) : null,
                 highlightsLink: screenToken ? `${buildScreenUrl(screenToken, obpLink)}?mode=highlights` : null,
-                screenLastSeenAt,
+                screenContentVersion,
+                screenSeenByMode,
                 storeName: storeDisplayName,
                 storeLogo: storeDetails.logo || null,
                 subdomain: subdomain || '',
@@ -422,10 +428,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
     const handleOpen = (url: string, label: string) => {
         try {
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('use_menulist_open_blocked');
-            }
+            openIsolatedBrowserUrl(url);
         } catch (error) {
             logUseMenuListFailure('use_menulist_open_failed', error, {
                 ...getOutputDiagnosticContext(),
@@ -433,6 +436,36 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 ...getBoundedUseMenuListStringContext('label', label),
             });
             message.error('Failed to open link');
+        }
+    };
+
+    const handleRefreshDigitalScreenStatus = async () => {
+        if (!data || refreshingDigitalScreenStatus) return;
+        setRefreshingDigitalScreenStatus(true);
+        try {
+            const screenState = await getScreenState();
+            const screenToken = screenState?.screenToken || null;
+            const menuBoardLink = screenToken
+                ? buildScreenUrl(screenToken, data.obpLink)
+                : null;
+            setData((current) => current ? {
+                ...current,
+                hasScreen: Boolean(screenToken),
+                highlightsLink: menuBoardLink ? `${menuBoardLink}?mode=highlights` : null,
+                menuBoardLink,
+                screenContentVersion: screenState?.contentVersion || null,
+                screenSeenByMode: screenState?.screenSeenByMode,
+                screenToken,
+            } : current);
+            message.success('TV status refreshed');
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_screen_status_refresh_failed', error, {
+                ...getOutputDiagnosticContext(),
+                hasScreen: data.hasScreen,
+            });
+            message.error('Unable to refresh TV status');
+        } finally {
+            setRefreshingDigitalScreenStatus(false);
         }
     };
 
@@ -513,13 +546,17 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             const asset = await generateMenuKitAsset(input, assetKey);
             const previewBlob = new Blob([asset.blob], { type: asset.mimeType });
             const previewUrl = URL.createObjectURL(previewBlob);
-            const opened = window.open(previewUrl, '_blank', 'noopener,noreferrer');
-
-            if (!opened) {
+            try {
+                openIsolatedBrowserUrl(previewUrl);
+                message.success(`${assetLabel} preview requested`);
+            } catch (error) {
+                logUseMenuListFailure('use_menulist_menu_kit_asset_preview_open_failed', error, {
+                    ...getOutputDiagnosticContext(),
+                    ...getBoundedUseMenuListStringContext('assetKey', assetKey),
+                    ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
+                });
                 downloadBlob(asset.blob, asset.filename);
-                message.info('Preview was blocked, so the file was downloaded instead');
-            } else {
-                message.success(`${assetLabel} preview opened`);
+                message.info('Preview could not start, so the file was downloaded instead');
             }
 
             window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60000);
@@ -982,7 +1019,18 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     }
 
     // ── Main render ──────────────────────────────────────────────
-    const digitalScreenHealth = getDigitalScreenHealth(data.screenLastSeenAt);
+    const screenContentVersion = data.screenContentVersion || 1;
+    const menuBoardHealth = getDigitalScreenModeHealth(
+        data.screenSeenByMode?.menu_board,
+        screenContentVersion,
+    );
+    const highlightsHealth = getDigitalScreenModeHealth(
+        data.screenSeenByMode?.highlights,
+        screenContentVersion,
+    );
+    const getScreenHealthTagColor = (state: typeof menuBoardHealth.state) => (
+        state === 'current' ? 'success' : state === 'pending' || state === 'stale' ? 'warning' : 'default'
+    );
 
     return (
         <div style={{ margin: '0 auto', maxWidth: 1080, padding: '24px clamp(16px, 3vw, 32px)', width: '100%' }}>
@@ -1360,23 +1408,39 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             {canAccessDigitalScreens ? <>
             {/* ─── Digital Screens ───────────────────────────────── */}
-            <Title level={5} style={{ marginBottom: 12 }}>Digital Screens</Title>
+            <Flex align="center" justify="space-between" style={{ marginBottom: 12 }}>
+                <Title level={5} style={{ margin: 0 }}>Digital Screens</Title>
+                {data.hasScreen ? (
+                    <Tooltip title="Refresh TV status">
+                        <Button
+                            aria-label="Refresh TV status"
+                            icon={<LuRefreshCw size={16} />}
+                            loading={refreshingDigitalScreenStatus}
+                            onClick={() => void handleRefreshDigitalScreenStatus()}
+                            size="small"
+                        />
+                    </Tooltip>
+                ) : null}
+            </Flex>
             {data.hasScreen ? (
                 <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} sm={12}>
                         <Card size="small" styles={{ body: { padding: 16 } }}>
                             <Flex vertical gap={8}>
-                                <Flex gap={8} align="center">
+                                <Flex gap={8} align="center" wrap="wrap">
                                     <LuMonitor size={18} />
                                     <Text strong>Menu Board</Text>
                                     <Tag style={primaryTagStyle}>Main TV</Tag>
-                                    <Tag color={digitalScreenHealth.state === 'recent' ? 'success' : digitalScreenHealth.state === 'stale' ? 'warning' : 'default'}>
-                                        {digitalScreenHealth.summary}
-                                    </Tag>
                                 </Flex>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                     Full {labels.offeringLower} with categories, items, and prices
                                 </Text>
+                                <Flex align="center" gap={6} wrap="wrap">
+                                    <Tag color={getScreenHealthTagColor(menuBoardHealth.state)} style={{ margin: 0 }}>
+                                        {menuBoardHealth.summary}
+                                    </Tag>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{menuBoardHealth.detail}</Text>
+                                </Flex>
                                 <Text
                                     type="secondary"
                                     style={{
@@ -1404,7 +1468,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                     <Col xs={24} sm={12}>
                         <Card size="small" styles={{ body: { padding: 16 } }}>
                             <Flex vertical gap={8}>
-                                <Flex gap={8} align="center">
+                                <Flex gap={8} align="center" wrap="wrap">
                                     <LuPlaySquare size={18} />
                                     <Text strong>Highlights</Text>
                                     <Tag style={infoTagStyle}>Second TV</Tag>
@@ -1412,6 +1476,12 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                     Rotating promotional slides with featured items
                                 </Text>
+                                <Flex align="center" gap={6} wrap="wrap">
+                                    <Tag color={getScreenHealthTagColor(highlightsHealth.state)} style={{ margin: 0 }}>
+                                        {highlightsHealth.summary}
+                                    </Tag>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{highlightsHealth.detail}</Text>
+                                </Flex>
                                 <Text
                                     type="secondary"
                                     style={{

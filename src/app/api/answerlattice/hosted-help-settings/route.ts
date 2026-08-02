@@ -44,8 +44,7 @@ import { withAuth } from '../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 const HOSTED_HELP_SETTINGS_SAVE_MAX_BODY_BYTES = 32 * 1024;
 

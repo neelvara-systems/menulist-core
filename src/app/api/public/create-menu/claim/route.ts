@@ -32,8 +32,10 @@ import { mceValidate, toMCEMetadata } from '@lib/mce';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import {
+    assertCurrentUserAvailableForOnboardingInTransaction,
     createTenantStoreInTransaction,
     normalizeSubdomainCandidate,
+    OnboardingUserUnavailableError,
     preCheckSubdomain,
     updateUserWithTenantStore,
 } from '@lib/onboarding/createTenantStore';
@@ -44,6 +46,7 @@ import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth
 import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
+import { resolvePublicMenuClaimUserAuthority } from '@lib/public-menu-entry/claimUserAuthority';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import {
@@ -63,12 +66,31 @@ import { buildSummaryProjectPayload } from '@lib/firestore/summaryProjectsWriter
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from 'src/middleware/auth';
+import { type AuthenticatedHandler, withAuth } from 'src/middleware/auth';
 import { hashPublicRateLimitValue, sanitizeString } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const PUBLIC_MENU_CLAIM_MAX_BODY_BYTES = 8 * 1024;
+const PUBLIC_MENU_CLAIM_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const withPublicMenuClaimPrivateResponse = (handler: AuthenticatedHandler) => {
+    const authenticatedHandler = withAuth(handler);
+    return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => {
+        const response = await authenticatedHandler(...args);
+        Object.entries(PUBLIC_MENU_CLAIM_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+            response.headers.set(name, value);
+        });
+        return response;
+    };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
 
 function normalizePublicMenuClaimNumericDocumentId(
     value: unknown,
@@ -109,11 +131,11 @@ function buildPublicPresenceDefaults(params: {
     addressLine?: string;
     brandAccentColor?: string | null;
     businessType: string;
-    existingPublicPresence?: Record<string, any> | null;
+    existingPublicPresence?: Record<string, unknown> | null;
     phone?: string;
 }) {
     const existing = params.existingPublicPresence || {};
-    const defaults: Record<string, any> = {};
+    const defaults: Record<string, unknown> = {};
     const descriptor = getDefaultPublicDescriptor(params.businessType);
 
     if (!hasValue(existing.descriptor) && descriptor) {
@@ -138,20 +160,20 @@ function buildPublicPresenceDefaults(params: {
     return defaults;
 }
 
-function mergeDefinedObject<T extends Record<string, any>>(value: T | null | undefined): T | undefined {
+function mergeDefinedObject<T extends Record<string, unknown>>(value: T | null | undefined): T | undefined {
     if (!value || Object.keys(value).length === 0) return undefined;
     return value;
 }
 
 const ClaimSchema = z.object({
     draftId: z.string().refine((value) => normalizePublicMenuDraftId(value) === value),
-    businessName: z.string().min(2).max(100),
-    businessType: z.string().max(80).optional(),
-    businessCategory: z.string().max(80).optional(),
-    phone: z.string().max(40).optional(),
-    city: z.string().max(80).optional(),
-    addressLine: z.string().max(250).optional(),
-});
+    businessName: z.string().trim().min(2).max(100),
+    businessType: z.string().trim().max(80).optional(),
+    businessCategory: z.string().trim().max(80).optional(),
+    phone: z.string().trim().max(40).optional(),
+    city: z.string().trim().max(80).optional(),
+    addressLine: z.string().trim().max(250).optional(),
+}).strict();
 
 class PublicMenuClaimError extends Error {
     constructor(
@@ -237,7 +259,7 @@ const getPublicMenuClaimDiagnosticContext = (
  * 
  * Convert draft → tenant + store + project (authenticated)
  */
-export const POST = withAuth(async (request: NextRequest, session) => {
+export const POST = withPublicMenuClaimPrivateResponse(async (request: NextRequest, session) => {
     // 1. Feature gate
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
@@ -281,12 +303,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         ? 'Publishing is temporarily unavailable. Please try again in a minute.'
                         : 'Too many publish attempts. Please try again later.',
                 },
-                {
-                    status: providerUnavailable ? 503 : 429,
-                    headers: {
-                        'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
+                providerUnavailable
+                    ? { status: 503 }
+                    : {
+                        status: 429,
+                        headers: {
+                            'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))),
+                        },
                     },
-                },
             );
         }
 
@@ -366,7 +390,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 throw new PublicMenuClaimError(404, 'Draft not found or expired.');
             }
 
-            const draft = draftDoc.data()!;
+            const draftData = draftDoc.data();
+            if (!isRecord(draftData)) {
+                throw new PublicMenuClaimError(422, 'This menu could not be validated. Please upload it again.');
+            }
+            const draft = draftData;
             const growthAcquisition = normalizeGrowthAcquisitionAttribution(draft.growthAcquisition);
             if (draft.createdByUId !== userId) {
                 throw new PublicMenuClaimError(403, 'This draft belongs to another account.');
@@ -410,15 +438,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
             const extractedLanguageCodes = getCanonicalExtractionLanguages(extractedData.languages);
             const detectedDefaultLanguage = getDetectedDefaultLanguage(extractedData.languages);
+            const draftExtractedDataRecord = isRecord(draft.extractedData) ? draft.extractedData : null;
             const extractedProfile = normalizeExtractedBusinessProfile(
-                draft.extractedBusinessProfile || draft.extractedData?.extractedBusinessProfile,
+                draft.extractedBusinessProfile || draftExtractedDataRecord?.extractedBusinessProfile,
             ) || null;
-            const profileCurrencyCode = getSuggestionValue(extractedProfile?.identity?.currencyCode, 'medium') || draft.detectedCurrencyCode || null;
+            const suggestedCurrencyCode = getSuggestionValue(extractedProfile?.identity?.currencyCode, 'medium');
+            const detectedCurrencyCode = typeof draft.detectedCurrencyCode === 'string'
+                ? draft.detectedCurrencyCode.trim()
+                : '';
+            const profileCurrencyCode = suggestedCurrencyCode || detectedCurrencyCode || null;
             const profileCurrencySymbol = getCurrencySymbolFromCode(profileCurrencyCode);
-            const profileProjectName = getSuggestionValue(extractedProfile?.project?.projectName, 'medium') || draft.suggestedProjectName || '';
-            const projectName = hasValue(profileProjectName) ? String(profileProjectName).trim() : businessName;
-            const brandAccentColor = getSuggestionValue(extractedProfile?.visualBrand?.brandAccentColor, 'medium') || draft.detectedBrandAccentColor || null;
-            const imageBackgroundColor = getSuggestionValue(extractedProfile?.visualBrand?.imageBackgroundColor, 'medium') || draft.detectedImageBackgroundColor || null;
+            const persistedSuggestedProjectName = typeof draft.suggestedProjectName === 'string'
+                ? draft.suggestedProjectName
+                : '';
+            const profileProjectName = getSuggestionValue(extractedProfile?.project?.projectName, 'medium') || persistedSuggestedProjectName;
+            const projectName = hasValue(profileProjectName) ? profileProjectName.trim() : businessName;
+            const brandAccentColor = getSuggestionValue(extractedProfile?.visualBrand?.brandAccentColor, 'medium')
+                || (typeof draft.detectedBrandAccentColor === 'string' ? draft.detectedBrandAccentColor : null);
+            const imageBackgroundColor = getSuggestionValue(extractedProfile?.visualBrand?.imageBackgroundColor, 'medium')
+                || (typeof draft.detectedImageBackgroundColor === 'string' ? draft.detectedImageBackgroundColor : null);
             const now = admin.firestore.Timestamp.now();
             const activationDeadline = admin.firestore.Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS);
             let tenantId: number;
@@ -427,19 +465,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             let storeDocumentId: string;
             let subdomain: string;
             let referralBoundInTransaction = false;
+            const detectedBusinessType = typeof draft.detectedBusinessType === 'string'
+                ? draft.detectedBusinessType
+                : undefined;
+            const detectedBusinessCategory = typeof draft.detectedBusinessCategory === 'string'
+                ? draft.detectedBusinessCategory
+                : undefined;
             let resolvedBusinessType = getBusinessTypeConfig(
-                businessType || draft.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
+                businessType || detectedBusinessType || FALLBACK_BUSINESS_TYPE,
             )?.value || FALLBACK_BUSINESS_TYPE;
             let resolvedBusinessCategory = resolveStoreBusinessCategory(
                 resolvedBusinessType,
-                businessCategory || draft.detectedBusinessCategory,
+                businessCategory || detectedBusinessCategory,
             );
             const extractedMenuData = {
                 categories: extractedData.categories || [],
                 items: extractedData.items || [],
                 languages: extractedData.languages || [],
             };
-            let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};
+            let existingSummaryProjectsForDefaultDemotion: Record<string, Record<string, unknown>> = {};
 
             if (hasExistingAccount) {
                 const tenantScope = normalizePublicMenuClaimNumericDocumentId(session.user.tenantId);
@@ -454,11 +498,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
                 const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
                 const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);
+                const userRef = db.collection(DB_COLLECTIONS.USERS).doc(userId);
                 const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);
                 const storeDoc = await transaction.get(storeRef);
                 const tenantDoc = await transaction.get(tenantRef);
+                const currentUserDoc = await transaction.get(userRef);
                 const existingSummaryDoc = await transaction.get(existingProjectsSummaryRef);
-                if (!storeDoc.exists || !tenantDoc.exists) {
+                if (!storeDoc.exists || !tenantDoc.exists || !currentUserDoc.exists) {
                     throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
                 }
                 const storeData = storeDoc.data() || {};
@@ -484,9 +530,29 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ) {
                     throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
                 }
+                const currentUserAuthority = resolvePublicMenuClaimUserAuthority({
+                    documentId: currentUserDoc.id,
+                    expectedStoreId: storeId,
+                    expectedTenantId: tenantId,
+                    session,
+                    userData: currentUserDoc.data(),
+                });
+                if (!currentUserAuthority) {
+                    throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
+                }
+                const currentAuthoritySession = {
+                    ...session,
+                    role: currentUserAuthority.role,
+                    user: {
+                        ...session.user,
+                        role: currentUserAuthority.role,
+                        storeIds: currentUserAuthority.storeIds,
+                        stores: currentUserAuthority.stores,
+                    },
+                };
                 const permissionError = await requireAnyStorePermissionForStoreData(
                     request,
-                    session,
+                    currentAuthoritySession,
                     storeData,
                     [PERMISSIONS.PUBLISH_MENU],
                     'Public menu setup publish',
@@ -496,28 +562,48 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 if (permissionError) {
                     throw new PublicMenuClaimError(403, 'You do not have permission to publish this menu.');
                 }
-                resolvedBusinessType = storeData.businessType || resolvedBusinessType;
-                resolvedBusinessCategory = resolveStoreBusinessCategory(resolvedBusinessType, storeData.businessCategory || resolvedBusinessCategory);
-                subdomain = storeData.subdomain || `store-${storeId}`;
+                const persistedBusinessType = typeof storeData.businessType === 'string'
+                    ? getBusinessTypeConfig(storeData.businessType)?.value
+                    : undefined;
+                const persistedBusinessCategory = typeof storeData.businessCategory === 'string'
+                    ? storeData.businessCategory
+                    : undefined;
+                resolvedBusinessType = persistedBusinessType || resolvedBusinessType;
+                resolvedBusinessCategory = resolveStoreBusinessCategory(
+                    resolvedBusinessType,
+                    persistedBusinessCategory || resolvedBusinessCategory,
+                );
+                const persistedSubdomain = typeof storeData.subdomain === 'string'
+                    ? storeData.subdomain.trim()
+                    : '';
+                subdomain = persistedSubdomain
+                    && normalizeSubdomainCandidate(persistedSubdomain) === persistedSubdomain
+                    ? persistedSubdomain
+                    : `store-${storeId}`;
+                const existingPublicPresence = isRecord(storeData.publicPresence)
+                    ? storeData.publicPresence
+                    : {};
 
                 const publicPresenceDefaults = buildPublicPresenceDefaults({
                     addressLine,
                     brandAccentColor,
                     businessType: resolvedBusinessType,
-                    existingPublicPresence: storeData.publicPresence,
+                    existingPublicPresence,
                     phone: normalizedPhone.phone,
                 });
                 const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(
                     extractedMenuData,
                     {
-                        businessAttributes: storeData.businessAttributes,
+                        businessAttributes: isRecord(storeData.businessAttributes)
+                            ? storeData.businessAttributes
+                            : undefined,
                         businessCategory: resolvedBusinessCategory,
                         businessType: resolvedBusinessType,
                     },
                 );
-                const storeDefaultsPatch: Record<string, any> = {
+                const storeDefaultsPatch: Record<string, unknown> = {
                     ...(mergeDefinedObject(publicPresenceDefaults)
-                        ? { publicPresence: { ...(storeData.publicPresence || {}), ...publicPresenceDefaults } }
+                        ? { publicPresence: { ...existingPublicPresence, ...publicPresenceDefaults } }
                         : {}),
                     ...(nextBusinessAttributes ? { businessAttributes: nextBusinessAttributes } : {}),
                     lastPublishedAt: now,
@@ -530,6 +616,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     });
                 }
             } else {
+                await assertCurrentUserAvailableForOnboardingInTransaction(
+                    transaction,
+                    db,
+                    userId,
+                    session,
+                );
                 const starterActivatedAt = admin.firestore.Timestamp.now();
                 const initialPublicPresence = buildPublicPresenceDefaults({
                     addressLine,
@@ -617,7 +709,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 .collection(storeDocumentId)
                 .doc(projectId);
             const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);
-            const summaryUpdate: Record<string, any> = { lastUpdated: now };
+            const summaryUpdate: Record<string, unknown> = { lastUpdated: now };
             if (hasExistingAccount) {
                 Object.entries(existingSummaryProjectsForDefaultDemotion).forEach(([existingProjectId, existingProject]) => {
                     if (
@@ -656,7 +748,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 projectName,
                 projectId,
             );
-            const projectData: Record<string, any> = {
+            const projectData: Record<string, unknown> = {
                 projectId,
                 name: projectName,
                 description: projectName === businessName ? `Menu for ${businessName}` : `${projectName} for ${businessName}`,
@@ -817,6 +909,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return response;
 
     } catch (error) {
+        if (error instanceof OnboardingUserUnavailableError) {
+            logSecurityDiagnostic('public_menu_claim_current_user_unavailable', getPublicMenuClaimDiagnosticContext({
+                draftId: draftIdForDiagnostics,
+                userId,
+                hasExistingAccount,
+                isNewAccount: true,
+            }));
+            return NextResponse.json(
+                { success: false, error: 'This account is not available for setup.' },
+                { status: 409 },
+            );
+        }
         if (error instanceof PublicMenuClaimError) {
             return NextResponse.json(
                 { success: false, error: error.clientMessage },

@@ -1,5 +1,5 @@
 import { Tooltip } from 'antd'
-import { PiCrownFill } from 'react-icons/pi'
+import { LuCrown } from 'react-icons/lu'
 import styles from './proIcon.module.scss'
 
 function ProUserIcon() {
@@ -7,7 +7,7 @@ function ProUserIcon() {
         <div className={styles.proUserIconWrap}>
             <Tooltip title="Available for pro version" color="gold">
                 <div className={styles.iconWrap}>
-                    <PiCrownFill />
+                    <LuCrown fill="currentColor" />
                 </div>
             </Tooltip>
         </div>

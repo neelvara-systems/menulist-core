@@ -5,6 +5,10 @@ import { init, Picker as EmojiMartPicker, SearchIndex } from 'emoji-mart';
 import { theme } from 'antd';
 import { useLocale } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    normalizeEmojiSearchResult,
+    type EmojiSearchResult,
+} from './iconPickerContracts';
 
 type EmojiOption = {
     emoji: string;
@@ -175,7 +179,7 @@ export default function EmojiGrid({
     const normalizedSelected = selectedIcon?.startsWith('emoji:') ? selectedIcon.replace('emoji:', '') : undefined;
     const emojiLocale = resolveEmojiMartLocale(locale);
     const [searchReady, setSearchReady] = useState(false);
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<EmojiSearchResult[]>([]);
     const browserRef = useRef<HTMLDivElement>(null);
     const hasSearchQuery = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
 
@@ -211,7 +215,11 @@ export default function EmojiGrid({
         })
             .then((results) => {
                 if (active) {
-                    setSearchResults(Array.isArray(results) ? results : []);
+                    setSearchResults(Array.isArray(results)
+                        ? results
+                            .map(normalizeEmojiSearchResult)
+                            .filter((result): result is EmojiSearchResult => result !== null)
+                        : []);
                 }
             })
             .catch(() => {
@@ -229,7 +237,7 @@ export default function EmojiGrid({
         const container = browserRef.current;
         if (!container || hasSearchQuery) return;
 
-        const picker = new EmojiMartPicker({
+        const pickerCandidate: unknown = new EmojiMartPicker({
             data,
             categories: SMB_EMOJI_CATEGORIES,
             locale: emojiLocale,
@@ -250,7 +258,14 @@ export default function EmojiGrid({
                     onSelect(`emoji:${emoji.native}`);
                 }
             },
-        }) as unknown as HTMLElement;
+        });
+
+        if (!(pickerCandidate instanceof HTMLElement)) {
+            container.replaceChildren();
+            return;
+        }
+
+        const picker = pickerCandidate;
 
         container.replaceChildren(picker);
 
@@ -281,15 +296,14 @@ export default function EmojiGrid({
                     {searchResults.length > 0 ? (
                         <div className="emoji-grid-picker__results-grid">
                             {searchResults.map((emoji) => {
-                                const native = emoji?.skins?.[0]?.native;
-                                if (!native) return null;
-                                const isSelected = normalizedSelected === native;
+                                const isSelected = normalizedSelected === emoji.native;
 
                                 return (
                                     <button
-                                        key={emoji.id || native}
+                                        aria-label={`Select ${emoji.name} emoji`}
+                                        key={emoji.id}
                                         className="icon-picker-cell-container icon-picker-cell-container--suggested"
-                                        onClick={() => onSelect(`emoji:${native}`)}
+                                        onClick={() => onSelect(`emoji:${emoji.native}`)}
                                         title={emoji.name}
                                         type="button"
                                     >
@@ -302,7 +316,7 @@ export default function EmojiGrid({
                                                 fontSize: 28,
                                             }}
                                         >
-                                            {native}
+                                            {emoji.native}
                                         </span>
                                     </button>
                                 );

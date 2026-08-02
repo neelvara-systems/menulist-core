@@ -81,7 +81,7 @@ Practical consequences:
 
 - Owner naming "Menu" → `/menu` is their canonical URL. Owner naming "Food Menu" → `/food-menu` is canonical; `/menu` works as an alias only when that or another project is explicitly default.
 - `menu` is **not reserved** in `RESERVED_PROJECT_SLUGS`. Owners can claim it via project naming.
-- OBP's "View Menu" CTA links to the default project's **real canonical slug URL** — preserving canonical URL cleanliness. `/menu` alias exists for customer-typed URLs, printed QRs, voice ("go to mybrand.menulist.ai slash menu"), and protocol-level muscle memory — not as the emitted URL.
+- OBP's "View Menu" CTA links to the default project's **real canonical slug URL** — preserving canonical URL cleanliness. `/menu` alias exists for customer-typed URLs, printed QRs, voice ("go to mybrand.menulist.online slash menu"), and protocol-level muscle memory — not as the emitted URL.
 - Subdomain `menu.menulist.ai` stays blocked in `RESERVED_SUBDOMAINS` (platform-level infrastructure concern, unrelated to per-store project slugs).
 
 ---
@@ -519,7 +519,7 @@ QR permanence claim breaks the moment an owner renames an outlet. Locked at G-07
 1. Subdomain is **immutable** from the moment the tenant's OBP first serves a 200 to a real customer (first public request, or first QR download — whichever comes first).
 2. There is **no owner-facing rename UI, ever.**
 3. If a rename is genuinely required (trademark dispute, acquisition, legal order), it happens via admin-tier support intervention with an explicit record, a 12-month redirect window, and the owner's written acknowledgment that prior printed QRs and installed PWAs will eventually break.
-4. Custom domains remain owner-controlled (they are owned outside our system and can always be repointed). Only the `*.menulist.ai` subdomain is subject to this immutability lock.
+4. Custom domains remain owner-controlled (they are owned outside our system and can always be repointed). Only the `*.menulist.online` subdomain is subject to this immutability lock.
 
 ### A-04. `homeStyle` design tokens become obsolete in the public path
 

@@ -3,6 +3,7 @@
 import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import type { ResellerClientRecord } from '@lib/reseller/resellerClientRecord';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -504,10 +505,7 @@ export default function MobileResellerDashboardScreen({
             return;
         }
         try {
-            const opened = window.open(link, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_reseller_dashboard_payment_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(link);
         } catch (error) {
             logMobileOwnerFailure('mobile_reseller_dashboard_payment_link_open_failed', error, buildResellerDashboardLogContext('open_payment_link', {
                 ...getBoundedMobileOwnerStringContext('paymentLink', link),

@@ -153,7 +153,12 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     const activeScopeRef = useRef(scopeKey);
     const componentActiveRef = useRef(true);
     const hoursActionInFlightRef = useRef(false);
+    const tempStatusActionInFlightRef = useRef(false);
     activeScopeRef.current = scopeKey;
+    const isExpectedTempStatusScope = useCallback((tenantId: unknown, storeId: unknown) => (
+        componentActiveRef.current
+        && activeScopeRef.current === `${String(tenantId ?? '')}::${String(storeId ?? '')}`
+    ), []);
 
     useEffect(() => {
         const interval = window.setInterval(() => setHoursNow(new Date()), 60_000);
@@ -256,7 +261,11 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     }, [inactiveItemsReminder?.projectId, storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     const handleCloseToday = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
+        if (tempStatusActionInFlightRef.current) return;
+        tempStatusActionInFlightRef.current = true;
         setIsUpdating(true);
         const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
         const nextStatus = {
@@ -266,14 +275,23 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             createdAt: new Date().toISOString(),
         };
         const previousStatus = storeDetails?.tempStatus;
-        setStoreDetails((previous: any) => ({ ...previous, tempStatus: nextStatus }));
+        setStoreDetails((previous: any) => String(previous?.tenantId ?? '') === String(expectedTenantId)
+            && String(previous?.storeId ?? '') === String(expectedStoreId)
+            ? { ...previous, tempStatus: nextStatus }
+            : previous);
 
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'set', type: 'closed_today', expiresAt }),
+                body: JSON.stringify({
+                    action: 'set',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                    type: 'closed_today',
+                    expiresAt,
+                }),
             });
             const result = await readTempStatusResponse(res, 'set', {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
@@ -283,6 +301,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasCustomMessage: false,
                 surface: 'mobile_today_hours',
             });
+            if (!isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) return;
             Toast.show({
                 content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : t('closedForToday'),
                 duration: result.effectsPending ? 2200 : 1500,
@@ -294,15 +313,17 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasPreviousStatus: Boolean(previousStatus),
             });
             setStoreDetails((previous: any) => {
+                if (String(previous?.tenantId ?? '') !== String(expectedTenantId) || String(previous?.storeId ?? '') !== String(expectedStoreId)) return previous;
                 if (previousStatus) return { ...previous, tempStatus: previousStatus };
                 const { tempStatus, ...rest } = previous || {};
                 return rest;
             });
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
-            setIsUpdating(false);
+            tempStatusActionInFlightRef.current = false;
+            if (isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) setIsUpdating(false);
         }
-    }, [setStoreDetails, storeDetails?.storeId, storeDetails?.tempStatus, t]);
+    }, [isExpectedTempStatusScope, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId, storeDetails?.tempStatus, t]);
 
     const handleCompleteCampaign = async (campaign: TodayCampaignSummary) => {
         setIsCampaignProcessing(true);
@@ -635,6 +656,9 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
 
     const handleSetTempStatus = async () => {
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
         const expiresAt = fromNativeDateTimeInputValue(exactTempStatusExpiryAt);
         const exactExpiryDate = toDate(expiresAt);
         if (!exactTempStatusExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
@@ -650,11 +674,16 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             title: 'Show this status to customers?',
         });
         if (!confirmed) return;
+        if (tempStatusActionInFlightRef.current || !isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) return;
 
+        tempStatusActionInFlightRef.current = true;
         setIsTempStatusLoading(true);
         const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
         const prevStatus = storeDetails?.tempStatus;
-        setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
+        setStoreDetails((prev: any) => String(prev?.tenantId ?? '') === String(expectedTenantId)
+            && String(prev?.storeId ?? '') === String(expectedStoreId)
+            ? { ...prev, tempStatus: newStatus }
+            : prev);
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
@@ -662,6 +691,8 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'set',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
                     type: tempStatusType,
                     expiresAt,
                     message: tempStatusType === 'custom' ? customTempStatusMessage.trim() : undefined,
@@ -675,6 +706,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasCustomMessage: Boolean(customTempStatusMessage.trim()),
                 surface: 'mobile_today_hours',
             });
+            if (!isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) return;
             Toast.show({
                 content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : 'Customers can see this now',
                 icon: result.effectsPending ? undefined : 'success',
@@ -688,14 +720,21 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasPreviousStatus: Boolean(prevStatus),
                 hasCustomMessage: Boolean(customTempStatusMessage.trim()),
             });
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+            setStoreDetails((prev: any) => String(prev?.tenantId ?? '') === String(expectedTenantId)
+                && String(prev?.storeId ?? '') === String(expectedStoreId)
+                ? { ...prev, tempStatus: prevStatus }
+                : prev);
             Toast.show({ content: 'Could not set status', duration: 2000 });
         } finally {
-            setIsTempStatusLoading(false);
+            tempStatusActionInFlightRef.current = false;
+            if (isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) setIsTempStatusLoading(false);
         }
     };
 
     const handleClearTempStatus = async () => {
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
         const prevStatus = storeDetails?.tempStatus;
         const confirmed = await Dialog.confirm({
             cancelText: 'Cancel',
@@ -706,9 +745,12 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             title: 'Clear customer status?',
         });
         if (!confirmed) return;
+        if (tempStatusActionInFlightRef.current || !isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) return;
 
+        tempStatusActionInFlightRef.current = true;
         setIsTempStatusLoading(true);
         setStoreDetails((prev: any) => {
+            if (String(prev?.tenantId ?? '') !== String(expectedTenantId) || String(prev?.storeId ?? '') !== String(expectedStoreId)) return prev;
             const { tempStatus, ...rest } = prev || {};
             return rest;
         });
@@ -717,13 +759,18 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'clear' }),
+                body: JSON.stringify({
+                    action: 'clear',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                }),
             });
             const result = await readTempStatusResponse(res, 'clear', {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
                 hasPreviousStatus: Boolean(prevStatus),
                 surface: 'mobile_today_hours',
             });
+            if (!isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) return;
             Toast.show({
                 content: result.effectsPending ? 'Cleared. Customer pages may take a moment to refresh.' : 'Status cleared',
                 icon: result.effectsPending ? undefined : 'success',
@@ -735,13 +782,15 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasPreviousStatus: Boolean(prevStatus),
             });
             setStoreDetails((prev: any) => {
+                if (String(prev?.tenantId ?? '') !== String(expectedTenantId) || String(prev?.storeId ?? '') !== String(expectedStoreId)) return prev;
                 if (prevStatus) return { ...prev, tempStatus: prevStatus };
                 const { tempStatus, ...rest } = prev || {};
                 return rest;
             });
             Toast.show({ content: 'Could not clear status', duration: 2000 });
         } finally {
-            setIsTempStatusLoading(false);
+            tempStatusActionInFlightRef.current = false;
+            if (isExpectedTempStatusScope(expectedTenantId, expectedStoreId)) setIsTempStatusLoading(false);
         }
     };
 

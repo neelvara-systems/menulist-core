@@ -639,8 +639,8 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
         return privateJson({ error: 'Invalid query', details: getSafeZodValidationDetails(validation.error) }, { status: 400 });
     }
 
-    const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
-    if (!db || typeof (db as any).collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         return privateJson({ error: 'Answerlattice Firebase is not configured.' }, { status: 503 });
     }
 
@@ -787,8 +787,8 @@ export const POST = withPlatformAuth(async (request: NextRequest, session: any) 
         return privateJson({ error: 'Invalid manual trigger payload', details: getSafeZodValidationDetails(validation.error) }, { status: 400 });
     }
 
-    const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
-    if (!db || typeof (db as any).collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         return privateJson({ error: 'Answerlattice Firebase is not configured.' }, { status: 503 });
     }
 

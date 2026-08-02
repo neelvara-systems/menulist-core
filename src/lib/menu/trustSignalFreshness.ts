@@ -28,6 +28,32 @@ function normalizeTrustSignalDate(value: unknown): Date | null {
     }
 }
 
+const normalizeTrustSignalLocationPart = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const withoutControls = Array.from(value.normalize('NFKC'), (character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint <= 31 || codePoint === 127 ? ' ' : character;
+    }).join('');
+    return withoutControls
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120)
+        .trim();
+};
+
+export function getTrustSignalLocationText(area: unknown, city: unknown): string | null {
+    const normalizedArea = normalizeTrustSignalLocationPart(area);
+    const normalizedCity = normalizeTrustSignalLocationPart(city);
+    if (
+        normalizedArea
+        && normalizedCity
+        && normalizedArea.localeCompare(normalizedCity, undefined, { sensitivity: 'base' }) !== 0
+    ) {
+        return `${normalizedArea}, ${normalizedCity}`;
+    }
+    return normalizedArea || normalizedCity || null;
+}
+
 export function getTrustSignalFreshnessText(
     lastPublishedAt: unknown,
     now: Date = new Date(),

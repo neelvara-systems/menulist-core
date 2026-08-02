@@ -7,16 +7,13 @@ import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
-    requireAnswerlatticePermission,
-} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, requireAnswerlatticePermission, } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, buildDraftUserPrompt, parseDraftResponse } from '@lib/answerlattice/draftPrompt';
 import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { isExactAnswerlatticePersistedAuthority, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -69,7 +66,7 @@ async function markManualDraftClaimFailed(
     requestId: string,
     actor: string,
 ): Promise<void> {
-    await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+    await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
         const currentSnap = await transaction.get(proposalRef);
         const current = currentSnap.data() || {};
         if (
@@ -108,7 +105,7 @@ async function gatherSignalExamples(tId: number, sId: number, entityId: string):
 
     let snapshot;
     try {
-        snapshot = await answerlatticeFirestoreAdmin
+        snapshot = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
             .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
@@ -140,7 +137,7 @@ async function gatherSignalExamples(tId: number, sId: number, entityId: string):
 async function getExistingAnswerSummaries(tId: number, sId: number, entityId: string): Promise<string[]> {
     let snapshot;
     try {
-        snapshot = await answerlatticeFirestoreAdmin
+        snapshot = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
             .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
@@ -258,7 +255,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         claimedActor = actor;
         const tenantId = scope.tenantId;
         const storeId = scope.storeId;
-        const proposalRef = answerlatticeFirestoreAdmin
+        const proposalRef = requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
             .doc(proposalId);
         const proposalSnap = await proposalRef.get();
@@ -283,7 +280,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return privateJson({ error: 'No related entity is attached to this proposal' }, { status: 422 });
         }
 
-        const entitySnap = await answerlatticeFirestoreAdmin
+        const entitySnap = await requireAnswerlatticeFirestoreAdmin()
             .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
             .doc(entityId)
             .get();
@@ -299,7 +296,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return privateJson({ error: 'Related entity is outside the current Answerlattice workspace' }, { status: 403 });
         }
 
-        const claimResult = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const claimResult = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const currentSnap = await transaction.get(proposalRef);
             const current = currentSnap.data() || {};
             if (
@@ -389,7 +386,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const parsed = parseDraftResponse(geminiResult.text);
         if (!parsed) {
-            await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
                 const currentSnap = await transaction.get(proposalRef);
                 const current = currentSnap.data() || {};
                 if (
@@ -410,8 +407,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return privateJson({ error: 'Failed to parse AI response' }, { status: 422 });
         }
 
-        const auditRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
-        const committed = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+        const auditRef = requireAnswerlatticeFirestoreAdmin().collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
+        const committed = await requireAnswerlatticeFirestoreAdmin().runTransaction(async transaction => {
             const currentSnap = await transaction.get(proposalRef);
             const current = currentSnap.data() || {};
             if (

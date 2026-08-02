@@ -251,7 +251,12 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
 
 export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
-    if (!firebaseAuth?.currentUser) return { ready: false };
+    if (!firebaseAuth?.currentUser) {
+        throw createFirebaseBootstrapError(
+            'Firebase Auth claims refresh failed',
+            'firebase_auth_claims_refresh_missing_user',
+        );
+    }
 
     const response = await fetch("/api/auth/set-claims", {
         ...AUTH_BROWSER_REQUEST_POLICY,

@@ -113,6 +113,16 @@ type PlatformTemplateCard = {
     title: string;
 };
 
+const normalizeTemplateThumbnailUrl = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized && normalized.length <= 4_000 ? normalized : null;
+};
+
+const normalizeTemplateDimension = (value: unknown): number => (
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 1
+);
+
 function getAssetIcon(assetId: PrintableAssetTypeId) {
     if (assetId === 'print_menu') return <LuFileText size={18} />;
     if (assetId === 'complete_menu_kit') return <LuPackage size={18} />;
@@ -338,12 +348,14 @@ export default function PrintableAssetTemplatesRoute() {
             return selectedPlatformTemplates.map((template) => {
                 const family = getPrintableTemplateFamily(template.templateFamilyId);
                 return {
-                    description: template.description || family.description,
+                    description: typeof template.description === 'string' && template.description.trim()
+                        ? template.description
+                        : family.description,
                     family,
                     id: template.id,
                     source: 'registry',
                     template,
-                    thumbnailUrl: template.thumbnailUrl,
+                    thumbnailUrl: normalizeTemplateThumbnailUrl(template.thumbnailUrl),
                     title: template.title || family.label,
                 };
             });
@@ -611,7 +623,7 @@ export default function PrintableAssetTemplatesRoute() {
     const renderTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId, platformTemplate?: CreativeEditorTemplateSummary) => {
         previewRequestRef.current += 1;
         const requestId = previewRequestRef.current;
-        if (platformTemplate?.thumbnailUrl) {
+        if (normalizeTemplateThumbnailUrl(platformTemplate?.thumbnailUrl)) {
             closePreviewAsset(false);
             setPreviewState('ready');
             return;
@@ -1013,10 +1025,10 @@ export default function PrintableAssetTemplatesRoute() {
                                                         overflow: 'hidden',
                                                     }}
                                                 >
-                                                    {template.thumbnailUrl ? (
+                                                    {normalizeTemplateThumbnailUrl(template.thumbnailUrl) ? (
                                                         <img
                                                             alt={`${template.title} preview`}
-                                                            src={template.thumbnailUrl}
+                                                            src={normalizeTemplateThumbnailUrl(template.thumbnailUrl) || undefined}
                                                             style={{ display: 'block', height: '100%', objectFit: 'contain', width: '100%' }}
                                                         />
                                                     ) : (
@@ -1030,7 +1042,7 @@ export default function PrintableAssetTemplatesRoute() {
                                                     <div style={{ minWidth: 0 }}>
                                                         <Text strong ellipsis style={{ display: 'block' }}>{template.title}</Text>
                                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                                            {template.width} x {template.height}
+                                                            {normalizeTemplateDimension(template.width)} x {normalizeTemplateDimension(template.height)}
                                                         </Text>
                                                     </div>
                                                     <Button
@@ -1193,10 +1205,10 @@ export default function PrintableAssetTemplatesRoute() {
                                         objectFit: 'contain',
                                     }}
                                 />
-                            ) : activePlatformTemplate?.thumbnailUrl ? (
+                            ) : activePlatformTemplate && normalizeTemplateThumbnailUrl(activePlatformTemplate.thumbnailUrl) ? (
                                 <img
                                     alt={`${activePlatformTemplate.title} preview`}
-                                    src={activePlatformTemplate.thumbnailUrl}
+                                    src={normalizeTemplateThumbnailUrl(activePlatformTemplate.thumbnailUrl) || undefined}
                                     style={{
                                         borderRadius: 8,
                                         display: 'block',

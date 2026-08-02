@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { LuStar } from 'react-icons/lu';
 import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import styles from './StarRating.module.scss';
+import { normalizeStarRating } from '../feedbackPresentation';
 
 interface StarRatingProps {
     activeLanguage?: string;
@@ -22,7 +23,8 @@ export const StarRating: React.FC<StarRatingProps> = ({
 }) => {
     const t = createPublicCustomerTranslator(activeLanguage);
     const [hoverValue, setHoverValue] = useState<number | null>(null);
-    const displayValue = hoverValue ?? value;
+    const normalizedValue = normalizeStarRating(value);
+    const displayValue = hoverValue ?? normalizedValue;
 
     return (
         <div
@@ -36,7 +38,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
                 return (
                     <button
                         key={star}
-                        aria-checked={value === star}
+                        aria-checked={normalizedValue === star}
                         aria-label={t('feedback.rateStars', {
                             count: star,
                             stars: star === 1 ? t('feedback.oneStar') : t('feedback.manyStars'),
@@ -69,10 +71,11 @@ export const StarDisplay: React.FC<{
     rating: number;
     size?: number;
 }> = ({ rating, size = 16 }) => {
+    const normalizedRating = normalizeStarRating(rating);
     return (
-        <div aria-label={`${rating} star rating`} className={styles.display}>
+        <div aria-label={`${normalizedRating} star rating`} className={styles.display}>
             {[1, 2, 3, 4, 5].map((star) => {
-                const isActive = star <= rating;
+                const isActive = star <= normalizedRating;
 
                 return (
                     <LuStar

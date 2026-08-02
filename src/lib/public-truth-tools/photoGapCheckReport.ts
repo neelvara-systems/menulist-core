@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   PhotoGapCheckId,
   PhotoGapCheckInput,
@@ -18,8 +23,11 @@ const REQUIRED_CHECKS = new Set<PhotoGapCheckId>([
   'current_customer_link',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function getPhotoGapEvidenceText(evidence: PhotoGapEvidence): string {
@@ -106,9 +114,9 @@ function getNextActionType(status: PhotoGapCheckReport['status']): PhotoGapCheck
 }
 
 export function buildPhotoGapCheckReport(input: PhotoGapCheckInput): PhotoGapCheckReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const hasCustomerLink = currentCustomerLink.length > 0;
   const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'photo_gap_check_current_customer_link');
 

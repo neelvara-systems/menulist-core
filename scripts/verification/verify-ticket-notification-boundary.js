@@ -35,6 +35,7 @@ for (const token of [
 for (const token of ['recipientEmail:', 'referenceId:', 'metadata:', 'skipDedup', 'productId:']) {
   forbidText(route.slice(route.indexOf('const NotificationRequestSchema'), route.indexOf('export const POST')), token, 'public request schema');
 }
+forbidText(route, 'catch (err: any)', 'notification route error boundary');
 requireText(client, "eventType: 'TICKET_CREATED' | 'TICKET_REPLY' | 'TICKET_STATUS_CHANGED';", 'client trigger contract');
 requireText(client, 'tId: number;', 'client trigger tenant scope');
 requireText(client, 'sId: number;', 'client trigger store scope');

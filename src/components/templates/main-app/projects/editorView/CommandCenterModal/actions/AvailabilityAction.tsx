@@ -30,13 +30,11 @@ export default function AvailabilityAction({
 
     useEffect(() => {
         onPreviewChange(preview);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [preview]);
+    }, [onPreviewChange, preview]);
 
     useEffect(() => {
         onConfigReady(target);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [target]);
+    }, [onConfigReady, target]);
 
     const lockedCount = selectedItems.filter((i) => i.isLocked).length;
 

@@ -45,7 +45,7 @@ Shows 3 smart recommendation blocks at the top of customer menu (Popular, Quick 
 
 ## Where to Test
 
-**Customer Menu:** `https://{subdomain}.menulist.ai` or `localhost:3000/_client/{subdomain}`
+**Customer Menu:** `https://{subdomain}.menulist.online` or `localhost:3000/_client/{subdomain}`
 
 ## Test Cases
 

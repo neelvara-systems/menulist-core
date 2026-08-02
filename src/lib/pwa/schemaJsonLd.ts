@@ -21,7 +21,7 @@ export interface MobileAppSchemaInput {
     name: string;
     /** Short tagline or description; keep under ~160 chars. */
     description: string;
-    /** Same-origin base URL, e.g. `https://joespizza.menulist.ai`. */
+    /** Same-origin base URL, e.g. `https://joespizza.menulist.online`. */
     baseUrl: string;
     /** Optional primary category — defaults to `FoodEstablishment`. */
     applicationCategory?: string;

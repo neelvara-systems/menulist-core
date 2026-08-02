@@ -1574,9 +1574,8 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
     const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const normalizedItemId = requireKnowledgeIntakeReviewItemId(itemId);
     const ref = reviewItemRef(normalizedItemId);
-    let updatedItem: AnswerlatticeIntakeReviewItem | null = null;
 
-    await db.runTransaction(async (tx) => {
+    return db.runTransaction(async (tx): Promise<AnswerlatticeIntakeReviewItem> => {
         const [snap, jobSnap] = await Promise.all([
             tx.get(ref),
             tx.get(jobRef(normalizedJobId)),
@@ -1719,14 +1718,12 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
             }, { merge: true });
         }
 
-        updatedItem = { ...current, ...patch, id: normalizedItemId };
-        if (shouldClearProcedure && updatedItem) {
-            delete (updatedItem as AnswerlatticeIntakeReviewItem).procedure;
+        const updatedItem: AnswerlatticeIntakeReviewItem = { ...current, ...patch, id: normalizedItemId };
+        if (shouldClearProcedure) {
+            delete updatedItem.procedure;
         }
+        return updatedItem;
     });
-
-    if (!updatedItem) throw new Error('Review item update failed.');
-    return updatedItem;
 }
 
 export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: string, actor?: IntakeActor) {

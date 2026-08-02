@@ -1,4 +1,9 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  boundPublicTruthToolInput,
+  PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
+  type PublicTruthToolInputLimit,
+} from './publicTruthToolInputLimits';
 import type {
   HoursCheckEvidence,
   HoursCheckId,
@@ -17,12 +22,17 @@ const REQUIRED_CHECKS = new Set<HoursCheckId>([
   'current_customer_link',
 ]);
 
-function trimToSingleLine(value?: string): string {
-  return (value || '').replace(/\s+/g, ' ').trim();
+function trimToSingleLine(
+  value?: string,
+  maxLength: PublicTruthToolInputLimit = PUBLIC_TRUTH_TOOL_INPUT_LIMITS.shortText,
+): string {
+  return boundPublicTruthToolInput(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeText(value?: string): string {
-  return (value || '').replace(/\r\n/g, '\n').trim();
+  return boundPublicTruthToolInput(value, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.longText)
+    .replace(/\r\n/g, '\n')
+    .trim();
 }
 
 function hasDayHint(value: string): boolean {
@@ -147,13 +157,13 @@ function getNextActionType(status: HoursCheckReport['status']): HoursCheckReport
 }
 
 export function buildHoursCheckReport(input: HoursCheckInput): HoursCheckReport {
-  const businessName = trimToSingleLine(input.businessName);
-  const cityOrArea = trimToSingleLine(input.cityOrArea);
+  const businessName = trimToSingleLine(input.businessName, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.businessName);
+  const cityOrArea = trimToSingleLine(input.cityOrArea, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.cityOrArea);
   const timeZone = trimToSingleLine(input.timeZone);
   const regularHoursText = normalizeText(input.regularHoursText);
   const closedDaysText = normalizeText(input.closedDaysText);
   const specialHoursText = normalizeText(input.specialHoursText);
-  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
+  const currentCustomerLink = trimToSingleLine(input.currentCustomerLink, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.url);
   const combinedHoursText = `${regularHoursText}\n${closedDaysText}\n${specialHoursText}`;
   const hasRegularText = regularHoursText.replace(/\s+/g, ' ').trim().length >= 8;
   const regularHoursClear = hasRegularText && hasDayHint(regularHoursText) && hasTimeHint(regularHoursText);

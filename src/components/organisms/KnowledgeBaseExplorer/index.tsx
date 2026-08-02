@@ -5,6 +5,7 @@ import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
 import { Breadcrumb, Empty, Flex, Grid, message, Typography } from 'antd';
+import type { BreadcrumbProps } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Articles from './Articles';
 import Categories from './Categories';
@@ -150,11 +151,11 @@ const KnowledgeBaseExplorer = ({ from = "", initialArticleId, initialCategoryDat
         return <Categories categories={categoriesData ? Object.values(categoriesData.categories) : []} onCategorySelect={handleCategorySelect} />;
     };
 
-    const breadcrumbItems = [
+    const breadcrumbItems: BreadcrumbProps['items'] = [
         { title: <a onClick={resetSelection}>Help Center</a> },
-        selectedCategory && { title: <a onClick={() => handleCategorySelect(selectedCategory as KnowledgeBaseCategory)}>{selectedCategory.title}</a> },
-        selectedKnowledgeBaseSection && { title: selectedKnowledgeBaseSection.title },
-    ].filter(Boolean);
+        ...(selectedCategory ? [{ title: <a onClick={() => handleCategorySelect(selectedCategory)}>{selectedCategory.title}</a> }] : []),
+        ...(selectedKnowledgeBaseSection ? [{ title: selectedKnowledgeBaseSection.title }] : []),
+    ];
 
     return (
         <>
@@ -181,7 +182,7 @@ const KnowledgeBaseExplorer = ({ from = "", initialArticleId, initialCategoryDat
                 )}
                 <div style={{ flex: 1, maxWidth: '100%' }} id="knowledge-base-content">
                     <Flex vertical gap="large">
-                        {selectedCategory && <Breadcrumb items={breadcrumbItems as any} />}
+                        {selectedCategory && <Breadcrumb items={breadcrumbItems} />}
                         {renderContent()}
                     </Flex>
                 </div>

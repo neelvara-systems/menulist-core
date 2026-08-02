@@ -5,7 +5,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY } from '@constant/answerlattice/ai';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
-import { answerlatticeFirestoreAdmin as firestoreAdmin, AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, AnswerlatticeVector as Vector, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 
 const COLLECTION = DB_COLLECTIONS.QUERY_EMBEDDINGS;
 
@@ -112,7 +112,7 @@ export const getCachedEmbedding = async (
 ): Promise<VectorInstance | null> => {
     const scope = normalizeScope(scopeInput);
     const cacheKeyHash = createHash('sha256').update(cacheKey).digest('hex');
-    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
+    const docRef = requireAnswerlatticeFirestoreAdmin().collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -174,7 +174,7 @@ export const saveCachedEmbedding = async (
 ): Promise<void> => {
     const scope = normalizeScope(scopeInput);
     const cacheKeyHash = createHash('sha256').update(cacheKey).digest('hex');
-    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
+    const docRef = requireAnswerlatticeFirestoreAdmin().collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
     const vectorValues = getVectorValues(vector);
     const now = Timestamp.now();
 

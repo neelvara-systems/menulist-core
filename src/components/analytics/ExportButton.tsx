@@ -3,7 +3,7 @@
  * Export data in various formats (CSV, JSON, PDF)
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button, Dropdown, message, theme } from 'antd';
 import { DownloadOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
@@ -11,17 +11,44 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { escapeCSVValue } from '@util/exportUtils';
 
 export type ExportFormat = 'csv' | 'json' | 'pdf';
+export type AnalyticsExportRow = object;
 
 export interface ExportButtonProps {
-  data: any[];
+  data: AnalyticsExportRow[];
   filename?: string;
   formats?: ExportFormat[];
-  onExport?: (format: ExportFormat, data: any[]) => Promise<void> | void;
+  onExport?: (format: ExportFormat, data: AnalyticsExportRow[]) => Promise<void> | void;
   loading?: boolean;
   disabled?: boolean;
   size?: 'small' | 'middle' | 'large';
   className?: string;
 }
+
+export const convertAnalyticsRowsToCSV = (rows: AnalyticsExportRow[]): string => {
+  if (rows.length === 0) return '';
+  const headers = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+  if (headers.length === 0) return '';
+  const csvHeaders = headers.map(escapeCSVValue).join(',');
+  const csvRows = rows.map((row) =>
+    headers
+      .map((header) =>
+        escapeCSVValue(Object.prototype.hasOwnProperty.call(row, header) ? Reflect.get(row, header) : undefined),
+      )
+      .join(','),
+  );
+  return [csvHeaders, ...csvRows].join('\n');
+};
+
+export const normalizeAnalyticsExportFilename = (value: string): string => {
+  const normalized = value
+    .normalize('NFKC')
+    .replace(/[\u0000-\u001f\u007f/\\:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[.-]+|[.-]+$/g, '')
+    .slice(0, 120);
+  return normalized || 'export';
+};
 
 export const ExportButton: React.FC<ExportButtonProps> = ({
   data,
@@ -35,43 +62,37 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 }) => {
   const { token } = theme.useToken();
   const [exporting, setExporting] = useState(false);
-
-  // Convert to CSV
-  const convertToCSV = (jsonData: any[]): string => {
-    if (!jsonData || jsonData.length === 0) return '';
-
-    const headers = Object.keys(jsonData[0]);
-    const csvHeaders = headers.map(escapeCSVValue).join(',');
-    
-    const csvRows = jsonData.map(row => {
-      return headers.map(header => {
-        return escapeCSVValue(row[header]);
-      }).join(',');
-    });
-
-    return [csvHeaders, ...csvRows].join('\n');
-  };
+  const exportInFlightRef = useRef(false);
 
   // Download file
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      throw new Error('analytics_export_browser_runtime_unavailable');
+    }
     const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      link.href = url;
+      link.download = fileName;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+    } finally {
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
   };
 
   // Handle export
   const handleExport = async (format: ExportFormat) => {
+    if (exportInFlightRef.current) return;
     if (!data || data.length === 0) {
       message.warning('No data to export');
       return;
     }
 
+    exportInFlightRef.current = true;
     setExporting(true);
 
     try {
@@ -84,11 +105,11 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 
       // Default export handlers
       const timestamp = new Date().toISOString().split('T')[0];
-      const fileName = `${filename}_${timestamp}`;
+      const fileName = `${normalizeAnalyticsExportFilename(filename)}_${timestamp}`;
 
       switch (format) {
         case 'csv': {
-          const csv = convertToCSV(data);
+          const csv = convertAnalyticsRowsToCSV(data);
           downloadFile(csv, `${fileName}.csv`, 'text/csv');
           break;
         }
@@ -113,6 +134,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       });
       message.error('Failed to export data');
     } finally {
+      exportInFlightRef.current = false;
       setExporting(false);
     }
   };
@@ -129,7 +151,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       ) : (
         <FilePdfOutlined />
       ),
-    onClick: () => handleExport(format),
+    onClick: () => void handleExport(format),
   }));
 
   // Single format - just a button
@@ -137,7 +159,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     return (
       <Button
         icon={<DownloadOutlined />}
-        onClick={() => handleExport(formats[0])}
+        onClick={() => void handleExport(formats[0])}
         loading={exporting || loading}
         disabled={disabled || !data || data.length === 0}
         size={size}

@@ -15,7 +15,7 @@
 
 - Industry standard: GloriaFood, Wix, Square, Toast all use brand domain + location paths
 - SEO authority: One domain per brand consolidates search ranking signals
-- Brand cohesion: `storypizza.menulist.ai` represents the brand, not one outlet
+- Brand cohesion: `storypizza.menulist.online` represents the brand, not one outlet
 - Zero migration risk: Subdomain feature was unshipped when decision was made
 
 **Evidence:**
@@ -190,11 +190,11 @@ flag-off path that can silently revert public URLs to name-derived slugs.
 
 ## ADR-11: Outlet Path Routing via outletSlug
 
-**Decision:** When a visitor hits `brand.menulist.ai/{slug}`, the resolver first checks if `{slug}` matches an outlet's `outletSlug`. If yes, switches to that outlet's store. If no, treats it as a project slug.
+**Decision:** When a visitor hits `brand.menulist.online/{slug}`, the resolver first checks if `{slug}` matches an outlet's `outletSlug`. If yes, switches to that outlet's store. If no, treats it as a project slug.
 
 **Why:**
 
-- Multi-store brands need `brand.menulist.ai/pune` to route to the Pune outlet
+- Multi-store brands need `brand.menulist.online/pune` to route to the Pune outlet
 - Outlet slugs and project slugs share the same URL namespace — outlet check runs first
 - Only triggers when `storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET`
 - Single-store brands (95% of users) are unaffected
@@ -203,11 +203,12 @@ flag-off path that can silently revert public URLs to name-derived slugs.
 
 ## ADR-12: MyCodex Has No Active Public Domain
 
-**Decision:** MyCodex currently has no active public product domain. The previous `menulist.digital` dependency is discarded. MyCodex remains a static/internal reader reached locally through `/__mycodex`; any future private host must be approved and added back to `src/constants/deploymentTargets.ts` before DNS or Vercel setup.
+**Decision:** MyCodex currently has no active public product domain. It does not use `menulist.digital`. MenuList QA now uses `qa.menulist.digital` and `*.qa.menulist.digital`; the `menulist.digital` apex and `www` host are redirect/noindex targets only. MyCodex remains a static/internal reader reached locally through `/__mycodex`; any future private host must be approved and added back to `src/constants/deploymentTargets.ts` before DNS or Vercel setup.
 
 **Why:**
 
-- The active domain/account plan discards `menulist.digital`.
+- The active domain/account plan assigns only `qa.menulist.digital` and `*.qa.menulist.digital` to MenuList QA.
+- MyCodex has no claim on `menulist.digital`, and the apex is not a public product host.
 - MyCodex is static/no DB and does not require Firebase, Storage, Functions, or a public domain.
 - Unknown production hosts should not be preserved as implicit product carve-outs.
 - If a private MyCodex host is approved later, it must fail closed behind the existing MyCodex login/session cookie.

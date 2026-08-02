@@ -15,6 +15,13 @@ import Typography from '@tiptap/extension-typography';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
 import type { Extensions } from '@tiptap/core';
+import { mergeAttributes } from '@tiptap/core';
+import {
+    normalizeTiptapImageUrl,
+    normalizeTiptapLinkUrl,
+    normalizeTiptapTextAlign,
+    normalizeTiptapTextColor,
+} from '@lib/tiptap/urlPolicy';
 
 import { SlashCommandsExtension } from '../components/atoms/TiptapEditor/SlashCommandsExtension';
 
@@ -22,6 +29,53 @@ interface ExtensionOptions {
     isEditable?: boolean;
     placeholder?: string;
 }
+
+const SafeImage = Image.extend({
+    renderHTML({ HTMLAttributes }) {
+        const src = normalizeTiptapImageUrl(HTMLAttributes.src);
+        if (!src) {
+            return ['span', { 'aria-label': 'Invalid image', role: 'img' }];
+        }
+
+        return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { src })];
+    },
+});
+
+const SafeColor = Color.extend({
+    addGlobalAttributes() {
+        return [{
+            types: this.options.types,
+            attributes: {
+                color: {
+                    default: null,
+                    parseHTML: (element) => normalizeTiptapTextColor(element.style.color) || null,
+                    renderHTML: (attributes) => {
+                        const color = normalizeTiptapTextColor(attributes.color);
+                        return color ? { style: `color: ${color}` } : {};
+                    },
+                },
+            },
+        }];
+    },
+});
+
+const SafeTextAlign = TextAlign.extend({
+    addGlobalAttributes() {
+        return [{
+            types: this.options.types,
+            attributes: {
+                textAlign: {
+                    default: this.options.defaultAlignment,
+                    parseHTML: (element) => normalizeTiptapTextAlign(element.style.textAlign) || this.options.defaultAlignment,
+                    renderHTML: (attributes) => {
+                        const textAlign = normalizeTiptapTextAlign(attributes.textAlign);
+                        return textAlign ? { style: `text-align: ${textAlign}` } : {};
+                    },
+                },
+            },
+        }];
+    },
+});
 
 export const getTiptapExtensions = (options: ExtensionOptions = {}) => {
     const { isEditable = true, placeholder = 'Start typing...' } = options;
@@ -39,10 +93,11 @@ export const getTiptapExtensions = (options: ExtensionOptions = {}) => {
         Underline,
         Link.configure({
             openOnClick: false,
+            isAllowedUri: (url) => Boolean(normalizeTiptapLinkUrl(url)),
         }),
         TextStyle,
-        Color.configure({ types: ['textStyle'] }),
-        TextAlign.configure({
+        SafeColor.configure({ types: ['textStyle'] }),
+        SafeTextAlign.configure({
             types: ['heading', 'paragraph'],
             alignments: ['left', 'center', 'right', 'justify'],
             defaultAlignment: 'left',
@@ -52,7 +107,7 @@ export const getTiptapExtensions = (options: ExtensionOptions = {}) => {
             placeholder,
         }),
         CharacterCount,
-        Image,
+        SafeImage,
         Table.configure({
             resizable: true,
         }),

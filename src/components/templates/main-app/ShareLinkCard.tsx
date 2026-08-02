@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import {
     getBoundedLogValueContext,
     getBoundedErrorCode,
@@ -168,10 +170,7 @@ export default function ShareLinkCard({
         const msg = `${sharePrefix}\n${withSrc('whatsapp')}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
         try {
-            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('share_link_card_whatsapp_open_blocked');
-            }
+            openIsolatedBrowserUrl(whatsappUrl);
             onShareAction?.('whatsapp');
         } catch (error) {
             logShareLinkCardFailure('share_link_card_whatsapp_open_failed', error, buildShareLinkLogContext('whatsapp', {
@@ -205,10 +204,7 @@ export default function ShareLinkCard({
     const handleOpen = () => {
         const directUrl = withSrc('direct');
         try {
-            const opened = window.open(directUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('share_link_card_open_blocked');
-            }
+            openIsolatedBrowserUrl(directUrl);
         } catch (error) {
             logShareLinkCardFailure('share_link_card_open_failed', error, buildShareLinkLogContext('open', {
                 directUrlLength: directUrl.length,

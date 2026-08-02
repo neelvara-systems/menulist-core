@@ -1,22 +1,15 @@
 import { createHash } from 'node:crypto';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
-import {
-    getAnswerlatticeSupportTicketDisplayId,
-    parseAnswerlatticeSupportTicketDocument,
-} from '@lib/answerlattice/supportTicketLifecycle';
+import { getAnswerlatticeSupportTicketDisplayId, parseAnswerlatticeSupportTicketDocument, } from '@lib/answerlattice/supportTicketLifecycle';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
-import {
-    SUPPORT_TICKET_CATEGORY,
-    SUPPORT_TICKET_PRIORITY,
-    SUPPORT_TICKET_STATUS,
-} from '@type/supportTicket';
+import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, } from '@type/supportTicket';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const WIDGET_ESCALATION_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,10 +107,11 @@ export const executeAnswerlatticeWidgetEscalation = async (
     }
 
     const ticketId = buildAnswerlatticeWidgetEscalationTicketId({ tId, sId, searchHistoryId });
-    const historyRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).doc(searchHistoryId);
-    const ticketRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.SUPPORT_TICKETS).doc(ticketId);
+    const db = requireAnswerlatticeFirestoreAdmin();
+    const historyRef = db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).doc(searchHistoryId);
+    const ticketRef = db.collection(DB_COLLECTIONS.SUPPORT_TICKETS).doc(ticketId);
 
-    const transactionResult = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+    const transactionResult = await db.runTransaction(async (transaction) => {
         const [historySnapshot, ticketSnapshot] = await Promise.all([
             transaction.get(historyRef),
             transaction.get(ticketRef),

@@ -11,7 +11,7 @@ import {
     getResellerProfile,
 } from "@database/reseller/server";
 import { getSubscriptionById } from "@database/subscriptions/server";
-import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { getCurrentPlatformUser, getCurrentUser } from "@lib/auth/currentPlatformUser";
 import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { getBoundedResellerApiStringContext, getResellerApiFailureLogData, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
@@ -36,14 +36,17 @@ import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import {
-    projectResellerProviderSubscription,
+    projectResellerProviderSubscriptionForAttempt,
     type ResellerProviderSubscription,
 } from "@lib/reseller/resellerProviderSubscription";
 import {
     getResellerOnboardingOperationFingerprint,
     getMatchingResellerOnboardingOperation,
+    getMatchingResellerOnboardingProvisioningOperation,
     isMatchingResellerOnboardingOperation,
+    isMatchingResellerOnboardingProvisioningResources,
     isMatchingResellerOnboardingReplayResources,
+    type MatchingResellerOnboardingProvisioningOperation,
 } from "@lib/reseller/resellerOnboardingOperation";
 import {
     projectResellerOfflineCapacity,
@@ -65,9 +68,13 @@ import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimi
 const LOG_FILE = "reseller-onboarding.log";
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 const RESELLER_ONBOARD_AUTH_CLEANUP_FAILED = "reseller_onboard_auth_cleanup_failed";
+const RESELLER_ONBOARD_AUTH_FINALIZATION_FAILED = "reseller_onboard_auth_finalization_failed";
 const RESELLER_ONBOARD_AUTH_CLAIMS_COMPENSATION_FAILED = "reseller_onboard_auth_claims_compensation_failed";
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED = "reseller_onboard_provider_compensation_failed";
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED = "reseller_onboard_provider_compensation_cache_revalidation_failed";
+const RESELLER_ONBOARD_PROVIDER_RECOVERY_HOLD_MS = 15 * 60 * 1000;
+const RESELLER_ONBOARD_PROVIDER_RECOVERY_PAGE_SIZE = 100;
+const RESELLER_ONBOARD_PROVIDER_RECOVERY_MAX_PAGES = 3;
 
 const removeUndefinedFields = (
     data: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>,
@@ -78,6 +85,67 @@ const removeUndefinedFields = (
 const getFirebaseAuthErrorCode = (error: unknown): string | null => {
     return getBoundedErrorCode(error) || null;
 };
+
+async function recoverResellerProviderSubscription(params: {
+    attempt: Parameters<typeof projectResellerProviderSubscriptionForAttempt>[1];
+    startedAtMillis: number;
+}): Promise<{
+    searchComplete: boolean;
+    subscription: ResellerProviderSubscription | null;
+}> {
+    const from = Math.max(946684800, Math.floor((params.startedAtMillis - RESELLER_ONBOARD_PROVIDER_RECOVERY_HOLD_MS) / 1000));
+    const to = Math.floor((Date.now() + RESELLER_ONBOARD_PROVIDER_RECOVERY_HOLD_MS) / 1000);
+    let matchingSubscription: ResellerProviderSubscription | null = null;
+    for (let page = 0; page < RESELLER_ONBOARD_PROVIDER_RECOVERY_MAX_PAGES; page += 1) {
+        const response = await razorpayClient.subscriptions.all({
+            count: RESELLER_ONBOARD_PROVIDER_RECOVERY_PAGE_SIZE,
+            from,
+            plan_id: params.attempt.providerPlanId,
+            skip: page * RESELLER_ONBOARD_PROVIDER_RECOVERY_PAGE_SIZE,
+            to,
+        });
+        const candidates = response.items
+            .map((candidate) => projectResellerProviderSubscriptionForAttempt(candidate, params.attempt))
+            .filter((candidate): candidate is ResellerProviderSubscription => candidate !== null);
+        if (candidates.length > 1 || (matchingSubscription && candidates.length > 0)) {
+            throw new Error('Multiple provider subscriptions match one reseller onboarding operation.');
+        }
+        if (candidates[0]) matchingSubscription = candidates[0];
+        if (response.items.length < RESELLER_ONBOARD_PROVIDER_RECOVERY_PAGE_SIZE) {
+            return { searchComplete: true, subscription: matchingSubscription };
+        }
+    }
+    return { searchComplete: false, subscription: null };
+}
+
+async function deleteResellerProvisioningOperation(params: {
+    db: admin.firestore.Firestore;
+    fingerprint: string;
+    operationId: string;
+    resellerId: string;
+    storeId: number;
+    tenantId: number;
+}): Promise<void> {
+    const operationRef = params.db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(params.operationId);
+    await params.db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(operationRef);
+        const operation = getMatchingResellerOnboardingProvisioningOperation({
+            fingerprint: params.fingerprint,
+            operationData: snapshot.data(),
+            operationId: params.operationId,
+            resellerId: params.resellerId,
+        });
+        if (
+            !snapshot.exists
+            || !operation
+            || operation.storeId !== params.storeId
+            || operation.tenantId !== params.tenantId
+        ) {
+            throw new Error('Reseller onboarding provisioning operation changed before cleanup.');
+        }
+        transaction.delete(operationRef);
+    });
+}
 
 async function getAuthUserByEmail(email: string) {
     try {
@@ -140,14 +208,12 @@ async function prepareOwnerAuthUser(params: {
     }
 
     if (authUser) {
-        await authAdmin.updateUser(authUser.uid, {
-            disabled: !params.active,
-            displayName: params.displayName,
-            email: params.email,
-            emailVerified: true,
-            password: params.password,
-        });
-        return { cleanupOnFailure: false, uid: authUser.uid };
+        return {
+            active: params.active,
+            cleanupOnFailure: false,
+            requiresProfileUpdate: true,
+            uid: authUser.uid,
+        };
     }
 
     const createdUser = await authAdmin.createUser({
@@ -158,7 +224,12 @@ async function prepareOwnerAuthUser(params: {
         password: params.password,
     });
 
-    return { cleanupOnFailure: true, uid: createdUser.uid };
+    return {
+        active: params.active,
+        cleanupOnFailure: true,
+        requiresProfileUpdate: false,
+        uid: createdUser.uid,
+    };
 }
 
 async function compensateResellerOnboardingFailure(params: {
@@ -238,12 +309,15 @@ export const POST = withAuth(async (request, session) => {
             failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
+            if (rateLimitResult.reason === 'provider_unavailable') {
+                return resellerPrivateJson({
+                    error: "Service temporarily unavailable. Please try again later.",
+                }, { status: 503 });
+            }
             return resellerPrivateJson({
-                error: rateLimitResult.reason === 'provider_unavailable'
-                    ? "Service temporarily unavailable. Please try again later."
-                    : "Too many requests. Please try again later.",
+                error: "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
+            }, { status: 429 });
         }
 
         // 2. Validate input
@@ -265,18 +339,20 @@ export const POST = withAuth(async (request, session) => {
         const { operationId, businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
 
         // 3. Validate reseller profile exists and is active
-        const resellerProfile = isPlatformUser
-            ? null
-            : await getResellerProfile(
-                resellerId,
-                session.user.email,
-                session.user.resellerProfileId,
-            );
-        if (isPlatformUser) {
-            if (!await getCurrentPlatformUser(session)) {
-                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
-            }
-        } else if (!isActiveResellerProfileForSession({
+        const [currentActor, resellerProfile] = await Promise.all([
+            isPlatformUser ? getCurrentPlatformUser(session) : getCurrentUser(session),
+            isPlatformUser
+                ? Promise.resolve(null)
+                : getResellerProfile(
+                    resellerId,
+                    session.user.email,
+                    session.user.resellerProfileId,
+                ),
+        ]);
+        if (!currentActor) {
+            return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
+        }
+        if (!isPlatformUser && !isActiveResellerProfileForSession({
             actorId: resellerId,
             profile: resellerProfile,
             sessionEmail: session.user.email,
@@ -361,6 +437,10 @@ export const POST = withAuth(async (request, session) => {
             pricingTier,
         });
         const operationRef = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(operationId);
+        let resumedProvisioningOperation: MatchingResellerOnboardingProvisioningOperation | null = null;
+        let provisioningStartedAtMillis = Date.now();
+        let persistedProviderPlanId: string | null = null;
+        let providerRecoveryAvailableAtMillis = 0;
         const existingOperationSnapshot = await operationRef.get();
         if (existingOperationSnapshot.exists) {
             const operation = existingOperationSnapshot.data() || {};
@@ -370,10 +450,28 @@ export const POST = withAuth(async (request, session) => {
                 operationId,
                 resellerId,
             });
-            if (!matchingOperation) {
+            resumedProvisioningOperation = getMatchingResellerOnboardingProvisioningOperation({
+                fingerprint: operationFingerprint,
+                operationData: operation,
+                operationId,
+                resellerId,
+            });
+            if (resumedProvisioningOperation) {
+                const provisioningStartedAt = resellerMutationDate(operation.createdOn);
+                const recoveryAvailableAt = resellerMutationDate(operation.providerRecoveryAvailableAt);
+                if (!provisioningStartedAt) {
+                    return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
+                }
+                provisioningStartedAtMillis = provisioningStartedAt.getTime();
+                persistedProviderPlanId = typeof operation.providerPlanId === 'string'
+                    ? operation.providerPlanId.trim() || null
+                    : null;
+                providerRecoveryAvailableAtMillis = recoveryAvailableAt?.getTime() || 0;
+            }
+            if (!matchingOperation && !resumedProvisioningOperation) {
                 return resellerPrivateJson({ error: "This onboarding retry belongs to another request." }, { status: 409 });
             }
-
+            if (matchingOperation) {
             const replaySubscriptionId = matchingOperation.subscriptionId;
             const replayStoreId = matchingOperation.storeId;
             const replayTenantId = matchingOperation.tenantId;
@@ -434,8 +532,66 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: replayTenantId,
                 transactionId: operationId,
             });
+            }
         }
 
+        let authAccount: {
+            active: boolean;
+            cleanupOnFailure: boolean;
+            requiresProfileUpdate: boolean;
+            uid: string;
+        };
+        let result: {
+            authUid: string;
+            loginEmail: string;
+            ownerUsername: string;
+            storeId: number;
+            storeName: string;
+            subdomain?: string;
+            tenantId: number;
+            userId: string;
+        };
+
+        if (resumedProvisioningOperation) {
+            const [storeSnapshot, userSnapshot] = await Promise.all([
+                db.collection(DB_COLLECTIONS.STORES).doc(String(resumedProvisioningOperation.storeId)).get(),
+                db.collection(DB_COLLECTIONS.USERS).doc(resumedProvisioningOperation.userId).get(),
+            ]);
+            if (
+                !storeSnapshot.exists
+                || !userSnapshot.exists
+                || !isMatchingResellerOnboardingProvisioningResources({
+                    operation: resumedProvisioningOperation,
+                    ownerEmail: ownerLoginEmail,
+                    ownerUsername,
+                    resellerId,
+                    storeData: storeSnapshot.data(),
+                    userData: userSnapshot.data(),
+                })
+            ) {
+                return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
+            }
+            const storeData = storeSnapshot.data() || {};
+            const persistedSubdomain = typeof storeData.subdomain === 'string'
+                ? storeData.subdomain.trim()
+                : '';
+            authAccount = {
+                active: userSnapshot.data()?.active !== false,
+                cleanupOnFailure: false,
+                requiresProfileUpdate: true,
+                uid: resumedProvisioningOperation.authUid,
+            };
+            result = {
+                authUid: resumedProvisioningOperation.authUid,
+                loginEmail: ownerLoginEmail,
+                ownerUsername,
+                storeId: resumedProvisioningOperation.storeId,
+                storeName: typeof storeData.name === 'string' ? storeData.name : businessName,
+                subdomain: persistedSubdomain || undefined,
+                tenantId: resumedProvisioningOperation.tenantId,
+                userId: resumedProvisioningOperation.userId,
+            };
+        } else {
         // Pre-check subdomain uniqueness (must be outside transaction).
         const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
 
@@ -465,7 +621,7 @@ export const POST = withAuth(async (request, session) => {
             return resellerPrivateJson({ error: uniquenessError }, { status: 409 });
         }
 
-        const authAccount = await prepareOwnerAuthUser({
+        authAccount = await prepareOwnerAuthUser({
             active: existingOwnerData?.active !== false,
             displayName: businessName,
             email: ownerLoginEmail,
@@ -473,17 +629,6 @@ export const POST = withAuth(async (request, session) => {
             existingOwnerDocId: existingOwnerDoc?.id,
             password: ownerPassword,
         });
-
-        let result: {
-            authUid: string;
-            loginEmail: string;
-            ownerUsername: string;
-            storeId: number;
-            storeName: string;
-            subdomain?: string;
-            tenantId: number;
-            userId: string;
-        };
 
         try {
             result = await db.runTransaction(async (transaction) => {
@@ -581,6 +726,21 @@ export const POST = withAuth(async (request, session) => {
                     });
                 }
 
+                transaction.create(operationRef, {
+                    action: 'ONBOARD',
+                    authUid: authAccount.uid,
+                    createdOn: core.now,
+                    modifiedOn: core.now,
+                    operationFingerprint,
+                    operationId,
+                    paymentMode,
+                    resellerId,
+                    status: 'provider_provisioning',
+                    storeId: core.storeId,
+                    tenantId: core.tenantId,
+                    userId,
+                });
+
                 return {
                     authUid: authAccount.uid,
                     loginEmail: ownerLoginEmail,
@@ -612,14 +772,36 @@ export const POST = withAuth(async (request, session) => {
             }
             throw error;
         }
+        }
 
-        await authAdmin.setCustomUserClaims(result.authUid, {
-            platformRole: 'OWNER',
-            role: getOwnerRoleId(),
-            tenantId: String(result.tenantId),
-            storeId: String(result.storeId),
-            uId: result.userId,
-        });
+        try {
+            await authAdmin.setCustomUserClaims(result.authUid, {
+                platformRole: 'OWNER',
+                role: getOwnerRoleId(),
+                tenantId: String(result.tenantId),
+                storeId: String(result.storeId),
+                uId: result.userId,
+            });
+            if (authAccount.requiresProfileUpdate) {
+                await authAdmin.updateUser(result.authUid, {
+                    disabled: !authAccount.active,
+                    displayName: businessName,
+                    email: ownerLoginEmail,
+                    emailVerified: true,
+                    password: ownerPassword,
+                });
+            }
+        } catch (authFinalizationError) {
+            logResellerApiFailure(RESELLER_ONBOARD_AUTH_FINALIZATION_FAILED, authFinalizationError, {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+                ...getBoundedResellerApiStringContext('authUid', result.authUid),
+            });
+            return resellerPrivateJson({
+                error: 'Owner access setup is still incomplete. Retry this onboarding request.',
+            }, { status: 503 });
+        }
 
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -670,6 +852,7 @@ export const POST = withAuth(async (request, session) => {
             const totalCount = billingInterval === 'MONTH' ? 36 : 3;
             let razorpayPlanId = '';
             let razorpaySubscription: ResellerProviderSubscription | null = null;
+            let providerOutcomeMayExist = Boolean(persistedProviderPlanId);
 
             try {
                 razorpayPlanId = await getOrCreateRazorpayPlan({
@@ -679,33 +862,139 @@ export const POST = withAuth(async (request, session) => {
                     userType: 'B2C',
                     planId: tier.planId,
                 });
-                const providerSubscription = await razorpayClient.subscriptions.create({
-                    plan_id: razorpayPlanId,
-                    total_count: totalCount,
-                    quantity: locationCount,
-                    notes: {
-                        tenantId: result.tenantId,
-                        storeId: result.storeId,
-                        userId: result.userId,
-                        userType: 'B2C',
-                        planId: tier.planId,
-                        priceKey: 'priceINR',
-                        interval: billingInterval,
-                        name: businessName,
-                        email: result.loginEmail,
-                        ownerUsername: result.ownerUsername,
-                        price: billingAmount,
-                        locationCount,
-                        resellerId,
-                        remainingCredits: 0,
-                    },
-                });
-                razorpaySubscription = projectResellerProviderSubscription(providerSubscription);
+                if (persistedProviderPlanId && persistedProviderPlanId !== razorpayPlanId) {
+                    return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
+                }
+                const providerAttempt = {
+                    locationCount,
+                    operationFingerprint,
+                    operationId,
+                    planId: tier.planId,
+                    providerPlanId: razorpayPlanId,
+                    resellerId,
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                };
+                if (persistedProviderPlanId) {
+                    const recovery = await recoverResellerProviderSubscription({
+                        attempt: providerAttempt,
+                        startedAtMillis: provisioningStartedAtMillis,
+                    });
+                    if (!recovery.searchComplete) {
+                        return resellerPrivateJson({
+                            error: 'Payment setup needs support review before it can continue.',
+                        }, { status: 503 });
+                    }
+                    razorpaySubscription = recovery.subscription;
+                    if (!razorpaySubscription && Date.now() < providerRecoveryAvailableAtMillis) {
+                        return resellerPrivateJson({
+                            error: 'Payment setup is still being verified. Retry this onboarding request later.',
+                        }, { status: 503 });
+                    }
+                }
                 if (!razorpaySubscription) {
-                    throw new Error('Razorpay subscription response is invalid.');
+                    const recoveryAvailableAt = Date.now() + RESELLER_ONBOARD_PROVIDER_RECOVERY_HOLD_MS;
+                    await db.runTransaction(async (firestoreTransaction) => {
+                        const operationSnapshot = await firestoreTransaction.get(operationRef);
+                        const provisioningOperation = getMatchingResellerOnboardingProvisioningOperation({
+                            fingerprint: operationFingerprint,
+                            operationData: operationSnapshot.data(),
+                            operationId,
+                            resellerId,
+                        });
+                        if (
+                            !operationSnapshot.exists
+                            || !provisioningOperation
+                            || provisioningOperation.storeId !== result.storeId
+                            || provisioningOperation.tenantId !== result.tenantId
+                            || provisioningOperation.userId !== result.userId
+                        ) {
+                            throw new Error('Reseller onboarding provisioning operation changed.');
+                        }
+                        const currentProviderPlanId = operationSnapshot.data()?.providerPlanId;
+                        if (currentProviderPlanId && currentProviderPlanId !== razorpayPlanId) {
+                            throw new Error('Reseller onboarding provider plan changed.');
+                        }
+                        firestoreTransaction.update(operationRef, {
+                            modifiedOn: admin.firestore.Timestamp.now(),
+                            providerPlanId: razorpayPlanId,
+                            providerRecoveryAvailableAt: admin.firestore.Timestamp.fromMillis(recoveryAvailableAt),
+                            providerStartedAt: operationSnapshot.data()?.providerStartedAt || admin.firestore.Timestamp.now(),
+                        });
+                    });
+                    providerOutcomeMayExist = true;
+                    providerRecoveryAvailableAtMillis = recoveryAvailableAt;
+                    try {
+                        const providerSubscription = await razorpayClient.subscriptions.create({
+                            plan_id: razorpayPlanId,
+                            total_count: totalCount,
+                            quantity: locationCount,
+                            notes: {
+                                tenantId: result.tenantId,
+                                storeId: result.storeId,
+                                userId: result.userId,
+                                userType: 'B2C',
+                                planId: tier.planId,
+                                priceKey: 'priceINR',
+                                interval: billingInterval,
+                                name: businessName,
+                                email: result.loginEmail,
+                                ownerUsername: result.ownerUsername,
+                                price: billingAmount,
+                                locationCount,
+                                resellerId,
+                                operationId,
+                                operationFingerprint,
+                                remainingCredits: 0,
+                            },
+                        });
+                        razorpaySubscription = projectResellerProviderSubscriptionForAttempt(
+                            providerSubscription,
+                            providerAttempt,
+                        );
+                    } catch (providerCreateError) {
+                        try {
+                            const recovery = await recoverResellerProviderSubscription({
+                                attempt: providerAttempt,
+                                startedAtMillis: provisioningStartedAtMillis,
+                            });
+                            razorpaySubscription = recovery.searchComplete ? recovery.subscription : null;
+                        } catch (providerRecoveryError) {
+                            logResellerApiFailure('reseller_onboard_provider_recovery_failed', providerRecoveryError, {
+                                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+                            });
+                        }
+                        if (!razorpaySubscription) {
+                            logResellerApiFailure('reseller_onboard_provider_recovery_pending', providerCreateError, {
+                                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+                            });
+                            return resellerPrivateJson({
+                                error: 'Payment setup is still being verified. Retry this onboarding request later.',
+                            }, { status: 503 });
+                        }
+                    }
+                }
+                if (!razorpaySubscription) {
+                    return resellerPrivateJson({
+                        error: 'Payment setup is still being verified. Retry this onboarding request later.',
+                    }, { status: 503 });
                 }
                 shortUrl = razorpaySubscription.checkoutUrl;
             } catch (providerError) {
+                if (providerOutcomeMayExist && !razorpaySubscription) {
+                    logResellerApiFailure('reseller_onboard_provider_recovery_pending', providerError, {
+                        ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                        ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                        ...getBoundedResellerApiStringContext('storeId', result.storeId),
+                    });
+                    return resellerPrivateJson({
+                        error: 'Payment setup is still being verified. Retry this onboarding request later.',
+                    }, { status: 503 });
+                }
                 if (razorpaySubscription?.id) {
                     try {
                         await razorpayClient.subscriptions.cancel(razorpaySubscription.id);
@@ -717,7 +1006,7 @@ export const POST = withAuth(async (request, session) => {
                         throw providerError;
                     }
                 }
-                await compensateResellerOnboardingFailure({
+                const compensated = await compensateResellerOnboardingFailure({
                     authUid: result.authUid,
                     db,
                     reason: 'reseller_online_provider_setup_failed',
@@ -726,6 +1015,16 @@ export const POST = withAuth(async (request, session) => {
                     tenantId: result.tenantId,
                     userId: result.userId,
                 });
+                if (compensated) {
+                    await deleteResellerProvisioningOperation({
+                        db,
+                        fingerprint: operationFingerprint,
+                        operationId,
+                        resellerId,
+                        storeId: result.storeId,
+                        tenantId: result.tenantId,
+                    });
+                }
                 throw providerError;
             }
 
@@ -797,10 +1096,21 @@ export const POST = withAuth(async (request, session) => {
                     },
                 });
             } catch (persistenceError) {
-                const [persistedSubscription, persistedOperation] = await Promise.all([
-                    getSubscriptionById(subscriptionId).catch((): null => null),
-                    operationRef.get().catch((): null => null),
+                const [subscriptionRead, operationRead] = await Promise.allSettled([
+                    getSubscriptionById(subscriptionId),
+                    operationRef.get(),
                 ]);
+                if (subscriptionRead.status === 'rejected' || operationRead.status === 'rejected') {
+                    logResellerApiFailure('reseller_onboard_billing_commit_verification_failed', persistenceError, {
+                        ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                        ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
+                    });
+                    return resellerPrivateJson({
+                        error: 'Billing setup is still being verified. Retry this onboarding request.',
+                    }, { status: 503 });
+                }
+                const persistedSubscription = subscriptionRead.value;
+                const persistedOperation = operationRead.value;
                 const operationPersisted = Boolean(
                     persistedOperation?.exists
                     && isMatchingResellerOnboardingOperation({
@@ -820,7 +1130,7 @@ export const POST = withAuth(async (request, session) => {
                         });
                         throw persistenceError;
                     }
-                    await compensateResellerOnboardingFailure({
+                    const compensated = await compensateResellerOnboardingFailure({
                         authUid: result.authUid,
                         db,
                         reason: 'reseller_online_billing_persistence_failed',
@@ -829,6 +1139,16 @@ export const POST = withAuth(async (request, session) => {
                         tenantId: result.tenantId,
                         userId: result.userId,
                     });
+                    if (compensated) {
+                        await deleteResellerProvisioningOperation({
+                            db,
+                            fingerprint: operationFingerprint,
+                            operationId,
+                            resellerId,
+                            storeId: result.storeId,
+                            tenantId: result.tenantId,
+                        });
+                    }
                     throw persistenceError;
                 }
             }
@@ -908,10 +1228,21 @@ export const POST = withAuth(async (request, session) => {
                 });
             } catch (persistenceError) {
                 const exceededOfflineCap = getResellerOfflineCapFromError(persistenceError);
-                const [persistedSubscription, persistedOperation] = await Promise.all([
-                    getSubscriptionById(subscriptionId).catch((): null => null),
-                    operationRef.get().catch((): null => null),
+                const [subscriptionRead, operationRead] = await Promise.allSettled([
+                    getSubscriptionById(subscriptionId),
+                    operationRef.get(),
                 ]);
+                if (subscriptionRead.status === 'rejected' || operationRead.status === 'rejected') {
+                    logResellerApiFailure('reseller_onboard_billing_commit_verification_failed', persistenceError, {
+                        ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                        ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
+                    });
+                    return resellerPrivateJson({
+                        error: 'Billing setup is still being verified. Retry this onboarding request.',
+                    }, { status: 503 });
+                }
+                const persistedSubscription = subscriptionRead.value;
+                const persistedOperation = operationRead.value;
                 const operationPersisted = Boolean(
                     persistedOperation?.exists
                     && isMatchingResellerOnboardingOperation({
@@ -933,6 +1264,16 @@ export const POST = withAuth(async (request, session) => {
                         tenantId: result.tenantId,
                         userId: result.userId,
                     });
+                    if (compensated) {
+                        await deleteResellerProvisioningOperation({
+                            db,
+                            fingerprint: operationFingerprint,
+                            operationId,
+                            resellerId,
+                            storeId: result.storeId,
+                            tenantId: result.tenantId,
+                        });
+                    }
                     if (exceededOfflineCap && compensated) {
                         return resellerPrivateJson({
                             error: `Maximum offline activations reached (${exceededOfflineCap}). Use online payment mode or wait for existing stores to expire.`,

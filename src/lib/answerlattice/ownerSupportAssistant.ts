@@ -2,44 +2,15 @@ import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/routes';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import {
-    parseAnswerlatticeCoverageData,
-    parseAnswerlatticeFrictionSnapshot,
-    parseAnswerlatticeTrustMetrics,
-} from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { parseAnswerlatticeCoverageData, parseAnswerlatticeFrictionSnapshot, parseAnswerlatticeTrustMetrics, } from '@lib/answerlattice/analyticsIntelligenceContracts';
 import { isAnswerlatticeActivationSummaryResponse } from '@lib/answerlattice/activationDashboardResponseClient';
 import { parseAnswerlatticeKnowledgeIntakeSummary } from '@lib/answerlattice/knowledgeIntakeContracts';
-import {
-    ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS,
-    type AnswerlatticeFounderDailyAction,
-    type AnswerlatticeFounderDailyBrief,
-    type AnswerlatticeLaunchVerification,
-    type AnswerlatticeOwnerAssistantAnswer,
-    type AnswerlatticeOwnerAssistantBrief,
-    type AnswerlatticeOwnerAssistantCapabilities,
-    type AnswerlatticeOwnerAssistantPermissionMap,
-    type AnswerlatticeOwnerAssistantSourceHealth,
-    type AnswerlatticeOwnerAssistantSourceKey,
-    type AnswerlatticeOwnerAssistantStatus,
-    type AnswerlatticeOwnerAssistantSummaryHealth,
-    buildAnswerlatticeOwnerAssistantCapabilities,
-    canUseAnswerlatticeOwnerAssistantRoute,
-    getAnswerlatticeOwnerAssistantStatus,
-    isAnswerlatticeOwnerAssistantRoute,
-    parseAnswerlatticeOwnerAssistantSupportBoardSummary,
-} from '@lib/answerlattice/ownerSupportAssistantContracts';
-import {
-    normalizeAnswerlatticeOwnerAssistantCount,
-    normalizeAnswerlatticeOwnerAssistantTimestamp,
-} from '@lib/answerlattice/ownerSupportAssistantNormalization';
+import { ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS, type AnswerlatticeFounderDailyAction, type AnswerlatticeFounderDailyBrief, type AnswerlatticeLaunchVerification, type AnswerlatticeOwnerAssistantAnswer, type AnswerlatticeOwnerAssistantBrief, type AnswerlatticeOwnerAssistantCapabilities, type AnswerlatticeOwnerAssistantPermissionMap, type AnswerlatticeOwnerAssistantSourceHealth, type AnswerlatticeOwnerAssistantSourceKey, type AnswerlatticeOwnerAssistantStatus, type AnswerlatticeOwnerAssistantSummaryHealth, buildAnswerlatticeOwnerAssistantCapabilities, canUseAnswerlatticeOwnerAssistantRoute, getAnswerlatticeOwnerAssistantStatus, isAnswerlatticeOwnerAssistantRoute, parseAnswerlatticeOwnerAssistantSupportBoardSummary, } from '@lib/answerlattice/ownerSupportAssistantContracts';
+import { normalizeAnswerlatticeOwnerAssistantCount, normalizeAnswerlatticeOwnerAssistantTimestamp, } from '@lib/answerlattice/ownerSupportAssistantNormalization';
 import { getAnswerlatticeEntityContextRoute } from '@lib/answerlattice/ownerDecisionNavigation';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
-import type {
-    AnswerlatticeActivationSummary,
-    AnswerlatticeKnowledgeIntakeSummary,
-    AnswerlatticeSupportBoardSummary,
-} from '@type/answerlattice';
+import type { AnswerlatticeActivationSummary, AnswerlatticeKnowledgeIntakeSummary, AnswerlatticeSupportBoardSummary, } from '@type/answerlattice';
 import { z } from 'zod';
 
 export const AnswerlatticeOwnerAssistantQuerySchema = z.object({
@@ -268,7 +239,7 @@ const getSourceHealth = (
 
 const readSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacketValue> => {
     const key = `${tId}:${sId}`;
-    const db = answerlatticeFirestoreAdmin;
+    const db = requireAnswerlatticeFirestoreAdmin();
     const refs = [
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`trustMetrics_${tId}_${sId}`),

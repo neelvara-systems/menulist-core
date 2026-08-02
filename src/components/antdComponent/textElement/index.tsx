@@ -1,21 +1,22 @@
 import { Flex, Typography, theme } from 'antd';
+import type { CSSProperties, ReactNode } from 'react';
 
 type TextSize = "small" | "medium" | "large" | "heading";
 type TextType = "default" | "primary" | "secondary";
 
 type TextElementProps = {
-    text: string | any,
+    text: ReactNode,
     type?: TextType,
     size?: TextSize,
-    styles?: any,
-    icon?: any
+    styles?: CSSProperties,
+    icon?: ReactNode
 }
 function TextElement({ text, type = "default", size = "small", styles = {}, icon }: TextElementProps) {
 
     const { Text, Title } = Typography;
     const { token } = theme.useToken();
 
-    let textColor = type == "primary" ? token.colorPrimary : (type == "secondary" ? token.colorTextLabel : token.colorTextBase);
+    const textColor = type === "primary" ? token.colorPrimary : (type === "secondary" ? token.colorTextLabel : token.colorTextBase);
     let textElement = <Text style={{ ...styles, color: textColor }}>{text}</Text>;
 
     switch (size) {

@@ -34,21 +34,41 @@ for (const token of [
   'failClosedOnProviderError: true',
   "rateLimitResult.reason === 'provider_unavailable'",
   'status: providerUnavailable ? 503 : 429',
+  'withOnboardingPrivateResponse(async (request, session) => {',
+  "'Cache-Control': 'private, no-store, max-age=0'",
+  "'X-Content-Type-Options': 'nosniff'",
   'const selectedPrice = resolveOnboardingPlanPrice(',
   "currency === 'USD' ? selectedPlan.priceUSD : selectedPlan.priceINR",
-  'if (!isOnboardingProviderSubscription(providerSubscription))',
+  '!isMatchingOnboardingProviderSubscription({',
+  'isOwnedOnboardingProviderSubscriptionAttempt({',
+  'totalCount,',
   'normalizeRazorpaySubscriptionCheckoutUrl(providerSubscription.short_url)',
+  'throw new OnboardingInvalidProviderCheckoutUrlError();',
   'onboardingAttemptId,',
   "onboardingSource: 'WEBSITE_ONBOARDING'",
   'recoverOnboardingProviderSubscription({',
   'findOnboardingProviderSubscriptionForAttempt({',
   'await razorpayClient.subscriptions.cancel(params.providerSubscriptionId, false);',
-  'await compensateOnboardingSubscriptionPersistenceFailure({',
+  'await cancelProviderSubscriptionAndCompensateOnboarding({',
+  'reason: ONBOARDING_SUBSCRIPTION_CHECKOUT_URL_INVALID_CODE,',
+  'reason: ONBOARDING_SUBSCRIPTION_PROVIDER_RESPONSE_INVALID_CODE,',
+  'reason: ONBOARDING_SUBSCRIPTION_PERSISTENCE_FAILED_CODE,',
   'subscription: { id: razorpaySubscription.id }',
 ]) requireText(route, token, 'onboarding route');
-for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isOnboardingProviderSubscription', 'isMatchingPersistedOnboardingSubscription', 'resolveOnboardingPlanPrice']) {
+for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isMatchingOnboardingProviderSubscription', 'isOnboardingProviderSubscription', 'isMatchingPersistedOnboardingSubscription', 'isOwnedOnboardingProviderSubscriptionAttempt', 'resolveOnboardingPlanPrice']) {
   requireText(subscriptionBoundary, token, 'onboarding subscription boundary');
 }
+for (const token of [
+  'record.plan_id === params.providerPlanId',
+  'record.quantity === 1',
+  'record.total_count === params.totalCount',
+  "exactProviderNote(noteRecord.onboardingAttemptId) === params.attemptId",
+  "exactProviderNote(noteRecord.onboardingSource) === 'WEBSITE_ONBOARDING'",
+  'exactProviderNote(noteRecord.planId) === params.planId',
+  'exactProviderNote(noteRecord.storeId) === String(params.storeId)',
+  'exactProviderNote(noteRecord.tenantId) === String(params.tenantId)',
+  'exactProviderNote(noteRecord.userId) === params.userId',
+]) requireText(subscriptionBoundary, token, 'exact provider onboarding subscription identity');
 for (const token of [
   'record.pId === DEFAULT_PRODUCT_ID',
   'record.productId === DEFAULT_PRODUCT_ID',
@@ -62,12 +82,17 @@ for (const token of [
 
 const persistenceWrite = route.indexOf('await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);');
 const cancellation = route.indexOf('await razorpayClient.subscriptions.cancel(params.providerSubscriptionId, false);');
-const compensationCall = route.indexOf('await compensateOnboardingSubscriptionPersistenceFailure({');
+const compensationCall = route.indexOf(
+  'await cancelProviderSubscriptionAndCompensateOnboarding({',
+  persistenceWrite,
+);
 assert.ok(cancellation >= 0 && persistenceWrite >= 0 && compensationCall > persistenceWrite, 'persistence failure must trigger provider/local compensation');
 requireText(paymentHandler, 'const subscriptionId = subscription.id;', 'bounded client response consumer');
 requireText(route, 'isMatchingPersistedOnboardingSubscription({', 'exact ambiguous local persistence recovery');
 forbidText(route, 'subscription: razorpaySubscription,', 'raw provider response');
 forbidText(route, 'let razorpaySubscription: any;', 'provider response type');
+forbidText(route, 'bodyResult.data as any', 'unchecked onboarding request cast');
+forbidText(route, 'Timestamp.now() as any', 'unchecked persisted timestamp cast');
 forbidText(route, 'selectedPlan[priceKey]', 'dynamic plan-price registry index');
 
 const schemaStart = schemas.indexOf('export const OnboardingSubscriptionSchema');

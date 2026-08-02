@@ -30,6 +30,16 @@ export const signalDeskPrivateJson = (body: unknown, init: ResponseInit = {}) =>
 );
 
 export type SignalDeskLogContext = Record<string, boolean | number | string | null | undefined>;
+export type SignalDeskSessionInput = Parameters<typeof getBoundedSecurityRouteContext>[0];
+
+const SIGNALDESK_RETRYABLE_ACTION_ERRORS = new Set([
+    "SOURCE_PROVIDER_REQUEST_FAILED",
+    "SOURCE_PROVIDER_TIMEOUT",
+]);
+
+export const getSignalDeskActionErrorStatus = (message: string): 400 | 503 => (
+    SIGNALDESK_RETRYABLE_ACTION_ERRORS.has(message) ? 503 : 400
+);
 
 export function getSignalDeskRateLimitFailureDecision(input: {
     now?: number;
@@ -43,11 +53,18 @@ export function getSignalDeskRateLimitFailureDecision(input: {
         ? input.resetAt
         : now + 1000;
     const providerUnavailable = input.reason === "provider_unavailable";
+    if (providerUnavailable) {
+        return {
+            code: "RATE_LIMIT_UNAVAILABLE" as const,
+            providerUnavailable: true as const,
+            status: 503 as const,
+        };
+    }
     return {
-        code: providerUnavailable ? "RATE_LIMIT_UNAVAILABLE" as const : "RATE_LIMITED" as const,
-        providerUnavailable,
+        code: "RATE_LIMITED" as const,
+        providerUnavailable: false as const,
         retryAfter: Math.max(1, Math.ceil((resetAt - now) / 1000)),
-        status: providerUnavailable ? 503 as const : 429 as const,
+        status: 429 as const,
     };
 }
 
@@ -68,7 +85,7 @@ export const getSignalDeskAccessLogContext = (
 });
 
 const getSignalDeskSecurityLogContext = (
-    session: any,
+    session: SignalDeskSessionInput,
     request: NextRequest,
     context: SignalDeskLogContext = {},
 ): SignalDeskLogContext => ({
@@ -114,7 +131,7 @@ export function logSignalDeskValidationFailure(params: {
     action?: string;
     details?: unknown;
     request: NextRequest;
-    session: any;
+    session: SignalDeskSessionInput;
 }) {
     logger.security("Input Validation Failed - SignalDesk API", {
         ...getSignalDeskSecurityLogContext(params.session, params.request, {
@@ -126,7 +143,7 @@ export function logSignalDeskValidationFailure(params: {
 
 export async function requireSignalDeskAccess(
     request: NextRequest,
-    session: any,
+    session: SignalDeskSessionInput,
     permission: SignalDeskPermission = "signaldesk.view",
 ): Promise<{ access: SignalDeskAccessContext } | { response: NextResponse }> {
     const access = await getSignalDeskAccessContext(session);
@@ -144,7 +161,7 @@ export async function requireSignalDeskAccess(
 
 export async function applySignalDeskRateLimit(params: {
     request: NextRequest;
-    session: any;
+    session: SignalDeskSessionInput;
     feature: RateLimitFeature;
     keyPrefix: string;
 }) {
@@ -170,7 +187,7 @@ export async function applySignalDeskRateLimit(params: {
             ...getBoundedSignalDeskStringContext("feature", params.feature),
         }),
         limit: rateLimitConfig.limit,
-        waitSeconds: decision.retryAfter,
+        ...(decision.providerUnavailable ? {} : { waitSeconds: decision.retryAfter }),
         window: rateLimitConfig.window,
     }, "medium");
 
@@ -180,15 +197,15 @@ export async function applySignalDeskRateLimit(params: {
                 ? "SignalDesk request protection is temporarily unavailable. Please try again shortly."
                 : `Too many requests. Please wait ${decision.retryAfter} seconds.`,
             code: decision.code,
-            retryAfter: decision.retryAfter,
+            ...(decision.providerUnavailable ? {} : { retryAfter: decision.retryAfter }),
             ...(decision.providerUnavailable ? {} : { resetAt: rateLimit.resetAt }),
         },
         {
             status: decision.status,
             headers: {
-                "Retry-After": String(decision.retryAfter),
                 "X-RateLimit-Limit": String(rateLimitConfig.limit),
                 ...(decision.providerUnavailable ? {} : {
+                    "Retry-After": String(decision.retryAfter),
                     "X-RateLimit-Remaining": String(rateLimit.remaining),
                     "X-RateLimit-Reset": String(rateLimit.resetAt),
                 }),
@@ -199,7 +216,7 @@ export async function applySignalDeskRateLimit(params: {
 
 export async function parseSignalDeskJsonBody(params: {
     request: NextRequest;
-    session: any;
+    session: SignalDeskSessionInput;
 }) {
     const bodyResult = await readBoundedJsonBody(params.request, SIGNALDESK_JSON_BODY_MAX_BYTES, {
         invalidJsonMessage: "Invalid JSON",

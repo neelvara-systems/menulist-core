@@ -1,5 +1,7 @@
 'use client';
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
@@ -366,10 +368,7 @@ function ResellerDashboard() {
             return;
         }
         try {
-            const opened = window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('desktop_reseller_dashboard_payment_link_open_blocked');
-            }
+            openIsolatedBrowserUrl(checkoutUrl);
         } catch (error) {
             logResellerFailure('desktop_reseller_dashboard_payment_link_open_failed', error, buildResellerDashboardHandoffLogContext('open_payment_link', record, {
                 ...getBoundedResellerStringContext('paymentLink', link),

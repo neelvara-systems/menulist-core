@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 
 // --- Helper Components: For animated visual feedback ---
 const AnimatedNumber = ({ value, currencySymbol = '' }: { value: number; currencySymbol?: string }) => {
+    const displayValue = Number.isFinite(value) ? Math.round(value).toLocaleString() : '—';
     return (
         <motion.span
             key={`${currencySymbol}${value}`}
@@ -10,7 +11,7 @@ const AnimatedNumber = ({ value, currencySymbol = '' }: { value: number; currenc
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="inline-block"
         >
-            {currencySymbol}{Math.round(value).toLocaleString()}
+            {displayValue === '—' ? displayValue : `${currencySymbol}${displayValue}`}
         </motion.span>
     );
 };

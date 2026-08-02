@@ -94,8 +94,8 @@ export function appendAnswerlatticeTenantSummaryAdmin(
         throw new Error('Cannot update Answerlattice tenant summary without valid tId and sId.');
     }
 
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         return { skipped: true };
     }
 
@@ -141,8 +141,8 @@ export function appendAnswerlatticeTenantSummaryAdmin(
 export async function upsertAnswerlatticeTenantSummaryAdmin(
     params: AnswerlatticeTenantSummaryWriteParams,
 ): Promise<{ skipped: boolean }> {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         return { skipped: true };
     }
     const batch = db.batch();
@@ -160,8 +160,8 @@ export function removeAnswerlatticeTenantSummaryEntryAdmin(
     if (!scope) {
         throw new Error('Cannot remove Answerlattice tenant summary without valid tId and sId.');
     }
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    const db = answerlatticeFirestoreAdmin;
+    if (!db) {
         return { skipped: true };
     }
 

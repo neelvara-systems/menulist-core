@@ -52,14 +52,17 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 ## Security
 
 - Auth: Google OAuth via existing NextAuth (same as MenuList)
+- Current authority: the persisted default-auth user must still match the signed identity, email, active/verified lifecycle and session-revocation boundary before provisioning; the bridge transaction repeats that proof before writing `productAccounts.AL`
 - Resumable: request fingerprint plus attempt ID makes an expired identical attempt recoverable and rejects changed details while an attempt is active
 - Provider idempotency: the attempt ID and exact Answerlattice scope are written to Razorpay notes; only a `created` subscription with exact attempt, product, plan, tenant, and store notes is eligible for checkout recovery
+- Checkout truth: payment-pending finalization requires a credential-free HTTPS checkout on the exact Razorpay hosted-payment domain; missing or unsafe provider URLs remain in recovery instead of becoming a successful workspace response
 - Indeterminate provider outcome: preserve the exact scope in `provider_recovery_pending`, hold retries for 15 minutes, and perform bounded recovery before allowing same-attempt provider creation
 - Known provider identity: preserve a stored provider subscription ID across fetch failures rather than downgrading the attempt to unknown-provider recovery
 - Terminal checkout recovery: only an exact known provider subscription in a recognized terminal status may deactivate its owned provisional scope and return a retryable checkout-expired result
 - Atomic finalization: pending subscription, store summary, widget-key state, and tenant/store/user payment status commit together
 - Compensation: deactivate the exact provisional scope only when provider creation is proven not to have occurred or an exact known provider checkout is terminal; never infer cancellation from an unknown provider result
 - Finalization boundary: after local `payment_pending` truth commits, bridge/bootstrap failure is recoverable and must not cancel or compensate the provider/workspace
+- Non-destructive recovery: payment-pending retry requires the original request fingerprint, transactionally restores the current product-account bridge, creates only missing initial surfaces/summary truth, and never merge-resets an existing owner-edited surface
 - Rate limited: 3 onboarding attempts per user per hour
 - Validation: company name is required (min 2 chars); product URLs are HTTP(S)-only and cannot contain embedded credentials
 - Duplicate prevention: user with existing `productAccounts.AL` or Answerlattice-project user tenant/store is blocked from re-onboarding; duplicate normalized-email records fail closed rather than selecting one arbitrarily; a MenuList tenant alone does not block Answerlattice onboarding.
@@ -89,6 +92,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-01 | 1.6.0 | Added current-auth/transactional bridge authority, exact hosted-checkout finalization, fingerprint-bound payment-pending recovery, and non-destructive bootstrap repair |
 | 2026-07-19 | 1.5.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email admission, HTTP(S)-only product URLs, and route-wide private responses |
 | 2026-07-19 | 1.5.0 | Defined durable provider-recovery hold, created-only exact provider matching, post-finalization recovery, response privacy, entitlement, success, and non-goal boundaries |
 | 2026-07-11 | 1.4.0 | Added plan/INR/USD selection and the resumable provider-recovery, atomic-finalization, and scoped-compensation contract |

@@ -1,5 +1,7 @@
 'use client'
 
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+
 import ChatHighlight from '@atoms/ChatHighlight';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { helpCenterArticleRouting } from '@constant/navigations';
@@ -65,10 +67,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
         if (!articleId) return;
 
         try {
-            const opened = window.open(helpCenterArticleRouting(articleId), '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('help_chat_related_article_open_blocked');
-            }
+            openIsolatedBrowserUrl(helpCenterArticleRouting(articleId));
         } catch (error) {
             logHelpChatFailure('help_chat_related_article_open_failed', error, {
                 isMobile,

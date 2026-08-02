@@ -12,11 +12,12 @@ import { generateAnswerlatticeProductStarterPack } from '../../src/lib/answerlat
 import { normalizeAnswerlatticeRetrievalFaq } from '../../src/lib/answerlattice/faqContent';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
 import { reserveAnswerlatticeIntakeUsage } from '../../src/lib/answerlattice/intakeUsageLedger';
-import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import crypto from 'node:crypto';
 
 const scope = { tId: 1, sId: 101 };
+const db = requireAnswerlatticeFirestoreAdmin();
 const jobId = 'ABCDEFGHIJKLMNOPQRST';
 const actor = { id: 'owner-1', email: 'owner@example.com', name: 'Owner' };
 
@@ -81,8 +82,6 @@ async function seedPackBilling(): Promise<string> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
-
     const createdOn = Timestamp.fromMillis(1_700_000_000_000);
     await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(jobId).set({
         id: jobId,

@@ -44,8 +44,7 @@ const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
 };
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeFirestoreAdmin;
 };
 
 export const GET = withAuth(async (request: NextRequest, session) => {

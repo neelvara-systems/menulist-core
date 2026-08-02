@@ -26,7 +26,7 @@ const { Title } = Typography;
 
 export interface TrendChartProps {
   title?: string;
-  data: any[];
+  data: Array<Record<string, string | number | null | undefined>>;
   type?: ChartType;
   dataKeys: Array<{
     key: string;
@@ -129,8 +129,8 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         contentStyle={config.tooltip.contentStyle}
         labelStyle={config.tooltip.labelStyle}
         itemStyle={config.tooltip.itemStyle}
-        formatter={formatValue}
-        labelFormatter={formatDate}
+        formatter={(value) => formatValue(Number.isFinite(Number(value)) ? Number(value) : 0)}
+        labelFormatter={(label) => formatDate(String(label))}
       />
     );
 

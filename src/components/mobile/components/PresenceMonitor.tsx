@@ -14,6 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { assertMenuPresenceUpdateSucceeded, type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { isMenuPresenceConfirmed } from '@lib/menuPresence/presenceReadiness';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
@@ -268,10 +269,7 @@ export default function MobilePresenceMonitor({
     const handleOpenExternalSurface = (surface: ManualSurfaceConfig) => {
         if (!surface.openUrl) return;
         try {
-            const opened = window.open(surface.openUrl, '_blank', 'noopener,noreferrer');
-            if (!opened) {
-                throw new Error('mobile_presence_external_open_blocked');
-            }
+            openIsolatedBrowserUrl(surface.openUrl);
         } catch (error) {
             logMobileOwnerFailure('mobile_presence_external_open_failed', error, buildMobilePresenceLogContext('open', surface));
             Toast.show({ content: t('updateFailed'), duration: 1500 });

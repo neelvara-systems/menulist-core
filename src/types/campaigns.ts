@@ -425,6 +425,17 @@ export interface ScreenMenuProjection {
     updatedAt: Timestamp;
 }
 
+export type DigitalScreenDisplayMode = "menu_board" | "highlights";
+
+export interface DigitalScreenModeSeenReceipt {
+    contentVersion: number;
+    seenAt: Timestamp;
+}
+
+export type DigitalScreenSeenByMode = Partial<
+    Record<DigitalScreenDisplayMode, DigitalScreenModeSeenReceipt>
+>;
+
 /**
  * Screen Slide - Individual slide in rotation
  * Per spec: 4-Layer Stack (Owner → Campaign → Evergreen → Brand)
@@ -486,9 +497,11 @@ export interface DigitalScreenState {
     pinnedSlides: ScreenSlide[]; // Max 3
 
     // HARDENING: Daily seen signal for operational awareness
-    // Updated once per day per screen via /api/screen/seen
-    // NOT a heartbeat - just "I was alive today"
+    // Updated once per day via /api/screen/seen for legacy aggregate awareness.
+    // Per-mode receipts prove only that a TV opened an exact content version;
+    // they are not heartbeats or device analytics.
     screenLastSeenAt?: Timestamp;
+    screenSeenByMode?: DigitalScreenSeenByMode;
 }
 
 export interface DigitalScreenOwnerState extends DigitalScreenState {
