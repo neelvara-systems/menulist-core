@@ -18,6 +18,7 @@ import {
     Button,
     Card,
     Col,
+    Collapse,
     Flex,
     Grid,
     List,
@@ -26,7 +27,6 @@ import {
     Skeleton,
     Space,
     Statistic,
-    Steps,
     Tag,
     Typography,
     message,
@@ -39,7 +39,6 @@ import {
     LuBookOpen,
     LuBoxes,
     LuCheckCircle2,
-    LuClipboardCheck,
     LuHelpCircle,
     LuCircle,
     LuCode,
@@ -68,6 +67,27 @@ const STATUS_META = {
     pending: { color: 'default', label: 'Pending', icon: LuCircle },
     optional: { color: 'processing', label: 'Optional', icon: LuCircle },
 } as const;
+
+type ActivationJourneyCheck = {
+    key: string;
+    title: string;
+    description: string;
+    status: AnswerlatticeActivationStepStatus;
+};
+
+type ActivationJourneyGroup = {
+    key: string;
+    title: string;
+    description: string;
+    status: AnswerlatticeActivationStepStatus;
+    statusLabel?: string;
+    checks: ActivationJourneyCheck[];
+    completeCount: number;
+    totalCount: number;
+    route?: string;
+    actionLabel: string;
+    includesCustomerCheck?: boolean;
+};
 
 const stageLabel: Record<string, string> = {
     setup: 'Set up workspace',
@@ -133,6 +153,27 @@ const combineActivationStepStatus = (
     return 'pending';
 };
 
+const findFirstIncompleteActivationStep = (
+    steps: AnswerlatticeActivationStep[],
+    keys: string[],
+): AnswerlatticeActivationStep | null => {
+    for (const key of keys) {
+        const step = steps.find(candidate => candidate.key === key);
+        if (step && step.status !== 'complete') return step;
+    }
+    return null;
+};
+
+const getActivationCheckDescription = (
+    steps: AnswerlatticeActivationStep[],
+    keys: string[],
+    completeDescription: string,
+): string => {
+    const incompleteStep = findFirstIncompleteActivationStep(steps, keys);
+    if (incompleteStep) return incompleteStep.description;
+    return completeDescription;
+};
+
 export default function AnswerlatticeActivationCommandCenter() {
     const cacheScopeKey = useAnswerlatticeCacheScope();
     const screens = Grid.useBreakpoint();
@@ -144,9 +185,12 @@ export default function AnswerlatticeActivationCommandCenter() {
     const [refreshing, setRefreshing] = useState(false);
     const [testingNotification, setTestingNotification] = useState(false);
     const [rebuildingContext, setRebuildingContext] = useState(false);
+    const [technicalDetailsLoaded, setTechnicalDetailsLoaded] = useState(false);
     const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
     const currentScopeKeyRef = useRef(cacheScopeKey);
     const loadRequestRef = useRef(0);
+    const technicalDetailsRef = useRef<HTMLDetailsElement>(null);
+    const technicalNotificationsRef = useRef<HTMLDivElement>(null);
     currentScopeKeyRef.current = cacheScopeKey;
     const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);
 
@@ -171,6 +215,7 @@ export default function AnswerlatticeActivationCommandCenter() {
             setLoadedScopeKey(null);
             setTestingNotification(false);
             setRebuildingContext(false);
+            setTechnicalDetailsLoaded(false);
         }
 
         try {
@@ -207,67 +252,184 @@ export default function AnswerlatticeActivationCommandCenter() {
     const requiredSteps = useMemo(() => summary?.steps?.filter(step => step.required) || [], [summary]);
     const completeRequired = requiredSteps.filter(step => step.status === 'complete').length;
     const needsReview = summary?.steps?.filter(step => step.status === 'attention') || [];
-    const nextStep = summary?.steps?.find(step => step.required && step.status !== 'complete') || null;
-    const launchJourney = useMemo(() => {
+    const nextProofItem = summary?.launchProof?.items?.find(item => item.status !== 'complete') || null;
+    const activationGroups = useMemo<ActivationJourneyGroup[]>(() => {
         if (!summary) return [];
         const steps = summary.steps || [];
-        return [
+        const createCheck = (
+            key: string,
+            title: string,
+            keys: string[],
+            completeDescription: string,
+        ): ActivationJourneyCheck => ({
+            key,
+            title,
+            description: getActivationCheckDescription(steps, keys, completeDescription),
+            status: combineActivationStepStatus(steps, keys),
+        });
+        const createStepGroup = (input: {
+            key: string;
+            title: string;
+            description: string;
+            stepKeys: string[];
+            checks: ActivationJourneyCheck[];
+            fallbackRoute: string;
+            reviewLabel: string;
+        }): ActivationJourneyGroup => {
+            const incompleteStep = findFirstIncompleteActivationStep(steps, input.stepKeys);
+            return {
+                key: input.key,
+                title: input.title,
+                description: input.description,
+                status: combineActivationStepStatus(steps, input.stepKeys),
+                checks: input.checks,
+                completeCount: input.checks.filter(check => check.status === 'complete').length,
+                totalCount: input.checks.length,
+                route: incompleteStep?.route || input.fallbackRoute,
+                actionLabel: incompleteStep?.actionLabel || input.reviewLabel,
+            };
+        };
+
+        const productKnowledgeChecks = [
+            createCheck(
+                'workspace-profile',
+                'Workspace and product details',
+                ['workspace', 'product-profile', 'license'],
+                'Workspace, current plan, product URL, and support email are present.',
+            ),
+            createCheck(
+                'knowledge-content',
+                'Reviewed help content',
+                ['knowledge', 'help-center'],
+                'Reviewed knowledge and published help content are available.',
+            ),
+            createCheck(
+                'product-surfaces',
+                'Product surfaces',
+                ['product-surfaces'],
+                'Initial product pages and workflows are mapped to support context.',
+            ),
+        ];
+        const trustedAnswerChecks = [
+            createCheck(
+                'first-ten',
+                'First 10 questions',
+                ['answer-tests'],
+                'The First 10 launch questions have current retained test evidence.',
+            ),
+            createCheck(
+                'product-entities',
+                'Product entities',
+                ['entities'],
+                'Reviewed product entities are available for support context.',
+            ),
+            createCheck(
+                'canonical-answers',
+                'Approved answers',
+                ['canonical-answers'],
+                'Active canonical answers are available for approved support truth.',
+            ),
+        ];
+        const customerSupportChecks = [
+            createCheck(
+                'widget-access',
+                'Secure widget access',
+                ['widget-key', 'allowed-origins'],
+                'A widget key and allowed product origins are configured.',
+            ),
+            createCheck(
+                'widget-context',
+                'Current widget and page context',
+                ['widget-install', 'page-context'],
+                'Recent widget runtime and page-context evidence are available.',
+            ),
+            createCheck(
+                'ticket-fallback',
+                'Human fallback',
+                ['notifications'],
+                'Ticket notifications are configured for unresolved questions.',
+            ),
+        ];
+        const proofItems = summary.launchProof.items || [];
+        const proofStatus = (keys: string[]) => {
+            const selected = keys
+                .map(key => proofItems.find(item => item.key === key)?.status)
+                .filter((status): status is AnswerlatticeActivationStepStatus => Boolean(status));
+            if (!selected.length) return 'pending' as const;
+            if (selected.every(status => status === 'complete')) return 'complete' as const;
+            if (selected.some(status => status === 'complete' || status === 'attention')) return 'attention' as const;
+            return 'pending' as const;
+        };
+        const verificationChecks: ActivationJourneyCheck[] = [
             {
-                key: 'product-details',
-                title: 'Product details',
-                description: 'Confirm the product URL, support email, and workspace details.',
-                status: combineActivationStepStatus(steps, ['product-profile']),
-                route: ANSWERLATTICE_ROUTES.SETTINGS,
+                key: 'support-truth-proof',
+                title: 'Required support truth',
+                description: 'Workspace, knowledge, approved answers, and First 10 evidence must all be current.',
+                status: proofStatus(['self-serve-setup', 'knowledge-surfaces', 'ontology-canonical', 'priority-answer-checks']),
             },
             {
-                key: 'product-knowledge',
-                title: 'Product knowledge',
-                description: 'Add reviewed product sources and publish initial help content.',
-                status: combineActivationStepStatus(steps, ['knowledge', 'help-center']),
-                route: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
+                key: 'runtime-proof',
+                title: 'Widget and context evidence',
+                description: 'Recent widget runtime and safe page context must be visible before customer testing.',
+                status: proofStatus(['widget-runtime']),
             },
             {
-                key: 'first-ten',
-                title: 'First 10 answers',
-                description: 'Define and test the questions most likely to interrupt launch.',
-                status: combineActivationStepStatus(steps, ['answer-tests']),
-                route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS,
-            },
-            {
-                key: 'approved-truth',
-                title: 'Approved support truth',
-                description: 'Review product entities and approve canonical answers.',
-                status: combineActivationStepStatus(steps, ['entities', 'canonical-answers']),
-                route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
-            },
-            {
-                key: 'product-surfaces',
-                title: 'Product surfaces',
-                description: 'Map product pages and workflows to the right support context.',
-                status: combineActivationStepStatus(steps, ['product-surfaces']),
-                route: ANSWERLATTICE_ROUTES.PRODUCT_SURFACES,
-            },
-            {
-                key: 'secure-install',
-                title: 'Secure install',
-                description: 'Verify the key, origins, widget runtime, and safe page context.',
-                status: combineActivationStepStatus(steps, ['widget-key', 'allowed-origins', 'widget-install', 'page-context']),
-                route: ANSWERLATTICE_ROUTES.INSTALL_CENTER,
-            },
-            {
-                key: 'launch-verification',
-                title: 'Launch verification',
-                description: 'Complete every factual proof check before relying on customer-facing support.',
-                status: summary.launchProof.ready
-                    ? 'complete' as const
-                    : summary.launchProof.completeCount > 0
-                        ? 'attention' as const
-                        : 'pending' as const,
-                route: ANSWERLATTICE_ROUTES.ACTIVATION,
+                key: 'governance-signal-proof',
+                title: 'Governance and fallback signal',
+                description: 'Governance summaries and one support signal source must be ready for review.',
+                status: proofStatus(['governance-summaries', 'signal-loop-test']),
             },
         ];
-    }, [summary]);
-    const currentJourneyStep = launchJourney.findIndex(step => step.status !== 'complete');
+        const launchProofStatus: AnswerlatticeActivationStepStatus = summary.launchProof.ready
+            ? 'complete'
+            : summary.launchProof.completeCount > 0
+                ? 'attention'
+                : 'pending';
+
+        return [
+            createStepGroup({
+                key: 'product-knowledge',
+                title: 'Add product knowledge',
+                description: 'Give AnswerLattice the minimum reviewed product truth needed to support real customer questions.',
+                stepKeys: ['workspace', 'product-profile', 'license', 'knowledge', 'help-center', 'product-surfaces'],
+                checks: productKnowledgeChecks,
+                fallbackRoute: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
+                reviewLabel: 'Review product knowledge',
+            }),
+            createStepGroup({
+                key: 'trusted-answers',
+                title: 'Approve your first answers',
+                description: 'Protect the questions most likely to interrupt launch with reviewed entities, approved answers, and tests.',
+                stepKeys: ['answer-tests', 'entities', 'canonical-answers'],
+                checks: trustedAnswerChecks,
+                fallbackRoute: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS,
+                reviewLabel: 'Review trusted answers',
+            }),
+            createStepGroup({
+                key: 'customer-support',
+                title: 'Connect customer support',
+                description: 'Connect the widget safely, pass current page context, and prepare a human fallback for unknown questions.',
+                stepKeys: ['widget-key', 'allowed-origins', 'widget-install', 'page-context', 'notifications'],
+                checks: customerSupportChecks,
+                fallbackRoute: ANSWERLATTICE_ROUTES.INSTALL_CENTER,
+                reviewLabel: 'Review support connection',
+            }),
+            {
+                key: 'verify-launch',
+                title: 'Verify and go live',
+                description: 'Confirm the strict launch evidence, then manually exercise one approved answer, one contextual question, and one unresolved fallback.',
+                status: launchProofStatus,
+                statusLabel: summary.launchProof.ready ? 'Ready to test' : undefined,
+                checks: verificationChecks,
+                completeCount: summary.launchProof.completeCount,
+                totalCount: summary.launchProof.totalCount,
+                route: nextProofItem?.route || ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT,
+                actionLabel: nextProofItem?.actionLabel || 'Open Today\'s Brief',
+                includesCustomerCheck: true,
+            },
+        ];
+    }, [nextProofItem, summary]);
+    const currentActivationGroup = activationGroups.find(group => group.status !== 'complete') || null;
     const modeCards = [
         {
             key: 'launch',
@@ -299,6 +461,33 @@ export default function AnswerlatticeActivationCommandCenter() {
         if (!route) return;
         router.push(toAnswerlatticeDashboardRoute(route, currentHostname));
     }, [currentHostname, router]);
+
+    const revealTechnicalDetails = useCallback((focus: 'details' | 'notifications' = 'details') => {
+        setTechnicalDetailsLoaded(true);
+        if (technicalDetailsRef.current) technicalDetailsRef.current.open = true;
+
+        const scrollToTarget = () => {
+            const target = focus === 'notifications'
+                ? technicalNotificationsRef.current || technicalDetailsRef.current
+                : technicalDetailsRef.current;
+            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        if (typeof window === 'undefined') {
+            scrollToTarget();
+            return;
+        }
+        window.requestAnimationFrame(scrollToTarget);
+    }, []);
+
+    const openActivationAction = useCallback((route?: string) => {
+        if (!route) return;
+        if (route === ANSWERLATTICE_ROUTES.ACTIVATION) {
+            revealTechnicalDetails('notifications');
+            return;
+        }
+        openRoute(route);
+    }, [openRoute, revealTechnicalDetails]);
 
     const testNotifications = useCallback(async () => {
         const requestScopeKey = cacheScopeKey;
@@ -385,7 +574,6 @@ export default function AnswerlatticeActivationCommandCenter() {
         superseded: 'warning',
         empty: 'default',
     };
-    const nextProofItem = summary.launchProof?.items?.find(item => item.status !== 'complete') || null;
     const launchProofStatus = summary.launchProof?.ready
         ? STATUS_META.complete
         : nextProofItem?.status === 'pending'
@@ -397,9 +585,11 @@ export default function AnswerlatticeActivationCommandCenter() {
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Launch Support Setup</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
+                        Set up support for {summary.workspace.productName || summary.workspace.companyName || 'this product'}
+                    </Title>
                     <Text type="secondary">
-                        Finish the support setup for {summary.workspace.productName || summary.workspace.companyName || 'this product'} from one checklist.
+                        Follow one guided path. AnswerLattice verifies machine-checkable setup from current workspace evidence.
                     </Text>
                 </div>
                 <Space wrap>
@@ -411,28 +601,23 @@ export default function AnswerlatticeActivationCommandCenter() {
                     >
                         Refresh
                     </Button>
-                    <Button
-                        icon={<LuListChecks />}
-                        onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)}
-                        style={{ minHeight: 44 }}
-                    >
-                        Today&apos;s Brief
-                    </Button>
-                    <Button
-                        icon={<LuClipboardCheck />}
-                        onClick={() => openRoute(ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS)}
-                        style={{ minHeight: 44 }}
-                    >
-                        First 10 Answers
-                    </Button>
-                    {nextStep?.route && (
+                    {summary.launchProof.ready && (
                         <Button
-                            type="primary"
-                            icon={<LuExternalLink />}
-                            onClick={() => openRoute(nextStep.route)}
+                            icon={<LuListChecks />}
+                            onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)}
                             style={{ minHeight: 44 }}
                         >
-                            {nextStep.actionLabel || 'Continue'}
+                            Today&apos;s Brief
+                        </Button>
+                    )}
+                    {currentActivationGroup?.route && (
+                        <Button
+                            type="primary"
+                            icon={currentActivationGroup.route === ANSWERLATTICE_ROUTES.ACTIVATION ? <LuListChecks /> : <LuExternalLink />}
+                            onClick={() => openActivationAction(currentActivationGroup.route)}
+                            style={{ minHeight: 44 }}
+                        >
+                            {currentActivationGroup.actionLabel}
                         </Button>
                     )}
                 </Space>
@@ -451,36 +636,140 @@ export default function AnswerlatticeActivationCommandCenter() {
                         : 'Follow the ordered launch path before customer traffic depends on support.'}
             />
 
-            <Card title="Founder launch path">
-                <Flex vertical gap={14}>
-                    <Steps
-                        current={currentJourneyStep < 0 ? launchJourney.length : currentJourneyStep}
-                        direction={isMobile ? 'vertical' : 'horizontal'}
-                        items={launchJourney.map(step => ({
-                            key: step.key,
-                            title: step.title,
-                            description: isMobile ? step.description : undefined,
-                            status: step.status === 'complete'
-                                ? 'finish'
-                                : step.status === 'attention'
-                                    ? 'process'
-                                    : 'wait',
-                        }))}
+            <section aria-labelledby="answerlattice-launch-path-title">
+                <Flex vertical gap={12}>
+                    <Flex align={isMobile ? 'stretch' : 'end'} justify="space-between" gap={10} vertical={isMobile}>
+                        <div>
+                            <Title id="answerlattice-launch-path-title" level={4} style={{ margin: 0 }}>Launch path</Title>
+                            <Text type="secondary">
+                                {summary.launchProof.completeCount}/{summary.launchProof.totalCount} factual launch checks complete
+                            </Text>
+                        </div>
+                        <Text type="secondary">One current action at a time</Text>
+                    </Flex>
+                    <Progress
+                        aria-label={`${summary.launchProof.completeCount} of ${summary.launchProof.totalCount} factual launch checks complete`}
+                        percent={summary.launchProof.score}
+                        showInfo={false}
+                        status={summary.launchProof.ready ? 'success' : 'active'}
+                        strokeColor={summary.launchProof.ready ? token.colorSuccess : token.colorPrimary}
                     />
-                    {currentJourneyStep >= 0 ? (
-                        <Flex justify={isMobile ? 'stretch' : 'end'}>
-                            <Button
-                                type="primary"
-                                icon={<LuExternalLink />}
-                                onClick={() => openRoute(launchJourney[currentJourneyStep]?.route)}
-                                style={{ minHeight: 44 }}
-                            >
-                                Continue: {launchJourney[currentJourneyStep]?.title}
-                            </Button>
-                        </Flex>
-                    ) : null}
+                    <Collapse
+                        key={`${cacheScopeKey}:${currentActivationGroup?.key || 'complete'}`}
+                        accordion
+                        defaultActiveKey={currentActivationGroup?.key}
+                        items={activationGroups.map((group, index) => {
+                            const groupMeta = STATUS_META[group.status];
+                            const GroupStatusIcon = groupMeta.icon;
+                            return {
+                                key: group.key,
+                                label: (
+                                    <Flex align="center" gap={10} style={{ width: '100%', minWidth: 0 }}>
+                                        <Flex
+                                            align="center"
+                                            justify="center"
+                                            style={{
+                                                width: 28,
+                                                height: 28,
+                                                flex: '0 0 28px',
+                                                borderRadius: '50%',
+                                                background: group.status === 'complete' ? token.colorSuccessBg : token.colorPrimaryBg,
+                                                color: group.status === 'complete' ? token.colorSuccessText : token.colorPrimaryText,
+                                                fontWeight: 600,
+                                            }}
+                                        >
+                                            {index + 1}
+                                        </Flex>
+                                        <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
+                                            <Text strong>{group.title}</Text>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {group.completeCount}/{group.totalCount} {group.key === 'verify-launch' ? 'launch checks complete' : 'parts ready'}
+                                            </Text>
+                                        </Flex>
+                                        <Tag color={groupMeta.color} icon={<GroupStatusIcon />} style={{ marginInlineEnd: 0 }}>
+                                            {group.statusLabel || groupMeta.label}
+                                        </Tag>
+                                    </Flex>
+                                ),
+                                children: (
+                                    <Flex vertical gap={14}>
+                                        <Text type="secondary">{group.description}</Text>
+                                        <List
+                                            split={false}
+                                            dataSource={group.checks}
+                                            renderItem={(check) => {
+                                                const checkMeta = STATUS_META[check.status];
+                                                const CheckStatusIcon = checkMeta.icon;
+                                                return (
+                                                    <List.Item style={{ paddingInline: 0 }}>
+                                                        <Flex align="flex-start" gap={10} style={{ width: '100%' }}>
+                                                            <span style={{ display: 'inline-flex', marginTop: 3, color: check.status === 'complete' ? token.colorSuccess : token.colorTextSecondary }}>
+                                                                <CheckStatusIcon size={17} />
+                                                            </span>
+                                                            <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
+                                                                <Flex align="center" gap={8} wrap="wrap">
+                                                                    <Text strong>{check.title}</Text>
+                                                                    <Tag color={checkMeta.color}>{checkMeta.label}</Tag>
+                                                                </Flex>
+                                                                <Text type="secondary">{check.description}</Text>
+                                                            </Flex>
+                                                        </Flex>
+                                                    </List.Item>
+                                                );
+                                            }}
+                                        />
+                                        {group.includesCustomerCheck ? (
+                                            <AnswerlatticeCustomerFlowChecklist
+                                                embedded
+                                                summary={summary}
+                                                isMobile={isMobile}
+                                                onOpen={openActivationAction}
+                                            />
+                                        ) : null}
+                                        {group.route ? (
+                                            <Flex justify={isMobile ? 'stretch' : 'end'}>
+                                                <Button
+                                                    type={group.status === 'complete' ? 'default' : 'primary'}
+                                                    icon={group.route === ANSWERLATTICE_ROUTES.ACTIVATION ? <LuListChecks /> : <LuExternalLink />}
+                                                    onClick={() => openActivationAction(group.route)}
+                                                    style={{ minHeight: 44, width: isMobile ? '100%' : undefined }}
+                                                >
+                                                    {group.actionLabel}
+                                                </Button>
+                                            </Flex>
+                                        ) : null}
+                                    </Flex>
+                                ),
+                            };
+                        })}
+                    />
                 </Flex>
-            </Card>
+            </section>
+
+            <details
+                ref={technicalDetailsRef}
+                onToggle={(event) => {
+                    if (event.currentTarget.open) setTechnicalDetailsLoaded(true);
+                }}
+                style={{
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: token.borderRadiusLG,
+                    background: token.colorBgContainer,
+                    overflow: 'hidden',
+                }}
+            >
+                <summary
+                    style={{
+                        minHeight: 52,
+                        padding: '13px 16px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                    }}
+                >
+                    Technical evidence and setup details
+                </summary>
+                {technicalDetailsLoaded ? (
+                    <Flex vertical gap={isMobile ? 14 : 20} style={{ padding: isMobile ? 12 : 16, paddingTop: 4 }}>
 
             {summary.launchProof && (
                 <Card>
@@ -561,7 +850,12 @@ export default function AnswerlatticeActivationCommandCenter() {
                                     <Text strong>{mode.title}</Text>
                                 </Flex>
                                 <Text type="secondary">{mode.description}</Text>
-                                <Button onClick={() => openRoute(mode.route)} style={{ minHeight: 44 }}>
+                                <Button
+                                    onClick={() => mode.route === ANSWERLATTICE_ROUTES.ACTIVATION
+                                        ? revealTechnicalDetails()
+                                        : openRoute(mode.route)}
+                                    style={{ minHeight: 44 }}
+                                >
                                     {mode.action}
                                 </Button>
                             </Flex>
@@ -616,12 +910,6 @@ export default function AnswerlatticeActivationCommandCenter() {
             </Row>
 
             <AnswerlatticeContentWorkbench
-                summary={summary}
-                isMobile={isMobile}
-                onOpen={openRoute}
-            />
-
-            <AnswerlatticeCustomerFlowChecklist
                 summary={summary}
                 isMobile={isMobile}
                 onOpen={openRoute}
@@ -735,38 +1023,40 @@ export default function AnswerlatticeActivationCommandCenter() {
                                 </Button>
                             </Space>
                         </Card>
-                        <Card title="Ticket Notifications">
-                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">Email events</Text>
-                                    <Tag color={summary.notifications.enabled ? 'success' : 'default'}>
-                                        {summary.notifications.enabled ? 'Enabled' : 'Off'}
-                                    </Tag>
-                                </Flex>
-                                <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">Sender</Text>
-                                    <Tag color={summary.notifications.smtpConfigured ? 'success' : 'warning'}>
-                                        {summary.notifications.smtpConfigured ? 'Configured' : 'Missing'}
-                                    </Tag>
-                                </Flex>
-                                <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">From</Text>
-                                    <Text style={{ textAlign: 'right', wordBreak: 'break-all' }}>
-                                        {summary.notifications.fromAddress || 'Not set'}
-                                    </Text>
-                                </Flex>
-                                <Button
-                                    block
-                                    icon={<LuMail />}
-                                    loading={testingNotification}
-                                    disabled={!summary.notifications.enabled || !summary.notifications.smtpConfigured || !summary.workspace.supportEmail}
-                                    onClick={testNotifications}
-                                    style={{ minHeight: 44 }}
-                                >
-                                    Send Test Email
-                                </Button>
-                            </Space>
-                        </Card>
+                        <div ref={technicalNotificationsRef}>
+                            <Card title="Ticket Notifications">
+                                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                    <Flex justify="space-between" gap={12}>
+                                        <Text type="secondary">Email events</Text>
+                                        <Tag color={summary.notifications.enabled ? 'success' : 'default'}>
+                                            {summary.notifications.enabled ? 'Enabled' : 'Off'}
+                                        </Tag>
+                                    </Flex>
+                                    <Flex justify="space-between" gap={12}>
+                                        <Text type="secondary">Sender</Text>
+                                        <Tag color={summary.notifications.smtpConfigured ? 'success' : 'warning'}>
+                                            {summary.notifications.smtpConfigured ? 'Configured' : 'Missing'}
+                                        </Tag>
+                                    </Flex>
+                                    <Flex justify="space-between" gap={12}>
+                                        <Text type="secondary">From</Text>
+                                        <Text style={{ textAlign: 'right', wordBreak: 'break-all' }}>
+                                            {summary.notifications.fromAddress || 'Not set'}
+                                        </Text>
+                                    </Flex>
+                                    <Button
+                                        block
+                                        icon={<LuMail />}
+                                        loading={testingNotification}
+                                        disabled={!summary.notifications.enabled || !summary.notifications.smtpConfigured || !summary.workspace.supportEmail}
+                                        onClick={testNotifications}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        Send Test Email
+                                    </Button>
+                                </Space>
+                            </Card>
+                        </div>
                         <Card title="License">
                             <Statistic
                                 title={summary.subscription?.planName || 'Plan'}
@@ -844,6 +1134,9 @@ export default function AnswerlatticeActivationCommandCenter() {
                     Widget Settings
                 </Button>
             </Flex>
+                    </Flex>
+                ) : null}
+            </details>
         </Flex>
     );
 }

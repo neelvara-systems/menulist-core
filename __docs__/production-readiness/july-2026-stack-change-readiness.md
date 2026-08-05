@@ -157,10 +157,10 @@ No new size-aware rule is justified by current repository evidence.
 
 ### Dependency security
 
-- Root production consumers are moved to compatible patched chains: ExcelJS uses current Archiver/Unzipper overrides, Google GAX uses current Rimraf, Sucrase uses current Glob, and Minimatch 10 resolves patched `brace-expansion` 5.0.8.
+- Root production consumers are moved to compatible patched chains: ExcelJS uses current Archiver/Unzipper overrides, Google GAX uses current Rimraf, Sucrase uses current Glob, legacy Minimatch resolves `brace-expansion` 1.1.18, and Minimatch 10 resolves `brace-expansion` 5.0.9.
 - The ExcelJS XLSX write/read roundtrip remains part of upgrade validation because those controls cross transitive dependency major ranges.
-- Root production audit has the already governed private Next 16.2.11/PostCSS chain only: one high PostCSS entry and one moderate Next entry for the same upstream dependency.
-- Root full audit additionally reports nine high entries in its development-only ESLint/minimatch chain; MenuList Functions full audit reports ten. Production installation excludes those legacy tooling paths, and forcing brace-expansion 5 into their CommonJS contract breaks lint. The security gate allowlists only those exact dev chains, still requires the governed two-entry root production result, and requires zero production vulnerabilities in all three Functions packages.
+- Stable Next 16.3.0 privately carries patched PostCSS 8.5.23, closing the former one-high/one-moderate Next chain. The compatible brace-expansion and fast-uri refresh also leaves both root full and production audits at zero vulnerabilities.
+- The security gate now requires zero root vulnerabilities and continues to require zero production vulnerabilities in all three Functions packages. It does not retain an exception for the closed Next/PostCSS family.
 - Do not run `npm audit fix --force`, downgrade Next, patch `node_modules`, or install a canary.
 
 ## Authoritative references

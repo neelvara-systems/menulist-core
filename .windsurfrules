@@ -1,8 +1,9 @@
-Framework: Next.js (v16.2.11) with React (v19.2.8)
+Framework: Next.js (v16.3.0) with React (v19.2.8)
 Language: TypeScript (v5.8.3)
 Dependency freeze gate: npm run verify:dependency-freeze
 Next 16 migration status: locally complete; remaining Vercel/device/Firebase QA/Git evidence is external or operational, not missing migration code
-Next private PostCSS exception: Next 16.2.11 pins 8.4.31; root pins 8.5.23. Upgrade only when stable Next privately carries PostCSS >=8.5.18. Never use canary/preview, node_modules patches, private-pin overrides, npm audit fix --force, or the proposed Next 9 downgrade.
+Next private PostCSS exception: closed by stable Next 16.3.0, which carries patched PostCSS 8.5.23. Keep exact framework-aligned pins; never use canary/preview, node_modules patches, private-pin overrides, npm audit fix --force, or a framework downgrade.
+Next 16.3 adoption boundary: retain the default build-cache, memory-eviction, SSR, prefetch, and immutable-asset improvements. Do not enable Cache Components, Partial Prefetching, experimental compiler/offline flags, or TypeScript 7 without a separate verified migration.
 
 UI Components:
 Ant Design (v5.25.1)

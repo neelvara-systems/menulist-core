@@ -29,7 +29,14 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show whether product entities and active canonical answers exist, using explicit answer-evidence summary counts.
 - Show whether the founder's First 10 answer set exists and whether its latest retained proof is ready, needs review, or is blocked.
 - Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
-- Present one ordered founder journey above the detailed diagnostics: product details, product knowledge, First 10, approved support truth, product surfaces, secure install, and launch verification.
+- Compress the owner journey into four progressive groups: Add product knowledge, Approve your first answers, Connect customer support, and Verify and go live.
+- Expand only the first incomplete group by default. Completed groups remain available but collapsed, the owner can open one group at a time, and refreshed evidence re-anchors the accordion when the first incomplete group changes.
+- Show one factual launch-check count and one progress indicator in the primary path. Keep the broader setup percentage inside technical details so two progress models do not compete for attention.
+- Give each group one next action derived from the first incomplete required step or launch-proof item. Do not add a generic recommendations inbox or parallel task state.
+- Derive completion from the existing activation summary. Do not provide a manual **Mark as done** control for machine-verifiable checks.
+- Keep optional release notes and later signal-review work outside required group completion and outside the launch gate.
+- Keep the exact launch-proof list, full readiness checklist, content workbench, runtime evidence, notifications, license, profile, Answer Evidence, and Daily Governance available under a collapsed **Technical evidence and setup details** disclosure.
+- Keep the final customer-path group explicit that **Ready to test** proves prerequisites only; it must not claim a known answer or fallback was resolved.
 - Avoid reading source KB, changelog, ticket, and signal collections.
 - Keep Firebase/cache implementation details out of the client-facing UI.
 - Select the internal `live` stage only when every launch-proof group is complete; a readiness percentage alone is not a launch gate.
@@ -44,6 +51,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - No per-event analytics collection.
 - No MenuList-specific hardcoding.
 - No claim that configuration readiness proves customer resolution, task completion, or correct escalation.
+- No new onboarding collection, persisted accordion state, manual completion document, maturity score, or recommendation queue.
 
 ## Readiness Steps
 

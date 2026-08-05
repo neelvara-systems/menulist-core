@@ -239,14 +239,20 @@ for (const publicPath of registeredPaths) {
 
 const sitemap = read(`${WEBSITE_ROOT}/sitemap.xml/route.ts`);
 const robots = read(`${WEBSITE_ROOT}/robots.txt/route.ts`);
+const robotsPolicy = read('src/lib/seo/answerlatticeRobotsPolicy.ts');
 const notFound = read(`${WEBSITE_ROOT}/not-found.tsx`);
 assertIncludes(sitemap, 'ANSWERLATTICE_PUBLIC_PAGES.map', 'sitemap public registry');
 assertNotIncludes(sitemap, '<lastmod>', 'sitemap synthetic modified time');
 assertNotIncludes(sitemap, 'new Date()', 'sitemap synthetic modified time');
-assertIncludes(robots, 'Sitemap: ${ANSWERLATTICE_SITE_URL}/sitemap.xml', 'robots sitemap link');
-assertIncludes(robots, "'/answerlattice/'", 'robots private dashboard boundary');
-assertIncludes(robots, "'/api/'", 'robots private API boundary');
-assertIncludes(robots, '.map((crawler) => `User-agent: ${crawler}\\nAllow: /\\n${disallowRules}`)', 'named crawler private-path boundaries');
+assertIncludes(
+  robots,
+  'renderAnswerlatticeRobotsTxt(ANSWERLATTICE_SITE_URL)',
+  'robots route policy wiring',
+);
+assertIncludes(robotsPolicy, 'Sitemap: ${siteUrl}/sitemap.xml', 'robots sitemap link');
+assertIncludes(robotsPolicy, "'/answerlattice/'", 'robots private dashboard boundary');
+assertIncludes(robotsPolicy, "'/api/'", 'robots private API boundary');
+assertIncludes(robotsPolicy, '.map((crawler) => `User-agent: ${crawler}\\nAllow: /\\n${disallowRules}`)', 'named crawler private-path boundaries');
 assertIncludes(notFound, "h.get('x-product-base-path')", 'not-found proxy-owned base path');
 assertIncludes(notFound, "href={basePath ? `${basePath}/` : '/'}", 'not-found product-local home recovery');
 assertNotIncludes(notFound, 'href="/"', 'not-found cross-product root recovery');

@@ -6,6 +6,10 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 
 - Header remains sticky through `AnswerlatticeHeader`.
 - Primary action stacks below the title.
+- The four owner-goal groups render as a single-column accordion with one group open at a time.
+- The first incomplete group opens by default; completed groups stay collapsed but remain reviewable.
+- Group labels wrap without hiding the numbered step or status, and every group action remains at least 44px high and full width where needed.
+- The primary launch path shows one factual complete/total count. The separate setup-readiness percentage is available only after opening technical details.
 - First-client launch proof card stacks status, progress, and proof actions vertically.
 - KPI cards collapse into one-column/two-column rows.
 - Readiness alert copy can wrap across mobile width and uses launch proof, not the setup percentage, for success state.
@@ -15,10 +19,13 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Ticket detail Knowledge Loop card appears above the conversation in the mobile drawer for operator view only.
 - Launch/checklist actions that collapse to icons retain accessible labels and a 44px square target; labelled customer-path and surface actions remain at least 44px high.
 - Bottom padding keeps content clear of mobile browser controls.
+- Technical evidence and setup details remain collapsed by default so widget, scheduler, context, notification, license, and evidence panels do not overwhelm first use.
 
 ## Required Checks
 
 - `/answerlattice/activation` at mobile width
+- Four-group accordion labels, expansion, current action, and first-incomplete default state
+- Technical evidence disclosure remains collapsed on initial render
 - Step action buttons
 - Refresh button
 - First-client launch proof card and proof item actions

@@ -56,7 +56,7 @@ No Firestore rule, index, Storage rule, Cloud Function, collection, listener, pr
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16.2.11 (App Router) |
+| Framework | Next.js 16.3.0 (App Router) |
 | Styling | Tailwind CSS (shared app pipeline) |
 | Routing | Middleware hostname-based rewrite (multi-product) |
 | Components | React Server Components by default; client islands only where interaction needs state |

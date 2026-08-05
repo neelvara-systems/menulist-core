@@ -32,7 +32,7 @@ MyCodex until MenuList QA is live and verified.
 | Owner scope | One app hostname only; authenticated session data selects the tenant and store |
 | Firebase project | `menulist-qa` |
 | Firebase/Google Cloud region | `us-central1` for Firestore, Storage, Functions, and Cloud Tasks; Firestore asks for an explicit choice, so select `us-central1` |
-| Vercel project | one shared repo project, Preview/Staging env only |
+| Vercel project | one fresh company-owned shared repo project; discard the old project/history/env and use Preview/Staging env only |
 | Vercel secret scope | Preview values restricted to exact Git branch `staging` |
 | Local data safety | same QA configuration family; use Firebase emulators first for destructive/rule testing, and use cloud `menulist-qa` only for integration smoke |
 | QA discovery | every `menulist.digital` host is `noindex`, disallows all crawlers, and publishes no sitemap |
@@ -50,9 +50,12 @@ Important Next.js rule: browser-exposed variables must still start with
 
 Use `admin@neelvara.com` from one Google Workspace tenant as the permanent
 break-glass Google, Google Cloud, Firebase, and provider owner identity. Do not
-use it for routine browsing or daily setup work. Create a named daily operator
-such as `danny@neelvara.com`, grant only the access needed for setup, and keep
-`admin@neelvara.com` as Super Admin. Do not use a new address such as
+use it for routine browsing or daily operations after the initial setup. During
+the MenuList QA bootstrap only, one licensed user is allowed:
+`admin@neelvara.com` may perform the setup after MFA and recovery are secured.
+Create a named daily operator such as `danny@neelvara.com` before production
+operations, grant only the access needed, and return `admin@neelvara.com` to
+break-glass-only use. Do not use a new address such as
 `neelvara@gmail.com` as the permanent company root account. A founder's
 existing long-lived personal email may be the recovery address, but it is not
 the shared operational owner.
@@ -62,6 +65,18 @@ you to prove that control through a DNS verification record. Neelvara Systems
 can remain an operating/trade name during this QA setup; do not represent it as
 a registered company, LLP, or corporation unless that registration actually
 exists.
+
+`admin@neelvara.com` does not need to exist before Workspace signup. The
+Workspace signup creates that first custom-domain user and makes it the initial
+Super Admin. If Google asks for a current/contact email before that user exists,
+use the founder's existing long-lived personal Gmail address only for contact
+and recovery. Do not create `neelvara@gmail.com`, and do not activate the unused
+GoDaddy Professional Email plan to create `admin@neelvara.com`.
+
+Use the display name `Neelvara Systems Admin` for the generic
+`admin@neelvara.com` break-glass identity. Do not leave the founder's personal
+name on that generic account, and do not use the singular `Neelvara System`.
+Future named user accounts retain each real person's name for auditability.
 
 There are two separate choices in Google Cloud:
 
@@ -110,8 +125,9 @@ Stop and fix the setup before continuing if:
 - Any `menulist.digital` QA website, app, or customer page is indexable, serves
   an allow-crawling `robots.txt`, or publishes a sitemap.
 - You do not have the real owner Google/Firebase/Vercel account.
-- The GitHub `menulist-ai/menulist-core` repository, exact `staging` branch, or
-  the existing Vercel Git integration is unavailable to the company operator.
+- The source GitHub `menulist-ai/menulist-core` repository or exact `staging`
+  branch is unavailable for native transfer to the fresh company organization,
+  or the fresh Vercel account cannot connect to the transferred repository.
 - A non-Firebase provider asks for production verification, live mode, or live
   billing. Firebase/Google Cloud billing for `menulist-qa` is allowed only
   when it is required for QA Functions/Storage and belongs to the company owner
@@ -134,6 +150,350 @@ Do not paste secret values into this file or chat. For secret-related items,
 mark completion only after the value is stored in the password vault, local
 ignored env file, Vercel Preview env, or Firebase Secret Manager as instructed.
 
+Guided execution contract:
+
+- During this live setup, every Codex handoff must identify one immediate
+  operator action, where to perform it, the expected result, and the exact
+  non-secret completion statement or redacted evidence to return.
+- Do not move the operator to a later provider while an earlier blocking safety
+  action remains incomplete.
+- Keep marking this checklist from operator confirmations and safe evidence;
+  never request passwords, recovery codes, payment details, API keys, or other
+  secret values in chat.
+- Bitwarden is an operational credential manager, not a product/runtime
+  dependency or the sole recovery authority. Maintain an independently
+  controlled encrypted or physically secured recovery record outside
+  Bitwarden. Keep that record as a recovery map where possible; avoid duplicate
+  plaintext password lists and update every retained copy after a rotation.
+
+Operator progress:
+
+- `2026-08-03` - Operator confirmed the Bitwarden account and
+  `Neelvara Systems` vault setup is complete without sharing credentials;
+  `QA-A01` is complete.
+- `2026-08-03` - GoDaddy confirmed exact `neelvara.com` registration and added
+  it to the account. The supplied confirmation shows domain auto-renew and Full
+  Domain Protection auto-renew. `QA-A02` remains open until
+  `menulist.digital` ownership, valid payment, domain lock, account MFA, and
+  vaulted recovery are also verified. No receipt number, payment reference, or
+  price is stored here.
+- `2026-08-03` - Registrar evidence confirms `menulist.online`,
+  `menulist.digital`, `menulist.ai`, and `menulist.app` are present in the
+  owner-controlled account. `QA-B01` is complete. The `menulist.digital`
+  settings screenshot shows auto-renew Off, so `QA-A02` and `QA-B02` remain
+  open until auto-renew and the remaining registrar safeguards are verified.
+- `2026-08-04` - Operator confirmed `menulist.digital` auto-renew is enabled;
+  `QA-B02` is complete. `QA-A02` remains open until GoDaddy two-step
+  verification, domain lock, payment readiness, and vaulted recovery are
+  confirmed.
+- `2026-08-04` - Operator confirmed GoDaddy two-step verification is enabled
+  and tested successfully. The registrar MFA portion of `QA-A02` is complete;
+  the checklist item remains open for domain lock, payment readiness, and
+  vaulted registrar recovery confirmation.
+- `2026-08-04` - Operator confirmed Domain Lock is On for `neelvara.com`,
+  `menulist.digital`, `menulist.ai`, `menulist.online`, and `menulist.app`.
+  The registrar lock portion of `QA-A02` is complete; payment readiness and
+  vaulted registrar recovery confirmation remain.
+- `2026-08-04` - Operator confirmed all five retained domains have auto-renew
+  enabled and a valid renewal payment method assigned. The registrar payment
+  portion of `QA-A02` is complete; only vaulted registrar recovery confirmation
+  remains before the checklist item can close.
+- `2026-08-04` - Operator confirmed GoDaddy recovery information is stored in
+  Bitwarden and also maintains an independently controlled private recovery
+  record to avoid password-manager lock-in. GoDaddy ownership, auto-renew,
+  payment readiness, Domain Lock, two-step verification, and recovery are now
+  confirmed; `QA-A02` is complete.
+- `2026-08-04` - Operator chose to retain the already-paid GoDaddy Professional
+  Email Pro Light plan through its current term because the cost is acceptable.
+  `QA-A17` remains open until auto-renew is disabled for that email subscription
+  only and the operator confirms it is not intentionally activated. DNS records
+  created by GoDaddy are inventoried and migrated separately under `QA-A06`,
+  `QA-A07`, and `QA-A19`. Google Workspace remains the selected company-mail
+  platform.
+- `2026-08-04` - Operator confirmed Professional Email Pro Light auto-renew is
+  Off, the email service is not activated, and all domain renewals remain On.
+  The plan is intentionally retained only through its paid term; Google
+  Workspace remains the selected mail platform and `QA-A17` is complete as a
+  subscription/renewal decision. Later DNS inspection found GoDaddy mail
+  records; their controlled replacement remains pending under `QA-A06`,
+  `QA-A07`, and `QA-A19` and does not reopen the resolved renewal decision.
+- `2026-08-04` - Google startup-benefit preflight opened before Workspace
+  creation. Paid Google Workspace signup and the 90-day Google Cloud Free Trial
+  are temporarily on hold until Start-tier eligibility, public website/email
+  domain alignment, billing-account timing, and the Workspace benefit window
+  are confirmed. The earlier instruction to start paid Workspace is superseded
+  by this hold.
+- `2026-08-04` - Startup preflight records a truthful start date of February
+  2025, a working MVP, a clear business model, no prior Google Cloud/Firebase
+  $300 trial, and no prior Google startup credits. The operator does not
+  currently plan to seek venture funding, so the published Start-tier criteria
+  are not fully met. The operator also confirmed no prior
+  VC/accelerator/incubator funding. The preflight is complete: do not apply to
+  the Start or Scale tier using facts that do not match the operator's actual
+  plans. The temporary Workspace hold is released; proceed with the normal paid
+  Workspace setup at `QA-A03`. Keep the Google Cloud Free Trial unstarted until
+  the later Cloud billing step so its 90-day window is not wasted.
+- `2026-08-05` - The Workspace checkout was observed defaulting to Starter at
+  `INR 270/user/month` with the Annual one-year-commitment toggle enabled. Do
+  not start that trial from the default card. Open **Compare plans**, select the
+  lower Base edition, and switch Annual Off so checkout shows flexible/monthly
+  billing before accepting the Workspace trial. `QA-A03` remains pending.
+- `2026-08-05` - The operator reached the Google Workspace **Discover**
+  onboarding screen after signup. This confirms that Workspace onboarding has
+  started, but the supplied screen does not evidence the selected billing plan,
+  verified `neelvara.com` ownership, or completed Super Admin security. Keep
+  `QA-A03` and `QA-A04` open until those checks are separately verified.
+- `2026-08-05` - Google Admin Console now shows the `Neelvara Systems` tenant,
+  one Workspace user, and an active no-cost trial. The console still requires
+  `neelvara.com` verification by `2026-08-18`, so `QA-A03` remains open. A
+  separate one-time prepayment notice is visible but is not the current action;
+  complete domain verification before resolving paid-service billing. The
+  supplied screen does not expose the user's address or MFA status, so `QA-A04`
+  also remains open.
+- `2026-08-05` - Workspace offered automatic GoDaddy DNS configuration through
+  the third-party Entri authorization flow. Do not authorize that connection
+  for this setup. Domain ownership requires only Google's verification TXT
+  record, so use **Other verification options** and add the TXT record manually
+  in GoDaddy for a smaller, directly auditable permission surface. `QA-A03`
+  remains pending until Google confirms the manually published record.
+- `2026-08-05` - Workspace displayed the manual primary TXT verification method
+  and an alternative CNAME method. Use only the primary TXT method: add a new
+  root-host TXT record in GoDaddy with Google's exact value and the lowest
+  available TTL. Do not add the alternative CNAME, replace an existing TXT/SPF
+  record, or store the verification value in this document. `QA-A03` remains
+  pending until DNS resolves and Workspace confirms ownership.
+- `2026-08-05` - The GoDaddy DNS screen for `neelvara.com` is open at **New
+  Records**. Visible existing records include a GoDaddy WebsiteBuilder apex
+  record, the `www` CNAME, and GoDaddy/SecureServer email-related CNAMEs. Do not
+  edit or delete them during ownership verification. Add only the new Google
+  TXT record now; capture the complete DNS zone later under `QA-A19` before
+  Workspace MX or Vercel changes.
+- `2026-08-05` - The Google root-host verification TXT record was saved in
+  GoDaddy. A public DNS readback confirms the verification record resolves.
+  `QA-A03` remains open only until Workspace accepts the record and reports the
+  domain as verified. The same readback confirms legacy GoDaddy MX and SPF plus
+  a `p=quarantine` DMARC policy; do not delete them during ownership
+  verification. Replace them deliberately during `QA-A06` and `QA-A07` after
+  the full `QA-A19` DNS export.
+- `2026-08-05` - Google Workspace accepted the DNS verification record and
+  displayed **Your domain is verified** for `neelvara.com`. `QA-A03` is
+  complete. Do not activate Gmail or change MX records yet; first confirm and
+  secure the signup-created break-glass Super Admin under `QA-A04`, then export
+  the current `neelvara.com` DNS zone under `QA-A19`.
+- `2026-08-05` - The operator chose a temporary one-user Workspace setup to
+  avoid paying for a second user before MenuList QA is stable. Use only
+  `admin@neelvara.com` during this QA bootstrap, after completing MFA/recovery
+  under `QA-A04`. `QA-A05` is intentionally deferred and remains open; create a
+  named daily operator before production operations and then stop using the
+  Super Admin for routine work.
+- `2026-08-05` - The Admin Console account switcher confirms the active managed
+  account is exactly `admin@neelvara.com`. This satisfies the identity portion
+  of `QA-A04`; keep the item open until account recovery and MFA are configured
+  and recovery material is stored independently. The Admin Console still shows
+  a stale domain-verification banner after the separate verification success;
+  do not repeat verification solely because of that cached banner.
+- `2026-08-05` - The signup-created generic admin account currently displays the
+  founder's personal name. Change only this generic account's display name to
+  `Neelvara Systems Admin` under `QA-A18` before production operations. Future
+  named users keep their real human names; the Workspace organization remains
+  `Neelvara Systems`.
+- `2026-08-05` - The Google Account name fields are read-only because this is a
+  managed Workspace identity. The display-name correction must be performed
+  later from Admin Console -> Directory -> Users, so it is parked as
+  non-blocking `QA-A18`. It does not delay MFA/recovery or the MenuList QA
+  bootstrap.
+- `2026-08-05` - Admin Console confirmed the managed user's name was updated to
+  `Neelvara Systems Admin`; `QA-A18` is complete. The operator also reached the
+  `admin@neelvara.com` 2-Step Verification screen. `QA-A04` remains open until
+  an authenticator method is enrolled, 2-Step Verification is On, recovery is
+  configured, and backup codes are stored independently without sharing them.
+- `2026-08-05` - Scanning the authenticator QR with the iPhone Passwords code
+  scanner displayed unrelated existing Google password entries and no
+  `admin@neelvara.com` entry. Do not attach the verification code to another
+  account and do not create an unnecessary duplicate password record solely to
+  hold TOTP. Cancel that prompt and enroll `admin@neelvara.com` in a dedicated
+  authenticator app; recovery codes remain the independent recovery path.
+- `2026-08-05` - Google confirms an Authenticator was added to
+  `admin@neelvara.com`. The page still displays **Turn on 2-Step Verification**,
+  so enrollment alone has not enabled MFA. Keep `QA-A04` open until 2-Step
+  Verification is explicitly On, backup codes are generated and stored
+  independently, and account recovery is configured.
+- `2026-08-05` - Google now reports **Your account is protected with 2-Step
+  Verification** and shows the Authenticator as added for
+  `admin@neelvara.com`. MFA is active. Keep `QA-A04` open only until fresh
+  backup codes are generated and stored outside the active session, and the
+  controlled recovery method is configured.
+- `2026-08-05` - The operator confirmed fresh Google backup codes were generated
+  and stored independently without sharing their values. The backup-code
+  requirement of `QA-A04` is complete. Keep `QA-A04` open only until a
+  long-lived controlled recovery phone or recovery email is added and verified
+  for `admin@neelvara.com`.
+- `2026-08-05` - The operator confirmed both a recovery phone and recovery email
+  were added and verified for `admin@neelvara.com` without sharing either value.
+  Together with the confirmed Authenticator, active 2-Step Verification, and
+  independently stored backup codes, `QA-A04` is complete. `QA-A13` remains
+  open for the later second-trusted-admin production requirement and final
+  recovery-ownership record.
+- `2026-08-05` - Before `QA-A19`, the operator asked whether to delete apparently
+  unnecessary DNS records first. Decision: no cleanup before export. The current
+  15-record zone is the rollback baseline and must be exported unchanged. Keep
+  NS, SOA, `_domainconnect`, and Google's verification TXT. Replace GoDaddy mail
+  MX/SPF/DKIM/bounce/DMARC records only during the controlled Workspace Gmail
+  migration, and replace WebsiteBuilder apex/`www` records only during the later
+  Neelvara Vercel connection.
+- `2026-08-05` - A one-time Google recovery verification code appeared in a
+  browser tab title in supplied evidence. Its value is not stored here. Because
+  recovery was already confirmed, close that tab and treat the code as used and
+  expired; if any verification is incomplete, request a new code rather than
+  reusing the exposed one.
+- `2026-08-05` - The operator confirmed the unchanged 15-record
+  `neelvara.com` DNS zone was exported and stored privately before mail
+  migration. `QA-A19` is complete. Gmail activation may now begin under
+  `QA-A06`; do not delete or replace records until Google's activation flow
+  presents the exact routing change.
+- `2026-08-05` - Workspace Gmail activation now provides one root-host MX record
+  (`smtp.google.com`, priority `1`) and the Workspace-only SPF value
+  `v=spf1 include:_spf.google.com ~all`. Apply these in two verified steps: add
+  the Google MX and remove only the two GoDaddy/SecureServer MX records, then
+  edit the existing root SPF TXT record in place. Never publish a second SPF
+  record. Leave GoDaddy DKIM/bounce CNAMEs and the existing DMARC record
+  unchanged until Gmail routing is confirmed and the later `QA-A07` migration
+  is ready. Do not click Workspace **Confirm** until public DNS readback passes.
+- `2026-08-05` - The operator added the Workspace MX and removed both legacy
+  GoDaddy MX records. Readback from both authoritative GoDaddy nameservers and
+  public Google and Cloudflare resolvers confirms the only published MX is
+  `smtp.google.com` at priority `1`. The root SPF record still authorizes only
+  GoDaddy (`include:spf.em.secureserver.net`), so do not click Workspace
+  **Confirm** yet. Edit that existing SPF record in place under `QA-A07`; never
+  add a second SPF record. `QA-A06` remains open until Workspace accepts the
+  activation and `admin@neelvara.com` passes send-and-receive testing.
+- `2026-08-05` - The operator replaced the existing GoDaddy SPF record in place
+  with `v=spf1 include:_spf.google.com ~all`. Readback from both authoritative
+  GoDaddy nameservers and public Google and Cloudflare resolvers confirms
+  exactly one root-host SPF record and the Workspace value. No second SPF
+  record was introduced. Workspace Gmail activation may now be confirmed;
+  `QA-A06` remains open until Google accepts it and two-way mailbox testing
+  passes. DKIM and the controlled monitor-only DMARC migration remain pending
+  under `QA-A07`.
+- `2026-08-05` - Google Workspace displayed **Gmail is activated** and **Gmail
+  is now ready** for verified domain `neelvara.com`. This confirms Workspace
+  accepted the published MX and mail routing configuration. Keep the one-user
+  QA bootstrap; do not create additional users or aliases during this step.
+  `QA-A06` remains open only until `admin@neelvara.com` successfully sends to
+  and receives from an external mailbox. Google's optional import and premium
+  feature steps are not required. DKIM remains the next authentication task
+  under `QA-A07` after delivery testing.
+- `2026-08-05` - The first outbound test from `admin@neelvara.com` reached the
+  external Gmail account but was placed in Spam. This proves outbound routing,
+  not acceptable inbox placement, and does not complete `QA-A06`. DNS readback
+  confirms the Google-only SPF value is published, no Google DKIM record is
+  present at the default selector, and the inherited GoDaddy DMARC record still
+  uses `p=quarantine` with a GoDaddy report recipient. Open Google's
+  **Authenticate outgoing emails** flow next and use only the exact selector
+  and value Google generates. Do not guess a DKIM value, weaken DMARC, or mark
+  the test complete before DKIM activation and a fresh two-way test.
+- `2026-08-05` - Workspace generated a 2048-bit DKIM public key with selector
+  `google`, requiring a TXT record at `google._domainkey.neelvara.com`. Do not
+  transcribe or persist the long public-key value in this runbook; use the
+  Workspace copy control and paste it directly into GoDaddy. This is an
+  additive TXT record and does not conflict with the existing GoDaddy
+  `sable.cloud._domainkey` or `sable.cloud2._domainkey` CNAME records. Do not
+  delete those legacy records or click Workspace **Confirm** until authoritative
+  and public DNS readback proves the new Google selector resolves exactly.
+- `2026-08-05` - The operator published the Google DKIM TXT record. Readback
+  from both authoritative GoDaddy nameservers and public Google and Cloudflare
+  resolvers returns the same structurally valid 408-character DKIM value at
+  `google._domainkey.neelvara.com`. The full public key is intentionally not
+  duplicated in this runbook. Workspace may now validate the record and start
+  DKIM authentication. Keep `QA-A07` open until Google confirms activation and
+  a fresh outbound message proves `DKIM=PASS`; DMARC migration remains pending.
+- `2026-08-05` - The operator confirmed Google Workspace accepted the published
+  key and activated DKIM authentication for `neelvara.com`. This completes the
+  provider activation step but not the evidence gate: send a completely new
+  message after activation and inspect the receiving mailbox's original-message
+  authentication summary for `SPF=PASS`, `DKIM=PASS`, and `DMARC=PASS`. Do not
+  reuse the pre-activation message because it cannot prove current signing.
+  `QA-A06` remains open for fresh inbox placement plus inbound reply testing;
+  `QA-A07` remains open for header proof and controlled DMARC replacement.
+- `2026-08-05` - A fresh post-activation message from
+  `admin@neelvara.com` reached the external Gmail Inbox, and Gmail's original
+  message summary reported `SPF=PASS`, `DKIM=PASS`, and `DMARC=PASS`. This
+  proves outbound delivery, inbox placement for the test, Google DKIM signing,
+  and current-domain alignment. `QA-A06` remains open only for an inbound reply
+  from the external mailbox. `QA-A07` remains open because the inherited
+  GoDaddy DMARC reporting destination and enforcement policy still need the
+  planned controlled replacement; do not mistake a passing message for the
+  final DNS governance state.
+- `2026-08-05` - The external mailbox replied to the authenticated test, and
+  the reply arrived in the `admin@neelvara.com` Inbox. Together with the
+  verified outbound Inbox delivery and authentication results, this completes
+  `QA-A06`. During the one-user QA bootstrap, create provider-notice addresses
+  as aliases on this mailbox rather than additional paid users. Complete
+  `QA-A08` before replacing DMARC so `dmarc@neelvara.com` can receive reports.
+- `2026-08-05` - Admin Console evidence confirms `billing@neelvara.com`,
+  `security@neelvara.com`, and `dmarc@neelvara.com` were added as alternative
+  email addresses on the existing `admin@neelvara.com` user. No additional
+  user or Workspace licence was created. Keep `QA-A08` open until an external
+  mailbox sends a separate test to each alias and all three arrive in the admin
+  Inbox. Do not publish `rua=mailto:dmarc@neelvara.com` before that delivery
+  test proves the report recipient works.
+- `2026-08-05` - Three separate external messages addressed to
+  `billing@neelvara.com`, `security@neelvara.com`, and
+  `dmarc@neelvara.com` all arrived in the `admin@neelvara.com` Inbox. This
+  completes `QA-A08` and proves the dedicated DMARC report recipient works as
+  an alias without another paid Workspace user. The existing `_dmarc` TXT
+  record may now be edited in place to the documented monitor-only Neelvara
+  value. Never add a second DMARC record.
+- `2026-08-05` - The operator replaced the inherited GoDaddy `_dmarc` TXT
+  record in place. Both authoritative GoDaddy nameservers and Google Public DNS
+  now return exactly `v=DMARC1; p=none; rua=mailto:dmarc@neelvara.com`.
+  Cloudflare DNS timed out during the final read rather than returning a
+  conflicting value; authoritative agreement is the controlling evidence.
+  Keep `QA-A07` open for removal of only the four now-unused GoDaddy email
+  CNAMEs: `bounces.cloud.em`, `bounces.cloud2.em`,
+  `sable.cloud._domainkey`, and `sable.cloud2._domainkey`. Do not remove
+  Workspace DKIM, website, nameserver, SOA, verification, or `_domainconnect`
+  records.
+- `2026-08-05` - The operator reported deleting all four obsolete GoDaddy mail
+  CNAMEs. Authoritative DNS readback confirms `bounces.cloud.em`,
+  `sable.cloud._domainkey`, and `sable.cloud2._domainkey` are absent, while
+  `bounces.cloud2.em` still resolves to
+  `cbounces.cloud2.em.secureserver.net` from both GoDaddy nameservers over
+  direct TCP. Required Google MX, SPF, 408-character DKIM, DMARC, and ownership
+  verification records remain intact. Do not close `QA-A07`; refresh GoDaddy
+  DNS and remove only the remaining `bounces.cloud2.em` CNAME.
+- `2026-08-05` - The operator removed the remaining `bounces.cloud2.em`
+  CNAME. After brief GoDaddy nameserver propagation, direct readback from both
+  authoritative servers confirms all four obsolete GoDaddy email CNAMEs are
+  absent. The required Workspace records remain intact: one Google MX, one
+  Google SPF record, the 408-character Google DKIM key, monitor-only Neelvara
+  DMARC, and the Google ownership-verification TXT record. Together with the
+  passing post-DKIM message headers and two-way delivery tests, this completes
+  `QA-A07`.
+- `2026-08-05` - Local repository evidence confirms `origin` is the existing
+  `git@github.com:menulist-ai/menulist-core.git`, the active local branch is
+  `staging`, the remote `staging` branch exists, and the current SSH key
+  authenticates to GitHub as `menulist-ai`. This records the source state only;
+  the owner decision immediately below supersedes the provisional instruction
+  to retain that account. Never rewrite existing Git history.
+- `2026-08-05` - Owner decision supersedes the earlier existing-account Vercel
+  assumption. Create a fresh founder GitHub account using
+  `admin@neelvara.com`, create the `neelvara-systems` organization, and move
+  the existing repository with GitHub's native transfer; never copy files into
+  a replacement repository. Create a fresh Neelvara Vercel account and one
+  fresh shared project after the GitHub transfer. Do not transfer the old
+  Vercel project, deployments, history, settings, or environment values. Before
+  touching Vercel, finish the GitHub phase end to end: create and secure the new
+  founder account, create the organization, add and independently test a new
+  local SSH key, natively transfer the repository, update and verify the local
+  remote and repo-local author identity, and then retire the old GitHub key.
+  deleting the old Vercel account, confirm phone-number release with Vercel,
+  record only domain assignments and environment-variable names/provider
+  ownership, revoke or rotate every referenced credential at its source,
+  remove custom domains, cancel paid subscriptions, and then delete the old
+  project/team/account. Build new local and Vercel env values only from the
+  maintained repo templates and newly created QA credentials.
+
 Status rules:
 
 - `[ ]` means pending.
@@ -148,31 +508,78 @@ Status rules:
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-A01 | Password vault exists for MenuList QA setup | Password manager | Vault can store registrar, Google, Firebase, Vercel, provider credentials, and recovery codes |
-| [ ] | QA-A02 | Registrar account secured and required domains confirmed | Registrar account | `menulist.digital` ownership is confirmed; exact `neelvara.com` is purchased if absent; both have auto-renew, valid payment, domain lock, MFA, and vaulted recovery |
-| [ ] | QA-A03 | Workspace tenant created and primary domain verified | Google Workspace/Admin Console and registrar DNS | One Workspace tenant uses verified `neelvara.com`; the exact Google verification TXT record resolves |
-| [ ] | QA-A04 | Break-glass Workspace Super Admin created | Google Workspace/Admin Console | `admin@neelvara.com` exists, has MFA/recovery, and is not used as the daily account |
-| [ ] | QA-A05 | Named daily operator created | Google Workspace and Google Cloud IAM | `danny@neelvara.com` or the founder's equivalent named account performs daily setup with only required access |
-| [ ] | QA-A06 | Gmail delivery activated and tested | Google Admin Console, DNS, and both mailboxes | Google-provided MX is published; each real user can send and receive a test message |
-| [ ] | QA-A07 | SPF, DKIM, and monitor-only DMARC configured | Google Admin Console and DNS | One correct SPF record covers actual senders, DKIM signing is active, and DMARC starts at `p=none` with a controlled report recipient |
-| [ ] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` deliver to named real users; they are not shared-password accounts |
-| [ ] | QA-A09 | GitHub repository and staging branch access confirmed | GitHub `menulist-ai/menulist-core` | Company operator can access the existing repository; exact branch `staging` exists; MFA is enabled; no new repository is created |
-| [ ] | QA-A10 | Single Vercel project and Git integration confirmed | Vercel dashboard and Project -> Settings -> Git | Exactly one project is connected to `menulist-ai/menulist-core`; reuse it if present or import the repo once if absent; the operator can deploy exact branch `staging` |
+| [x] | QA-A01 | Password vault exists for MenuList QA setup | Password manager | Operator confirmed the Bitwarden `Neelvara Systems` vault setup is complete; no credentials or recovery material were shared in evidence |
+| [x] | QA-A02 | Registrar account secured and required domains confirmed | Registrar account | Operator confirmed ownership, auto-renew, payment readiness, Domain Lock, tested two-step verification, and independently recoverable secured account records |
+| [x] | QA-A03 | Workspace tenant created and primary domain verified | Google Workspace/Admin Console and registrar DNS | Google accepted the manually published TXT record and displayed **Your domain is verified** for the `Neelvara Systems` Workspace tenant using `neelvara.com` |
+| [x] | QA-A04 | Break-glass Workspace Super Admin secured | Google Account and Google Workspace Admin Console | `admin@neelvara.com` has active Authenticator-backed 2-Step Verification, independently stored backup codes, and verified recovery phone/email; it may perform the one-user QA bootstrap but returns to break-glass-only use before production operations |
+| [ ] | QA-A05 | Named daily operator created | Google Workspace and Google Cloud IAM | Deferred during the one-user MenuList QA bootstrap; create `danny@neelvara.com` or the founder's equivalent before production operations, grant only required access, and return the Super Admin to break-glass-only use |
+| [x] | QA-A06 | Gmail delivery activated and tested | Google Admin Console, DNS, and every currently licensed mailbox | Google accepted the published MX; post-DKIM mail from `admin@neelvara.com` reached an external Gmail Inbox with SPF, DKIM, and DMARC all passing, and the external reply reached the admin Inbox |
+| [x] | QA-A07 | SPF, DKIM, and monitor-only DMARC configured | Google Admin Console and DNS | Authoritative DNS and a fresh Inbox message prove Google-only SPF, active 2048-bit Google DKIM, and monitor-only DMARC reporting to the tested `dmarc@neelvara.com` alias; obsolete GoDaddy mail CNAMEs are removed |
+| [x] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` are aliases on the one licensed admin mailbox, and separate external delivery tests reached its Inbox |
+| [ ] | QA-A09 | GitHub repository transferred to company organization | GitHub source `menulist-ai/menulist-core` and target `neelvara-systems/menulist-core` | Fresh named founder account uses verified `admin@neelvara.com` and MFA; the existing repository is moved with GitHub's native transfer, preserving exact branch `staging`; no copy/recreated repository is used |
+| [ ] | QA-A21 | Local Git authentication and author identity migrated | This workstation, `~/.ssh`, GitHub SSH settings, and the local `menulist-core` repository | A dedicated Neelvara SSH key authenticates as the fresh founder account; `origin` targets `neelvara-systems/menulist-core`; repo-local author name/email use the approved named identity and exact verified or GitHub-provided noreply address; authenticated fetch succeeds; the old GitHub key is retired only after all proof passes |
+| [ ] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project imports `neelvara-systems/menulist-core` once; no old deployment, project setting, or environment value is transferred; exact branch `staging` can be restricted to Preview |
 | [ ] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | No setup depends on a weak or disposable login |
 | [ ] | QA-A12 | Secret sharing rule accepted | This guide and password vault | No real secret will be pasted into docs, chat, screenshots, or git |
 | [ ] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | A long-lived personal email is recovery-only; offline codes and the recovery owner are recorded; add a second trusted Super Admin before production when another owner is available |
 | [ ] | QA-A14 | Google Cloud organization visible | Google Cloud Console | The organization associated with `neelvara.com` is visible before creating `menulist-qa` |
 | [ ] | QA-A15 | Retired Firebase service-account keys revoked | Google Cloud Console -> IAM & Admin -> Service Accounts for every retired project | Any old local service-account key is deleted or disabled before new QA credentials are created; do not copy it into `menulist-qa` |
 | [ ] | QA-A16 | Maintenance calendar created | Calendar/password vault | Quarterly IAM/secret review and annual domain/payment/recovery review dates are recorded |
+| [x] | QA-A17 | Duplicate registrar add-ons resolved | Registrar Products/Billing and support | Professional Email Pro Light is intentionally retained unused through its paid term with auto-renew Off; legacy GoDaddy mail DNS replacement is tracked separately under `QA-A06`, `QA-A07`, and `QA-A19`; Google Workspace and Vercel remain the selected mail/hosting stack |
+| [x] | QA-A18 | Generic admin display name corrected | Admin Console -> Directory -> Users -> `admin@neelvara.com` | Admin Console confirmed the managed user's display name is now `Neelvara Systems Admin`; the email address and organization name were not changed |
+| [x] | QA-A19 | `neelvara.com` DNS zone exported before mail migration | GoDaddy DNS -> Actions -> Export Zone File | Operator confirmed the complete unchanged 15-record zone is stored privately before mail migration; this does not satisfy the separate `menulist.digital` export in `QA-B04` |
+| [ ] | QA-A20 | Old Vercel account retired without carrying forward chaos | Old Vercel account, Vercel Support, registrar, and provider consoles | Phone-number release/unlink is confirmed; domain and env-key/provider names are inventoried without copying values; referenced credentials are revoked/rotated at source; custom domains/subscriptions/projects/teams are removed before permanent account deletion |
+
+Old Vercel retirement gate before `QA-A10`:
+
+1. Ask Vercel Support whether deleting the old account releases its verified
+   phone number for immediate reuse. If not, ask Support to unlink it. Do not
+   delete the account based on an assumption.
+2. Record only old project/team names, attached domain names, environment-key
+   names, and the provider that issued each credential. Do not export or copy
+   any old environment value into the fresh setup.
+3. Revoke or rotate every referenced API key, token, password, private key, and
+   webhook secret at the issuing provider. Deleting Vercel does not revoke a
+   credential at Firebase, Google, Upstash, Sentry, Razorpay, or another
+   provider.
+4. Remove every custom domain from old projects and teams. This intentionally
+   creates a maintenance window until the fresh project is ready; registrar
+   ownership and DNS backups remain untouched.
+5. Cancel paid subscriptions, remove integrations, delete old projects, delete
+   any old team for which this account is the sole owner, and only then delete
+   the personal account.
+6. Create the fresh Vercel login under `admin@neelvara.com`, enable MFA/passkey
+   and recovery, and import `neelvara-systems/menulist-core` exactly once.
+7. Populate the fresh project only from `.env.staging.example`, newly generated
+   secrets, and newly created QA provider credentials. Never use an old Vercel
+   export as the source of truth.
+
+Startup-benefit preflight decision before `QA-A03`:
+
+- Completed on `2026-08-04`. MenuList meets the recorded start-date, MVP,
+  business-model, and prior-credit conditions, but the operator does not plan
+  to seek venture funding soon and has no qualifying prior funding. Do not
+  submit a Start- or Scale-tier application using facts that do not match the
+  operator's actual plans.
+- The temporary paid-Workspace hold is released. Continue with `QA-A03` using
+  the normal company Workspace setup. Do not create `neelvara@gmail.com`; use
+  `admin@neelvara.com` as the permanent company administration identity and a
+  long-lived personal Google account only as recovery.
+- Do not start the 90-day Google Cloud Free Trial during Workspace creation.
+  Start it only at the later Cloud billing step when `menulist-qa` is ready to
+  consume the trial window.
+- Recheck the official program criteria only if the venture-funding plan
+  genuinely changes while the company still satisfies the then-current
+  eligibility window. Never invent incorporation, funding, or growth facts.
 
 ### Phase B - Domain And DNS
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-B01 | `menulist.digital` ownership confirmed | Registrar DNS screen | Domain is owned in the correct account |
-| [ ] | QA-B02 | `menulist.digital` auto-renew confirmed | Registrar billing/domain settings | Auto-renew is on and payment method is valid |
+| [x] | QA-B01 | `menulist.digital` ownership confirmed | Registrar DNS screen | Registrar evidence confirms the domain is present in the owner-controlled account |
+| [x] | QA-B02 | `menulist.digital` auto-renew confirmed | Registrar billing/domain settings | Operator confirmed auto-renew is enabled; payment details were not shared or recorded |
 | [ ] | QA-B03 | No extra domain selected | Registrar and Vercel | No production, SignalDesk, MyCodex, Answerlattice, or CampaignCue domain is used in this pass |
-| [ ] | QA-B04 | Current DNS zone inventoried and exported | Existing DNS provider/registrar | Every A, AAAA, CNAME, MX, TXT, CAA, and SRV record is backed up before DNS authority changes |
+| [ ] | QA-B04 | Current `menulist.digital` DNS zone inventoried and exported | Existing DNS provider/registrar | Every `menulist.digital` A, AAAA, CNAME, MX, TXT, CAA, and SRV record is backed up before QA-domain DNS changes; the `neelvara.com` backup in `QA-A19` does not satisfy this row |
 | [ ] | QA-B05 | `menulist.digital` and `www.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | Apex and `www` target Preview for `staging`, never Production |
 | [ ] | QA-B06 | `app.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | Owner sign-in and `/dashboard` use the dedicated QA app host |
 | [ ] | QA-B07 | `*.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | QA customer subdomains target the same `staging` deployment |
@@ -411,9 +818,14 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 Where:
 
 - Password manager.
+- Bitwarden account creation: https://vault.bitwarden.com/#/register
+- Bitwarden free-organization setup:
+  https://bitwarden.com/help/getting-started-organizations/
 - Registrar account for `neelvara.com` and `menulist.digital`.
 - GoDaddy account/products: https://account.godaddy.com/products
 - GoDaddy domain search: https://www.godaddy.com/domains
+- GoDaddy refund request instructions:
+  https://www.godaddy.com/en-in/help/request-a-refund-from-godaddy-8849
 - Google Workspace: https://workspace.google.com/
 - Google Admin Console: https://admin.google.com/
 - Workspace domain verification: https://support.google.com/a/answer/60216
@@ -422,81 +834,194 @@ Where:
 - Workspace DKIM setup: https://support.google.com/a/answer/174124
 - Workspace DMARC setup: https://support.google.com/a/answer/2466580
 - Google Cloud Console: https://console.cloud.google.com/
-- GitHub repository: https://github.com/menulist-ai/menulist-core
-- GitHub organization settings: https://github.com/organizations/menulist-ai/settings/profile
+- GitHub source repository before native transfer:
+  https://github.com/menulist-ai/menulist-core
+- GitHub account signup: https://github.com/signup
+- GitHub organization creation: https://github.com/account/organizations/new
+- GitHub native repository transfer:
+  https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository
+- GitHub SSH key generation:
+  https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+- GitHub SSH key addition:
+  https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
 - Vercel dashboard: https://vercel.com/dashboard
+- Vercel Support: https://vercel.com/help
+- Vercel account deletion prerequisites:
+  https://examples.vercel.com/kb/guide/how-do-i-delete-my-vercel-account
 - Firebase Console: https://console.firebase.google.com/
 
 What to do:
 
-1. Create the controlled `Neelvara Systems` password vault before opening new
-   provider accounts. Add sections for registrar, Workspace, Google Cloud,
-   Firebase, GitHub, Vercel, Gemini, Upstash, Razorpay, Sentry, Meta, and
-   recovery codes.
-2. Sign in to the founder-controlled registrar account, turn on MFA, vault its
+1. Create a free Bitwarden account using the founder's current long-lived
+   personal email because Workspace mail does not exist yet. Use a new,
+   memorable master passphrase of at least five unrelated words that is never
+   reused. Do not paste that passphrase into chat, docs, email, or a digital
+   note.
+2. Write the Bitwarden master passphrase on paper and keep it in a private,
+   physically secure place. Enable two-step login using an authenticator app,
+   download/write the Bitwarden recovery code, and store that recovery code
+   offline beside the paper record. Never store Bitwarden's own recovery code
+   only inside Bitwarden.
+3. In the Bitwarden web vault, create a free Organization named
+   `Neelvara Systems`. Create two collections:
+   `Core Infrastructure` and `Providers`. Company credentials belong to this
+   organization, not to an unstructured personal folder.
+4. Add organization-owned Login items in `Core Infrastructure` for GoDaddy,
+   Google Workspace, Google Cloud/Firebase, GitHub, and Vercel as each account
+   is configured. Add Login or Secure Note items in `Providers` for Gemini,
+   Upstash, Razorpay, Sentry, Meta, SMTP, Telegram, and monitoring providers as
+   they are configured.
+5. For each item, record only what exists: provider URL, login identity,
+   generated unique password, MFA method, recovery codes, account owner,
+   renewal/billing owner, and a short purpose note. Store API keys and webhook
+   secrets as separate clearly named Secure Notes. Do not store a combined env
+   dump or placeholder values.
+6. Install the official Bitwarden browser extension and phone app, sign in,
+   confirm sync, and configure automatic vault lock. Do not enable browser-only
+   password saving for these company accounts.
+7. After `admin@neelvara.com` can receive mail, change the Bitwarden owner
+   account email from the temporary personal address to
+   `admin@neelvara.com`, verify it, and sign back in on every device. Add a
+   second trusted Organization owner before production when another owner is
+   available.
+8. `QA-A01` is complete only when the Bitwarden account and
+   `Neelvara Systems` Organization exist, two-step login is active, offline
+   recovery is stored, both collections exist, and the GoDaddy login is saved
+   in `Core Infrastructure`.
+9. Sign in to the founder-controlled registrar account, turn on MFA, vault its
    recovery codes, and confirm exact ownership of `menulist.digital`.
-3. Search for exact `neelvara.com` at checkout. If it is not already owned and
+10. Search for exact `neelvara.com` at checkout. If it is not already owned and
    the registrar confirms it is available, purchase only that exact domain. Do
    not rely on an earlier availability check and do not choose a substitute.
-4. For both domains, enable auto-renew, confirm a valid payment method, enable
+   Do not add registrar email, website-builder, hosting, or SSL products;
+   Google Workspace provides company mail and Vercel provides hosting/TLS.
+11. For both domains, enable auto-renew, confirm a valid payment method, enable
    transfer/domain lock, and record the registrar account owner.
-5. Create one Google Workspace tenant with `neelvara.com` as its primary domain.
-6. Add the exact DNS verification TXT record Google provides at the registrar;
-   then return to Admin Console and wait until the domain shows Verified.
-7. Create `admin@neelvara.com` as the break-glass Super Admin. Do not use this
-   account for ordinary browsing or routine provider work.
-8. Create the named daily operator `danny@neelvara.com` or the founder's
-   equivalent named mailbox. Grant only the roles needed for setup.
-9. Create `billing@neelvara.com`, `security@neelvara.com`, and
+12. If a duplicate registrar add-on was already purchased, do not activate or
+   configure it. Contact registrar support immediately and ask whether that
+   line can be cancelled/refunded separately without changing the domain or
+   domain-protection products. Do not delete the domain or a bundled
+   subscription yourself. Record the support outcome without receipt/payment
+   details.
+13. Create one Google Workspace tenant with `neelvara.com` as its primary domain.
+    In India, choose the lowest current Google Workspace edition that includes
+    custom-domain Gmail and Admin Console; as of `2026-08-04`, Google offers
+    Business Base for this purpose. Select monthly/flexible billing when shown
+    and do not accept an annual commitment during initial QA setup. Enter
+    `Neelvara Systems` as an operating/trade name and truthful founder/contact,
+    country, and billing information; do not claim company registration that
+    does not exist. When signup asks for an existing current/contact email, use
+    the founder's long-lived personal Gmail address only as contact/recovery.
+    When signup asks for the new Workspace username, enter `admin`; this creates
+    `admin@neelvara.com` as the tenant's initial Super Admin. The address does
+    not need to exist before this step. Store its generated unique password and
+    recovery material securely and do not share either in chat or screenshots.
+    The India checkout may default to Starter with the Annual one-year
+    commitment enabled. Do not accept that default. Select **Compare plans**,
+    choose Base, turn Annual Off, and confirm checkout explicitly shows
+    flexible/monthly billing before starting the Workspace trial. This is an
+    initial-setup risk decision, not a rejection of annual billing forever:
+    Google's Annual/Fixed-Term plan remains payable for the full commitment if
+    cancelled early, and license cost cannot be reduced until renewal. Keep the
+    Flexible plan while QA mail, the legal payer/profile, and the required user
+    count are being established. Review a switch to Annual only after QA and
+    production ownership are stable and the expected yearly saving is worth the
+    fixed commitment.
+14. If Workspace offers automatic GoDaddy configuration through Entri, close
+   that authorization dialog and choose **Other verification options**. Do not
+   grant Entri or another DNS automation intermediary access for a single TXT
+   verification record. Add the exact DNS verification TXT record Google
+   provides manually in GoDaddy; then return to Admin Console and wait until the
+   domain shows Verified. Do not change nameservers, MX, A, CNAME, or unrelated
+   TXT records during this verification step. When Google shows both a primary
+   TXT method and an alternative CNAME method, use only the primary TXT method.
+   In GoDaddy DNS, select **Add New Record**, set Type to `TXT`, set Name/Host to
+   `@` (the root/default host), paste Google's exact `google-site-verification`
+   value, and select the lowest available TTL. Add this as a separate TXT
+   record; never overwrite an existing SPF, DMARC, provider-verification, or
+   other TXT record. Do not also add Google's alternative CNAME.
+15. Confirm the signup-created `admin@neelvara.com` user is the Super Admin and
+   configure MFA/recovery before any further provider setup. During the
+   one-user MenuList QA bootstrap only, this account may perform setup work from
+   a controlled browser profile. Do not use it for unrelated personal browsing.
+   The managed Google Account name fields may be read-only; the non-blocking
+   display-name correction is tracked separately in `QA-A18` and must be made
+   from Admin Console -> Directory -> Users before production operations.
+16. A second paid user is not required during the initial MenuList QA bootstrap.
+   Before production operations, create the named daily operator
+   `danny@neelvara.com` or the founder's equivalent named mailbox, grant only
+   the roles needed, and return `admin@neelvara.com` to break-glass-only use.
+17. Create `billing@neelvara.com`, `security@neelvara.com`, and
    `dmarc@neelvara.com` as aliases or groups that deliver to named real users.
    Do not create shared-password users for these addresses. Configure the DMARC
    report recipient to accept the required external aggregate reports without
    exposing its member list.
-10. Publish the exact Google-provided MX record(s), activate Gmail in Admin
+18. Publish the exact Google-provided MX record(s), activate Gmail in Admin
     Console, and send a test message in both directions from each real mailbox.
     Remove or replace MX records from any previous mail provider after its mail
     has been exported. Preserve unrelated non-mail DNS records.
-11. Publish one SPF TXT record covering every actual sender. For Workspace-only
+19. Publish one SPF TXT record covering every actual sender. For Workspace-only
     sending, follow Google's current Workspace-only value. If an SPF record
     already exists or another sender is active, merge it according to the
     provider instructions; never publish two SPF records.
-12. In Admin Console, generate the DKIM record, publish Google's exact TXT value,
+20. In Admin Console, generate the DKIM record, publish Google's exact TXT value,
     wait for DNS propagation, and click **Start authentication**. Confirm a sent
     test message passes DKIM.
-13. After SPF/DKIM have propagated, publish DMARC for `neelvara.com` in
+21. After SPF/DKIM have propagated, publish DMARC for `neelvara.com` in
     monitoring mode (`p=none`) with reports delivered to the controlled DMARC
     address. Do not move to quarantine/reject during initial setup.
-14. Use a founder's long-lived personal email only as the recovery address. Do
+22. Use a founder's long-lived personal email only as the recovery address. Do
    not create or use `neelvara@gmail.com` as the permanent company root.
-15. Turn on MFA for both Workspace accounts and store break-glass recovery codes
-   offline and in the controlled vault.
-16. Use the named daily operator for normal setup. Use `admin@neelvara.com` only
-   when a Super Admin action is required, and confirm the `neelvara.com`
-   organization resource is visible.
-17. Sign in to GitHub with the company-controlled operator, enable MFA, confirm
-    access to existing repository `menulist-ai/menulist-core`, and confirm exact
-    branch `staging` exists. Do not create another repository.
-18. Sign in to Vercel, enable MFA, and search the company team for a project
-    already connected to `menulist-ai/menulist-core`. Reuse it if present. If no
-    project exists, import that repository exactly once into the company team.
-    Under Project -> Settings -> Git, confirm the connection and branch
-    `staging`. Never create a second project for the same repository.
-19. Before creating new Firebase credentials, revoke any confirmed retired
+23. Turn on MFA for `admin@neelvara.com` now and store its break-glass recovery
+   codes offline and in the controlled vault. When the named daily operator is
+   created before production, turn on MFA for that account as well.
+24. During the one-user QA bootstrap, use `admin@neelvara.com` only for this
+   controlled setup and confirm the `neelvara.com` organization resource is
+   visible. After the named daily operator is created, use that account for
+   normal work and return the Super Admin to break-glass-only use.
+25. Complete GitHub before starting Vercel. Create the fresh named founder
+    account with verified `admin@neelvara.com`, username
+    `dnyaneshwar-garudkar`, and human display name `Dnyaneshwar Garudkar`.
+    Enable MFA, generate recovery codes, and store recovery independently.
+    Create a dedicated Ed25519 key on this workstation at
+    `~/.ssh/id_ed25519_neelvara_github`; never upload or share its private key.
+    Add only its `.pub` value to the fresh GitHub account and test that key
+    independently before changing the existing SSH default. Create the
+    `neelvara-systems` organization and use GitHub's native transfer to move
+    `menulist-ai/menulist-core` to `neelvara-systems/menulist-core` with exact
+    branch `staging` preserved. Do not copy files into a recreated repository.
+    After the transfer, set local `origin` to the transferred repository, make
+    the new key the GitHub key for this workstation, and set repository-local
+    `user.name` plus the exact verified or GitHub-provided noreply
+    `user.email`; do not change global Git identity unless separately audited.
+    Confirm `ssh -T`, `git remote -v`, `git fetch origin`, and local/remote
+    `staging` evidence. Only after those checks pass, remove the old key from
+    GitHub authentication and local SSH-agent/config use. Do not rewrite prior
+    commits or delete the source account during this migration.
+26. Retire the old Vercel account only through the `QA-A20` gate. Then create
+    the fresh Neelvara Vercel account with MFA/passkey and recovery, import
+    `neelvara-systems/menulist-core` exactly once into one fresh shared project,
+    and confirm branch `staging` under Project -> Settings -> Git. Do not
+    transfer old deployments/settings/env or create another project for the
+    same repository.
+27. Before creating new Firebase credentials, revoke any confirmed retired
     service-account key from an old project. Never copy an old key into
     `menulist-qa`.
-20. Create calendar reminders for quarterly IAM/secret review and annual
+28. Create calendar reminders for quarterly IAM/secret review and annual
     domain, payment, recovery-code, and ownership review.
 
 Expected result:
 
-- `admin@neelvara.com` is the recoverable break-glass owner and the named daily
-  operator performs routine setup.
+- `admin@neelvara.com` is the recoverable owner and may perform the one-user QA
+  bootstrap. Before production operations, a named daily operator performs
+  routine work and the Super Admin returns to break-glass-only use.
 - You can access registrar, Google/Firebase, and Vercel from owner-controlled
   accounts, with recovery details stored separately.
 - Workspace mail can send and receive, and SPF, DKIM, and monitor-only DMARC are
   active before provider billing/security notices depend on those addresses.
-- The existing GitHub repository, `staging` branch, and single Vercel Git
-  integration are confirmed.
+- The existing GitHub repository is natively transferred to the fresh company
+  organization with `staging` preserved, and one fresh Vercel project imports
+  it without carrying forward old deployments or environment values.
 - No setup depends on a personal disposable login.
 
 ### Step 2: Configure MenuList QA Domains
@@ -517,8 +1042,8 @@ What to do:
 3. Inventory and export every current DNS record before changing DNS authority.
    Include A, AAAA, CNAME, MX, TXT, CAA, and SRV records. A screenshot alone is
    not a restorable zone backup.
-4. Confirm Project -> Settings -> Git still points to
-   `menulist-ai/menulist-core`. In that existing single Vercel project, add
+4. Confirm the fresh Project -> Settings -> Git points to
+   `neelvara-systems/menulist-core`. In that fresh single Vercel project, add
    `menulist.digital`,
    `www.menulist.digital`, `app.menulist.digital`, and `*.menulist.digital`.
 5. Assign every entry to the exact Git branch `staging`. Vercel domains default
@@ -1484,7 +2009,7 @@ Expected result:
 Where:
 
 - Vercel dashboard: https://vercel.com/dashboard
-- The existing single Vercel project for this repository.
+- The fresh single Neelvara Vercel project for this repository.
 
 What to do:
 

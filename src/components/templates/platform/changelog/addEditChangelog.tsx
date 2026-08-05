@@ -27,6 +27,10 @@ import {
     getAnswerlatticeReleaseContextRoute,
 } from '@lib/answerlattice/ownerDecisionNavigation';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
+import {
+    buildAnswerlatticeReleaseEvidenceDocument,
+    type AnswerlatticeReleaseEvidenceHandoff,
+} from '@lib/answerlattice/releaseEvidenceHandoff';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -40,6 +44,7 @@ import {
     Drawer,
     Flex,
     Form,
+    Grid,
     Input,
     Modal,
     Select,
@@ -87,10 +92,13 @@ interface AddEditChangelogProps {
     onClose: () => void;
     onSave: (entry: any) => void;
     initialData?: ChangelogEntry | null;
+    preparedDraft?: AnswerlatticeReleaseEvidenceHandoff | null;
 }
 
-const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSave, initialData }) => {
+const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSave, initialData, preparedDraft }) => {
     const [form] = Form.useForm();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const timePickerFormat = getClockTimeInputFormat();
     const dispatch = useAppDispatch();
     const requestScope = useAnswerlatticePublicContentRequestScope();
@@ -242,13 +250,31 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 kbSources: (initialData.kbSources || []).map(s => s.articleId ? `art-${s.articleId}` : s.sectionId ? `sec-${s.sectionId}` : `cat-${s.categoryId}`)
                 // The above line is now correct as it's just for setting the initial form value.
             });
+        } else if (open && preparedDraft) {
+            const releasedOnDate = dayjs(preparedDraft.releasedAt);
+            form.resetFields();
+            setAttachments([]);
+            setKbSources([]);
+            setYoutubeLinks([]);
+            form.setFieldsValue({
+                title: preparedDraft.title,
+                description: buildAnswerlatticeReleaseEvidenceDocument(preparedDraft.contentText),
+                tags: [],
+                published: true,
+                releaseDate: releasedOnDate,
+                releaseTime: releasedOnDate,
+                version: preparedDraft.versionLabel,
+                contextKeys: [],
+                entityChanges: preparedDraft.entityIds,
+                kbSources: [],
+            });
         } else {
             form.resetFields();
             setAttachments([]);
             setKbSources([]);
             setYoutubeLinks([]);
         }
-    }, [initialData, form, open]);
+    }, [initialData, form, open, preparedDraft]);
 
     const confirmReleaseImpact = (impact: ReleaseImpactPreview): Promise<boolean> => (
         new Promise((resolve) => {
@@ -600,8 +626,8 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
 
     return (
         <Drawer
-            title={<Title level={4}>{initialData ? 'Edit Changelog Entry' : 'Add New Changelog Entry'}</Title>}
-            width={720}
+            title={<Title level={4}>{initialData ? 'Edit Changelog Entry' : preparedDraft ? 'Review Prepared Release' : 'Add New Changelog Entry'}</Title>}
+            width={isMobile ? '100%' : 720}
             onClose={() => {
                 if (!isSaving) onClose();
             }}
@@ -610,14 +636,41 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             maskClosable={!isSaving}
             footer={
                 <Flex justify='flex-end' gap={16} style={{ width: '100%' }}>
-                    <Button onClick={onClose} disabled={isSaving} style={{ minHeight: 44 }}>Cancel</Button>
-                    <Button onClick={() => form.submit()} type="primary" loading={isSaving} style={{ minHeight: 44 }}>Save</Button>
+                    <Button onClick={onClose} disabled={isSaving} style={{ flex: isMobile ? 1 : undefined, minHeight: 44 }}>Cancel</Button>
+                    <Button onClick={() => form.submit()} type="primary" loading={isSaving} style={{ flex: isMobile ? 1 : undefined, minHeight: 44 }}>Save</Button>
                 </Flex>
             }
         >
+            {preparedDraft ? (
+                <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message="Review the prepared release"
+                    description={(
+                        <Flex gap={4} vertical>
+                            <Typography.Text>
+                                This editable draft came from saved Knowledge Intake evidence ({preparedDraft.sourceTitle}). No provider synchronization, release activation, or publication has occurred.
+                            </Typography.Text>
+                            {preparedDraft.originUrl ? (
+                                <Button
+                                    href={preparedDraft.originUrl}
+                                    icon={<LuExternalLink />}
+                                    rel="noopener noreferrer"
+                                    style={{ alignSelf: 'flex-start', minHeight: 44, paddingInline: 0 }}
+                                    target="_blank"
+                                    type="link"
+                                >
+                                    Open public release
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    )}
+                />
+            ) : null}
             <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ published: true }}>
 
-                <Flex justify='space-between' gap={16} align='flex-end'>
+                <Flex justify='space-between' gap={16} align={isMobile ? 'stretch' : 'flex-end'} vertical={isMobile}>
                     <Form.Item style={{ flex: 1 }} name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]}>
                         <Input size='large' placeholder="e.g., New Feature: Dark Mode" />
                     </Form.Item>
@@ -634,7 +687,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     />
                 </Form.Item>
 
-                <Flex gap={16}>
+                <Flex gap={16} vertical={isMobile}>
                     <Form.Item name="tags" label="Tags" style={{ flex: 1 }}>
                         <Select
                             mode="multiple"
@@ -675,7 +728,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     </Form.Item>
                 </Flex>
 
-                <Flex gap={16}>
+                <Flex gap={16} vertical={isMobile}>
                     <Form.Item name="releaseDate" label="Release Date" rules={[{ required: true, message: 'Please select a date' }]} style={{ flex: 1 }}>
                         <DatePicker style={{ width: '100%' }} disabled={Boolean(initialData?.version)} />
                     </Form.Item>

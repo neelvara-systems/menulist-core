@@ -10,6 +10,9 @@
 - Reject successful mutation responses that omit exact workspace acknowledgement.
 - Allow versioned drafts without a release.
 - Normalize legacy unlinked versioned stored entries as drafts.
+- Accept one valid, current, exact-workspace prepared release envelope and remove it on consumption.
+- Reject and remove expired, replayed, malformed, oversized, invalid-version, invalid-ID, unsafe-URL, or wrong-workspace envelopes.
+- Convert prepared plain text to Tiptap text nodes without HTML interpretation.
 
 ## Release emulator
 
@@ -84,3 +87,5 @@
 - Stale preview requires review again and does not publish.
 - Affected-answer and linked-test review links remain usable without losing the
   private draft.
+- Knowledge Intake release evidence opens the same editor on desktop and narrow
+  widths, and saving still shows the existing Release Impact Guard.

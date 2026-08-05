@@ -1,6 +1,6 @@
 # Native Knowledge Intake Connectors - Test Cases
 
-> **Last Updated:** 2026-07-19
+> **Last Updated:** 2026-08-05
 
 ## Current Boundary
 
@@ -12,6 +12,7 @@
 6. Existing Knowledge Intake remains usable through selected URLs, files/exports, pasted evidence, repeated replies, and supported media.
 7. Firestore, Storage, Functions, provider, and scheduler operation count for the reserved feature is zero.
 8. Feature 41 remains a do-not-build-now decision until the evidence gate is met.
+9. Manual GitHub Release evidence may prepare a Changelog draft without any token, OAuth callback, GitHub API client, webhook, poller, scheduler task, credential record, or automatic publication path.
 
 ## Future Provider Tests
 
@@ -20,4 +21,3 @@ If one provider is approved later, test exact scopes, selected containers, cross
 ## Command
 
 - `npm run verify:answerlattice-native-intake-connectors`
-

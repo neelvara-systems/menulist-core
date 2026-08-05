@@ -22,11 +22,21 @@
 - Empty/error state renders.
 - Refresh reloads summary.
 - Next required action routes to the correct management page.
+- The primary setup path contains exactly four owner-goal groups: Add product knowledge, Approve your first answers, Connect customer support, and Verify and go live.
+- The first incomplete group is expanded by default, completed groups are collapsed, and only one group can be open at a time.
+- When refreshed evidence changes the first incomplete group, the accordion remounts on that group without persisting owner UI state.
+- Group status and the group CTA come from existing activation steps or launch-proof items; no manual completion control or parallel recommendation state exists.
+- A next action whose maintained route is Activation opens technical details and focuses the Ticket Notifications control instead of issuing a no-op push to the current route.
+- The embedded unresolved-fallback action uses the same same-page handler, so Review Notifications focuses the maintained control after deferred children mount.
+- The primary path shows one factual launch-proof complete/total count and does not show the separate setup-readiness percentage until technical details are opened.
+- Technical evidence and setup details is collapsed initially and preserves the exact launch proof, full launch checklist, Content Control workbench, runtime/compiled-context/notification/license/profile/evidence panels, and Daily Governance.
+- Daily Governance does not mount or issue its separate bounded request until technical details are opened once; closing and reopening the disclosure in the same page session does not refetch it.
+- Switching Answerlattice workspace scope resets deferred technical content before the next workspace summary can render.
 - First-client launch proof shows complete/total proof checks, progress, next proof action, and per-group status.
 - Launch proof action routes point to Settings, Knowledge Intake, Governance, Widget, Trust Metrics, and Signal Queue according to the incomplete group.
 - Signal-source proof is based on compact context signal counts; proposal quality is verified in Signal Queue, not by Activation collection scans.
 - Content Control workbench routes to product details, import, knowledge base, product surfaces, changelog, signal queue, widget, and tickets.
-- Test-as-Customer checklist routes to help center preview, widget setup, product surfaces, support ticket form, release notes, and Signal Queue based on summary readiness.
+- Test-as-Customer checklist routes through the three launch-critical paths: approved help preview, contextual widget setup, and support ticket fallback.
 - Test-as-Customer statuses say Ready to test and explicitly state that configuration does not prove resolution.
 - Widget and page-context proof are complete at the seven-day boundary, become Needs review immediately after it, and reject implausibly future telemetry.
 - `stage: live` is accepted only with complete, internally consistent launch proof; an 85% readiness score alone is insufficient.
@@ -45,7 +55,7 @@
 ## Cost
 
 - Activation load reads the store plus compact activation, context, coverage, trust, and compiled-context manifest docs only.
-- Daily Governance status reads one store doc, two platformSummary docs, and five capped scheduler logs.
+- Daily Governance status performs zero reads on the normal Activation first paint; after technical details are opened, it reads one store doc, two platformSummary docs, and five capped scheduler logs.
 - Daily Governance browser parsing rejects numeric-string/fractional metrics, impossible local dates, unknown nested statuses and read-model/run-count disagreement.
 - Persisted scheduler durations and counts accept exact nonnegative safe integers only; malformed scalar evidence projects to zero and cannot become plausible owner status.
 - Foreign/malformed embedded subscription summaries cannot complete License readiness and do not suppress the bounded exact-scope legacy fallback.
@@ -54,6 +64,7 @@
 - First-client launch proof adds no Firestore calls beyond the activation summary response.
 - Content Control workbench adds no extra Firestore calls beyond the activation summary response.
 - Test-as-Customer checklist and Surface Readiness matrix add no extra Firestore calls beyond the activation summary response.
+- Four-group projection, accordion state, and technical-details disclosure add no Firestore reads, writes, listeners, model calls, or persisted UI state.
 - Ticket detail Knowledge Loop card adds no Firestore calls; it reads only local ticket state.
 - Activation snapshot write is skipped when signature is unchanged and fresh.
 - Widget runtime marker is throttled.

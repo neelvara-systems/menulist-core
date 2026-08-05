@@ -1,9 +1,9 @@
 # Knowledge Intake Command Center — Technical Implementation Contract
 
 > **Status:** IMPLEMENTED — day-one owner-triggered implementation
-> **Version:** 2.1.0
+> **Version:** 2.1.8
 > **Created:** 2026-05-31
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-08-05
 > **Audience:** Engineering / QA / Product
 
 ---
@@ -727,6 +727,16 @@ Knowledge Intake must reuse Answerlattice's existing destination collections and
 
 Entity candidates, approved entities/relations, Support Board cards, changelog pages, release timelines, and direct active canonical answers are not current intake publish targets.
 
+### Release evidence handoff
+
+`AnswerlatticeKnowledgeIntake` exposes a dedicated release-evidence form over the existing source API. It submits `type=changelog`, selected entity IDs, an optional public URL, and bounded metadata describing the manual/export input. The server performs the normal URL admission, text redaction, deduplication, scope checks, source persistence, and bundle refresh.
+
+After a successful source response, the browser writes only the returned redacted text and the owner-entered release draft fields to a versioned `sessionStorage` envelope. `releaseEvidenceHandoff.ts` enforces the current `tId:sId`, canonical numeric version, valid source/job IDs, 25-entity cap, 40,000-character cap, public HTTP(S) URL, and a 30-minute maximum lifetime. Consumption removes the envelope before validation so replay, malformed data, expiry, or a workspace mismatch cannot retain it.
+
+The browser then opens the maintained Changelog route with non-sensitive `create=1&from=intake` markers. Changelog consumes the envelope once and prefills the existing editor. The editor converts plain release text to Tiptap JSON without interpreting HTML and shows an explicit owner-review notice. Save continues through the existing private draft, pending release, impact preview, Answer Tests proof, owner confirmation, activation, publication, summary rebuild, and cache invalidation path.
+
+If browser storage is unavailable, the source remains saved in Knowledge Intake and the owner receives recovery copy directing them to open Changelog manually. Release text is never placed in the URL, logged as a navigation value, or persisted to a second Firestore document.
+
 ### 17.2 Search Runtime Contract
 
 Current search behavior is the source of truth:
@@ -853,6 +863,7 @@ The owner review card now resolves up to three linked sources from the already-l
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 2.1.8 | Wired server-redacted release evidence into the existing Changelog editor through a scope-bound, one-time browser draft with no connector or Firebase expansion. |
 | 2026-05-31 | 1.0.0 | Initial technical contract for Answerlattice Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added first-class website link discovery, selected URL source creation, and hash-driven reprocessing rules. |
 | 2026-05-31 | 1.2.0 | Added bounded job orchestration, lease/idempotency rules, credit settlement, and privacy filtering. |

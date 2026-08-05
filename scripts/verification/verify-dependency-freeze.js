@@ -20,7 +20,7 @@ const PACKAGE_PAIRS = [
       fabric: '7.4.0',
       firebase: '11.7.3',
       'firebase-admin': '14.2.0',
-      next: '16.2.11',
+      next: '16.3.0',
       'next-auth': '4.24.15',
       'next-intl': '4.13.4',
       react: '19.2.8',
@@ -228,7 +228,8 @@ function verifyRootRuntimeEnvironment() {
       && rootPackage.overrides?.exceljs?.unzipper === '0.12.5'
       && rootPackage.overrides?.['google-gax']?.rimraf === '6.1.3'
       && rootPackage.overrides?.sucrase?.glob === '13.0.6'
-      && rootPackage.devDependencies?.['brace-expansion'] === '1.1.16',
+      && rootPackage.devDependencies?.['brace-expansion'] === '1.1.18'
+      && rootPackage.devDependencies?.['fast-uri'] === '3.1.5',
     'Root brace-expansion advisory controls must keep production consumers on compatible patched chains',
   );
   assert(
@@ -240,6 +241,14 @@ function verifyRootRuntimeEnvironment() {
     '@types/fabric must remain removed because Fabric 7 ships its own types',
   );
 
+}
+
+function verifyFunctionsSecurityOverrides() {
+  const menulistFunctionsPackage = readJson('functions/package.json');
+  assert(
+    menulistFunctionsPackage.overrides?.['brace-expansion'] === '1.1.18',
+    'MenuList Functions lint chain must stay on patched brace-expansion 1.1.18',
+  );
 }
 
 function verifyDocsAndRegistry() {
@@ -313,6 +322,7 @@ for (const packagePair of PACKAGE_PAIRS) {
 verifyMobileLibraryBoundary();
 verifyRetiredRuntimeDependencies();
 verifyRootRuntimeEnvironment();
+verifyFunctionsSecurityOverrides();
 verifyDocsAndRegistry();
 
 console.log('Dependency freeze verification passed');

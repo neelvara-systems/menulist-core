@@ -1,9 +1,9 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
 > **Status:** IMPLEMENTED — day-one cost-first contract
-> **Version:** 2.2.0
+> **Version:** 2.3.0
 > **Created:** 2026-05-31
-> **Last Updated:** 2026-07-26
+> **Last Updated:** 2026-08-05
 > **Audience:** Engineering / Firebase / Ops
 
 ---
@@ -46,6 +46,8 @@ The repeated-reply entity selector is search-gated. It does not load the ontolog
 Unless a section below explicitly says implemented, retained Storage artifacts, discovery/evidence/draft/publish manifests, intake-specific source-version counters, source deletion, retention choices, cancellation, background workers, and scheduler repair directories are reserved architecture. The current runtime stores capped extracted text and bounded/redacted metadata in Firestore, does not retain raw media, returns discovery candidates without persisting them, and relies on existing destination cache/source-version invalidation after approved publishing.
 
 Owner review evidence is projected from the sources already returned in the bounded active-job bundle. Showing up to three excerpts and applicability tags adds 0 Firestore reads, 0 writes, 0 listeners, 0 provider calls, and no new evidence collection.
+
+Release evidence preparation uses the existing source-add operation and its existing bundle refresh. The cross-page draft handoff itself adds 0 Firestore reads, writes, or deletes; 0 Storage operations; 0 listeners; 0 provider or AI calls; 0 scheduler work; and 0 cache invalidations. It performs one bounded `sessionStorage` write, one read, and one removal in the same browser tab. Opening the prepared Changelog editor adds no handoff-specific Firebase work. The existing changelog/release costs begin only when the owner saves.
 
 ---
 
@@ -623,6 +625,7 @@ Knowledge Intake route ID admission and shared service ref helper normalization 
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 2.3.0 | Documented the zero-Firebase-cost release draft handoff over the existing intake source and release publication paths. |
 | 2026-07-05 | 2.1.4 | Documented cost-neutral Knowledge Intake route and shared service ID admission for Firestore auto-ID shaped job params, deterministic `kis_` source IDs, and deterministic `kii_` review item IDs. |
 | 2026-06-30 | 2.1.3 | Documented shared Knowledge Intake browser request policy with no Firebase cost-shape change. |
 | 2026-06-30 | 2.1.2 | Documented bounded Knowledge Intake client response validation with no Firebase cost-shape change. |

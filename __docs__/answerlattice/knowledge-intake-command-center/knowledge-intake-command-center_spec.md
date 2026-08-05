@@ -1,8 +1,9 @@
 # Knowledge Intake Command Center — Product Specification
 
 > **Status:** IMPLEMENTED — day-one owner-triggered product contract
-> **Version:** 1.6.0
+> **Version:** 1.7.0
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-08-05
 > **Audience:** CEO / PM / Product / Clients
 
 ---
@@ -312,6 +313,9 @@ Runtime requirements:
 - Product surface suggestions write existing `answerlattice_productSurfaces` records with route patterns, feature/page/workflow labels, visibility, entity ids, tags, and lineage.
 - Article, FAQ, ticket, and surface changes refresh or mark stale the compact product-surface content summary used for page-aware related content.
 - Intake can use release notes or existing changelog entries as source context for support drafts, but it does not write changelog pages or `answerlattice_releases`. Owners publish release notes through the Changelog workflow.
+- When an owner supplies a title, canonical numeric version, release time, changed product entities, release text, and optional public release URL, the UI may prepare the existing Changelog editor from the saved, server-redacted source. The handoff must be one-time, same-tab, expire within 30 minutes, match the current `tId:sId`, and remain fully editable.
+- The handoff is convenience state, not authority or durable lineage. It cannot set source approval, create a release, mark an answer stale, run Answer Tests, publish a changelog entry, or survive a workspace change.
+- GitHub is an accepted export/source label only. No GitHub token, API request, App installation, webhook, repository scan, polling job, or background sync belongs to this flow.
 - Published KB/FAQ/surface outputs mark only their existing destination cache/source-version paths. Canonical proposals do not mark canonical runtime freshness until the normal governance workflow approves active truth.
 - Intake-only source/readiness counters do not by themselves rebuild public context bundles. Runtime bundles rebuild only when approved runtime destinations changed.
 
@@ -444,6 +448,7 @@ The implementation is complete only when:
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 1.7.0 | Added the bounded release-evidence-to-Changelog draft handoff while preserving the native connector gate and owner activation boundary. |
 | 2026-05-31 | 1.0.0 | Initial founder-first, paid-gated intake product spec. |
 | 2026-05-31 | 1.1.0 | Added first-class website link intake, selected-page processing, and unchanged-source skip rules. |
 | 2026-05-31 | 1.2.0 | Added privacy preflight and bounded job orchestration requirements. |

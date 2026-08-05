@@ -25,6 +25,12 @@
 
 The note is visible to customers only after the release check succeeds.
 
+### Start from Knowledge Intake release evidence
+
+Knowledge Intake can save pasted release notes or a GitHub Release export as source evidence and prepare this editor. Review the prefilled title, version, release time, changed product areas, and notes before saving. This is not a GitHub synchronization and nothing is published until the normal release check completes.
+
+Prepared drafts are same-tab, workspace-specific, one-time, and expire after 30 minutes. If preparation expires, open Changelog manually; the saved intake source remains available in the original intake job.
+
 Do not interpret a zero direct-answer count as proof that every article,
 procedure, or product surface is ready. The maintained check is bounded to
 governed direct dependencies.

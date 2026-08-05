@@ -205,10 +205,18 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                                 {pendingCheckoutUrl ? 'Complete payment' : 'Open Billing'}
                             </Button>
                         ) : null}
-                        <Button variant="outline" size="sm" onClick={() => window.location.assign(DASHBOARD_URL)} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
+                        <Button variant="outline" size="sm" onClick={() => {
+                            // The owner dashboard can be on a different canonical host from this website.
+                            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                            window.location.assign(DASHBOARD_URL);
+                        }} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuLayoutDashboard size={16} style={{ marginRight: '8px' }} /> Dashboard
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => window.location.assign(`${OWNER_APP_URL}/billing`)} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
+                        <Button variant="outline" size="sm" onClick={() => {
+                            // Billing lives on the canonical owner-app host.
+                            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                            window.location.assign(`${OWNER_APP_URL}/billing`);
+                        }} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuTimer size={16} style={{ marginRight: '8px' }} /> Billing History
                         </Button>
                     </CardFooter>

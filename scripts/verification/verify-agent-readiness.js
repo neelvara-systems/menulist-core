@@ -3201,6 +3201,7 @@ function verifyAnswerlatticeDiscovery() {
     ANSWERLATTICE_RESOURCE_ARTICLES,
   } = require('../../src/app/sites/answerlattice/publicContent');
   const robotsRoute = read('src/app/sites/answerlattice/robots.txt/route.ts');
+  const robotsPolicy = read('src/lib/seo/answerlatticeRobotsPolicy.ts');
   const homepageStructuredData = read('src/app/sites/answerlattice/components/StructuredData.tsx');
   const pageStructuredData = read('src/app/sites/answerlattice/components/PageStructuredData.tsx');
   const resourceStructuredData = read('src/app/sites/answerlattice/resources/ResourceStructuredData.tsx');
@@ -3234,9 +3235,10 @@ function verifyAnswerlatticeDiscovery() {
   assertIncludes(renderedLlmsFull, '/resources/launch-support-checklist', 'AnswerLattice llms-full.txt resource articles');
   assertIncludes(renderedLlmsFull, '/resources/support-runtime-safety', 'AnswerLattice llms-full.txt resource articles');
 
-  assertIncludes(robotsRoute, 'DISCOVERY_CRAWLERS', 'Answerlattice robots');
-  assertIncludes(robotsRoute, '/llms.txt', 'Answerlattice robots');
-  assertIncludes(robotsRoute, '/llms-full.txt', 'Answerlattice robots');
+  assertIncludes(robotsRoute, 'renderAnswerlatticeRobotsTxt(ANSWERLATTICE_SITE_URL)', 'Answerlattice robots route renderer');
+  assertIncludes(robotsPolicy, 'DISCOVERY_CRAWLERS', 'Answerlattice robots policy');
+  assertIncludes(robotsPolicy, '/llms.txt', 'Answerlattice robots policy');
+  assertIncludes(robotsPolicy, '/llms-full.txt', 'Answerlattice robots policy');
   assertIncludes(homepageStructuredData, 'JsonLdScript', 'Answerlattice homepage structured data');
   assertIncludes(homepageStructuredData, 'hasPart', 'Answerlattice homepage route graph');
   assertIncludes(homepageStructuredData, 'buildAnswerlatticePageId', 'Answerlattice homepage structured data ID helper');

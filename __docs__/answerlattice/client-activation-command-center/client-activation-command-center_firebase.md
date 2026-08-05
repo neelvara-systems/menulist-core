@@ -13,7 +13,7 @@
 | Load Answer Tests proof | `platformSummary/answerTests_{tId}_{sId}` | 1 | Bounded summary; derives First 10 count, latest proof state, and critical failures |
 | Load current governed source versions | `platformSummary/sourceVersions_{tId}_{sId}` | 1 | Six server-side counters invalidate stale Answer Test proof without source collection scans |
 | Stage-aware base-route entry | `platformSummary/activation_{tId}_{sId}` | 0-1 | One direct read after access resolution; missing/error fails to Activation |
-| Load Daily Governance | `stores/{sId}` + `platformSummary/answerlatticeSchedulerState` + `platformSummary/answerlatticeNightlyState_{tId}_{sId}` + 5 capped `answerlattice_schedulerRunLogs` | 8 | Separate owner status call; no source collection scans |
+| Load Daily Governance | `stores/{sId}` + `platformSummary/answerlatticeSchedulerState` + `platformSummary/answerlatticeNightlyState_{tId}_{sId}` + 5 capped `answerlattice_schedulerRunLogs` | 0 or 8 | Deferred until the owner first opens technical details; then mounted for the remaining page session, with no source collection scans |
 | Legacy subscription fallback | `subscriptions` exact dual-product/workspace query, `limit(5)` | 0-5 | Only when the store mirror is missing, malformed, terminal, or elapsed; exact current active truth wins within the bounded window |
 | Notification readiness | Environment + feature flag | 0 | No Firestore read; computed server-side |
 | Surface readiness | Existing `platformSummary/contextContent_{tId}_{sId}` response | 0 additional | Derived in memory from the context summary already read for Activation/Readiness Metrics |
@@ -44,7 +44,9 @@ The added entity and canonical-answer readiness checks reuse the trust metrics s
 
 The notification readiness card does not expose raw Firebase/cache internals. It shows only whether emails are enabled, sender config exists, and which sender address will be used. The explicit test action is rate-limited to 3/hour per workspace and writes an Answerlattice-scoped delivery log for debugging.
 
-The First-client launch proof, ordered founder journey, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. They add 0 reads, 0 writes, and no listeners after the eight compact Activation reads. Launch proof stores compact group status fields plus current runtime-proof state inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer recommendations and action labels remain client-side UI copy.
+The First-client launch proof, four-group progressive owner journey, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. Accordion state, group status, supporting checks, and the next action are computed in browser memory. They add 0 reads, 0 writes, and no listeners after the eight compact Activation reads. Launch proof stores compact group status fields plus current runtime-proof state inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer guidance and action labels remain client-side UI copy.
+
+The technical-details disclosure does not mount its children until the owner opens it. This removes the separate eight-read Daily Governance request from the normal Activation first paint. After the first open, the technical children remain mounted when the disclosure is closed, so reopening it during the same page session does not repeat that request. A workspace-scope change resets the deferred state before the new workspace summary is displayed.
 
 The base-route stage decision adds at most one compact activation-summary read when a management user enters `/answerlattice`. It performs no source scan, summary rebuild, listener, model call, or write. A direct visit to Activation remains eight compact reads, plus the existing bounded legacy subscription fallback only for old workspaces.
 

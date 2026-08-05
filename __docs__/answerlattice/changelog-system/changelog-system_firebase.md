@@ -38,6 +38,14 @@ Versioned public entries require an exact active release dependency. The changel
 Activation repeats authoritative reads by design. Preview results cannot replace
 transaction-current authorization or drift evaluation.
 
+### Prepared release evidence handoff
+
+- Existing Knowledge Intake source save and bundle refresh: unchanged existing cost.
+- Handoff-specific Firestore reads/writes/deletes: 0.
+- Handoff-specific Storage, listener, provider, AI, scheduler, and cache operations: 0.
+- Browser operations: one bounded same-tab `sessionStorage` write, read, and remove.
+- Changelog/release operations: unchanged and begin only after explicit owner save.
+
 Affected-answer and linked-test review links add zero preview reads or writes.
 Canonical Answers and Answer Tests perform only their existing bounded loads
 after the owner explicitly opens the destination. No link mounts a listener or

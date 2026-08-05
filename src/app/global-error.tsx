@@ -100,7 +100,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               Try Again
             </button>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => {
+                // The root error boundary must escape without depending on a healthy router tree.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                window.location.href = '/';
+              }}
               style={{
                 padding: '12px 24px',
                 fontSize: 14,

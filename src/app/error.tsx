@@ -59,6 +59,8 @@ export default function Error({ error, reset }: {
         } catch (openError) {
             logRuntimeFailure(APP_ERROR_HELP_OPEN_FAILED, openError, diagnosticContext);
             try {
+                // Preserve a framework-independent recovery path from the App Router error boundary.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                 window.location.assign(HELP_ROUTE);
             } catch (redirectError) {
                 logRuntimeFailure(APP_ERROR_HELP_REDIRECT_FAILED, redirectError, diagnosticContext);

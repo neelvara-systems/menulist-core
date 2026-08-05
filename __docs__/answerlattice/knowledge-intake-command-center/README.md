@@ -2,6 +2,7 @@
 
 > **Status:** IMPLEMENTED — day-one owner-triggered intake flow
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-08-05
 > **Audience:** Product, Engineering, Firebase/Ops, Website, Support
 > **Source of Truth:** Runtime audit + Answerlattice doctrine + reviewed ChatGPT conversation
 
@@ -47,6 +48,7 @@ This is not a generic upload widget. It is the entry point into Answerlattice's 
 | Runtime freshness | Publish bumps existing cache/source-version paths and rebuilds the compact context-content summary for page-aware widget/search alignment. |
 | Cost posture | No realtime listeners, no unbounded scans, no hidden retry workers, and no raw-file Storage retention were added. The nightly scheduler only refreshes a compact intake summary from the latest bounded job docs when enabled. |
 | Platform observability | `/platform/answerlattice-intake` reads `answerlatticeTenantsSummary` first, lets platform admins select one workspace, then shows scoped intake jobs, credit ledger rows, media extraction usage, scheduler health, and an explicit selected-workspace nightly retry action. |
+| Release evidence handoff | A dedicated release-evidence form stores pasted release notes or a GitHub Release export as the existing bounded `changelog` source type, then carries a short-lived, scope-bound draft into the existing Changelog editor. It does not call GitHub, publish a note, activate a release, or bypass Release Impact Guard. |
 
 ---
 
@@ -195,6 +197,7 @@ Knowledge Intake must publish into Answerlattice's existing runtime paths. It mu
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 2.3.0 | Added the governed release-evidence handoff from an existing intake source to an editable Changelog draft, with no native provider sync or additional Firebase operation. |
 | 2026-05-31 | 1.0.0 | Initial day-one documentation contract for founder-first, paid-gated, source-backed Answerlattice intake. |
 | 2026-05-31 | 1.1.0 | Added product-link-first intake doctrine, selected-page source creation, and unchanged-link cost controls. |
 | 2026-05-31 | 1.2.0 | Added bounded execution and provider-safe evidence doctrine. |

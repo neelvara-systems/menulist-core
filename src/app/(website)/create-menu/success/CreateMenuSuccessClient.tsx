@@ -32,7 +32,7 @@ import {
 } from '@lib/publicCreateMenu/lastClaimHandoff';
 import { isPublicCreateMenuSuccessHostname } from '@lib/publicCreateMenu/successUrl';
 import { useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
@@ -281,6 +281,7 @@ async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
 
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { data: session, update: updateSession } = useSession();
     const defaultBusinessName = t('CreateMenuSuccess.defaultBusinessName');
@@ -429,9 +430,9 @@ export default function CreateMenuSuccessClient() {
         } finally {
             if (refreshTimer !== null) clearTimeout(refreshTimer);
             dashboardHandoffInFlightRef.current = false;
-            window.location.assign('/use-menulist');
+            router.push('/use-menulist');
         }
-    }, [hasMenuUrl, hasOfficialPageUrl, updateSession]);
+    }, [hasMenuUrl, hasOfficialPageUrl, router, updateSession]);
 
     return (
         <div className="ws-page">

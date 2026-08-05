@@ -26,6 +26,8 @@ external Release Impact Guard proposal.
 6. The entry and release must have the same normalized version, release timestamp, and changed-entity set.
 7. Drafts, missing `published`, and versioned entries without a valid `releaseId` are not deliverable.
 8. Support tickets, notes, or changelog text never become canonical truth automatically.
+9. A Knowledge Intake handoff may prefill an unsaved editor only when its one-time envelope is current, matches the active workspace, and passes existing release field limits.
+10. Prepared evidence never substitutes for release registration, current impact preview, Answer Tests proof, owner confirmation, or server authorization.
 
 ## Publication states
 

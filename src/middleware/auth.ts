@@ -44,6 +44,10 @@ export type AuthenticatedHandler = (
     params?: any
 ) => Promise<NextResponse>;
 
+type AuthenticatedRouteContext = {
+    params: Promise<Record<string, string | string[] | undefined>>;
+};
+
 const getSessionAccessDeniedReason = (session: any): string | null => {
     const user = session?.user || {};
     if (user.deleted === true) return 'Deleted account attempted to access protected API';
@@ -82,7 +86,7 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
     requiredRole?: string;
     requiredPlatformRole?: 'OWNER' | 'USER' | 'PLATFORM' | 'RESELLER';
 }) {
-    return async (request: NextRequest, context?: { params: any }) => {
+    return async (request: NextRequest, context: AuthenticatedRouteContext) => {
         try {
             // 1️⃣ CORS VALIDATION: Validate origin before any processing
             // Prevents CSRF attacks by rejecting unauthorized origins
@@ -196,7 +200,11 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
             }
 
             // 4️⃣ EXECUTE HANDLER: Call the actual API handler
-            const response = await handler(request, session, context?.params);
+            // Next.js route params are asynchronous. Resolve them at the shared
+            // boundary so every authenticated handler receives the plain object
+            // that its validation and tenant-scope checks expect.
+            const routeParams = context ? await context.params : undefined;
+            const response = await handler(request, session, routeParams);
 
             // 5️⃣ ADD CORS HEADERS: Add to successful responses
             return addCORSHeaders(response, request);

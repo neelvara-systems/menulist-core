@@ -76,6 +76,8 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                 return;
             }
             setToken('');
+            // The canonical owner app can be on a different host from the public website.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.assign(`${OWNER_APP_URL}/create-menu`);
         } catch {
             setState('error');
@@ -92,6 +94,8 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                 return;
             }
             setToken('');
+            // The canonical owner app can be on a different host from the public website.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.assign(`${OWNER_APP_URL}/create-menu`);
         } catch {
             setState('error');

@@ -45,7 +45,7 @@ const FIRST_SESSION = [
 ];
 
 type AnswerlatticeGetStartedPageProps = {
-    searchParams?: Record<string, string | string[] | undefined>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const readSingleSearchParam = (value: string | string[] | undefined): string => (

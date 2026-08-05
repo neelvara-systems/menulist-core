@@ -1,6 +1,6 @@
 # Answerlattice Releases and Changelog
 
-**Status:** Feature 11 source-hardened on 2026-07-18; bounded Release Impact Guard implemented on 2026-07-29. Authenticated QA deployment and hosted browser evidence remain external.
+**Status:** Feature 11 source-hardened on 2026-07-18; bounded Release Impact Guard implemented on 2026-07-29; manual release-evidence handoff hardened on 2026-08-05. Authenticated QA deployment and hosted browser evidence remain external.
 
 This feature turns a versioned release note into a governed dependency event. A public versioned changelog entry is not merely text with a version label: it must point to an active Answerlattice release whose version, release time, workspace, and changed entities match exactly.
 
@@ -44,12 +44,15 @@ separate release-management product or data model.
 
 Non-versioned announcements may publish without a release. Versioned public entries may not.
 
+Knowledge Intake may prepare this editor from a saved release-note source. That handoff is a short-lived editable draft only. It does not create durable changelog lineage, prove provider authenticity, call GitHub, or skip any step in the primary flow.
+
 ## Main source files
 
 - `src/lib/answerlattice/releaseContracts.ts`
 - `src/lib/answerlattice/releaseServer.ts`
 - `src/lib/answerlattice/changelogContracts.ts`
 - `src/lib/answerlattice/changelogServer.ts`
+- `src/lib/answerlattice/releaseEvidenceHandoff.ts`
 - `src/components/templates/platform/changelog/addEditChangelog.tsx`
 - `src/lib/answerlattice/publicContentBoundary.ts`
 - `src/lib/answerlattice/publicContentCache.ts`

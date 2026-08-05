@@ -2,8 +2,8 @@
 
 > **Status:** DO NOT BUILD NOW - RESERVED PLACEHOLDER ONLY
 > **Feature:** 41 of 44
-> **Version:** 1.0.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.1.0
+> **Last Updated:** 2026-08-05
 > **Flag:** `ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false`
 
 ## Current Product Truth
@@ -21,6 +21,8 @@ selected public URL, file/export, pasted notes, repeated reply, screenshot, or s
 ```
 
 This covers the first-use job without asking a solo founder to grant broad private-system access or maintain another integration.
+
+The implemented release-evidence handoff does not change this status. Owners may paste or export GitHub Release text into Knowledge Intake and prepare an editable Changelog draft, but Answerlattice does not install a GitHub App, read a repository, call GitHub APIs, receive webhooks, poll releases, or synchronize version history.
 
 ## Decision
 
@@ -54,4 +56,3 @@ If approved later, implement one provider only:
 - `npm run verify:answerlattice-native-intake-connectors`
 - `npm run verify:answerlattice-runtime-truth`
 - `npm run docs:check-links`
-

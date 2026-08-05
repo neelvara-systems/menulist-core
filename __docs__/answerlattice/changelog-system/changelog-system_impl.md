@@ -26,6 +26,12 @@ For a new or legacy-unlinked versioned entry, the editor uses:
 
 Already linked entries can update directly; the server revalidates the active dependency before accepting a published result.
 
+## Prepared release evidence
+
+The management screen recognizes only the fixed `create=1&from=intake` route markers. Once exact workspace scope is available, it consumes the one-time `sessionStorage` envelope through `releaseEvidenceHandoff.ts`, removes both markers with `router.replace`, and opens the existing editor. A missing, expired, malformed, replayed, or wrong-workspace envelope opens an empty editor with fixed recovery copy.
+
+`AddEditChangelog` accepts the validated prepared draft as optional initial form state. Plain evidence text is converted to a Tiptap document as text nodes, not HTML. Existing entity-option reads, validation, save requests, impact preview, and publication behavior remain unchanged. Closing, saving, editing another entry, or changing workspace clears the prepared draft.
+
 ## Feature 4 Validation Result
 
 The existing release route now admits strict `preview_impact`. It reads the

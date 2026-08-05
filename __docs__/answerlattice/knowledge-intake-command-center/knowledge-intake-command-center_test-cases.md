@@ -1,8 +1,9 @@
 # Knowledge Intake Command Center — Test Cases
 
 > **Status:** IMPLEMENTED — day-one regression matrix plus future extension matrix
-> **Version:** 2.3.0
+> **Version:** 2.4.0
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-08-05
 > **Audience:** QA / Engineering / Product
 
 ---
@@ -123,6 +124,12 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-PUB-003 | Publish product surface suggestion | Creates/updates `answerlattice_productSurfaces` with source lineage and summary rebuild. |
 | KICC-PUB-004 | Partial publish failure | Successful item destination IDs/status remain, failures stay visible, and retry uses deterministic destination IDs; no persisted publish manifest is required. |
 | KICC-PUB-005 | Attempt to publish approved changelog/release output through intake | API blocks changelog/release publication from intake and directs the owner to the Changelog workflow. |
+| KICC-REL-001 | Owner prepares valid release evidence | Existing `changelog` source is saved first, then the Changelog editor opens with title, canonical version, time, redacted notes, and selected entity IDs prefilled. |
+| KICC-REL-002 | Source text contains a supported secret or personal identifier | The handoff uses the server-returned redacted source text, not the pre-submit browser value. |
+| KICC-REL-003 | Browser storage is unavailable | Source save remains successful, no sensitive query payload is created, and fixed recovery copy tells the owner to open Changelog manually. |
+| KICC-REL-004 | Handoff is consumed twice, expired, malformed, or belongs to another workspace | It is removed and rejected; no draft data is shown. |
+| KICC-REL-005 | Owner reaches the prepared Changelog draft | No release, changelog, drift, Answer Test, cache, provider, or AI mutation occurs until the owner saves through the existing workflow. |
+| KICC-REL-006 | Optional URL is a GitHub Release URL | It is stored only through the existing public URL/source contract; no GitHub API or connector runtime is called. |
 | KICC-PUB-006 | Destination commit succeeds but the required summary rebuild, cache/source-version effect, public-cache revalidation or acknowledgement fails | The review item remains accepted with its deterministic target ID; retry verifies the exact target, reruns required freshness effects, and only then marks it published without creating duplicate destination truth. |
 | KICC-PUB-007 | Client explicitly sends `itemIds: []` or duplicate IDs | Request fails validation and no accepted item changes; only omitted `itemIds` means publish all accepted items. |
 | KICC-PUB-008 (future) | Publish entity candidates and one approved entity | Candidate stays review-only; any future entity destination must use the ontology approval flow. Entity publishing is not a current intake target. |
@@ -218,6 +225,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 2.4.0 | Added release evidence handoff, redaction, scope, expiry, storage failure, and no-connector regression cases. |
 | 2026-05-31 | 1.0.0 | Initial test matrix for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added website link discovery, selected URL source creation, and unchanged-source skip tests. |
 | 2026-05-31 | 1.2.0 | Added concurrency, cancellation, credit release, privacy filter, and idempotent retry tests. |

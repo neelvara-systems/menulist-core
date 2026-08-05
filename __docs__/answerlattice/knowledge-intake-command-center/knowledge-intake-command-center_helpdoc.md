@@ -1,8 +1,9 @@
 # Knowledge Intake Command Center — Owner Helpdoc
 
 > **Status:** IMPLEMENTED — owner help copy for day-one intake
-> **Version:** 1.7.0
+> **Version:** 1.8.0
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-08-05
 > **Audience:** Answerlattice workspace owners and staff
 
 ---
@@ -190,12 +191,23 @@ No. Drafts need approval before becoming official support truth.
 
 Check the linked source excerpt, where the answer applies, and any missing-evidence warning. If the source does not support the proposed answer, add evidence or reject the draft. A repeated ticket or owner note is a signal, not automatically approved truth.
 
+## Prepare a release from existing notes
+
+1. Open the active Knowledge Intake job and find **Release evidence**.
+2. Add the release title, numeric version, release date and time, changed product areas, notes, and optional public release URL.
+3. Choose **Prepare release review**. Answerlattice saves the notes as bounded source evidence and opens an editable Changelog draft.
+4. Review every field. Answerlattice has not synchronized with GitHub, activated a release, run a provider operation, or published anything.
+5. Save the draft and complete the normal Release Impact Guard review before publication.
+
+If the prepared draft cannot open, the release evidence is still saved in the active intake job. Open Changelog manually and use that evidence to create the entry. Prepared browser drafts expire after 30 minutes and never transfer between workspaces.
+
 ---
 
 ## Version History
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 1.8.0 | Added the release-evidence preparation and recovery workflow. |
 | 2026-05-31 | 1.0.0 | Initial owner helpdoc for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added product link intake guidance, owner page selection, and app URL crawl boundary. |
 | 2026-05-31 | 1.2.0 | Added owner-facing privacy filter expectation before AI draft generation. |

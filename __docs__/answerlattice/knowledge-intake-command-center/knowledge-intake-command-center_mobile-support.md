@@ -1,8 +1,9 @@
 # Knowledge Intake Command Center — Mobile Support
 
 > **Status:** IMPLEMENTED — responsive owner-screen contract
-> **Version:** 1.3.0
+> **Version:** 1.4.0
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-08-05
 > **Audience:** Mobile / Frontend / QA
 
 ---
@@ -108,12 +109,20 @@ No horizontal overflow.
 | Dark mode | Parent cards, source risk labels, and action buttons remain readable. |
 | Light mode | Same as dark mode; avoid stale theme styles after toggle. |
 
+## Release evidence handoff
+
+- The release form uses the shared responsive intake screen and 44 px primary action.
+- Date/time and changed-product-area controls must stack on narrow screens without horizontal overflow.
+- The same-tab draft handoff uses no mobile-only persistence or route.
+- Expired, missing, or wrong-workspace handoffs open a blank Changelog editor with fixed recovery copy; they never weaken release review.
+
 ---
 
 ## Version History
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-05 | 1.4.0 | Added responsive release evidence preparation and same-tab Changelog recovery requirements. |
 | 2026-05-31 | 1.0.0 | Initial mobile support contract for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added summary-first mobile loading and urgent-review preview rules. |
 | 2026-06-11 | 1.1.1 | Added the mobile-friendly file selection requirement and aligned the implemented intake screen with a visible 44px file chooser plus clearer first-run empty states. |

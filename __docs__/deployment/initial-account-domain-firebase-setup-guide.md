@@ -72,7 +72,7 @@ Stop immediately if:
 | Google account structure | One Google Workspace tenant with `neelvara.com` primary |
 | Google Cloud/Firebase | One company organization and billing account, separate projects underneath |
 | Vercel | One team, one project, same git repo, domain routing handles products |
-| GitHub | Keep existing organization/repository, add backup owner and MFA |
+| GitHub | Fresh named founder account and `neelvara-systems` organization; natively transfer the existing repository and migrate local SSH/author identity without rewriting history |
 | Payments | One Razorpay merchant account under the real Neelvara legal/trade identity |
 | Local/staging env | QA/staging Firebase and provider values |
 | Production env | Dedicated production Firebase and provider values |
@@ -289,7 +289,7 @@ What to do for every sending domain:
 4. Add the DKIM TXT record exactly as Google shows it.
 5. Start DMARC in monitor mode:
    ```text
-   v=DMARC1; p=none; rua=mailto:security@neelvara.com
+   v=DMARC1; p=none; rua=mailto:dmarc@neelvara.com
    ```
 6. After email delivery is verified, decide whether to move DMARC to stricter
    enforcement later.
@@ -523,19 +523,29 @@ Where:
 
 What to do:
 
-1. Create or open the company Vercel team.
-2. Import this git repository one time.
-3. Use one Vercel project for the shared app.
-4. Do not create separate Vercel projects for MenuList, Answerlattice,
+1. For this clean bootstrap, retire the old Vercel account/project only after
+   confirming phone-number release with Vercel Support, inventorying domain and
+   environment-key/provider names without copying values, revoking or rotating
+   referenced credentials at their issuing providers, removing custom domains,
+   and cancelling subscriptions.
+2. Create the fresh company Vercel account/team and enable MFA/passkey plus
+   recovery.
+3. Import `neelvara-systems/menulist-core` one time after the native GitHub
+   repository transfer. Do not transfer old Vercel deployments, history,
+   settings, or environment values.
+4. Use one Vercel project for the shared app.
+5. Do not create separate Vercel projects for MenuList, Answerlattice,
    CampaignCue, Neelvara, SignalDesk, or MyCodex.
-5. Keep production branch and preview branch settings aligned with the current
+6. Keep production branch and preview branch settings aligned with the current
    deployment workflow.
-6. Add every required domain to this single Vercel project.
-7. Assign `menulist.digital`, `www.menulist.digital`,
+7. Add every required domain to this single Vercel project.
+8. Assign `menulist.digital`, `www.menulist.digital`,
    `app.menulist.digital`, and `*.menulist.digital` to Preview/Staging, not
    Production.
-8. Restrict every MenuList QA Preview environment variable to exact Git branch
+9. Restrict every MenuList QA Preview environment variable to exact Git branch
    `staging`, especially private keys and provider secrets.
+10. Create values from `.env.staging.example`, newly generated secrets, and
+    newly created QA provider credentials only. Never copy old Vercel values.
 
 Add these staging domains:
 

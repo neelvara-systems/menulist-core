@@ -3,9 +3,10 @@ import { DISCOVERY_CRAWLERS } from '../../src/lib/seo/discoveryPolicy';
 import {
     ANSWERLATTICE_DISCOVERY_DISALLOWED_PATHS,
     renderAnswerlatticeRobotsTxt,
-} from '../../src/app/sites/answerlattice/robots.txt/route';
+} from '../../src/lib/seo/answerlatticeRobotsPolicy';
+import { ANSWERLATTICE_SITE_URL } from '../../src/app/sites/answerlattice/siteConfig';
 
-const robots = renderAnswerlatticeRobotsTxt();
+const robots = renderAnswerlatticeRobotsTxt(ANSWERLATTICE_SITE_URL);
 const groups = robots.match(/User-agent: [^\n]+\n[\s\S]*?(?=\n\nUser-agent:|\n\nSitemap:)/g) || [];
 
 assert.equal(groups.length, DISCOVERY_CRAWLERS.length + 1);

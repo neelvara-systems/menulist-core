@@ -102,10 +102,10 @@ The final current-worktree C1 recheck also passed:
 `npm run verify:dependency-freeze` and full root lint pass on the current
 worktree. The concurrent Gemini migration is now reconciled with the exact
 freeze contract. The final dependency graph gives legacy `minimatch` 3 its
-compatible `brace-expansion` 1.1.16 and modern `minimatch` 10 patched 5.0.8;
+compatible `brace-expansion` 1.1.18 and modern `minimatch` 10 patched 5.0.9;
 both consumers run.
 
-Security-policy result: root runtime has zero critical findings and retains one high plus one moderate npm entry for the same stable Next 16.2.11 nested PostCSS chain. Fabric 7.4.0 cleared the former native canvas/tar family; Firebase Admin 14.2.0 and the UUID 11.1.1 compatibility override cleared the root Firebase/Storage/ExcelJS moderate chain. Answerlattice Functions now pin the stable Firebase Admin 13.10.0 / Firebase Functions 6.6.0 pair through modular entry points and report zero vulnerabilities in both full and production audits after a clean install.
+Security-policy result: stable Next 16.3.0 carries patched PostCSS 8.5.23, and the root full and production audits are required to remain at zero after the compatible brace-expansion and fast-uri refresh. Fabric 7.4.0 cleared the former native canvas/tar family; Firebase Admin 14.2.0 and the UUID 11.1.1 compatibility override cleared the root Firebase/Storage/ExcelJS moderate chain. Answerlattice Functions pin the stable Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair through modular entry points.
 
 ## Deployment evidence
 

@@ -27,6 +27,10 @@ The public/help-center timeline is responsive and useful on narrow screens. Full
   publication automatically.
 - **Review answer** and **Review linked Answer Tests** use 44px actions, open
   the existing responsive destinations, and preserve the private editor state.
+- A prepared release-evidence notice, title/version fields, date/time controls,
+  and selected product areas remain readable and editable on a narrow screen.
+- A missing or expired handoff shows recovery copy and a blank editor; mobile
+  never receives a separate or reduced publication path.
 
 ## Non-goal
 

@@ -1,7 +1,7 @@
 # Help Center — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-07-29
+> **Last Updated:** 2026-08-05
 > **Audit Type:** Codebase-first forensic documentation
 > **Feature Scope:** 16 subsystems, 190+ files, Answerlattice + Help Center Firestore collections
 
@@ -439,19 +439,20 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 2   | **[AI QnA Chatbot](./ai-qna-chatbot/README.md)**                 | `ai-qna-chatbot/`         | 8 docs | 59 files, 25 DAL functions, 3 API routes      |
 | 3   | **[Knowledge Base](./knowledge-base/README.md)**                 | `knowledge-base/`         | 8 docs | 23 files, 15 DAL functions                    |
 | 4   | **[KB Generation Pipeline](./kb-generation-pipeline/README.md)** | `kb-generation-pipeline/` | 8 docs | 30+ files, 5 DAL functions, 2 Cloud Functions |
-| 5   | **[Releases and Changelog](./changelog-system/README.md)**       | `changelog-system/`       | 9 docs | Server-owned release/changelog lifecycle, public projection, bundle propagation, focused contracts and emulators |
+| 5   | **[Releases and Changelog](./changelog-system/README.md)**       | `changelog-system/`       | 9 docs | Server-owned release lifecycle, intake evidence handoff, Release Impact Guard, public projection, bundle propagation, and focused contracts |
 | 6   | **[Feedback System](./feedback-system/README.md)**               | `feedback-system/`        | 8 docs | 9 files, 5 DAL functions                      |
 | 7   | **[Chat Monitoring](./chat-monitoring/README.md)**               | `chat-monitoring/`        | 8 docs | 35 items, 13 DAL functions, 4 Cloud Functions |
 | 8   | **[FAQ Management](./faq-management/README.md)**                 | `faq-management/`         | 7 docs | Bounded FAQ DAL, import generation, public FAQ tab |
-| 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
+| 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Implemented bounded source intake, release evidence preparation, review queue, governed destination publishing, and cost contract |
 | 10  | **[Repeated Reply Import](./repeated-reply-import/README.md)** | `repeated-reply-import/` | 8 docs | Repeated founder replies become FAQ and canonical proposal drafts through Knowledge Intake |
 | 11  | **[Owner Support Assistant](./owner-support-assistant/README.md)** | `owner-support-assistant/` | 15 docs | Live deterministic six-summary guidance with strict source health, permission-filtered routes, and no assistant-owned transcript/event/action collection; broader action/analytics architecture remains deferred |
 | 12  | **[Founder Daily Brief](./founder-daily-brief/README.md)** | `founder-daily-brief/` | 9 docs | Summary-only daily action plan plus a disabled-by-default, owner-confirmed Support Board prefill handoff |
 | 13  | **[First Trusted Answers](./first-trusted-answers/README.md)** | `first-trusted-answers/` | 11 docs | First-ten question setup, governed tests, explicit resolution evidence, proof controls, and distribution runbook |
 | 14  | **[Email Notifications](./email-notifications/README.md)** | `email-notifications/` | 9 docs | Scoped ticket projection, deterministic delivery claim, bounded SMTP, and Activation test boundary |
 | 15  | **[Weekly Digest](./weekly-digest/README.md)** | `weekly-digest/` | 9 docs | Deterministic completed-week evidence, source completeness, freshness, manual prepare, and governed review handoff |
+| 16  | **[Client Activation Command Center](./client-activation-command-center/README.md)** | `client-activation-command-center/` | 10 docs | Four-group evidence-derived launch path, deferred technical diagnostics, and manual customer-path verification |
 
-**Total:** 15 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, Owner Support Assistant, Founder Daily Brief, First Trusted Answers, Email Notifications, and Weekly Digest.
+**Total:** 16 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, Owner Support Assistant, Founder Daily Brief, First Trusted Answers, Email Notifications, Weekly Digest, and Client Activation Command Center.
 
 Each sub-feature folder contains:
 
@@ -470,6 +471,8 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-05 | 3.4.34  | Added a server-redacted release-evidence handoff from Knowledge Intake to the existing Changelog editor while preserving Release Impact Guard and the zero-runtime native GitHub connector boundary. |
+| 2026-08-05 | 3.4.33  | Compressed Activation into four evidence-derived owner goals, preserved full diagnostics behind deferred technical details, reduced the launch-critical customer checklist to three manual paths, and avoided new Firebase state or reads. |
 | 2026-07-20 | 3.4.32  | Completed the 44-feature and final C1-C8 local audit, fixed missing shared ratio-helper imports in Slack/email integration adapters, passed the complete runtime/emulator aggregate, and recorded cloud/recovery/client evidence still required. |
 | 2026-07-20 | 3.4.31  | Completed Feature 44 as a deliberate non-goal: Guided Resolution remains Explain + Guide, procedure actions are instructional only, loader messages are origin/source bound, host clicks/form submission/arbitrary code stay prohibited, and client-reported completion is not presented as independent backend proof. |
 | 2026-07-20 | 3.4.30  | Completed Feature 43 as a do-not-build-now connector boundary: no Zendesk, Intercom, Freshdesk, Help Scout, or Jira runtime/claim exists; export-first intake remains supported, generic-file provider logic is source-gated, sensitive provider data is excluded by default, and one read-only provider requires paying-client and concierge proof. |

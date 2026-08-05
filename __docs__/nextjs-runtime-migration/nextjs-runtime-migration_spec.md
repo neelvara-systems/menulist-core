@@ -2,12 +2,12 @@
 
 **Status:** LOCALLY IMPLEMENTED AND VERIFIED
 **Risk class:** Critical shared-runtime migration
-**Final target:** Next.js 16.2.11 with React 19.2.8
+**Final target:** Next.js 16.3.0 with React 19.2.8
 **Applies to:** Root Next.js application and every product/surface hosted by it
 
 ## 1. Problem statement
 
-The root app was frozen on Next.js 14.2.35. It is now frozen on Next.js 16.2.11 and React 19.2.8 after the shared runtime, framework-adjacent dependencies, request APIs, cache calls, service worker, and production build paths were migrated together.
+The root app was frozen on Next.js 14.2.35. It is now frozen on Next.js 16.3.0 and React 19.2.8 after the shared runtime, framework-adjacent dependencies, request APIs, cache calls, service worker, production build paths, and the stable 16.3 security/runtime refresh were migrated together.
 
 This migration must improve the support and security posture without changing product behavior, public truth, tenant isolation, service-worker boundaries, or Firebase contracts.
 
@@ -31,6 +31,7 @@ This migration must improve the support and security posture without changing pr
 - No Ant Design v6 migration.
 - No React Compiler enablement.
 - No Cache Components/PPR adoption.
+- No Partial Prefetching, TypeScript 7, experimental Rust compiler, or experimental offline-retry adoption.
 - No route redesign, middleware decomposition, new domain, or product architecture change.
 - No owner/customer feature, settings toggle, public copy, pricing, billing, or plan change.
 - No broad `npm audit fix`, `npm audit fix --force`, or unrelated dependency refresh.
@@ -116,7 +117,7 @@ The React wrapper for Emoji Mart is removed rather than installed against an uns
 
 ### ADR-9 — ESLint moves to the CLI and flat config
 
-Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The final runtime uses ESLint 9.39.5 and `eslint-config-next@16.2.11` with flat config.
+Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The final runtime uses ESLint 9.39.5 and `eslint-config-next@16.3.0` with flat config.
 
 The migration must update:
 

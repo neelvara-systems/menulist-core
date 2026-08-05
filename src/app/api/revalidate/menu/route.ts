@@ -299,5 +299,5 @@ export async function POST(request: NextRequest) {
         return handleRevalidateMenuCache(request, null, 'secret');
     }
 
-    return authenticatedRevalidateMenuCache(request);
+    return authenticatedRevalidateMenuCache(request, { params: Promise.resolve({}) });
 }

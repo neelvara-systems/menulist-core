@@ -317,8 +317,14 @@ Use one parent operating identity and one shared infrastructure account stack:
   purchase; product domains are added as secondary or alias domains.
 - Google Cloud/Firebase: one company-controlled organization/billing account;
   separate Firebase projects underneath it.
-- Vercel: one team and one Vercel project connected to this repo.
-- GitHub: keep the existing repo/org ownership, add a backup owner, enforce MFA.
+- Vercel: one fresh Neelvara-owned account/team and one fresh project connected
+  to this repo; do not transfer old deployments, history, or environment values.
+- GitHub: use a fresh named founder account with `admin@neelvara.com`, create
+  the `neelvara-systems` organization, natively transfer the existing repo, add
+  a backup owner before production, and enforce MFA. Use a dedicated Neelvara
+  SSH key on each workstation, update the local remote after transfer, keep
+  author identity repository-local, and retire an old key only after the new
+  account can authenticate and fetch the transferred repository.
 - Razorpay: one merchant account under the real Neelvara legal/trade identity.
 - Password manager: one company vault for registrar, Workspace, GitHub, Vercel,
   Firebase, Razorpay, provider credentials, and recovery codes.
@@ -463,6 +469,9 @@ Create aliases or groups instead of paid users for every address below:
 Neelvara:
 
 - `hello@neelvara.com`
+- `billing@neelvara.com`
+- `security@neelvara.com`
+- `dmarc@neelvara.com`
 - `legal@neelvara.com`
 - `privacy@neelvara.com`
 
@@ -549,7 +558,17 @@ Open: https://vercel.com/dashboard
 
 Checklist:
 
-- [ ] Import this Git repo once.
+- [ ] Confirm the old Vercel phone number is released/unlinked before deleting
+      the old account.
+- [ ] Inventory only old domain assignments and env-key/provider names; revoke
+      or rotate every referenced credential at its issuing provider.
+- [ ] Remove old custom domains/subscriptions/projects/teams and delete the old
+      account only after the teardown prerequisites pass.
+- [ ] Create the fresh Neelvara Vercel account/team with MFA/passkey and
+      recovery.
+- [ ] Import `neelvara-systems/menulist-core` once after native GitHub transfer.
+- [ ] Populate environment values only from maintained templates and newly
+      generated QA credentials; never copy old Vercel values.
 - [ ] Use one Vercel project for all product/domain surfaces.
 - [ ] Do not create separate Vercel projects for MenuList, Answerlattice,
       CampaignCue, SignalDesk, Neelvara, or MyCodex.

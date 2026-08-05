@@ -1,5 +1,43 @@
 # MenuList — Changelog
 
+## August 5, 2026 - Answerlattice Release Evidence Handoff
+
+- Knowledge Intake now provides a dedicated release-evidence form for pasted
+  release notes or a GitHub Release export. It stores the material through the
+  existing bounded source API before preparing any changelog draft.
+- The saved, server-redacted evidence is carried into the existing Changelog
+  editor through a one-time, exact-workspace, same-tab browser envelope that
+  expires after 30 minutes. Release text is never placed in the URL.
+- The prepared entry remains fully editable and still uses the maintained
+  private draft, Release Impact Guard, linked Answer Tests proof, owner
+  confirmation, activation, publication, summary, and cache-invalidation flow.
+- This adds no GitHub App, OAuth, token, API call, webhook, polling, scheduler,
+  provider operation, AI call, Firestore collection, rule, index, Function, or
+  handoff-specific Firebase read/write. The native connector evidence gate
+  remains unchanged.
+
+## August 5, 2026 - Answerlattice Guided Activation Path
+
+- Activation now compresses existing launch truth into four owner goals: add
+  product knowledge, approve first answers, connect customer support, and
+  verify the live customer path. The first incomplete group opens by default,
+  while completion remains machine-derived from the existing summary.
+- The main path shows one strict launch-proof count and one current action.
+  Exact proof groups, setup diagnostics, Content Control, runtime evidence,
+  compiled context, notifications, profile, license, Answer Evidence, and Daily
+  Governance remain available under technical details.
+- Technical details are not mounted until first opened. This preserves the
+  complete operator surface while avoiding the separate bounded Daily
+  Governance request on the normal first paint; reopening within the page
+  session does not remount it.
+- Test-as-Customer now keeps the three launch-critical manual checks: approved
+  public help, a contextual widget question, and unresolved ticket fallback.
+  Ready-to-test evidence is not presented as customer resolution.
+- The projection adds no Firestore document, listener, write, AI operation,
+  dependency, feature flag, or server contract. Same-page notification actions
+  open and focus the maintained notification control instead of pushing
+  Activation to itself, and refreshed evidence advances the open setup group.
+
 ## August 2, 2026 - MenuList QA Setup Operator Cross-Check
 
 - The first-run QA guide now preserves the existing DNS zone before moving the

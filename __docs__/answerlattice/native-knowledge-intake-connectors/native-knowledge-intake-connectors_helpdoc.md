@@ -1,6 +1,6 @@
 # Native Knowledge Intake Connectors - Help
 
-> **Last Updated:** 2026-07-19
+> **Last Updated:** 2026-08-05
 
 Native private connectors are not currently available.
 
@@ -14,3 +14,4 @@ To bring existing support knowledge into Answerlattice, use:
 
 For Zendesk, Intercom, Freshdesk, Help Scout, Notion, GitHub, Google Drive, Slack, or another private system, export only the material needed for review. Remove secrets and unrelated customer data before upload. Imported tickets and chats are evidence, not automatically approved truth.
 
+For a GitHub Release, paste or export only the release title, numeric version, time, public URL, changed product areas, and release notes into **Release evidence**. Answerlattice can prepare a Changelog draft from that saved evidence, but it does not connect to or monitor the repository.

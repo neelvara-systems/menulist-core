@@ -1,7 +1,7 @@
 # Native Knowledge Intake Connectors - Specification
 
 > **Status:** Deliberately not implemented
-> **Last Updated:** 2026-07-19
+> **Last Updated:** 2026-08-05
 
 ## Problem
 
@@ -10,6 +10,8 @@ Native connectors can reduce repeated exports, but they also introduce broad sou
 ## Current Accepted Workflow
 
 Owners may use selected public URLs, supported files and exports, pasted notes, repeated replies, screenshots/images, and short media. Each input becomes bounded review evidence and remains human-governed.
+
+GitHub Release exports and pasted release notes may use the existing release-evidence handoff into the Changelog editor. This is manual evidence intake, not a native connector, and it does not satisfy or weaken the future admission contract.
 
 ## Future Admission Contract
 
@@ -38,4 +40,3 @@ A future connector must be one provider only and must define:
 ## Rejection Rule
 
 Reject implementation if the same provider is not repeatedly requested by paying customers, exports remain adequate, selected-scope permissions cannot be preserved, deletion cannot be honored, or the connector adds more maintenance than verified support work it removes.
-

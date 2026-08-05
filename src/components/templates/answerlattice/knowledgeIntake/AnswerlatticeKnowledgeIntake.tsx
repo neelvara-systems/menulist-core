@@ -2,10 +2,16 @@
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
-import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
+import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
 import { assertAnswerlatticeDocxEntryIsBounded } from '@lib/answerlattice/knowledgeIntakeFileSafety';
+import { normalizeAnswerlatticeKnowledgeIntakePublicUrl } from '@lib/answerlattice/knowledgeIntakeDiscoveryContracts';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
+import {
+    ANSWERLATTICE_RELEASE_EVIDENCE_MAX_TEXT_CHARS,
+    storeAnswerlatticeReleaseEvidenceHandoff,
+} from '@lib/answerlattice/releaseEvidenceHandoff';
+import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -25,6 +31,7 @@ import {
     Card,
     Checkbox,
     Col,
+    DatePicker,
     Empty,
     Flex,
     Form,
@@ -42,7 +49,9 @@ import {
     message,
     theme,
 } from 'antd';
+import dayjs from 'dayjs';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuArrowRight,
@@ -461,11 +470,13 @@ function ReviewItemCard({
 }
 
 export default function AnswerlatticeKnowledgeIntake() {
+    const router = useRouter();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const { token } = theme.useToken();
     const [jobForm] = Form.useForm();
     const [replyForm] = Form.useForm();
+    const [releaseForm] = Form.useForm();
     const [textForm] = Form.useForm();
     const [urlForm] = Form.useForm();
     const [editForm] = Form.useForm();
@@ -611,6 +622,8 @@ export default function AnswerlatticeKnowledgeIntake() {
         editForm.resetFields();
         governanceForm.resetFields();
         replyForm.resetFields();
+        releaseForm.resetFields();
+        releaseForm.setFieldValue('releasedAt', dayjs());
         textForm.resetFields();
         urlForm.resetFields();
     }, [
@@ -618,6 +631,7 @@ export default function AnswerlatticeKnowledgeIntake() {
         editForm,
         governanceForm,
         replyForm,
+        releaseForm,
         textForm,
         urlForm,
         workspaceScopeKey,
@@ -757,6 +771,79 @@ export default function AnswerlatticeKnowledgeIntake() {
             entityIds: splitTags(values.entityIds),
         });
         if (source) textForm.resetFields();
+    };
+
+    const handlePrepareReleaseEvidence = async () => {
+        if (!activeJobId || !workspaceScopeKey) return;
+        const values = await releaseForm.validateFields();
+        const normalizedVersion = normalizeAnswerlatticeVersionLabel(values.versionLabel);
+        const releaseTitle = String(values.title || '').replace(/\s+/g, ' ').trim();
+        const releaseNotes = String(values.contentText || '').trim();
+        if (
+            !normalizedVersion
+            || !dayjs.isDayjs(values.releasedAt)
+            || !values.releasedAt.isValid()
+            || !releaseTitle
+            || !releaseNotes
+        ) return;
+
+        const entityIds = normalizeEntitySelection(values.entityIds);
+        const requestedOriginUrl = String(values.originUrl || '').trim();
+        const originUrl = requestedOriginUrl
+            ? normalizeAnswerlatticeKnowledgeIntakePublicUrl(requestedOriginUrl)
+            : null;
+        if (requestedOriginUrl && !originUrl) return;
+        let provider: 'github_export' | 'manual' = 'manual';
+        if (originUrl) {
+            try {
+                const hostname = new URL(originUrl).hostname.toLowerCase();
+                if (hostname === 'github.com' || hostname.endsWith('.github.com')) {
+                    provider = 'github_export';
+                }
+            } catch {
+                // The shared URL contract should keep this parseable; fail closed to manual provenance if it does not.
+            }
+        }
+
+        const source = await addSource(activeJobId, {
+            type: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.CHANGELOG,
+            title: releaseTitle,
+            contentText: releaseNotes,
+            ...(originUrl ? { originUrl } : {}),
+            tags: ['release'],
+            entityIds,
+            metadata: {
+                inputMode: 'release_evidence_handoff',
+                provider,
+                versionLabel: normalizedVersion.label,
+                releasedAt: values.releasedAt.toISOString(),
+            },
+        });
+        if (!source?.contentText) return;
+
+        const handoffStored = storeAnswerlatticeReleaseEvidenceHandoff({
+            scopeKey: workspaceScopeKey,
+            sourceJobId: source.jobId,
+            sourceId: source.id,
+            sourceTitle: source.title,
+            provider,
+            title: releaseTitle,
+            contentText: source.contentText,
+            versionLabel: normalizedVersion.label,
+            releasedAt: values.releasedAt.toISOString(),
+            entityIds,
+            ...(source.originUrl ? { originUrl: source.originUrl } : {}),
+        });
+        if (!handoffStored) {
+            message.warning('Release evidence was saved. Open Changelog manually to prepare the release note.');
+            return;
+        }
+
+        releaseForm.resetFields();
+        setEntityOptions([]);
+        const changelogRoute = `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1&from=intake`;
+        const currentHostname = typeof window !== 'undefined' ? window.location.hostname : null;
+        router.push(toAnswerlatticeDashboardRoute(changelogRoute, currentHostname));
     };
 
     const handleAddRepeatedReply = async () => {
@@ -1030,6 +1117,113 @@ export default function AnswerlatticeKnowledgeIntake() {
                                             </Button>
                                         </Flex>
                                     ) : null}
+                                </Card>
+
+                                <Card
+                                    title={<Space><LuRocket /> Release evidence</Space>}
+                                    extra={<Tag color="orange">Owner review required</Tag>}
+                                    style={{ borderRadius: 8 }}
+                                >
+                                    <Paragraph type="secondary">
+                                        Paste release notes or a GitHub Release export. Answerlattice saves the evidence, then prepares the existing governed Changelog review. It does not connect to or monitor a repository.
+                                    </Paragraph>
+                                    <Form form={releaseForm} layout="vertical" initialValues={{ releasedAt: dayjs() }}>
+                                        <Row gutter={[12, 0]}>
+                                            <Col xs={24} lg={12}>
+                                                <Form.Item name="title" label="Release title" rules={[
+                                                    { required: true, whitespace: true, message: 'Add the release title.' },
+                                                    { max: 180, message: 'Keep the title under 180 characters.' },
+                                                ]}>
+                                                    <Input placeholder="Faster workspace imports" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={24} sm={12} lg={6}>
+                                                <Form.Item
+                                                    name="versionLabel"
+                                                    label="Version"
+                                                    rules={[
+                                                        { required: true, message: 'Add a numeric version.' },
+                                                        {
+                                                            validator: async (_, value) => {
+                                                                if (value && !normalizeAnswerlatticeVersionLabel(value)) {
+                                                                    throw new Error('Use a numeric version such as 2.4.1');
+                                                                }
+                                                            },
+                                                        },
+                                                    ]}
+                                                >
+                                                    <Input placeholder="2.4.1" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={24} sm={12} lg={6}>
+                                                <Form.Item name="releasedAt" label="Released at" rules={[{ required: true, message: 'Add the release time.' }]}>
+                                                    <DatePicker showTime style={{ width: '100%' }} />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Form.Item
+                                            name="originUrl"
+                                            label="Public release URL"
+                                            rules={[
+                                                { type: 'url', message: 'Use a valid public URL.' },
+                                                {
+                                                    validator: async (_, value) => {
+                                                        if (value && !normalizeAnswerlatticeKnowledgeIntakePublicUrl(value)) {
+                                                            throw new Error('Use a public URL without credentials or sensitive query values.');
+                                                        }
+                                                    },
+                                                },
+                                            ]}
+                                        >
+                                            <Input prefix={<LuLink />} placeholder="Optional: https://github.com/org/repo/releases/tag/2.4.1" />
+                                        </Form.Item>
+                                        <Form.Item
+                                            name="contentText"
+                                            label="Release notes"
+                                            rules={[
+                                                { required: true, whitespace: true, message: 'Paste the release notes.' },
+                                                { max: ANSWERLATTICE_RELEASE_EVIDENCE_MAX_TEXT_CHARS, message: 'Keep release notes under 40,000 characters.' },
+                                            ]}
+                                        >
+                                            <TextArea rows={8} placeholder="Paste the customer-relevant changes, fixes, and migration notes." />
+                                        </Form.Item>
+                                        <Form.Item
+                                            name="entityIds"
+                                            label="Changed product areas"
+                                            rules={[
+                                                { required: true, message: 'Select at least one changed product area.' },
+                                                { type: 'array', max: 25, message: 'Select no more than 25 product areas.' },
+                                            ]}
+                                        >
+                                            <Select
+                                                mode="multiple"
+                                                showSearch
+                                                filterOption={false}
+                                                options={entitySelectOptions}
+                                                loading={entitySearching}
+                                                onSearch={handleEntitySearch}
+                                                onClear={() => setEntityOptions([])}
+                                                placeholder="Search feature, plan, workflow, or error"
+                                                notFoundContent={entitySearching ? 'Searching...' : 'Type 3 characters to search'}
+                                                maxTagCount="responsive"
+                                                allowClear
+                                            />
+                                        </Form.Item>
+                                        <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile}>
+                                            <Text type="secondary">
+                                                The next screen is an editable draft. Release Impact Guard still runs before publication.
+                                            </Text>
+                                            <Button
+                                                type="primary"
+                                                icon={<LuArrowRight />}
+                                                loading={saving}
+                                                onClick={handlePrepareReleaseEvidence}
+                                                style={{ minHeight: 44 }}
+                                            >
+                                                Prepare release review
+                                            </Button>
+                                        </Flex>
+                                    </Form>
                                 </Card>
 
                                 {repeatedReplyEnabled ? (

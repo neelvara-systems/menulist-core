@@ -1,7 +1,7 @@
 # Native Knowledge Intake Connectors - Implementation
 
 > **Status:** No runtime implementation exists
-> **Last Updated:** 2026-07-19
+> **Last Updated:** 2026-08-05
 
 ## Current Source Boundary
 
@@ -14,6 +14,8 @@
 ## Working Alternative
 
 Knowledge Intake already accepts owner-selected sources through existing bounded contracts. Repeated replies and helpdesk exports can create review items without native inbox/helpdesk access. Selected URL discovery is public and SSRF-guarded; it is not credentialed crawling.
+
+Release evidence can also prefill the existing Changelog editor through a scope-bound, expiring browser envelope after the normal intake source write. That utility contains no credential, provider client, callback, webhook, poller, or sync cursor and must not be expanded into one.
 
 ## Future Implementation Order
 
@@ -29,4 +31,3 @@ If the reconsideration gate passes:
 8. Keep all imported material as evidence until human approval.
 
 Do not add shared connector abstractions before a first provider proves real duplication.
-

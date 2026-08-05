@@ -562,11 +562,10 @@ function verifyAnswerlatticeOperationalHardening() {
     'Answerlattice isolated TypeScript cache',
   );
 
-  assertIncludes(securityAudit, "'next'", 'Answerlattice audit controlled Next migration');
-  assertIncludes(securityAudit, "['postcss', 'next']", 'Answerlattice audit controlled Next transitive advisory family');
+  assertIncludes(securityAudit, "next: '16.3.0'", 'Answerlattice audit controlled Next migration');
   assertIncludes(securityAudit, 'counts.critical === 0', 'Answerlattice root critical dependency blocker');
-  assertIncludes(securityAudit, 'ROOT_MAX_HIGH_COUNT = 1', 'Answerlattice root high dependency ceiling');
-  assertIncludes(securityAudit, 'ROOT_MAX_MODERATE_COUNT = 1', 'Answerlattice root moderate dependency ceiling');
+  assertIncludes(securityAudit, 'ROOT_MAX_HIGH_COUNT = 0', 'Answerlattice root high dependency ceiling');
+  assertIncludes(securityAudit, 'ROOT_MAX_MODERATE_COUNT = 0', 'Answerlattice root moderate dependency ceiling');
   assertIncludes(securityAudit, "packageJson.overrides?.uuid === '11.1.1'", 'Answerlattice secure transitive UUID floor');
   assertIncludes(securityAudit, 'verifyFirebaseAdminModularBoundary', 'Answerlattice Firebase Admin modular import boundary');
   assertIncludes(securityAudit, 'counts.total === 0', 'Answerlattice Functions zero-vulnerability dependency blocker');
@@ -601,7 +600,7 @@ function verifyAnswerlatticeOperationalHardening() {
   assertIncludes(backupRunbook, 'Firebase Storage objects require separate', 'Answerlattice Storage recovery boundary');
   assertIncludes(backupRunbook, 'Firebase Authentication users require a separate', 'Answerlattice Auth recovery boundary');
   assertIncludes(deploymentRunbook, './answerlattice-backup-recovery-runbook.md', 'Answerlattice deployment runbook backup link');
-  assertIncludes(inventory, 'zero critical findings', 'Answerlattice dependency audit inventory');
+  assertIncludes(inventory, 'zero vulnerabilities', 'Answerlattice dependency audit inventory');
   assertIncludes(inventory, 'new-database-only restores', 'Answerlattice recovery source inventory');
 }
 
@@ -1485,6 +1484,26 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(activation, 'ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED', 'Answerlattice activation fixed summary-load copy');
   assertIncludes(activation, 'ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED', 'Answerlattice activation fixed notification-test copy');
   assertIncludes(activation, 'ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED', 'Answerlattice activation fixed context-rebuild copy');
+  assertIncludes(activation, "title: 'Add product knowledge'", 'Answerlattice activation progressive product-knowledge group');
+  assertIncludes(activation, "title: 'Approve your first answers'", 'Answerlattice activation progressive trusted-answer group');
+  assertIncludes(activation, "title: 'Connect customer support'", 'Answerlattice activation progressive support-connection group');
+  assertIncludes(activation, "title: 'Verify and go live'", 'Answerlattice activation progressive launch-verification group');
+  assertIncludes(activation, 'accordion', 'Answerlattice activation permits one owner-goal group at a time');
+  assertIncludes(activation, "key={`${cacheScopeKey}:${currentActivationGroup?.key || 'complete'}`}", 'Answerlattice activation reanchors the accordion when evidence advances the current group');
+  assertIncludes(activation, 'defaultActiveKey={currentActivationGroup?.key}', 'Answerlattice activation opens the first incomplete owner-goal group');
+  assertIncludes(activation, 'Technical evidence and setup details', 'Answerlattice activation preserves detailed diagnostics behind disclosure');
+  assertIncludes(activation, 'if (event.currentTarget.open) setTechnicalDetailsLoaded(true);', 'Answerlattice activation defers detailed diagnostics until requested');
+  assertIncludes(activation, 'setTechnicalDetailsLoaded(false);', 'Answerlattice activation resets deferred details across workspace scope changes');
+  assertIncludes(activation, 'technicalDetailsLoaded ? (', 'Answerlattice activation keeps technical children out of initial render');
+  assertIncludes(activation, 'route === ANSWERLATTICE_ROUTES.ACTIVATION', 'Answerlattice activation detects same-page technical actions');
+  assertIncludes(activation, 'technicalDetailsRef.current.open = true;', 'Answerlattice activation opens technical details for same-page blockers');
+  assertIncludes(activation, 'technicalNotificationsRef.current || technicalDetailsRef.current', 'Answerlattice activation focuses the maintained notification control for same-page blockers');
+  assertIncludes(activation, 'window.requestAnimationFrame(scrollToTarget);', 'Answerlattice activation waits for deferred technical controls before focusing them');
+  assertIncludes(activation, '<AnswerlatticeOperationsPanel', 'Answerlattice activation retains Daily Governance diagnostics');
+  assertIncludes(activation, '<AnswerlatticeContentWorkbench', 'Answerlattice activation retains the full content workbench');
+  assertIncludes(activation, 'embedded', 'Answerlattice activation embeds the launch-critical customer checklist');
+  assertIncludes(activation, 'onOpen={openActivationAction}', 'Answerlattice embedded customer checks preserve same-page technical actions');
+  assertNotIncludes(activation, 'Mark as done', 'Answerlattice activation must not create manual machine-check completion');
   assertIncludes(activation, 'const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);', 'Answerlattice activation exact retained workspace identity');
   assertIncludes(activation, 'currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId', 'Answerlattice activation obsolete load settlement rejection');
   assertIncludes(activation, 'if (!requestScopeKey || !scopeIsCurrent) return;', 'Answerlattice activation mutations require current loaded workspace');
@@ -1560,6 +1579,10 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(customerFlowChecklist, 'These statuses prove prerequisites, not customer resolution.', 'Answerlattice customer-flow checklist manual evidence boundary');
   assertIncludes(customerFlowChecklist, "ready: { label: 'Ready to test'", 'Answerlattice customer-flow readiness wording');
   assertIncludes(customerFlowChecklist, 'ANSWERLATTICE_ROUTES.DOCS', 'Answerlattice customer-flow public help preview route');
+  assertIncludes(customerFlowChecklist, "key: 'contextual-widget'", 'Answerlattice customer-flow combines widget and context into one launch check');
+  assertIncludes(customerFlowChecklist, "title: 'Submit an unresolved question'", 'Answerlattice customer-flow keeps unresolved fallback verification');
+  assertNotIncludes(customerFlowChecklist, "key: 'release-notes'", 'Answerlattice launch-critical checklist excludes optional release promotion');
+  assertNotIncludes(customerFlowChecklist, "key: 'signals'", 'Answerlattice launch-critical checklist excludes later signal review');
   assertIncludes(surfaceReadinessMatrix, 'style={{ minHeight: 44 }}', 'Answerlattice surface readiness touch target');
   assertIncludes(faqManagement, 'ANSWERLATTICE_FAQS_LOAD_FAILED', 'Answerlattice FAQ management fixed load copy');
   assertIncludes(faqManagement, 'ANSWERLATTICE_FAQ_SAVE_FAILED', 'Answerlattice FAQ management fixed save copy');

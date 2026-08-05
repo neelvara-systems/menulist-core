@@ -1,9 +1,10 @@
 # Next.js Runtime Migration Validation
 
 **Status:** LOCAL SOURCE, BUILD, ISOLATED DEPLOYMENT TRACE, AND START VALIDATION PASSED
-**Validated:** July 26, 2026
-**Runtime:** Node 22.23.1 / Next.js 16.2.11 / React 19.2.8
-**Worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
+**Validated:** August 5, 2026
+**Runtime:** Node 22.23.1 / Next.js 16.3.0 / React 19.2.8
+**Upgrade worktree base:** `e24ee02efb39669c029c56c2211624d2bc8e9c87`
+**Original migration worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
 **Deployment:** `efc9456` failed from Vercel build OOM. The OOM-corrected `887f76ad` exposed an omitted `@swc/helpers` trace. After that source correction, production `/signin` exposed native Firebase Admin loading across the `jwks-rsa` CommonJS and ESM-only `jose` boundary. Both packaging corrections are locally verified and not yet redeployed.
 
 ## Result
@@ -12,11 +13,24 @@ The shared runtime migration is locally complete. The exact migrated worktree pa
 
 This is codebase evidence, not Vercel deploy approval or production-host/device certification.
 
+## August 5 stable 16.3 upgrade closure
+
+Stable Next 16.3.0 was adopted with the matching `eslint-config-next` and `@next/bundle-analyzer` releases. Its private PostCSS dependency is patched `8.5.23`, so the former Next 16.2.11/PostCSS audit exception is closed without an override, canary, preview, forced audit fix, framework downgrade, or `node_modules` patch.
+
+The 16.3 generated route checks exposed and closed four compatibility gaps:
+
+- the shared authenticated route wrapper now requires the asynchronous route context and resolves `context.params` before protected handlers validate dynamic IDs;
+- the one static route that invokes the wrapper internally supplies an explicit empty promised parameter object;
+- the Answerlattice robots renderer and policy constants moved out of the route entry module, leaving only supported Next route exports;
+- the Answerlattice get-started page now declares the asynchronous `searchParams` contract.
+
+The upgrade deliberately keeps Cache Components, Partial Prefetching, the experimental Rust compiler, offline compiler mode, and TypeScript 7 disabled. Those are separate opt-in architecture decisions, not requirements for receiving the stable 16.3 default runtime improvements.
+
 ## Exact runtime
 
 | Package | Frozen version |
 |---|---:|
-| `next` | 16.2.11 |
+| `next` | 16.3.0 |
 | `react`, `react-dom` | 19.2.8 |
 | `next-intl` | 4.13.4 |
 | `next-auth` | 4.24.15 |
@@ -25,11 +39,14 @@ This is codebase evidence, not Vercel deploy approval or production-host/device 
 | `react-redux` | 9.3.0 |
 | `framer-motion` | 12.42.2 |
 | `eslint` | 9.39.5 |
-| `eslint-config-next` | 16.2.11 |
+| `eslint-config-next` | 16.3.0 |
 | `@serwist/turbopack`, `serwist` | 9.5.12 |
 | `fabric` | 7.4.0 |
 | `firebase-admin` | 14.2.0 |
 | root `postcss` | 8.5.23 |
+| Next private `postcss` | 8.5.23 |
+| direct `brace-expansion` | 1.1.18 |
+| direct `fast-uri` | 3.1.5 |
 | Next optional `sharp` override | 0.35.3 |
 | transitive `uuid` override | 11.1.1 |
 
@@ -39,15 +56,15 @@ No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` 
 
 | Gate | Result |
 |---|---|
-| `npm run build` | Passed with Next 16.2.11 Turbopack |
-| Turbopack page generation | 439/439 |
-| `npm run build:webpack` | Passed with Next 16.2.11 Webpack |
-| Webpack page generation | 439/439 |
+| `npm run build:vercel` | Passed with Next 16.3.0 Turbopack under Node 22.23.1 |
+| Turbopack page generation | 441/441 |
+| `npm run build:webpack` | Passed with Next 16.3.0 Webpack under Node 22.23.1 |
+| Webpack page generation | 441/441 |
 | Serwist generation | Passed in both builds |
-| Serwist precache | 51 bounded entries; about 2.5 MiB |
+| Serwist precache | 52 bounded entries; about 2.5 MiB |
 | Proxy convention | Build output reports `Proxy (Middleware)` |
 | TypeScript inside both builds | Passed |
-| Clean-lockfile rebuild | `npm ci` followed by Turbopack build passed, 439/439 |
+| Clean-lockfile rebuild | Node 22.23.1 `npm ci` audited 1,619 packages with zero vulnerabilities; subsequent Turbopack build passed 441/441 |
 | Cold Vercel-equivalent build after OOM correction | Passed with a 4096 MiB V8 ceiling, 439/439 pages |
 | Whole-repository filesystem trace warnings | Reduced from four to zero |
 | Exact `build:vercel` peak resident memory | Reduced from 7,292,469,248 to 6,735,249,408 bytes (557,219,840 bytes reclaimed) |
@@ -56,6 +73,7 @@ No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` 
 | Exact `build:vercel` after permanent Firebase Admin build-contract enforcement | Passed end to end at 7,044,726,784-byte peak RSS; 439/439 pages |
 | Isolated sign-in deployment bundle | Passed; 429 traced files, no hashed Firebase Admin native external, and no raw `jwks-rsa` or nested `jose` entry |
 | Isolated NextAuth API deployment bundle | Passed; 329 traced files, no hashed Firebase Admin native external, and successful route load without the repository's full `node_modules` |
+| Current isolated deployment bundles | Passed; website 423, sign-in 474, NextAuth API 365 traced files; all three route bundles isolated-loaded |
 
 Expected non-blocking warnings:
 
@@ -78,7 +96,7 @@ The user-deployed staging commit `887f76ad` proved that a successful `next build
 
 After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and the isolated 313-file deployment route at 6,728,482,816-byte peak RSS. `next start` returned 200 for `/`, `/signin`, `/privacy-policy`, and `/robots.txt` under the staging hostname contract. Chrome rendered the complete homepage with zero console errors.
 
-This is corrected-source evidence. `menulist.online` remains broken until Vercel receives and deploys this source.
+This was corrected-source evidence at the time. The historical observation does not assert the current deployed state of `menulist.online`.
 
 ## Production sign-in Firebase Admin regression and closure
 
@@ -98,9 +116,13 @@ The correction removes Firebase Admin from Next and Webpack server externals, ad
 
 After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and all isolated route contracts. The latest isolated counts are website 315, sign-in 429, and NextAuth API 329 traced files. Under `next start`, Chrome followed the exact desktop homepage Login link to the full “Welcome back” screen, a direct sign-in reload retained the screen, and the browser console contained zero warnings or errors. Host-forwarded HTTP probes returned 200 for both `/signin?callbackUrl=%2Fdashboard` and `/api/auth/session`; no Firebase Admin, `jwks-rsa`, `jose`, or `ERR_REQUIRE_ESM` error appeared in the server log.
 
-This proves the corrected local source and deployment bundle. The currently deployed production URL will continue returning the old 500 until an explicitly authorized Vercel release carries this source.
+This proved the corrected local source and deployment bundle at the time. The historical observation does not assert the current deployed state of `menulist.online`.
 
 ## Served-runtime HTTP matrix
+
+The August 5 Next 16.3 final Turbopack/Vercel output was served under Node 22.23.1 on port 3000 with process-only `VERCEL=1` and `VERCEL_ENV=development` markers. This keeps the compiled local deployment-stage contract aligned while exercising the Vercel-style non-crashing missing-secret boundary; no environment file or secret was written. `/`, `/signin?callbackUrl=%2Fdashboard`, `/api/auth/session`, `/privacy-policy`, `/robots.txt`, and `/serwist/sw.js` each returned 200.
+
+Chrome loaded the homepage, found the single desktop Login link, followed it to the exact callback URL, rendered the full “Welcome back” and “Continue with Google” UI, and retained the sign-in UI after a direct reload. The browser console contained zero warnings or errors, and the server emitted no Firebase Admin, `jwks-rsa`, `jose`, or `ERR_REQUIRE_ESM` failure. This is unauthenticated local route/module-load evidence; it does not claim real OAuth or credential-backed Firebase behavior.
 
 The completed Webpack output was served with `next start -p 3100`. Because a local build intentionally resolves the `local` deployment stage unless Vercel supplies its deployment markers, product routing was exercised through the canonical local aliases. Production and preview hostname mappings are separately guarded by `test-deployment-stage-boundary.js` and `verify:url-routing-boundary`; this run does not claim a Vercel-host smoke.
 
@@ -169,7 +191,7 @@ Completed:
 - Next's optional Sharp is pinned to 0.35.3.
 - Safe audit updates cleared the remaining YAML, WebSocket, minimatch, brace expansion, immutable, and diff findings.
 
-Final July 25 audit snapshot:
+Historical July 25 audit snapshot before stable 16.3 existed:
 
 - `npm audit --omit=dev`: 2 total — 0 critical, 1 high, 1 moderate, 0 low.
 - `npm audit`: 2 total — 0 critical, 1 high, 1 moderate, 0 low.
@@ -177,9 +199,17 @@ Final July 25 audit snapshot:
 - A fresh `npm ci` reproduced this exact result across 1,660 audited packages.
 - `npm ls --all` exits zero with no invalid or missing peers. Its two macOS-only “extraneous” entries are Sharp optional WebAssembly artifacts installed by the clean lockfile.
 
-The root application itself pins patched PostCSS 8.5.23 and does not process untrusted CSS at runtime. Next's private pin must not be overridden or patched locally. npm's suggested `--force` action downgrades the framework to Next 9.3.3 and is rejected. Upgrade when a stable Next release carries the patched nested PostCSS; do not adopt a canary only to suppress the audit.
+August 5 closure:
 
-The maintained global policy and stop rules are in [Dependency Security](../security/dependency-security/complete-guide.md). `npm run verify:answerlattice-security-audit` now permits at most this one high/one moderate family and rejects any new critical, low, high, or moderate package.
+- `npm audit --omit=dev`: zero vulnerabilities.
+- `npm audit`: zero vulnerabilities.
+- Node 22.23.1 `npm ci` reproduced the zero-vulnerability result across 1,619 audited packages.
+- `npm ls --all` exits zero with no invalid or missing dependency.
+- Next 16.3.0 carries private PostCSS 8.5.23; direct `brace-expansion@1.1.18`, compatible nested `brace-expansion@5.0.9`, and direct `fast-uri@3.1.5` close the additional advisories present on upgrade day.
+
+The root and Next private PostCSS copies are now both 8.5.23. The earlier exception is removed; the verifier requires zero root full and production vulnerabilities. Future framework upgrades must still avoid canary/preview releases, private dependency overrides, `node_modules` patches, forced audit fixes, or framework downgrades.
+
+The maintained global policy and stop rules are in [Dependency Security](../security/dependency-security/complete-guide.md). `npm run verify:answerlattice-security-audit` now requires zero root full and production vulnerabilities and rejects any regression.
 
 ## External release evidence still required
 

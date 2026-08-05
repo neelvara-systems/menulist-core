@@ -1,5 +1,15 @@
 # AGENTS.md — Persistent Brain + Execution System
 
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
 **Version:** 2.2
 **Status:** 🔒 CRITICAL — SYSTEM AUTHORITY
 **Last Updated:** May 2026
@@ -127,9 +137,10 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Technology Stack Decisions
 
 - **Pinned package runtime**: Freeze follows the exact versions in `package.json` / lockfiles and is guarded by `npm run verify:dependency-freeze`; no version changes without explicit migration/security scope.
-- **Next.js 16.2.11**: Current pinned runtime for the 3-year freeze window.
-- **Next 16 migration is locally complete**: The Node 22.23.1 / Next 16.2.11 / React 19.2.8 / Serwist 9.5.12 / Fabric 7.4.0 migration has no known remaining local implementation work when `verify:next-runtime-migration`, `verify:next-build-compatibility`, `verify:dependency-freeze`, typecheck, lint, and the maintained runtime/browser gates pass. Vercel preview/production smoke, physical-device PWA certification, Firebase QA deployment, and Git commit/push are release or operator evidence, not missing migration code.
-- **Next private PostCSS exception**: Next 16.2.11 privately pins PostCSS 8.4.31 while the root app pins patched PostCSS 8.5.23. Do not patch `node_modules`, override Next's private copy, install a canary/preview, use `npm audit fix --force`, or accept npm's proposed Next 9 downgrade. Before release readiness, check `npm view next dist-tags --json` and `npm view next@latest dependencies.postcss --json`. Upgrade only to a stable Next release whose private PostCSS is at least 8.5.18, then remove the audit exception and rerun the full migration/build/runtime matrix.
+- **Next.js 16.3.0**: Current pinned runtime for the 3-year freeze window.
+- **Next 16 migration is locally complete**: The Node 22.23.1 / Next 16.3.0 / React 19.2.8 / Serwist 9.5.12 / Fabric 7.4.0 migration has no known remaining local implementation work when `verify:next-runtime-migration`, `verify:next-build-compatibility`, `verify:dependency-freeze`, typecheck, lint, and the maintained runtime/browser gates pass. Vercel preview/production smoke, physical-device PWA certification, Firebase QA deployment, and Git commit/push are release or operator evidence, not missing migration code.
+- **Next private PostCSS exception is closed**: Stable Next 16.3.0 privately carries PostCSS 8.5.23, matching the patched root pin and removing the former Next 16.2.11/PostCSS advisory chain. Keep all framework-aligned packages exact, reject canary/preview releases and `npm audit fix --force`, and rerun the full migration/build/runtime matrix for every later stable Next upgrade.
+- **Next 16.3 adoption boundary**: Keep the stable default improvements (Turbopack build cache and memory eviction, native-stream SSR, prefetch inlining, and immutable static assets). Do not enable `cacheComponents`, `partialPrefetching`, the Rust React Compiler, experimental offline retry, or TypeScript 7 as part of a dependency-only upgrade; each requires a separately verified application-semantics migration.
 - **Dual Platform**: Desktop (Ant Design + SCSS) vs mobile owner surfaces (Tailwind-driven mobile shell/screens; add `antd-mobile` only through an explicit dependency decision and freeze update)
 - **State Management**: Redux Toolkit + Redux Persist - no alternatives
 - **Backend**: Firebase (Firestore, Functions, Auth) - cost-optimized patterns
@@ -269,7 +280,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 ### Tech Stack Freeze
 
 - **Source of truth**: `package.json`, `package-lock.json`, `functions/package.json`, `functions/package-lock.json`, `functions-answerlattice/package.json`, `functions-answerlattice/package-lock.json`, `functions-signaldesk/package.json`, and `functions-signaldesk/package-lock.json`; enforce with `npm run verify:dependency-freeze`.
-- **Frameworks**: Next.js 16.2.11, React 19.2.8, TypeScript 5.8.3 in the root app.
+- **Frameworks**: Next.js 16.3.0, React 19.2.8, TypeScript 5.8.3 in the root app.
 - **UI**: Ant Design 5.25.1 for desktop; current mobile owner surfaces are Tailwind-driven and must not import `antd-mobile` unless the dependency is intentionally added and the freeze verifier is updated.
 - **State**: Redux Toolkit 2.12.0, React Redux 9.3.0, and Redux Persist 6.0.0 only.
 - **Auth**: NextAuth.js 4.24.15.

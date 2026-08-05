@@ -6,7 +6,7 @@ const ts = require('typescript');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EXPECTED_VERSIONS = {
-  next: '16.2.11',
+  next: '16.3.0',
   react: '19.2.8',
   'react-dom': '19.2.8',
   'next-intl': '4.13.4',
@@ -145,6 +145,22 @@ function verifyFrameworkApiCalls() {
   assert(errors.length === 0, errors.join('\n'));
 }
 
+function verifyRouteHandlerContextBoundary() {
+  const authMiddleware = read('src/middleware/auth.ts');
+  assert(
+    authMiddleware.includes('params: Promise<Record<string, string | string[] | undefined>>;'),
+    'authenticated route context must use the asynchronous Next.js params contract',
+  );
+  assert(
+    authMiddleware.includes('const routeParams = context ? await context.params : undefined;'),
+    'withAuth must resolve route params before invoking protected handlers',
+  );
+  assert(
+    !authMiddleware.includes('context?: { params:'),
+    'withAuth route context must remain compatible with generated Next.js route types',
+  );
+}
+
 function verifyWorkerBoundary() {
   const worker = read('src/app/sw.ts');
   const route = read('src/app/serwist/[path]/route.ts');
@@ -158,6 +174,7 @@ function verifyWorkerBoundary() {
 verifyPackageContract();
 verifyFrameworkConfiguration();
 verifyFrameworkApiCalls();
+verifyRouteHandlerContextBoundary();
 verifyWorkerBoundary();
 
 console.log('Next 16 runtime migration verification passed');

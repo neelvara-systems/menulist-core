@@ -4,12 +4,12 @@
 **Created:** July 13, 2026
 **Scope:** Shared root web runtime for MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex, public sites, route handlers, and PWAs
 **Previous runtime:** Next.js 14.2.35, React 18.3.1
-**Current frozen runtime verified on July 24, 2026:** Next.js 16.2.11, React 19.2.8
+**Current frozen runtime upgraded on August 5, 2026:** Next.js 16.3.0, React 19.2.8
 **Release boundary:** The earlier staging trace omission for `@swc/helpers` was corrected locally. On July 26, the deployed production `/signin` route exposed a second packaging boundary: native external loading of Firebase Admin reached `jwks-rsa` CommonJS and ESM-only `jose`, producing `ERR_REQUIRE_ESM`. The permanent repo contract now bundles Firebase Admin across that boundary, freezes and validates the exact dependency chain before every build, and isolated-loads website, sign-in, and NextAuth API deployment traces, but is not yet redeployed. No Firebase deploy was performed.
 
 ## Decision
 
-The shared root application now runs on the exact stable Next.js 16.2.11 and React 19.2.8 runtime. The migration was executed continuously end to end, with internal safety checks but no user-facing phase or stage pauses. Both Webpack and the default Turbopack production paths are retained and verified.
+The shared root application now runs on the exact stable Next.js 16.3.0 and React 19.2.8 runtime. The stable minor upgrade keeps the prior Next 16 application contracts and adds the default 16.3 Turbopack build cache and memory eviction, native-stream SSR, prefetch inlining, immutable static assets, and version-matched bundled documentation. Opt-in Cache Components, Partial Prefetching, TypeScript 7, and experimental flags remain outside this dependency migration. Both Webpack and the default Turbopack production paths remain mandatory verification paths.
 
 The final state must also remove two legacy runtime liabilities:
 
@@ -59,7 +59,7 @@ These are the exact July 24 installed and frozen versions. Future changes requir
 
 | Package | Current | Planned target or action | Reason |
 |---|---:|---:|---|
-| `next` | 14.2.35 | 16.2.11 | Exact stable runtime |
+| `next` | 14.2.35 | 16.3.0 | Exact stable runtime; bundled PostCSS 8.5.23 closes the former audit exception |
 | `react`, `react-dom` | 18.3.1 | 19.2.8 | Exact React 19 runtime |
 | `@types/react` | 18.3.21 | 19.2.17 | React 19 type contract |
 | `@types/react-dom` | 18.3.7 | 19.2.3 | React 19 DOM type contract |
@@ -72,8 +72,8 @@ These are the exact July 24 installed and frozen versions. Future changes requir
 | `@emoji-mart/react` | 1.1.1 | Remove | No React 19 peer support; only one repo consumer exists |
 | `@emoji-mart/data`, `emoji-mart` | 1.2.1 / 5.6.0 | Retain initially if their core APIs pass | Existing custom search/grid code can replace the unsupported React wrapper |
 | `eslint` | 8.57.1 | 9.39.5 | Next 16 flat-config lint runtime |
-| `eslint-config-next` | 14.2.33 | 16.2.11 | Matches the framework |
-| `@next/bundle-analyzer` | 16.2.1 | 16.2.11 | Matches the framework |
+| `eslint-config-next` | 14.2.33 | 16.3.0 | Matches the framework |
+| `@next/bundle-analyzer` | 16.2.1 | 16.3.0 | Matches the framework |
 | `next-pwa` | 5.6.0 | Remove | Old direct high-risk dependency and Webpack-era integration |
 | `@serwist/turbopack`, `serwist`, `esbuild` | absent | 9.5.12 / 9.5.12 / 0.28.1 | Maintained Turbopack service-worker build path |
 | `next-auth` | 4.24.13 | 4.24.15 | React/Next-compatible v4 security patch |

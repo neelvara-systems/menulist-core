@@ -4,6 +4,11 @@ import { deleteChangelogEntry, loadOlderChangelogPage } from '@database/changelo
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useChangelogCache } from '@hook/useChangelogCache';
+import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
+import {
+    consumeAnswerlatticeReleaseEvidenceHandoff,
+    type AnswerlatticeReleaseEvidenceHandoff,
+} from '@lib/answerlattice/releaseEvidenceHandoff';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Grid, Layout, Modal, Steps, Typography, message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,6 +34,7 @@ function ChangelogTemplate() {
     const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
     const [previewingEntry, setPreviewingEntry] = useState<ChangelogEntry | null>(null);
     const [isPreviewModalVisible, setIsPreviewModalVisible] = useState(false);
+    const [preparedDraft, setPreparedDraft] = useState<AnswerlatticeReleaseEvidenceHandoff | null>(null);
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
     const [entries, setEntries] = useState<ChangelogEntry[]>([]);
     const [hasMore, setHasMore] = useState(true);
@@ -40,18 +46,7 @@ function ChangelogTemplate() {
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
-
-    useEffect(() => {
-        if (searchParams?.get('create') !== '1') return;
-
-        setEditingEntry(null);
-        setIsModalVisible(true);
-        const nextParams = new URLSearchParams(searchParams?.toString() ?? '');
-        nextParams.delete('create');
-        const nextQuery = nextParams.toString();
-        const currentPathname = pathname ?? '/platform/changelog';
-        router.replace(nextQuery ? `${currentPathname}?${nextQuery}` : currentPathname, { scroll: false });
-    }, [pathname, router, searchParams]);
+    const createRequestKeyRef = useRef<string | null>(null);
 
     const sortEntries = (entriesToSort: ChangelogEntry[]) => {
         return [...entriesToSort].sort((a, b) => {
@@ -93,10 +88,41 @@ function ChangelogTemplate() {
         setEntries([]);
         setHasMore(Boolean(requestScopeKey));
         setEditingEntry(null);
+        setPreparedDraft(null);
         setPreviewingEntry(null);
         setIsModalVisible(false);
         setIsPreviewModalVisible(false);
     }, [requestScopeKey]);
+
+    useEffect(() => {
+        if (searchParams?.get('create') !== '1') {
+            createRequestKeyRef.current = null;
+            return;
+        }
+        if (!requestScopeKey) return;
+
+        const requestKey = `${requestScopeKey}:${searchParams.toString()}`;
+        if (createRequestKeyRef.current === requestKey) return;
+        createRequestKeyRef.current = requestKey;
+
+        const fromIntake = searchParams.get('from') === 'intake';
+        const nextPreparedDraft = fromIntake
+            ? consumeAnswerlatticeReleaseEvidenceHandoff(requestScopeKey)
+            : null;
+        setPreparedDraft(nextPreparedDraft);
+        setEditingEntry(null);
+        setIsModalVisible(true);
+        if (fromIntake && !nextPreparedDraft) {
+            message.warning('The prepared release draft is unavailable. Create the entry manually from the saved intake evidence.');
+        }
+
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('create');
+        if (fromIntake) nextParams.delete('from');
+        const nextQuery = nextParams.toString();
+        const currentPathname = pathname ?? ANSWERLATTICE_ROUTES.CHANGELOG;
+        router.replace(nextQuery ? `${currentPathname}?${nextQuery}` : currentPathname, { scroll: false });
+    }, [pathname, requestScopeKey, router, searchParams]);
 
     useEffect(() => {
         fetchLatestPage();
@@ -144,6 +170,7 @@ function ChangelogTemplate() {
             void fetchLatestPage(true);
         }
         setEditingEntry(null);
+        setPreparedDraft(null);
     };
 
     const handleDelete = (entryId: string) => {
@@ -195,7 +222,7 @@ function ChangelogTemplate() {
                     </div>
                     <Flex gap={8} vertical={isMobile}>
                         <Button icon={<LuBookOpen />} onClick={() => setIsPreviewModalVisible(true)}>View Preview</Button>
-                        <Button type="primary" icon={<LuPlus />} onClick={() => { setEditingEntry(null); setIsModalVisible(true); }}>Add New Entry</Button>
+                        <Button type="primary" icon={<LuPlus />} onClick={() => { setEditingEntry(null); setPreparedDraft(null); setIsModalVisible(true); }}>Add New Entry</Button>
                     </Flex>
                 </Flex>
 
@@ -205,9 +232,11 @@ function ChangelogTemplate() {
                         onClose={() => {
                             setIsModalVisible(false);
                             setEditingEntry(null);
+                            setPreparedDraft(null);
                         }}
                         onSave={handleSave}
                         initialData={editingEntry}
+                        preparedDraft={preparedDraft}
                     />
                 ) : null}
 
