@@ -283,7 +283,7 @@ export default function AnswerlatticeFaqManagement() {
                 }
             }
             if (summaryRefreshFailed) {
-                message.warning('FAQ saved, but contextual help refresh failed. Try Refresh after checking product surfaces.');
+                message.warning('FAQ saved, but contextual help refresh failed. Try Refresh after checking Product Pages & Flows.');
                 return;
             }
             message.success(willBePublished ? 'Answer published' : 'Answer saved');
@@ -323,7 +323,7 @@ export default function AnswerlatticeFaqManagement() {
                 }
             }
             if (summaryRefreshFailed) {
-                message.warning('FAQ archived, but contextual help refresh failed. Try Refresh after checking product surfaces.');
+                message.warning('FAQ archived, but contextual help refresh failed. Try Refresh after checking Product Pages & Flows.');
                 return;
             }
             message.success('FAQ archived');
@@ -342,7 +342,7 @@ export default function AnswerlatticeFaqManagement() {
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>FAQs & custom answers</Title>
                     <Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 780 }}>
-                        Publish owner-approved answers for repeated customer questions. Answerlattice can return these answers before AI fallback when the question matches, with linked articles, product surfaces, and entities attached.
+                        Publish owner-approved answers for repeated customer questions. Answerlattice can return these answers before AI fallback when the question matches, with linked articles, Product Pages & Flows, and Product Topics attached.
                     </Paragraph>
                 </div>
                 <Space wrap>
@@ -467,11 +467,11 @@ export default function AnswerlatticeFaqManagement() {
                                                         placeholder="Connect to the detailed article"
                                                     />
                                                 </Form.Item>
-                                                <Form.Item name="contextKeys" label="Product surfaces">
+                                                <Form.Item name="contextKeys" label="Product Pages & Flows">
                                                     <Select mode="tags" options={surfaceOptions} placeholder="billing, onboarding, settings" />
                                                 </Form.Item>
-                                                <Form.Item name="entityIds" label="Product entities">
-                                                    <Select mode="multiple" options={entityOptions} placeholder="Connect entities" />
+                                                <Form.Item name="entityIds" label="Product Topics">
+                                                    <Select mode="multiple" options={entityOptions} placeholder="Connect product topics" />
                                                 </Form.Item>
                                                 <Form.Item name="tags" label="Tags">
                                                     <Select mode="tags" tokenSeparators={[',']} placeholder="billing, setup, plan" />

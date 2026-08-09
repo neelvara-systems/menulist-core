@@ -18,8 +18,8 @@ storeDetails + selected project
 | --- | --- |
 | `src/lib/ownerActions/buildOwnerActionLayer.ts` | New pure helper. Builds primary action, supporting actions, and placement proof from current store/project data. |
 | `src/config/features.ts` | Adds `ENABLE_OWNER_ACTION_LAYER`. |
-| `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx` | Renders desktop "Next owner action" card and routes to existing desktop pages. |
-| `src/components/mobile/screens/MobileDashboardScreen.tsx` | Renders mobile card and routes through `MobileShell` callbacks. |
+| `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx` | Renders one desktop "Next owner action" card for open required work and routes to the existing destination. |
+| `src/components/mobile/screens/MobileDashboardScreen.tsx` | Renders the same single mobile action and routes through `MobileShell` callbacks. |
 | `scripts/verification/verify-owner-action-layer.js` | Source gate for helper, flag, desktop, mobile, docs, and boundary copy. |
 | `scripts/verification/test-owner-action-layer-boundary.ts` | Behavior regression for current publication, links, hours, and placement timestamps. |
 
@@ -68,4 +68,4 @@ No screenshot, external fetch, or verification storage is added in this slice.
 
 ## Failure Behavior
 
-If project data is still loading, desktop does not render the action layer. Mobile waits for project selection data. The layer does not block dashboard rendering, and no mutation depends on it.
+If project data is still loading, desktop does not render the action layer. Mobile waits for project selection data. When the helper reports `Stable`, both dashboards suppress the action card instead of presenting routine work. The layer does not block dashboard rendering, and no mutation depends on it.

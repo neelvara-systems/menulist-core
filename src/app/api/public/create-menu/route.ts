@@ -22,7 +22,13 @@ import {
     buildPublicDraftMenuExtractionDestination,
     MENU_EXTRACTION_SOURCES,
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+    PUBLIC_CREATE_MENU_UPLOAD_LIMITS,
 } from '@data/shared/menuExtractionJob';
+import {
+    PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+    sanitizePublicMenuDraftSourceFileName,
+    type PublicMenuDraftSourceFile,
+} from '@data/shared/publicMenuDraftSource';
 import { MenuIntakeFileInput } from '@data/shared/menuIntakeIdentity';
 import {
     getPublicMenuDraftTimestampMillis,
@@ -60,14 +66,14 @@ import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi'
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_CREATE_MENU_BODY_SIZE = MAX_FILE_SIZE + 512 * 1024; // allow multipart overhead
+const MAX_FILE_SIZE = PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES;
+const MAX_CREATE_MENU_BODY_SIZE = PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES + 1024 * 1024;
 const PUBLIC_CREATE_MENU_LINK_MAX_BODY_BYTES = 8 * 1024;
 const ALLOWED_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ACTIVE_DRAFT_STATUSES = new Set(['pending', 'processing']);
 const REUSABLE_DRAFT_STATUSES = new Set(['pending', 'processing', 'completed']);
-const PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE = 'We could not prepare this menu. Upload a clearer photo or try another public menu link.';
+const PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE = 'We could not prepare this menu. Upload a clearer photo or PDF, or try another public menu link.';
 const PUBLIC_MENU_ENTRY_REUSED_DRAFT = 'public_menu_entry_reused_draft';
 const PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT = 'public_menu_entry_reused_link_draft';
 const PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT_AFTER_ACQUISITION = 'public_menu_entry_reused_link_draft_after_acquisition';
@@ -198,6 +204,9 @@ type PendingPublicMenuDraftDocument = {
     imageUrl: string;
     ipHash: string;
     originalFileName: string;
+    sourceFiles?: PublicMenuDraftSourceFile[];
+    sourceFilesVersion?: typeof PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION;
+    sourceOriginalFileName?: string;
     sourceInputHash?: string;
     sourceMetadata?: PublicMenuLinkDraftSourceMetadata;
     sourceType: PublicDraftSource['kind'];
@@ -386,22 +395,30 @@ const hasSessionScopeValue = (value: unknown): boolean => (
     value !== undefined && value !== null && String(value).trim().length > 0
 );
 
-async function runPublicDraftIdentityCheck(draftToken: string, projectId: string, source: PublicDraftSource, sourceUrl: string) {
-    if (!FEATURE_FLAGS.ENABLE_MENU_INTAKE_IDENTITY || !isSupportedMenuIntakeIdentityMimeType(source.contentType)) {
+async function runPublicDraftIdentityCheck(
+    draftToken: string,
+    projectId: string,
+    sources: PublicDraftSource[],
+    sourceUrls: string[],
+) {
+    const files: MenuIntakeFileInput[] = sources.flatMap((source, index) => (
+        isSupportedMenuIntakeIdentityMimeType(source.contentType) && sourceUrls[index]
+            ? [{
+                uid: `public-${draftToken}-${index + 1}`,
+                name: source.originalFileName,
+                size: source.size,
+                type: source.contentType,
+                url: sourceUrls[index],
+            }]
+            : []
+    ));
+    if (!FEATURE_FLAGS.ENABLE_MENU_INTAKE_IDENTITY || files.length === 0) {
         return null;
     }
 
-    const file: MenuIntakeFileInput = {
-        uid: `public-${draftToken}`,
-        name: source.originalFileName,
-        size: source.size,
-        type: source.contentType,
-        url: sourceUrl,
-    };
-
     const identityCheck = await analyzeMenuIntakeIdentity({
         context: { hasExistingMenu: false },
-        files: [file],
+        files,
         operation: {
             billingMode: 'public',
             projectId,
@@ -423,53 +440,58 @@ async function runPublicDraftIdentityCheck(draftToken: string, projectId: string
 
 async function createPublicDraftExtractionJob(
     draftToken: string,
-    source: PublicDraftSource,
-    sourceUrl: string,
+    sources: PublicDraftSource[],
+    sourceUrls: string[],
     userId: string,
     draftData: Record<string, unknown>,
 ): Promise<string> {
+    if (sources.length === 0 || sources.length !== sourceUrls.length) {
+        throw new Error('public_menu_draft_sources_invalid');
+    }
+    const primarySource = sources[0];
     const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc(`public_${draftToken}`);
     const draftRef = firestoreAdmin.collection(COLLECTION).doc(draftToken);
     const now = Timestamp.now();
     const projectId = buildPublicDraftProjectId(draftToken);
-    const identityCheck = await runPublicDraftIdentityCheck(draftToken, projectId, source, sourceUrl);
+    const identityCheck = await runPublicDraftIdentityCheck(draftToken, projectId, sources, sourceUrls);
 
     const batch = firestoreAdmin.batch();
     batch.create(jobRef, {
         action: AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION,
         createdAt: now,
         currentStep: 'Queued',
-        ...buildMenuExtractionRoutingFields(buildPublicDraftMenuExtractionDestination(draftToken, source.kind)),
-        files: [{
-            uid: `public-${draftToken}`,
+        ...buildMenuExtractionRoutingFields(buildPublicDraftMenuExtractionDestination(draftToken, primarySource.kind)),
+        files: sources.map((source, index) => ({
+            uid: `public-${draftToken}-${index + 1}`,
             name: source.originalFileName,
             size: source.size,
             type: source.contentType,
-            url: sourceUrl,
-        }],
+            url: sourceUrls[index],
+        })),
         jobMode: 'SINGLE_STORE',
         progress: 0,
         projectId,
         sId: String(MENULIST_PLATFORM_STORE_ID),
         skipProjectSave: true,
-        source: source.kind === 'menu_link_import'
+        source: primarySource.kind === 'menu_link_import'
             ? MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
             : MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU,
         sourceMetadata: {
-            ...(source.kind === 'menu_link_import' ? {
+            ...(primarySource.kind === 'menu_link_import' ? {
                 acquisitionProvider: 'direct-http',
-                finalUrl: source.finalUrl,
-                sourceContentType: source.sourceContentType,
-                sourceKind: source.sourceKind,
-                sourceTextLength: source.sourceTextLength || 0,
-                sourceTextPresent: Boolean(source.sourceTextPresent),
-                sourceUrl: source.sourceUrl,
+                finalUrl: primarySource.finalUrl,
+                sourceContentType: primarySource.sourceContentType,
+                sourceKind: primarySource.sourceKind,
+                sourceTextLength: primarySource.sourceTextLength || 0,
+                sourceTextPresent: Boolean(primarySource.sourceTextPresent),
+                sourceUrl: primarySource.sourceUrl,
             } : {}),
             ...(identityCheck ? { identityCheck } : {}),
             publicDraftId: draftToken,
             requestedByUId: userId,
-            sourceType: source.kind,
-            storagePath: source.storagePath,
+            sourceType: primarySource.kind,
+            storagePath: primarySource.storagePath,
+            ...(sources.length > 1 ? { storagePaths: sources.map((source) => source.storagePath) } : {}),
         },
         status: 'pending',
         tId: String(MENULIST_PLATFORM_TENANT_ID),
@@ -490,33 +512,59 @@ async function createPublicDraftExtractionJob(
 async function createImageDraft(
     req: NextRequest,
     userId: string,
-    imageFile: File,
+    imageFiles: File[],
     growthAcquisition: GrowthAcquisitionAttribution | null,
+    uploadSource: { originalFileName: string | null; type: 'image' | 'pdf' },
 ) {
-    if (!ALLOWED_TYPES.has(imageFile.type)) {
+    if (
+        imageFiles.length === 0
+        || imageFiles.length > PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES
+        || (imageFiles.length > 1 && uploadSource.type !== 'pdf')
+        || (uploadSource.type === 'pdf' && !FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD)
+        || (uploadSource.type === 'pdf' && imageFiles.some((file) => file.type !== 'image/jpeg'))
+    ) {
         return NextResponse.json(
-            { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
-            { status: 400 }
+            { success: false, error: 'Upload one valid menu image or a PDF of up to 15 pages.' },
+            { status: 400 },
         );
     }
 
-    if (imageFile.size > MAX_FILE_SIZE) {
+    const totalFileSize = imageFiles.reduce((total, file) => total + file.size, 0);
+    if (
+        !Number.isSafeInteger(totalFileSize)
+        || totalFileSize <= 0
+        || totalFileSize > PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES
+        || imageFiles.some((file) => !ALLOWED_TYPES.has(file.type) || file.size <= 0 || file.size > MAX_FILE_SIZE)
+    ) {
         return NextResponse.json(
-            { success: false, error: 'File too large. Maximum size is 10MB.' },
-            { status: 400 }
+            { success: false, error: 'Source is too large. Use a file up to 10MB and a PDF up to 15 pages.' },
+            { status: 400 },
         );
     }
 
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
-    const fileValidation = await validateFileUpload(buffer, imageFile.type, imageFile.size);
-    if (!fileValidation.valid) {
-        return NextResponse.json(
-            { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
-            { status: 400 }
-        );
+    const preparedFiles: Array<{ buffer: Buffer; file: File; fileName: string }> = [];
+    for (let index = 0; index < imageFiles.length; index += 1) {
+        const imageFile = imageFiles[index];
+        const buffer = Buffer.from(await imageFile.arrayBuffer());
+        const fileValidation = await validateFileUpload(buffer, imageFile.type, imageFile.size);
+        if (!fileValidation.valid) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, WebP, or PDF menu.' },
+                { status: 400 },
+            );
+        }
+        preparedFiles.push({
+            buffer,
+            file: imageFile,
+            fileName: sanitizePublicMenuDraftSourceFileName(imageFile.name)
+                || `menu-page-${index + 1}.jpg`,
+        });
     }
 
-    const contentHash = hashBuffer(buffer);
+    const fileHashes = preparedFiles.map(({ buffer }) => hashBuffer(buffer));
+    const contentHash = preparedFiles.length === 1 && uploadSource.type === 'image'
+        ? fileHashes[0]
+        : hashString(fileHashes.map((hash, index) => `${index}:${hash}`).join('|'));
     const reusableDraft = await findReusableDraftForUser(userId, { contentHash });
     if (reusableDraft) {
         logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_DRAFT, {
@@ -534,39 +582,64 @@ async function createImageDraft(
     const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const draftToken = buildIdempotentPublicDraftToken(userId, `image:${contentHash}`);
-    const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
-    const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
+    const sourceFingerprint = uploadSource.type === 'pdf' ? `pdf-pages:${contentHash}` : `image:${contentHash}`;
+    const draftToken = buildIdempotentPublicDraftToken(userId, sourceFingerprint);
+    const sourceFiles = preparedFiles.map(({ file, fileName }, index): PublicMenuDraftSourceFile => {
+        const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+        const storagePath = uploadSource.type === 'pdf'
+            ? `publicMenuDrafts/${draftToken}/menu-page-${String(index + 1).padStart(2, '0')}.jpg`
+            : `publicMenuDrafts/${draftToken}/menu.${ext}`;
+        const downloadToken = preparedFiles.length === 1 ? draftToken : `${draftToken}-${index + 1}`;
+        return {
+            downloadUrl: buildDownloadUrl(storageAdmin.bucket().name, storagePath, downloadToken),
+            fileName,
+            fileSize: file.size,
+            fileType: file.type,
+            storagePath,
+        };
+    });
+    const primarySource = sourceFiles[0];
     // The object path is deliberately deterministic. Its download token must be
     // deterministic too so a concurrent identical upload cannot invalidate the
     // URL committed by the request that wins the Firestore create batch.
-    const downloadToken = draftToken;
     const bucket = storageAdmin.bucket();
-    const imageUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
     const now = Timestamp.now();
     const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
     const ipHash = hashClientIp(req);
+    const createdStoragePaths: string[] = [];
     try {
-        await bucket.file(storagePath).save(buffer, {
-            metadata: {
-                cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
-                contentType: imageFile.type,
+        for (let index = 0; index < preparedFiles.length; index += 1) {
+            const prepared = preparedFiles[index];
+            const sourceFile = sourceFiles[index];
+            const downloadToken = preparedFiles.length === 1 ? draftToken : `${draftToken}-${index + 1}`;
+            await bucket.file(sourceFile.storagePath).save(prepared.buffer, {
                 metadata: {
-                    draftToken,
-                    firebaseStorageDownloadTokens: downloadToken,
-                    uploadedAt: new Date().toISOString(),
+                    cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
+                    contentType: sourceFile.fileType,
+                    metadata: {
+                        draftToken,
+                        firebaseStorageDownloadTokens: downloadToken,
+                        pageNumber: String(index + 1),
+                        uploadedAt: new Date().toISOString(),
+                    },
                 },
-            },
-        });
+            });
+            createdStoragePaths.push(sourceFile.storagePath);
+        }
 
         const draftData: PendingPublicMenuDraftDocument = {
             token: draftToken,
-            imageUrl,
-            imagePath: storagePath,
-            originalFileName: imageFile.name || 'menu.jpg',
-            fileType: imageFile.type,
-            fileSize: imageFile.size,
+            imageUrl: primarySource.downloadUrl,
+            imagePath: primarySource.storagePath,
+            originalFileName: primarySource.fileName,
+            fileType: primarySource.fileType,
+            fileSize: primarySource.fileSize,
             sourceType: 'image_upload',
+            sourceFiles,
+            sourceFilesVersion: PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+            ...(uploadSource.type === 'pdf' && uploadSource.originalFileName
+                ? { sourceOriginalFileName: uploadSource.originalFileName }
+                : {}),
             ...(growthAcquisition ? { growthAcquisition } : {}),
             contentHash,
             extractedData: null,
@@ -587,13 +660,20 @@ async function createImageDraft(
             claimed: false,
         };
 
-        const jobId = await createPublicDraftExtractionJob(draftToken, {
-            contentType: imageFile.type,
+        const jobSources: PublicDraftSource[] = sourceFiles.map((sourceFile) => ({
+            contentType: sourceFile.fileType,
             kind: 'image_upload',
-            originalFileName: imageFile.name || 'menu.jpg',
-            size: imageFile.size,
-            storagePath,
-        }, imageUrl, userId, draftData);
+            originalFileName: sourceFile.fileName,
+            size: sourceFile.fileSize,
+            storagePath: sourceFile.storagePath,
+        }));
+        const jobId = await createPublicDraftExtractionJob(
+            draftToken,
+            jobSources,
+            sourceFiles.map((sourceFile) => sourceFile.downloadUrl),
+            userId,
+            draftData,
+        );
 
         await recordFounderGrowthEvent({
             attribution: growthAcquisition,
@@ -603,7 +683,8 @@ async function createImageDraft(
 
         logSecurityDiagnostic(PUBLIC_MENU_ENTRY_DRAFT_CREATED, {
             ...buildPublicMenuEntryLogContext({ draftToken, ipHash, jobId, sourceType: 'image_upload', userId }),
-            fileSize: imageFile.size,
+            fileCount: imageFiles.length,
+            fileSize: totalFileSize,
         });
 
         return NextResponse.json({
@@ -640,15 +721,15 @@ async function createImageDraft(
         // concurrently committed draft. Preserve it rather than corrupting a
         // possible winner; the failure is logged for operational cleanup.
         if (!collisionLookupFailed) {
-            await deletePublicMenuEntryStoragePath(storagePath, {
+            await Promise.all(createdStoragePaths.map((storagePath) => deletePublicMenuEntryStoragePath(storagePath, {
                 cleanupReason: 'image_draft_job_create_failed',
                 draftToken,
                 userId,
-            });
+            })));
         }
         logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_JOB_CREATE_FAILED, error, buildPublicMenuEntryLogContext({ draftToken, userId }));
         return NextResponse.json(
-            { success: false, error: 'Failed to process your menu image. Please try again.' },
+            { success: false, error: 'Failed to process your menu. Please try again.' },
             { status: 500 },
         );
     }
@@ -779,7 +860,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             claimed: false,
         };
 
-        const jobId = await createPublicDraftExtractionJob(draftToken, {
+        const jobId = await createPublicDraftExtractionJob(draftToken, [{
             contentType: acquisition.artifactContentType,
             finalUrl: acquisition.finalUrl,
             kind: 'menu_link_import',
@@ -791,7 +872,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             sourceTextPresent: acquisition.sourceTextPresent,
             sourceUrl: requestedSourceUrl,
             storagePath,
-        }, sourceArtifactUrl, userId, draftData);
+        }], [sourceArtifactUrl], userId, draftData);
 
         await recordFounderGrowthEvent({
             attribution: growthAcquisition,
@@ -909,7 +990,7 @@ export const POST = withPublicMenuEntryPrivateResponse(async (req: NextRequest, 
         const contentLength = Number(req.headers.get('content-length') || 0);
         if (Number.isFinite(contentLength) && contentLength > MAX_CREATE_MENU_BODY_SIZE) {
             return NextResponse.json(
-                { success: false, error: 'Source is too large. Upload a photo up to 10MB or use a public menu link.' },
+                { success: false, error: 'Source is too large. Upload a file up to 10MB, a PDF up to 15 pages, or use a public menu link.' },
                 { status: 413 },
             );
         }
@@ -927,32 +1008,48 @@ export const POST = withPublicMenuEntryPrivateResponse(async (req: NextRequest, 
         }
 
         const formDataResult = await readBoundedFormDataBody(req, MAX_CREATE_MENU_BODY_SIZE, {
-            invalidFormDataMessage: 'Upload a valid menu photo.',
-            tooLargeMessage: 'Source is too large. Upload a photo up to 10MB or use a public menu link.',
+            invalidFormDataMessage: 'Upload a valid menu image or PDF.',
+            tooLargeMessage: 'Source is too large. Upload a file up to 10MB, a PDF up to 15 pages, or use a public menu link.',
         });
         if (formDataResult.ok === false) return formDataResult.response;
 
         const formData = formDataResult.formData;
-        const imageValue = formData.get('image');
-        const imageFile = imageValue instanceof File ? imageValue : null;
+        const imageValues = formData.getAll('images');
+        const legacyImageValue = formData.get('image');
+        const hasInvalidImagePart = imageValues.some((value) => !(value instanceof File));
+        const imageFiles = imageValues.length > 0
+            ? imageValues.filter((value): value is File => value instanceof File)
+            : legacyImageValue instanceof File
+                ? [legacyImageValue]
+                : [];
+        const uploadSourceType = formData.get('uploadSourceType') === 'pdf' ? 'pdf' : 'image';
+        const sourceOriginalFileName = sanitizePublicMenuDraftSourceFileName(formData.get('sourceOriginalFileName'));
         const growthAcquisition = normalizeGrowthAcquisitionAttribution({
             source: formData.get('growthAcquisitionSource'),
             medium: formData.get('growthAcquisitionMedium'),
             campaign: formData.get('growthAcquisitionCampaign'),
         });
 
-        if (!imageFile) {
+        if (
+            hasInvalidImagePart
+            || (imageValues.length > 0 && legacyImageValue instanceof File)
+            || imageFiles.length === 0
+            || (uploadSourceType === 'pdf' && !sourceOriginalFileName.toLowerCase().endsWith('.pdf'))
+        ) {
             return NextResponse.json(
-                { success: false, error: 'No image file provided.' },
+                { success: false, error: 'No valid menu image or PDF pages were provided.' },
                 { status: 400 }
             );
         }
 
-        return createImageDraft(req, userId, imageFile, growthAcquisition);
+        return createImageDraft(req, userId, imageFiles, growthAcquisition, {
+            originalFileName: uploadSourceType === 'pdf' ? sourceOriginalFileName : null,
+            type: uploadSourceType,
+        });
     } catch (error) {
         logSecurityFailure(PUBLIC_MENU_ENTRY_UPLOAD_FAILED, error, buildPublicMenuEntryLogContext({ userId }));
         return NextResponse.json(
-            { success: false, error: 'Failed to process your menu image. Please try again.' },
+            { success: false, error: 'Failed to process your menu. Please try again.' },
             { status: 500 }
         );
     }

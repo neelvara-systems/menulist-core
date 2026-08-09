@@ -19,7 +19,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from "../constants/features";
-import { firestoreAdmin } from "../firebaseAdmin";
+import { firestoreAdmin, storageAdmin } from "../firebaseAdmin";
 import { isSafeModeActive } from "../monitoring/safeMode";
 import { normalizeBusinessCategory, resolveStoreBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
@@ -41,13 +41,21 @@ import {
     MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES,
     OWNER_MENU_UPLOAD_MIME_TYPES,
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+    PUBLIC_CREATE_MENU_UPLOAD_LIMITS,
 } from "../sharedData/menuExtractionJob";
 import {
     findDuplicateMenuExtractionFileUids,
     findInvalidMenuExtractionFileUidIndexes,
     resolveMenuExtractionBatchCompletion,
 } from "../sharedData/menuExtractionIntegrity";
-import { normalizePublicMenuDraftExtractedData } from "../sharedData/publicMenuDraftData";
+import {
+    hasCompletePublicMenuDraftSourceAttribution,
+    normalizePublicMenuDraftExtractedData,
+} from "../sharedData/publicMenuDraftData";
+import {
+    normalizePublicMenuDraftSourceFiles,
+    PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+} from "../sharedData/publicMenuDraftSource";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { buildExtractionResultSummary } from "../utils/menuExtractionResultSummary";
 import { hardenExtractedData } from "./extractionHardening";
@@ -442,8 +450,12 @@ async function assertPublicDraftJobBinding(jobId: string, job: MenuImageProcessi
         : sourceType === "image_upload"
             ? MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU
             : "";
-    const file = job.files[0];
-    const fileStoragePath = file ? getStoragePathFromDownloadUrl(file.url) : null;
+    const fileStoragePaths = job.files.map((file) => getStoragePathFromDownloadUrl(file.url));
+    const hasInvalidSourceMetadataStoragePaths = job.sourceMetadata?.storagePaths !== undefined
+        && !Array.isArray(job.sourceMetadata.storagePaths);
+    const sourceMetadataStoragePaths = Array.isArray(job.sourceMetadata?.storagePaths)
+        ? job.sourceMetadata.storagePaths
+        : [sourceMetadataStoragePath];
 
     if (
         !PUBLIC_MENU_DRAFT_ID_PATTERN.test(draftId)
@@ -451,11 +463,16 @@ async function assertPublicDraftJobBinding(jobId: string, job: MenuImageProcessi
         || job.destinationType !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT
         || sourceMetadataDraftId !== draftId
         || !requestedByUId
-        || sourceMetadataStoragePath !== fileStoragePath
+        || fileStoragePaths.some((path) => !path)
+        || hasInvalidSourceMetadataStoragePaths
+        || sourceMetadataStoragePath !== fileStoragePaths[0]
+        || sourceMetadataStoragePaths.length !== fileStoragePaths.length
+        || sourceMetadataStoragePaths.some((path, index) => path !== fileStoragePaths[index])
         || job.source !== expectedSource
         || job.action !== "public_menu_extraction"
         || job.skipProjectSave !== true
-        || job.files.length !== 1
+        || job.files.length === 0
+        || job.files.length > PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES
         || job.projectId !== `${job.tId}-public-${draftId}-${job.sId}`
     ) {
         throw new PublicDraftBindingError();
@@ -467,6 +484,48 @@ async function assertPublicDraftJobBinding(jobId: string, job: MenuImageProcessi
         .get();
     const draft = draftDoc.data();
     const expiresAtMillis = timestampMillis(draft?.expiresAt);
+    const hasVersionedSources = draft?.sourceFilesVersion === PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION
+        && Array.isArray(draft?.sourceFiles);
+    const hasPartialVersionedSources = (draft?.sourceFilesVersion !== undefined || draft?.sourceFiles !== undefined)
+        && !hasVersionedSources;
+    const sourceCandidates = hasVersionedSources
+        ? draft?.sourceFiles
+        : [{
+            downloadUrl: draft?.imageUrl,
+            fileName: draft?.originalFileName,
+            fileSize: draft?.fileSize,
+            fileType: draft?.fileType,
+            storagePath: draft?.imagePath,
+        }];
+    const allowedMimeTypes = sourceType === "menu_link_import"
+        ? MENU_LINK_IMPORT_MIME_TYPES
+        : PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES;
+    const maxFileSizeBytes = sourceType === "menu_link_import"
+        ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+        : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES;
+    const maxTotalSizeBytes = sourceType === "menu_link_import"
+        ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+        : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES;
+    const draftSources = normalizePublicMenuDraftSourceFiles(sourceCandidates, {
+        allowLocalEmulator: process.env.FUNCTIONS_EMULATOR === "true",
+        allowedBucket: storageAdmin.bucket().name,
+        allowedMimeTypes,
+        draftId,
+        maxFileSizeBytes,
+        maxFiles: sourceType === "menu_link_import" ? 1 : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES,
+        maxTotalSizeBytes,
+    });
+    const sourceFilesMatchJob = Boolean(draftSources)
+        && draftSources!.length === job.files.length
+        && draftSources!.every((sourceFile, index) => {
+            const jobFile = job.files[index];
+            return sourceFile.downloadUrl === jobFile.url
+                && sourceFile.fileName === jobFile.name
+                && sourceFile.fileSize === Number(jobFile.size)
+                && sourceFile.fileType === jobFile.type
+                && sourceFile.storagePath === fileStoragePaths[index];
+        });
+    const primarySource = draftSources?.[0];
     if (
         !draftDoc.exists
         || !draft
@@ -474,10 +533,13 @@ async function assertPublicDraftJobBinding(jobId: string, job: MenuImageProcessi
         || draft.extractionJobId !== jobId
         || draft.createdByUId !== requestedByUId
         || draft.sourceType !== sourceType
-        || draft.imageUrl !== file.url
-        || draft.imagePath !== fileStoragePath
-        || draft.fileType !== file.type
-        || Number(draft.fileSize) !== Number(file.size)
+        || hasPartialVersionedSources
+        || !sourceFilesMatchJob
+        || draft.imageUrl !== primarySource?.downloadUrl
+        || draft.imagePath !== primarySource?.storagePath
+        || draft.fileType !== primarySource?.fileType
+        || Number(draft.fileSize) !== primarySource?.fileSize
+        || draft.originalFileName !== primarySource?.fileName
         || draft.claimed === true
         || draft.extractionStatus !== "pending"
         || expiresAtMillis === null
@@ -610,21 +672,44 @@ function getProfileBusinessCategory(menuData: any): string | null {
     return getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.businessCategory, "medium") || null;
 }
 
-function buildPublicDraftExtractedData(menuData: any, redistributedFiles?: Record<string, any>) {
-    const fileData = Object.values(redistributedFiles || {})
-        .map((file: any) => file?.data)
-        .filter((data: any) => data && typeof data === "object");
-    const sourceData = fileData.length > 0
+function buildPublicDraftExtractedData(
+    menuData: any,
+    sourceFiles: MenuImageProcessingJob['files'],
+    redistributedFiles?: Record<string, any>,
+) {
+    const redistributedSources = sourceFiles.map((sourceFile, sourceFileIndex) => ({
+        data: redistributedFiles?.[sourceFile.uid]?.data,
+        sourceFileIndex,
+    }));
+    const hasCompleteRedistribution = redistributedSources.every(({ data }) => (
+        data && typeof data === "object" && !Array.isArray(data)
+    ));
+    const sourceData = hasCompleteRedistribution
         ? {
-            categories: fileData.flatMap((data: any) => Array.isArray(data.categories) ? data.categories : []),
-            items: fileData.flatMap((data: any) => Array.isArray(data.items) ? data.items : []),
-            languages: fileData.find((data: any) => Array.isArray(data.languages) && data.languages.length > 0)?.languages || menuData?.languages,
+            categories: redistributedSources.flatMap(({ data, sourceFileIndex }) => (
+                Array.isArray(data.categories)
+                    ? data.categories.map((category: any) => ({ ...category, sourceFileIndex }))
+                    : []
+            )),
+            items: redistributedSources.flatMap(({ data, sourceFileIndex }) => (
+                Array.isArray(data.items)
+                    ? data.items.map((item: any) => ({ ...item, sourceFileIndex }))
+                    : []
+            )),
+            languages: redistributedSources.find(({ data }) => (
+                Array.isArray(data.languages) && data.languages.length > 0
+            ))?.data.languages || menuData?.languages,
         }
         : menuData;
-
-    const normalized = normalizePublicMenuDraftExtractedData(sourceData);
+    const normalized = normalizePublicMenuDraftExtractedData(sourceData, {
+        maxSourceFiles: sourceFiles.length,
+        preserveSourceFileIndex: true,
+    });
     if (!normalized) {
         throw new Error("No coherent public menu data remained after validation.");
+    }
+    if (!hasCompletePublicMenuDraftSourceAttribution(normalized, sourceFiles.length)) {
+        throw new Error("Public menu source attribution was incomplete after redistribution.");
     }
     return normalized;
 }
@@ -640,7 +725,7 @@ async function updatePublicDraftFromExtraction(
     const draftRef = firestoreAdmin
         .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
         .doc(job.destination.draftId);
-    const extractedData = buildPublicDraftExtractedData(menuData, redistributedFiles);
+    const extractedData = buildPublicDraftExtractedData(menuData, job.files, redistributedFiles);
 
     await draftRef.update({
         extractionStatus: "completed",

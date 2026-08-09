@@ -1,6 +1,7 @@
 'use client';
 
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import {
     ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
     isAnswerlatticeActivationSummaryResponse,
@@ -60,6 +61,13 @@ const ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED = 'Could not load activation 
 const ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED = 'Could not send test notification';
 const ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED = 'Could not rebuild compiled context';
 const ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_NEEDS_REVIEW = 'Compiled context rebuild needs review';
+const ANSWERLATTICE_SUPPORT_LOOP = [
+    'Add product knowledge',
+    'Approve important answers',
+    'Test as a customer',
+    'Install support',
+    'Return when attention is needed',
+] as const;
 
 const STATUS_META = {
     complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
@@ -305,7 +313,7 @@ export default function AnswerlatticeActivationCommandCenter() {
             ),
             createCheck(
                 'product-surfaces',
-                'Product surfaces',
+                ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productPagesAndFlows,
                 ['product-surfaces'],
                 'Initial product pages and workflows are mapped to support context.',
             ),
@@ -319,15 +327,15 @@ export default function AnswerlatticeActivationCommandCenter() {
             ),
             createCheck(
                 'product-entities',
-                'Product entities',
+                ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics,
                 ['entities'],
-                'Reviewed product entities are available for support context.',
+                'Reviewed product topics are available for support context.',
             ),
             createCheck(
                 'canonical-answers',
                 'Approved answers',
                 ['canonical-answers'],
-                'Active canonical answers are available for approved support truth.',
+                'Approved trusted answers are available for customer support.',
             ),
         ];
         const customerSupportChecks = [
@@ -375,8 +383,8 @@ export default function AnswerlatticeActivationCommandCenter() {
             },
             {
                 key: 'governance-signal-proof',
-                title: 'Governance and fallback signal',
-                description: 'Governance summaries and one support signal source must be ready for review.',
+                title: 'Answer quality and fallback evidence',
+                description: 'Answer-quality summaries and one fallback evidence source must be ready for review.',
                 status: proofStatus(['governance-summaries', 'signal-loop-test']),
             },
         ];
@@ -433,15 +441,15 @@ export default function AnswerlatticeActivationCommandCenter() {
     const modeCards = [
         {
             key: 'launch',
-            title: 'Launch Setup',
-            description: 'Workspace, knowledge import, product surfaces, widget install, and publish checks.',
+            title: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.getLive,
+            description: 'Product details, knowledge, customer pages, support install, and launch checks.',
             route: ANSWERLATTICE_ROUTES.ACTIVATION,
             action: 'Open Setup',
             icon: <LuRocket />,
         },
         {
             key: 'support',
-            title: 'Support Control',
+            title: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.runSupport,
             description: 'Help center, knowledge base, changelog, tickets, conversations, and widget operations.',
             route: ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE,
             action: 'Open Knowledge Base',
@@ -449,10 +457,10 @@ export default function AnswerlatticeActivationCommandCenter() {
         },
         {
             key: 'governance',
-            title: 'Knowledge Governance',
-            description: 'Coverage, drift, entities, canonical answers, signal queue, and trust metrics.',
+            title: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.answerQuality,
+            description: 'Trusted answers, product topics, answers to recheck, suggested updates, and evidence.',
             route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
-            action: 'Open Governance',
+            action: 'Review Answer Quality',
             icon: <LuShieldCheck />,
         },
     ];
@@ -622,6 +630,52 @@ export default function AnswerlatticeActivationCommandCenter() {
                     )}
                 </Space>
             </Flex>
+
+            <section
+                aria-labelledby="answerlattice-support-loop-title"
+                style={{
+                    paddingBlock: 14,
+                    borderBlock: `1px solid ${token.colorBorderSecondary}`,
+                }}
+            >
+                <Flex vertical gap={10}>
+                    <div>
+                        <Title id="answerlattice-support-loop-title" level={5} style={{ margin: 0 }}>
+                            How support stays manageable
+                        </Title>
+                        <Text type="secondary">
+                            Complete the launch path once. After launch, Daily Brief brings back only work that needs a decision.
+                        </Text>
+                    </div>
+                    <Flex gap={8} vertical={isMobile} wrap={!isMobile ? 'wrap' : undefined}>
+                        {ANSWERLATTICE_SUPPORT_LOOP.map((step, index) => (
+                            <Flex
+                                key={step}
+                                align="center"
+                                gap={8}
+                                style={{ flex: isMobile ? undefined : '1 1 150px', minWidth: 0 }}
+                            >
+                                <Flex
+                                    align="center"
+                                    justify="center"
+                                    style={{
+                                        width: 28,
+                                        height: 28,
+                                        flex: '0 0 28px',
+                                        borderRadius: '50%',
+                                        background: token.colorPrimaryBg,
+                                        color: token.colorPrimaryText,
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    {index + 1}
+                                </Flex>
+                                <Text strong>{step}</Text>
+                            </Flex>
+                        ))}
+                    </Flex>
+                </Flex>
+            </section>
 
             <Alert
                 type={summary.launchProof.ready ? 'success' : needsReview.length ? 'warning' : 'info'}
@@ -1091,7 +1145,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                         <Card title="Answer Evidence">
                             <Space direction="vertical" size={10} style={{ width: '100%' }}>
                                 <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">Canonical coverage</Text>
+                                    <Text type="secondary">Trusted-answer coverage</Text>
                                     <Text>
                                         {summary.governance.canonicalCoverageRate !== null && summary.governance.canonicalCoverageRate !== undefined
                                             ? `${summary.governance.canonicalCoverageRate}%`
@@ -1115,7 +1169,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                         : 'Not enough explicit outcomes'}</Text>
                                 </Flex>
                                 <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">Entity answer coverage</Text>
+                                    <Text type="secondary">Product-topic coverage</Text>
                                     <Text>{summary.governance.entityAnswerCoverageRate !== null && summary.governance.entityAnswerCoverageRate !== undefined
                                         ? `${summary.governance.entityAnswerCoverageRate}%`
                                         : 'Pending'}</Text>
@@ -1128,7 +1182,7 @@ export default function AnswerlatticeActivationCommandCenter() {
 
             <Flex justify={isMobile ? 'stretch' : 'end'} gap={8} vertical={isMobile}>
                 <Button onClick={() => openRoute(ANSWERLATTICE_ROUTES.PRODUCT_SURFACES)} style={{ minHeight: 44 }}>
-                    Product Surfaces
+                    {ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productPagesAndFlows}
                 </Button>
                 <Button onClick={() => openRoute(ANSWERLATTICE_ROUTES.WIDGET)} style={{ minHeight: 44 }}>
                     Widget Settings

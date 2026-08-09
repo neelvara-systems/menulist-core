@@ -136,7 +136,7 @@ function EvidenceMix({ entity }: { entity: AnswerlatticeFrictionEntitySummary })
             <Tag>Tickets {evidence.ticketCount}</Tag>
             <Tag>Negative feedback {evidence.chatNegativeCount}</Tag>
             <Tag>Escalations {evidence.escalationCount}</Tag>
-            <Tag>Canonical misses {evidence.canonicalMissCount}</Tag>
+            <Tag>No trusted answer {evidence.canonicalMissCount}</Tag>
             {otherCount > 0 ? <Tag>Other evidence {otherCount}</Tag> : null}
         </Space>
     );
@@ -176,7 +176,7 @@ function TopFrictionTable({
                             </Flex>
                             <Flex justify="space-between" gap={12} wrap>
                                 <Text>{entity.last7d.queryCount} evidence events</Text>
-                                <Tooltip title="Evidence events plus escalation and canonical-miss weighting. This is not an answer-quality or product-health score.">
+                                <Tooltip title="Evidence events plus escalation and trusted-answer-miss weighting. This is not an answer-quality or product-health score.">
                                     <Text strong>Support evidence load {Math.round(entity.last7d.frictionScore)}</Text>
                                 </Tooltip>
                             </Flex>
@@ -208,7 +208,7 @@ function TopFrictionTable({
 
     const columns = [
         {
-            title: 'Entity',
+            title: 'Product topic',
             dataIndex: 'entityName',
             key: 'entityName',
             render: (name: string, record: AnswerlatticeFrictionEntitySummary) => (
@@ -254,7 +254,7 @@ function TopFrictionTable({
         },
         {
             title: (
-                <Tooltip title="Evidence events plus escalation and canonical-miss weighting. This is not an answer-quality or product-health score.">
+                <Tooltip title="Evidence events plus escalation and trusted-answer-miss weighting. This is not an answer-quality or product-health score.">
                     Support evidence load
                 </Tooltip>
             ),
@@ -459,7 +459,7 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
 
     if (snapshot.topFrictionEntities.length === 0 && snapshot.emergingTopics.length === 0) {
         return snapshot.unmappedEvidenceCount > 0 ? (
-            <Empty description={`${snapshot.unmappedEvidenceCount} support-evidence events need product-entity mapping before friction can be ranked.`} />
+            <Empty description={`${snapshot.unmappedEvidenceCount} support-evidence events need product-topic mapping before friction can be ranked.`} />
         ) : (
             <Empty description="No mapped friction evidence in the latest completed seven-day window." />
         );
@@ -513,7 +513,7 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                         ? snapshot.lastUpdated.toDate().toLocaleString()
                         : 'Unknown'}
                     {stale ? ' · stale' : ''}
-                    {snapshot.unmappedEvidenceCount > 0 ? ` · ${snapshot.unmappedEvidenceCount} events need entity mapping` : ''}
+                    {snapshot.unmappedEvidenceCount > 0 ? ` · ${snapshot.unmappedEvidenceCount} events need topic mapping` : ''}
                     {snapshot.legacyDailyStatCount > 0 ? ` · ${snapshot.legacyDailyStatCount} legacy daily rows included` : ''}
                 </Text>
             )}

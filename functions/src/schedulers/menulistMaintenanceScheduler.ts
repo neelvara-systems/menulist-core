@@ -29,6 +29,16 @@ import { intakeProcessorLogic } from '../messagingOnboarding';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { resolveNextSpecialMenuTransitionAt } from '../sharedData/specialMenuSchedule';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
+import {
+    MENU_EXTRACTION_JOB_LIMITS,
+    MENU_LINK_IMPORT_MIME_TYPES,
+    PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+    PUBLIC_CREATE_MENU_UPLOAD_LIMITS,
+} from '../sharedData/menuExtractionJob';
+import {
+    normalizePublicMenuDraftSourceFiles,
+    PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+} from '../sharedData/publicMenuDraftSource';
 import { runAiProviderHealthCheckLogic } from './aiProviderHealth';
 import { recoverAiCapacityReservationsInCollectionRef } from './aiCapacityReservationRecovery';
 import { rebuildFounderMonitorSnapshotLogic } from './founderMonitorSnapshot';
@@ -708,29 +718,93 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
 
     for (const doc of snapshot.docs) {
         const data = doc.data();
+        const draftId = doc.id;
         const imagePath = typeof data.imagePath === 'string' ? data.imagePath : '';
         const claimed = data.claimed === true;
-        if (claimed && imagePath) {
-            // The claimed project now owns this source URL. Delete the expired
-            // draft receipt but preserve the promoted source object.
-            preservedClaimedFiles += 1;
-        } else if (imagePath) {
-            if (!imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)) {
+        const hasVersionedSources = data.sourceFilesVersion === PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION
+            && Array.isArray(data.sourceFiles);
+        const hasPartialVersionedSources = (data.sourceFilesVersion !== undefined || data.sourceFiles !== undefined)
+            && !hasVersionedSources;
+        let sourcePaths: string[] = imagePath ? [imagePath] : [];
+
+        if (hasVersionedSources) {
+            const sourceType = data.sourceType === 'menu_link_import'
+                ? 'menu_link_import'
+                : data.sourceType === 'image_upload'
+                    ? 'image_upload'
+                    : null;
+            if (!sourceType) {
                 errors += 1;
-                logger.warn('[public_menu_draft_cleanup] Rejected invalid draft image path', {
-                    ...getSchedulerStringContext('draftId', doc.id),
+                logger.warn('[public_menu_draft_cleanup] Rejected unknown draft source type', {
+                    ...getSchedulerStringContext('draftId', draftId),
                     failureCode: PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE,
-                    imagePathLength: imagePath.length,
                 });
                 continue;
             }
+            const normalizedSources = normalizePublicMenuDraftSourceFiles(data.sourceFiles, {
+                allowLocalEmulator: process.env.FUNCTIONS_EMULATOR === 'true',
+                allowedBucket: bucket.name,
+                allowedMimeTypes: sourceType === 'menu_link_import'
+                    ? MENU_LINK_IMPORT_MIME_TYPES
+                    : PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+                draftId,
+                maxFileSizeBytes: sourceType === 'menu_link_import'
+                    ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+                    : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES,
+                maxFiles: sourceType === 'menu_link_import' ? 1 : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES,
+                maxTotalSizeBytes: sourceType === 'menu_link_import'
+                    ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+                    : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES,
+            });
+            const primarySource = normalizedSources?.[0];
+            if (
+                !normalizedSources
+                || data.imagePath !== primarySource?.storagePath
+                || data.imageUrl !== primarySource?.downloadUrl
+                || data.originalFileName !== primarySource?.fileName
+                || data.fileType !== primarySource?.fileType
+                || Number(data.fileSize) !== primarySource?.fileSize
+            ) {
+                errors += 1;
+                logger.warn('[public_menu_draft_cleanup] Rejected invalid draft source envelope', {
+                    ...getSchedulerStringContext('draftId', draftId),
+                    failureCode: PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE,
+                    sourceCount: Array.isArray(data.sourceFiles) ? data.sourceFiles.length : 0,
+                });
+                continue;
+            }
+            sourcePaths = normalizedSources.map((source) => source.storagePath);
+        } else if (hasPartialVersionedSources) {
+            errors += 1;
+            logger.warn('[public_menu_draft_cleanup] Rejected partial draft source envelope', {
+                ...getSchedulerStringContext('draftId', draftId),
+                failureCode: PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE,
+            });
+            continue;
+        } else if (imagePath && !imagePath.startsWith(`publicMenuDrafts/${draftId}/`)) {
+            errors += 1;
+            logger.warn('[public_menu_draft_cleanup] Rejected invalid draft image path', {
+                ...getSchedulerStringContext('draftId', draftId),
+                failureCode: PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE,
+                imagePathLength: imagePath.length,
+            });
+            continue;
+        }
+
+        if (claimed && sourcePaths.length > 0) {
+            // The claimed project now owns every source URL. Delete the expired
+            // draft receipt but preserve all promoted source objects.
+            preservedClaimedFiles += sourcePaths.length;
+        } else if (sourcePaths.length > 0) {
             try {
-                await bucket.file(imagePath).delete({ ignoreNotFound: true });
-                deletedFiles += 1;
+                for (const sourcePath of sourcePaths) {
+                    await bucket.file(sourcePath).delete({ ignoreNotFound: true });
+                    deletedFiles += 1;
+                }
             } catch (error) {
                 errors += 1;
-                logger.warn('[public_menu_draft_cleanup] Failed to delete draft image', {
-                    ...getSchedulerStringContext('draftId', doc.id),
+                logger.warn('[public_menu_draft_cleanup] Failed to delete draft source', {
+                    ...getSchedulerStringContext('draftId', draftId),
                     failureCode: PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE,
                     ...getSchedulerErrorContext(error),
                 });

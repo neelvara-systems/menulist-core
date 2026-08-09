@@ -33,14 +33,14 @@
 - Daily Governance does not mount or issue its separate bounded request until technical details are opened once; closing and reopening the disclosure in the same page session does not refetch it.
 - Switching Answerlattice workspace scope resets deferred technical content before the next workspace summary can render.
 - First-client launch proof shows complete/total proof checks, progress, next proof action, and per-group status.
-- Launch proof action routes point to Settings, Knowledge Intake, Governance, Widget, Trust Metrics, and Signal Queue according to the incomplete group.
-- Signal-source proof is based on compact context signal counts; proposal quality is verified in Signal Queue, not by Activation collection scans.
-- Content Control workbench routes to product details, import, knowledge base, product surfaces, changelog, signal queue, widget, and tickets.
+- Launch proof action routes point to Settings, Knowledge Intake, Answer Quality, Widget, Trust Metrics, and Suggested Updates according to the incomplete group.
+- Signal-source proof is based on compact context signal counts; proposal quality is verified in Suggested Updates, not by Activation collection scans.
+- Content Control workbench routes to product details, import, knowledge base, Product Pages & Flows, changelog, Suggested Updates, widget, and tickets.
 - Test-as-Customer checklist routes through the three launch-critical paths: approved help preview, contextual widget setup, and support ticket fallback.
 - Test-as-Customer statuses say Ready to test and explicitly state that configuration does not prove resolution.
 - Widget and page-context proof are complete at the seven-day boundary, become Needs review immediately after it, and reject implausibly future telemetry.
 - `stage: live` is accepted only with complete, internally consistent launch proof; an 85% readiness score alone is insufficient.
-- Readiness Metrics labels the percentage as Setup readiness and uses launch proof for success color/copy.
+- Setup Status labels the percentage as Setup readiness and uses launch proof for success color/copy.
 - A non-ready compiled-context rebuild shows fixed needs-review copy rather than a success toast.
 - Malformed notification-test or compiled-context responses fail closed before success copy.
 - Browser response validation rejects malformed timestamps, statuses, counts, oversized arrays/strings, contradictory proof totals, and live-stage/proof mismatch.
@@ -51,6 +51,14 @@
 - Mobile Content Control actions stack without horizontal scroll.
 - Mobile Surface Readiness and Test-as-Customer cards stack without horizontal scroll.
 - Activation, Readiness, Surface Readiness, and Test-as-Customer command actions retain at least 44px targets.
+- Get Live initially shows Activation, First 10 Answers, Install Support, and Setup Status; its other authorized destinations remain available through All tools.
+- Run Support initially shows Daily Brief and Ticket Inbox, and its parent route opens Daily Brief.
+- Answer Quality initially shows Trusted Answers, while the in-page All tools menu and sidebar reveal retain access to every other authorized governance route.
+- All tools is built after permission and feature-flag filtering, reveals no unauthorized destination, and never changes entitlements.
+- Opening All tools does not navigate or close the mobile drawer; choosing a real destination follows the existing route and drawer-close behavior.
+- A bookmarked or directly opened secondary route remains visible and active without requiring a saved reveal preference.
+- Show fewer tools restores the compact list after the operator leaves an active secondary route.
+- Install Support exposes the existing coding-agent packet and acceptance tests without changing widget credentials or install contracts.
 
 ## Cost
 
@@ -65,6 +73,7 @@
 - Content Control workbench adds no extra Firestore calls beyond the activation summary response.
 - Test-as-Customer checklist and Surface Readiness matrix add no extra Firestore calls beyond the activation summary response.
 - Four-group projection, accordion state, and technical-details disclosure add no Firestore reads, writes, listeners, model calls, or persisted UI state.
+- Compact navigation and All tools add no Firestore reads, writes, listeners, browser-storage state, model calls, or persisted workspace preference.
 - Ticket detail Knowledge Loop card adds no Firestore calls; it reads only local ticket state.
 - Activation snapshot write is skipped when signature is unchanged and fresh.
 - Widget runtime marker is throttled.

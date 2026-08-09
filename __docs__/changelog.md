@@ -1,5 +1,43 @@
 # MenuList — Changelog
 
+## August 7, 2026 - Public Create-Menu PDF Intake
+
+- The authenticated public `/create-menu` starter now accepts one PDF up to
+  10MB and 15 pages. The existing browser PDF utility converts every page to a
+  bounded JPEG; the raw PDF is never uploaded or published to customers.
+- The intake route validates every converted page by MIME and magic bytes,
+  enforces 10MB per page and 30MB total, deduplicates the ordered page set, and
+  creates the draft plus extraction job atomically after Storage succeeds.
+- Public draft, extraction worker, claim, and maintenance cleanup now share one
+  versioned ordered-source contract. Job ownership, bucket, paths, URLs, sizes,
+  MIME types, owner, expiry, and primary compatibility aliases fail closed on
+  mismatch.
+- The worker preserves a private bounded page index only until claim. Claim
+  requires complete page attribution, writes one normal project file per page,
+  strips the private index, and retains the existing public structured menu,
+  cache invalidation, and Digital Screen refresh paths.
+- Expired unclaimed drafts delete every page with a durable retry receipt;
+  claimed drafts preserve all promoted project sources. QR Code and Assets
+  remain dedicated navigation modules and were not changed.
+
+## August 6, 2026 - Owner Decision Load And Help Correction
+
+- Desktop and mobile dashboards now show one required next action only while a
+  real gap is open. Stable state stays quiet, and duplicate quick-action grids
+  were removed without removing their existing routes or the dedicated QR Code
+  and Assets modules.
+- Menu Setup cards now show the current step, explanation, and one action rather
+  than a percentage, completed-step pills, and optional-work checklist.
+- Extraction review replaces internal match percentages with a plain **Needs
+  review** label for weak matches. Business Health answer bubbles retain source
+  freshness while no longer exposing internal confidence labels.
+- MenuList Help Center Quick Start now opens the menu, customer preview, sharing
+  tools, and task help. The unrelated Help Center branding and changelog tasks
+  were removed, along with non-persistent checkbox controls.
+- Desktop owner PDF intake remains unchanged: validated PDFs are split into
+  bounded JPEG pages before entering the existing extraction workflow. The
+  separate public create-menu intake remains intentionally image-only.
+
 ## August 5, 2026 - Answerlattice Release Evidence Handoff
 
 - Knowledge Intake now provides a dedicated release-evidence form for pasted

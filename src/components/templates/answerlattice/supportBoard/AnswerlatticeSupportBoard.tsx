@@ -57,7 +57,7 @@ const BOARD_COLUMNS: Array<{
     {
         status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_ANSWER,
         title: 'Needs Answer',
-        description: 'Needs a FAQ, canonical answer, article update, or ticket reply.',
+        description: 'Needs a FAQ, trusted answer, article update, or ticket reply.',
         color: 'error',
     },
     {

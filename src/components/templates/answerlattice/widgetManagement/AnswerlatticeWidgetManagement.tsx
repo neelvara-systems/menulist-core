@@ -2244,7 +2244,7 @@ function PageAwarePreview() {
                     <Tag color="blue">contextKey: billing_invoices</Tag>
                 </Flex>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    When your app sends route context, Answerlattice boosts linked product surfaces before falling back to general help.
+                    When your app sends route context, Answerlattice prioritizes linked Product Pages & Flows before falling back to general help.
                 </Text>
                 <Flex gap={6} wrap="wrap">
                     <Tag>Billing</Tag>

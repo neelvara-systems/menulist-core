@@ -452,7 +452,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Coverage" value={brief.metrics.coverageRate ?? 'Not available'} suffix={brief.metrics.coverageRate === null ? undefined : '%'} prefix={<LuShieldCheck size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Confirmed resolved" value={brief.metrics.confirmedResolutionRate ?? 'Not available'} suffix={brief.metrics.confirmedResolutionRate === null ? undefined : '%'} prefix={<LuGauge size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="No escalation" value={brief.metrics.noEscalationRate ?? 'Not available'} suffix={brief.metrics.noEscalationRate === null ? undefined : '%'} prefix={<LuGauge size={16} />} /></Card>
-                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Drifted answers" value={brief.metrics.driftedAnswers} prefix={<LuAlertCircle size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Answers to recheck" value={brief.metrics.driftedAnswers} prefix={<LuAlertCircle size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Review items" value={brief.metrics.reviewItems + brief.metrics.needsAnswerCards} prefix={<LuListChecks size={16} />} /></Card>
                     </Flex>
                     {brief.metrics.recontactEligible > 0 ? (

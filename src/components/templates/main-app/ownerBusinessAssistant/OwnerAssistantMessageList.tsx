@@ -125,10 +125,9 @@ export function OwnerAssistantMessageList({ answer, disabledFollowUps, loading, 
               key={message.id || `${message.role || 'message'}-${index}`}
               role={message.role === 'user' ? 'user' : 'assistant'}
             >
-              {message.freshnessLabel || message.confidence ? (
+              {message.freshnessLabel ? (
                 <Space wrap className={styles.answerMeta}>
-                  {message.freshnessLabel ? <OwnerAssistantFreshnessLabel label={message.freshnessLabel} /> : null}
-                  {message.confidence ? <Text type="secondary">Confidence: {message.confidence}</Text> : null}
+                  <OwnerAssistantFreshnessLabel label={message.freshnessLabel} />
                 </Space>
               ) : null}
               {index === displayLatestAssistantIndex ? (
@@ -152,7 +151,6 @@ export function OwnerAssistantMessageList({ answer, disabledFollowUps, loading, 
         <OwnerAssistantBubble content={answer.text} role="assistant">
           <Space wrap className={styles.answerMeta}>
             <OwnerAssistantFreshnessLabel label={answer.freshnessLabel} />
-            <Text type="secondary">Confidence: {answer.confidence}</Text>
           </Space>
           <FollowUpQuestions
             disabled={disabledFollowUps}

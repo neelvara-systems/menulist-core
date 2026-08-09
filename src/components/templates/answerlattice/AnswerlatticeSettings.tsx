@@ -238,7 +238,7 @@ export default function AnswerlatticeSettings() {
                             type="info"
                             showIcon
                             message="These details power setup, widget verification, and support routing."
-                            description="Use Product Surfaces for detailed page mapping after saving the main profile."
+                            description="Use Product Pages & Flows for detailed support mapping after saving the main profile."
                         />
                         <Form form={form} layout="vertical">
                             <Form.Item
@@ -350,7 +350,7 @@ export default function AnswerlatticeSettings() {
                     </Flex>
                     <Space wrap>
                         <Button onClick={() => router.push(toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.PRODUCT_SURFACES, currentHostname))}>
-                            Map Product Surfaces
+                            Map Product Pages &amp; Flows
                         </Button>
                     </Space>
                 </Flex>

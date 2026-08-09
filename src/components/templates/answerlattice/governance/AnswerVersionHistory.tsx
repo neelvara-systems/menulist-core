@@ -40,11 +40,11 @@ interface Props {
 }
 
 const ACTION_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    'drift_detected': { label: 'Drift Detected', color: 'orange', icon: <LuShieldAlert /> },
-    'drift_manually_resolved': { label: 'Drift Resolved', color: 'green', icon: <LuCheckCircle /> },
-    'drift_cleared': { label: 'Drift Cleared', color: 'green', icon: <LuCheckCircle /> },
-    'canonical_answer_updated': { label: 'Canonical Answer Updated', color: 'geekblue', icon: <LuFileEdit /> },
-    'draft_approved_as_canonical_answer': { label: 'Canonical Answer Approved', color: 'purple', icon: <LuFileEdit /> },
+    'drift_detected': { label: 'Answer Needs Recheck', color: 'orange', icon: <LuShieldAlert /> },
+    'drift_manually_resolved': { label: 'Answer Rechecked', color: 'green', icon: <LuCheckCircle /> },
+    'drift_cleared': { label: 'Recheck Cleared', color: 'green', icon: <LuCheckCircle /> },
+    'canonical_answer_updated': { label: 'Trusted Answer Updated', color: 'geekblue', icon: <LuFileEdit /> },
+    'draft_approved_as_canonical_answer': { label: 'Trusted Answer Approved', color: 'purple', icon: <LuFileEdit /> },
     'mutation_proposal_generated': { label: 'Mutation Proposed', color: 'blue', icon: <LuGitBranch /> },
     'mutation_proposal_approved': { label: 'Mutation Approved', color: 'green', icon: <LuCheckCircle /> },
     'mutation_approved': { label: 'Mutation Approved', color: 'green', icon: <LuCheckCircle /> },
@@ -137,7 +137,7 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
     }
 
     if (answers.length === 0) {
-        return <Empty description="No canonical answers found" />;
+        return <Empty description="No trusted answers found" />;
     }
 
     return (
@@ -145,7 +145,7 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Text strong>Select Answer:</Text>
                 <Select
-                    placeholder="Choose a canonical answer"
+                    placeholder="Choose a trusted answer"
                     style={{ width: 400 }}
                     value={selectedAnswerId}
                     onChange={(answerId) => {
@@ -171,7 +171,7 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
             </div>
 
             {!selectedAnswerId && (
-                <Empty description="Select a canonical answer to view its version history" />
+                <Empty description="Select a trusted answer to view its version history" />
             )}
 
             {selectedAnswerId && loading && <Spin tip="Loading history..." />}

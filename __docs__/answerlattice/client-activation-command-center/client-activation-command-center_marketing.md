@@ -4,7 +4,7 @@ Answerlattice gives SaaS teams a clear launch checklist for governed support set
 
 Positioning:
 
-- One place to see whether support content, product surfaces, canonical answers, widget setup, page context, governance summaries, and signal-source testing are ready.
+- One place to see whether support content, Product Pages & Flows, Trusted Answers, widget setup, page context, Answer Quality summaries, and fallback-evidence testing are ready.
 - Product owners do not need to remember tenant IDs, store IDs, or Firestore paths.
 - The readiness page is built on compact summaries, so it stays cost-conscious as support content grows.
 - First-client launch proof keeps integrations and extra distribution behind the core governed-answer loop.

@@ -423,19 +423,19 @@ measurable two-surface activation chain.
   the useful research loop, corrected the unsupported thresholds and
   structural absolutes, and deferred use to MenuList's paid-acquisition gate.
 
-### ML-MKT-EXT-006 - HyperFrames 0.7.87 Release Train And Recent Production Articles
+### ML-MKT-EXT-006 - HyperFrames 0.7.101 Release Train And Recent Production Articles
 
 - **Status:** `DEFERRED_REFERENCE`
 - **Shared:** August 1, 2026
-- **Source:** [HyperFrames npm package](https://www.npmjs.com/package/hyperframes?activeTab=versions), [official GitHub releases](https://github.com/heygen-com/hyperframes/releases), [official HyperFrames X account](https://x.com/HyperFrames_), and the Day 21-26 official articles linked below.
+- **Source:** [HyperFrames npm package](https://www.npmjs.com/package/hyperframes?activeTab=versions), [official GitHub releases](https://github.com/heygen-com/hyperframes/releases), [official HyperFrames X account](https://x.com/HyperFrames_), the Day 21-30 official articles, and the August 7 Claude Design MCP announcement linked below.
 - **Source type:** Release notes and X article series
-- **Topics:** hyperframes, video-production, local-rendering, prompt-guide, BRIEF.md, motion-continuity, transition-flicker, product-screenshots, audio-opening, audio-ducking, captions, native-aspect-ratios, templates, color-grading, media-effects, overlays, website-capture
+- **Topics:** hyperframes, video-production, local-rendering, prompt-guide, BRIEF.md, motion-continuity, transition-flicker, product-screenshots, audio-opening, audio-ducking, captions, native-aspect-ratios, templates, color-grading, media-effects, overlays, website-capture, media-probing, sub-compositions, registry-families, component-reuse, deterministic-blocks, parallel-capture-canary, claude-design-mcp
 - **Use when:** Starting the next MenuList video project or explicitly admitting a newer HyperFrames CLI into the local production toolchain.
-- **Revalidate:** Current npm latest version, release notes since `0.7.87`, Node and FFmpeg requirements, local skill state, CLI command compatibility, Apache license, third-party media rights, encoded output parity, and the zero-cost local-only production boundary.
+- **Revalidate:** Current npm latest version, release notes since `0.7.101`, Node and FFmpeg requirements, local skill state, CLI command compatibility, canary defaults, Apache license, third-party media rights, encoded output parity, and the zero-cost local-only production boundary.
 
 **Source idea**
 
-The upstream project moved from `0.7.62` to `0.7.87` through a large patch train. The current official series covers cloud rendering, reusable components, templates and variables, deterministic color grading, a structured Prompt Guide, and media effects and overlays. Release notes also add product-launch continuity checks, stronger music openings, audio automation fixes, caption-zone handling, orientation-aware resolution, safer fast capture, and bounded website capture.
+The upstream project moved from `0.7.62` to `0.7.101` through a large patch train. The completed official series covers cloud rendering, reusable components, templates and variables, deterministic color grading, a structured Prompt Guide, media effects, deployment, catalog contribution, coherent component families, and community examples. Releases through `0.7.101` also add safer media probing, bounded long-source extraction, external-edit recovery, stronger preview/render parity, mounted-composition style fixes, software-capture ghosting fixes, and a canary parallel drawElement path.
 
 **MenuList verdict**
 
@@ -450,15 +450,18 @@ Adopt the production principles that improve truth, continuity, and repeatabilit
 - keep captions inside an intentional native aspect-ratio layout;
 - use deterministic, restrained color correction and grading;
 - use bounded website capture for real MenuList UI evidence;
+- use deterministic, paused, registered timelines for MenuList-owned reusable blocks;
+- select a coherent reviewed component family instead of mixing unrelated effects;
+- treat Studio as an editing surface while the encoded MP4 remains the output authority;
 - continue encoded frame-zero, transition, and final-frame QA.
 
-Do not adopt cloud rendering, account-backed generation, hosted catalogs, paid media, or login-gated assets. Do not use bloom, pixelation, CRT, glitch, ASCII, engraving, HUD, light leaks, or freeze-frame dressing as generic decoration. Media effects and overlays are admitted only when one motivated treatment improves a specific transition or supporting-footage beat without obscuring product UI, captions, claims, or owner control.
+Do not adopt cloud rendering, hosted deployment, account-backed generation, Claude Design handoff, hosted publishing, paid media, or login-gated assets. Do not use bloom, pixelation, CRT, glitch, ASCII, engraving, HUD, light leaks, hand-drawn wobble, or freeze-frame dressing as generic decoration. Media effects and overlays are admitted only when one motivated treatment improves a specific transition or supporting-footage beat without obscuring product UI, captions, claims, or owner control.
 
-The upstream skills directory still contains 19 workflows; this is an improvement inside the existing skill set, not a new MenuList workflow count.
+The upstream skills directory still contains 19 workflows. The registry now exposes 132 blocks and 36 components; this is catalog growth inside the existing workflow set, not a new MenuList workflow count.
 
 **Current decision**
 
-No installation or production upgrade in this review pass. Keep `0.7.62` as the last verified production baseline and treat `0.7.87` as the reviewed candidate. The next toolchain action is an isolated, pinned, telemetry-disabled `0.7.87` smoke test on a disposable short composition. Frozen videos and source projects must not be migrated in place.
+No installation or production upgrade in this review pass. Keep `0.7.62` as the last verified production baseline and treat `0.7.101` as the reviewed candidate. The next toolchain action is an isolated, pinned, telemetry-disabled `0.7.101` smoke test with `HF_DE_PARALLEL_ROUTER=false` on a disposable short composition. Frozen videos and source projects must not be migrated in place.
 
 **Official recent articles**
 
@@ -468,6 +471,11 @@ No installation or production upgrade in this review pass. Keep `0.7.62` as the 
 - [Day 24 - Color Grading](https://x.com/HyperFrames_/status/2082536413829235004) - useful only as restrained deterministic correction and brand look.
 - [Day 25 - Prompt Guide](https://x.com/HyperFrames_/status/2082892893027749917) - adopt the brief, continuity, pacing, and review guidance.
 - [Day 26 - Media Effects and Overlays](https://x.com/HyperFrames_/status/2083324288632045910) - selectively admit motivated treatments; reject decorative effect stacking.
+- [Day 27 - Deploy](https://x.com/HyperFrames_/status/2083633492894900456) - reject Vercel, Cloudflare, and Modal rendering for the local-only asset workflow.
+- [Day 28 - Contribute to the Catalog](https://x.com/HyperFrames_/status/2084070152975634743) - adopt deterministic block rules for internal MenuList components; do not publish internal brand blocks by default.
+- [Day 29 - Components Update](https://x.com/HyperFrames_/status/2084338269194732003) - selectively inspect the minimal `mk` family; reject the creator-broadcast and hand-drawn families for core MenuList work.
+- [Day 30 - 30 for 30](https://x.com/HyperFrames_/status/2084720409841484202) - useful community evidence and rationale-handoff pattern; not evidence of guaranteed views.
+- [HyperFrames MCP in Claude Design](https://x.com/HyperFrames_/status/2085788866691416065) - skip the account-backed agent handoff; retain the editable-source and design-rationale lesson.
 
 **Related MenuList truth**
 
@@ -479,6 +487,7 @@ No installation or production upgrade in this review pass. Keep `0.7.62` as the 
 **Outcome history**
 
 - August 1, 2026 - Verified npm latest `0.7.87`, reviewed official release notes from the `0.7.62` baseline, inspected the 19-skill directory, and read the official Day 21-26 X article list plus the full Day 26 article. Recorded a selective adoption verdict and deferred the CLI change to an isolated local smoke test.
+- August 8, 2026 - Verified npm latest `0.7.101` with Node `>=22` and Apache-2.0 metadata, reviewed releases `0.7.88` through `0.7.101`, confirmed the upstream skill count remains 19 and the registry now contains 132 blocks plus 36 components, read the official Day 27-30 articles, and reviewed the Claude Design MCP announcement. Kept `0.7.62` as the proven baseline, moved the reviewed candidate to `0.7.101`, rejected cloud and account-backed paths, and specified an isolated canary-disabled local smoke gate.
 
 ## Maintenance
 

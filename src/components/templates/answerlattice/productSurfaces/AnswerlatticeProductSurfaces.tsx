@@ -2,6 +2,7 @@
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { getEntities } from '@database/answerlattice/entities';
 import {
     archiveProductSurface,
@@ -57,7 +58,7 @@ const DEFAULT_SURFACE_VALUES = {
     },
 };
 
-const ANSWERLATTICE_PRODUCT_SURFACES_LOAD_FAILED = 'Could not load product surfaces';
+const ANSWERLATTICE_PRODUCT_SURFACES_LOAD_FAILED = 'Could not load Product Pages & Flows';
 const ANSWERLATTICE_PRODUCT_SURFACE_SAVE_FAILED = 'Could not save product surface';
 const ANSWERLATTICE_PRODUCT_SURFACE_ARCHIVE_FAILED = 'Could not archive product surface';
 const ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_FAILED = 'Could not rebuild context summary';
@@ -298,14 +299,14 @@ export default function AnswerlatticeProductSurfaces() {
         <div style={{ padding: isMobile ? '16px 16px calc(16px + env(safe-area-inset-bottom))' : 24 }}>
             <Flex justify="space-between" align={isMobile ? 'flex-start' : 'center'} gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Product Surfaces</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productPagesAndFlows}</Title>
                     <Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 760 }}>
-                        Connect pages, workflows, entities, articles, changelogs, and tickets so Answerlattice can answer in the right product context.
+                        Connect customer pages and workflows to product topics, help content, releases, and support evidence so answers match where the customer is working.
                     </Paragraph>
                 </div>
                 <Space wrap>
-                    <Button icon={<LuPlus />} onClick={handleNewSurface}>New Surface</Button>
-                    <Button icon={<LuRefreshCw />} loading={rebuilding} onClick={handleRebuild}>Rebuild Summary</Button>
+                    <Button icon={<LuPlus />} onClick={handleNewSurface}>New Page or Flow</Button>
+                    <Button icon={<LuRefreshCw />} loading={rebuilding} onClick={handleRebuild}>Refresh Support Context</Button>
                 </Space>
             </Flex>
 
@@ -314,7 +315,7 @@ export default function AnswerlatticeProductSurfaces() {
                 type="info"
                 style={{ marginTop: 16, marginBottom: 16 }}
                 message="Use stable context keys in your app"
-                description="For example, pass contextKey: billing_invoices from the billing route. Answerlattice then prefers the articles, release notes, entities, and ticket signals connected to that product area."
+                description="For example, pass contextKey: billing_invoices from the billing route. Answerlattice then prefers the articles, release notes, Product Topics, and ticket evidence connected to that product area."
             />
 
             {loading ? (
@@ -322,12 +323,12 @@ export default function AnswerlatticeProductSurfaces() {
             ) : (
                 <>
                     <Card
-                        title={<Flex align="center" gap={8}><LuSparkles /> Starter surface templates</Flex>}
+                        title={<Flex align="center" gap={8}><LuSparkles /> Starter pages and flows</Flex>}
                         extra={!isMobile ? addMissingTemplatesButton : null}
                         style={{ marginBottom: 16 }}
                     >
                         <Paragraph type="secondary" style={{ marginTop: 0 }}>
-                            Seed the six product pages most SaaS apps support first. Templates create product surfaces only; starter questions stay as prompts for owner-reviewed articles, FAQs, and approved answers.
+                            Add the common product pages most SaaS apps support first. Starter questions remain prompts for owner-reviewed articles, FAQs, and approved answers.
                         </Paragraph>
                         {isMobile ? (
                             <Flex style={{ marginBottom: 12 }}>
@@ -374,10 +375,10 @@ export default function AnswerlatticeProductSurfaces() {
 
                     <Row gutter={[16, 16]}>
                     <Col xs={24} lg={8}>
-                        <Card title="Surface Directory" extra={<Tag>{surfaces.length}</Tag>} styles={{ body: { padding: 0 } }}>
+                        <Card title="Pages &amp; Flows" extra={<Tag>{surfaces.length}</Tag>} styles={{ body: { padding: 0 } }}>
                             {surfaces.length === 0 ? (
                                 <Empty
-                                    description="No product surfaces yet"
+                                    description="No product pages or flows yet"
                                     image={(
                                         <ContextualStateIllustration
                                             color={token.colorPrimary}
@@ -484,12 +485,12 @@ export default function AnswerlatticeProductSurfaces() {
                                                         </Form.Item>
                                                     </Col>
                                                 </Row>
-                                                <Form.Item name="entityIds" label="Product entities">
-                                                    <Select mode="multiple" options={entityOptions} placeholder="Bind Answerlattice product entities" />
+                                                <Form.Item name="entityIds" label="Product Topics">
+                                                    <Select mode="multiple" options={entityOptions} placeholder="Connect Answerlattice Product Topics" />
                                                 </Form.Item>
                                                 <Row gutter={12}>
                                                     <Col xs={24} md={12}>
-                                                        <Form.Item name="entityHints" label="Entity hints">
+                                                        <Form.Item name="entityHints" label="Topic hints">
                                                             <Select mode="tags" tokenSeparators={[',']} placeholder="invoice, payment, subscription" />
                                                         </Form.Item>
                                                     </Col>

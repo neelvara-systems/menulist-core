@@ -79,7 +79,7 @@ const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
 const MAX_BROWSER_TEXT_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_BROWSER_EXTRACTED_TEXT_CHARS = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS + 1;
-const ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED = 'Could not search product entities.';
+const ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED = 'Could not search Product Topics.';
 const ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED = 'Could not inspect URL.';
 
 const TARGET_LABELS: Record<string, { label: string; color: string; icon: IconType }> = {
@@ -1045,7 +1045,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                         style={{ borderRadius: 8 }}
                                     >
                                         <Paragraph type="secondary">
-                                            Review which sources are suitable evidence before accepting a canonical answer proposal. Evidence approval does not publish product truth.
+                                            Review which sources are suitable evidence before accepting a trusted-answer proposal. Approving evidence does not publish product truth.
                                         </Paragraph>
                                         <List
                                             dataSource={bundle.sources}
@@ -1266,7 +1266,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                     </Form.Item>
                                                 </Col>
                                                 <Col xs={24} md={8}>
-                                                    <Form.Item name="entityIds" label="Product entities">
+                                                    <Form.Item name="entityIds" label="Product Topics">
                                                         <Select
                                                             mode="multiple"
                                                             showSearch
@@ -1285,7 +1285,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                             </Row>
                                             <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile}>
                                                 <Text type="secondary">
-                                                    Creates review drafts only. Canonical answer proposals still need a related entity before approval.
+                                                    Creates review drafts only. Trusted Answer proposals still need a related Product Topic before approval.
                                                 </Text>
                                                 <Button type="primary" loading={saving} icon={<LuShieldCheck />} onClick={handleAddRepeatedReply}>
                                                     Add repeated reply

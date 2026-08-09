@@ -2,7 +2,11 @@
 
 The Activation Command Center is the Answerlattice client launch surface. It tells a SaaS product owner whether the workspace has enough current configuration and retained evidence for controlled customer-path testing without scanning the operational collections. The primary path is compressed into four progressive owner goals, while the exact diagnostics remain available under technical details.
 
-It also includes the First-client launch proof, Content Control workbench, and Test-as-Customer checklist shared with Readiness Metrics. These give owners one path into product profile, knowledge import, article management, product surfaces, governance summaries, signal queue, widget configuration, ticket fallback, and launch verification using the existing activation summary. The checklist labels prerequisites as **Ready to test**; it does not claim that a customer task or fallback was successfully resolved. These projections do not add new page-load reads.
+It also includes the First-client launch proof, Content Control workbench, and Test-as-Customer checklist shared with Setup Status. These give owners one path into product profile, knowledge import, article management, Product Pages & Flows, Answer Quality summaries, Suggested Updates, widget configuration, ticket fallback, and launch verification using the existing activation summary. The checklist labels prerequisites as **Ready to test**; it does not claim that a customer task or fallback was successfully resolved. These projections do not add new page-load reads.
+
+The owner presentation uses the shared customer-language contract: **Get Live**, **Run Support**, **Answer Quality**, **Trusted Answers**, **Product Topics**, **Suggested Updates**, and **Setup Status**. Routes, summary fields, stored schemas, and engineering diagnostics retain their established technical names.
+
+The authenticated shell now presents a compact default toolset. Get Live shows Activation, First 10 Answers, Install Support, and Setup Status; Run Support shows Daily Brief and Ticket Inbox; Answer Quality shows Trusted Answers. **All tools** reveals the remaining authorized workflows locally, and a directly opened deeper route stays visible while active. No route or capability was removed.
 
 ## Scope
 
@@ -39,11 +43,13 @@ Ticket notification readiness is computed from feature flag + SMTP environment +
 
 The four-group launch path, First-client launch proof, Content Control workbench, Test-as-Customer checklist, and Surface Readiness matrix reuse the activation summary already loaded by the page. Counts and readiness labels come from `summary.content`, `summary.workspace`, `summary.widget`, `summary.governance`, `summary.compiledContext`, and the compact surface readiness data derived from `platformSummary/contextContent_{tId}_{sId}`; none of these components read KB, changelog, ticket, entity, signal, or widget collections directly. Accordion state is local and is never persisted.
 
+Sidebar All tools state is also component-local and session-only. It adds no route request, Firestore operation, browser-storage write, listener, summary rebuild, or AI call.
+
 The summary route reads and validates `stores/{sId}` first. A missing or cross-product/cross-scope store stops after that one read; only a valid store can trigger the remaining seven compact summary reads. Coverage, trust, context, source-version, Answer Test, and compiled-manifest inputs are parsed against exact Answerlattice scope before they can advance readiness. Legacy subscriptions require exact `AL` product plus tenant/store identity.
 
 Widget install and page-context proof expire after seven days without current sanitized runtime telemetry. A stale marker remains visible as **Needs review**, but cannot complete launch proof or select the internal `live` stage. The browser accepts only a bounded 64 KiB, deeply shape-validated summary whose counts, statuses, timestamps, proof totals, and `live` state are mutually consistent.
 
-Readiness Metrics displays `readinessScore` as **Setup readiness** only. Success styling and controlled-customer-testing copy require `summary.launchProof.ready`; an 85% or higher setup percentage cannot independently claim launch readiness. Notification-test recipients and compiled-context rebuild results are also validated before success copy is shown, and these management responses are private/no-store.
+Setup Status displays `readinessScore` as **Setup readiness** only. Success styling and controlled-customer-testing copy require `summary.launchProof.ready`; an 85% or higher setup percentage cannot independently claim launch readiness. Notification-test recipients and compiled-context rebuild results are also validated before success copy is shown, and these management responses are private/no-store.
 
 ## Files
 

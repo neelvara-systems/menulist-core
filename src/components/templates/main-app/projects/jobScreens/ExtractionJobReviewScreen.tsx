@@ -79,17 +79,9 @@ function ChangeTag({ type }: { type: 'NEW' | 'UPDATE' | 'OVERRIDE' }) {
     );
 }
 
-function MatchScoreBadge({ score, matchType }: { score: number; matchType?: string }) {
-    if (!score || score === 0) return null;
-
-    const percent = Math.round(score * 100);
-    const color = matchType === 'weak' ? 'warning' : 'success';
-
-    return (
-        <Tag color={color === 'warning' ? 'orange' : 'green'}>
-            {percent}% match
-        </Tag>
-    );
+function ReviewNeededTag({ matchType }: { matchType?: string }) {
+    if (matchType !== 'weak') return null;
+    return <Tag color="orange">Needs review</Tag>;
 }
 
 function PriceChangeDisplay({ from, to }: { from?: string; to?: string }) {
@@ -128,9 +120,7 @@ function CategoryRow({
                 />
                 <ChangeTag type={category.changeType} />
                 <Text strong>{name}</Text>
-                {category.matchScore && category.matchScore < 1 && (
-                    <MatchScoreBadge score={category.matchScore} matchType={category.matchType} />
-                )}
+                <ReviewNeededTag matchType={category.matchType} />
             </Flex>
             {category.warnings && category.warnings.length > 0 && (
                 <Tag color="orange" icon={<LuAlertTriangle size={12} />}>
@@ -176,9 +166,7 @@ function ItemRow({
                 {item.changes?.price && (
                     <PriceChangeDisplay from={item.changes.price.from} to={item.changes.price.to} />
                 )}
-                {item.matchScore && item.matchScore < 1 && (
-                    <MatchScoreBadge score={item.matchScore} matchType={item.matchType} />
-                )}
+                <ReviewNeededTag matchType={item.matchType} />
                 {item.isLocalOnly && (
                     <Tag color="purple">Local Only</Tag>
                 )}

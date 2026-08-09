@@ -8,7 +8,7 @@
 
 ## What It Is
 
-Owner Action Layer turns existing MenuList truth into one next owner action plus a compact set of owner handoffs.
+Owner Action Layer turns existing MenuList truth into one next owner action when attention is required. When required truth is stable, the dashboard relies on its existing "No action needed" state and does not invent routine work.
 
 It covers the real SMB owner jobs that sit behind the current MenuList surfaces:
 

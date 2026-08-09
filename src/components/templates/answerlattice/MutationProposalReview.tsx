@@ -11,6 +11,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { useMutationProposals } from '@hook/answerlattice/useMutationProposals';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
@@ -123,7 +124,7 @@ function ProposalItem({
             ...(canGenerateDraft ? [
                 <Popconfirm
                     key="generate"
-                    title="Generate a canonical answer draft?"
+                    title="Prepare a trusted-answer draft?"
                     description="This uses one AI request and keeps the draft in review until you publish it."
                     onConfirm={() => onRegenerateDraft(proposal)}
                     okText="Generate"
@@ -257,7 +258,7 @@ function ProposalItem({
                             {proposal.suggestedChange?.draftSource === 'ticket_resolution' && (
                                 <>Extractor score: {Math.round(proposal.confidenceScore * 100)}% | </>
                             )}
-                            {proposal.relatedEntityIds?.length || 0} linked product {(proposal.relatedEntityIds?.length || 0) === 1 ? 'entity' : 'entities'}
+                            {proposal.relatedEntityIds?.length || 0} linked product {(proposal.relatedEntityIds?.length || 0) === 1 ? 'topic' : 'topics'}
                         </Text>
                         {proposal.suggestedChange?.sourceTicketCount !== undefined && (
                             <Text type="secondary">
@@ -478,7 +479,7 @@ export default function MutationProposalReview() {
         <Card>
             <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile} style={{ marginBottom: 16 }}>
                 <Space wrap>
-                    <Title level={5} style={{ margin: 0 }}>Signal-to-Knowledge Queue</Title>
+                    <Title level={5} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.suggestedUpdates}</Title>
                     <Badge count={proposals.length} style={{ backgroundColor: proposals.length > 0 ? token.colorPrimary : token.colorFill }} />
                 </Space>
                 <Button
@@ -495,13 +496,13 @@ export default function MutationProposalReview() {
                 showIcon
                 style={{ marginBottom: 16 }}
                 message="Review repeated support gaps before they become answers"
-                description="Answerlattice can draft from ticket, chat, and feedback signals, but owners approve the final canonical answer."
+                description="Answerlattice can prepare a draft from tickets, conversations, and feedback, but an owner approves the final trusted answer."
             />
 
             <List
                 dataSource={proposals}
                 loading={loading}
-                locale={{ emptyText: <Empty description="No pending signal proposals. Resolve tickets and collect customer feedback; repeated gaps will appear here for review." /> }}
+                locale={{ emptyText: <Empty description="No answer updates need review. Repeated gaps from resolved tickets, conversations, and feedback will appear here." /> }}
                 renderItem={(proposal) => (
                     <ProposalItem
                         proposal={proposal}
@@ -517,7 +518,7 @@ export default function MutationProposalReview() {
                 )}
             />
             <Modal
-                title="Publish Canonical Answer"
+                title="Publish Trusted Answer"
                 open={Boolean(draftProposal)}
                 onCancel={closeDraftModal}
                 destroyOnClose
@@ -682,7 +683,7 @@ export default function MutationProposalReview() {
                                 : 'No linked proof is available'}
                             description={impactResult.proposedProofStatus
                                 ? 'This is advisory evidence. Publishing still uses the normal governance approval checks.'
-                                : 'Add an active Answer Test linked to this answer or one of its product entities before relying on the change.'}
+                                : 'Add an active Answer Test linked to this answer or one of its Product Topics before relying on the change.'}
                         />
                         <div style={{
                             border: `1px solid ${token.colorBorderSecondary}`,

@@ -3272,6 +3272,11 @@
     },
     {
       "collectionGroup": "publicMenuDrafts",
+      "fieldPath": "sourceFiles",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
       "fieldPath": "growthAcquisition",
       "indexes": []
     },

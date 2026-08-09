@@ -12,6 +12,7 @@ import {
   MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES,
   OWNER_MENU_UPLOAD_MIME_TYPES,
   PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+  PUBLIC_CREATE_MENU_UPLOAD_LIMITS,
   SUPPORTED_MENU_EXTRACTION_JOB_MIME_TYPES,
 } from '../../src/data/shared/menuExtractionJob';
 import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../../src/data/shared/menuExtractionProjectSize';
@@ -20,7 +21,11 @@ import {
   normalizePublicMenuDraftExtractedData,
   PUBLIC_MENU_DRAFT_DATA_LIMITS,
 } from '../../src/data/shared/publicMenuDraftData';
-import { normalizePublicDraftSourceForProject } from '../../src/lib/public-menu-entry/publicDraftSource';
+import {
+  normalizePublicDraftSourceForProject,
+  normalizePublicDraftSourcesForProject,
+} from '../../src/lib/public-menu-entry/publicDraftSource';
+import { PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION } from '../../src/data/shared/publicMenuDraftSource';
 
 type DryRunFile = {
   name: string;
@@ -158,6 +163,28 @@ const publicLinkJob: DryRunJob = {
   ...buildMenuExtractionRoutingFields(buildPublicDraftMenuExtractionDestination('draft-2', 'menu_link_import')),
 };
 
+const publicPdfStoragePaths = [
+  'publicMenuDrafts/draft-3/menu-page-01.jpg',
+  'publicMenuDrafts/draft-3/menu-page-02.jpg',
+];
+const publicPdfJob: DryRunJob = {
+  ...publicImageJob,
+  files: [1, 2].map((page) => ({
+    name: `menu-page-${String(page).padStart(2, '0')}.jpg`,
+    size: 4096,
+    type: 'image/jpeg',
+    uid: `public-draft-3-${page}`,
+    url: storageUrl(`publicMenuDrafts/draft-3/menu-page-${String(page).padStart(2, '0')}.jpg`),
+  })),
+  projectId: '0-public-draft-3-0',
+  sourceMetadata: {
+    sourceType: 'image_upload',
+    storagePath: 'publicMenuDrafts/draft-3/menu-page-01.jpg',
+    storagePaths: publicPdfStoragePaths,
+  },
+  ...buildMenuExtractionRoutingFields(buildPublicDraftMenuExtractionDestination('draft-3', 'image_upload')),
+};
+
 const authenticatedLinkJob = buildProjectJob({
   filePath: 'menuLinkImports/14/22/14-default-22/job-2/source.html',
   fileType: 'text/html',
@@ -184,6 +211,7 @@ const allJobs = [
   ['owner upload', ownerJob],
   ['owner retry from link import', ownerRetryFromLinkJob],
   ['public image create-menu', publicImageJob],
+  ['public PDF create-menu', publicPdfJob],
   ['public link create-menu', publicLinkJob],
   ['authenticated link import', authenticatedLinkJob],
   ['messaging onboarding', messagingJob],
@@ -276,6 +304,17 @@ assertCheck(
 );
 
 assertCheck(
+  'public create-menu PDF: browser-converted pages stay ordered and raw PDF never reaches the worker',
+  publicPdfJob.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT
+    && publicPdfJob.files.length === 2
+    && publicPdfJob.files.every((file) => file.type === 'image/jpeg')
+    && publicPdfStoragePaths.length === publicPdfJob.files.length
+    && publicPdfJob.files.every((file, index) => (
+      getStoragePathFromDownloadUrl(file.url) === publicPdfStoragePaths[index]
+    )),
+);
+
+assertCheck(
   'authenticated link import: project review destination and import storage path',
   authenticatedLinkJob.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT
     && authenticatedLinkJob.destination.saveMode === 'review'
@@ -305,9 +344,12 @@ assertCheck(
 );
 
 assertCheck(
-  'public create-menu image MIME list excludes PDF while owner upload allows PDF',
+  'public create-menu server MIME list excludes raw PDF while bounded client conversion admits its pages',
   OWNER_MENU_UPLOAD_MIME_TYPES.includes('application/pdf')
-    && !PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES.includes('application/pdf' as any),
+    && !PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES.includes('application/pdf' as any)
+    && PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES === 15
+    && PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES === 10 * 1024 * 1024
+    && PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES === 30 * 1024 * 1024,
 );
 
 const ownerRoute = read('src/app/api/menu-extraction/jobs/route.ts');
@@ -365,7 +407,10 @@ assertCheck(
 assertCheck(
   'public draft completion uses the mirrored allowlist contract and verifies job binding',
   workerSource.includes('function buildPublicDraftExtractedData')
-    && workerSource.includes('normalizePublicMenuDraftExtractedData(sourceData)')
+    && workerSource.includes('hasCompleteRedistribution')
+    && workerSource.includes('category: any) => ({ ...category, sourceFileIndex })')
+    && workerSource.includes('normalizePublicMenuDraftExtractedData(sourceData, {')
+    && workerSource.includes('preserveSourceFileIndex: true')
     && workerSource.includes('assertPublicDraftJobBinding(jobId, job)')
     && workerSource.includes('publicDraftBindingVerified = true')
     && workerSource.includes('if (publicDraftBindingVerified)')
@@ -437,6 +482,25 @@ const validSourceDraft = {
   imageUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(sourceDraftPath)}?alt=media&token=${sourceDraftId}`,
   originalFileName: 'Menu.jpg',
 };
+const secondSourceDraftPath = `publicMenuDrafts/${sourceDraftId}/menu-page-02.jpg`;
+const secondSourceDraft = {
+  downloadUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(secondSourceDraftPath)}?alt=media&token=page-2`,
+  fileName: 'menu-page-02.jpg',
+  fileSize: 2_048,
+  fileType: 'image/jpeg',
+  storagePath: secondSourceDraftPath,
+};
+const versionedSourceDraft = {
+  ...validSourceDraft,
+  sourceFilesVersion: PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+  sourceFiles: [{
+    downloadUrl: validSourceDraft.imageUrl,
+    fileName: validSourceDraft.originalFileName,
+    fileSize: validSourceDraft.fileSize,
+    fileType: validSourceDraft.fileType,
+    storagePath: validSourceDraft.imagePath,
+  }, secondSourceDraft],
+};
 assertCheck(
   'public claim source envelope accepts only the configured bucket and exact draft path',
   normalizePublicDraftSourceForProject(validSourceDraft, sourceDraftId, {
@@ -454,6 +518,18 @@ assertCheck(
     && normalizePublicDraftSourceForProject({
       ...validSourceDraft,
       fileType: 'text/html',
+    }, sourceDraftId, { allowedBucket: bucket, allowLocalEmulator: false }) === null
+    && normalizePublicDraftSourcesForProject(
+      versionedSourceDraft,
+      sourceDraftId,
+      { allowedBucket: bucket, allowLocalEmulator: false },
+    )?.length === 2
+    && normalizePublicDraftSourcesForProject({
+      ...versionedSourceDraft,
+      sourceFiles: [versionedSourceDraft.sourceFiles[0], {
+        ...secondSourceDraft,
+        storagePath: sourceDraftPath,
+      }],
     }, sourceDraftId, { allowedBucket: bucket, allowLocalEmulator: false }) === null,
 );
 
@@ -488,7 +564,7 @@ assertCheck(
     && publicClaimRoute.includes('.doc(tenantDocumentId)')
     && publicClaimRoute.includes('.collection(storeDocumentId)')
     && publicClaimRoute.includes('.doc(projectId)')
-    && publicClaimRoute.includes('normalizePublicMenuDraftExtractedData(draft.extractedData)')
+    && publicClaimRoute.includes('normalizePublicMenuDraftExtractedData(draft.extractedData, {')
     && publicClaimRoute.includes('normalizeCompletedClaimResult(draft, userId)')
     && publicClaimRoute.includes('convertedProjectSlug: projectSlug')
     && publicClaimRoute.includes('convertedSubdomain: subdomain')

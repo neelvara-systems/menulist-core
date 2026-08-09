@@ -78,6 +78,12 @@ assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "translati
 assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'activeCategories.length > 0', 'category-only import completion');
 assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'Menu setup');
 assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'Menu setup');
+assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.progressPercent', 'desktop setup percentage');
+assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.requiredSteps.map', 'desktop setup checklist');
+assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', '<Progress', 'desktop setup progress bar');
+assertNotIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'summary.progressPercent', 'mobile setup percentage');
+assertNotIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'summary.requiredSteps.map', 'mobile setup checklist');
+assertNotIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'ProgressBar', 'mobile setup progress bar');
 assertIncludes('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx', 'MenuSetupProgress');
 assertIncludes('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx', 'ownerDashboardProjectSetup');
 assertIncludes('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx', 'owner_dashboard_project_setup_load_failed', 'dashboard missing-project guard');

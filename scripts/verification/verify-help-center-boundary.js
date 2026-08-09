@@ -56,6 +56,8 @@ function verifySearchBoundary() {
   const articleViewModal = read('src/components/organisms/ArticleViewModal/index.tsx');
   const aiSearchResultDisplay = read('src/components/organisms/AISearchModal/SearchResultDisplay.tsx');
   const messageReferences = read('src/components/templates/main-app/helpChat/MessageReferences.tsx');
+  const gettingStarted = read('src/components/templates/main-app/helpCenter/onboarding/GettingStarted.tsx');
+  const ownerLocale = read('public/locales/menulist.ai/en-US.json');
 
   assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
   assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
@@ -103,6 +105,20 @@ function verifySearchBoundary() {
   assertIncludes(messageBubble, 'helpCenterArticleRouting(articleId)', 'Help Chat related articles use internal Help Center routes');
   assertNotIncludes(messageBubble, 'window.open(articleUrl', 'Help Chat must not open response-supplied article URLs');
   assertNotIncludes(messageBubble, "getBoundedHelpChatStringContext('articleUrl'", 'Help Chat must not log response-supplied article URLs');
+  [
+    "{ label: t('step1Menu'), link: '/projects' }",
+    "{ label: t('step2CustomerPage'), link: '/projects?view=b2c' }",
+    "{ label: t('step3Share'), link: '/use-menulist' }",
+    "{ label: t('findHelp'), link: helpCenterTabRouting('kb') }",
+  ].forEach((token) => assertIncludes(gettingStarted, token, 'MenuList owner quick-start destination'));
+  assertNotIncludes(gettingStarted, 'Checkbox', 'MenuList quick-start fake completion control');
+  assertNotIncludes(gettingStarted, 'helpCenterChangelogRouting', 'MenuList quick-start Answerlattice changelog task');
+  assertNotIncludes(gettingStarted, '/settings/branding', 'MenuList quick-start Answerlattice branding task');
+  assertIncludes(ownerLocale, '"step1Menu": "Menu"', 'MenuList owner quick-start menu copy');
+  assertIncludes(ownerLocale, '"step2CustomerPage": "What customers see"', 'MenuList owner quick-start customer preview copy');
+  assertIncludes(ownerLocale, '"step3Share": "Share"', 'MenuList owner quick-start sharing copy');
+  assertNotIncludes(ownerLocale, 'Customize Your Help Center', 'MenuList owner locale Answerlattice branding copy');
+  assertNotIncludes(ownerLocale, 'Publish Your First Changelog', 'MenuList owner locale Answerlattice changelog copy');
 
   assertIncludes(helpChatApi, '...HELP_CENTER_SEARCH_REQUEST_POLICY', 'Help Chat search request policy');
   assertIncludes(helpChatApi, "readHelpCenterSearchResponse(response, 'help_chat')", 'Help Chat bounded response parser');

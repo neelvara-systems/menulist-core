@@ -53,6 +53,7 @@ const packageJson = read('package.json');
 const businessHealthRoute = read('src/app/(main)/business-health/page.tsx');
 const businessHealthPage = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
+const ownerAssistantMessageList = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantMessageList.tsx');
 const publicTruthOwnerCard = read('src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx');
 const mobileHealthScreen = read('src/components/mobile/screens/MobileBusinessHealthScreen.tsx');
 const mobilePublicTruthOwnerCard = read('src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx');
@@ -161,6 +162,8 @@ forbidToken(mobileHealthScreen, 'useOwnerBusinessAssistantAction', 'mobile busin
 forbidToken(mobileHealthScreen, 'MobileBusinessHealthActionSheet', 'mobile business health action sheet');
 forbidToken(mobileHealthScreen, 'window.location', 'mobile business health route bypass');
 forbidToken(ownerAssistantPanel, 'OwnerAssistantActionSheet', 'desktop business health action sheet');
+forbidToken(ownerAssistantMessageList, 'Confidence:', 'owner-facing Business Health confidence label');
+requireToken(ownerAssistantMessageList, 'OwnerAssistantFreshnessLabel', 'owner-facing Business Health freshness label');
 
 [
   'Official customer source',

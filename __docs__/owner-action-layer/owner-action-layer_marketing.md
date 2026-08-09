@@ -6,7 +6,7 @@ MenuList shows the next useful owner action from current menu and store truth.
 
 ## Plain Explanation
 
-Owners do not need to hunt through menus. MenuList places the next useful action on the dashboard and keeps common work one tap away.
+Owners do not need to hunt through menus. MenuList places one necessary action on the dashboard when attention is required and stays quiet when public information is stable.
 
 ## Allowed Language
 
@@ -34,6 +34,6 @@ Owners do not need to hunt through menus. MenuList places the next useful action
 2. Show the next owner action.
 3. Open the action.
 4. Show that the owner lands in an existing MenuList screen.
-5. Return to dashboard and show supporting actions.
+5. Return to the dashboard and show that the action clears when the required truth is stable.
 
 No external-platform automation should be claimed.

@@ -277,6 +277,8 @@ Worker failure classification also uses structured source error code/name/status
 
 The browser comparison boundary validates extraction relations and one-to-one persisted identity before building an apply plan. Weak category matches are non-mutating review evidence; category and item updates preserve localized maps and emit only changed fields. Invalid prices and absent optional extraction fields are not projected as destructive writes.
 
+Desktop and mobile owner review surfaces keep match scores internal. Weak matches are presented as **Needs review** while exact percentages and positive-match badges are not rendered. Warnings, proposed field changes, and owner approval controls remain unchanged.
+
 - app and Functions shared contract files are byte-for-byte identical
 - owner upload uses the protected API and does not accept client-owned source metadata
 - owner upload uses trusted Storage metadata to reuse recent completed jobs without spending another AI call

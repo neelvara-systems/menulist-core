@@ -10,6 +10,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -335,7 +336,7 @@ export default function EntityManagementDashboard() {
                     {record.status !== 'deprecated' && (
                         <Popconfirm
                             title="Deprecate entity?"
-                            description="Approved answers, support content, product surfaces, and relations must be reassigned first."
+                            description="Trusted answers, support content, Product Pages & Flows, and topic connections must be reassigned first."
                             onConfirm={() => handleDeprecate(record.id)}
                             okText="Deprecate"
                             okButtonProps={{ danger: true }}
@@ -362,12 +363,12 @@ export default function EntityManagementDashboard() {
                 )}
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
-                        <Title level={5} style={{ margin: 0 }}>Product Ontology</Title>
+                        <Title level={5} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics}</Title>
                         <Badge count={entities.length} style={{ backgroundColor: token.colorPrimary }} />
                     </Space>
                     <Space>
                         <Input
-                            placeholder="Search entities..."
+                            placeholder="Search product topics..."
                             prefix={<LuSearch />}
                             value={searchText}
                             onChange={e => setSearchText(e.target.value)}
@@ -376,7 +377,7 @@ export default function EntityManagementDashboard() {
                         />
                         <Button icon={<LuRefreshCw />} onClick={refresh} loading={loading} type="text" />
                         <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
-                            New Entity
+                            New Topic
                         </Button>
                     </Space>
                 </Flex>
@@ -407,7 +408,7 @@ export default function EntityManagementDashboard() {
                     locale={{
                         emptyText: (
                             <Empty
-                                description="No entities yet. Create your first product entity."
+                                description="No product topics yet. Add the first feature, plan, role, workflow, state, integration, or error."
                                 image={entities.length === 0 && !searchText ? (
                                     <ContextualStateIllustration
                                         color={token.colorPrimary}
@@ -425,7 +426,7 @@ export default function EntityManagementDashboard() {
 
             {/* Detail/Edit Drawer */}
             <Drawer
-                title={editMode ? 'Edit Entity' : 'Entity Detail'}
+                title={editMode ? 'Edit Product Topic' : 'Product Topic Detail'}
                 open={drawerOpen}
                 onClose={() => { setDrawerOpen(false); setEditMode(false); }}
                 width={isMobile ? '100%' : 560}
@@ -467,7 +468,7 @@ export default function EntityManagementDashboard() {
                         </Descriptions>
 
                         {/* Relations */}
-                        <Card size="small" title={<Space><LuLink /> Relations ({entityRelationCounts.get(selectedEntity.id) || 0})</Space>}>
+                        <Card size="small" title={<Space><LuLink /> Connections ({entityRelationCounts.get(selectedEntity.id) || 0})</Space>}>
                             {relations
                                 .filter(r => r.fromEntityId === selectedEntity.id || r.toEntityId === selectedEntity.id)
                                 .map(r => {
@@ -510,8 +511,8 @@ export default function EntityManagementDashboard() {
                                     </Form.Item>
                                     <Form.Item
                                         name="toEntityId"
-                                        label="Target entity"
-                                        rules={[{ required: true, message: 'Select a target entity' }]}
+                                        label="Connected topic"
+                                        rules={[{ required: true, message: 'Select a connected topic' }]}
                                     >
                                         <Select
                                             showSearch

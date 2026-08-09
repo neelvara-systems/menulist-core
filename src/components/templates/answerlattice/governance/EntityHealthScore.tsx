@@ -18,6 +18,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -180,7 +181,7 @@ export default function EntityHealthScore() {
 
     const columns = [
         {
-            title: 'Entity',
+            title: 'Product topic',
             dataIndex: 'name',
             key: 'name',
             render: (name: string, record: EntityHealthRow) => (
@@ -226,12 +227,12 @@ export default function EntityHealthScore() {
             ),
         },
         {
-            title: 'Drift',
+            title: 'Needs recheck',
             key: 'drift',
             width: 80,
             render: (_: any, record: EntityHealthRow) => (
                 record.driftedAnswerCount > 0 ? (
-                    <Tooltip title={`${record.driftedAnswerCount} drifted answer(s)`}>
+                    <Tooltip title={`${record.driftedAnswerCount} answer(s) need rechecking`}>
                         <Tag color="warning" icon={<LuAlertTriangle style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
                             {record.driftedAnswerCount}
                         </Tag>
@@ -308,7 +309,7 @@ export default function EntityHealthScore() {
             </Flex>
 
             {/* Health Table */}
-            <Card title={<Space><LuHeart /> Entity Health Scores</Space>}>
+            <Card title={<Space><LuHeart /> {ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.topicCoverage}</Space>}>
                 <Table
                     dataSource={healthData}
                     columns={columns}
@@ -317,7 +318,7 @@ export default function EntityHealthScore() {
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <Empty description="No entities to score" /> }}
+                    locale={{ emptyText: <Empty description="No product topics to score" /> }}
                 />
             </Card>
         </Flex>

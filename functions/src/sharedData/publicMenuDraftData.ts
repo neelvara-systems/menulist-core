@@ -33,6 +33,7 @@ export interface PublicMenuDraftCategory {
   extractionIdAliases?: string[];
   icon?: string;
   orderIndex?: number;
+  sourceFileIndex?: number;
 }
 
 export interface PublicMenuDraftItemAttribute {
@@ -73,6 +74,7 @@ export interface PublicMenuDraftItem {
   warranty?: string;
   duration?: number;
   orderIndex?: number;
+  sourceFileIndex?: number;
 }
 
 export interface PublicMenuDraftExtractedData {
@@ -81,7 +83,24 @@ export interface PublicMenuDraftExtractedData {
   languages: PublicMenuDraftLanguage[];
 }
 
+export function hasCompletePublicMenuDraftSourceAttribution(
+  value: PublicMenuDraftExtractedData,
+  sourceFileCount: number,
+): boolean {
+  if (!Number.isSafeInteger(sourceFileCount) || sourceFileCount <= 0) return false;
+  return [...value.categories, ...value.items].every(({ sourceFileIndex }) => (
+    Number.isSafeInteger(sourceFileIndex)
+    && Number(sourceFileIndex) >= 0
+    && Number(sourceFileIndex) < sourceFileCount
+  ));
+}
+
 type UnknownRecord = Record<string, unknown>;
+
+export type PublicMenuDraftNormalizationOptions = {
+  maxSourceFiles?: number;
+  preserveSourceFileIndex?: boolean;
+};
 
 const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/;
 const LOCALIZED_KEY_PATTERN = /^[a-z0-9_-]{1,16}$/i;
@@ -174,6 +193,22 @@ function normalizeOrderIndex(value: unknown): number | undefined {
     : undefined;
 }
 
+function normalizeSourceFileIndex(
+  value: unknown,
+  options: PublicMenuDraftNormalizationOptions,
+): number | undefined {
+  if (options.preserveSourceFileIndex !== true) return undefined;
+  const maxSourceFiles = Number(options.maxSourceFiles);
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isSafeInteger(maxSourceFiles)
+    && maxSourceFiles > 0
+    && Number.isSafeInteger(numeric)
+    && numeric >= 0
+    && numeric < maxSourceFiles
+    ? numeric
+    : undefined;
+}
+
 function normalizeNonNegativeNumber(value: unknown, max: number): number | undefined {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) && numeric >= 0 && numeric <= max
@@ -203,7 +238,10 @@ function normalizeNutritionInfo(value: unknown): PublicMenuDraftNutritionInfo | 
   return Object.keys(nutrition).length > 0 ? nutrition : undefined;
 }
 
-function normalizeCategory(value: unknown): PublicMenuDraftCategory | null {
+function normalizeCategory(
+  value: unknown,
+  options: PublicMenuDraftNormalizationOptions,
+): PublicMenuDraftCategory | null {
   const source = toRecord(value);
   if (!source) return null;
   const id = cleanId(source.id);
@@ -213,6 +251,7 @@ function normalizeCategory(value: unknown): PublicMenuDraftCategory | null {
   const aliases = normalizeStringList(source.extractionIdAliases, 160, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ALIASES);
   const icon = cleanText(source.icon, 100);
   const orderIndex = normalizeOrderIndex(source.orderIndex);
+  const sourceFileIndex = normalizeSourceFileIndex(source.sourceFileIndex, options);
   return {
     id,
     active: source.active !== false,
@@ -220,6 +259,7 @@ function normalizeCategory(value: unknown): PublicMenuDraftCategory | null {
     ...(aliases ? { extractionIdAliases: aliases } : {}),
     ...(icon ? { icon } : {}),
     ...(orderIndex !== undefined ? { orderIndex } : {}),
+    ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
   };
 }
 
@@ -239,7 +279,10 @@ function normalizeAttribute(value: unknown): PublicMenuDraftItemAttribute | null
   };
 }
 
-function normalizeItem(value: unknown): PublicMenuDraftItem | null {
+function normalizeItem(
+  value: unknown,
+  options: PublicMenuDraftNormalizationOptions,
+): PublicMenuDraftItem | null {
   const source = toRecord(value);
   if (!source) return null;
   const id = cleanId(source.id);
@@ -261,6 +304,7 @@ function normalizeItem(value: unknown): PublicMenuDraftItem | null {
   const warranty = cleanText(source.warranty, 500);
   const duration = normalizeNonNegativeNumber(source.duration, 100_000);
   const orderIndex = normalizeOrderIndex(source.orderIndex);
+  const sourceFileIndex = normalizeSourceFileIndex(source.sourceFileIndex, options);
   const attributes = Array.isArray(source.attributes)
     ? source.attributes
       .slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ATTRIBUTES_PER_ITEM)
@@ -290,6 +334,7 @@ function normalizeItem(value: unknown): PublicMenuDraftItem | null {
     ...(warranty ? { warranty } : {}),
     ...(duration !== undefined ? { duration } : {}),
     ...(orderIndex !== undefined ? { orderIndex } : {}),
+    ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
   };
 }
 
@@ -343,14 +388,17 @@ function normalizeLanguages(value: unknown): PublicMenuDraftLanguage[] {
  * that may be promoted to a public project. Returns null when no coherent menu
  * remains after validation.
  */
-export function normalizePublicMenuDraftExtractedData(value: unknown): PublicMenuDraftExtractedData | null {
+export function normalizePublicMenuDraftExtractedData(
+  value: unknown,
+  options: PublicMenuDraftNormalizationOptions = {},
+): PublicMenuDraftExtractedData | null {
   const source = toRecord(value);
   if (!source) return null;
 
   const categoryMap = new Map<string, PublicMenuDraftCategory>();
   const rawCategories = Array.isArray(source.categories) ? source.categories : [];
   for (const rawCategory of rawCategories.slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_CATEGORIES)) {
-    const category = normalizeCategory(rawCategory);
+    const category = normalizeCategory(rawCategory, options);
     if (category && !categoryMap.has(category.id)) categoryMap.set(category.id, category);
   }
   if (categoryMap.size === 0) return null;
@@ -358,7 +406,7 @@ export function normalizePublicMenuDraftExtractedData(value: unknown): PublicMen
   const itemMap = new Map<string, PublicMenuDraftItem>();
   const rawItems = Array.isArray(source.items) ? source.items : [];
   for (const rawItem of rawItems.slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ITEMS)) {
-    const item = normalizeItem(rawItem);
+    const item = normalizeItem(rawItem, options);
     if (!item || !categoryMap.has(item.category) || itemMap.has(item.id)) continue;
     itemMap.set(item.id, item);
   }

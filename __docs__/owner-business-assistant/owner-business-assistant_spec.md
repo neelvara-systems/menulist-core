@@ -92,6 +92,7 @@ Avoid:
 
 - "AI magic"
 - model names, tokens, confidence percentages, raw prompts, or algorithm details
+- categorical model-confidence labels in owner answer bubbles; show source freshness instead
 - claims that Business Health has completed an operation
 - external-publishing claims without a supported adapter in Menu Manager
 

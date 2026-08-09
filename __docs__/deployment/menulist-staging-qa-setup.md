@@ -487,12 +487,710 @@ Operator progress:
   founder account, create the organization, add and independently test a new
   local SSH key, natively transfer the repository, update and verify the local
   remote and repo-local author identity, and then retire the old GitHub key.
-  deleting the old Vercel account, confirm phone-number release with Vercel,
+  Before deleting the old Vercel account, confirm phone-number release with Vercel,
   record only domain assignments and environment-variable names/provider
   ownership, revoke or rotate every referenced credential at its source,
   remove custom domains, cancel paid subscriptions, and then delete the old
   project/team/account. Build new local and Vercel env values only from the
   maintained repo templates and newly created QA credentials.
+- `2026-08-06` - The operator confirmed that the fresh company-admin GitHub
+  account was created with `admin@neelvara.com` and that GitHub verified the
+  email address. This completes the account/email portion of `QA-A09` only.
+  Keep `QA-A09` open until GitHub MFA and independent recovery are configured,
+  the `neelvara-systems` organization exists, and the repository is natively
+  transferred with branch `staging` preserved. Keep `QA-A21` open until the new
+  workstation SSH key, remote URL, repo-local author identity, authenticated
+  fetch, and old-key retirement are all verified.
+- `2026-08-06` - GitHub displayed that two-factor authentication is enabled
+  using the founder account's authenticator app, and the operator confirmed its
+  recovery codes are stored independently. The founder-account security portion
+  of `QA-A09` is complete. Keep `QA-A09` open for organization creation and the
+  native repository transfer; keep portfolio-wide `QA-A11` open until every
+  required provider account has MFA and recoverable ownership.
+- `2026-08-06` - The operator confirmed a passkey was added to the fresh founder
+  GitHub account while authenticator 2FA remained enabled. The passkey is an
+  additional phishing-resistant method; independently stored recovery codes
+  remain the separate recovery path. Keep `QA-A09` open for creation of the
+  empty `neelvara-systems` organization and native repository transfer.
+- `2026-08-06` - The operator created the empty `neelvara-systems`
+  organization with `neelvara-admin` as its sole owner. The non-personal
+  username and blank personal-profile name are an intentional privacy decision;
+  do not restore the superseded `dnyaneshwar-garudkar` username or require the
+  founder's personal name on the public profile. Future repository-local commit
+  identity will use `Neelvara Systems` and GitHub's exact noreply address for
+  `neelvara-admin`. Keep `QA-A09` open until organization authentication policy
+  is secured and the existing repository is natively transferred.
+- `2026-08-06` - The operator confirmed the `neelvara-systems` organization now
+  requires 2FA for everyone and permits only secure two-factor methods. The
+  organization-security portion of `QA-A09` is complete. Keep `QA-A09` open for
+  native repository transfer and keep `QA-A21` open for the controlled local
+  SSH, remote, author-identity, fetch, and old-key retirement sequence.
+- `2026-08-06` - The pre-migration workstation audit confirms the existing
+  `~/.ssh/id_ed25519` public key is the old MenuList credential and direct
+  `ssh -T git@github.com` still authenticates as `menulist-ai`. The local
+  repository remains on branch `staging` with `origin` set to
+  `git@github.com:menulist-ai/menulist-core.git`. It has no repository-local Git
+  author override; the current global identity is `menulist-ai` with the old
+  Gmail address. Do not overwrite or retire the old key yet. Generate the new
+  Neelvara key at the distinct path
+  `~/.ssh/id_ed25519_neelvara_github`, test it independently, and change the
+  remote and repository-local author identity only after native transfer.
+- `2026-08-06` - The dedicated Neelvara Ed25519 keypair now exists at
+  `~/.ssh/id_ed25519_neelvara_github` and `.pub`. Local inspection confirms
+  private/public permissions of `600`/`644`, public-key comment
+  `admin@neelvara.com`, and new fingerprint
+  `SHA256:thxwveyLfjX2a/fKfG0EJhiD92yq3Pdk4dtgQp6ANzI`. The old key remains
+  unchanged with its distinct fingerprint. Only the new public key was copied
+  to the macOS clipboard; keep `QA-A21` open until GitHub registration,
+  independent authentication, remote migration, fetch proof, and old-key
+  retirement all pass.
+- `2026-08-06` - GitHub's public API for `neelvara-admin` reports the registered
+  authentication-key fingerprint
+  `SHA256:thxwveyLfjX2a/fKfG0EJhiD92yq3Pdk4dtgQp6ANzI`, exactly matching the
+  dedicated local Neelvara public key. This proves correct public-key
+  registration without exposing private-key contents. Keep `QA-A21` open until
+  the passphrase-protected key is loaded through macOS Keychain, independently
+  authenticates as `neelvara-admin`, and the post-transfer migration finishes.
+- `2026-08-06` - The passphrase-protected Neelvara key is loaded in the macOS
+  SSH agent/Keychain, and a forced `IdentitiesOnly=yes` authentication test
+  returned `Hi neelvara-admin`. The old key remains separately usable for the
+  source repository. Source readback records public repository
+  `menulist-ai/menulist-core`, default branch `main`, remote branches `main` and
+  `staging`, and zero tags. GitHub requires the initiating owner to have
+  repository-creation permission in a target organization, so do not invite
+  the retiring `menulist-ai` account into `neelvara-systems`. Use two native
+  transfers instead: first `menulist-ai/menulist-core` to personal account
+  `neelvara-admin` and accept it within GitHub's one-day window, then transfer
+  `neelvara-admin/menulist-core` into `neelvara-systems`. Remove the old account
+  as collaborator only after final ref and settings verification.
+- `2026-08-06` - The operator initiated GitHub's first native transfer from
+  `menulist-ai/menulist-core` to personal account
+  `neelvara-admin/menulist-core`. Keep `QA-A09` open: the company-admin account
+  must accept the transfer within GitHub's one-day window, verify the
+  intermediate repository, and then initiate the second native transfer to
+  `neelvara-systems`. Do not change the local remote or retire either key while
+  the first transfer is pending.
+- `2026-08-06` - The company-admin account accepted the first transfer and
+  GitHub completed the intermediate move to `neelvara-admin/menulist-core`.
+  Public API and forced new-key Git readback confirm owner `neelvara-admin`,
+  public/active status, default branch `main`, source-matching `main` commit
+  `2efe5cf8200c39d7d3d1b7b5f2658c9a3b434151`, source-matching `staging` commit
+  `8df6d973c2c5a7bac88d806bc1dfb9e841bf5f27`, and the old URL redirecting to
+  the intermediate repository. Keep `QA-A09` open for the second native
+  transfer and final organization-level readback. Keep the local remote on the
+  old URL until the final organization repository is verified.
+- `2026-08-06` - GitHub completed the second native transfer to
+  `neelvara-systems/menulist-core`. Public API readback confirms organization
+  owner `neelvara-systems`, public/active status, default branch `main`,
+  source-matching `main` commit
+  `2efe5cf8200c39d7d3d1b7b5f2658c9a3b434151`, source-matching `staging`
+  commit `8df6d973c2c5a7bac88d806bc1dfb9e841bf5f27`, exactly one repository in the
+  new organization, and both former repository URLs redirecting to the final
+  organization repository. Keep `QA-A09` open only through post-transfer
+  access cleanup. Proceed with the controlled local migration under `QA-A21`.
+- `2026-08-06` - The workstation now routes `github.com` through the dedicated
+  `~/.ssh/id_ed25519_neelvara_github` key with `IdentitiesOnly=yes`. Default
+  `ssh -T git@github.com` authenticates as `neelvara-admin`; local `origin` is
+  `git@github.com:neelvara-systems/menulist-core.git`; authenticated fetch and
+  remote-ref readback return the preserved `main` and `staging` commits. This
+  repository now overrides the old global author identity with repo-local
+  `Neelvara Systems` and GitHub's ID-based private noreply address for
+  `neelvara-admin`. Keep `QA-A21` open only until the retiring account's old
+  GitHub SSH key is removed from GitHub and unloaded/retired locally after
+  collaborator cleanup.
+- `2026-08-06` - Final repository access readback shows no `menulist-ai`
+  collaborator or outside-collaborator entry. The sole listed entity is
+  `neelvara-admin`, identified by GitHub as owner of `neelvara-systems`; its
+  access must remain. This completes the native-transfer and post-transfer
+  access-cleanup requirements in `QA-A09`. Keep `QA-A21` open only for retiring
+  the old `menulist-ai` SSH credential from GitHub and the workstation.
+- `2026-08-06` - The operator removed the old `menulist-ai` SSH key. GitHub's
+  public-key API now returns no keys for that account. Workstation readback
+  confirms only the Neelvara key is loaded in the SSH agent, `~/.ssh/config`
+  references only `~/.ssh/id_ed25519_neelvara_github`, and no active Git config
+  references the old key or old repository URL. The revoked local
+  `~/.ssh/id_ed25519` and `.pub` files remain pending explicit deletion; keep
+  `QA-A21` open until they are removed and final authentication/fetch proof is
+  repeated.
+- `2026-08-06` - With explicit operator authorization, the revoked local
+  `~/.ssh/id_ed25519` and `.pub` files were deleted. Final proof confirms the
+  dedicated Neelvara keypair remains intact, it is the only key loaded in the
+  SSH agent, default GitHub SSH authentication returns `neelvara-admin`,
+  authenticated fetch succeeds, `origin` targets
+  `neelvara-systems/menulist-core`, `main` and `staging` retain their verified
+  commits, and the repository-local author identity remains `Neelvara Systems`
+  with the ID-based GitHub noreply address. This completes `QA-A21`.
+- `2026-08-06` - The operator reported that the old Vercel project was deleted,
+  its custom domains were released, its environment entries were deleted, and
+  the old Vercel account was then permanently deleted. This establishes the
+  Vercel-side deletion portion of `QA-A20`, but the account was deleted before
+  Support confirmed phone-number reuse and before an old env-key/provider-name
+  inventory was preserved. Keep `QA-A20` open until the phone number works on
+  the fresh account and old provider credentials are reconstructed from
+  repository/local key-name evidence and revoked or rotated at each issuing
+  provider. Never copy any surviving old value into the fresh project.
+- `2026-08-06` - Fresh Vercel onboarding created the `Neelvara Systems` Pro team
+  under the new GitHub-backed account and reached the empty **New Project**
+  screen. No repository has been imported and no environment value has been
+  added. Keep `QA-A10` open until account security is complete, the GitHub App
+  is restricted to `neelvara-systems/menulist-core`, and exactly one project is
+  created without deploying incomplete configuration. Signup did not present a
+  phone-number challenge, so do not treat phone reuse as independently proven
+  yet under `QA-A20`.
+- `2026-08-06` - The operator confirmed the fresh Vercel owner account now has
+  authenticator-app 2FA, independently stored recovery codes, and a passkey.
+  The account email is `admin@neelvara.com` and its connected GitHub sign-in is
+  `neelvara-admin`. This completes Vercel owner-account authentication setup;
+  keep portfolio-wide `QA-A11` open for later providers and keep `QA-A10` open
+  until the GitHub App and single project are configured.
+- `2026-08-06` - The operator authorized the Vercel GitHub App for the
+  `neelvara-systems` organization with access restricted to the sole selected
+  repository `menulist-core`. No broader organization-repository access was
+  granted. Keep `QA-A10` open until the one shared `menulist-core` Vercel project
+  is created and its Git/branch settings are verified; do not trigger the first
+  deployment before required QA configuration is ready.
+- `2026-08-06` - Vercel's import configuration correctly shows team
+  `Neelvara Systems` on Pro, source `neelvara-systems/menulist-core`, project
+  name `menulist-core`, Next.js preset, and root directory `./`. The source is
+  currently the repository default branch `main`; **Deploy** was deliberately
+  not clicked because it would start an incomplete first deployment before the
+  QA environment and Firebase gates are ready. Keep this configuration pending
+  and continue with the company Cloud/Firebase setup.
+- `2026-08-06` - Google Cloud Resource Manager was opened with the managed
+  account `admin@neelvara.com`. The resource list currently shows **No results
+  to display**, while the unused Google Cloud `$300` free-trial offer is
+  available. This does not complete `QA-A14`: the `neelvara.com` organization
+  has not yet been visibly read back. Continue through the free-trial/Cloud
+  terms flow using truthful current payer details, then verify the organization
+  before creating `menulist-qa`.
+- `2026-08-06` - The Google Cloud onboarding flow created the `neelvara.com`
+  organization and visibly confirmed that `admin@neelvara.com` received the
+  Organization Administrator role. Google also automatically created the
+  bootstrap project `vocal-partition-504716-r3` with display name **My First
+  Project**. Do not convert or reuse that project for Firebase: `menulist-qa`
+  remains the required immutable QA project id. The operator configured
+  autopay, but the console still reports that free-trial prepayment is pending;
+  billing activation must be read back before another payment or project
+  operation. Retire the empty bootstrap project after billing is confirmed.
+- `2026-08-06` - Billing account management shows one direct billing account
+  under `neelvara.com`, zero spend, status **Closed**, and four health-check
+  recommendations. Autopay authorization is therefore recorded as configured
+  but not as proof of active Cloud Billing. Do not create a duplicate billing
+  account or repeat payment blindly; inspect the account's health checks and
+  resolve the stated activation/prepayment requirement first. `QA-BILL01`
+  remains pending.
+- `2026-08-06` - Billing Health Checks confirms that its four warnings are
+  governance recommendations: create budget alerts, add a billing viewer, add
+  another billing administrator, and remove the domain-wide Billing Account
+  Creator role. They are not the activation error. The persistent banner states
+  that this postpay free trial requires a one-time prepayment. Budget setup is
+  tracked in `QA-BILL02`; viewer/second-admin access remains deferred with the
+  one-user bootstrap; domain-wide billing-account creation cleanup is tracked
+  in `QA-BILL09` after the selected account is active.
+- `2026-08-06` - The billing **How you pay** page confirms a postpay account,
+  zero balance, a configured primary payment method, no transactions, and a
+  red **There are issues with your payments account** panel. It does not yet
+  display the one-time prepayment amount. The visible payment threshold is the
+  later postpay charging threshold and must not be mistaken for the activation
+  prepayment. Inspect the issue details before submitting a payment.
+- `2026-08-06` - Expanded payment issues now state the exact activation gates:
+  a one-time prepayment of at least INR 1,000 and completion of India tax
+  information. No payment has been submitted yet. Because Neelvara Systems is
+  currently an operating trade name without a registered company/GST identity,
+  do not invent a GSTIN, registered-business status, or legal entity. Inspect
+  the available tax-profile choices first and complete `QA-BILL08` truthfully
+  before paying.
+- `2026-08-06` - The India tax form is open without submitted data. Step 1 asks
+  for **Entity type** and shows TAN and CIN as optional; Step 2 covers PAN and
+  GSTIN. No entity type, tax identifier, or document has been selected or
+  entered. Inspect the available Entity type values before choosing the option
+  that truthfully matches the current payer.
+- `2026-08-06` - The Entity type list contains only Embassy, Government,
+  Government authority, Local authority, Organisation, SEZ, and UN
+  organisation. It has no Individual option. None truthfully matches the
+  current unregistered Neelvara setup, so no option or tax identifier was
+  submitted. Treat the current Google payments profile as incorrectly typed
+  and do not use it for the activation prepayment until the supported profile
+  correction path is confirmed.
+- `2026-08-06` - Temporary payer decision: until the CA-guided Neelvara legal
+  and banking setup is ready, the founder will use a personal payment method
+  for required provider charges under a truthfully typed individual payments
+  profile. Do not record the UPI identifier or other payment details in this
+  repository. After the Neelvara legal entity and its approved bank account
+  are ready, create or select a correctly typed business payments profile,
+  migrate provider billing deliberately, verify every active subscription and
+  cloud project, and then remove the temporary personal method. This decision
+  does not authorize payment through the currently mismatched Google profile.
+- `2026-08-06` - Google Cloud Payment settings confirms the current linked
+  payments profile has account type **Organisation**. No displayed address,
+  payment-account identifier, payments-profile identifier, phone number, or
+  payment method is recorded in this repository. Google Cloud documents that
+  the linked payments profile and its account type cannot be changed on an
+  existing Cloud Billing account. The supported correction is to create a new
+  self-serve Cloud Billing account, create or select a truthfully typed
+  **Individual** payments profile during that flow, and leave the current
+  mismatched account unused. Do not submit its prepayment or India tax form.
+- `2026-08-06` - Returned to Billing account management under the
+  `neelvara.com` organization. The mismatched billing account remains closed
+  with zero spend, and **Create account** is available. No replacement account
+  has been created yet.
+- `2026-08-06` - The payment method/autopay authorization on the closed,
+  mismatched billing account does not migrate to a replacement Cloud Billing
+  account. Leave the old payments profile untouched while creating and
+  validating the replacement so recovery remains possible. After the new
+  Individual billing account is active and every linked Google service is
+  inventoried, remove the old payment method or close the old payments profile
+  only if it has no other subscriptions or services. The old Cloud Billing
+  account itself remains retained by Google for reporting and auditing.
+- `2026-08-06` - Operator confirmed the existing personal UPI autopay mandate
+  was left unchanged. No cancellation, new payment, or prepayment was
+  submitted on the old Organisation profile.
+- `2026-08-06` - The replacement Cloud Billing account form is open with
+  organization `neelvara.com`, country India, and currency INR. These values
+  are correct. The billing-account display name will identify it as temporary;
+  no account has been created or payment submitted yet. This temporary
+  Individual billing account may fund both the `menulist-qa` project and the
+  `menulist` production project's pre-launch setup/testing while the
+  CA-approved Neelvara legal payer and bank account are pending. Keep project
+  budgets, alerts, usage reporting, and credentials separate. Do not treat the
+  temporary payer as approval for unrestricted live-production spend. When the
+  official business payments profile and Cloud Billing account are ready,
+  relink both projects deliberately, verify service continuity, and retire the
+  temporary payment path.
+- `2026-08-06` - Replacement billing-account display name entered as
+  `Neelvara Cloud Billing - Temporary`. Organization remains `neelvara.com`,
+  country remains India, and currency remains INR. The form has not yet been
+  continued or submitted.
+- `2026-08-06` - The replacement billing-profile step initially preselects the
+  existing `Neelvara Systems` Organisation payments profile and its existing
+  payment method. The screen explicitly states that this profile is also used
+  with Google Workspace. Therefore, do not close that payments profile or
+  cancel its autopay mandate while Workspace depends on it. Do not submit the
+  replacement Cloud Billing account with the preselected Organisation profile;
+  use **Change** under Contact information to create or select a separate,
+  truthfully typed Individual profile. No payment details or profile/account
+  identifiers are recorded here.
+- `2026-08-06` - The Contact information profile selector shows only the
+  existing Organisation profile plus **Add name and address**; no existing
+  Individual profile is available. Use **Add name and address** to begin the
+  separate Individual profile flow. The existing profile remains selected and
+  no replacement profile or billing submission has occurred yet.
+- `2026-08-06` - The new contact-profile form opened with **This is for an
+  organisation** selected by default. This default must be cleared before any
+  personal legal name or address is entered so the new payments profile is
+  created as Individual. No contact details have been submitted.
+- `2026-08-06` - **This is for an organisation** was cleared. The form now
+  states that the account is solely for the payer's personal trade, craft, or
+  profession and does not represent a registered business or nonprofit. This
+  matches the temporary legal-payer decision. The automatically suggested
+  Workspace display name must be replaced with the payer's exact personal
+  legal/KYC name; no legal name or address is recorded in this repository.
+- `2026-08-06` - Operator confirmed the Individual profile's Legal name was
+  corrected to the exact personal KYC name. The value itself is intentionally
+  not recorded. The profile remains unsaved and no billing submission or
+  payment has occurred.
+- `2026-08-06` - Operator confirmed all required Individual address fields were
+  completed using personal KYC/billing information. No address value is
+  recorded in this repository. The contact profile remains unsaved and Cloud
+  Billing has not been submitted or enabled.
+- `2026-08-06` - Operator confirmed the new contact profile was saved. Personal
+  name and address values remain intentionally unrecorded. Before changing the
+  payment method or enabling billing, visually confirm that the selected
+  Contact information card is labelled Individual rather than Organisation.
+- `2026-08-06` - Operator visually confirmed the selected Contact information
+  card is labelled **Individual**, not Organisation. `QA-BILL08` remains open
+  until the new Cloud Billing account is enabled and its saved profile type is
+  read back from Payment settings. No payment has been submitted.
+- `2026-08-06` - The Payment method selector for the new Individual profile is
+  open. No method has been selected, authorized, or submitted in this step;
+  payment identifiers and mandate details must not be copied into the setup
+  record.
+- `2026-08-06` - The selector offers **Add credit or debit card** and **Pay by
+  UPI QR code**. For the temporary Individual payer path, select the UPI QR
+  option so Google can establish the payment method for this new billing flow.
+  Do not cancel or alter the separate Organisation/Workspace profile's existing
+  mandate, and do not record any UPI, QR, bank, phone, or mandate details here.
+- `2026-08-06` - Operator selected **Pay by UPI QR code** for the new Individual
+  payments profile. The billing setup page now shows the Individual contact
+  profile and UPI QR method together, with **Submit and enable billing** as the
+  next action. No UPI authorization, mandate approval, or billing enablement has
+  occurred yet; personal profile identifiers remain intentionally unrecorded.
+- `2026-08-06` - Operator clicked **Submit and enable billing** and reached the
+  **Scan QR code to use UPI** screen. A QR code is displayed, but it and all
+  associated payment or mandate details remain intentionally unrecorded. No UPI
+  approval or confirmed billing activation has occurred yet.
+- `2026-08-06` - Operator scanned the Google billing QR code and confirmed that
+  the UPI authorization screen opened. Approval remains pending. Merchant,
+  amount, UPI, bank, mandate, and authorization details are intentionally not
+  recorded in this repository.
+- `2026-08-06` - Operator reviewed the UPI authorization request and confirmed
+  that its merchant and authorization terms match the intended Google Cloud
+  billing setup. Approval and confirmed Cloud Billing activation remain
+  pending; no payment details are recorded.
+- `2026-08-06` - Operator approved the verified request in the UPI app and
+  confirmed that UPI authorization succeeded. Transaction, bank, UPI, mandate,
+  and authorization identifiers remain intentionally unrecorded. Cloud Billing
+  activation still requires confirmation from the Google Cloud browser flow.
+- `2026-08-06` - Google accepted the UPI authorization and displayed a
+  **One-time prepayment required** confirmation. The temporary Cloud Billing
+  account and free trial will become active only after that refundable
+  prepayment is credited. The modal currently exposes only an **OK** action;
+  payment and transaction details remain intentionally unrecorded.
+- `2026-08-06` - After UPI authorization and acknowledgement of the required
+  prepayment notice, Google redirected to the temporary billing account Overview
+  and labelled it **Paid account**, with zero reported Cloud usage cost. Later
+  Account management evidence confirms that **Paid account** is a billing
+  classification, not proof of active/good-standing status. Billing activation
+  was not established by this screen. `QA-BILL08` remained open at this point
+  until Payment settings confirmed the saved profile type was Individual.
+- `2026-08-06` - Operator opened **Payment settings** for the active temporary
+  billing account. Saved account-type readback is pending; payments profile and
+  billing identifiers remain intentionally unrecorded.
+- `2026-08-06` - Google accepted the billing submission and presented its
+  provider-required one-time prepayment step. The free trial and associated
+  credits remain inactive until that prepayment is credited. The prepayment
+  amount and all transaction details are intentionally unrecorded; `QA-BILL08`
+  remains open until activation and Individual profile read-back are verified.
+- `2026-08-06` - Payment settings read-back confirms the active temporary
+  payments profile's account type is **Individual**. The legal payer and country
+  were entered from current personal KYC truth, no unregistered entity or tax
+  details were invented, and the later migration to CA-approved Neelvara
+  company billing is recorded above. `QA-BILL08` is complete.
+- `2026-08-06` - Resource Manager now shows the `neelvara.com` organization and
+  only the unwanted automatic **My First Project** bootstrap project beneath it,
+  with zero reported charges. The project remains active and unselected;
+  `QA-C00` is still pending until shutdown is confirmed.
+- `2026-08-06` - Operator selected the unwanted **My First Project** row in
+  Resource Manager. No deletion request has been submitted; the confirmation
+  dialog and final project-identity check remain pending.
+- `2026-08-06` - Operator opened the project shutdown confirmation dialog. No
+  project identifier has been entered and no shutdown request has been
+  submitted; final target verification remains pending.
+- `2026-08-06` - Operator verified that the shutdown dialog targets **My First
+  Project** with the exact unwanted bootstrap project ID recorded in `QA-C00`.
+  No identifier has been entered and no shutdown request has been submitted.
+- `2026-08-06` - Operator entered the verified bootstrap project ID in the
+  shutdown confirmation field and confirmed that the final shutdown control is
+  enabled. The shutdown request has not yet been submitted.
+- `2026-08-06` - Google confirmed that **My First Project** is shut down and
+  pending deletion, scheduled for final deletion after the provider recovery
+  window. The active resource list now contains only the `neelvara.com`
+  organization. `QA-C00` is complete; the project must not be restored or
+  reused.
+- `2026-08-06` - Operator dismissed the pending-deletion confirmation and
+  returned to the active Resource Manager list. The retired bootstrap project
+  remains absent from active resources.
+- `2026-08-06` - Firebase Console is open under the Neelvara administrator
+  account and shows the first-project welcome screen with no existing Firebase
+  projects. No new project has been created; `QA-C01` remains pending until the
+  exact `menulist-qa` project ID is accepted by the creation flow.
+- `2026-08-06` - The Firebase project form displays exact project name and
+  generated project ID `menulist-qa` without an availability error. **Continue**
+  remains disabled because no parent resource is selected. Project creation has
+  not been submitted; `neelvara.com` must be selected as the parent first.
+- `2026-08-06` - The Firebase parent-resource selector is open and shows
+  `neelvara.com` as the available organization. No parent has been selected and
+  project creation remains unsubmitted.
+- `2026-08-06` - Operator selected `neelvara.com` as the parent resource. The
+  form shows exact project ID `menulist-qa`, the Firebase terms are accepted,
+  and **Continue** is enabled. `QA-C01` is complete. The optional Google
+  Developer Programme enrollment remains enabled and must be turned off before
+  continuing; project creation is still unsubmitted.
+- `2026-08-06` - Operator disabled the optional Google Developer Programme
+  enrollment. The form still shows exact project ID `menulist-qa`, parent
+  `neelvara.com`, accepted Firebase terms, and enabled **Continue**. Project
+  creation remains unsubmitted.
+- `2026-08-06` - The Firebase Google Analytics step is open with Analytics
+  enabled by default. The setup contract enables GA4 only after an explicit
+  product decision; none is recorded for this QA project. Disable this option
+  before project creation. It can be configured later through the governed,
+  consent-aware analytics path if separately approved.
+- `2026-08-06` - Operator disabled Firebase Google Analytics for `menulist-qa`.
+  The exact project ID and organization parent remain verified, optional
+  Developer Programme enrollment is disabled, and project creation remains
+  unsubmitted.
+- `2026-08-06` - Firebase created exact project `menulist-qa` and opened its
+  canonical project overview under the selected `neelvara.com` parent. The
+  project currently uses the no-cost Spark plan and has no app or paid service
+  configured. `QA-C02` and `QA-C03` are complete; actual billing linkage remains
+  pending in `QA-BILL01`.
+- `2026-08-06` - The Firebase pricing selector is open. Spark remains the
+  current plan, and Blaze is presented as the pay-as-you-go plan required to use
+  additional Google Cloud services. No plan selection or billing linkage has
+  been submitted.
+- `2026-08-06` - After selecting Blaze, Firebase's billing-account step reports
+  no available Cloud Billing Account and offers to create another. This
+  conflicts with the already verified active temporary account, so do not create
+  a duplicate. Close this flow and link `menulist-qa` from the existing Google
+  Cloud Billing account instead. `QA-BILL01` remains pending.
+- `2026-08-06` - Operator closed the Firebase billing dialog without creating a
+  duplicate account. `menulist-qa` remains on Spark and no billing linkage or
+  plan change has occurred.
+- `2026-08-06` - Operator returned to the active temporary Google Cloud Billing
+  account on **Payment settings**. `menulist-qa` remains unlinked; navigation to
+  billing Account management is next.
+- `2026-08-06` - Billing **Account management** is authoritative and reports the
+  temporary billing account as **Closed**, with no linked projects, despite the
+  earlier Overview label **Paid account**. This closed state explains why
+  Firebase could not list the account. Do not create another account; reopen
+  this verified temporary account, then link `menulist-qa`. `QA-BILL01` remains
+  pending.
+- `2026-08-06` - The **Reopen billing account** control is disabled. Its tooltip
+  states that the account cannot be reopened because it is not in good standing.
+  This supersedes the attempted reopen path: inspect and resolve the provider's
+  outstanding payment/prepayment condition before retrying. No duplicate Cloud
+  Billing account may be created.
+- `2026-08-06` - Billing Overview still displays **Paid account**, confirming
+  that this label is plan/account classification rather than operational status.
+  Account management remains authoritative for the closed/not-in-good-standing
+  state. Inspect **How you pay** next for the actionable provider condition.
+- `2026-08-06` - **How you pay** confirms the unresolved conditions: the
+  provider-required one-time prepayment is still unpaid, there are no
+  transactions, and **Pay now** is available. Google also separately requests
+  India tax information. The earlier UPI authorization added the payment method
+  but did not make the prepayment. Resolve **Pay now** first; payment, tax, and
+  transaction details remain intentionally unrecorded.
+- `2026-08-06` - Operator opened **Pay now**. The prepayment dialog shows the
+  existing UPI QR method and has the provider-required minimum prepayment option
+  selected. No payment has been submitted or approved; amounts and payment
+  identifiers remain intentionally unrecorded.
+- `2026-08-06` - Operator continued to Google's final **Review your payment**
+  screen for the existing temporary Cloud Billing account and UPI QR method.
+  The final **Pay now** action is visible, but no payment has been initiated;
+  amount, billing, and payment identifiers remain intentionally unrecorded.
+- `2026-08-06` - Operator verified that the final prepayment review targets the
+  intended temporary Cloud Billing account, uses UPI QR, and requests only the
+  provider-required minimum. The final payment remains uninitiated; no payment
+  details are recorded.
+- `2026-08-06` - Operator clicked the verified **Pay now** action and Google
+  displayed the prepayment UPI QR code. The QR and all payment identifiers are
+  intentionally unrecorded. No UPI payment approval has occurred yet.
+- `2026-08-06` - Operator scanned the prepayment QR and confirmed that the UPI
+  authorization screen opened. Approval remains pending; bank, UPI, amount,
+  merchant identifier, and transaction details are intentionally unrecorded.
+- `2026-08-06` - Operator verified that the UPI prepayment request references
+  Google and matches the reviewed provider-required minimum. Payment approval
+  and confirmed billing-account restoration remain pending; no payment details
+  are recorded.
+- `2026-08-06` - Google confirmed the prepayment was successful. **How you pay**
+  now shows an account credit and the last manual payment, while the previous
+  prepayment activation warning is absent. India tax information remains a
+  separate provider request. Payment amounts, identifiers, and transaction
+  details are intentionally unrecorded; Account management must still confirm
+  that the billing account is open and in good standing before project linkage.
+- `2026-08-06` - Account management now offers **Close billing account**, the
+  previous closed/not-in-good-standing warning is absent, and no projects are
+  linked. This is authoritative evidence that the selected temporary billing
+  account is open again. Firebase linkage remains pending in `QA-BILL01`.
+- `2026-08-06` - The `menulist-qa` Firebase Blaze upgrade flow now lists the
+  existing temporary Cloud Billing account as available for selection. The
+  prior account-availability blocker is cleared; no duplicate billing account
+  is required. `QA-BILL01` remains pending until linkage is confirmed.
+- `2026-08-06` - Selecting the existing account opened Firebase's **Set a
+  billing budget** step. The visible `25` is the empty field's placeholder, not
+  an entered or saved budget; **Continue** is therefore disabled. `QA-BILL01`
+  and `QA-BILL02` remain pending.
+- `2026-08-06` - Operator entered an INR 25 project budget. Firebase displayed
+  email thresholds at 50%, 90%, and 100%, then opened the final **Link Cloud
+  Billing Account** review for `menulist-qa`, Blaze, and the existing temporary
+  billing account. This is an alert-only budget, not a spending cap.
+  `QA-BILL01` and `QA-BILL02` remain pending until Firebase confirms creation
+  and linkage.
+- `2026-08-06` - Firebase confirmed **Plan change completed successfully**, and
+  the `menulist-qa` project now reads **Blaze - Pay as you go**. The existing
+  temporary Cloud Billing account is linked, so `QA-BILL01` is complete.
+  `QA-BILL02` remains pending until the alert budget is read back in Google
+  Cloud Billing.
+- `2026-08-06` - Google Cloud Billing Account management independently lists
+  `menulist-qa` under **Projects linked to this billing account**. This
+  cross-console read-back confirms `QA-BILL01`; `QA-BILL02` remains pending.
+- `2026-08-07` - Google Cloud **Budgets & alerts** lists the monthly specified
+  amount budget **Firebase Project menulist-qa**, scoped only to project
+  `menulist-qa`, with alert thresholds at 50%, 90%, and 100%. Spend-cap status
+  is **Not applicable**, as expected for this alert-only budget. `QA-BILL02` is
+  complete.
+- `2026-08-07` - Billing Account management shows one collapsed **Billing
+  Account Creator** binding in the IAM panel. Its principal and inheritance
+  source have not yet been inspected, so no role change has been made and
+  `QA-BILL09` remains pending.
+- `2026-08-07` - Expanded billing IAM confirms **Billing Account Creator** is
+  granted to the entire `neelvara.com` domain and inherited from a parent
+  policy, so it cannot be removed at the billing-account resource. The direct
+  `admin@neelvara.com` Billing Account Administrator binding is separate and
+  must be preserved. Trace the inherited creator grant to its parent before
+  changing it; `QA-BILL09` remains pending.
+- `2026-08-07` - The inheritance pop-over identifies only `neelvara.com` and is
+  informational rather than navigable. This confirms the creator grant comes
+  from organization IAM. Continue from the `neelvara.com` organization IAM
+  policy; do not attempt removal from the billing-account panel. `QA-BILL09`
+  remains pending.
+- `2026-08-07` - Resource Manager organization IAM confirms the domain-wide
+  **Billing Account Creator** binding is direct and removable at
+  `neelvara.com`. `admin@neelvara.com` has a separate Organisation
+  Administrator role but not an explicit Billing Account Creator binding.
+  Grant Billing Account Creator to the authorized admin first, then remove only
+  the domain-wide creator binding. Do not change Organisation Administrator or
+  Project Creator during this cleanup. `QA-BILL09` remains pending.
+- `2026-08-07` - The organization-level **Grant access to neelvara.com** form is
+  open with no principal, role, or condition selected. The intended narrow
+  grant is `admin@neelvara.com` plus Billing Account Creator only; nothing has
+  been saved and `QA-BILL09` remains pending.
+- `2026-08-07` - `admin@neelvara.com` is selected as the sole new principal and
+  the role picker is open. No role, condition, or permission change has been
+  saved; `QA-BILL09` remains pending.
+- `2026-08-07` - The organization grant is staged with sole principal
+  `admin@neelvara.com`, role **Billing Account Creator**, and no IAM condition.
+  The grant has not yet been saved; `QA-BILL09` remains pending.
+- `2026-08-07` - Operator saved the explicit Billing Account Creator grant for
+  `admin@neelvara.com`. Read-back verification is still required before the
+  domain-wide creator binding can be removed; `QA-BILL09` remains pending.
+- `2026-08-07` - Organization IAM read-back shows both
+  `admin@neelvara.com` and the `neelvara.com` domain under Billing Account
+  Creator. Explicit administrator capability is preserved; only the domain
+  principal is now eligible for removal. `QA-BILL09` remains pending until
+  removal and final read-back succeed.
+- `2026-08-07` - Operator reviewed and accepted the least-privilege reason for
+  removing the domain-wide Billing Account Creator grant: prevent ordinary
+  domain users from creating duplicate or untracked billing accounts while the
+  explicit authorized-admin grant remains. `QA-BILL09` remains pending until
+  removal and final read-back succeed.
+- `2026-08-07` - The removal confirmation is open with **Remove neelvara.com
+  from the role Billing Account Creator on this resource** selected. The
+  broader **remove from all roles** option is not selected, so Organisation
+  Administrator and Project Creator remain outside this change. Removal has
+  not yet been confirmed; `QA-BILL09` remains pending.
+- `2026-08-07` - Operator confirmed the scoped removal of the `neelvara.com`
+  domain from Billing Account Creator. Final organization-IAM read-back must
+  show `admin@neelvara.com` as the sole creator principal and preserve the
+  separate Project Creator binding before `QA-BILL09` is complete.
+- `2026-08-07` - Final organization-IAM read-back confirms Billing Account
+  Creator has only `admin@neelvara.com`, while the separate Project Creator
+  domain binding remains. The domain-wide billing-account creation permission
+  is removed without affecting project creation or administrator access;
+  `QA-BILL09` is complete.
+- `2026-08-07` - The Google Cloud API details page for exact project
+  `menulist-qa` shows **Gemini API**, service
+  `generativelanguage.googleapis.com`, with **Status: Enabled** and a **Disable
+  API** control. No new credential was created or exposed; `QA-BILL03` is
+  complete.
+- `2026-08-07` - Google Cloud Billing -> Budgets & alerts was reopened after
+  enabling the Gemini API. The existing `Firebase Project menulist-qa` budget
+  still shows **Spend cap status: Not applicable**, confirming it is the
+  alert-only budget from `QA-BILL02`; `QA-BILL04` requires a separate
+  spend-cap configuration.
+- `2026-08-07` - A second budget was started with **Spend cap enforcement
+  (Preview)** selected. `QA-BILL04` remains in progress until its exact project,
+  service, amount, and final read-back are verified.
+- `2026-08-07` - The enforcement budget was named
+  `menulist-qa Gemini API spend cap`, and the console advanced to **Scope**.
+  The project and service filters still require explicit verification.
+- `2026-08-07` - The enforcement budget's project scope was narrowed explicitly
+  to `menulist-qa`. The eligible-services selector exposes **Gemini API** with
+  service `generativelanguage.googleapis.com`; service selection remains
+  pending.
+- `2026-08-07` - The enforcement budget scope now contains only project
+  `menulist-qa` and **Gemini API** (`generativelanguage.googleapis.com`). Savings
+  remain excluded because the spend-cap flow tracks gross estimated cost.
+- `2026-08-07` - The enforcement budget review shows a monthly target of INR 20
+  with notification thresholds at 50%, 80%, and 100% (INR 10, INR 16, and
+  INR 20). Notifications are enabled for billing admins/users and project
+  owners. The configuration is not yet treated as complete until post-save
+  read-back succeeds.
+- `2026-08-07` - Post-save read-back lists
+  `menulist-qa Gemini API spend cap` with project `menulist-qa`, service
+  **Gemini API**, monthly amount INR 20, thresholds 50%/80%/100%, and **Spend
+  cap status: Configured**. `QA-BILL04` is complete.
+- `2026-08-07` - Google AI Studio -> Rate Limit opened on exact project
+  `menulist-qa` and reports **Tier 1**. The visible RPM/TPM/RPD quotas are rate
+  limits, not the rolling spend ceiling required by `QA-BILL05`; the separate
+  **Spend** view must be read next. No API key or provider call was created.
+- `2026-08-07` - Google AI Studio -> Spend opened on exact project
+  `menulist-qa` and reports **Tier 1**. Its experimental monthly spend-cap
+  read-back is `INR 0.00 / -`, meaning no separate AI Studio monthly cap is
+  configured; the page warns that enforcement can lag by about 10 minutes. The
+  Google Cloud Gemini-only INR 20 cap remains the provider enforcement layer,
+  and the finite local rolling guard will remain the application layer.
+  `QA-BILL05` is complete without creating a key or making a provider call.
+- `2026-08-07` - The non-secret local rolling ceiling
+  `MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8` was saved in the password-vault QA
+  setup note for later Phase G wiring. `QA-BILL06` is complete.
+- `2026-08-07` - A Cloud Run spend cap remains intentionally deferred because
+  enforcement can pause every Cloud Run service, job, and worker pool in the
+  project, and no outage/restore drill has been approved. `QA-BILL07` is
+  complete as **Skipped intentionally**; no Cloud Run cap was created.
+- `2026-08-07` - Firestore creation was started for exact project
+  `menulist-qa` using **Standard edition**, database ID `(default)`, and regional
+  location `us-central1 (Iowa)`. The final configuration uses **Production
+  mode**, whose initial rules deny third-party reads and writes. `QA-C07`
+  remains pending until database creation and location read-back complete.
+- `2026-08-07` - Firebase reports the `(default)` Firestore database is ready
+  and explicitly shows **Database location: us-central1**. `QA-C07` is complete.
+- `2026-08-07` - Firebase Storage default-bucket setup was configured for
+  `menulist-qa.firebasestorage.app` using **All locations**,
+  `US-CENTRAL1`, regional storage, **Standard** access frequency, and
+  **Production mode** default-deny rules. `QA-C08` remains pending until bucket
+  creation and location read-back complete.
+- `2026-08-07` - Firebase Storage now opens the Files view for
+  `gs://menulist-qa.firebasestorage.app`, confirming that the default bucket was
+  created. `QA-C08` remains pending only for immutable location read-back.
+- `2026-08-07` - The Firebase Storage bucket selector independently shows the
+  default bucket `menulist-qa.firebasestorage.app` at `US-CENTRAL1`. `QA-C08`
+  is complete.
+- `2026-08-07` - Firebase Authentication opens the **Sign-in method** page for
+  exact project `menulist-qa`. Authentication is initialized, and the page
+  shows Email/Password as an available provider that is not configured yet;
+  `QA-C04` remains pending until that provider is enabled and saved.
+- `2026-08-07` - Firebase Authentication now lists **Email/Password** with
+  status **Enabled** for exact project `menulist-qa`. Passwordless email-link
+  sign-in was not enabled. `QA-C04` is complete.
+- `2026-08-07` - Firebase Authentication **Authorised domains** lists
+  `localhost` and custom domain `app.menulist.digital`. No customer wildcard
+  was added. `QA-C09` is complete.
+- `2026-08-07` - Firebase Project Settings -> General confirms exact project
+  `menulist-qa` has no registered apps. The next action is to register the one
+  required QA Web app; `QA-C05` remains pending until registration and secure
+  config capture are complete.
+- `2026-08-07` - The single Firebase Web app `MenuList QA Web` was registered
+  without Firebase Hosting. Firebase displayed its Web SDK configuration;
+  values are intentionally excluded from this repository and must be captured
+  only in the password vault before `QA-C05` is complete.
+- `2026-08-07` - The operator confirmed the `MenuList QA Web` configuration was
+  copied directly from Firebase. It was not pasted into chat or the repository;
+  `QA-C05` remains pending until the existing QA vault note is updated.
+- `2026-08-07` - The operator confirmed the `MenuList QA Web` configuration was
+  saved in the existing secure QA vault note. No configuration values were
+  recorded in chat or this repository. `QA-C05` is complete.
+- `2026-08-07` - Firebase Project Settings independently lists the single Web
+  app `MenuList QA Web` under exact project `menulist-qa`. Every Firebase action
+  in this setup remained scoped to QA; production project id `menulist` was not
+  opened or changed. `QA-C06` is complete.
+- `2026-08-07` - The existing secure QA vault note now records Firestore
+  location `us-central1`, Storage location `us-central1`, and default bucket
+  `menulist-qa.firebasestorage.app`. `QA-C12` is complete.
+- `2026-08-07` - Admin SDK private-key generation remains intentionally
+  deferred until the Vercel server credentials are ready to be entered. This
+  avoids creating a static QA key earlier than needed; `QA-C10`, `QA-C11`, and
+  `QA-C13` remain pending.
+- `2026-08-07` - Google Auth Platform project configuration for exact project
+  `menulist-qa` advanced past **App Information** with app name `MenuList QA`
+  and a selected support email. The saved support contact will be verified on
+  the final Branding page before `QA-D01` is complete.
+- `2026-08-07` - Google Auth Platform project configuration advanced past
+  **Audience** after selecting **External**. The app must remain in Testing and
+  admit only named QA test users; `QA-D02` remains pending until that saved
+  audience state is verified after creation.
+- `2026-08-07` - Google Auth Platform base project configuration was created for
+  exact project `menulist-qa` with the monitored company developer contact.
+  The OAuth overview confirms that no OAuth client exists yet. Branding URLs,
+  audience read-back, scopes, and client creation remain pending.
+- `2026-08-07` - Google Auth Platform Branding independently confirms app name
+  `MenuList QA`, the monitored company support/developer contact, and Testing
+  status. Combined with the saved External audience selection, `QA-D02` is
+  complete. `QA-D01` remains pending for the required URLs and authorized
+  domain.
+- `2026-08-07` - Google Auth Platform confirmed **Branding changes saved** and
+  read back the exact homepage, privacy-policy, and Terms-of-Service URLs plus
+  authorized domain `menulist.digital`. `QA-D01` is complete.
 
 Status rules:
 
@@ -516,13 +1214,13 @@ Status rules:
 | [x] | QA-A06 | Gmail delivery activated and tested | Google Admin Console, DNS, and every currently licensed mailbox | Google accepted the published MX; post-DKIM mail from `admin@neelvara.com` reached an external Gmail Inbox with SPF, DKIM, and DMARC all passing, and the external reply reached the admin Inbox |
 | [x] | QA-A07 | SPF, DKIM, and monitor-only DMARC configured | Google Admin Console and DNS | Authoritative DNS and a fresh Inbox message prove Google-only SPF, active 2048-bit Google DKIM, and monitor-only DMARC reporting to the tested `dmarc@neelvara.com` alias; obsolete GoDaddy mail CNAMEs are removed |
 | [x] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` are aliases on the one licensed admin mailbox, and separate external delivery tests reached its Inbox |
-| [ ] | QA-A09 | GitHub repository transferred to company organization | GitHub source `menulist-ai/menulist-core` and target `neelvara-systems/menulist-core` | Fresh named founder account uses verified `admin@neelvara.com` and MFA; the existing repository is moved with GitHub's native transfer, preserving exact branch `staging`; no copy/recreated repository is used |
-| [ ] | QA-A21 | Local Git authentication and author identity migrated | This workstation, `~/.ssh`, GitHub SSH settings, and the local `menulist-core` repository | A dedicated Neelvara SSH key authenticates as the fresh founder account; `origin` targets `neelvara-systems/menulist-core`; repo-local author name/email use the approved named identity and exact verified or GitHub-provided noreply address; authenticated fetch succeeds; the old GitHub key is retired only after all proof passes |
+| [x] | QA-A09 | GitHub repository transferred to company organization | GitHub source `menulist-ai/menulist-core`, controlled intermediary `neelvara-admin/menulist-core`, and target `neelvara-systems/menulist-core` | Company-admin account `neelvara-admin` uses verified `admin@neelvara.com`, passkey, authenticator MFA, and independent recovery; two native transfers preserve `main`, `staging`, and repository metadata without granting the retiring account organization membership; final access readback shows no `menulist-ai` collaborator and no copy/recreated repository was used |
+| [x] | QA-A21 | Local Git authentication and author identity migrated | This workstation, `~/.ssh`, GitHub SSH settings, and the local `menulist-core` repository | The dedicated Neelvara key is the only active GitHub key on this workstation and authenticates as `neelvara-admin`; `origin`, authenticated fetch, preserved branch refs, repo-local `Neelvara Systems` noreply identity, old-account key revocation, and deletion of the retired local keypair are all verified |
 | [ ] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project imports `neelvara-systems/menulist-core` once; no old deployment, project setting, or environment value is transferred; exact branch `staging` can be restricted to Preview |
 | [ ] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | No setup depends on a weak or disposable login |
 | [ ] | QA-A12 | Secret sharing rule accepted | This guide and password vault | No real secret will be pasted into docs, chat, screenshots, or git |
 | [ ] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | A long-lived personal email is recovery-only; offline codes and the recovery owner are recorded; add a second trusted Super Admin before production when another owner is available |
-| [ ] | QA-A14 | Google Cloud organization visible | Google Cloud Console | The organization associated with `neelvara.com` is visible before creating `menulist-qa` |
+| [x] | QA-A14 | Google Cloud organization visible | Google Cloud Console | Google Cloud visibly confirmed creation of the `neelvara.com` organization and assignment of Organization Administrator to `admin@neelvara.com` before `menulist-qa` creation |
 | [ ] | QA-A15 | Retired Firebase service-account keys revoked | Google Cloud Console -> IAM & Admin -> Service Accounts for every retired project | Any old local service-account key is deleted or disabled before new QA credentials are created; do not copy it into `menulist-qa` |
 | [ ] | QA-A16 | Maintenance calendar created | Calendar/password vault | Quarterly IAM/secret review and annual domain/payment/recovery review dates are recorded |
 | [x] | QA-A17 | Duplicate registrar add-ons resolved | Registrar Products/Billing and support | Professional Email Pro Light is intentionally retained unused through its paid term with auto-renew Off; legacy GoDaddy mail DNS replacement is tracked separately under `QA-A06`, `QA-A07`, and `QA-A19`; Google Workspace and Vercel remain the selected mail/hosting stack |
@@ -591,25 +1289,27 @@ Startup-benefit preflight decision before `QA-A03`:
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-C01 | Firebase project id checked before creation | Firebase Console | Exact id `menulist-qa` is available or already exists |
-| [ ] | QA-C02 | Firebase project `menulist-qa` exists under the Neelvara organization | Firebase/Google Cloud Console | Project URL is `https://console.firebase.google.com/project/menulist-qa/overview` and its resource parent is the `neelvara.com` organization |
-| [ ] | QA-C03 | Firebase ownership and intended billing owner confirmed | Firebase and Google Cloud Console | Project belongs to the company organization/operator and the truthful billing owner is identified; Phase C2 performs the actual link and guardrails |
-| [ ] | QA-C04 | Firebase Auth and Email/Password provider enabled | Firebase Console -> Authentication -> Sign-in method | Firebase Auth is initialized and Email/Password is enabled for the current owner credential/custom-token flow; Google OAuth remains configured separately in Phase D |
-| [ ] | QA-C05 | MenuList QA Web app created | Firebase Project Settings -> General | Web app config values are available and vaulted |
-| [ ] | QA-C06 | Production Firebase not touched | Firebase Console | No setup work is done in project id `menulist` |
+| [x] | QA-C00 | Automatic trial bootstrap project retired | Google Cloud Billing and Resource Manager | Billing activation is confirmed first; empty project `vocal-partition-504716-r3` is then shut down and is never reused for Firebase, credentials, APIs, or deployment |
+| [x] | QA-C01 | Firebase project id checked before creation | Firebase Console | Exact id `menulist-qa` is available or already exists |
+| [x] | QA-C02 | Firebase project `menulist-qa` exists under the Neelvara organization | Firebase/Google Cloud Console | Project URL is `https://console.firebase.google.com/project/menulist-qa/overview` and its resource parent is the `neelvara.com` organization |
+| [x] | QA-C03 | Firebase ownership and intended billing owner confirmed | Firebase and Google Cloud Console | Project belongs to the company organization/operator and the truthful billing owner is identified; Phase C2 performs the actual link and guardrails |
+| [x] | QA-C04 | Firebase Auth and Email/Password provider enabled | Firebase Console -> Authentication -> Sign-in method | Firebase Auth is initialized and Email/Password is enabled for the current owner credential/custom-token flow; Google OAuth remains configured separately in Phase D |
+| [x] | QA-C05 | MenuList QA Web app created | Firebase Project Settings -> General | Web app config values are available and vaulted |
+| [x] | QA-C06 | Production Firebase not touched | Firebase Console | No setup work is done in project id `menulist` |
 
 ### Phase C2 - QA Billing And Spend Guardrails
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-BILL01 | `menulist-qa` linked to billing | Google Cloud Billing or Firebase Console | Firebase project can use Blaze/paid Google Cloud services for QA only |
-| [ ] | QA-BILL02 | Alert-only budget created | Google Cloud Billing -> Budgets and alerts | Owner notifications exist before Gemini/Functions usage starts |
-| [ ] | QA-BILL03 | Gemini API enabled in exact QA project | Google Cloud API Library | Generative Language/Gemini API is enabled for `menulist-qa` without creating a second project or making a paid call |
-| [ ] | QA-BILL04 | Gemini API spend cap created | Google Cloud Billing -> Budgets and alerts | Preview spend-cap enforcement is scoped to `menulist-qa` and the Gemini API only |
-| [ ] | QA-BILL05 | AI Studio system limit read | Google AI Studio project rate limits | Current project rolling spend ceiling is recorded without exposing keys |
-| [ ] | QA-BILL06 | Local rolling ceiling chosen and vaulted | AI Studio limits and password vault setup note | The intended `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` value is below the active AI Studio ceiling; checked-in default is USD 8 and Phase G performs the env wiring |
-| [ ] | QA-BILL07 | Cloud Run cap intentionally deferred | Setup notes | No cap exists until its whole-project outage/restore behavior is approved and drilled |
-| [ ] | QA-BILL08 | Payments profile is truthful and migration note recorded | Google Payments/Cloud Billing and password vault | Account type, legal payer, country, and tax details match current reality; no unregistered entity details are invented |
+| [x] | QA-BILL01 | `menulist-qa` linked to billing | Google Cloud Billing or Firebase Console | Firebase project can use Blaze/paid Google Cloud services for QA only |
+| [x] | QA-BILL02 | Alert-only budget created | Google Cloud Billing -> Budgets and alerts | Owner notifications exist before Gemini/Functions usage starts |
+| [x] | QA-BILL03 | Gemini API enabled in exact QA project | Google Cloud API Library | Generative Language/Gemini API is enabled for `menulist-qa` without creating a second project or making a paid call |
+| [x] | QA-BILL04 | Gemini API spend cap created | Google Cloud Billing -> Budgets and alerts | Preview spend-cap enforcement is scoped to `menulist-qa` and the Gemini API only |
+| [x] | QA-BILL05 | AI Studio system limit read | Google AI Studio project rate limits | Current project rolling spend ceiling is recorded without exposing keys |
+| [x] | QA-BILL06 | Local rolling ceiling chosen and vaulted | AI Studio limits and password vault setup note | The intended `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` value is below the active AI Studio ceiling; checked-in default is USD 8 and Phase G performs the env wiring |
+| [x] | QA-BILL07 | Cloud Run cap intentionally deferred | Setup notes | Skipped intentionally: no cap exists until its whole-project outage/restore behavior is approved and drilled |
+| [x] | QA-BILL08 | Payments profile is truthful and migration note recorded | Google Payments/Cloud Billing and password vault | Account type, legal payer, country, and tax details match current reality; no unregistered entity details are invented |
+| [x] | QA-BILL09 | Domain-wide Billing Account Creator role removed | Google Cloud organization IAM | After the selected billing account is active, the default domain-wide creator grant is removed so ordinary domain users cannot create duplicate billing accounts; explicit administrators retain required access |
 
 ### Phase C3 - Firebase Data Services And Credentials
 
@@ -618,20 +1318,20 @@ until every Phase C2 billing/spend item is complete.
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-C07 | Firestore enabled in Native mode at `us-central1` | Firebase Console -> Firestore Database | Firestore asks for a location; `us-central1` is selected so the `(default)` database matches the existing Functions/Tasks contract |
-| [ ] | QA-C08 | Firebase Storage enabled at `us-central1` | Firebase Console -> Storage | Project is already on Blaze; the default `menulist-qa.firebasestorage.app` bucket uses immutable location `us-central1` |
-| [ ] | QA-C09 | Firebase authorized domains added | Firebase Auth -> Settings -> Authorized domains | `localhost` and `app.menulist.digital` are listed; public tenant hosts do not require owner auth |
+| [x] | QA-C07 | Firestore enabled in Native mode at `us-central1` | Firebase Console -> Firestore Database | Firestore asks for a location; `us-central1` is selected so the `(default)` database matches the existing Functions/Tasks contract |
+| [x] | QA-C08 | Firebase Storage enabled at `us-central1` | Firebase Console -> Storage | Project is already on Blaze; the default `menulist-qa.firebasestorage.app` bucket uses immutable location `us-central1` |
+| [x] | QA-C09 | Firebase authorized domains added | Firebase Auth -> Settings -> Authorized domains | `localhost` and `app.menulist.digital` are listed; public tenant hosts do not require owner auth |
 | [ ] | QA-C10 | Service account values stored securely | Firebase Project Settings -> Service accounts | Admin SDK project id, client email, private key, and Firebase Web API key mapping are stored in the password vault |
 | [ ] | QA-C11 | Temporary service account JSON removed | Local machine | No downloaded service account JSON remains outside the vault |
-| [ ] | QA-C12 | Immutable resource locations recorded | Password vault setup note | Firestore and Storage both record `us-central1`; no location is assumed from an env value alone |
+| [x] | QA-C12 | Immutable resource locations recorded | Password vault setup note | Firestore and Storage both record `us-central1`; no location is assumed from an env value alone |
 | [ ] | QA-C13 | Admin key creation date and revocation owner recorded | Password vault and Google Cloud IAM | The current static QA key has an owner/date and will be revoked immediately on leak, access removal, or replacement |
 
 ### Phase D - Google OAuth
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-D01 | Google Auth branding and contacts configured | Google Cloud Console -> Google Auth Platform -> Branding | MenuList QA name, support email, developer contact, homepage/privacy/terms links, and verified `menulist.digital` domain are accurate |
-| [ ] | QA-D02 | OAuth audience set to External/Testing | Google Auth Platform -> Audience | QA remains in Testing and only named QA test users are admitted; no production publishing is requested |
+| [x] | QA-D01 | Google Auth branding and contacts configured | Google Cloud Console -> Google Auth Platform -> Branding | MenuList QA name, support email, developer contact, homepage/privacy/terms links, and verified `menulist.digital` domain are accurate |
+| [x] | QA-D02 | OAuth audience set to External/Testing | Google Auth Platform -> Audience | QA remains in Testing and only named QA test users are admitted; no production publishing is requested |
 | [ ] | QA-D03 | Identity-only scopes confirmed | Google Auth Platform -> Data Access | Only `openid`, `email`, and `profile` are requested for sign-in |
 | [ ] | QA-D04 | Web OAuth client created for MenuList QA | Google Auth Platform -> Clients | One Web application client id and secret exist for QA usage |
 | [ ] | QA-D05 | Authorized JavaScript origins added | OAuth client settings | Exact origins are `http://localhost:3000` and `https://app.menulist.digital`; no wildcard/customer origin is present |
@@ -979,21 +1679,28 @@ What to do:
    controlled setup and confirm the `neelvara.com` organization resource is
    visible. After the named daily operator is created, use that account for
    normal work and return the Super Admin to break-glass-only use.
-25. Complete GitHub before starting Vercel. Create the fresh named founder
-    account with verified `admin@neelvara.com`, username
-    `dnyaneshwar-garudkar`, and human display name `Dnyaneshwar Garudkar`.
+25. Complete GitHub before starting Vercel. Create the fresh company-admin
+    account with verified `admin@neelvara.com` and username
+    `neelvara-admin`. The public profile name may remain blank; do not require
+    the founder's personal name.
     Enable MFA, generate recovery codes, and store recovery independently.
     Create a dedicated Ed25519 key on this workstation at
     `~/.ssh/id_ed25519_neelvara_github`; never upload or share its private key.
     Add only its `.pub` value to the fresh GitHub account and test that key
     independently before changing the existing SSH default. Create the
-    `neelvara-systems` organization and use GitHub's native transfer to move
-    `menulist-ai/menulist-core` to `neelvara-systems/menulist-core` with exact
-    branch `staging` preserved. Do not copy files into a recreated repository.
+    `neelvara-systems` organization. Because the source owner does not belong to
+    the target organization, use GitHub's native transfer first from
+    `menulist-ai/menulist-core` to `neelvara-admin/menulist-core`; accept the
+    emailed transfer within one day. Then, while signed in as `neelvara-admin`,
+    use GitHub's native transfer again to move the same repository into
+    `neelvara-systems/menulist-core`. This avoids granting the retiring account
+    organization membership while preserving `main`, `staging`, and repository
+    metadata. Do not copy files into a recreated repository.
     After the transfer, set local `origin` to the transferred repository, make
     the new key the GitHub key for this workstation, and set repository-local
-    `user.name` plus the exact verified or GitHub-provided noreply
-    `user.email`; do not change global Git identity unless separately audited.
+    `user.name` as `Neelvara Systems` plus GitHub's exact noreply `user.email`
+    for `neelvara-admin`; do not change global Git identity unless separately
+    audited.
     Confirm `ssh -T`, `git remote -v`, `git fetch origin`, and local/remote
     `staging` evidence. Only after those checks pass, remove the old key from
     GitHub authentication and local SSH-agent/config use. Do not rewrite prior

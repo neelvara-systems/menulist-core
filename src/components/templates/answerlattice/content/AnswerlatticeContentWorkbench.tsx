@@ -5,6 +5,7 @@ import {
     ANSWERLATTICE_ROUTES,
     getAnswerlatticeGovernanceRoute,
 } from '@constant/answerlattice/navigations';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import type { AnswerlatticeActivationSummary } from '@type/answerlattice';
 import { Button, Card, Flex, List, Tag, Typography, theme } from 'antd';
 import {
@@ -60,7 +61,7 @@ export default function AnswerlatticeContentWorkbench({
         {
             key: 'faqs',
             title: 'FAQs',
-            description: 'Manage short repeated answers and connect them to articles and product surfaces.',
+            description: 'Manage short repeated answers and connect them to articles and Product Pages & Flows.',
             route: ANSWERLATTICE_ROUTES.FAQS,
             action: 'Manage',
             icon: LuHelpCircle,
@@ -70,7 +71,7 @@ export default function AnswerlatticeContentWorkbench({
         {
             key: 'knowledge-base',
             title: 'Knowledge Base',
-            description: 'Edit categories, articles, tags, and product-surface bindings from one content library.',
+            description: 'Edit categories, articles, tags, and page or workflow connections from one content library.',
             route: ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE,
             action: 'Manage',
             icon: LuBookOpen,
@@ -79,8 +80,8 @@ export default function AnswerlatticeContentWorkbench({
         },
         {
             key: 'product-surfaces',
-            title: 'Product Surfaces',
-            description: 'Connect routes and workflows to the right articles, release notes, entities, and signals.',
+            title: ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productPagesAndFlows,
+            description: 'Connect customer pages and workflows to the right articles, release notes, product topics, and support evidence.',
             route: ANSWERLATTICE_ROUTES.PRODUCT_SURFACES,
             action: 'Map',
             icon: LuLayers,
@@ -99,7 +100,7 @@ export default function AnswerlatticeContentWorkbench({
         },
         {
             key: 'signal-queue',
-            title: 'Signal Queue',
+            title: ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.suggestedUpdates,
             description: 'Review repeated gaps from tickets and conversations, then turn them into approved answers.',
             route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE),
             action: 'Review',

@@ -53,13 +53,9 @@ function ChangeTypeTag({ type }: { type: 'NEW' | 'UPDATE' | 'OVERRIDE' }) {
     return <Tag color={color}>{type}</Tag>;
 }
 
-function MatchTag({ score, matchType }: { score?: number; matchType?: string }) {
-    if (!score || score >= 1) return null;
-    return (
-        <Tag color={matchType === 'weak' ? 'warning' : 'success'}>
-            {`${Math.round(score * 100)}%`}
-        </Tag>
-    );
+function ReviewNeededTag({ matchType }: { matchType?: string }) {
+    if (matchType !== 'weak') return null;
+    return <Tag color="warning">Needs review</Tag>;
 }
 
 function CategoryRow({
@@ -84,7 +80,7 @@ function CategoryRow({
                     <Flex align="center" gap={6} wrap="wrap">
                         <ChangeTypeTag type={category.changeType} />
                         <Text strong>{name}</Text>
-                        <MatchTag matchType={category.matchType} score={category.matchScore} />
+                        <ReviewNeededTag matchType={category.matchType} />
                     </Flex>
                     {category.warnings?.length ? (
                         <Tag color="warning">{category.warnings[0]}</Tag>
@@ -117,7 +113,7 @@ function ItemRow({
                     <Flex align="center" gap={6} wrap="wrap">
                         <ChangeTypeTag type={item.changeType} />
                         <Text strong>{name}</Text>
-                        <MatchTag matchType={item.matchType} score={item.matchScore} />
+                        <ReviewNeededTag matchType={item.matchType} />
                         {item.isLocalOnly ? <Tag>{t('localOnly')}</Tag> : null}
                     </Flex>
                     <Text type="secondary">{t('inCategory', { category: item.extractedItem.categoryName || t('uncategorized') })}</Text>

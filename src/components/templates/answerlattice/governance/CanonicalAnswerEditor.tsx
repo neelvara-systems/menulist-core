@@ -12,6 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
@@ -292,7 +293,7 @@ export default function CanonicalAnswerEditor() {
             const versionToInput = String(values.versionTo || '').trim();
             const versionTo = versionToInput ? parseVersionLabel(versionToInput) : null;
             if (!versionFrom || (versionToInput && !versionTo) || (versionTo && versionTo < versionFrom)) {
-                throw new Error('Invalid canonical answer version window');
+                throw new Error('Invalid trusted answer version window');
             }
             const procedure: AnswerlatticeProcedure | undefined =
                 editAnswerType === 'procedure' && editSteps.length > 0
@@ -351,7 +352,7 @@ export default function CanonicalAnswerEditor() {
             const versionToInput = String(values.versionTo || '').trim();
             const versionTo = versionToInput ? parseVersionLabel(versionToInput) : null;
             if (!versionNorm || (versionToInput && !versionTo) || (versionTo && versionTo < versionNorm)) {
-                throw new Error('Invalid canonical answer version window');
+                throw new Error('Invalid trusted answer version window');
             }
             const procedureSlug = String(values.title || '')
                 .toLowerCase()
@@ -550,7 +551,7 @@ export default function CanonicalAnswerEditor() {
                 {(fields, { add, remove }, { errors }) => (
                     <Flex vertical gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Only these reviewer-approved links are shown with customer-facing canonical answers. Internal evidence stays private.
+                            Only these reviewer-approved links are shown with customer-facing trusted answers. Internal evidence stays private.
                         </Text>
                         {fields.map(field => (
                             <Flex key={field.key} gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'start'}>
@@ -621,7 +622,7 @@ export default function CanonicalAnswerEditor() {
                         {title}
                     </Text>
                     {record.governance.driftFlag && (
-                        <Tooltip title={record.governance.driftReason || 'Drifted'}>
+                        <Tooltip title={record.governance.driftReason || 'Needs recheck'}>
                             <LuAlertTriangle style={{ color: token.colorWarning }} />
                         </Tooltip>
                     )}
@@ -712,10 +713,10 @@ export default function CanonicalAnswerEditor() {
             <Card>
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
-                        <Title level={5} style={{ margin: 0 }}>Canonical Answers</Title>
+                        <Title level={5} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.trustedAnswers}</Title>
                         <Badge count={visibleAnswers.length} style={{ backgroundColor: token.colorPrimary }} />
                         {driftedAnswers.length > 0 && (
-                            <Badge count={`${driftedAnswers.length} drifted`} style={{ backgroundColor: token.colorWarning }} />
+                            <Badge count={`${driftedAnswers.length} need recheck`} style={{ backgroundColor: token.colorWarning }} />
                         )}
                     </Space>
                     <Space>
@@ -732,7 +733,7 @@ export default function CanonicalAnswerEditor() {
                     <Alert
                         closable
                         message={`Showing answers for ${focusedEntityName}`}
-                        description="This focus came from an owner review surface. Clear it to review every canonical answer."
+                        description="This focus came from another owner review. Clear it to review every trusted answer."
                         onClose={() => clearRouteContext('entity')}
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -742,7 +743,7 @@ export default function CanonicalAnswerEditor() {
                 {requestedAnswerMissing ? (
                     <Alert
                         closable
-                        message="The requested canonical answer is no longer available"
+                        message="The requested trusted answer is no longer available"
                         onClose={() => clearRouteContext('answer')}
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -761,7 +762,7 @@ export default function CanonicalAnswerEditor() {
                     locale={{
                         emptyText: (
                             <Empty
-                                description={requestedEntityId ? 'No canonical answers are linked to this product area' : 'No approved answers yet'}
+                                description={requestedEntityId ? 'No trusted answers are linked to this product area' : 'No approved answers yet'}
                                 image={answers.length === 0 && !requestedEntityId ? (
                                     <ContextualStateIllustration
                                         color={token.colorPrimary}
@@ -774,7 +775,7 @@ export default function CanonicalAnswerEditor() {
                             >
                                 <Space direction="vertical" size={8} align="center">
                                     <Text type="secondary">
-                                        Start with one answer tied to a product entity, or generate drafts from Knowledge Intake first.
+                                        Start with one answer tied to a product topic, or prepare drafts from Knowledge Intake first.
                                     </Text>
                                     <Button type="primary" icon={<LuPlus />} onClick={openCreateProposal}>
                                         Prepare first answer
@@ -788,7 +789,7 @@ export default function CanonicalAnswerEditor() {
 
             {/* Detail/Edit Drawer */}
             <Drawer
-                title={editMode ? 'Propose Canonical Answer Update' : 'Canonical Answer Detail'}
+                title={editMode ? 'Propose Trusted Answer Update' : 'Trusted Answer Detail'}
                 open={drawerOpen}
                 onClose={() => {
                     setDrawerOpen(false);
@@ -816,13 +817,13 @@ export default function CanonicalAnswerEditor() {
                             </Descriptions.Item>
                             <Descriptions.Item label="Governance">
                                 {selectedAnswer.governance.driftFlag ? (
-                                    <Space><LuShieldAlert style={{ color: token.colorWarning }} /><Text type="warning">Drifted</Text></Space>
+                                    <Space><LuShieldAlert style={{ color: token.colorWarning }} /><Text type="warning">Needs recheck</Text></Space>
                                 ) : (
                                     <Space><LuCheck style={{ color: token.colorSuccess }} /><Text type="success">Clean</Text></Space>
                                 )}
                             </Descriptions.Item>
                             {selectedAnswer.governance.driftReason && (
-                                <Descriptions.Item label="Drift Reason">
+                                <Descriptions.Item label="Reason to recheck">
                                     <Text type="secondary" style={{ fontSize: 12 }}>{selectedAnswer.governance.driftReason}</Text>
                                 </Descriptions.Item>
                             )}
@@ -975,8 +976,8 @@ export default function CanonicalAnswerEditor() {
                                 />
                             </Form.Item>
                         )}
-                        <Form.Item name="entityIds" label="Bound Entities" rules={[{ required: true, type: 'array', min: 1, message: 'At least one entity required' }]}>
-                            <Select mode="multiple" options={entityOptions} placeholder="Select entities" />
+                        <Form.Item name="entityIds" label="Product Topics" rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one product topic' }]}>
+                            <Select mode="multiple" options={entityOptions} placeholder="Select product topics" />
                         </Form.Item>
                         <Form.Item name="planIds" label="Applicable Plans (optional)">
                             <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />
@@ -1045,7 +1046,7 @@ export default function CanonicalAnswerEditor() {
 
             {/* Create Modal */}
             <Modal
-                title="Propose Canonical Answer"
+                title="Propose Trusted Answer"
                 open={createModalOpen}
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
                 onOk={handleCreate}
@@ -1058,7 +1059,7 @@ export default function CanonicalAnswerEditor() {
                         type="info"
                         showIcon
                         message="Nothing publishes directly"
-                        description="This creates a pending proposal. A Governance reviewer must approve it before it becomes an active canonical answer."
+                        description="This creates a pending proposal. An Answer Quality reviewer must approve it before customers can receive the answer."
                         style={{ marginBottom: 16 }}
                     />
                     <Form.Item name="title" label="Title" rules={[{ required: true }]}>
@@ -1073,8 +1074,8 @@ export default function CanonicalAnswerEditor() {
                             />
                         </Form.Item>
                     )}
-                    <Form.Item name="entityIds" label="Bound Entities" rules={[{ required: true, type: 'array', min: 1, message: 'At least one entity required' }]}>
-                        <Select mode="multiple" options={entityOptions} placeholder="Select entities this answer is about" />
+                    <Form.Item name="entityIds" label="Product Topics" rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one product topic' }]}>
+                        <Select mode="multiple" options={entityOptions} placeholder="Select product topics this answer is about" />
                     </Form.Item>
                     <Form.Item name="planIds" label="Applicable Plans (optional)">
                         <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />

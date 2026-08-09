@@ -24,7 +24,7 @@ const REVIEW_SIGNAL_LABELS: Record<AnswerlatticeAnswerTrace['reviewSignals'][num
     negative_feedback: 'Negative feedback',
     not_resolved: 'Not resolved',
     escalated: 'Escalated',
-    drifted_answer: 'Drift evidence',
+    drifted_answer: 'May be outdated',
     no_answer: 'No answer',
 };
 

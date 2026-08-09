@@ -18,6 +18,7 @@ Mobile owner action layer renders inside `MobileDashboardScreen` and uses existi
 - `onOpenMoreScreen`
 
 It does not use `window.location`, forced reloads, or desktop route bypasses.
+It renders one 44px-or-larger primary action only while required work is open. Stable state and secondary jobs remain available through the normal MobileShell tabs and More groups without another dashboard action grid.
 
 ## Mobile Destinations
 

@@ -8,8 +8,14 @@ import {
 } from '@constant/urls';
 import { normalizePublicCreateMenuPreviewDraft } from '@lib/publicCreateMenu/previewDraftResponse';
 import { isPublicCreateMenuSuccessHostname } from '@lib/publicCreateMenu/successUrl';
-import { normalizePublicMenuDraftExtractedData } from '@data/shared/publicMenuDraftData';
+import {
+    hasCompletePublicMenuDraftSourceAttribution,
+    normalizePublicMenuDraftExtractedData,
+} from '@data/shared/publicMenuDraftData';
 import { resolvePublicMenuClaimUserAuthority } from '@lib/public-menu-entry/claimUserAuthority';
+import { normalizePublicDraftSourcesForProject } from '@lib/public-menu-entry/publicDraftSource';
+import { PUBLIC_CREATE_MENU_UPLOAD_LIMITS } from '@data/shared/menuExtractionJob';
+import { PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION } from '@data/shared/publicMenuDraftSource';
 
 const extracted = normalizeExtractedMenuPriceTruth({
     items: [{
@@ -105,6 +111,62 @@ assert.equal(
     true,
     'the required English fallback must survive the maximum language cap',
 );
+const indexedDraftInput = {
+    categories: [{ id: 'breakfast', active: true, name: { en: 'Breakfast' }, sourceFileIndex: 1 }],
+    items: [{
+        id: 'tea',
+        category: 'breakfast',
+        active: true,
+        available: true,
+        name: { en: 'Tea' },
+        sourceFileIndex: 1,
+    }],
+    languages: ['en'],
+};
+assert.equal(
+    normalizePublicMenuDraftExtractedData(indexedDraftInput)?.items[0].sourceFileIndex,
+    undefined,
+    'Preview-safe normalization must not expose private source-page indexes by default',
+);
+assert.equal(
+    normalizePublicMenuDraftExtractedData(indexedDraftInput, {
+        maxSourceFiles: 2,
+        preserveSourceFileIndex: true,
+    })?.items[0].sourceFileIndex,
+    1,
+    'The private worker-to-claim projection must retain a bounded source-page index',
+);
+assert.equal(
+    normalizePublicMenuDraftExtractedData(indexedDraftInput, {
+        maxSourceFiles: 1,
+        preserveSourceFileIndex: true,
+    })?.items[0].sourceFileIndex,
+    undefined,
+    'An out-of-range source-page index must be stripped before persistence',
+);
+const attributedDraft = normalizePublicMenuDraftExtractedData(indexedDraftInput, {
+    maxSourceFiles: 2,
+    preserveSourceFileIndex: true,
+});
+assert.equal(
+    attributedDraft ? hasCompletePublicMenuDraftSourceAttribution(attributedDraft, 2) : false,
+    true,
+    'A fully bounded page attribution must be accepted for project redistribution',
+);
+const partiallyAttributedDraft = normalizePublicMenuDraftExtractedData({
+    ...indexedDraftInput,
+    items: [{ ...indexedDraftInput.items[0], sourceFileIndex: undefined }],
+}, {
+    maxSourceFiles: 2,
+    preserveSourceFileIndex: true,
+});
+assert.equal(
+    partiallyAttributedDraft
+        ? hasCompletePublicMenuDraftSourceAttribution(partiallyAttributedDraft, 2)
+        : true,
+    false,
+    'A versioned source cannot silently drop content that lacks page attribution',
+);
 assert.equal(
     normalizePublicCreateMenuPreviewDraft({
         status: 'completed',
@@ -117,6 +179,76 @@ assert.equal(
     normalizePublicCreateMenuPreviewDraft({ status: 'not-a-status' }),
     null,
     'Unknown response states must fail closed',
+);
+
+const sourceDraftId = '123e4567-e89b-42d3-a456-426614174000';
+const sourceBucket = 'menulist-qa.appspot.com';
+const sourceFile = (page: number, size = 2_048) => {
+    const storagePath = `publicMenuDrafts/${sourceDraftId}/menu-page-${String(page).padStart(2, '0')}.jpg`;
+    return {
+        downloadUrl: `https://firebasestorage.googleapis.com/v0/b/${sourceBucket}/o/${encodeURIComponent(storagePath)}?alt=media&token=page-${page}`,
+        fileName: `menu-page-${String(page).padStart(2, '0')}.jpg`,
+        fileSize: size,
+        fileType: 'image/jpeg',
+        storagePath,
+    };
+};
+const firstSourceFile = sourceFile(1);
+const secondSourceFile = sourceFile(2);
+const versionedSourceDraft = {
+    token: sourceDraftId,
+    sourceType: 'image_upload',
+    sourceFilesVersion: PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+    sourceFiles: [firstSourceFile, secondSourceFile],
+    imageUrl: firstSourceFile.downloadUrl,
+    imagePath: firstSourceFile.storagePath,
+    originalFileName: firstSourceFile.fileName,
+    fileType: firstSourceFile.fileType,
+    fileSize: firstSourceFile.fileSize,
+};
+const normalizedSources = normalizePublicDraftSourcesForProject(versionedSourceDraft, sourceDraftId, {
+    allowedBucket: sourceBucket,
+    allowLocalEmulator: false,
+});
+assert.equal(normalizedSources?.length, 2, 'Every ordered PDF page source must survive project promotion validation');
+assert.equal(normalizedSources?.[1].storagePath, secondSourceFile.storagePath);
+assert.equal(
+    normalizePublicDraftSourcesForProject({
+        ...versionedSourceDraft,
+        sourceFiles: [firstSourceFile, { ...secondSourceFile, storagePath: firstSourceFile.storagePath }],
+    }, sourceDraftId, { allowedBucket: sourceBucket, allowLocalEmulator: false }),
+    null,
+    'Duplicate source paths must fail closed',
+);
+assert.equal(
+    normalizePublicDraftSourcesForProject({
+        ...versionedSourceDraft,
+        imageUrl: secondSourceFile.downloadUrl,
+    }, sourceDraftId, { allowedBucket: sourceBucket, allowLocalEmulator: false }),
+    null,
+    'Legacy primary aliases must match the first ordered source exactly',
+);
+assert.equal(
+    normalizePublicDraftSourcesForProject({
+        ...versionedSourceDraft,
+        sourceFiles: [
+            sourceFile(1, PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES),
+            sourceFile(2, PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES),
+            sourceFile(3, PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES),
+            sourceFile(4, 1),
+        ],
+        fileSize: PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES,
+    }, sourceDraftId, { allowedBucket: sourceBucket, allowLocalEmulator: false }),
+    null,
+    'Aggregate converted PDF payloads above the shared cap must fail closed',
+);
+assert.equal(
+    normalizePublicDraftSourcesForProject({
+        ...versionedSourceDraft,
+        sourceFilesVersion: undefined,
+    }, sourceDraftId, { allowedBucket: sourceBucket, allowLocalEmulator: false }),
+    null,
+    'A partial versioned source envelope must not fall back to legacy admission',
 );
 
 const currentClaimSession = {

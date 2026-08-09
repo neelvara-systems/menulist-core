@@ -3297,6 +3297,17 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_MENU_ENTRY: true,
 
     /**
+     * Public Menu Entry PDF intake
+     *
+     * Keeps the original PDF in the browser, converts at most 15 pages through
+     * the existing PDF.js utility, and submits only bounded JPEG pages through
+     * the authenticated Public Menu Entry pipeline.
+     *
+     * @see __docs__/public-menu-entry/public-menu-entry_impl.md
+     */
+    ENABLE_PUBLIC_MENU_PDF_UPLOAD: true,
+
+    /**
      * Public Truth Tools — static/public and owner-side readiness checkers.
      *
      * The first public-truth-check route runs as browser-local self-report

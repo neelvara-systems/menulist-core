@@ -80,6 +80,12 @@ filesEqual(
 );
 
 filesEqual(
+  'src/data/shared/publicMenuDraftSource.ts',
+  'functions/src/sharedData/publicMenuDraftSource.ts',
+  'Public menu draft ordered source contract is mirrored byte-for-byte',
+);
+
+filesEqual(
   'src/data/shared/menuExtractionIntegrity.ts',
   'functions/src/sharedData/menuExtractionIntegrity.ts',
   'Shared menu extraction integrity contract is mirrored byte-for-byte',
@@ -1675,7 +1681,7 @@ contains(
     "import { validateFileUpload } from '@lib/security/fileValidation';",
     'const fileValidation = await validateFileUpload(buffer, imageFile.type, imageFile.size);',
     'if (!fileValidation.valid)',
-    "error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.'",
+    "error: 'Invalid file type. Please upload a JPEG, PNG, WebP, or PDF menu.'",
   ],
   'Public create-menu validates uploaded image signatures with fixed client-safe copy',
 );
@@ -1685,9 +1691,11 @@ ordered(
   [
     'const buffer = Buffer.from(await imageFile.arrayBuffer());',
     'const fileValidation = await validateFileUpload(buffer, imageFile.type, imageFile.size);',
-    'const contentHash = hashBuffer(buffer);',
+    'preparedFiles.push({',
+    'const fileHashes = preparedFiles.map',
+    'const contentHash = preparedFiles.length === 1',
     'findReusableDraftForUser(userId, { contentHash })',
-    'bucket.file(storagePath).save(buffer',
+    'await bucket.file(sourceFile.storagePath).save(prepared.buffer',
   ],
   'Public create-menu validates uploaded image signatures before draft reuse and Storage work',
 );
@@ -2218,9 +2226,9 @@ contains(
     "getBoundedSecurityStringContext('storeId', context.storeId)",
     "getBoundedSecurityStringContext('projectId', context.projectId)",
     'const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`',
-    'normalizePublicMenuDraftExtractedData(draft.extractedData)',
+    'normalizePublicMenuDraftExtractedData(draft.extractedData, {',
     'getPublicMenuDraftTimestampMillis(draft.expiresAt)',
-    'normalizePublicDraftSourceForProject(draft, draftId',
+    'normalizePublicDraftSourcesForProject(draft, draftId',
     'allowedBucket: storageAdmin.bucket().name',
     'normalizeExtractedBusinessProfile(',
     'normalizeCompletedClaimResult(draft, userId)',
@@ -2234,23 +2242,34 @@ contains(
     'cacheEffect: cacheEffects[index].name',
     'active: true',
     'deleted: false',
-    'index: 0',
+    'const fileEntries = draftSources.map',
+    'index,',
     "message: ''",
     'revalidateTag(`menu-store-${result.storeId}`, { expire: 0 })',
   ],
   'Public draft claim validates durable DTOs, supports idempotent owner retry, and writes the standard project file shape',
 );
 contains(
-  'src/lib/public-menu-entry/publicDraftSource.ts',
+  'src/data/shared/publicMenuDraftSource.ts',
   [
-    'imagePath.startsWith(`publicMenuDrafts/${draftId}/`)',
-    "parsed.hostname !== 'firebasestorage.googleapis.com'",
+    '!storagePath.startsWith(`publicMenuDrafts/${options.draftId}/`)',
+    'parsed.hostname !== "firebasestorage.googleapis.com"',
     'bucketName !== options.allowedBucket',
-    'storagePath !== imagePath',
-    "!parsed.searchParams.get('token')",
-    'MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES',
+    'parsedStoragePath !== storagePath',
+    '!parsed.searchParams.get("token")',
+    'totalSizeBytes > options.maxTotalSizeBytes',
   ],
   'Public claim source envelope is bucket-, path-, MIME-, token-, and size-bound before project promotion',
+);
+contains(
+  'src/lib/public-menu-entry/publicDraftSource.ts',
+  [
+    'normalizePublicDraftSourcesForProject',
+    'PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES',
+    'PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES',
+    'draft.imagePath !== primary.storagePath',
+  ],
+  'Public claim projects versioned and legacy sources through the shared bounded validator',
 );
 notContains(
   'src/app/api/public/create-menu/claim/route.ts',
@@ -2670,8 +2689,8 @@ contains(
   [
     'sourceTextLength: acquisition.sourceTextLength || 0',
     'sourceTextPresent: Boolean(acquisition.sourceTextPresent)',
-    'sourceTextLength: source.sourceTextLength || 0',
-    'sourceTextPresent: Boolean(source.sourceTextPresent)',
+    'sourceTextLength: primarySource.sourceTextLength || 0',
+    'sourceTextPresent: Boolean(primarySource.sourceTextPresent)',
   ],
   'Public create-menu stores bounded link source-text metadata',
 );
@@ -2979,6 +2998,7 @@ contains(
     "const errorMessage = 'Failed to apply changes'",
     "const errorMessage = 'Failed to save changes'",
     "const errorMessage = 'Failed to discard changes'",
+    'Needs review',
   ],
   'Desktop extraction review screen uses bounded diagnostics and generic owner errors',
 );
@@ -2991,6 +3011,8 @@ notContains(
     'if (result.success)',
     'result.error ||',
     'error.message ||',
+    '% match',
+    'MatchScoreBadge',
   ],
   'Desktop extraction review screen does not log or show raw apply/discard errors',
 );
@@ -3008,6 +3030,7 @@ contains(
     'mobile_extraction_review_close_empty_failed',
     "content: t('applyChangesFailed')",
     "content: t('discardChangesFailed')",
+    'Needs review',
   ],
   'Mobile extraction review sheet uses bounded diagnostics and generic translated errors',
 );
@@ -3055,6 +3078,8 @@ notContains(
     'if (!result.success)',
     'result.error ||',
     'error?.message ||',
+    'Math.round(score * 100)',
+    'MatchTag',
   ],
   'Mobile extraction review sheet does not log or show raw apply/discard errors',
 );
@@ -3733,7 +3758,12 @@ contains(
     'assertPublicDraftJobBinding(jobId, job)',
     'publicDraftBindingVerified = true',
     'if (publicDraftBindingVerified)',
-    'normalizePublicMenuDraftExtractedData(sourceData)',
+    'hasCompleteRedistribution',
+    'data.categories.map((category: any) => ({ ...category, sourceFileIndex }))',
+    'data.items.map((item: any) => ({ ...item, sourceFileIndex }))',
+    'normalizePublicMenuDraftExtractedData(sourceData, {',
+    'maxSourceFiles: sourceFiles.length',
+    'preserveSourceFileIndex: true',
     'normalizeExtractedBusinessProfile(menuData?.extractedBusinessProfile)',
     'validateJobRouting(job)',
     'findInvalidMenuExtractionFileUidIndexes(job.files)',
@@ -4292,7 +4322,7 @@ contains(
   'functions/src/schedulers/menulistMaintenanceScheduler.ts',
   [
     'PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE',
-    'imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)',
+    'imagePath.startsWith(`publicMenuDrafts/${draftId}/`)',
     'Preserve the draft as the durable retry record',
     'continue;',
     'if (deletedDrafts > 0)',
@@ -4318,13 +4348,17 @@ contains(
   'functions/src/logic/processMenuImagesJob.ts',
   [
     'function buildPublicDraftExtractedData',
-    'normalizePublicMenuDraftExtractedData(sourceData)',
+    'hasCompleteRedistribution',
+    'normalizePublicMenuDraftExtractedData(sourceData, {',
+    'preserveSourceFileIndex: true',
     'throw new Error("No coherent public menu data remained after validation.")',
     'assertPublicDraftJobBinding(jobId, job)',
     'jobId !== `public_${draftId}`',
     'draft.extractionJobId !== jobId',
     'draft.createdByUId !== requestedByUId',
-    'draft.imagePath !== fileStoragePath',
+    'draft.imagePath !== primarySource?.storagePath',
+    'draftSources!.length === job.files.length',
+    'sourceFile.storagePath === fileStoragePaths[index]',
     'updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles)',
   ],
   'Worker allowlists public draft extracted data and verifies the durable draft/job owner binding',

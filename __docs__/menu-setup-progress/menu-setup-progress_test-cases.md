@@ -19,5 +19,6 @@
 | MSP-13 | no translation signals | translation step omitted |
 | MSP-14 | Mobile More root while setup is incomplete | one permission-compatible Menu setup shortcut after provider load |
 | MSP-15 | all required steps complete while optional work remains | progress card suppressed; optional work stays in its normal surfaces |
+| MSP-16 | setup card is visible | owner sees one next step and one action; no percentage, step-pill list, or optional checklist is rendered |
 
 Run `npm run verify:menu-setup-progress-boundary` and `npm run verify:menulist-activation-concierge`.

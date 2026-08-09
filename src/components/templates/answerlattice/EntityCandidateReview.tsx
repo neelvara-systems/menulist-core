@@ -11,6 +11,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { useEntityCandidates } from '@hook/answerlattice/useEntityCandidates';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { AnswerlatticeEntityCandidate } from '@type/answerlattice';
@@ -47,8 +48,8 @@ function CandidateItem({
             actions={[
                 <Popconfirm
                     key="promote"
-                    title="Promote to entity?"
-                    description="Creates a real entity + search index entry from this candidate."
+                    title="Accept as a product topic?"
+                    description="Adds this reviewed topic to the product model and search."
                     onConfirm={() => onPromote(candidate.id)}
                     okText="Promote"
                     okButtonProps={{ style: { backgroundColor: token.colorPrimary } }}
@@ -71,7 +72,7 @@ function CandidateItem({
                 <Popconfirm
                     key="merge"
                     title="Mark as merged?"
-                    description="Use when this candidate is a duplicate of an existing entity."
+                    description="Use when this suggestion duplicates an existing product topic."
                     onConfirm={() => onMerge(candidate.id)}
                     okText="Merge"
                 >
@@ -122,7 +123,7 @@ export default function EntityCandidateReview() {
         <Card style={{ marginTop: 24 }}>
             <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                 <Space>
-                    <Title level={5} style={{ margin: 0 }}>Entity Candidates</Title>
+                    <Title level={5} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.suggestedTopics}</Title>
                     <Badge count={candidates.length} style={{ backgroundColor: candidates.length > 0 ? token.colorPrimary : token.colorFill }} />
                 </Space>
                 <Button
@@ -140,9 +141,9 @@ export default function EntityCandidateReview() {
                 loading={loading}
                 locale={{
                     emptyText: (
-                        <Empty description="No pending entity candidates">
+                        <Empty description="No suggested product topics need review">
                             <Text type="secondary">
-                                New candidates appear after intake or support signals mention product features, plans, roles, workflows, states, integrations, or errors.
+                                Suggestions appear when product knowledge or support evidence mentions a new feature, plan, role, workflow, state, integration, or error.
                             </Text>
                         </Empty>
                     ),

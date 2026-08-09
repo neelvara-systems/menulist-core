@@ -1,7 +1,7 @@
 # AnswerLattice Progressive Adoption Operating Guide
 
 > Status: Active product operating contract
-> Last updated: 2026-07-31
+> Last updated: 2026-08-07
 > Primary audience: solo founders, small product teams, support leads, product owners, and engineering owners
 > Governing doctrine: `doctrine/01-core-doctrine.md`, `doctrine/02-non-goals-charter.md`, and `doctrine/03-infrastructure-freeze-v1.md`
 
@@ -26,7 +26,7 @@ AnswerLattice should do support work continuously. A human should be interrupted
 The owner or team should not be expected to:
 
 - inspect every dashboard every day;
-- model the complete product ontology before receiving value;
+- model every product topic and relationship before receiving value;
 - convert every ticket into reusable knowledge;
 - activate every advanced feature;
 - invite every employee;
@@ -38,6 +38,19 @@ The human responsibilities are narrower:
 - respond when a user still needs human help;
 - confirm how a product release changes an existing answer;
 - decide whether repeated friction needs a knowledge correction, product investigation, known-limitation note, or no action.
+
+## Compact Default, Full Product
+
+The default navigation is intentionally smaller than the full Answerlattice feature inventory. This is presentation-level progressive disclosure, not a founder workspace mode, product edition, entitlement, maturity score, or persisted preference.
+
+- **Get Live** starts with Activation, First 10 Answers, Install Support, and Setup Status.
+- **Run Support** starts with Daily Brief and Ticket Inbox.
+- **Answer Quality** starts with Trusted Answers.
+- **All tools** reveals the other authorized tools inside that group for the current browser session.
+- A directly opened advanced route remains visible while it is active, so shared links and bookmarked routes are not hidden.
+- Permissions and feature flags are applied before the reveal control is built. The control never exposes an unavailable route.
+
+Use **All tools** when an Activation step, Daily Brief item, release review, team responsibility, or support-risk decision sends the operator to a deeper workflow. A founder does not need to learn the complete tool inventory before the first customer receives support. A growing team does not lose capability; it reveals the same authorized system as responsibility increases.
 
 ## Fit By Operating Shape
 
@@ -55,9 +68,9 @@ The human responsibilities are narrower:
 - One workspace for one product.
 - Product profile and support email.
 - Existing docs, FAQs, setup notes, policies, release notes, screenshots, short recordings, or repeated founder replies.
-- Two to five support-heavy Product Surfaces.
+- Two to five support-heavy Product Pages & Flows.
 - Ten priority customer questions.
-- Canonical answer review for the questions that require official truth.
+- Trusted Answer review for the questions that require official truth.
 - Deterministic Answer Tests for critical expected answers.
 - One verified widget installation with safe page context and ticket fallback.
 - Daily Brief as the default post-launch owner surface.
@@ -68,9 +81,9 @@ The human responsibilities are narrower:
 2. Run one bounded Knowledge Intake job.
 3. Review the first ten product-specific questions and their evidence.
 4. Approve only supported answer truth. Keep an explicit fallback when evidence is insufficient.
-5. Run canonical-only Answer Tests.
+5. Run Answer Tests that require trusted answers.
 6. Install the widget and verify one known-answer path and one missing-answer path.
-7. Return to the Daily Brief after launch. Do not browse every governance screen looking for work.
+7. Return to the Daily Brief after launch. Do not browse every Answer Quality screen looking for work.
 
 ### Ignore initially
 
@@ -142,7 +155,7 @@ One person may hold several responsibilities. The purpose is accountability, not
 - Knowledge Map for a curated view of structure, coverage, demand, freshness, and connected review work.
 - Release impact preview before activating customer-visible product changes.
 - Critical Answer Tests before and after important knowledge or release changes.
-- Canonical answer version history and audit evidence.
+- Trusted Answer version history and audit evidence.
 - Product Friction Evidence for qualified support-event concentration, without claiming root cause or product-health certainty.
 - Role and permission controls so support responders, knowledge approvers, and technical operators do not share owner authority.
 - Support truth export for bounded handoff and review.
@@ -151,7 +164,7 @@ One person may hold several responsibilities. The purpose is accountability, not
 ### Governance rules
 
 - Keep one accountable owner for official support truth.
-- Require explicit review for canonical publication and high-risk corrections.
+- Require explicit review before a Trusted Answer is published or a high-risk correction is accepted.
 - Do not give every employee an AnswerLattice account.
 - Do not duplicate the same issue across Daily Brief, Support Board, an external project tracker, and a second internal queue without a clear owner.
 - Do not infer revenue impact, affected-user count, defect classification, or causal product health from support-event counts alone.

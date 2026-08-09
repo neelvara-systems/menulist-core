@@ -13,7 +13,7 @@
 | Server logic | `src/lib/answerlattice/ownerSupportAssistant.ts` |
 | API | Existing `/api/answerlattice/support-assistant/brief` response |
 | UI | `src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx` |
-| Navigation | Support Control sidebar label: `Daily Brief`, first item before Support Board/Tickets |
+| Navigation | Run Support parent and primary sidebar item: `Daily Brief`; Ticket Inbox remains primary and secondary tools remain under `All tools` |
 | Dashboard entry | Dashboard and Activation top actions link to the existing Support Assistant route |
 | Verifier | `scripts/verification/verify-answerlattice-runtime-truth.js` |
 | Docs | `__docs__/answerlattice/founder-daily-brief/` |
@@ -78,7 +78,7 @@ note.
 
 ## Placement Rules
 
-- Support Control navigation lists `Daily Brief` first, before Support Board, Ticket Inbox, Conversations, Feedback, Weekly Digest, and knowledge-management screens.
+- Run Support opens Daily Brief and initially lists Daily Brief plus Ticket Inbox. Support Board, Conversations, Feedback, Weekly Digest, integrations, content operations, and Known Issues remain permission-filtered and available through All tools.
 - Support-only users route to `Daily Brief` first when `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` is enabled, then fall back to Support Board or Ticket Inbox only when the assistant is disabled.
 - Dashboard and Launch Support Setup show a `Today's Brief` action that navigates to the existing route without loading any additional data.
 - The Answerlattice base route enters Daily Brief only when the compact activation snapshot says launch proof is ready; all other states fail safely to Activation.

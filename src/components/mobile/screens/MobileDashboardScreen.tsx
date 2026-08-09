@@ -28,7 +28,7 @@ import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuCalendar, LuClock, LuEye, LuFlame, LuHeart, LuImage, LuInfo, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuUtensils, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuUtensils, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileBusinessHealthCard from '../components/MobileBusinessHealthCard';
@@ -319,20 +319,15 @@ export default function MobileDashboardScreen({
     const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
     const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
         .filter((surface) => Boolean(storeDetails?.menuPresence?.[surface as keyof NonNullable<typeof storeDetails.menuPresence>])).length;
-    const feedbackReady = storeDetails ? storeDetails.feedbackEnabled !== false : false;
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
     const selectedMenuIsLive = selectedProjectSummary?.active !== false;
-    const attentionItems = [
-        !selectedMenuIsLive ? { key: 'menu', label: 'Menu is hidden', action: 'Open menu', onClick: onOpenMenuTab } : null,
-        !hasWorkingHours ? { key: 'hours', label: 'Hours are missing', action: 'Set hours', onClick: () => onOpenMoreScreen?.('hoursEdit') } : null,
-        !hasPublicLink ? { key: 'public-link', label: 'Customer link is not ready', action: 'Set link', onClick: () => onOpenMoreScreen?.('domainSettings') } : null,
-    ].filter(Boolean) as Array<{ action: string; key: string; label: string; onClick?: () => void }>;
-    const publicSourceTitle = attentionItems.length
+    const attentionCount = [!selectedMenuIsLive, !hasWorkingHours, !hasPublicLink].filter(Boolean).length;
+    const publicSourceTitle = attentionCount
         ? 'Needs attention'
         : hasConfirmedPlacement
             ? 'Official customer source is active'
             : 'Customer link is ready to place';
-    const publicSourceDescription = attentionItems.length
+    const publicSourceDescription = attentionCount
         ? 'Fix menu, hours, or the customer link first.'
         : hasConfirmedPlacement
             ? 'No action needed.'
@@ -406,7 +401,7 @@ export default function MobileDashboardScreen({
             <Flex gap={14} vertical>
                 <Flex align="center" justify="space-between" gap={10}>
                     <Flex align="center" gap={10} style={{ minWidth: 0 }}>
-                        <LuShield color={attentionItems.length ? token.colorWarning : token.colorSuccess} size={22} />
+                        <LuShield color={attentionCount ? token.colorWarning : token.colorSuccess} size={22} />
                         <Flex gap={2} style={{ minWidth: 0 }} vertical>
                             <Text strong style={{ fontSize: 16 }}>
                                 {publicSourceTitle}
@@ -434,65 +429,12 @@ export default function MobileDashboardScreen({
                     <Tag color={hasConfirmedPlacement ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
                         Placed: {confirmedPlacementCount}/3
                     </Tag>
-                    <Tag color={feedbackReady ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                        Feedback: {feedbackReady ? 'On' : 'Off'}
-                    </Tag>
                 </Flex>
-
-                {attentionItems.length ? (
-                    <Flex gap={8} vertical>
-                        <Text strong>Needs attention</Text>
-                        {attentionItems.slice(0, 3).map((item) => (
-                            <Card key={item.key} size="small" style={{ backgroundColor: token.colorFillAlter }}>
-                                <Flex align="center" justify="space-between" gap={10}>
-                                    <Text>{item.label}</Text>
-                                    <Button
-                                        color="primary"
-                                        fill="outline"
-                                        onClick={item.onClick}
-                                        size="small"
-                                        style={{ minHeight: 36 }}
-                                    >
-                                        {item.action}
-                                    </Button>
-                                </Flex>
-                            </Card>
-                        ))}
-                    </Flex>
-                ) : null}
             </Flex>
         </Card>
     );
 
-    const renderQuickActions = () => (
-        <Card size="small" title={<Text strong>Update what customers see</Text>}>
-            <Flex gap={8} wrap>
-                <Button fill="outline" onClick={onOpenMenuTab} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuUtensils size={15} /> Menu</Flex>
-                </Button>
-                <Button fill="outline" onClick={() => onOpenMoreScreen?.('hoursEdit')} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuClock size={15} /> Hours</Flex>
-                </Button>
-                <Button fill="outline" onClick={() => onOpenMoreScreen?.('tempStatus')} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuCalendar size={15} /> Today status</Flex>
-                </Button>
-                <Button fill="outline" onClick={() => onOpenMoreScreen?.('officialPage')} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuImage size={15} /> Photos</Flex>
-                </Button>
-                <Button fill="outline" onClick={() => onOpenMoreScreen?.('presenceMonitor')} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuLink size={15} /> Place link</Flex>
-                </Button>
-                <Button fill="outline" onClick={onOpenShareTab} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuQrCode size={15} /> QR</Flex>
-                </Button>
-                <Button fill="outline" onClick={() => onOpenMoreScreen?.('feedback')} style={{ minHeight: 44 }}>
-                    <Flex align="center" gap={6}><LuMessageCircle size={15} /> Feedback</Flex>
-                </Button>
-            </Flex>
-        </Card>
-    );
-
-    const renderOwnerActionLayer = () => ownerActionLayer ? (
+    const renderOwnerActionLayer = () => ownerActionLayer && ownerActionLayer.statusLabel !== 'Stable' ? (
         <Card size="small" title={<Text strong>Next owner action</Text>}>
             <Flex gap={12} vertical>
                 <Flex gap={8} vertical>
@@ -519,21 +461,6 @@ export default function MobileDashboardScreen({
                         Open
                     </Flex>
                 </Button>
-                <Flex gap={8} wrap>
-                    {ownerActionLayer.supportingActions.slice(0, 6).map((item) => (
-                        <Button
-                            fill="outline"
-                            key={item.id}
-                            onClick={() => handleOwnerAction(item)}
-                            style={{ minHeight: 44 }}
-                        >
-                            <Flex align="center" gap={6}>
-                                {renderOwnerActionIcon(item.id)}
-                                {item.label}
-                            </Flex>
-                        </Button>
-                    ))}
-                </Flex>
             </Flex>
         </Card>
     ) : null;
@@ -783,7 +710,6 @@ export default function MobileDashboardScreen({
 
                 {renderPublicTruthStatus()}
                 {renderOwnerActionLayer()}
-                {renderQuickActions()}
 
                 <div style={stickyHistoricalHeaderStyle}>
                     <Card className="mobile-dashboard-tabs-card" size="small">

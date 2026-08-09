@@ -8,7 +8,7 @@ Current MenuList already has the source surfaces. The gap is selection: the owne
 
 ## Product Goal
 
-Show one next owner action on desktop and mobile, then keep the remaining owner jobs one tap away.
+Show one next owner action on desktop and mobile only when current truth requires attention. Existing navigation keeps the remaining owner jobs available.
 
 ## Owner Jobs Covered
 
@@ -31,12 +31,13 @@ Show one next owner action on desktop and mobile, then keep the remaining owner 
 3. Missing customer link wins before placement.
 4. Missing or stale external placement wins before secondary actions.
 5. Feedback disabled wins before routine actions.
-6. If no required gap exists, daily menu change is the default owner action.
+6. If no required gap exists, the action card stays hidden and the public-source card says no action is needed.
 
 ## Accepted Behavior
 
-- Desktop dashboard shows one primary action and compact handoff buttons.
-- Mobile dashboard shows the same action layer inside `MobileShell`.
+- Desktop dashboard shows one primary action only while a required gap is open.
+- Mobile dashboard shows the same single-action layer inside `MobileShell`.
+- Stable state does not render an action card or duplicate quick-action grid.
 - Placement proof uses existing `menuPresence` timestamps.
 - Mobile routes use existing shell callbacks, not desktop route pushes.
 - The layer disappears behind `ENABLE_OWNER_ACTION_LAYER`.

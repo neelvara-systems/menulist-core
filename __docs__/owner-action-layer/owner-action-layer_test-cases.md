@@ -16,7 +16,7 @@ npm run verify:owner-action-layer
 | Hours missing | Primary action opens hours path before placement actions. |
 | Customer link missing | Primary action opens customer-link path before placement actions. |
 | No external placement confirmed | Primary action opens presence/share placement path. |
-| Placement confirmed recently | Daily change becomes the routine action when required gaps are clear. |
+| Placement confirmed recently and no required gap remains | Action card stays hidden; public-source state communicates that no action is needed. |
 | Placement confirmed over 45 days ago | Placement action asks for confirmation again. |
 | Placement value is malformed | It remains missing and cannot inflate the confirmed count. |
 | Customer link or working-hours value is a malformed object | It remains missing instead of suppressing the corrective action. |
@@ -28,7 +28,7 @@ npm run verify:owner-action-layer
 
 - Existing dashboard public source card remains.
 - Existing official-link placement card remains.
-- Existing quick actions remain.
+- Existing sidebar and MobileShell destinations remain; duplicate dashboard quick-action grids stay absent.
 - Existing Mobile More grouping remains.
 - No new API route exists.
 - No new Firestore collection or field exists.

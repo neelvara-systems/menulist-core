@@ -66,7 +66,7 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
 
     return (
         <Card
-            title="Surface Readiness"
+            title="Support Coverage by Page"
             extra={!isMobile ? <Tag color="blue">Page-aware support</Tag> : null}
         >
             <Flex vertical gap={12}>
@@ -76,7 +76,7 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
 
                 {surfaces.length === 0 ? (
                     <Empty
-                        description="No product surfaces are mapped yet."
+                        description="No Product Pages & Flows are mapped yet."
                         image={(
                             <ContextualStateIllustration
                                 color={token.colorPrimary}
@@ -92,7 +92,7 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
                             onClick={() => onOpen(ANSWERLATTICE_ROUTES.PRODUCT_SURFACES)}
                             style={{ minHeight: 44 }}
                         >
-                            Map Product Surfaces
+                            Map Product Pages &amp; Flows
                         </Button>
                     </Empty>
                 ) : (

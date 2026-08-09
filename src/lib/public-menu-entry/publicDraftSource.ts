@@ -2,78 +2,107 @@ import {
     MENU_EXTRACTION_JOB_LIMITS,
     MENU_LINK_IMPORT_MIME_TYPES,
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
-} from '../../data/shared/menuExtractionJob';
-
-const PUBLIC_MENU_IMAGE_MIME_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
-const PUBLIC_MENU_LINK_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
+    PUBLIC_CREATE_MENU_UPLOAD_LIMITS,
+} from '@data/shared/menuExtractionJob';
+import {
+    normalizePublicMenuDraftSourceFiles,
+    PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION,
+    type PublicMenuDraftSourceFile,
+} from '@data/shared/publicMenuDraftSource';
 
 export type ValidatedPublicDraftSource = {
     fileName: string;
     fileSize: number;
     fileType: string;
     imageUrl: string;
+    storagePath: string;
 };
 
+const isVersionedSourceEnvelope = (draft: Record<string, unknown>): boolean => (
+    draft.sourceFilesVersion === PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION
+    && Array.isArray(draft.sourceFiles)
+);
+
+function getLegacySourceCandidate(draft: Record<string, unknown>): PublicMenuDraftSourceFile[] {
+    return [{
+        downloadUrl: draft.imageUrl as string,
+        fileName: draft.originalFileName as string,
+        fileSize: draft.fileSize as number,
+        fileType: draft.fileType as string,
+        storagePath: draft.imagePath as string,
+    }];
+}
+
 /**
- * Validate the temporary source envelope before it is promoted into a durable,
- * publicly rendered project file. The caller supplies the configured bucket so
- * this helper remains pure and can be regression-tested without Firebase.
+ * Validate every temporary source before it is promoted into durable project
+ * files. New drafts use the versioned envelope; legacy one-source drafts are
+ * projected into the same validator for backwards compatibility.
+ */
+export function normalizePublicDraftSourcesForProject(
+    draft: Record<string, unknown>,
+    draftId: string,
+    options: { allowLocalEmulator: boolean; allowedBucket: string },
+): ValidatedPublicDraftSource[] | null {
+    if (draft.token !== draftId) return null;
+    const sourceType = draft.sourceType === 'menu_link_import'
+        ? 'menu_link_import'
+        : draft.sourceType === 'image_upload'
+            ? 'image_upload'
+            : null;
+    if (!sourceType) return null;
+
+    const hasVersionedEnvelope = isVersionedSourceEnvelope(draft);
+    if ((draft.sourceFiles !== undefined || draft.sourceFilesVersion !== undefined) && !hasVersionedEnvelope) {
+        return null;
+    }
+    const candidates = hasVersionedEnvelope ? draft.sourceFiles : getLegacySourceCandidate(draft);
+    const allowedMimeTypes = sourceType === 'menu_link_import'
+        ? MENU_LINK_IMPORT_MIME_TYPES
+        : PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES;
+    const maxFileSizeBytes = sourceType === 'menu_link_import'
+        ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+        : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES;
+    const maxTotalSizeBytes = sourceType === 'menu_link_import'
+        ? MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
+        : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES;
+    const normalized = normalizePublicMenuDraftSourceFiles(candidates, {
+        ...options,
+        allowedMimeTypes,
+        draftId,
+        maxFiles: sourceType === 'menu_link_import' ? 1 : PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES,
+        maxFileSizeBytes,
+        maxTotalSizeBytes,
+    });
+    if (!normalized) return null;
+
+    const primary = normalized[0];
+    if (
+        draft.imagePath !== primary.storagePath
+        || draft.imageUrl !== primary.downloadUrl
+        || String(draft.fileType || '').trim().toLowerCase() !== primary.fileType
+        || Number(draft.fileSize) !== primary.fileSize
+        || String(draft.originalFileName || '') !== primary.fileName
+    ) {
+        return null;
+    }
+
+    return normalized.map((source) => ({
+        fileName: source.fileName,
+        fileSize: source.fileSize,
+        fileType: source.fileType,
+        imageUrl: source.downloadUrl,
+        storagePath: source.storagePath,
+    }));
+}
+
+/**
+ * Compatibility projection for preview and older callers that need only the
+ * primary source image.
  */
 export function normalizePublicDraftSourceForProject(
     draft: Record<string, unknown>,
     draftId: string,
     options: { allowLocalEmulator: boolean; allowedBucket: string },
 ): ValidatedPublicDraftSource | null {
-    if (draft.token !== draftId || !options.allowedBucket) return null;
-    const sourceType = draft.sourceType === 'menu_link_import'
-        ? 'menu_link_import'
-        : draft.sourceType === 'image_upload'
-            ? 'image_upload'
-            : null;
-    const fileType = typeof draft.fileType === 'string' ? draft.fileType.trim().toLowerCase() : '';
-    const allowedTypes = sourceType === 'menu_link_import' ? PUBLIC_MENU_LINK_MIME_TYPES : PUBLIC_MENU_IMAGE_MIME_TYPES;
-    const fileSize = Number(draft.fileSize);
-    const imagePath = typeof draft.imagePath === 'string' ? draft.imagePath : '';
-    const imageUrl = typeof draft.imageUrl === 'string' ? draft.imageUrl : '';
-    const fileName = typeof draft.originalFileName === 'string'
-        ? draft.originalFileName.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240)
-        : '';
-    if (
-        !sourceType
-        || !allowedTypes.has(fileType)
-        || !Number.isFinite(fileSize)
-        || fileSize <= 0
-        || fileSize > MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES
-        || !imagePath.startsWith(`publicMenuDrafts/${draftId}/`)
-        || imagePath.length > 1_024
-        || imagePath.includes('..')
-        || !imageUrl
-        || !fileName
-    ) {
-        return null;
-    }
-
-    try {
-        const parsed = new URL(imageUrl);
-        const isLocalEmulator = options.allowLocalEmulator
-            && ['localhost', '127.0.0.1'].includes(parsed.hostname);
-        if ((!isLocalEmulator && parsed.protocol !== 'https:') || (isLocalEmulator && !['http:', 'https:'].includes(parsed.protocol))) {
-            return null;
-        }
-        if (!isLocalEmulator && parsed.hostname !== 'firebasestorage.googleapis.com') return null;
-        const match = parsed.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^?]+)$/);
-        const bucketName = decodeURIComponent(match?.[1] || '');
-        const storagePath = decodeURIComponent(match?.[2] || '');
-        if (
-            bucketName !== options.allowedBucket
-            || storagePath !== imagePath
-            || !parsed.searchParams.get('token')
-        ) {
-            return null;
-        }
-    } catch {
-        return null;
-    }
-
-    return { fileName, fileSize, fileType, imageUrl };
+    return normalizePublicDraftSourcesForProject(draft, draftId, options)?.[0] || null;
 }

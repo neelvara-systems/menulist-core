@@ -14,6 +14,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import {
     ANSWERLATTICE_DEFAULT_GOVERNANCE_TAB,
     ANSWERLATTICE_GOVERNANCE_TABS,
@@ -45,10 +46,10 @@ import {
     LuHeart,
     LuHistory,
     LuLanguages,
+    LuLayoutGrid,
     LuPaintbrush,
     LuShieldAlert,
     LuShieldCheck,
-    LuSettings2,
     LuZap,
 } from 'react-icons/lu';
 
@@ -80,10 +81,15 @@ const ANSWERLATTICE_GOVERNANCE_TRANSLATION_REQUEST_POLICY: Pick<RequestInit, 'ca
 };
 
 const ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS = new Set<string>([
+    ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES,
+    ANSWERLATTICE_GOVERNANCE_TABS.MAP,
     ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS,
     ANSWERLATTICE_GOVERNANCE_TABS.HEALTH,
     ANSWERLATTICE_GOVERNANCE_TABS.HISTORY,
     ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES,
+    ANSWERLATTICE_GOVERNANCE_TABS.DRIFT,
+    ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE,
+    ANSWERLATTICE_GOVERNANCE_TABS.TRUST,
     ANSWERLATTICE_GOVERNANCE_TABS.BRANDING,
     ANSWERLATTICE_GOVERNANCE_TABS.FRICTION,
     ANSWERLATTICE_GOVERNANCE_TABS.LANGUAGES,
@@ -230,12 +236,12 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         const items: Array<{ key: string; label: ReactNode; children: ReactNode }> = [
             {
                 key: ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS,
-                label: tabLabel(LuBookOpen, 'Canonical Answers', 'Answers'),
+                label: tabLabel(LuBookOpen, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.trustedAnswers, 'Answers'),
                 children: <CanonicalAnswerEditor />,
             },
             {
                 key: ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES,
-                label: tabLabel(LuBoxes, 'Product Ontology', 'Ontology'),
+                label: tabLabel(LuBoxes, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics, 'Topics'),
                 children: <EntityManagementDashboard />,
             },
             ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? [{
@@ -250,7 +256,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
             },
             {
                 key: ANSWERLATTICE_GOVERNANCE_TABS.HEALTH,
-                label: tabLabel(LuHeart, 'Entity Health', 'Health'),
+                label: tabLabel(LuHeart, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.topicCoverage, 'Coverage'),
                 children: <EntityHealthScore />,
             },
             // Phase 4 tabs
@@ -264,7 +270,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
             items.push({
                 key: ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES,
-                label: tabLabel(LuGitPullRequest, 'Entity Candidates', 'Candidates'),
+                label: tabLabel(LuGitPullRequest, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.suggestedTopics, 'Suggestions'),
                 children: <EntityCandidateReview />,
             });
         }
@@ -272,7 +278,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_DRIFT_DETECTION) {
             items.push({
                 key: ANSWERLATTICE_GOVERNANCE_TABS.DRIFT,
-                label: tabLabel(LuShieldAlert, 'Drift Governance', 'Drift'),
+                label: tabLabel(LuShieldAlert, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.answersToRecheck, 'Recheck'),
                 children: <DriftDashboard />,
             });
         }
@@ -280,7 +286,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
             items.push({
                 key: ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE,
-                label: tabLabel(LuGitPullRequest, 'Signal Queue', 'Signals'),
+                label: tabLabel(LuGitPullRequest, ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.suggestedUpdates, 'Updates'),
                 children: <MutationProposalReview />,
             });
         }
@@ -394,8 +400,8 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
                         }}
                         trigger={['click']}
                     >
-                        <Button icon={<LuSettings2 />} style={{ minHeight: 44 }}>
-                            {isMobile ? 'Advanced' : 'Advanced tools'} <LuChevronDown />
+                        <Button icon={<LuLayoutGrid />} style={{ minHeight: 44 }}>
+                            {ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.allTools} <LuChevronDown />
                         </Button>
                     </Dropdown>
                 ),

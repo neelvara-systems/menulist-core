@@ -5,7 +5,7 @@
 
 ## Authority
 
-`src/lib/menuSetupProgress/buildMenuSetupProgress.ts` is the single computation. Inputs are current selected project, optional precomputed quality signals, and current store details. Output contains phase, required/optional steps, exact next action, compact copy, percentage, and `shouldShow`.
+`src/lib/menuSetupProgress/buildMenuSetupProgress.ts` is the single computation. Inputs are current selected project, optional precomputed quality signals, and current store details. Output contains phase, required/optional steps, exact next action, compact copy, percentage, and `shouldShow`. The percentage remains an internal compatibility field; owner cards do not render it as a score.
 
 ## Defensive derivation
 
@@ -25,6 +25,7 @@
 - `OwnerDashboard` uses one SWR selected-project load and passes the same result to Menu Setup Progress and Menu Quality.
 - `MobileMenuScreen` and `MobileShareScreen` use selected project data from `MobileProjectsProvider`.
 - `MobileMoreScreen` waits for project-provider loading, computes the same summary, checks destination permission, and calls Menu/Share/Official Page shell callbacks.
+- Desktop and mobile cards show only the current next step, its plain-language explanation, and one destination action. They do not render percentages, completed-step pills, or optional-work checklists.
 
 ## Activation acknowledgement
 

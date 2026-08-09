@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedOn": "2026-08-02",
+  "generatedOn": "2026-08-06",
   "sourceLocale": "en-US",
-  "sourceOwnerSha256": "baa228548d51da07eac312bb303bfc49559d903cca03e864cd11b88bbf9c4a50",
+  "sourceOwnerSha256": "85886cbbce09e6207b8a9e9c8c7908a6eb1631414293e19bd563a276ed8f2f8d",
   "sourceOwnerValueCount": 3456,
   "policy": "Existing non-source values were preserved. Only values equal to en-US were generated.",
   "qualityGates": [
@@ -47,7 +47,7 @@
       "generatedValues": 0,
       "identicalValues": 0,
       "ownerValueCount": 3456,
-      "ownerSha256": "baa228548d51da07eac312bb303bfc49559d903cca03e864cd11b88bbf9c4a50"
+      "ownerSha256": "85886cbbce09e6207b8a9e9c8c7908a6eb1631414293e19bd563a276ed8f2f8d"
     },
     "en-GB": {
       "provider": "regional-source",
@@ -55,7 +55,7 @@
       "generatedValues": 0,
       "identicalValues": 0,
       "ownerValueCount": 3456,
-      "ownerSha256": "d637a799629e1fe00f2b6472986df8bb512dd47ad2f2c984223d2a46fdd919fb"
+      "ownerSha256": "a8fa43eb2b00f68736b61804cef4a8f724d2102afdf0f3995b66739d8ac2247e"
     },
     "hi-IN": {
       "provider": "indictrans2",
@@ -63,7 +63,7 @@
       "generatedValues": 318,
       "identicalValues": 37,
       "ownerValueCount": 3456,
-      "ownerSha256": "9e7f6f4ab05436a0af2833f13cb1519827758ba4680860d19490556fb5f43526"
+      "ownerSha256": "269a78616c28437161a57530215312105d4bb058c332b22145e61355ec552fea"
     },
     "ar-SA": {
       "provider": "madlad400",
@@ -71,7 +71,7 @@
       "generatedValues": 305,
       "identicalValues": 22,
       "ownerValueCount": 3456,
-      "ownerSha256": "d486814af1c179834a8aa989d4bc3cd2cdf644b8269a5812635462e47d23788a"
+      "ownerSha256": "d35b7637bf7b06468c5b9d4449a50a857371774f555a3e503025f2425752c10b"
     },
     "es-ES": {
       "provider": "madlad400",
@@ -79,7 +79,7 @@
       "generatedValues": 327,
       "identicalValues": 43,
       "ownerValueCount": 3456,
-      "ownerSha256": "4ac91ce256d0615cc0f8d3c0e883b71f471be2fd6a01208aa514ec0e967228cf"
+      "ownerSha256": "dc379bff0d432108a2e8ce442a9a2dfe2352005c80d9ec43a88af8732e2e9067"
     },
     "ta-IN": {
       "provider": "indictrans2",
@@ -87,7 +87,7 @@
       "generatedValues": 312,
       "identicalValues": 30,
       "ownerValueCount": 3456,
-      "ownerSha256": "39a2d6947b97fdd85fb57981f0545cc1e62764251378851d57d2a2aaf2c75596"
+      "ownerSha256": "7d44a2c13b46bc6a01c2c7c9d67533c94bb4ff27edb48645df5e28c828a17bad"
     },
     "te-IN": {
       "provider": "indictrans2",
@@ -95,7 +95,7 @@
       "generatedValues": 325,
       "identicalValues": 42,
       "ownerValueCount": 3456,
-      "ownerSha256": "0a0b983c93b3550dfb94cbcbcb76f476e2454b4e76c61a25bf0b74c9dabb60d3"
+      "ownerSha256": "bfacfcd777cc0d313f8df6a9a0784e4527d61dd49055600156bbfe3637a12fd5"
     },
     "mr-IN": {
       "provider": "indictrans2",
@@ -103,7 +103,7 @@
       "generatedValues": 316,
       "identicalValues": 33,
       "ownerValueCount": 3456,
-      "ownerSha256": "8f0348ad393c04440fafe65a02318a02cea796128242647a77564ad2d3bbe836"
+      "ownerSha256": "7c7e7a3d6fa77941326e150ef3ea4f83fe7c44c57a2679b324c370babedbb785"
     },
     "bn-IN": {
       "provider": "indictrans2",
@@ -111,7 +111,7 @@
       "generatedValues": 305,
       "identicalValues": 23,
       "ownerValueCount": 3456,
-      "ownerSha256": "da6e6c0c2019a41c277f758c613da114c1fa98b87c4491ed4dec40f276b2a533"
+      "ownerSha256": "da05a37b67bc8a24438129e8151a3f40c0be400a1eef6a368c8feafc498a92bf"
     },
     "gu-IN": {
       "provider": "indictrans2",
@@ -119,7 +119,7 @@
       "generatedValues": 309,
       "identicalValues": 26,
       "ownerValueCount": 3456,
-      "ownerSha256": "6266e86f21eb6048ec7e097f8f56332982eac0326d8503945a07bfd00d7d71ee"
+      "ownerSha256": "5079bdc858b5d1302a96067bac64ade307cda171d5b7f0ed4a6b227ed9ea5b31"
     },
     "kn-IN": {
       "provider": "indictrans2",
@@ -127,7 +127,7 @@
       "generatedValues": 321,
       "identicalValues": 38,
       "ownerValueCount": 3456,
-      "ownerSha256": "703308189d6bb8ec4bd95d1e3ca50a547afd9753020df31ed9e5b738d7cc106e"
+      "ownerSha256": "f790440ca606d64be19981390a051a25a6ddb05dbf3097c50349390c6f4e5d41"
     },
     "ml-IN": {
       "provider": "indictrans2",
@@ -135,7 +135,7 @@
       "generatedValues": 317,
       "identicalValues": 34,
       "ownerValueCount": 3456,
-      "ownerSha256": "5c817d9f65bb8b34f0b2e2f57a4cd2b8dbcde763b51d14af91006cb43c1f9fab"
+      "ownerSha256": "242a4fae0389efa38463ec4692c256e60d2e9f3188c84dab69624dab1a9e6534"
     },
     "pa-IN": {
       "provider": "indictrans2",
@@ -143,7 +143,7 @@
       "generatedValues": 322,
       "identicalValues": 39,
       "ownerValueCount": 3456,
-      "ownerSha256": "90afaf5ae023967083c77403bf5f6c2fc6d33582c5750357cc3fd867d78afde2"
+      "ownerSha256": "63708ebcc4637987868ce8a50eb47419077b4324752243879f87aac981762a5e"
     },
     "ur-IN": {
       "provider": "indictrans2",
@@ -151,7 +151,7 @@
       "generatedValues": 318,
       "identicalValues": 35,
       "ownerValueCount": 3456,
-      "ownerSha256": "5d32616160e2723430711ab522ff12d989060338f0409d902f3f33d2a5dbea6b"
+      "ownerSha256": "d9a8a35eddb3ec402970513f98d8f512d092d8905d39f5045b4a15a79971fc0c"
     },
     "or-IN": {
       "provider": "indictrans2",
@@ -159,7 +159,7 @@
       "generatedValues": 318,
       "identicalValues": 35,
       "ownerValueCount": 3456,
-      "ownerSha256": "d1dfa9e425dbbf4e8c765aa2e7b740d3d278856dd84cc1ad81e598bf08ac78b1"
+      "ownerSha256": "122d2f89e9bc9c378999da2959dcd41bef5ce135ce1de9553f1060d3ce3ddfa7"
     },
     "as-IN": {
       "provider": "indictrans2",
@@ -167,7 +167,7 @@
       "generatedValues": 305,
       "identicalValues": 24,
       "ownerValueCount": 3456,
-      "ownerSha256": "5e094e4a33210c830ac8168e04af7fb320516fa4177c9b039fdff5dbf43f3765"
+      "ownerSha256": "49f028c16d4eb2c278a127c09adcb600b33de48619dbb3f4a23a437d0ca7bb99"
     },
     "ne-NP": {
       "provider": "indictrans2",
@@ -175,7 +175,7 @@
       "generatedValues": 316,
       "identicalValues": 33,
       "ownerValueCount": 3456,
-      "ownerSha256": "a965107156cf80178ea43d9f5df16cdb6b5ecbeb6102cb34882850ff2e3fad32"
+      "ownerSha256": "befc55faf163000d4e38afab5d772d45baea0cdf460a0d1269b3785a82aed548"
     },
     "mai-IN": {
       "provider": "indictrans2",
@@ -183,7 +183,7 @@
       "generatedValues": 305,
       "identicalValues": 26,
       "ownerValueCount": 3456,
-      "ownerSha256": "00d9400edee4a769b8466a0474cb103855ed756b573d9b295f123377db905f9a"
+      "ownerSha256": "9bf422737a50079ee3a3aa9317ef4d77c6231212803da8dffb7c316afc88a5ac"
     },
     "kok-IN": {
       "provider": "indictrans2",
@@ -191,7 +191,7 @@
       "generatedValues": 305,
       "identicalValues": 22,
       "ownerValueCount": 3456,
-      "ownerSha256": "a3b16998ea372b47fe72cbcdc731bf9c4c0af97f465afd089e873e82aafd5503"
+      "ownerSha256": "38c3c1c056433c7d9f3cb767711716142cbe0962475823522cb9f1ca7ac52df2"
     },
     "sd-IN": {
       "provider": "indictrans2",
@@ -199,7 +199,7 @@
       "generatedValues": 329,
       "identicalValues": 46,
       "ownerValueCount": 3456,
-      "ownerSha256": "edb314a08929f4ee0c58dd2d14fc926415d86448c72aae49b4ed3e6373cc794a"
+      "ownerSha256": "ffa7bc34ad87189c67c8ced0c58b00155b13760f81d8f348d63635709a3936c4"
     },
     "ks-IN": {
       "provider": "indictrans2",
@@ -207,7 +207,7 @@
       "generatedValues": 326,
       "identicalValues": 43,
       "ownerValueCount": 3456,
-      "ownerSha256": "e9ab94e1a5666934bc7bf643acfc156df25de2371d5a0fab5797ee0be0596dda"
+      "ownerSha256": "5ab8cd787e8b68d0a07b1e6785b6c343d61002550af06d6e7fb0a3053a88d7ce"
     },
     "doi-IN": {
       "provider": "indictrans2",
@@ -215,7 +215,7 @@
       "generatedValues": 307,
       "identicalValues": 22,
       "ownerValueCount": 3456,
-      "ownerSha256": "bc5a78d62a6f32f5bbe0c3f8ceca0dd9cf443dca5d0065aabe95be87aa208e56"
+      "ownerSha256": "dd9240d6c37f9f06924b7c576e4b59b7b057460fbf847b21747578522ad838d5"
     },
     "mni-IN": {
       "provider": "indictrans2",
@@ -223,7 +223,7 @@
       "generatedValues": 312,
       "identicalValues": 28,
       "ownerValueCount": 3456,
-      "ownerSha256": "4369e3604e4a0ce2a28e2e35dfec7d3208743ff827d651346dd7ce1c0d2e6281"
+      "ownerSha256": "d98b1c3798e7c7f607fa99614dbc6e0d6c9bf21608888441649feb14e6f10739"
     },
     "sat-IN": {
       "provider": "indictrans2",
@@ -231,7 +231,7 @@
       "generatedValues": 305,
       "identicalValues": 23,
       "ownerValueCount": 3456,
-      "ownerSha256": "e2d6f93dffd2576a496d90341bcf3fdc593c833b60d384f3c6b15c34e1d653eb"
+      "ownerSha256": "d5265053008cbd7a592de68a6100d7ae2589afe2b81bcccd8d54a02aff1b9b54"
     },
     "brx-IN": {
       "provider": "indictrans2",
@@ -239,7 +239,7 @@
       "generatedValues": 323,
       "identicalValues": 40,
       "ownerValueCount": 3456,
-      "ownerSha256": "768a67a4db23700ab47c7548301f592d029eeeee16f4c4e444ed345079cf159d"
+      "ownerSha256": "f9522687289aae24488612137c3d668b3e95fc4a791d776a22939d6d812895da"
     },
     "fr-FR": {
       "provider": "madlad400",
@@ -247,7 +247,7 @@
       "generatedValues": 332,
       "identicalValues": 52,
       "ownerValueCount": 3456,
-      "ownerSha256": "da51606cc7ba0019ae3c8db8adee16024a2c5c9f87614132f695f74edc6fa583"
+      "ownerSha256": "2647a4e15e5eb116db84b159713d2c3dcfa9f88cc797e7469179c749029a4a42"
     },
     "pt-BR": {
       "provider": "madlad400",
@@ -255,7 +255,7 @@
       "generatedValues": 326,
       "identicalValues": 377,
       "ownerValueCount": 3456,
-      "ownerSha256": "8c9ae800646cab465405b362949ddb7106db6906b3869fc459b651fd51f4fecc"
+      "ownerSha256": "23fc1e102dbc8f96e9d770000eeb90fab8d3bf8e913f90fa7891085407d877de"
     },
     "de-DE": {
       "provider": "madlad400",
@@ -263,7 +263,7 @@
       "generatedValues": 326,
       "identicalValues": 49,
       "ownerValueCount": 3456,
-      "ownerSha256": "5a058c34ada23d896827d52954bc379ffdd42fad99b5eb43fa259242ca7822dd"
+      "ownerSha256": "dd50ab5ccbc3b3f4712ef8e6ed6a39e4466c364262cffae11203f35ff79bd39e"
     },
     "it-IT": {
       "provider": "madlad400",
@@ -271,7 +271,7 @@
       "generatedValues": 329,
       "identicalValues": 51,
       "ownerValueCount": 3456,
-      "ownerSha256": "982ea05e81768c3da7909c2d87a2a4e894f9d58ebb4342671a6908486a2ba7d4"
+      "ownerSha256": "4b8952eb62487a0a005b243513413884d25795fdd7e383ae2e7145947eaff1a3"
     },
     "ja-JP": {
       "provider": "madlad400",
@@ -279,7 +279,7 @@
       "generatedValues": 315,
       "identicalValues": 43,
       "ownerValueCount": 3456,
-      "ownerSha256": "db6b624142a9347a2471f7bf939f68c84775e3fe5c805e283a70a1d277f6b243"
+      "ownerSha256": "78498a2f8bf17697a72925121b1d7f88a49fcd7985f03f188c05cc347f131d09"
     },
     "zh-CN": {
       "provider": "madlad400",
@@ -287,7 +287,7 @@
       "generatedValues": 323,
       "identicalValues": 39,
       "ownerValueCount": 3456,
-      "ownerSha256": "74c7f6c32f554e85779a89887dd25d93e8fb4961e035600acf2a7834e771456e"
+      "ownerSha256": "1a362ef56d03fe714925fd81340b81f07638e143ce2d94f6ec12d1762a73e35c"
     },
     "id-ID": {
       "provider": "madlad400",
@@ -295,7 +295,7 @@
       "generatedValues": 325,
       "identicalValues": 44,
       "ownerValueCount": 3456,
-      "ownerSha256": "cf51bc4a424005963b4fac6198cac70b0cb3aa86ffe41668e91a1d5e4ae1f1fd"
+      "ownerSha256": "daea9c9d51713d78315af13e9a9ddbb3b257e9be5fd26551e590aba83d94faa8"
     },
     "vi-VN": {
       "provider": "madlad400",
@@ -303,7 +303,7 @@
       "generatedValues": 325,
       "identicalValues": 42,
       "ownerValueCount": 3456,
-      "ownerSha256": "960300b620a1a46081a321df73deb0748ba1488f0c8ac375147bacf159ef5ae3"
+      "ownerSha256": "7f8d5c0f1142985dd52a72a45c4bc4c00eb897e0ce6fa9b4f88dcdb5947955d2"
     },
     "th-TH": {
       "provider": "madlad400",
@@ -311,7 +311,7 @@
       "generatedValues": 306,
       "identicalValues": 24,
       "ownerValueCount": 3456,
-      "ownerSha256": "a673a697dc84e26200a4caf0b54970a436303b7d7633b6f4ce72720e03e060e8"
+      "ownerSha256": "f5d37e47db32a6802d7d554ec74ea1ecaac18814f8b18d325a002715382c46bc"
     },
     "ko-KR": {
       "provider": "madlad400",
@@ -319,7 +319,7 @@
       "generatedValues": 304,
       "identicalValues": 22,
       "ownerValueCount": 3456,
-      "ownerSha256": "ab4c881244dff0321bf0839ee30eb17c7940f607d482628e6d935b5ae25a5e11"
+      "ownerSha256": "36ef2a9fedd4149ea673f06cc31313388ba2f500f83b882c2c3ca1906f140ebf"
     },
     "tr-TR": {
       "provider": "madlad400",
@@ -327,7 +327,7 @@
       "generatedValues": 319,
       "identicalValues": 38,
       "ownerValueCount": 3456,
-      "ownerSha256": "cbe0cee9e539eb5a9629e10d18133e96bffd2d2fe1b74622be4964fde1e86b22"
+      "ownerSha256": "3c6ff5b104a7b3041c35af6c350fda4d9619f483f22b3e775a340926a8eff2db"
     },
     "ms-MY": {
       "provider": "madlad400",
@@ -335,7 +335,7 @@
       "generatedValues": 326,
       "identicalValues": 51,
       "ownerValueCount": 3456,
-      "ownerSha256": "218fe08c6447365988885796718f4414bd60dce4b428c184cb245cd119574e65"
+      "ownerSha256": "4c7f0f56e14e600ba4e2db113bb6a96d5906c70e6d167620053712f7f69fceb4"
     },
     "nl-NL": {
       "provider": "madlad400",
@@ -343,7 +343,7 @@
       "generatedValues": 323,
       "identicalValues": 47,
       "ownerValueCount": 3456,
-      "ownerSha256": "75ac5baad1ffe5ca86e0e59808ac3fe5bcdb685eeeda5d9a6a09dbaee8616375"
+      "ownerSha256": "874adf916b0b01ae5f533e31bcdf3783f18645c34f05a74cd4c3300904a4e076"
     },
     "pl-PL": {
       "provider": "madlad400",
@@ -351,7 +351,7 @@
       "generatedValues": 316,
       "identicalValues": 35,
       "ownerValueCount": 3456,
-      "ownerSha256": "ce5064344402ad59577471162309ace9b4a344bcbaa0f963692bf9b61a794052"
+      "ownerSha256": "035946f17b0e86301e5e24a935a54b1a7086b48e5082ab9c1bde90a873cca59a"
     },
     "uk-UA": {
       "provider": "madlad400",
@@ -359,7 +359,7 @@
       "generatedValues": 323,
       "identicalValues": 40,
       "ownerValueCount": 3456,
-      "ownerSha256": "3ab37f4299b909377b4d5535cd909475331506d9bef99d978ba9615173a9315f"
+      "ownerSha256": "a446ecd5da74023f3a4d241a8fbf81b105e64aa0ba0e1951fd6c3fb731feb1c4"
     },
     "cs-CZ": {
       "provider": "madlad400",
@@ -367,7 +367,7 @@
       "generatedValues": 327,
       "identicalValues": 47,
       "ownerValueCount": 3456,
-      "ownerSha256": "2c28786dc8c3ebfdff9fdae752b46f0dcddfebd4a58efdc81f4001aa7e8b3f80"
+      "ownerSha256": "f2bf0b4af51bd8187cc1bbce729aec349cf0bb7f59040ea19aedb02eec359e63"
     },
     "ro-RO": {
       "provider": "madlad400",
@@ -375,7 +375,7 @@
       "generatedValues": 324,
       "identicalValues": 49,
       "ownerValueCount": 3456,
-      "ownerSha256": "acf2bc060ec21e156b12ea5f121f80e1c0a94bea0c03a952ecfd27289480650d"
+      "ownerSha256": "4558fb639b215bef0d427630e9695368ae29e012da50aac1fe45fa7577325379"
     },
     "el-GR": {
       "provider": "madlad400",
@@ -383,7 +383,7 @@
       "generatedValues": 323,
       "identicalValues": 42,
       "ownerValueCount": 3456,
-      "ownerSha256": "7f9e08ac279965826a43e1f76bb57fda49866dab1b68297cafb9d977315098c9"
+      "ownerSha256": "00176fbc72a57bde606f6b43cdd2367a59a4ffa61ef2284d2925b0e434d9eed4"
     },
     "hu-HU": {
       "provider": "madlad400",
@@ -391,7 +391,7 @@
       "generatedValues": 323,
       "identicalValues": 42,
       "ownerValueCount": 3456,
-      "ownerSha256": "cfb9308121981cfca262327aff1401b0d24c43574a87739a537d545a11a23bd1"
+      "ownerSha256": "fdad29ee8c8edbffc5d65d2f3b96cbcced91a1964ae69709a65272fdafd901ff"
     },
     "sv-SE": {
       "provider": "madlad400",
@@ -399,7 +399,7 @@
       "generatedValues": 325,
       "identicalValues": 52,
       "ownerValueCount": 3456,
-      "ownerSha256": "f60f98c51d1c02f8bacb8e848ef202067e646c76b17cabfd2b06e8f0ffc3cf99"
+      "ownerSha256": "520e96e940cadbe3828b9bac10bd026aaa3a93f391022f44d1611652611592a2"
     },
     "da-DK": {
       "provider": "madlad400",
@@ -407,7 +407,7 @@
       "generatedValues": 326,
       "identicalValues": 54,
       "ownerValueCount": 3456,
-      "ownerSha256": "e4976ace05e6646bd97e041f14b6be77dad8ce56e1fa9242b0b2f78c6b760093"
+      "ownerSha256": "7140b7500b2ea94b2408fed653dc7d1496863c5533ba0e873267de5a71cd4a7c"
     },
     "fi-FI": {
       "provider": "madlad400",
@@ -415,7 +415,7 @@
       "generatedValues": 324,
       "identicalValues": 44,
       "ownerValueCount": 3456,
-      "ownerSha256": "4c130360ab821951ba79d953b5c72549a63f294b83ae1de2a6dd94ab039c7435"
+      "ownerSha256": "d0f2345a6f0908de8911ecc4061b8500f8a41ccc2c4733031059e45157154b85"
     },
     "fil-PH": {
       "provider": "madlad400",
@@ -423,7 +423,7 @@
       "generatedValues": 324,
       "identicalValues": 59,
       "ownerValueCount": 3456,
-      "ownerSha256": "622c2406c91af86d3a20f3ec004af031563c4c948aa939452aca43791d485ecf"
+      "ownerSha256": "6aaf546635bcd7e9017e5c57f3bb0a46791a6c05ada9b7a93ffab8c3677ca4f1"
     },
     "zh-TW": {
       "provider": "madlad400",
@@ -431,7 +431,7 @@
       "generatedValues": 318,
       "identicalValues": 35,
       "ownerValueCount": 3456,
-      "ownerSha256": "04bef47aed1e8c702a90ba4409d0eba7cd228d8444fd94649d4639b4a5491543"
+      "ownerSha256": "47eb354c4a66677a59a0d945dac7c3a899ec442f5cf58be0da99209072d2c3ce"
     },
     "he-IL": {
       "provider": "madlad400",
@@ -439,7 +439,7 @@
       "generatedValues": 315,
       "identicalValues": 33,
       "ownerValueCount": 3456,
-      "ownerSha256": "2facbc1c8dd2cebf9b39b2eb014a916d4b7c186a0ff517ad156f8afd8a80a61c"
+      "ownerSha256": "3d500feda3409f23473d0e8c57e293cf1d8df1b81a875c75b02fc2bf456f4ecd"
     },
     "fa-IR": {
       "provider": "madlad400",
@@ -447,7 +447,7 @@
       "generatedValues": 315,
       "identicalValues": 32,
       "ownerValueCount": 3456,
-      "ownerSha256": "ac8e5b1ae2c8568c0efb74eff3d3009d9af6670089e598563637eef0727b9677"
+      "ownerSha256": "46978d8232dfb57e093a82b2bc87c65b040627ce871a246121d49e51c1361865"
     },
     "sw-KE": {
       "provider": "madlad400",
@@ -455,7 +455,7 @@
       "generatedValues": 323,
       "identicalValues": 42,
       "ownerValueCount": 3456,
-      "ownerSha256": "27778991befd637737a0745280dba28eb272a4ca99a99dc07913cff109e7dec9"
+      "ownerSha256": "a7f9db4a34dc6cad319aa18ffcaf9af6c2e661f9db7a7476024c3429ce033964"
     }
   },
   "qualityRepair": {

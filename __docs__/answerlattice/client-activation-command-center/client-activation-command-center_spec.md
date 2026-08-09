@@ -2,16 +2,18 @@
 
 ## Product Goal
 
-Give Answerlattice clients one operational home for launch readiness: license, widget key, allowed origins, knowledge, product surfaces, route context, release notes, and ticket signal loop.
+Give Answerlattice clients one operational home for launch readiness: license, widget key, allowed origins, knowledge, Product Pages & Flows, route context, release notes, and the ticket evidence loop.
 
 The screen is organized around Answerlattice's product-owner workflow groups:
 
-- Launch Setup: workspace, product details, knowledge import, product surfaces, widget install, generated entity candidates, and generated canonical answer drafts.
-- Support Control: help center, docs, knowledge base, changelog, tickets, conversations, and widget operations.
+- Get Live: workspace, product details, knowledge import, Product Pages & Flows, widget install, Suggested Topics, and Trusted Answer drafts.
+- Run Support: help center, docs, knowledge base, changelog, tickets, conversations, and widget operations.
 - Widget & Hosted Help: UI configuration, install/env handoff, hosted help domains, allowed origins, blocked routes, and key security.
 - Team & Access: workspace members and Answerlattice roles.
 - Billing: subscription and transactions.
-- Knowledge Governance: coverage, drift, entities, canonical answers, signal-to-knowledge queue, and trust metrics.
+- Answer Quality: Topic Coverage, Answers to Recheck, Product Topics, Trusted Answers, Suggested Updates, and trust metrics.
+
+These are presentation labels. Internal routes, summary fields, types, and stored data retain their established surface, entity, canonical-answer, drift, and signal names.
 
 ## User
 
@@ -26,10 +28,13 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show content counts from the product-surface context summary.
 - Show license status from the store subscription summary.
 - Show whether the help center has published content.
-- Show whether product entities and active canonical answers exist, using explicit answer-evidence summary counts.
+- Show whether Product Topics and active Trusted Answers exist, using explicit answer-evidence summary counts.
 - Show whether the founder's First 10 answer set exists and whether its latest retained proof is ready, needs review, or is blocked.
 - Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
 - Compress the owner journey into four progressive groups: Add product knowledge, Approve your first answers, Connect customer support, and Verify and go live.
+- Keep the default navigation bounded to the first owner jobs: Activation, First 10 Answers, Install Support, Setup Status, Daily Brief, Ticket Inbox, and Trusted Answers.
+- Provide one permission-aware **All tools** reveal inside groups with secondary workflows. Preserve direct-route access and keep the selected secondary route visible while active.
+- Treat the compact list as presentation only. Do not add a workspace mode, saved preference, onboarding persona, maturity score, or separate entitlement.
 - Expand only the first incomplete group by default. Completed groups remain available but collapsed, the owner can open one group at a time, and refreshed evidence re-anchors the accordion when the first incomplete group changes.
 - Show one factual launch-check count and one progress indicator in the primary path. Keep the broader setup percentage inside technical details so two progress models do not compete for attention.
 - Give each group one next action derived from the first incomplete required step or launch-proof item. Do not add a generic recommendations inbox or parallel task state.
@@ -40,7 +45,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Avoid reading source KB, changelog, ticket, and signal collections.
 - Keep Firebase/cache implementation details out of the client-facing UI.
 - Select the internal `live` stage only when every launch-proof group is complete; a readiness percentage alone is not a launch gate.
-- Present the readiness percentage as setup diagnostics on Readiness Metrics; launch-ready success copy and styling require `launchProof.ready`.
+- Present the readiness percentage as setup diagnostics on Setup Status; launch-ready success copy and styling require `launchProof.ready`.
 - Label checklist prerequisites as ready to test, then require the owner to manually exercise a known answer, contextual widget question, unresolved fallback, and resulting signal.
 - Reject malformed notification-test recipients and malformed or internally inconsistent compiled-context rebuild responses before showing success copy.
 
@@ -52,6 +57,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - No MenuList-specific hardcoding.
 - No claim that configuration readiness proves customer resolution, task completion, or correct escalation.
 - No new onboarding collection, persisted accordion state, manual completion document, maturity score, or recommendation queue.
+- No removed routes or hidden permission bypass. Authorization and feature flags must be applied before All tools is offered.
 
 ## Readiness Steps
 
@@ -60,10 +66,10 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - License active
 - Knowledge imported
 - Help center ready
-- Product entities reviewed
-- Canonical answers reviewed
+- Product Topics reviewed
+- Trusted Answers reviewed
 - Priority answers tested
-- Product surfaces mapped
+- Product Pages & Flows mapped
 - Widget key ready
 - Allowed origins locked
 - Widget seen in product
@@ -83,14 +89,14 @@ Proof groups:
 - Priority answer checks: ten launch questions exist, the latest retained proof is ready, and no critical test is failing.
 - Widget runtime proof: widget key, allowed origins, install telemetry seen within seven days, and context attached to that current telemetry.
 - Governance summaries: coverage, trust, and compiled context summaries.
-- Signal source test: fallback or ticket signal source visible before broader rollout; Signal Queue remains the confirmation surface for proposal quality.
+- Signal source test: fallback or ticket signal source visible before broader rollout; Suggested Updates remains the owner-facing confirmation surface for proposal quality.
 
 ## Founder Entry Rule
 
 The Answerlattice base route is stage-aware:
 
 - before launch proof is ready, management owners enter Activation;
-- after launch proof is ready, owners with Support Control access enter Daily Brief when the Daily Brief flags are enabled;
+- after launch proof is ready, owners with Run Support access enter Daily Brief when the Daily Brief flags are enabled;
 - a missing, malformed, inaccessible, or unavailable activation snapshot fails safely to Activation;
 - support, knowledge, widget, and other restricted roles retain their existing permission-based fallback routes.
 

@@ -30,16 +30,16 @@ Firebase assurance and current deployment limits: [Firebase Forensic Audit](./fi
 
 ## Answerlattice Product Operating Model
 
-Answerlattice dashboard navigation is grouped by the product-owner workflow. The groups keep setup, support operations, widget installation, team access, billing, and governance separate while still rolling up to the core Launch Setup, Support Control, and Knowledge Governance operating model.
+Answerlattice dashboard navigation is grouped by the product-owner workflow. The owner presentation uses Get Live, Run Support, and Answer Quality so first-time operators can understand the product without learning internal architecture terms. Technical routes, schemas, and implementation docs continue to use their established names.
 
 | Sidebar group | Purpose | Primary routes |
 | --- | --- | --- |
-| Launch Setup | Activate a new client workspace, manage product details, import starter knowledge, map product surfaces, and review readiness. | `/answerlattice/activation`, `/answerlattice/settings`, `/answerlattice/kb-generation`, `/answerlattice/product-surfaces`, `/answerlattice/dashboard` |
-| Support Control | Run owner/staff support operations: KB management, FAQs, changelog management, Support Board, ticket inbox, conversations, and weekly digest. End-user help, docs, release notes, and ticket submission are runtime/customer surfaces, not primary owner dashboard navigation. | `/answerlattice/knowledge-base`, `/answerlattice/faqs`, `/answerlattice/changelog`, `/answerlattice/support-board`, `/answerlattice/tickets`, `/answerlattice/conversations`, `/answerlattice/weekly-digest` |
+| Get Live | Activate a new client workspace, manage product details, import starter knowledge, map Product Pages & Flows, and review Setup Status. | `/answerlattice/activation`, `/answerlattice/settings`, `/answerlattice/kb-generation`, `/answerlattice/product-surfaces`, `/answerlattice/dashboard` |
+| Run Support | Run owner/staff support operations: KB management, FAQs, changelog management, Support Board, ticket inbox, conversations, and weekly digest. End-user help, docs, release notes, and ticket submission are runtime/customer surfaces, not primary owner dashboard navigation. | `/answerlattice/knowledge-base`, `/answerlattice/faqs`, `/answerlattice/changelog`, `/answerlattice/support-board`, `/answerlattice/tickets`, `/answerlattice/conversations`, `/answerlattice/weekly-digest` |
 | Widget & Hosted Help | Configure widget appearance, install/embed snippets, hosted help domains, allowed origins, blocked routes, and key security. | `/answerlattice/widget/ui`, `/answerlattice/widget/install`, `/answerlattice/widget/hosted-help`, `/answerlattice/widget/access` |
 | Team & Access | Manage workspace members and Answerlattice roles without mixing them into setup or support content. | `/answerlattice/team/members`, `/answerlattice/team/roles` |
 | Billing | Manage subscription and payment history. | `/answerlattice/billing`, `/answerlattice/transactions` |
-| Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/answerlattice/governance/answers`, `/answerlattice/governance/entities`, `/answerlattice/governance/drift`, `/answerlattice/governance/signal-queue`, `/answerlattice/governance/trust` |
+| Answer Quality | Govern Trusted Answers, Product Topics, Answers to Recheck, Suggested Updates, coverage, and trust metrics. | `/answerlattice/governance/answers`, `/answerlattice/governance/entities`, `/answerlattice/governance/drift`, `/answerlattice/governance/signal-queue`, `/answerlattice/governance/trust` |
 
 The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
 
@@ -86,6 +86,7 @@ the destination pays only its existing cost when the owner explicitly opens it.
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Answerlattice feature map, route map, Firebase map, file inventory, and website truth |
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Answerlattice self-serve positioning, founder-first ICP, bounded team fit, pricing direction, and execution task list |
 | 14A | `progressive-adoption-operating-guide.md`         | Product/Ops/Sales | One-product Start, Coordinate, and Govern manual for solo founders, small teams, and bounded product groups |
+| 14B | `customer-language-contract.md`                   | Product/Design/Dev | Stable owner-facing labels, progressive-disclosure rules, and zero-runtime-cost terminology contract |
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
 | 16  | `developer-install-pack/`                        | Product/Sales/Dev | Agent install packet, v1 script quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Answerlattice team members, workspace roles, permission claims, and rule-level access control |
@@ -471,6 +472,8 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-07 | 3.4.36  | Added a compact founder-first navigation projection with permission-aware All tools disclosure, kept every existing route reachable, promoted the existing coding-agent packet as Install Support, and added zero-cost/mobile verification contracts. |
+| 2026-08-06 | 3.4.35  | Added the shared customer-language contract, simplified owner navigation and Answer Quality labels, and added a five-step support-system snapshot to Activation without changing routes, schemas, permissions, reads, writes, or AI calls. |
 | 2026-08-05 | 3.4.34  | Added a server-redacted release-evidence handoff from Knowledge Intake to the existing Changelog editor while preserving Release Impact Guard and the zero-runtime native GitHub connector boundary. |
 | 2026-08-05 | 3.4.33  | Compressed Activation into four evidence-derived owner goals, preserved full diagnostics behind deferred technical details, reduced the launch-critical customer checklist to three manual paths, and avoided new Firebase state or reads. |
 | 2026-07-20 | 3.4.32  | Completed the 44-feature and final C1-C8 local audit, fixed missing shared ratio-helper imports in Slack/email integration adapters, passed the complete runtime/emulator aggregate, and recorded cloud/recovery/client evidence still required. |

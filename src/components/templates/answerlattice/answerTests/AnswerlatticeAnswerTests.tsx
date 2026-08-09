@@ -131,7 +131,7 @@ type TestFormValues = {
 };
 
 const SOURCE_LABELS: Record<AnswerlatticeAnswerTestSource, string> = {
-    canonical: 'Canonical answer',
+    canonical: 'Trusted answer',
     faq: 'Published FAQ',
     rag: 'Knowledge fallback',
     escalation: 'Ticket escalation',
@@ -973,7 +973,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                     <Tag color={starterCaseCount >= 10 ? 'green' : 'processing'}>{starterCaseCount}/10 starter questions</Tag>
                                 </Space>
                                 <Text type="secondary">
-                                    Generate the first ten from your approved product sources. Answer drafts stay in Knowledge Intake until you review them, and canonical answers still require Governance approval.
+                                    Generate the first ten from your approved product sources. Drafts stay in Knowledge Intake until you review them, and trusted answers still require owner approval in Answer Quality.
                                 </Text>
                             </Flex>
                         </Flex>
@@ -1381,7 +1381,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                         name="referenceIds"
                         label="Expected reference IDs"
                         dependencies={['citationPolicy']}
-                        extra="Use article IDs returned by the support answer. Canonical answers can be verified by their answer ID without a separate reference."
+                        extra="Use article IDs returned by the support answer. Trusted Answers can be verified by their answer ID without a separate reference."
                         rules={[({ getFieldValue }) => ({
                             validator: async (_, value) => {
                                 if (getFieldValue('citationPolicy') === 'specific_sources' && splitLines(value).length === 0) {
@@ -1393,7 +1393,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                         <TextArea rows={3} maxLength={1400} placeholder="One reference ID per line" />
                     </Form.Item>
                     <Flex gap={12} vertical={isMobile}>
-                        <Form.Item name="expectedAnswerId" label="Expected canonical answer ID" style={{ flex: 1 }}>
+                        <Form.Item name="expectedAnswerId" label="Expected trusted answer" style={{ flex: 1 }}>
                             <Input maxLength={160} placeholder="Optional" />
                         </Form.Item>
                         <Form.Item name="expectedFaqId" label="Expected FAQ ID" style={{ flex: 1 }}>

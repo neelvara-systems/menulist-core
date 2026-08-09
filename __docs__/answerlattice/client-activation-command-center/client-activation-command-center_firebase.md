@@ -16,7 +16,7 @@
 | Load Daily Governance | `stores/{sId}` + `platformSummary/answerlatticeSchedulerState` + `platformSummary/answerlatticeNightlyState_{tId}_{sId}` + 5 capped `answerlattice_schedulerRunLogs` | 0 or 8 | Deferred until the owner first opens technical details; then mounted for the remaining page session, with no source collection scans |
 | Legacy subscription fallback | `subscriptions` exact dual-product/workspace query, `limit(5)` | 0-5 | Only when the store mirror is missing, malformed, terminal, or elapsed; exact current active truth wins within the bounded window |
 | Notification readiness | Environment + feature flag | 0 | No Firestore read; computed server-side |
-| Surface readiness | Existing `platformSummary/contextContent_{tId}_{sId}` response | 0 additional | Derived in memory from the context summary already read for Activation/Readiness Metrics |
+| Surface readiness | Existing `platformSummary/contextContent_{tId}_{sId}` response | 0 additional | Derived in memory from the context summary already read for Activation/Setup Status |
 | First-client launch proof | Existing activation summary inputs | 0 additional | Derived in memory after the eight compact Activation reads for a valid store |
 
 ## Writes
@@ -46,11 +46,13 @@ The notification readiness card does not expose raw Firebase/cache internals. It
 
 The First-client launch proof, four-group progressive owner journey, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. Accordion state, group status, supporting checks, and the next action are computed in browser memory. They add 0 reads, 0 writes, and no listeners after the eight compact Activation reads. Launch proof stores compact group status fields plus current runtime-proof state inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer guidance and action labels remain client-side UI copy.
 
+Compact navigation and All tools are static projections of the existing authorized navigation registry. Reveal state lives only in the mounted sidebar component. It adds 0 Firestore reads, writes, deletes, listeners, summary documents, Storage objects, Functions, browser-storage writes, or AI calls. Directly opening a secondary route uses that route's existing cost contract; revealing its navigation label performs no data work.
+
 The technical-details disclosure does not mount its children until the owner opens it. This removes the separate eight-read Daily Governance request from the normal Activation first paint. After the first open, the technical children remain mounted when the disclosure is closed, so reopening it during the same page session does not repeat that request. A workspace-scope change resets the deferred state before the new workspace summary is displayed.
 
 The base-route stage decision adds at most one compact activation-summary read when a management user enters `/answerlattice`. It performs no source scan, summary rebuild, listener, model call, or write. A direct visit to Activation remains eight compact reads, plus the existing bounded legacy subscription fallback only for old workspaces.
 
-Activation does not scan `answerlattice_mutationProposals` to prove proposal quality. It proves that the signal source is present from compact context data, then routes the owner to Signal Queue for proposal review.
+Activation does not scan `answerlattice_mutationProposals` to prove proposal quality. It proves that the signal source is present from compact context data, then routes the owner to Suggested Updates (`signal-queue`) for proposal review.
 
 The Daily Governance panel is also summary-backed. It resolves Answerlattice session scope and rate-limits before permission/read work, caps scheduler log reads to five, filters log entries to the current workspace before display, sanitizes workspace details to counts/statuses, logs operations-status failures with bounded tenant/store metadata, and never calls the manual full-scheduler trigger from the owner UI.
 
@@ -58,7 +60,7 @@ Management route persisted scope checks fail closed without changing the valid c
 
 Activation dashboard browser request and response validation adds no Firestore reads, writes, deletes, listeners, API routes, or scheduler work. The request policy only pins no-store cache, same-origin credentials, and manual redirect handling before existing route responses are parsed. The response reader only rejects malformed, oversized, rejected, or wrong-shape activation-summary, operations-status, notification-test, and compiled-context rebuild responses before local dashboard state or success copy advances.
 
-Notification-test and compiled-context rebuild responses set `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, including permission/error responses. Tightened recipient/status/version validation and the Readiness Metrics launch-proof gate add no Firestore work.
+Notification-test and compiled-context rebuild responses set `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, including permission/error responses. Tightened recipient/status/version validation and the Setup Status launch-proof gate add no Firestore work.
 
 The ticket detail Knowledge Loop card also adds 0 reads and 0 writes. It uses the already-loaded ticket document to explain whether the current support reply is useful evidence for future knowledge proposals. Actual signal writes still happen only through the existing resolved-ticket signal path.
 

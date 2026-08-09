@@ -12,6 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -60,28 +61,28 @@ const { Text, Title, Paragraph } = Typography;
 
 const getDriftClassConfig = (token: ReturnType<typeof theme.useToken>['token']): Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> => ({
     version_mismatch: {
-        label: 'Version Drift',
+        label: 'Product version changed',
         color: token.colorWarning,
         icon: <LuGitBranch />,
-        description: 'Entity changed in release but answer not revalidated',
+        description: 'A connected product topic changed in a release, but the answer was not rechecked',
     },
     signal_anomaly: {
-        label: 'Signal Drift',
+        label: 'Customer evidence changed',
         color: token.colorError,
         icon: <LuZap />,
         description: 'Negative feedback or ticket spike above threshold',
     },
     scope_conflict: {
-        label: 'Scope Conflict',
+        label: 'Overlapping answer scope',
         color: token.colorPrimary,
         icon: <LuLayers />,
-        description: 'Multiple active answers overlap on same entity+scope',
+        description: 'Multiple active answers overlap for the same product topic and customer context',
     },
     deprecated_entity: {
-        label: 'Orphan Drift',
+        label: 'Product topic unavailable',
         color: token.colorError,
         icon: <LuTrash2 />,
-        description: 'Deprecated entity still bound to active answer',
+        description: 'An unavailable product topic is still connected to an active answer',
     },
 });
 
@@ -151,13 +152,13 @@ export default function DriftDashboard() {
         setReEvalLoading(true);
         try {
             const result = await evaluateCanonicalAnswerDrift();
-            message.success(`Drift re-evaluation complete. ${result.updatedAnswers || 0} of ${result.evaluatedAnswers || 0} answer(s) updated.`);
+            message.success(`Answer recheck complete. ${result.updatedAnswers || 0} of ${result.evaluatedAnswers || 0} answer(s) updated.`);
             await refresh();
         } catch (evaluationError) {
             message.error(
                 evaluationError instanceof AnswerlatticeGovernanceClientError
                     ? evaluationError.message
-                    : 'Drift re-evaluation failed',
+                    : 'Answer recheck failed',
             );
         } finally {
             setReEvalLoading(false);
@@ -169,7 +170,7 @@ export default function DriftDashboard() {
         setResolveLoading(true);
         try {
             await validateCanonicalAnswerDrift(answer.id);
-            message.success('Drift resolved and answer revalidated');
+            message.success('Answer marked current after review');
             setDetailModalOpen(false);
             setReviewConfirmed(false);
             await refresh();
@@ -177,7 +178,7 @@ export default function DriftDashboard() {
             message.error(
                 validationError instanceof AnswerlatticeGovernanceClientError
                     ? validationError.message
-                    : 'Failed to resolve drift',
+                    : 'Failed to complete answer review',
             );
         } finally {
             setResolveLoading(false);
@@ -204,13 +205,13 @@ export default function DriftDashboard() {
                     style={{ marginBottom: 16 }}
                 >
                     <Space>
-                        <Title level={5} style={{ margin: 0 }}>Drift Governance</Title>
+                        <Title level={5} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.answersToRecheck}</Title>
                         {error ? (
                             <Tag color="warning" icon={<LuAlertTriangle style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
                                 Status unavailable
                             </Tag>
                         ) : driftedCount > 0 ? (
-                            <Badge count={`${driftedCount} drifted`} style={{ backgroundColor: token.colorWarning }} />
+                            <Badge count={`${driftedCount} need recheck`} style={{ backgroundColor: token.colorWarning }} />
                         ) : (
                             <Tag color="green" icon={<LuShieldCheck style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
                                 All Clean
@@ -218,7 +219,7 @@ export default function DriftDashboard() {
                         )}
                     </Space>
                     <Space wrap>
-                        <Tooltip title="Re-evaluate signal, scope-conflict, and deprecated-entity drift. Version drift is evaluated when a release is activated.">
+                        <Tooltip title="Recheck customer evidence, overlapping scope, and unavailable product topics. Release changes are checked when a release is activated.">
                             <Button
                                 icon={<LuRefreshCw />}
                                 onClick={handleReEvaluate}
@@ -256,7 +257,7 @@ export default function DriftDashboard() {
                     </Card>
                     <Card size="small" style={{ minWidth: 140 }}>
                         <Statistic
-                            title="Drifted"
+                            title="Need recheck"
                             value={driftedCount}
                             valueStyle={{ fontSize: 24, color: driftedCount > 0 ? token.colorWarning : token.colorSuccess }}
                             prefix={<LuShieldAlert />}
@@ -274,7 +275,7 @@ export default function DriftDashboard() {
 
                 {/* Drift Class Breakdown */}
                 {driftBreakdown.length > 0 && (
-                    <Card size="small" title="Drift Class Breakdown" style={{ marginBottom: 16 }}>
+                    <Card size="small" title="Why answers need recheck" style={{ marginBottom: 16 }}>
                         <Flex gap={12} wrap="wrap">
                             {driftBreakdown.map(item => {
                                 const config = driftClassConfig[item.driftClass];
@@ -313,7 +314,7 @@ export default function DriftDashboard() {
                     locale={{
                         emptyText: (
                             <Empty
-                                description={error ? 'Drift status is unavailable' : 'No drifted answers - governance is clean'}
+                                description={error ? 'Answer freshness is unavailable' : 'No answers need rechecking'}
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                             />
                         ),
@@ -347,7 +348,7 @@ export default function DriftDashboard() {
                                             ))}
                                         </Space>
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {answer.governance.driftReason || 'Unknown drift reason'}
+                                            {answer.governance.driftReason || 'Reason unavailable'}
                                         </Text>
                                     </Flex>
                                 }
@@ -359,7 +360,7 @@ export default function DriftDashboard() {
 
             {/* Drift Detail + Resolve Modal */}
             <Modal
-                title="Review Drifted Answer"
+                title="Review Answer"
                 open={detailModalOpen}
                 onCancel={() => {
                     setDetailModalOpen(false);
@@ -394,14 +395,14 @@ export default function DriftDashboard() {
                     <Flex vertical gap={16}>
                         <Descriptions column={1} size="small" bordered>
                             <Descriptions.Item label="Title">{selectedDrifted.title}</Descriptions.Item>
-                            <Descriptions.Item label="Entities">
+                            <Descriptions.Item label="Product topics">
                                 <Space wrap>
                                     {selectedDrifted.scope.entityIds.map(id => (
                                         <Tag key={id} color="blue">{entityMap.get(id) || id}</Tag>
                                     ))}
                                 </Space>
                             </Descriptions.Item>
-                            <Descriptions.Item label="Drift Reason">
+                            <Descriptions.Item label="Reason to recheck">
                                 <Text type="warning" style={{ fontSize: 12 }}>
                                     {selectedDrifted.governance.driftReason || 'Unknown'}
                                 </Text>
@@ -418,8 +419,7 @@ export default function DriftDashboard() {
                         </Card>
 
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Resolving will clear the drift flag, mark the answer as revalidated at the current timestamp,
-                            and log an audit event. Only resolve after verifying the answer content is still accurate.
+                            Completing this review marks the answer current and records an audit event. Continue only after verifying the answer is still accurate.
                         </Text>
                         <Checkbox
                             checked={reviewConfirmed}

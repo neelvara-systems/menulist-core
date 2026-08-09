@@ -281,7 +281,7 @@ export default function AnswerlatticeBilling() {
                         supportRoute={toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.TICKETS, currentHostname)}
                         usageRoute={toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.TRANSACTIONS, currentHostname)}
                         creditTitle="Support Credits"
-                        creditDescription="Answerlattice credits cover governed answers, chat assistance, and knowledge governance work."
+                        creditDescription="Answerlattice credits cover trusted-answer preparation, chat assistance, and answer-quality work."
                         creditBalanceLabel="Credits left"
                         creditPackButtonLabel="Get support credits"
                         canUpgradePlan={canUpgradePlan}
@@ -329,7 +329,7 @@ export default function AnswerlatticeBilling() {
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
                             <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
-                            <Text>{plan.featuresList.canonicalAnswers} canonical answers</Text>
+                            <Text>{plan.featuresList.canonicalAnswers} trusted answers</Text>
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
                             <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />

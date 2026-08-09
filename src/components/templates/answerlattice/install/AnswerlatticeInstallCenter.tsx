@@ -2,6 +2,7 @@
 
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import {
     ANSWERLATTICE_ROUTES,
     ANSWERLATTICE_WIDGET_TABS,
@@ -570,9 +571,9 @@ export default function AnswerlatticeInstallCenter() {
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Install Center</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.install.installSupport}</Title>
                     <Text type="secondary">
-                        One place to install Answerlattice for {workspaceName}, copy the AI packet, and verify the current runtime setup.
+                        Install Answerlattice for {workspaceName}, hand the exact instructions to a coding agent, and verify the live setup.
                     </Text>
                 </div>
                 <Space wrap>
@@ -582,8 +583,8 @@ export default function AnswerlatticeInstallCenter() {
                     <Button icon={<LuExternalLink />} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.ACCESS))} style={INSTALL_ACTION_STYLE}>
                         Keys & Origins
                     </Button>
-                    <Button type="primary" icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')} style={INSTALL_ACTION_STYLE}>
-                        Copy AI Packet
+                    <Button type="primary" icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Coding-agent install copied')} style={INSTALL_ACTION_STYLE}>
+                        {ANSWERLATTICE_CUSTOMER_LANGUAGE.install.copyCodingAgentInstall}
                     </Button>
                 </Space>
             </Flex>
@@ -617,7 +618,7 @@ export default function AnswerlatticeInstallCenter() {
 
             <Row gutter={[16, 16]}>
                 <Col xs={24} xl={14}>
-                    <Card title={<Flex align="center" gap={8}><LuCode /> AI install packet</Flex>}>
+                    <Card title={<Flex align="center" gap={8}><LuCode /> {ANSWERLATTICE_CUSTOMER_LANGUAGE.install.codingAgentInstall}</Flex>}>
                         <Flex vertical gap={12}>
                             <Paragraph type="secondary" style={{ margin: 0 }}>
                                 Give this to Codex, Claude Code, Cursor, Windsurf, or another coding agent. It includes the install placeholder, saved-key identifier, dashboard origins, dashboard blocked routes, v1 script URL, safe context rules, and acceptance checks.
@@ -631,8 +632,8 @@ export default function AnswerlatticeInstallCenter() {
                                 />
                             ) : null}
                             <Space wrap>
-                                <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')}>
-                                    Copy AI Packet
+                                <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Coding-agent install copied')}>
+                                    {ANSWERLATTICE_CUSTOMER_LANGUAGE.install.copyCodingAgentInstall}
                                 </Button>
                                 {AGENT_COPY_BUTTONS.map((item) => (
                                     <Button style={INSTALL_ACTION_STYLE} key={item.key} icon={<LuFileText />} onClick={() => copyText(item.render(), `${item.label} copied`)}>
@@ -650,9 +651,9 @@ export default function AnswerlatticeInstallCenter() {
                             </Space>
                             <Flex vertical gap={8}>
                                 <Flex align="center" justify="space-between" gap={12}>
-                                    <Text strong>Agent prompt</Text>
-                                    <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Agent prompt copied')}>
-                                        Copy Prompt
+                                    <Text strong>Install instructions</Text>
+                                    <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Install instructions copied')}>
+                                        Copy instructions
                                     </Button>
                                 </Flex>
                                 <Input.TextArea

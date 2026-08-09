@@ -37,7 +37,7 @@ export default function AnswerlatticeFeedbackReview() {
             embedded
             scope={{ tId, sId }}
             title="Feedback Review"
-            description="Review ratings, product feedback, feature requests, and suggestions from the Help Center. Assign product surfaces, then turn important items into Support Board cards or answer proposals when they reveal a support gap."
+            description="Review ratings, product feedback, feature requests, and suggestions from the Help Center. Assign Product Pages & Flows, then turn important items into Support Board cards or answer proposals when they reveal a support gap."
         />
     );
 }

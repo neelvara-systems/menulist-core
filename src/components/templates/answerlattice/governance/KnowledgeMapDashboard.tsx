@@ -262,8 +262,8 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                 description={loadFailed
                     ? 'The knowledge map could not be loaded.'
                     : data
-                        ? 'No active product entities are available for this map.'
-                        : 'The map will appear after the existing nightly ontology index has completed.'}
+                        ? 'No active product topics are available for this map.'
+                        : 'The map will appear after the nightly knowledge index has completed.'}
                 image={loadFailed ? (
                     <ContextualStateIllustration
                         color={token.colorTextQuaternary}
@@ -294,7 +294,7 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                 <Tag color="warning">Missing answer</Tag>
             )}
             {(node.driftedAnswerCount || 0) > 0 ? (
-                <Tag color="error">{node.driftedAnswerCount} drifted</Tag>
+                <Tag color="error">{node.driftedAnswerCount} need recheck</Tag>
             ) : null}
             {(node.reviewRequiredAnswerCount || 0) > 0 ? (
                 <Tag color="warning">{node.reviewRequiredAnswerCount} need review</Tag>
@@ -372,10 +372,10 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
             ) : null}
 
             <div className={styles.summary}>
-                <Tag icon={<LuBoxes />}>{entries.length} entities</Tag>
-                <Tag icon={<LuGitBranch />}>{data.relationCount} relationships</Tag>
+                <Tag icon={<LuBoxes />}>{entries.length} product topics</Tag>
+                <Tag icon={<LuGitBranch />}>{data.relationCount} connections</Tag>
                 <Tag color={totalUncovered ? 'warning' : 'success'}>{totalUncovered} without approved answers</Tag>
-                <Tag color={totalDrift ? 'error' : 'success'}>{totalDrift} with drift</Tag>
+                <Tag color={totalDrift ? 'error' : 'success'}>{totalDrift} need recheck</Tag>
                 <Tag color={totalReview ? 'warning' : 'success'}>{totalReview} requiring review</Tag>
                 <Tag color={data.freshness === 'current' ? 'success' : data.freshness === 'stale' ? 'warning' : 'default'}>
                     {data.freshness === 'current' ? 'Freshness verified' : data.freshness === 'stale' ? 'Rebuild needed' : 'Freshness pending'}
@@ -385,7 +385,7 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
 
             <div className={styles.controls}>
                 <Select
-                    aria-label="Select map entity"
+                    aria-label="Select product topic"
                     filterOption={false}
                     onChange={setSelectedId}
                     onSearch={setQuery}
@@ -393,16 +393,16 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                         label: `${entry.node.name} · ${entry.node.type}`,
                         value: entry.id,
                     }))}
-                    placeholder="Search and select an entity"
+                    placeholder="Search and select a product topic"
                     showSearch
                     suffixIcon={<LuSearch />}
                     value={selectedId || undefined}
                 />
                 <Select
-                    aria-label="Filter by entity type"
+                    aria-label="Filter by product topic type"
                     onChange={setTypeFilter}
                     options={[
-                        { label: 'All entity types', value: 'all' },
+                        { label: 'All product topic types', value: 'all' },
                         ...entityTypes.map(type => ({ label: type, value: type })),
                     ]}
                     value={typeFilter}
@@ -413,7 +413,7 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                     options={[
                         { label: 'All quality states', value: 'all' },
                         { label: 'No approved answer', value: 'uncovered' },
-                        { label: 'Drift detected', value: 'drift' },
+                        { label: 'Needs recheck', value: 'drift' },
                         { label: 'Review required', value: 'review' },
                     ]}
                     value={qualityFilter}
@@ -461,26 +461,26 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
 
                     <div className={styles.actions}>
                         <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES)}>
-                            <Button icon={<LuBoxes />}>Manage relationships</Button>
+                            <Button icon={<LuBoxes />}>Manage topic connections</Button>
                         </Link>
                         <Link href={getAnswerlatticeEntityContextRoute(
                             getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
                             selectedId,
                         )}>
-                            <Button>Review canonical answers</Button>
+                            <Button>Review trusted answers</Button>
                         </Link>
                         <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES)}>
-                            <Button icon={<LuGitPullRequest />}>Review entity candidates</Button>
+                            <Button icon={<LuGitPullRequest />}>Review suggested topics</Button>
                         </Link>
                         {(selectedNode.driftedAnswerCount || 0) > 0 ? (
                             <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.DRIFT)}>
-                                <Button danger icon={<LuShieldAlert />}>Open drift review</Button>
+                                <Button danger icon={<LuShieldAlert />}>Review outdated answers</Button>
                             </Link>
                         ) : null}
                     </div>
                 </>
             ) : (
-                <Empty description="No entity matches the current filters." />
+                <Empty description="No product topic matches the current filters." />
             )}
         </section>
     );

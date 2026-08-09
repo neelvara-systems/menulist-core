@@ -40,6 +40,13 @@ const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const rateLimits = read('src/lib/rateLimit/configs.ts');
 const createRoute = read('src/app/api/public/create-menu/route.ts');
 const claimRoute = read('src/app/api/public/create-menu/claim/route.ts');
+const createMenuFeatures = read('src/config/features.ts');
+const createMenuLimits = read('src/data/shared/menuExtractionJob.ts');
+const publicDraftSource = read('src/data/shared/publicMenuDraftSource.ts');
+const publicDraftSourceFunctions = read('functions/src/sharedData/publicMenuDraftSource.ts');
+const publicDraftSourceProjector = read('src/lib/public-menu-entry/publicDraftSource.ts');
+const publicDraftData = read('src/data/shared/publicMenuDraftData.ts');
+const extractionWorker = read('functions/src/logic/processMenuImagesJob.ts');
 const claimUserAuthority = read('src/lib/public-menu-entry/claimUserAuthority.ts');
 const priceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const slugBoundary = read('src/lib/public-menu-entry/claimProjectSlug.ts');
@@ -85,7 +92,7 @@ const publicDraftIndexExemptions = new Set(
     .filter((entry) => entry.collectionGroup === 'publicMenuDrafts' && Array.isArray(entry.indexes) && entry.indexes.length === 0)
     .map((entry) => entry.fieldPath),
 );
-for (const fieldPath of ['extractedData', 'extractedBusinessProfile', 'sourceMetadata', 'growthAcquisition']) {
+for (const fieldPath of ['extractedData', 'extractedBusinessProfile', 'sourceMetadata', 'growthAcquisition', 'sourceFiles']) {
   if (!publicDraftIndexExemptions.has(fieldPath)) {
     failures.push(`publicMenuDrafts.${fieldPath} must stay exempt from unused automatic single-field indexes`);
   }
@@ -118,7 +125,11 @@ for (const fieldPath of ['extractedData', 'extractedBusinessProfile', 'sourceMet
   "const responseStatus = draft.extractionStatus === 'completed' && !extractedData",
   "error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null",
   'withPublicMenuEntryPrivateResponse',
-  'const imageFile = imageValue instanceof File ? imageValue : null;',
+  "const imageValues = formData.getAll('images');",
+  'PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES',
+  'PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES',
+  'sourceFilesVersion: PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION',
+  "formData.get('uploadSourceType') === 'pdf'",
   'normalizePublicDraftSourceForProject(draft, normalizedDraftId, {',
   'const normalizedPreview = normalizePublicCreateMenuPreviewDraft({',
   'if (!normalizedPreview || !draftSource)',
@@ -131,7 +142,8 @@ requireOrder(createRoute, [
   "req.headers.get('content-length')",
 ], 'Public Menu Entry cheap admission order');
 requireOrder(createRoute, [
-  'const contentHash = hashBuffer(buffer);',
+  'const fileHashes = preparedFiles.map',
+  'const contentHash = preparedFiles.length === 1',
   'const reusableDraft = await findReusableDraftForUser(userId, { contentHash });',
   'const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);',
 ], 'Public Menu Entry image dedupe before daily quota');
@@ -156,6 +168,9 @@ requireOrder(createRoute, [
   'normalizedPhone.internationalDigits.length < 8',
   'normalizedPhone.internationalDigits.length > 15',
   'normalizeExtractedMenuPriceTruth(extractedData);',
+  'normalizePublicDraftSourcesForProject(draft, draftId, {',
+  'redistributeExtractedData({',
+  'const fileEntries = draftSources.map',
   'getBusinessTypeConfig(',
   '[PERMISSIONS.PUBLISH_MENU]',
   'resolvePublicMenuEntryProjectSlug(',
@@ -217,14 +232,71 @@ forbidToken(createPage, 'WebsitePageStructuredData', 'Public Menu Entry noindex 
 
 [
   'event.currentTarget.value = \'\';',
-  'accept="image/jpeg,image/png,image/webp"',
+  "await import('@template/main-app/projects/utils/pdfUtils')",
+  'requireAllPages: true',
+  "formData.append('images', uploadFile, uploadFile.name)",
+  "formData.append('uploadSourceType', isPdf ? 'pdf' : 'image')",
+  "'image/jpeg,image/png,image/webp,application/pdf,.pdf'",
+  "t('CreateMenu.uploadFormatHint', {",
+  'PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES',
   'submissionInFlightRef.current',
   'normalizePublicMenuDraftId(payload?.draftId)',
   'public_create_menu_request_failed',
   'buildWebsiteSignInPath(createMenuPath)',
 ].forEach((token) => requireToken(createClient, token, 'Public Menu Entry source chooser'));
 forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source chooser');
+forbidToken(createClient, "formData.append('pdf'", 'Public Menu Entry browser-only PDF transport');
 forbidToken(createClient, 'isNonEmptyString(payload?.draftId)', 'Public Menu Entry draft response boundary');
+
+requireToken(createMenuFeatures, 'ENABLE_PUBLIC_MENU_PDF_UPLOAD: true', 'Public Menu Entry PDF feature flag');
+[
+  'MAX_FILES: MENU_EXTRACTION_JOB_LIMITS.MAX_FILES',
+  'MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024',
+  'MAX_TOTAL_SIZE_BYTES: 30 * 1024 * 1024',
+].forEach((token) => requireToken(createMenuLimits, token, 'Public Menu Entry shared PDF limits'));
+[
+  'PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION = 1',
+  'normalizePublicMenuDraftSourceFiles',
+  'value.length > options.maxFiles',
+  'totalSizeBytes > options.maxTotalSizeBytes',
+  'seenPaths.has(storagePath)',
+  'parsedStoragePath !== storagePath',
+].forEach((token) => requireToken(publicDraftSource, token, 'Public Menu Entry ordered source contract'));
+if (publicDraftSource !== publicDraftSourceFunctions) {
+  failures.push('Public Menu Entry source contract must stay byte-for-byte mirrored into Functions');
+}
+[
+  'normalizePublicDraftSourcesForProject',
+  'hasVersionedEnvelope ? draft.sourceFiles : getLegacySourceCandidate(draft)',
+  'draft.imagePath !== primary.storagePath',
+].forEach((token) => requireToken(publicDraftSourceProjector, token, 'Public Menu Entry project source projector'));
+[
+  'normalizePublicMenuDraftSourceFiles(sourceCandidates, {',
+  'sourceMetadataStoragePaths.length !== fileStoragePaths.length',
+  'draftSources!.length === job.files.length',
+  'sourceFile.storagePath === fileStoragePaths[index]',
+].forEach((token) => requireToken(extractionWorker, token, 'Public Menu Entry worker source binding'));
+[
+  'hasCompletePublicMenuDraftSourceAttribution',
+  'preserveSourceFileIndex?: boolean',
+  'numeric < maxSourceFiles',
+  'options.preserveSourceFileIndex !== true',
+].forEach((token) => requireToken(publicDraftData, token, 'Public Menu Entry private source-index boundary'));
+[
+  'normalizePublicMenuDraftExtractedData(draft.extractedData, {',
+  'hasCompletePublicMenuDraftSourceAttribution(extractedData, draftSources.length)',
+  'maxSourceFiles: draftSources.length',
+  'preserveSourceFileIndex: true',
+].forEach((token) => requireToken(claimRoute, token, 'Public Menu Entry claim source redistribution input'));
+[
+  'hasCompleteRedistribution',
+  'data.categories.map((category: any) => ({ ...category, sourceFileIndex }))',
+  'data.items.map((item: any) => ({ ...item, sourceFileIndex }))',
+  'hasCompletePublicMenuDraftSourceAttribution(normalized, sourceFiles.length)',
+  'normalizePublicMenuDraftExtractedData(sourceData, {',
+  'maxSourceFiles: sourceFiles.length',
+  'preserveSourceFileIndex: true',
+].forEach((token) => requireToken(extractionWorker, token, 'Public Menu Entry worker private source-index persistence'));
 [
   'PUBLIC_MENU_DRAFT_ID_PATTERN',
   'value !== value.trim()',
@@ -277,7 +349,7 @@ forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry 
   'CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS = 3_000',
   'await Promise.race([',
   'public_create_menu_success_session_refresh_failed',
-  "window.location.assign('/use-menulist')",
+  "router.push('/use-menulist')",
   'parsePublicCreateMenuLastClaimHandoff(rawClaim)',
   'resolveStorePermissionSessionScope(session)',
   'claim.tenantId !== sessionScope.tenantScope.numericId',
@@ -314,9 +386,11 @@ forbidToken(successClient, 'const claim = rawClaim ? JSON.parse(rawClaim) : null
   ".collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)",
   ".where('expiresAt', '<', Timestamp.now())",
   'const claimed = data.claimed === true;',
-  'if (claimed && imagePath)',
-  'preservedClaimedFiles += 1;',
-  'await bucket.file(imagePath).delete({ ignoreNotFound: true });',
+  'normalizePublicMenuDraftSourceFiles(data.sourceFiles, {',
+  'if (claimed && sourcePaths.length > 0)',
+  'preservedClaimedFiles += sourcePaths.length;',
+  'for (const sourcePath of sourcePaths)',
+  'await bucket.file(sourcePath).delete({ ignoreNotFound: true });',
   'Preserve the draft as the durable retry record.',
   'batch.delete(doc.ref);',
 ].forEach((token) => requireToken(maintenance, token, 'Public Menu Entry draft cleanup'));
@@ -342,6 +416,7 @@ for (const [source, label] of [
     'claimed draft',
     'Approved app release',
   ].forEach((token) => requireToken(source, token, label));
+  requireToken(source, 'PDF', label);
 }
 
 [

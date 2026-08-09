@@ -1,7 +1,7 @@
 # MenuList System Audit Report
 
 Original audit date: 2026-06-20
-Latest audited addendum: 2026-08-01
+Latest audited addendum: 2026-08-07
 Product context: MenuList
 Audit type: System data-flow correctness, public business truth, cache/auth/reliability hardening
 
@@ -78,7 +78,7 @@ Cloud Function, dependency, or deployment behavior changed.
 Framework and runtime:
 
 - Next.js App Router with some Pages Router remnants.
-- React 18, TypeScript, Ant Design desktop, antd-mobile/Tailwind mobile.
+- React 19.2.8, TypeScript, Ant Design desktop, and the Tailwind-driven mobile owner shell.
 - Firebase Admin/client SDK, Firestore, Storage, Cloud Functions, NextAuth session/auth guards.
 - Public/customer routes include `src/app/client/[[...slug]]/page.tsx`, public API routes under `src/app/api/public/`, SEO/site routes, screen routes, and widget/public surfaces.
 - MenuList Cloud Functions live under `functions/src/`; Answerlattice has separate `functions-answerlattice/`.
@@ -1848,3 +1848,244 @@ rates, time from canonical version bump to current-mode receipt, listener reload
 failures, owner-poster image failures, repeated `Check TV` states, and owner-
 reported readability or QR-distance problems. These signals must remain
 operational diagnostics, not owner-facing screen analytics.
+
+## 13. Owner Friction And First-Use Audit Addendum - August 6, 2026
+
+### 13.1 Executive Summary
+
+Confidence is high for the changed source contracts and local static/runtime
+gates, but only moderate for final visual behavior because the authenticated
+local route could not render without `NEXTAUTH_SECRET` and the remaining local
+development variables.
+
+Material findings closed:
+
+- MenuList Help Center Quick Start contained Answerlattice tasks for Help Center
+  branding and changelog publication.
+- Desktop and mobile dashboards repeated the same owner work across truth status,
+  a next-action card, and a second quick-action grid. Stable businesses were
+  still assigned routine work.
+- Menu Setup rendered a percentage, every required step, and optional work even
+  though the owner only needed the current decision.
+- Extraction review exposed internal match percentages; Business Health answer
+  bubbles exposed internal confidence labels.
+- The desktop PDF path was at risk of being mischaracterized as unsupported.
+  At the time of this August 6 audit, the separate public `/create-menu` route
+  was image-only; the August 7 implementation in section 14 supersedes that
+  boundary.
+
+No QR Code or Assets route, tab, label, or module was moved or removed.
+
+### 13.2 System Map And Source Decisions
+
+| Flow | Canonical source and boundary | Owner output |
+| --- | --- | --- |
+| Desktop PDF intake | `projects/index.tsx` validates PDF files; `projects/utils/pdfUtils.ts` splits a bounded PDF into JPEG pages; the normal owner extraction job accepts those image pages | Existing desktop project editor and extraction review |
+| Public create-menu intake (August 6 state) | `PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES`, `CreateMenuClient.tsx`, and `/api/public/create-menu` admitted JPEG/PNG/WebP or a link at this audit point; section 14 records the superseding PDF implementation | Public authenticated starter preview |
+| Next owner action | `buildOwnerActionLayer()` derives required work from the already-loaded selected project and store truth | One desktop/mobile action only while required work is open |
+| Menu setup | `buildMenuSetupProgress()` remains the one pure lifecycle computation | Current step, explanation, and one action; no owner score/checklist |
+| Extraction review | Comparison output keeps exact match evidence internally | Weak matches show `Needs review`; proposed changes and warnings remain visible |
+| Business Health answers | Grounded answer plus source freshness remains authoritative | Freshness stays visible; internal confidence does not |
+| Help Quick Start | Existing owner routes and translated owner labels | Menu, What customers see, Share, Help |
+| QR and Assets | `SIDEBAR_DASHBOARD_LAYOUT` keeps `/qr-code` and `/assets` as separate entries | Dedicated modules remain directly navigable |
+
+### 13.3 Flow Audit And Fixes
+
+| Flow | Files inspected | Issue and fix | Remaining concern |
+| --- | --- | --- | --- |
+| PDF upload to extraction (August 6 state) | `projects/index.tsx`, `projects/utils/pdfUtils.ts`, project validation/constants, shared MIME contract, public create-menu client/route, extraction dry run | Confirmed the tested desktop PDF-to-JPEG pipeline and its file/page caps, cleanup, diagnostics, and extraction routing. Section 14 supersedes the public image-only boundary. | Real browser PDF conversion still needs an authenticated tenant and representative PDFs. |
+| Dashboard decision load | Desktop `OwnerDashboard`, `MobileDashboardScreen`, owner action helper/docs/verifier | Stable action cards and duplicate quick-action grids were removed. Open state renders one authoritative next action. Core status remains visible. | Authenticated desktop/mobile screenshots remain blocked locally. |
+| Setup presentation | Desktop/mobile `MenuSetupProgress`, shared builder, docs/verifier | Removed percentage, completed-step pills, and optional checklist from owner cards without changing lifecycle truth or destinations. | Physical mobile focus/spacing check remains pending. |
+| Extraction review | Desktop/mobile review components, comparison/apply contracts, extraction verifier/docs | Replaced exact match percentages with `Needs review` only for weak matches. Apply/discard, warnings, price changes, ownership, atomic write, and cache revalidation paths are unchanged. | Provider-backed review needs a real extraction result for visual certification. |
+| Business Health | Message list, answer types, Business Health verifier/spec | Removed categorical confidence from owner bubbles; retained source freshness and follow-up questions. | Live grounded answer rendering needs authenticated data. |
+| Help Center | `GettingStarted.tsx`, Help Center routes/verifier/runtime tests, all 52 owner locale packs | Removed false checkboxes and Answerlattice destinations. Added direct owner routes and reused already-verified local translations for four labels. Regenerated semantic hashes. | Detailed knowledge-base content quality is outside this focused correction. |
+
+### 13.4 Fix Log And Protected Invariants
+
+| Change | Invariant |
+| --- | --- |
+| Suppress stable/secondary dashboard action grids | MenuList assigns work only when customer-visible truth needs attention |
+| Reduce Menu Setup to one next step | Internal lifecycle detail cannot become an owner completion score |
+| Replace match percentages with `Needs review` | Owners decide from business facts and warnings, not model math |
+| Remove Business Health confidence labels | Source freshness, not internal confidence, is the owner trust signal |
+| Correct Quick Start routes/copy | MenuList Help never teaches Answerlattice workflows |
+| Reuse local translation values and regenerate evidence | Every locale keeps the canonical owner key shape and semantic hash |
+| Pin QR Code and Assets in the owner-action verifier | Dedicated navigation modules cannot be silently folded into Share |
+
+### 13.5 Verification Log
+
+Passed on the final source:
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run verify:menu-setup-progress-boundary`
+- `npm run verify:owner-action-layer`
+- `npm run verify:owner-business-health-boundary`
+- `npm run verify:help-center-boundary`
+- `node scripts/verification/verify-menu-extraction-pipeline.js` (380 checks)
+- `npm run verify:menu-extraction-pipeline:dry-run` (58 flow checks,
+  including owner PDF support and public PDF exclusion)
+- `npm run verify:global-localization-boundary` (3,456 owner strings, 49
+  namespaces, 52 locale packs plus public-customer/theme/mobile tests)
+- `npm run verify:dependency-freeze`
+- `npm run test:header-navigation-boundary`
+- `git diff --check`
+
+Local browser attempt:
+
+- Next 16.3.0 dev server started and compiled `/dashboard`.
+- Authenticated rendering stopped at the environment guard because
+  `NEXTAUTH_SECRET` is absent. The server also reported seven other missing
+  required development variables and existing Sass `@import` deprecation
+  warnings. No auth guard or environment requirement was weakened.
+- No production build, Firebase deploy, Vercel deploy, schema change, rule
+  change, index change, Cloud Function change, or dependency change was made.
+
+### 13.6 Final Status And Monitoring
+
+Verified locally: desktop PDF pipeline ownership, public-vs-owner MIME boundary,
+unchanged extraction data flow, one-action dashboard projection, quiet stable
+state, simplified setup presentation, owner-language review signals, corrected
+Help Center routes, dedicated QR/Assets navigation, locale parity, type safety,
+lint, and focused regression gates.
+
+Not verified here: authenticated rendered screenshots, real PDF conversion with
+tenant data, provider extraction output, physical mobile interaction, deployed
+cache behavior, and production-host smoke. Production monitoring should watch
+menu extraction conversion failures, weak-match review abandonment, owner action
+route exits, and Help Center Quick Start destination failures without turning
+those diagnostics into new owner-facing scores.
+
+## 14. Public Create-Menu PDF Intake Addendum - August 7, 2026
+
+### 14.1 Executive Summary
+
+Current confidence is high for the local source, type, lint, Functions build,
+registered extraction tests, Firestore emulator contracts, unauthenticated
+desktop render, and narrow mobile layout. It is moderate for the final deployed
+owner experience because QA Firebase deployment, a signed-in upload, real PDF
+conversion, Gemini extraction, claim against seeded tenant data, and deployed
+public output could not be exercised here.
+
+Material risks found and closed:
+
+- Public `/create-menu` did not accept the PDF files many owners already have,
+  even though the authenticated owner editor had a working browser conversion
+  pipeline.
+- Extending only the upload form would have lost page ownership at draft,
+  worker, claim, or cleanup boundaries.
+- A partially attributed multi-page result could have silently omitted
+  unindexed categories/items during project promotion.
+- Owner copy still described the new input as photo-only in several places.
+- The full extraction matrix was blocked by a stale messaging reminder test
+  fixture using the marketing origin instead of the canonical owner-app origin.
+
+No known critical or high-severity local correctness issue remains in this
+flow. QR Code and Assets remain dedicated modules; no navigation or public menu
+renderer contract was moved.
+
+### 14.2 System Map And Source Decisions
+
+| Stage | Canonical source and invariant | Owner/customer output |
+| --- | --- | --- |
+| Input | `/create-menu` accepts one PDF only when `ENABLE_PUBLIC_MENU_PDF_UPLOAD` is enabled; original file <=10MB and <=15 pages | Owner chooses an existing PDF without rebuilding the menu |
+| Conversion | Existing `pdfUtils.ts` renders pages sequentially at bounded scale and returns JPEG data in the browser | First converted page is the local progress preview; raw PDF never leaves the browser |
+| API admission | Shared `PUBLIC_CREATE_MENU_UPLOAD_LIMITS`, multipart body cap, per-page MIME/magic-byte validation, ordered hash | Invalid, spoofed, oversized, duplicate, or unordered source state is rejected before provider work |
+| Temporary truth | `publicMenuDrafts/{draftId}` owns versioned ordered `sourceFiles`; first-source aliases remain compatibility-only | Private owner preview polls the draft; customer routes cannot read this intake record |
+| Extraction | `menuImageProcessingJobs/public_{draftId}` owns the ordered worker request; worker revalidates draft/job/owner/bucket/path/URL/type/size/expiry bindings | Structured menu preview, never a raw PDF customer surface |
+| Page attribution | Worker redistribution transforms IDs per source and retains one bounded private `sourceFileIndex` on every category/item | Claim can reconstruct standard project files without collisions or dropped content |
+| Claim/publish | One transaction writes tenant/store as needed, one canonical project, one file per page, summary/default truth, and idempotency receipt | Existing public menu, OBP, cache, and Digital Screen reads use the newly selected canonical project |
+| Cleanup | Maintenance validates the same source envelope, deletes every unclaimed page before its draft receipt, and preserves every claimed page | Failed or expired intake cannot silently remove promoted public sources |
+
+Customer-visible truth remains the structured project and summary model. The
+PDF is an owner intake source, not an alternate public menu or download.
+
+### 14.3 Flow-By-Flow Audit
+
+| Flow | Files inspected | Issue/fix | Remaining concern |
+| --- | --- | --- | --- |
+| Browser selection/conversion | `CreateMenuClient.tsx`, `pdfUtils.ts`, feature flags, shared limits, active locale packs | Added PDF selection, browser-only all-page conversion, first-page preview, 10MB/15-page/30MB checks, duplicate-submit lock, and plain owner copy | Real password-protected, rotated, scanned, corrupt, and low-memory device PDFs need signed-in device QA |
+| Intake/auth/validation | `/api/public/create-menu`, auth middleware patterns, rate-limit/body/file validators | Repeated JPEG pages are authenticated, bounded, signature-checked, ordered, hashed, and stored with deterministic paths/tokens; raw PDF is excluded | Failed immediate Storage cleanup is logged; production monitoring should alert on cleanup failures |
+| Draft/job atomicity | Intake route, shared routing/source contracts, Firestore index config | Draft and job are created in one batch after source writes; all source metadata is versioned and the unqueried array is exempt from indexing | Concurrent provider/runtime behavior needs QA deployment |
+| Worker/result safety | `processMenuImagesJob.ts`, redistribution utilities, public DTO allowlist | Worker revalidates the full durable binding, transforms IDs per page, persists only normalized data, and requires complete source attribution | Gemini quality still needs representative menu PDFs |
+| Claim/project/public render | Claim route, price truth, project summary/default, cache/screen invalidation, public project readers | Claim fails closed on malformed sources/prices/attribution and writes one normal file per page atomically; private page indexes are stripped from preview/public output | Seeded new-account and existing-account claims need deployed browser smoke |
+| Expiry/cleanup | `menulistMaintenanceScheduler.ts`, Storage ownership validator, expiry index | Every page is deleted before an unclaimed draft receipt; any failure preserves the receipt for retry; claimed sources remain project-owned | Scheduler execution needs QA deploy evidence |
+| UI/copy/layout | Three active source locale packs, `/create-menu` desktop/mobile render | Upload language now names PDF; desktop returned 200 and 390x844 rendered at exactly 390px document width with no overflow | Authenticated chooser/dropzone could not be rendered in this browser session |
+
+### 14.4 Fix Log And Protected Invariants
+
+| Change | Invariant protected |
+| --- | --- |
+| Added browser PDF intake behind the existing feature flag | PDF parity can be disabled independently without changing image/link behavior |
+| Reused sequential PDF conversion with all-pages-required mode | Partial conversion cannot be mistaken for the complete owner source |
+| Added mirrored upload limits and ordered source envelope | Browser, API, worker, claim, and cleanup share the same bounds and ownership model |
+| Added multi-page MIME/signature/aggregate validation | Untrusted multipart labels cannot authorize raw or oversized content |
+| Added deterministic ordered deduplication | Rapid/retried identical PDFs reuse one owner draft rather than duplicate provider work |
+| Preserved transformed per-file IDs plus bounded private page attribution | Same IDs on separate pages cannot collide and no page content is silently dropped |
+| Required complete attribution for versioned claims | Corrupt/partial results fail closed before becoming public business truth |
+| Wrote one standard project file per validated page | Existing editor, renderer, export, and screen readers keep their established file contract |
+| Extended cleanup to all sources with retry receipt preservation | Expiry cannot orphan known temporary objects or delete claimed project sources |
+| Corrected the reminder-lease fixture to `app.menulist.ai` | Full extraction verification tests the canonical owner-app origin contract |
+
+### 14.5 Verification Log
+
+Passed on the final local source:
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm --prefix functions run build`
+- `npm --prefix functions run lint`
+- `npm run verify:functions-deploy-preflight`
+- `npm run verify:public-menu-entry-boundary`
+- `npm run verify:menu-extraction-pipeline:dry-run` (64/64)
+- `node scripts/verification/verify-menu-extraction-pipeline.js` (382/382)
+- `npm run verify:menu-extraction-pipeline`, including all registered unit and
+  Firestore emulator tests
+- `npm run verify:global-localization-boundary` (3,456 owner strings, 49
+  namespaces, 52 locale packs plus customer/theme/mobile checks)
+- `npm run verify:public-business-truth`
+- `npm run verify:public-customer-delivery`
+- `npm run verify:auth-security-failure-matrix`
+- `npm run verify:menulist-api-tenant-safety`
+- `npm run verify:menu-project-editor-boundary`
+- `npm run verify:pricing-integrity-boundary`
+- `npm run verify:menu-correctness-quality-boundary`
+- `npm run verify:dependency-freeze`
+- `npm run docs:check-links` (zero broken links; 62 existing video filename warnings)
+
+Rendered checks:
+
+- Existing Next 16.3 development server returned HTTP 200 for `/create-menu`.
+- Settled desktop DOM showed owner sign-in, PDF-aware introduction, and the
+  existing review-before-public boundary.
+- At 390x844, `innerWidth` and document `scrollWidth` were both 390, the auth
+  region was 358px wide, PDF copy was present, and no horizontal overflow was
+  detected.
+
+Deployment attempts:
+
+- Functions deploy for `processMenuImagesJob` and
+  `menulistMaintenanceScheduler` to `menulist-qa`: blocked before remote change
+  because Firebase CLI authentication is absent.
+- `firestore:indexes` deploy to `menulist-qa`: blocked for the same reason.
+- No Vercel or production deployment was performed.
+
+### 14.6 Final Status And Monitoring
+
+Verified locally: PDF admission and browser-only conversion boundary, shared
+limits, ordered source ownership, exact worker binding, page-safe IDs, complete
+attribution, atomic project promotion, cache/screen invalidation continuity,
+all-source expiry cleanup, owner copy, responsive public entry layout, and
+legacy single-source compatibility.
+
+Could not verify: signed-in file chooser and conversion, real PDFs and low-memory
+devices, live Gemini output, new/existing account claim against QA data, QA
+Functions/index deployment, deployed scheduler execution, hosted cache/CDN, and
+final public menu/OBP/screen observation.
+
+Production monitoring should prioritize browser conversion failures by bounded
+reason, page/aggregate rejections, draft/job binding failures, incomplete source
+attribution, claim `422` rates, Storage cleanup failures, scheduler cleanup
+errors, extraction failures by source count, and time from claim to current
+menu/OBP/screen observation. These remain operational diagnostics, not new
+owner-facing scores.

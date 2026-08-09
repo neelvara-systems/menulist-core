@@ -10,6 +10,7 @@
 
 import AnswerlatticeLogoMark from '@atoms/answerlatticeLogoMark';
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import {
     ANSWERLATTICE_DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
     ANSWERLATTICE_DEFAULT_GOVERNANCE_TAB,
@@ -41,7 +42,7 @@ import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMo
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
+import { LuChevronUp, LuLayoutGrid, LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
 
 interface AnswerlatticeSidebarProps {
     mobile?: boolean;
@@ -64,6 +65,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
     const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
+    const [revealedToolGroups, setRevealedToolGroups] = useState<Record<string, boolean>>({});
 
     const selectedKey = useMemo(() => {
         const governancePathTab = getAnswerlatticeGovernanceTabFromPathname(normalizedPathname);
@@ -126,11 +128,18 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
     ), [canShowNavItem]);
 
     const visibleNav = useMemo(() => (
-        authorizedNav.map((nav) => ({
-            ...nav,
-            subNav: nav.subNav?.filter(subItem => subItem.advanced !== true),
-        }))
-    ), [authorizedNav]);
+        authorizedNav.map((nav) => {
+            const hasActiveAdvancedTool = nav.subNav?.some((subItem) => (
+                subItem.advanced === true && subItem.route === selectedKey
+            )) === true;
+            const showAdvancedTools = revealedToolGroups[nav.route] === true || hasActiveAdvancedTool;
+
+            return {
+                ...nav,
+                subNav: nav.subNav?.filter(subItem => subItem.advanced !== true || showAdvancedTools),
+            };
+        })
+    ), [authorizedNav, revealedToolGroups, selectedKey]);
 
     useEffect(() => {
         setExpandedParents((prev) => {
@@ -154,7 +163,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
 
     const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
         visibleNav.map((nav: AnswerlatticeNavItem) => {
-            const subNav = nav.subNav?.map((subItem) => ({
+            const subNav: DashboardSidebarShellItem[] = nav.subNav?.map((subItem) => ({
                 key: subItem.route,
                 label: subItem.label,
                 icon: subItem.icon,
@@ -165,6 +174,26 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
                 },
             })) || [];
             const authorizedParent = authorizedNav.find(item => item.route === nav.route);
+            const advancedSubNav = authorizedParent?.subNav?.filter(subItem => subItem.advanced === true) || [];
+            const hasActiveAdvancedTool = advancedSubNav.some(subItem => selectedKey === subItem.route);
+            const hasRevealedTools = revealedToolGroups[nav.route] === true;
+
+            if (advancedSubNav.length > 0 && !hasActiveAdvancedTool) {
+                subNav.push({
+                    key: `${nav.route}::all-tools`,
+                    label: hasRevealedTools
+                        ? ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.showFewerTools
+                        : ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.allTools,
+                    icon: hasRevealedTools ? LuChevronUp : LuLayoutGrid,
+                    onClick: () => {
+                        setRevealedToolGroups((prev) => ({
+                            ...prev,
+                            [nav.route]: !hasRevealedTools,
+                        }));
+                    },
+                });
+            }
+
             const subNavActive = subNav.some((subItem) => subItem.active)
                 || authorizedParent?.subNav?.some(subItem => subItem.advanced === true && selectedKey === subItem.route) === true;
             const clickRoute = nav.route;
@@ -195,7 +224,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
                 },
             };
         })
-    ), [authorizedNav, currentHostname, expandedParents, onNavigate, router, selectedKey, visibleNav]);
+    ), [authorizedNav, currentHostname, expandedParents, onNavigate, revealedToolGroups, router, selectedKey, visibleNav]);
 
     const openAppAppearance = () => {
         if (mobile && onOpenAppSettings) {

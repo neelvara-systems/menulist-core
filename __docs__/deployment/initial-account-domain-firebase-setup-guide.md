@@ -72,7 +72,7 @@ Stop immediately if:
 | Google account structure | One Google Workspace tenant with `neelvara.com` primary |
 | Google Cloud/Firebase | One company organization and billing account, separate projects underneath |
 | Vercel | One team, one project, same git repo, domain routing handles products |
-| GitHub | Fresh named founder account and `neelvara-systems` organization; natively transfer the existing repository and migrate local SSH/author identity without rewriting history |
+| GitHub | Fresh company-admin account `neelvara-admin` and `neelvara-systems` organization; use native transfers through the controlled admin account instead of granting the retired source account organization membership; migrate local SSH/author identity without exposing a personal public profile or rewriting history |
 | Payments | One Razorpay merchant account under the real Neelvara legal/trade identity |
 | Local/staging env | QA/staging Firebase and provider values |
 | Production env | Dedicated production Firebase and provider values |

@@ -35,7 +35,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCalendarClock, LuClock, LuEye, LuImage, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuSearch, LuShieldCheck, LuStore, LuUtensils } from 'react-icons/lu';
+import { LuCalendarClock, LuClock, LuEye, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuSearch, LuShieldCheck, LuStore, LuUtensils } from 'react-icons/lu';
 
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
@@ -183,7 +183,6 @@ const OwnerDashboard: React.FC = () => {
     const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
     const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
         .filter((surface) => Boolean((storeDetails as any)?.menuPresence?.[surface])).length;
-    const feedbackReady = storeDetails ? storeDetails.feedbackEnabled !== false : false;
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
     const menuUpdatedLabel = formatRelativeUpdatedLabel(
         (dashboardProjectForChildren as any)?.modifiedOn
@@ -219,6 +218,7 @@ const OwnerDashboard: React.FC = () => {
             storeDetails: storeDetails as any,
         })
         : null;
+    const shouldShowOwnerActionLayer = Boolean(ownerActionLayer && ownerActionLayer.statusLabel !== 'Stable');
     const primaryStatusActionPath = needsAttentionCount ? primaryAttentionPath : '/projects?view=b2c';
     const primaryStatusActionLabel = needsAttentionCount ? 'Fix what needs attention' : 'Preview public menu';
 
@@ -427,9 +427,6 @@ const OwnerDashboard: React.FC = () => {
                                 <Tag icon={<LuSearch size={13} />} color={hasConfirmedPlacement ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
                                     Placed: {confirmedPlacementCount}/3
                                 </Tag>
-                                <Tag icon={<LuMessageCircle size={13} />} color={feedbackReady ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    Private feedback: {feedbackReady ? 'On' : 'Off'}
-                                </Tag>
                             </Flex>
                         </Flex>
                         <Flex gap={8} wrap="wrap" style={{ flex: '0 1 390px' }}>
@@ -441,13 +438,13 @@ const OwnerDashboard: React.FC = () => {
                                 {primaryStatusActionLabel}
                             </Button>
                             <Button icon={<LuQrCode size={16} />} onClick={() => router.push('/use-menulist')}>
-                                Share and QR
+                                Share menu
                             </Button>
                         </Flex>
                     </Flex>
                 </Card>
 
-                {ownerActionLayer ? (
+                {shouldShowOwnerActionLayer && ownerActionLayer ? (
                     <Card className={styles.quickActionsCard} size="small" title="Next owner action">
                         <Flex align="flex-start" justify="space-between" gap={12} wrap="wrap">
                             <Flex gap={6} style={{ flex: '1 1 360px', minWidth: 0 }} vertical>
@@ -476,28 +473,8 @@ const OwnerDashboard: React.FC = () => {
                                 Open
                             </Button>
                         </Flex>
-                        <Flex gap={8} wrap="wrap" style={{ marginTop: 12 }}>
-                            {ownerActionLayer.supportingActions.slice(0, 6).map((item) => (
-                                <Button
-                                    icon={renderOwnerActionIcon(item.id)}
-                                    key={item.id}
-                                    onClick={() => router.push(item.desktopHref)}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))}
-                        </Flex>
                     </Card>
                 ) : null}
-
-                <Card className={styles.quickActionsCard} size="small" title="Update what customers see">
-                    <Flex gap={8} wrap="wrap">
-                        <Button icon={<LuUtensils size={15} />} onClick={() => router.push('/projects')}>Update menu</Button>
-                        <Button icon={<LuClock size={15} />} onClick={() => router.push('/business-settings?section=hours&focus=working-hours')}>Change hours</Button>
-                        <Button icon={<LuCalendarClock size={15} />} onClick={() => router.push('/business-settings?section=hours&focus=temp-status')}>Set special hours</Button>
-                        <Button icon={<LuImage size={15} />} onClick={() => router.push('/business-settings?section=business-profile&focus=official-page-photos')}>Update photos</Button>
-                    </Flex>
-                </Card>
 
                 {canShowBusinessHealthDashboardCard ? (
                     <BusinessHealthDashboardCard

@@ -131,6 +131,16 @@ const ensurePdfLibLoaded = async (): Promise<PdfJsLibrary> => {
  */
 type ConvertPdfToImagesOptions = {
     maxPages?: number;
+    onIssue?: (issue: PdfConversionIssue) => void;
+    requireAllPages?: boolean;
+    showMessages?: boolean;
+};
+
+export type PdfConversionIssue = {
+    code: 'canvas_unavailable' | 'conversion_failed' | 'invalid_pdf' | 'large_pdf' | 'page_limit';
+    fileName?: string;
+    pageLimit?: number;
+    totalPages?: number;
 };
 
 export const convertPdfToImages = async (
@@ -146,6 +156,7 @@ export const convertPdfToImages = async (
         ? Math.floor(options.maxPages)
         : MAX_PDF_PAGES;
     const pageLimit = Math.max(0, Math.min(MAX_PDF_PAGES, requestedPageLimit));
+    const showMessages = options.showMessages !== false;
     const startTime = Date.now();
 
     if (!pdfFile?.length) return [];
@@ -167,10 +178,13 @@ export const convertPdfToImages = async (
                     const errorName = getBoundedErrorName(pdfError) || '';
                     const errorMessage = getBoundedErrorStringField(pdfError, 'message') || '';
                     if (errorName === 'InvalidPDFException' || errorMessage.includes('Invalid')) {
-                        message.error({
-                            content: `"${file.name}" is corrupted or invalid. Please try a different PDF file.`,
-                            duration: 6
-                        });
+                        options.onIssue?.({ code: 'invalid_pdf', fileName: file.name });
+                        if (showMessages) {
+                            message.error({
+                                content: `"${file.name}" is corrupted or invalid. Please try a different PDF file.`,
+                                duration: 6
+                            });
+                        }
                         continue;
                     }
                     throw pdfError;
@@ -183,19 +197,25 @@ export const convertPdfToImages = async (
                     const limitMessage = pageLimit < MAX_PDF_PAGES
                         ? `"${file.name}" has ${totalPages} pages. This upload has ${pageLimit} page${pageLimit === 1 ? '' : 's'} left. Remove selected files or split the PDF.`
                         : `"${file.name}" has ${totalPages} pages. Maximum allowed is ${MAX_PDF_PAGES} pages per PDF. Please split the PDF into smaller files.`;
-                    message.error({
-                        content: limitMessage,
-                        duration: 8
-                    });
+                    options.onIssue?.({ code: 'page_limit', fileName: file.name, pageLimit, totalPages });
+                    if (showMessages) {
+                        message.error({
+                            content: limitMessage,
+                            duration: 8
+                        });
+                    }
                     continue; // Skip this file
                 }
 
                 // Show warning for large PDFs close to the processing cap.
                 if (totalPages > WARN_PDF_PAGES) {
-                    message.warning({
-                        content: `"${file.name}" has ${totalPages} pages. This will take a few minutes to process.`,
-                        duration: 8
-                    });
+                    options.onIssue?.({ code: 'large_pdf', fileName: file.name, totalPages });
+                    if (showMessages) {
+                        message.warning({
+                            content: `"${file.name}" has ${totalPages} pages. This will take a few minutes to process.`,
+                            duration: 8
+                        });
+                    }
                 }
 
                 // Process each page of the current PDF
@@ -213,6 +233,10 @@ export const convertPdfToImages = async (
                                 pageIndex: i,
                                 totalPages,
                             });
+                            options.onIssue?.({ code: 'canvas_unavailable', fileName: file.name, totalPages });
+                            if (options.requireAllPages) {
+                                throw new Error('menu_pdf_conversion_canvas_context_missing');
+                            }
                             continue;
                         }
 
@@ -246,10 +270,13 @@ export const convertPdfToImages = async (
             convertedImageCount: convertedImages.length,
             elapsedMs: Date.now() - startTime,
         });
-        message.error({
-            content: 'Failed to convert PDF. Please try again or contact support if the issue persists.',
-            duration: 6
-        });
+        options.onIssue?.({ code: 'conversion_failed' });
+        if (showMessages) {
+            message.error({
+                content: 'Failed to convert PDF. Please try again or contact support if the issue persists.',
+                duration: 6
+            });
+        }
         return [];
     } finally {
         canvases.forEach(canvas => {

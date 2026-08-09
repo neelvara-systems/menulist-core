@@ -215,7 +215,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
 
     const failingColumns = [
         {
-            title: 'Entity',
+            title: 'Product topic',
             dataIndex: 'entityName',
             key: 'entityName',
             render: (name: string, record: any) => (
@@ -235,14 +235,14 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
             render: (count: number) => <Text>{count}</Text>,
         },
         {
-            title: 'Canonical fallbacks',
+            title: 'No trusted answer',
             dataIndex: 'canonicalMissCount',
             key: 'canonicalMissCount',
             width: 130,
             render: (count: number) => <Text>{count}</Text>,
         },
         {
-            title: <Tooltip title="Evidence count weighted by escalation and canonical-fallback rates. It is not an accuracy score.">Weighted load</Tooltip>,
+            title: <Tooltip title="Evidence count weighted by escalation and trusted-answer fallback rates. It is not an accuracy score.">Weighted load</Tooltip>,
             dataIndex: 'weightedLoad',
             key: 'weightedLoad',
             width: 110,
@@ -363,11 +363,11 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                     </Flex>
                 </Card>
 
-                {/* Drift */}
+                {/* Answer freshness */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Tooltip title="Lower is better — shows % of answers that may be outdated">
                         <Statistic
-                            title={<Space><LuShieldAlert size={14} /> Drift</Space>}
+                            title={<Space><LuShieldAlert size={14} /> Answers to recheck</Space>}
                             value={hasActiveAnswers ? data.drift.rate : 'Not available'}
                             suffix={hasActiveAnswers ? '%' : undefined}
                             valueStyle={{
@@ -386,16 +386,16 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
                             {hasActiveAnswers
-                                ? `${data.drift.driftedCount} drifted / ${data.drift.activeCount} active`
-                                : 'No active canonical answers'}
+                                ? `${data.drift.driftedCount} need recheck / ${data.drift.activeCount} active`
+                                : 'No active trusted answers'}
                         </Text>
                     </Flex>
                 </Card>
 
-                {/* Entity answer coverage */}
+                {/* Product topic answer coverage */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Statistic
-                        title={<Space><LuListChecks size={14} /> Entity answer coverage</Space>}
+                        title={<Space><LuListChecks size={14} /> Product-topic coverage</Space>}
                         value={hasActiveEntities ? data.entityAnswerCoverage.rate : 'Not available'}
                         suffix={hasActiveEntities ? '%' : undefined}
                         valueStyle={{
@@ -413,8 +413,8 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
                             {hasActiveEntities
-                                ? `${data.entityAnswerCoverage.coveredCount} covered / ${data.entityAnswerCoverage.totalEntities} active entities`
-                                : 'No active product entities'}
+                                ? `${data.entityAnswerCoverage.coveredCount} covered / ${data.entityAnswerCoverage.totalEntities} active topics`
+                                : 'No active product topics'}
                         </Text>
                     </Flex>
                 </Card>
@@ -424,7 +424,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 <Flex gap={12}>
                     <Tag color="success">{data.entityAnswerCoverage.coveredCount} Covered</Tag>
                     {data.entityAnswerCoverage.driftedCoveredCount > 0 && (
-                        <Tag color="warning">{data.entityAnswerCoverage.driftedCoveredCount} Covered but drifted</Tag>
+                        <Tag color="warning">{data.entityAnswerCoverage.driftedCoveredCount} Covered but needs recheck</Tag>
                     )}
                     {data.entityAnswerCoverage.uncoveredCount > 0 && (
                         <Tag color="error">{data.entityAnswerCoverage.uncoveredCount} Uncovered</Tag>
@@ -466,7 +466,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 >
                     <Flex vertical gap={12}>
                         <Text type="secondary">
-                            Loaded only when requested. The bounded window shows recent retained answers with fallback, feedback, escalation, drift, or confidence evidence.
+                            Loaded only when requested. The bounded window shows recent retained answers with fallback, feedback, escalation, freshness, or confidence evidence.
                         </Text>
                         {answerTraceError ? <Alert message={answerTraceError} showIcon type="error" /> : null}
                         {answerTracesLoaded && answerTraces.length === 0 ? (

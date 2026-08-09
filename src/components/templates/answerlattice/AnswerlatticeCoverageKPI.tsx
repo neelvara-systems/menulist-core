@@ -63,7 +63,7 @@ export default function AnswerlatticeCoverageKPI() {
     if (!coverage) {
         return (
             <Card size="small" style={{ minWidth: 200 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Canonical Answer Coverage</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>Trusted Answer Coverage</Text>
                 <br />
                 <Text type={loadFailed ? 'danger' : 'secondary'}>
                     {loadFailed ? 'Could not load metrics' : 'No complete 24-hour window yet'}
@@ -82,7 +82,7 @@ export default function AnswerlatticeCoverageKPI() {
         return (
             <Card size="small" style={{ minWidth: 200 }}>
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                    Canonical Answer Coverage {stale ? '(stale)' : ''}
+                    Trusted Answer Coverage {stale ? '(stale)' : ''}
                 </Text>
                 <Text strong>No questions in this window</Text>
                 <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
@@ -95,7 +95,7 @@ export default function AnswerlatticeCoverageKPI() {
     return (
         <Card size="small" style={{ minWidth: 200 }}>
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                Canonical Answer Coverage {stale ? '(stale)' : ''}
+                Trusted Answer Coverage {stale ? '(stale)' : ''}
             </Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Progress

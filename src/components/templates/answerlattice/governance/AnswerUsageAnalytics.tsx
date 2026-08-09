@@ -128,7 +128,7 @@ export default function AnswerUsageAnalytics() {
             render: (title: string, record: AnswerUsageRow) => (
                 <Space>
                     <Text strong>{title}</Text>
-                    {record.drifted && <Tag color="warning">Drifted</Tag>}
+                    {record.drifted && <Tag color="warning">Needs recheck</Tag>}
                 </Space>
             ),
         },
@@ -272,9 +272,9 @@ export default function AnswerUsageAnalytics() {
 
             {/* Content Gaps */}
             {contentGaps.length > 0 && (
-                <Card size="small" title="Content Gaps — Entities Without Canonical Answers">
+                <Card size="small" title="Product Topics Without Trusted Answers">
                     <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
-                        These active entities have no canonical answer coverage. Consider creating answers for them.
+                        These active product topics have no trusted-answer coverage. Consider preparing an approved answer for them.
                     </Text>
                     <Flex gap={8} wrap="wrap">
                         {contentGaps.map(gap => (

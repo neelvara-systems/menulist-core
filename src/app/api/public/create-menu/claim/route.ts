@@ -20,9 +20,11 @@ import { FALLBACK_BUSINESS_TYPE, getBusinessTypeConfig, resolveStoreBusinessCate
 import { getSuggestionValue, normalizeExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import {
     getPublicMenuDraftTimestampMillis,
+    hasCompletePublicMenuDraftSourceAttribution,
     normalizePublicMenuDraftExtractedData,
     type PublicMenuDraftLanguage,
 } from '@data/shared/publicMenuDraftData';
+import { PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION } from '@data/shared/publicMenuDraftSource';
 import { admin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeGrowthAcquisitionAttribution } from '@lib/growth/acquisitionAttribution';
@@ -43,7 +45,8 @@ import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboardin
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
-import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
+import { redistributeExtractedData } from '@lib/extraction/redistribute';
+import { normalizePublicDraftSourcesForProject } from '@lib/public-menu-entry/publicDraftSource';
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
 import { resolvePublicMenuClaimUserAuthority } from '@lib/public-menu-entry/claimUserAuthority';
@@ -420,21 +423,30 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                 throw new PublicMenuClaimError(400, 'Menu extraction is not complete yet.');
             }
 
-            const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData);
+            const draftSources = normalizePublicDraftSourcesForProject(draft, draftId, {
+                allowedBucket: storageAdmin.bucket().name,
+                allowLocalEmulator: process.env.NODE_ENV !== 'production',
+            });
+            if (!draftSources) {
+                throw new PublicMenuClaimError(422, 'This menu source could not be validated. Please upload it again.');
+            }
+            const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData, {
+                maxSourceFiles: draftSources.length,
+                preserveSourceFileIndex: true,
+            });
             if (!extractedData) {
                 throw new PublicMenuClaimError(422, 'This menu could not be validated. Please upload it again.');
+            }
+            if (
+                draft.sourceFilesVersion === PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION
+                && !hasCompletePublicMenuDraftSourceAttribution(extractedData, draftSources.length)
+            ) {
+                throw new PublicMenuClaimError(422, 'This menu source could not be matched to every page. Please upload it again.');
             }
             try {
                 normalizeExtractedMenuPriceTruth(extractedData);
             } catch {
                 throw new PublicMenuClaimError(422, 'This menu contains an invalid price. Please upload it again.');
-            }
-            const draftSource = normalizePublicDraftSourceForProject(draft, draftId, {
-                allowedBucket: storageAdmin.bucket().name,
-                allowLocalEmulator: process.env.NODE_ENV !== 'production',
-            });
-            if (!draftSource) {
-                throw new PublicMenuClaimError(422, 'This menu source could not be validated. Please upload it again.');
             }
             const extractedLanguageCodes = getCanonicalExtractionLanguages(extractedData.languages);
             const detectedDefaultLanguage = getDetectedDefaultLanguage(extractedData.languages);
@@ -725,24 +737,57 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                     }
                 });
             }
-            const fileEntry = {
-                uid: `file_${Date.now()}`,
-                name: draftSource.fileName,
-                url: draftSource.imageUrl,
-                type: draftSource.fileType,
-                size: draftSource.fileSize,
-                active: true,
-                deleted: false,
-                index: 0,
-                extractedData: {
-                    message: '',
-                    data: {
-                        categories: extractedData.categories || [],
-                        items: extractedData.items || [],
-                        languages: extractedData.languages || [],
-                    },
+            const fileUidSeed = Date.now();
+            const fileMappings = draftSources.map((_, index) => ({
+                index,
+                uid: `file_${fileUidSeed}_${index + 1}`,
+            }));
+            const redistributedFiles = redistributeExtractedData({
+                data: {
+                    categories: extractedData.categories || [],
+                    items: extractedData.items || [],
+                    languages: extractedData.languages || [],
                 },
-            };
+            }, fileMappings);
+            const redistributedContentCount = Array.from(redistributedFiles.values()).reduce((count, fileData) => (
+                count
+                + (fileData.data?.categories?.length || 0)
+                + (fileData.data?.items?.length || 0)
+            ), 0);
+            const combinedContentCount = (extractedData.categories?.length || 0) + (extractedData.items?.length || 0);
+            const useCombinedFirstFileFallback = combinedContentCount > 0 && redistributedContentCount === 0;
+            const fileEntries = draftSources.map((draftSource, index) => {
+                const mapping = fileMappings[index];
+                const redistributed = redistributedFiles.get(mapping.uid);
+                const fileData = useCombinedFirstFileFallback && index === 0
+                    ? {
+                        message: '',
+                        data: {
+                            categories: extractedData.categories || [],
+                            items: extractedData.items || [],
+                            languages: extractedData.languages || [],
+                        },
+                    }
+                    : redistributed || {
+                        message: '',
+                        data: {
+                            categories: [],
+                            items: [],
+                            languages: extractedData.languages || [],
+                        },
+                    };
+                return {
+                    uid: mapping.uid,
+                    name: draftSource.fileName,
+                    url: draftSource.imageUrl,
+                    type: draftSource.fileType,
+                    size: draftSource.fileSize,
+                    active: true,
+                    deleted: false,
+                    index,
+                    extractedData: fileData,
+                };
+            });
             const projectSlug = resolvePublicMenuEntryProjectSlug(
                 existingSummaryProjectsForDefaultDemotion,
                 projectName,
@@ -758,7 +803,7 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                 deleted: false,
                 isDefault: true,
                 slug: projectSlug,
-                files: [fileEntry],
+                files: fileEntries,
                 languages: extractedLanguageCodes,
                 defaultLanguage: detectedDefaultLanguage,
                 config: brandAccentColor ? { design: { brand: { accentColor: brandAccentColor } } } : {},

@@ -16,6 +16,12 @@ export const MENU_EXTRACTION_JOB_LIMITS = {
   MAX_FILE_SIZE_BYTES: 30 * 1024 * 1024,
 } as const;
 
+export const PUBLIC_CREATE_MENU_UPLOAD_LIMITS = {
+  MAX_FILES: MENU_EXTRACTION_JOB_LIMITS.MAX_FILES,
+  MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,
+  MAX_TOTAL_SIZE_BYTES: 30 * 1024 * 1024,
+} as const;
+
 export const OWNER_MENU_UPLOAD_MIME_TYPES = [
   "application/pdf",
   "image/jpeg",

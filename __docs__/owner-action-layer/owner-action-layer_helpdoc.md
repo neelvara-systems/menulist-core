@@ -17,6 +17,8 @@ It may point to:
 
 Open the action and complete it in the existing MenuList screen.
 
+When the public information is stable, this card stays hidden. The dashboard says no action is needed instead of assigning routine work.
+
 ## Where It Appears
 
 - Desktop dashboard

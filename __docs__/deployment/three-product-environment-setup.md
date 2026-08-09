@@ -319,9 +319,12 @@ Use one parent operating identity and one shared infrastructure account stack:
   separate Firebase projects underneath it.
 - Vercel: one fresh Neelvara-owned account/team and one fresh project connected
   to this repo; do not transfer old deployments, history, or environment values.
-- GitHub: use a fresh named founder account with `admin@neelvara.com`, create
-  the `neelvara-systems` organization, natively transfer the existing repo, add
-  a backup owner before production, and enforce MFA. Use a dedicated Neelvara
+- GitHub: use the fresh company-admin account `neelvara-admin` with
+  `admin@neelvara.com`, keep its personal public-profile name optional, create
+  the `neelvara-systems` organization, natively transfer the existing repo
+  through the controlled admin account without making the retired source
+  account an organization member, add a backup owner before production, and
+  enforce MFA. Use a dedicated Neelvara
   SSH key on each workstation, update the local remote after transfer, keep
   author identity repository-local, and retire an old key only after the new
   account can authenticate and fetch the transferred repository.

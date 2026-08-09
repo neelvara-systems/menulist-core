@@ -14,6 +14,7 @@ import {
     getAnswerlatticeGovernanceRoute,
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
+import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import {
     ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
     isAnswerlatticeActivationSummaryForScope,
@@ -61,7 +62,7 @@ import {
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
-const ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED = 'Could not load readiness metrics';
+const ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED = 'Could not load setup status';
 
 const STATUS_META = {
     complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
@@ -177,7 +178,7 @@ export default function AnswerlatticeDashboardPage() {
             <Alert
                 type="warning"
                 showIcon
-                message="Readiness metrics are unavailable"
+                message="Setup status is unavailable"
                 description="Refresh after this Answerlattice workspace is fully connected."
                 action={<Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>}
             />
@@ -194,9 +195,9 @@ export default function AnswerlatticeDashboardPage() {
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(76px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Readiness Metrics</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>{ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.setupStatus}</Title>
                     <Text type="secondary">
-                        Summary-based support evidence for {summary.workspace.productName || summary.workspace.companyName || 'this workspace'}.
+                        See what is ready, what needs attention, and the next useful action for {summary.workspace.productName || summary.workspace.companyName || 'this workspace'}.
                     </Text>
                 </div>
                 <Space wrap>
@@ -207,7 +208,7 @@ export default function AnswerlatticeDashboardPage() {
                         Today&apos;s Brief
                     </Button>
                     <Button type="primary" icon={<LuExternalLink />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.ACTIVATION)} style={{ minHeight: 44 }}>
-                        Open Launch Setup
+                        Open {ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.getLive}
                     </Button>
                 </Space>
             </Flex>
@@ -331,7 +332,7 @@ export default function AnswerlatticeDashboardPage() {
                     <Card title="Answer Evidence">
                         <Flex vertical gap={12}>
                             <Flex justify="space-between" gap={12}>
-                                <Text type="secondary">Canonical answers</Text>
+                                <Text type="secondary">Trusted answers</Text>
                                 <Text strong>{activeAnswerCount}</Text>
                             </Flex>
                             <Flex justify="space-between" gap={12}>
@@ -349,13 +350,13 @@ export default function AnswerlatticeDashboardPage() {
                                 <Text strong>{summary.widget.allowedOriginCount}</Text>
                             </Flex>
                             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                                Open governance when you need answer-level review, drift checks, or signal-to-knowledge decisions.
+                                Open Answer Quality when you need to review trusted answers, outdated information, or suggested updates.
                             </Paragraph>
                             <Button
                                 onClick={() => openRoute(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))}
                                 style={{ minHeight: 44 }}
                             >
-                                Open Governance
+                                Review Answer Quality
                             </Button>
                         </Flex>
                     </Card>

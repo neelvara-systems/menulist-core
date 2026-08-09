@@ -4,6 +4,8 @@
 
 Menu setup shows the next action for the menu currently selected in MenuList.
 
+The card is intentionally not a score or a full checklist. It shows the one step that needs attention now and hides after required setup is complete.
+
 1. Add or open a menu source.
 2. Make sure visible menu items were imported.
 3. Review prices and important menu details.

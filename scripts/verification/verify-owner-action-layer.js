@@ -33,6 +33,7 @@ const helper = read('src/lib/ownerActions/buildOwnerActionLayer.ts');
 const boundaryTest = read('scripts/verification/test-owner-action-layer-boundary.ts');
 const desktopDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScreen.tsx');
+const navigations = read('src/constants/navigations.ts');
 const readme = read('__docs__/owner-action-layer/README.md');
 const spec = read('__docs__/owner-action-layer/owner-action-layer_spec.md');
 const impl = read('__docs__/owner-action-layer/owner-action-layer_impl.md');
@@ -83,15 +84,18 @@ requireToken(
 [
   'buildOwnerActionLayer',
   'FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !dashboardProjectLoading',
+  "ownerActionLayer.statusLabel !== 'Stable'",
   'Next owner action',
   'ownerActionLayer.primaryAction',
-  'ownerActionLayer.supportingActions.slice(0, 6)',
   'router.push(ownerActionLayer.primaryAction.desktopHref)',
 ].forEach((token) => requireToken(desktopDashboard, token, 'desktop dashboard owner action layer'));
+forbidToken(desktopDashboard, 'ownerActionLayer.supportingActions', 'desktop dashboard supporting action grid');
+forbidToken(desktopDashboard, 'title="Update what customers see"', 'desktop dashboard duplicate quick actions');
 
 [
   'buildOwnerActionLayer',
   'FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !loadingProjects && selectedProjectId',
+  "ownerActionLayer.statusLabel !== 'Stable'",
   'Next owner action',
   'handleOwnerAction',
   "target.type === 'menuTab'",
@@ -99,6 +103,12 @@ requireToken(
   'onOpenMoreScreen?.(target.screen)',
   "screen: 'aiMenuManager'",
 ].forEach((token) => requireToken(mobileDashboard, token, 'mobile dashboard owner action layer'));
+forbidToken(mobileDashboard, 'ownerActionLayer.supportingActions', 'mobile dashboard supporting action grid');
+forbidToken(mobileDashboard, 'renderQuickActions', 'mobile dashboard duplicate quick actions');
+[
+  "{ label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE",
+  "{ label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS",
+].forEach((token) => requireToken(navigations, token, 'dedicated owner navigation module'));
 
 [
   'selectedProjectSummary as any',

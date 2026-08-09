@@ -482,9 +482,9 @@ function verifyPublicCreateMenuRoutePrivacy() {
   assertIncludes(claimRoute, 'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);', 'Public create-menu claim normalized store ref');
   assertIncludes(claimRoute, '.doc(tenantDocumentId)', 'Public create-menu claim normalized project tenant ref');
   assertIncludes(claimRoute, '.collection(storeDocumentId)', 'Public create-menu claim normalized project store ref');
-  assertIncludes(claimRoute, 'normalizePublicMenuDraftExtractedData(draft.extractedData)', 'Public create-menu claim persisted DTO validation');
+  assertIncludes(claimRoute, 'normalizePublicMenuDraftExtractedData(draft.extractedData, {', 'Public create-menu claim persisted DTO validation');
   assertIncludes(claimRoute, 'getPublicMenuDraftTimestampMillis(draft.expiresAt)', 'Public create-menu claim runtime TTL validation');
-  assertIncludes(claimRoute, 'normalizePublicDraftSourceForProject(draft, draftId', 'Public create-menu claim source-envelope validation');
+  assertIncludes(claimRoute, 'normalizePublicDraftSourcesForProject(draft, draftId', 'Public create-menu claim source-envelope validation');
   assertIncludes(claimRoute, 'allowedBucket: storageAdmin.bucket().name', 'Public create-menu claim configured Storage bucket binding');
   assertIncludes(claimRoute, 'normalizeCompletedClaimResult(draft, userId)', 'Public create-menu claim idempotent exact-owner recovery');
   assertIncludes(claimRoute, 'convertedTenantId: tenantId', 'Public create-menu claim complete retry receipt');

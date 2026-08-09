@@ -5,7 +5,7 @@
 
 Menu Setup Progress is a layer inside current MobileShell screens, not a route.
 
-- Mobile Menu shows the full next-step card when selected project truth is loaded.
+- Mobile Menu shows one next-step card when selected project truth is loaded; it does not show a percentage or all setup steps.
 - Mobile Share shows it only while the published starter still needs placement.
 - Mobile More shows one shortcut only after `MobileProjectsProvider` loading finishes and the owner can open the destination.
 - Menu actions call the Menu tab; placement calls Share; public links/photos call Official Page inside More.

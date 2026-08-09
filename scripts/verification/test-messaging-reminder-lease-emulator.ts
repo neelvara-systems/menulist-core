@@ -14,6 +14,7 @@ const Timestamp = admin.firestore.Timestamp;
 const sessions = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS);
 const SESSION_ID = "RmNdErLeAsE123456789";
 const TOKEN = "reminderPreviewToken_1234567890";
+const PREVIEW_BASE_URL = "https://app.menulist.ai";
 
 function buildSession(now: FirebaseFirestore.Timestamp) {
   const entered = Timestamp.fromMillis(now.toMillis() - 13 * 60 * 60 * 1_000);
@@ -21,7 +22,7 @@ function buildSession(now: FirebaseFirestore.Timestamp) {
     createdAt: entered,
     expiresAt: Timestamp.fromMillis(now.toMillis() + 60_000),
     previewToken: TOKEN,
-    previewUrl: `https://app.menulist.ai/msg-preview/${SESSION_ID}?token=${TOKEN}`,
+    previewUrl: `${PREVIEW_BASE_URL}/msg-preview/${SESSION_ID}?token=${TOKEN}`,
     provider: "whatsapp",
     providerUserId: "919800000000",
     reminderMessageLeaseToken: null,
@@ -42,7 +43,7 @@ async function main(): Promise<void> {
 
   const claims = await Promise.all(Array.from({ length: 8 }, () => claimMessagingReminder({
     db,
-    expectedPreviewBaseUrl: "https://menulist.ai",
+    expectedPreviewBaseUrl: PREVIEW_BASE_URL,
     now,
     reminderAfterMs: 12 * 60 * 60 * 1_000,
     sessionId: SESSION_ID,
@@ -64,7 +65,7 @@ async function main(): Promise<void> {
   });
   const reclaimed = await claimMessagingReminder({
     db,
-    expectedPreviewBaseUrl: "https://menulist.ai",
+    expectedPreviewBaseUrl: PREVIEW_BASE_URL,
     now,
     reminderAfterMs: 12 * 60 * 60 * 1_000,
     sessionId: SESSION_ID,
@@ -96,7 +97,7 @@ async function main(): Promise<void> {
   await ref.set(buildSession(now));
   const releasable = await claimMessagingReminder({
     db,
-    expectedPreviewBaseUrl: "https://menulist.ai",
+    expectedPreviewBaseUrl: PREVIEW_BASE_URL,
     now,
     reminderAfterMs: 12 * 60 * 60 * 1_000,
     sessionId: SESSION_ID,

@@ -14,7 +14,7 @@ import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
-import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
+import { LuAlertCircle, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
@@ -27,13 +27,18 @@ import {
     type GrowthAcquisitionAttribution,
 } from '@lib/growth/acquisitionAttribution';
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
+import { FEATURE_FLAGS } from '@config/features';
+import { PUBLIC_CREATE_MENU_UPLOAD_LIMITS } from '@data/shared/menuExtractionJob';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
 type CreateMenuResponseSource = 'upload' | 'link';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_TYPES = FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD
+    ? [...IMAGE_TYPES, 'application/pdf']
+    : IMAGE_TYPES;
 const CREATE_MENU_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 
 type CreateMenuDraftResponse = {
@@ -115,9 +120,10 @@ export default function CreateMenuClient({
         }
 
         setError(null);
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
         // Validate type
-        if (!ALLOWED_TYPES.includes(file.type)) {
+        if (!ALLOWED_TYPES.includes(file.type) && !(FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD && isPdf)) {
             setError(t('CreateMenu.invalidType'));
             return;
         }
@@ -130,19 +136,59 @@ export default function CreateMenuClient({
         if (submissionInFlightRef.current) return;
         submissionInFlightRef.current = true;
 
-        // Show preview
-        const objectUrl = URL.createObjectURL(file);
-        setPreview(objectUrl);
-
         try {
-            // Step 1: Optimize image client-side
+            // Step 1: Prepare an image or convert every admitted PDF page.
             setState('optimizing');
-            const optimizedFile = await optimizeImage(file);
+            let uploadFiles: File[];
+            if (isPdf) {
+                if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD) {
+                    setError(t('CreateMenu.invalidType'));
+                    setState('error');
+                    return;
+                }
+                const conversionIssues: Array<{ code: string }> = [];
+                const { convertPdfToImages } = await import('@template/main-app/projects/utils/pdfUtils');
+                const convertedPages = await convertPdfToImages([{
+                    arrayBuffer: () => file.arrayBuffer(),
+                    name: file.name,
+                    uid: `public-pdf-${Date.now()}`,
+                }], 'public', 'starter', {
+                    maxPages: PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES,
+                    onIssue: (issue) => conversionIssues.push(issue),
+                    requireAllPages: true,
+                    showMessages: false,
+                });
+                if (convertedPages.length === 0) {
+                    const exceededPageLimit = conversionIssues.some((issue) => issue.code === 'page_limit');
+                    setError(t(exceededPageLimit ? 'CreateMenu.fileTooLarge' : 'CreateMenu.uploadFailed'));
+                    setState('error');
+                    return;
+                }
+                uploadFiles = convertedPages.map((page) => dataUrlToJpegFile(page.url, page.name));
+            } else {
+                uploadFiles = [await optimizeImage(file)];
+            }
+
+            const totalUploadSize = uploadFiles.reduce((total, uploadFile) => total + uploadFile.size, 0);
+            if (
+                uploadFiles.length === 0
+                || uploadFiles.length > PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES
+                || uploadFiles.some((uploadFile) => uploadFile.size <= 0 || uploadFile.size > MAX_FILE_SIZE)
+                || totalUploadSize > PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_TOTAL_SIZE_BYTES
+            ) {
+                setError(t('CreateMenu.fileTooLarge'));
+                setState('error');
+                return;
+            }
+
+            setPreview(URL.createObjectURL(uploadFiles[0]));
 
             // Step 2: Upload to API
             setState('uploading');
             const formData = new FormData();
-            formData.append('image', optimizedFile);
+            uploadFiles.forEach((uploadFile) => formData.append('images', uploadFile, uploadFile.name));
+            formData.append('uploadSourceType', isPdf ? 'pdf' : 'image');
+            if (isPdf) formData.append('sourceOriginalFileName', file.name);
             if (growthAcquisition) {
                 formData.append('growthAcquisitionSource', growthAcquisition.source);
                 formData.append('growthAcquisitionMedium', growthAcquisition.medium);
@@ -200,6 +246,7 @@ export default function CreateMenuClient({
             logRuntimeFailure('public_create_menu_request_failed', err, {
                 source: 'upload',
                 fileSize: file.size,
+                sourceIsPdf: isPdf,
                 ...getBoundedRuntimeStringContext('fileType', file.type),
             });
             setError(t('CreateMenu.genericError'));
@@ -430,7 +477,13 @@ export default function CreateMenuClient({
                             }}
                         >
                             {([
-                                { icon: LuCamera, label: t('CreateMenu.inputPhotoTab'), mode: 'photo' as const },
+                                {
+                                    icon: LuUpload,
+                                    label: FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD
+                                        ? `${t('CreateMenu.inputPhotoTab')} / PDF`
+                                        : t('CreateMenu.inputPhotoTab'),
+                                    mode: 'photo' as const,
+                                },
                                 { icon: LuLink, label: t('CreateMenu.inputLinkTab'), mode: 'link' as const },
                             ]).map((item) => {
                                 const Icon = item.icon;
@@ -482,7 +535,9 @@ export default function CreateMenuClient({
                                     <input
                                         aria-label={t('CreateMenu.uploadTitle')}
                                         type="file"
-                                        accept="image/jpeg,image/png,image/webp"
+                                        accept={FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD
+                                            ? 'image/jpeg,image/png,image/webp,application/pdf,.pdf'
+                                            : 'image/jpeg,image/png,image/webp'}
                                         onClick={(event) => {
                                             event.currentTarget.value = '';
                                         }}
@@ -523,6 +578,14 @@ export default function CreateMenuClient({
                                     state={state}
                                     t={t}
                                 />
+                                {state === 'idle' && FEATURE_FLAGS.ENABLE_PUBLIC_MENU_PDF_UPLOAD ? (
+                                    <p style={{ color: 'var(--ws-text-muted)', fontSize: '12px', margin: '10px 0 0', position: 'relative', zIndex: 1 }}>
+                                        {t('CreateMenu.uploadFormatHint', {
+                                            maxFileMb: Math.floor(PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES / (1024 * 1024)),
+                                            maxPages: PUBLIC_CREATE_MENU_UPLOAD_LIMITS.MAX_FILES,
+                                        })}
+                                    </p>
+                                ) : null}
                             </div>
                         ) : (
                             <form
@@ -696,7 +759,7 @@ function UploadStateContent({
                 <>
                     {isLinkMode
                         ? <LuLink size={42} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
-                        : <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
+                        : <LuUpload size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
                     <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
                         {isLinkMode ? t('CreateMenu.linkTitle') : t('CreateMenu.uploadTitle')}
                     </p>
@@ -882,4 +945,15 @@ async function optimizeImage(file: File): Promise<File> {
         // Compressor.js not available — use original
         return file;
     }
+}
+
+function dataUrlToJpegFile(dataUrl: string, fileName: string): File {
+    const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+    if (!match || match[1].length % 4 !== 0) throw new Error('public_pdf_page_data_invalid');
+    const binary = atob(match[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+    return new File([bytes], fileName, { type: 'image/jpeg' });
 }
