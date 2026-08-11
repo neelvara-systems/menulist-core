@@ -1,6 +1,6 @@
 # Neelvara Main Website
 
-**Status:** Implemented with current-color Prism glass relayout in the shared Next/Vercel app; pending owner/legal launch review
+**Status:** Implemented and locally validated with a restrained Prism-influenced company design; public host cutover and owner/legal launch review remain pending
 **Owner:** Founder / engineering
 **Feature folder:** `__docs__/neelvara-main-website/`
 **Primary source input:** [`neelvara-main-website_chatgpt-transcript.md`](./neelvara-main-website_chatgpt-transcript.md)
@@ -31,7 +31,7 @@ Build Neelvara inside the existing Next.js/Vercel product-site architecture:
 - no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
 - optional public contact email env keys only: `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL`
 - no Neelvara-owned browser preference storage is required in v1
-- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, the supplied blue-to-violet Neelvara loop mark, fixed restrained mesh, grain, factual reference summaries, restrained glass panels, and responsive section layout; no product funnel behavior added
+- restrained Prism-influenced visual system applied only to presentation: ice-white canvas, deep navy text, the supplied blue-to-violet Neelvara loop mark, a fixed low-contrast mesh, subtle grain, selective glass on navigation and product surfaces, and unframed factual information rows; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. Neelvara should follow that routing architecture while staying outside database-backed product identity.
 
@@ -83,7 +83,7 @@ Validation completed:
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
 - Neelvara contact, legal, and privacy email addresses are read from optional public env-backed constants with current address fallbacks
-- current-color Prism glass relayout route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
+- current Neelvara relayout route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
 - Open Graph image and `.well-known/security.txt` are present for the company website
 - `/nv` internal alias responses are marked `noindex, nofollow`; `https://neelvara.com` remains canonical
@@ -92,9 +92,9 @@ Validation completed:
 Current public-launch state:
 
 - source, local routes, responsive layout, content, metadata, accessibility, and motion checks pass
-- the public preview remains on the prior three-product build until an explicitly approved Vercel deployment publishes this worktree
-- `neelvara.com` and `www.neelvara.com` still require public DNS and Vercel domain attachment
-- `hello@neelvara.com`, `legal@neelvara.com`, and `privacy@neelvara.com` require verified delivery plus SPF, DKIM, and DMARC
+- `https://neelvara.com` currently serves a GoDaddy Website Builder page rather than this repository implementation
+- publishing this implementation requires an explicitly approved Vercel deployment, domain attachment, and DNS cutover; none was performed during this audit
+- `neelvara.com` publishes Google MX, SPF, Google DKIM, and DMARC records; owner-side send/receive checks are still required for `hello@`, `legal@`, and `privacy@`
 - owner/CA/legal approval and trademark-search evidence remain required before public launch
 
 ---

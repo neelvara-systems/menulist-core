@@ -1,6 +1,16 @@
 'use client'
 
 import { markOwnerActionDone } from '@database/ownerDashboard';
+import {
+    getOwnerActionDisplay,
+    getOwnerActionPriorityLabel,
+    getOwnerActionResultDisplay,
+    getOwnerConfidenceDisplay,
+} from '@lib/analytics/ownerActionPlanPresentation';
+import {
+    formatDashboardPercent,
+    getOwnerDashboardSourceLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
 import type {
     AnalyticsAiEntitlement,
     OwnerActionReceipt,
@@ -10,7 +20,7 @@ import type {
     SourceQuality,
 } from '@template/main-app/projects/types';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuCheckCircle, LuLock, LuSparkles } from 'react-icons/lu';
 import { Button, Card, Flex, List, Tag, Text, Toast } from '../../antd';
@@ -40,6 +50,7 @@ export default function MobileOwnerActionPlanCard({
 }: MobileOwnerActionPlanCardProps) {
     const { token } = theme.useToken();
     const t = useTranslations('Dashboard.owner');
+    const locale = useLocale();
     const actions = actionPlan?.actions || [];
     const [localReceipts, setLocalReceipts] = useState<Record<string, OwnerActionReceipt>>({});
     const [markingActionId, setMarkingActionId] = useState<string | null>(null);
@@ -47,6 +58,7 @@ export default function MobileOwnerActionPlanCard({
     const isPlanLocked = analyticsAiEntitlement
         && !analyticsAiEntitlement.enabled
         && analyticsAiEntitlement.reason !== 'feature_flag_disabled';
+    const confidenceDisplay = confidence ? getOwnerConfidenceDisplay(confidence, locale, t) : null;
 
     useEffect(() => {
         setLocalReceipts(actionPlan?.receipts || {});
@@ -98,40 +110,44 @@ export default function MobileOwnerActionPlanCard({
                 {!isPlanLocked && confidence ? (
                     <Flex gap={6} vertical>
                         <Tag color={confidence.status === 'stable' ? 'success' : confidence.status === 'watch' ? 'warning' : 'default'}>
-                            {confidence.label}
+                            {confidenceDisplay?.label}
                         </Tag>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{confidence.message}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{confidenceDisplay?.message}</Text>
                     </Flex>
                 ) : null}
 
                 {!isPlanLocked && bestSource ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {t('actionPlan.bestSourceMobile', {
-                            source: bestSource.label,
+                        {t('actionPlan.bestSourceMobileFormatted', {
+                            source: getOwnerDashboardSourceLabel(bestSource.source, bestSource.label, t),
                             visits: bestSource.menuSessions,
-                            rate: bestSource.actionRate,
+                            rate: formatDashboardPercent(bestSource.actionRate),
                         })}
                     </Text>
                 ) : null}
 
                 {!isPlanLocked && actions.length > 0 ? (
                     <List>
-                        {actions.map((action) => (
+                        {actions.map((action) => {
+                            const display = getOwnerActionDisplay(action, locale, t);
+                            const result = findReceipt(action)?.result;
+                            const resultDisplay = result ? getOwnerActionResultDisplay(result, locale, t) : null;
+                            return (
                             <List.Item
                                 key={action.id}
-                                prefix={<Tag color={priorityColors[action.priority] || 'default'}>{action.priority}</Tag>}
+                                prefix={<Tag color={priorityColors[action.priority] || 'default'}>{getOwnerActionPriorityLabel(action.priority, t)}</Tag>}
                                 description={(
                                     <Flex gap={4} vertical>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>{action.description}</Text>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>{action.reason}</Text>
-                                        <Text strong style={{ fontSize: 12 }}>{action.actionLabel}</Text>
-                                        {findReceipt(action)?.result ? (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>{display.description}</Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>{display.reason}</Text>
+                                        <Text strong style={{ fontSize: 12 }}>{display.actionLabel}</Text>
+                                        {result && resultDisplay ? (
                                             <Flex gap={4} vertical>
-                                                <Tag color={findReceipt(action)?.result?.status === 'improved' ? 'success' : findReceipt(action)?.result?.status === 'pending' ? 'primary' : 'default'}>
-                                                    {findReceipt(action)?.result?.label}
+                                                <Tag color={result.status === 'improved' ? 'success' : result.status === 'pending' ? 'primary' : 'default'}>
+                                                    {resultDisplay.label}
                                                 </Tag>
                                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    {findReceipt(action)?.result?.message}
+                                                    {resultDisplay.message}
                                                 </Text>
                                             </Flex>
                                         ) : projectId ? (
@@ -148,9 +164,10 @@ export default function MobileOwnerActionPlanCard({
                                         ) : null}
                                     </Flex>
                                 )}
-                                title={<Text strong>{action.title}</Text>}
+                                title={<Text strong>{display.title}</Text>}
                             />
-                        ))}
+                            );
+                        })}
                     </List>
                 ) : !isPlanLocked ? (
                     <Flex align="center" gap={8}>
@@ -163,10 +180,10 @@ export default function MobileOwnerActionPlanCard({
                     <Flex gap={6} wrap>
                         {sourceQuality.slice(0, 4).map((source) => (
                             <Tag key={source.source} color="default">
-                                {t('actionPlan.sourceQualityTagCompact', {
-                                    source: source.label,
+                                {t('actionPlan.sourceQualityTagCompactFormatted', {
+                                    source: getOwnerDashboardSourceLabel(source.source, source.label, t),
                                     visits: source.menuSessions,
-                                    rate: source.actionRate,
+                                    rate: formatDashboardPercent(source.actionRate),
                                 })}
                             </Tag>
                         ))}

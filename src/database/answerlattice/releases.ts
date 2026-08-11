@@ -9,7 +9,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { AnswerlatticeStoredReleaseSchema, AnswerlatticeReleaseActionResultSchema } from '@lib/answerlattice/releaseContracts';
+import {
+    ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES,
+    AnswerlatticeStoredReleaseSchema,
+    AnswerlatticeReleaseActionResultSchema,
+} from '@lib/answerlattice/releaseContracts';
 import { normalizeAnswerlatticeReleaseId } from '@lib/answerlattice/releaseIdBoundary';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import getActiveSession from '@lib/auth/getActiveSession';
@@ -21,7 +25,6 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from '
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
 const MAX_RELEASES_PER_LOAD = 100;
-const RELEASE_ACTION_RESPONSE_MAX_BYTES = 256 * 1024;
 
 export class AnswerlatticeReleaseClientError extends Error {
     constructor(
@@ -75,7 +78,10 @@ const executeReleaseAction = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    const payload = await readJsonResponseWithLimit<unknown>(response, RELEASE_ACTION_RESPONSE_MAX_BYTES)
+    const payload = await readJsonResponseWithLimit<unknown>(
+        response,
+        ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES,
+    )
         .catch((): null => null);
     if (!response.ok) {
         const errorPayload = payload && typeof payload === 'object' && !Array.isArray(payload)

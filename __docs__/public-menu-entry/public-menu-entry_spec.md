@@ -1,7 +1,7 @@
 # Public Menu Entry - Specification
 
 **Status:** Local source complete; external release evidence pending
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -16,13 +16,15 @@ Let a non-technical owner move from one current menu source to an owner-reviewab
 | Requirement | Current contract |
 | --- | --- |
 | Owner onboarding entry | `/create-menu` is reachable without auth on the canonical app host, is `noindex`, and requires sign-in before processing. |
+| Route language and chrome | Upload, preview, success, Header, Footer, theme/language controls, accessibility skip link, and consent use exact complete dictionaries in all eight advertised website languages. Non-English shared chrome may not silently inherit English commands. Desktop navigation must not collide or clip translated labels; constrained widths use the drawer, and RTL drawer placement follows the logical end edge. |
 | Sign-in | Inline Google/OTP paths may return to the flow; password fallback uses the normal sign-in route. |
 | Inputs | One JPEG, PNG, or WebP, one browser-converted PDF of at most 15 pages, or a public page/PDF/image link with permission confirmation. The original uploaded PDF never leaves the browser. |
 | Admission | Feature flags, fail-closed burst limiter, complete account scope, existing-store extraction permission, SAFE_MODE, bounded body/file validation, dedupe, then daily new-source quota. |
 | Draft | Deterministic, owner-bound, 24-hour, atomic with its extraction job, and addressed through one exact UUID projector across response, route, poll, and claim boundaries. Multi-page drafts own a versioned ordered source-file envelope and retain legacy first-source aliases. |
-| Preview | Status-only reads every 5 seconds, maximum 36; one full DTO read after completion; explicit retry on timeout. |
+| Preview | Status-only reads every 5 seconds, maximum 36; one full DTO read after completion; explicit retry on timeout. Render the language marked primary, use canonical localized-text fallback, apply menu-language direction independently of interface direction, and bidi-isolate prices. |
 | Existing account claim | Reuse tenant/store identity, require current publish permission, add a new canonical menu project. |
 | New account claim | Create the existing starter tenant/store plus first project and session claim context. |
+| Starter plan handoff | After a new-account claim, show the seven-day starter boundary and one direct **Keep this menu online** Billing action only when the versioned claim handoff matches the current tenant/store session. Refresh the session before fixed Billing or workspace navigation. |
 | Publish truth | Validate source, prices, phone, business type, slug, project identity, summary, and Menu Correctness stamp before one transaction commits. |
 | Retry | Same owner can replay a successful claim from the persisted receipt without duplicate writes. |
 | Public effects | Refresh menu, OBP, client-store, Digital Screens, and assistant state after commit. |
@@ -39,11 +41,13 @@ Let a non-technical owner move from one current menu source to an owner-reviewab
 - Every category and item in a versioned multi-page result must retain one bounded private source-page index until claim. Missing or out-of-range attribution fails closed instead of silently dropping customer-visible content during project promotion.
 - Poll timeout ends the spinner and offers retry.
 - Post-commit cache effects may be retried independently and do not turn a committed claim into a client rollback.
+- Missing, malformed, expired, or cross-session browser claim context hides the starter Billing action and cannot authorize a signal write.
 
 ## Non-goals
 
 - Anonymous extraction or anonymous draft polling.
 - Automatic subscription checkout during extraction or claim.
+- Shortening the seven-day starter period or moving QR Code and Assets out of their dedicated modules.
 - Publishing without owner confirmation.
 - Uploading or publishing a raw PDF customer surface. PDF is an owner intake format; customers receive the structured MenuList menu.
 - A new queue, collection, operation ledger, or real-time listener.

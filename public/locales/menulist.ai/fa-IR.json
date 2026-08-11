@@ -428,7 +428,8 @@
         "daily": "روز قبل",
         "weekly": "7 روز گذشته",
         "monthly": "این ماه",
-        "overall": "به طور کلی"
+        "overall": "به طور کلی",
+        "graph": "نمودارها"
       },
       "today": {
         "noMenuActivityToday": "امروز هیچ فعالیتی در منو وجود ندارد.",
@@ -454,11 +455,11 @@
         "noResultSearches": "جستجوهای بدون نتیجه",
         "unavailableInterest": "علاقه غیرقابل دسترس",
         "topLanguage": "زبان برتر",
-        "smartPicksShown": "انتخاب های هوشمند نشان داده شده است",
-        "smartPicksClicks": "کلیک‌های انتخاب هوشمند",
-        "smartPicksTaps": "ضربه‌های انتخاب هوشمند",
-        "smartPicksUsed": "گزینه های هوشمند استفاده شده",
-        "smartPicksEngagement": "تعامل با انتخاب هوشمند",
+        "smartPicksShown": "Smart Picks نمایشگر",
+        "smartPicksClicks": "Smart Picks کلیک",
+        "smartPicksTaps": "Smart Picks TAPS",
+        "smartPicksUsed": "Smart Picks استفاده شده",
+        "smartPicksEngagement": "Smart Picks تعهد",
         "totalMenuScans": "مجموع اسکن منو",
         "totalItemClicks": "کلیک مورد",
         "activeDays": "روزهای فعال",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "دیروز هیچ فعالیتی ثبت نشد",
         "noAnalyticsYet": "هنوز داده ای وجود ندارد. هنگامی که مشتریان شروع به مشاهده کنند، تجزیه و تحلیل شما ظاهر می شود.",
-        "noItemClicksYet": "هنوز هیچ موردی کلیک نشده است"
+        "noItemClicksYet": "هنوز هیچ موردی کلیک نشده است",
+        "lowActivityTitle": "فعالیت کم",
+        "lowActivityDescription": "فعالیت کافی برای به دست آوردن نتیجه مفید در این دوره وجود نداشت.",
+        "noWeeklyData": "هنوز هیچ فعالیت منوی تنظیم شده ای برای ۷ روز گذشته در دسترس نیست.",
+        "noMonthlyData": "هنوز هیچ فعالیت منو تنظیم شده برای این ماه در دسترس نیست."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% در مقایسه با هفته گذشته"
+        "vsLastWeek": "{sign}{change}% در مقایسه با هفته گذشته",
+        "changeVsLastWeek": "{change} در مقایسه با هفته گذشته"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# روز فعالیت ثبت شد} other {# روزهای فعالیت ثبت شده}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "بله",
         "no": "خیر",
-        "notAvailable": "غیر قابل قبول",
+        "notAvailable": "N/A",
         "active": "فعال",
         "lowActivity": "فعالیت کم",
         "noData": "بدون داده"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "در انتظار اولین اسکن",
         "weeklyInsights": "اطلاعات آماری هفتگی",
         "last4WeeksComparison": "مقایسه 4 هفته گذشته",
-        "historicalDataWillAppear": "داده های تاریخی پس از چند هفته ظاهر می شوند"
+        "historicalDataWillAppear": "داده های تاریخی پس از چند هفته ظاهر می شوند",
+        "statusMessages": {
+          "working": "مشتریان در حال استفاده از منو فعلی شما هستند.",
+          "low_activity": "فعالیت مشتری هنوز در حال ساخت است. منو فعلی شما در دسترس خواهد ماند.",
+          "no_data": "فعالیت پس از آنکه مشتریان شروع به باز کردن منو شما کنند، ظاهر خواهد شد."
+        }
       },
       "aiSummary": {
         "daily": "روز قبل در یک نگاه",
         "weekly": "این هفته در یک نگاه",
-        "monthly": "خلاصه این ماه"
+        "monthly": "خلاصه این ماه",
+        "localized": {
+          "noActivity": "در این دوره هیچ فعالیت مشتری تسویه شده ای ثبت نشد.",
+          "menuViews": "مشتریان {count} بار منو را باز کردند.",
+          "itemTaps": "مشتریان {count} بار روی آیتم‌های منو ضربه زدند.",
+          "customerActions": "مشتریان {count} عملیات نهایی را تکمیل کردند.",
+          "searches": "مشتریان {count} بار در منو جستجو کردند.",
+          "unavailableInterest": "آیتم‌های غیرقابل دسترس {count} ضربه دریافت کردند."
+        }
       },
       "actions": {
         "call": "تماس بگیرید",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: بازدیدهای {visits} · {rate}%",
         "markDone": "علامت گذاری به عنوان انجام شده",
         "markDoneSaved": "به عنوان انجام شده علامت گذاری شد. وقتی خلاصه تحلیل بعدی آماده شد، نتایج به‌روزرسانی می‌شوند.",
-        "markDoneFailed": "این عمل انجام شده علامت‌گذاری نشد. دوباره امتحان کنید."
+        "markDoneFailed": "این عمل انجام شده علامت‌گذاری نشد. دوباره امتحان کنید.",
+        "bestSourceStatsFormatted": "· {visits} بازدیدها · {rate} نرخ عمل",
+        "bestSourceMobileFormatted": "بهترین منبع در حال حاضر: {source} · {visits} بازدیدها · {rate} نرخ عمل.",
+        "sourceQualityTagFormatted": "{source}: {visits} بازدید · {sessions} جلسات عمل · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} بازدیدها · بازدیدهای جدید {rate}",
+        "priorities": {
+          "high": "اولویت بالا",
+          "medium": "اولویت متوسط",
+          "low": "اولویت پایین"
+        },
+        "confidence": {
+          "stable": {
+            "label": "پایدار",
+            "message": "فعالیت موجود از یک چک منو روشن پشتیبانی می‌کند."
+          },
+          "watch": {
+            "label": "ادامه تماشای",
+            "message": "برخی از فعالیت‌ها ممکن است قبل از تغییر منو نیاز به بررسی مجدد داشته باشند."
+          },
+          "no_data": {
+            "label": "اطلاعات بیشتر مورد نیاز",
+            "message": "قبل از اینکه نتیجه گیری کنید، منتظر فعالیت مشتری ثابت تر باشید."
+          }
+        },
+        "localizedActions": {
+          "reason": "بر اساس آخرین فعالیت مشتری تسویه شده.",
+          "availability": {
+            "title": "بررسی در دسترس بودن",
+            "description": "بررسی کنید که آیا اشیاء غیرقابل دسترسی یا مخفی باید بازگردانده شوند یا از دید دور نگه داشته شوند.",
+            "action": "بررسی موجود بودن"
+          },
+          "customerActions": {
+            "title": "بررسی اقدامات مشتری را انجام دهید.",
+            "description": "قبل از انجام هرگونه اقدامی، جزئیات منو و لینک‌هایی که مشتریان استفاده می‌کنند را بررسی کنید.",
+            "action": "بررسی اقدامات مشتری را انجام دهید."
+          },
+          "details": {
+            "title": "بهبود جزئیات موارد",
+            "description": "نام‌های، گزینه‌ها، توضیحات و تصاویر مورد نیاز را بررسی کنید.",
+            "action": "بررسی جزئیات موضوع"
+          },
+          "general": {
+            "title": "برای سیگنال روشن‌تری صبر کنید.",
+            "description": "منوی فعلی را پایدار نگه دارید تا زمانی که فعالیت‌های ثابت‌تر در دسترس باشند.",
+            "action": "بررسی بعدی"
+          },
+          "menuOrder": {
+            "title": "بررسی سفارش منو",
+            "description": "بررسی کنید که آیا پیدا کردن اشیاء و دسته بندی‌های مهم برای مشتریان آسان است.",
+            "action": "بررسی سفارش منو"
+          },
+          "pricing": {
+            "title": "بررسی قیمت گذاری",
+            "description": "قیمت‌ها را به آخرین سیگنال علاقه مشتری متصل کنید.",
+            "action": "بررسی قیمت ها"
+          },
+          "search": {
+            "title": "بررسی جستجوهای مشتری‌ها",
+            "description": "بررسی کنید که آیا جستجوهایی که ممکن است مشتریان را به یک نتیجه منو مفید هدایت نکنند.",
+            "action": "بررسی جستجو"
+          },
+          "source": {
+            "title": "بررسی منابع ورود مشتری",
+            "description": "بررسی کنید که آیا پیوندهای عمومی و QR قرارگیری‌ها مشتریان را به منو جاری هدایت می‌کنند.",
+            "action": "بررسی لینک های عمومی"
+          },
+          "timing": {
+            "title": "بررسی زمان بندی منوی",
+            "description": "بررسی کنید که آیا دسته بندی‌های زمان‌بندی شده و موجودی زمانی که مشتریان به دنبال آن‌ها هستند، مطابقت دارند.",
+            "action": "بررسی زمان بندی"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "مشخص شده انجام شده",
+            "message": "نتیجه پس از اینکه فعالیت‌های بیشتر و مشخص‌تری در دسترس باشد، بررسی خواهد شد."
+          },
+          "improved": {
+            "label": "بهبود یافته",
+            "message": "چک تسویه بعدی نشان دهنده بهبود است."
+          },
+          "no_clear_change": {
+            "label": "هیچ تغییری آشکار",
+            "message": "چک بعدی که انجام شد، تغییر واضحی را نشان نداد."
+          },
+          "not_enough_data": {
+            "label": "اطلاعات بیشتر مورد نیاز",
+            "message": "هنوز فعالیت ثابت کافی برای قضاوت در مورد این تغییر وجود ندارد."
+          },
+          "pending": {
+            "label": "چک طولانی",
+            "message": "MenuList این را پس از اینکه فعالیت‌های حل شده بیشتری در دسترس باشد بررسی خواهد کرد."
+          }
+        }
       },
       "details": {
         "menuDetails": "جزئیات منو",
@@ -574,7 +686,7 @@
           "unavailableInterest": "علاقه غیرقابل دسترس",
           "languages": "زبان‌ها",
           "filters": "فیلترها",
-          "smartPicks": "انتخاب های هوشمند",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "اقدامات بر اساس ساعات کاری"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "نماهای منو",
-          "itemTaps": "بر روی مورد",
+          "itemTaps": "ضربه‌های روی موارد",
           "menuSessions": "جلسات منو",
           "engagedSessions": "جلسات با فعالیت",
           "actionSessions": "جلسات اقدام",
@@ -617,6 +729,12 @@
           "unknown": "اقدامات زمانی که وضعیت ساعت در دسترس نبود",
           "closed": "اقدامات هنگام بسته شدن",
           "closedShare": "{rate}٪ از همه اقدامات ضبط شده در حالت بسته اتفاق افتاده است"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} tapهای غیرقابل دسترس را لمس می‌کند.",
+          "strongItem": "{count} ضربه‌های روی موارد",
+          "needsWork": "{count} بازدید، هیچ لمس نشده است.",
+          "gettingAttention": "بازدیدهای {count}"
         }
       },
       "smartPicks": {
@@ -642,16 +760,16 @@
         "officialBusinessPage": "صفحه تجاری رسمی",
         "loadingCurrentActivity": "در حال بارگیری فعالیت OBP فعلی",
         "loadingActivity": "در حال بارگیری فعالیت OBP",
-        "sharedInfo": "اقدامات، کلیک‌های نهایی OBP روی تماس، واتس‌اپ، مسیرها، رزرو و سفارش را شمارش می‌کنند. اشتراک‌ها از کارت پیوند تجاری رسمی می‌آیند، و ضربه‌های پیوند، بازدیدهای Google، اینستاگرام، فیس‌بوک و بازدیدهای وب‌سایت از OBP عمومی را محاسبه می‌کند.",
+        "sharedInfo": "اکشن ها شمارش نهایی OBP کلیک بر روی تماس، WhatsApp, هدایت, رزرو, و سفارش. سهام از کارت لینک رسمی کسب و کار می آید, و لینک تایپ حساب Google بررسی , Instagram, Facebook, و بازدید از وب سایت از OBP عمومی.",
         "noActivityToday": "هنوز امروز هیچ فعالیت OBP وجود ندارد.",
         "noComparison": "بدون مقایسه",
         "sameAsLastWeek": "همانند هفته گذشته",
-        "whatsappShares": "اشتراک‌گذاری واتساپ",
+        "whatsappShares": "WhatsApp سهام",
         "copyLink": "پیوند را کپی کنید",
         "copyMessage": "کپی پیام",
         "googleReviews": "Google نظرات",
-        "instagram": "اینستاگرام",
-        "facebook": "فیس بوک",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "وب سایت",
         "sourceViews": "بازدیدهای {count}",
         "sourceMenu": "منوی {count}",
@@ -680,8 +798,8 @@
         "actionBreakdown": "تفکیک عملکرد",
         "shareBreakdown": "تجزیه به اشتراک گذاری",
         "mobileInfoIntro": "این کارت نحوه تعامل مشتریان با صفحه کسب و کار رسمی شما را قبل یا حین باز کردن منو نشان می‌دهد.",
-        "mobileInfoActions": "عملکردها، کلیک‌های نهایی روی تماس، واتس‌اپ، دستورالعمل‌ها، رزرو و سفارش را شمارش می‌کنند.",
-        "mobileInfoLinks": "اشتراک‌گذاری‌ها از کارت پیوند تجاری رسمی می‌آیند، و ضربه زدن به پیوند، بازدیدهای Google، اینستاگرام، فیس‌بوک و بازدیدهای وب‌سایت از OBP عمومی را محاسبه می‌کند.",
+        "mobileInfoActions": "تعداد کلیک های نهایی در تماس، WhatsApp, راهنمایی , رزرو , و سفارش .",
+        "mobileInfoLinks": "Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.",
         "todayPartialInfo": "امروز تا کنون فقط بخشی از فعالیت زنده است. هنوز در کل روز قبل، 7 روز گذشته، این ماه یا کل مادام العمر گنجانده نشده است."
       },
       "customerApp": {
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "تفکیک میانبر",
         "installsByPlatform": "نصب بر اساس پلتفرم",
         "appStickiness": "چسبندگی برنامه",
-        "returningOpens30d": "بازگشت (30 روز)",
         "avgOpensPerInstall": "میانگین در هر نصب باز می شود",
         "iosManualInstalls": "نصب دستی iOS",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "سفارش آنلاین"
         },
         "platforms": {
-          "ios": "iOS: برای سیستم عامل آی او اس طراحی شده است.",
-          "iosLong": "آی‌اواس (آیفون/آی‌پاد)",
-          "android": "اندروید",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "رومیزی",
           "other": "سایر"
-        }
+        },
+        "tryAgainLater": "بعداً دوباره سعی کنید."
       },
       "projectSelector": {
         "deleted": "حذف شد",
@@ -761,7 +879,8 @@
         "copied": "کپی شد",
         "copy": "کپی",
         "openGoogle": "Google را باز کنید",
-        "done": "انجام شد"
+        "done": "انجام شد",
+        "couldNotOpen": "نتوانست پروفایل تجاری Google را باز کند."
       },
       "behaviorNudge": {
         "linkCopied": "پیوند کپی شد",
@@ -773,7 +892,7 @@
       },
       "hoursNudge": {
         "riskyTitle": "ممکن است ساعت کاری قدیمی باشد",
-        "brokenTitle": "ساعت نیاز به به روز رسانی دارد",
+        "brokenTitle": "ساعات باید به‌روزرسانی شوند",
         "riskyMessage": "ممکن است ساعات کاری شما قدیمی باشد. آنها را به روز کنید تا وضعیت باز بودن دقیق به مشتریان نشان داده شود.",
         "brokenMessage": "ساعات شما گم شده یا نامعتبر است. آنها را به‌روزرسانی کنید تا مشتریان بتوانند زمان باز بودن شما را ببینند."
       },
@@ -786,7 +905,748 @@
         "reviewTopIssue": "مشکل اصلی را مرور کنید",
         "repairMenu": "منوی تعمیر",
         "review": "بررسی",
-        "repair": "تعمیر"
+        "repair": "تعمیر",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# عنصری است که شرح آن در دسترس نیست.} other {# موارد دارای شرح‌های گم شده‌اند.}}",
+            "ok": "همه ی این موارد دارای توضیحات هستند.",
+            "help": "توصیفات به مشتریان کمک می‌کند تا هر یک از پیشنهادها را بفهمند."
+          },
+          "images": {
+            "warning": "{count, plural, one {در مورد # یک تصویر وجود ندارد.} other {# آیتم ها تصاویر گم شده هستند.}}",
+            "ok": "همه اجناس دارای تصاویر هستند.",
+            "help": "تصاویر می‌توانند به مشتریان کمک کنند تا سریعتر انتخاب کنند."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {در دسته # یک شمایل وجود ندارد.} other {# رده ها دارای آیکون های گم شده هستند.}}",
+            "ok": "همه دسته‌ها آیکون دارند.",
+            "help": "آیکون‌ها اسکن کردن دسته‌ها را آسان‌تر می‌کنند."
+          },
+          "prices": {
+            "warning": "{count, plural, one {در مورد شیء # قیمتی وجود ندارد.} other {# از کالاها قیمت‌های مفقودی دارند.}}",
+            "ok": "همه ی این کالاها قیمت دارند.",
+            "help": "مشتریان قبل از تصمیم‌گیری قیمت‌ها را مقایسه می‌کنند."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {شیء # از دید مشتریان مخفی شده است.} other {# آیتم‌ها از دید مشتریان مخفی شده‌اند.}}",
+            "ok": "هیچ شیئی مخفی نشده است.",
+            "help": "موارد مخفی شده در منو عمومی ظاهر نمی‌شوند."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {قیمت # نیاز به بازبینی دارد.} other {قیمت های # نیاز به بازبینی دارند.}}",
+            "ok": "قیمت‌ها در محدوده انتظاری قرار دارند.",
+            "help": "MenuList قیمت‌های تک‌بند را در یک دسته مقایسه می‌کند. قیمتی که عمداً به عنوان بررسی شده نشان داده می‌شود."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# آیتم از دست رفته ترجمه} other {# ترجمه ها از دست رفته است}}",
+            "ok": "تمام عناصر قابل مشاهده ترجمه شده‌اند.",
+            "help": "برخی از عناصر در زبان‌های منو انتخاب شده ناقص هستند."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# جزئیات منوی ترجمه نشده است.} other {# جزئیات منوی ترجمه نشده است.}}",
+            "ok": "جزئیات منو ترجمه شده است.",
+            "help": "نام منو، شرح یا یادداشت‌ها در زبان‌های منو انتخاب شده ناقص هستند."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "لینک رونوشت شده.",
+        "direct": "مستقیماً.",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "منوی کیت",
+        "nativeShare": "اشتراک گذاری دستگاه",
+        "obp": "صفحه کسب و کار",
+        "other": "سایر",
+        "qr": "کد QR",
+        "shortcut": "App کوتاه کردن",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "سلامت کسب و کار",
+        "open": "سلامت کسب و کار باز",
+        "today": "امروز",
+        "latestActivity": "آخرین فعالیت",
+        "noActionNeeded": "عملی لازم نیست",
+        "status": {
+          "stable": "پایدار",
+          "watch": "نیاز به توجه دارد",
+          "needs_review": "نیاز به بررسی",
+          "insufficient_data": "اطلاعات بیشتر مورد نیاز",
+          "stale": "نیاز به چک تازه دارد.",
+          "not_ready": "آماده شدن"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# جزئیات مشتری نیاز به بازبینی دارد.} other {جزئیات مربوط به مشتری # نیاز به بازبینی دارد.}}",
+          "stable": {
+            "headline": "اطلاعات عمومی شما پایدار است.",
+            "message": "هیچ مشکلی که با مشتری مواجه است نیاز به اقدام در آخرین چک ندارد."
+          },
+          "watch": {
+            "headline": "ممکن است یک جزئیات نیاز به توجه داشته باشد.",
+            "message": "قبل از تغییر اطلاعات عمومی، چک پیشنهادی را بررسی کنید."
+          },
+          "needs_review": {
+            "headline": "بررسی جزئیات مربوط به مشتری را در نظر بگیرید.",
+            "message": "یک یا چند جزئیات عمومی باید بررسی شود."
+          },
+          "insufficient_data": {
+            "headline": "فعالیت بیشتری لازم است.",
+            "message": "اطلاعات جاری را ثابت نگه می‌دارد در حالی که MenuList یک سیگنال مفید جمع‌آوری می‌کند."
+          },
+          "stale": {
+            "headline": "سلامت کسب و کار نیازمند یک بررسی تازه است.",
+            "message": "آخرین بررسی قدیمی است. اطلاعات عمومی فعلی شما بدون تغییر باقی می‌ماند. آخرین چک کردن قدیمی است و اطلاعات عمومی شما بدون تغییرات باقی می‌مانند."
+          },
+          "not_ready": {
+            "headline": "سلامت کسب و کار آماده می‌شود.",
+            "message": "اولین چک فروشگاه هنگامی که آماده است در اینجا ظاهر خواهد شد."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "بررسی منبع منوی",
+            "message": "هیچ منبع فعال عمومی منو پیدا نشد. قبل از به اشتراک گذاشتن، منو را بررسی کنید.",
+            "title": "منبع منوی نیاز به بررسی دارد."
+          },
+          "low_latest_activity": {
+            "action": "بررسی لینک های اشتراک گذاری",
+            "message": "فعالیت مشتری پایین است. QR، Google ، Instagram و WhatsApp را بررسی کنید.",
+            "title": "فعالیت مشتری پایین است."
+          },
+          "unavailable_item_taps": {
+            "action": "گزینه‌های غیرقابل دسترسی را چک کنید.",
+            "message": "مشتریان علاقه‌مند به کالاهای در دسترس نبوده بودند. آن‌ها را دوباره ذخیره کنید یا مخفی نگه دارید.",
+            "title": "کالاهای غیرقابل دسترس توجه را به خود جلب کردند."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "بازخورد مهمانان را بررسی کنید.",
+            "message": "بازخورد مهمان نیاز به بررسی مالک قبل از تغییر جزئیات عمومی دارد.",
+            "title": "بازخورد مهمان نیاز به بررسی دارد."
+          },
+          "default": {
+            "action": "بررسی جزئیات",
+            "message": "یک جزئیات رو به مشتری نیازمند بررسی مالک است.",
+            "title": "یک جزئیات نیاز به بررسی دارد."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {مورد بازخورد خصوصی # نیاز به بررسی دارد.} other {# موارد بازخورد خصوصی نیاز به بررسی دارند.}}",
+          "clear": "بازخورد خصوصی واضح است."
+        },
+        "freshness": {
+          "notReady": "سلامت کسب و کار زمان واقعی نیست. اولین بررسی ذخیره تاریخ داده را در اینجا نشان می‌دهد.",
+          "throughDate": "از داده‌ها از طریق {date} استفاده می‌کند. امروز ممکن است هنوز کامل نشده باشد.",
+          "latest": "از آخرین داده‌های موجود MenuList استفاده می‌کند. امروز ممکن است هنوز کامل نشده باشد."
+        },
+        "periods": {
+          "today": "امروز",
+          "yesterday": "روز قبل",
+          "thisWeek": "این هفته",
+          "lastWeek": "هفته گذشته",
+          "thisMonth": "این ماه",
+          "lastMonth": "ماه گذشته",
+          "last7Days": "۷ روز گذشته",
+          "last30Days": "۳۰ روز گذشته",
+          "overall": "به طور کلی"
+        },
+        "metrics": {
+          "menuViews": "نماهای منو",
+          "topDemand": "بیشترین تقاضا",
+          "topDemandDetail": "ارتقاء: {count} {signal}",
+          "bestSource": "بهترین منبع",
+          "bestSourceDetail": "پیوند به روزرسانی: {count} بازدیدها"
+        },
+        "signals": {
+          "views": "دیدگاه ها",
+          "clicks": "ضربه‌ها",
+          "attention": "نشانه های توجه"
+        },
+        "page": {
+          "description": "وضعیت روزانه کسب و کار و چک‌های مواجه با مشتری.",
+          "latestCheck": "AI health check",
+          "loading": "بارگذاری",
+          "loadingMessage": "در حال بارگذاری سلامت کسب و کار...",
+          "notReady": "سلامت کسب و کار هنوز آماده نیست.",
+          "loadErrorTitle": "سلامت کسب و کار نتوانست بارگذاری شود.",
+          "loadErrorDescription": "لطفاً این صفحه را بازیابی کنید و دوباره سعی کنید.",
+          "refresh": "بازخوانی",
+          "needsAttention": "نیاز به توجه دارد",
+          "desktopSettingsOnly": "این را از تنظیمات رومیزی باز کنید."
+        },
+        "scope": {
+          "title": "حوزه سلامت کسب و کار",
+          "allMenus": "همه منوها",
+          "selectedMenu": "منوی انتخاب شده",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "نمای سطح مکان",
+          "inactiveMenu": "منوی غیر فعال",
+          "thisMenuOnly": "این منوی فقط",
+          "allMenusInLocation": "همه منوها در این مکان",
+          "thisMenuHelper": "سوالات و فعالیت ها از این منو استفاده می کنند.",
+          "allMenusHelper": "سوالات و فعالیت‌ها از تمام منوها در این مکان استفاده می‌کنند.",
+          "dialogDescription": "تمام منوها یا یک منو را برای فعالیت و چک‌ها انتخاب کنید.",
+          "all": "همه همگی",
+          "close": "بستن"
+        },
+        "locations": {
+          "title": "مکان ها",
+          "loading": "در حال بارگذاری مکان‌ها...",
+          "empty": "هنوز خلاصه‌ای از موقعیت وجود ندارد.",
+          "storeFallback": "مکان {id}",
+          "checkedOn": "{date} چک شد.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {چک مشتری‌مدار # نیاز به بازبینی دارد.} other {# چک‌های مشتری نیاز به بازبینی دارند.}}",
+          "statusReason": {
+            "stable": "هیچ مشکلی که با مشتری مواجه است نیاز به اقدام ندارد.",
+            "watch": "یک جزئیات رو به مشتری ممکن است نیاز به توجه داشته باشد.",
+            "needs_review": "جزئیات مربوط به مشتری نیاز به بازبینی دارد.",
+            "insufficient_data": "برای یک چک مفید، فعالیت بیشتر مشتری لازم است.",
+            "stale": "این مکان نیاز به بررسی مجدد دارد.",
+            "not_ready": "اولین بررسی مکان آماده است."
+          }
+        },
+        "assistant": {
+          "title": "از کسب و کار سلامت بپرسید",
+          "askShort": "پرسیدن",
+          "englishOnlyTitle": "سوالات در حال حاضر به زبان انگلیسی قابل پاسخگویی هستند.",
+          "englishOnlyDescription": "وضعیت و چک‌های شما بومی شده‌اند. برای پرسیدن سوالات سلامت کسب‌وکار، زبان برنامه را به انگلیسی تغییر دهید.",
+          "notReady": "سلامت کسب و کار پس از تکمیل آخرین چک پاسخ خواهد داد.",
+          "suggestedUnavailable": "سوالات پیشنهادی در حال حاضر در دسترس نیست.",
+          "freeTextUnavailable": "سوالات متن آزاد در حال حاضر در دسترس نیستند.",
+          "answerError": "سلامت کسب و کار نمی تواند به این سوال پاسخ دهد.",
+          "suggestedQuestions": "سوالات پیشنهادی",
+          "followUps": "بعدی می توانید بپرسید",
+          "you": "شما",
+          "empty": "یک سوال انتخاب کنید یا در مورد کسب و کار خود بپرسید.",
+          "placeholderReady": "در مورد امروز، این هفته، توجه به منو یا چک‌های بعدی بپرسید.",
+          "placeholderMobile": "از او در مورد امروز یا این هفته بپرسید.",
+          "placeholderPending": "پس از آخرین بررسی در دسترس است.",
+          "send": "پرسش بفرستید",
+          "cachedFacts": "بر اساس حقایق کاری نهان شده MenuList",
+          "questions": {
+            "checks": "چي بايد چک بشه؟",
+            "today_stats": "امروز چطوری؟",
+            "this_week_stats": "اين هفته چه اتفاقي افتاد؟",
+            "top_item": "کدام یک از این موارد توجه را جلب می‌کند؟",
+            "last_week_stats": "هفته پيش چه اتفاقي افتاد؟",
+            "this_month_stats": "اين ماه چطور بود؟",
+            "last_month_stats": "ماه گذشته چه اتفاقی افتاد؟",
+            "public_menu_status": "منو عمومی من خوبه؟",
+            "profile_status": "آیا پرونده کسب و کار من کامل است؟",
+            "feedback_reviews": "بازخورد مهمان‌ها را می‌خواهید چک کنید؟",
+            "feedback_recent": "مهمانان اخیراً چه گفتند؟",
+            "default": "بعدش چی رو باید چک کنم؟"
+          }
+        },
+        "sources": {
+          "title": "منابع داده ها",
+          "menuProjects": "پروژه های منو",
+          "ownerAnalytics": "فعالیت مالک",
+          "guestFeedback": "بازخورد مهمانان از اقامتگاه های ما",
+          "storeSettings": "محیط‌های کسب و کار",
+          "menuListData": "داده های MenuList",
+          "updatedOn": "{date} به روز شد",
+          "latest": "آخرین داده‌های موجود در دسترس."
+        },
+        "publicTruth": {
+          "title": "منبع رسمی مشتری برای مشتریان.",
+          "checking": "در حال بررسی",
+          "checkingFacts": "در حال بررسی حقایق عمومی MenuList...",
+          "checkedMenu": "منو چک شده: {name}",
+          "boundary": "از داده‌های فعلی MenuList کسب و کار و منو بررسی شد. پلتفرم‌های خارجی توسط صاحب تأیید می‌شوند.",
+          "boundaryShort": "بسترهای خارجی توسط صاحبان تأیید می‌شوند.",
+          "historyTitle": "تاریخچه اطلاعات عمومی",
+          "historyBoundary": "فقط از MenuList business و menu facts استفاده می‌کند. هیچ سایت خارجی اسکن نمی‌شود.",
+          "historyBoundaryShort": "فقط حقایق MenuList. هیچ سایت خارجی اسکن نشده است.",
+          "refreshErrorTitle": "چک منبع مشتری نتوانست دوباره بارگذاری شود.",
+          "refreshErrorDescription": "آخرین حقایق موجود MenuList هنوز در زیر نشان داده شده‌اند.",
+          "historyRefreshError": "تاریخچه اطلاعات عمومی را نمی‌توان بازنشانی کرد.",
+          "historyLoadError": "تاریخچه اطلاعات عمومی را نمی‌توان بار کرد.",
+          "historyErrorDescription": "آخرین گزارش ذخیره شده هنوز زمانی که در دسترس است نشان داده می شود.",
+          "notRun": "اجرا نشده است.",
+          "lastSaved": "آخرین نجات {date}",
+          "noSavedReport": "هنوز گزارش ذخیره نشده",
+          "noSavedReportDescription": "برای ذخیره اولین گزارش برای این مکان، بررسی را اجرا کنید.",
+          "downloadEnglishReport": "گزارش انگلیسی را دانلود کنید",
+          "downloadEnglishShort": "گزارش انگلیسی",
+          "runCheck": "رانندگی چک",
+          "currentFix": "فاکتور فعلی",
+          "nextFixes": "تصحیح عمومی بعدی",
+          "none": "هیچ",
+          "attentionCount": "{count, plural, one {عنصر # نیاز به بررسی دارد.} other {# مورد نیاز به بررسی است.}}",
+          "readyModuleCount": "{count}/{total} آماده است.",
+          "missingCount": "ناپدید شدن {count}",
+          "checkCount": "چک کردن {count}",
+          "savedCount": "{count}/{total} ذخیره شد.",
+          "modulesReady": "{count}/{total} ماژول آماده است.",
+          "status": {
+            "ready": {
+              "label": "آماده‌ام.",
+              "message": "منبع رسمی مشتری شما، نیازهای اساسی مشتریان را دارد."
+            },
+            "missing_basics": {
+              "label": "گم شدن اصول اولیه",
+              "message": "منو، ساعت‌ها، قیمت‌ها، اقدامات یا جزئیات لینک مشتری قبل از اشتراک گذاری گسترده نیاز به توجه دارند."
+            },
+            "unclear": {
+              "label": "نیاز به چک کردن",
+              "message": "بیشتر اصول وجود دارد، اما یک یا چند حقیقت عمومی هنوز نیاز به بررسی دارند."
+            }
+          },
+          "metrics": {
+            "readyModules": "ماژول‌های آماده",
+            "missingFacts": "حقایق گمشده",
+            "checkedMenu": "بررسی منوی",
+            "savedReports": "گزارش های نجات یافته"
+          },
+          "results": {
+            "present": "آماده‌ام.",
+            "missing": "گمشده گم شده",
+            "unclear": "چک کردن",
+            "not_applicable": "نیازی نیست.",
+            "not_checked": "بررسی نشده"
+          },
+          "moduleStatus": {
+            "ready": "آماده‌ام.",
+            "needs_attention": "گمشده گم شده",
+            "check": "چک کردن",
+            "not_checked": "بررسی نشده"
+          },
+          "facts": {
+            "business_identity": "نام کسب و کار",
+            "menu_or_service_source": "فهرست منو یا خدمات.",
+            "prices": "قیمت‌ها",
+            "hours": "ساعت ها Hours",
+            "location": "موقعیت مکانی",
+            "contact": "تماس با ما",
+            "customer_actions": "عمل مشتری",
+            "public_link": "پیوند مشتری (Customer link)",
+            "photos": "عکس ها و فیلم ها",
+            "machine_readable_source": "جزئیات مناسب برای جستجو را بخوانید."
+          },
+          "evidence": {
+            "owner_entered": "وارد شده در این چک.",
+            "owner_selected": "توسط صاحب انتخاب شده است.",
+            "source_text_hint": "در منبع ارائه شده یافت شد.",
+            "valid_public_url": "فرمت لینک عمومی معتبر است.",
+            "invalid_public_url": "لینک عمومی نیاز به اصلاح دارد.",
+            "menulist_store": "تنظیمات جاری MenuList کسب و کار بررسی شد.",
+            "menulist_project": "منو انتخاب شده یا پیش‌فرض MenuList چک شد.",
+            "menulist_summary": "بررسی وضعیت فعلی MenuList خلاصه ی منوی",
+            "menulist_public_route": "تنظیمات پیوند مشتری جاری MenuList بررسی شد.",
+            "menulist_index_gate": "قوانین کشف عمومی جاری MenuList بررسی شد.",
+            "not_provided": "این واقعیت در داده‌های جاری MenuList وجود ندارد.",
+            "not_checked": "این واقعیت از داده‌های جاری MenuList به صورت ایمن بررسی نشد.",
+            "priceNotLoaded": "منو انتخاب شده را یک بار باز کنید تا MenuList بتواند قیمت‌ها را چک کند."
+          },
+          "moduleEvidence": {
+            "ready": "داده‌های جاری MenuList نشان می‌دهد که این منطقه آماده است.",
+            "needs_attention": "داده‌های جاری MenuList نشان می‌دهد که اطلاعات مورد نیاز وجود ندارد.",
+            "check": "قبل از اینکه مشتریان به آن اعتماد کنند، این بخش را بررسی کنید.",
+            "not_checked": "MenuList نتوانست این ناحیه را از داده‌های جاری کاملاً بررسی کند."
+          },
+          "setupReason": {
+            "needs_attention": "اطلاعات مورد نیاز مشتری گم شده است.",
+            "check": "قبل از اینکه مشتریان به آن اعتماد کنند این را چک کنید.",
+            "not_checked": "MenuList نتوانست این را از داده‌های جاری کاملاً بررسی کند."
+          },
+          "targetActions": {
+            "basic_settings": "باز کردن جزئیات کسب و کار",
+            "domain_settings": "باز کردن پیوند مشتری",
+            "hours_edit": "ساعت‌های کاری:",
+            "menu_tab": "منو باز کنید",
+            "official_page": "باز کردن صفحه کسب و کار",
+            "presence_monitor": "باز کردن چک موقعیت یابی باز",
+            "share_tab": "ابزارهای سهام باز"
+          },
+          "actions": {
+            "openCustomerSource": "منبع مشتری باز را باز کنید.",
+            "openShareTools": "ابزارهای اشتراک گذاری باز",
+            "fixFact": "تصحیح {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "اصول اطلاعات عمومی",
+              "description": "نام کسب و کار، منو یا منبع خدمات فعلی، تماس، اقدامات و لینک مشتری."
+            },
+            "business_facts_copy_pack": {
+              "title": "جزئیات تجاری قابل استفاده مجدد.",
+              "description": "کارمندان می‌توانند حقایق جاری را در پروفایل‌های عمومی، پاسخ‌ها و لینک‌های مشتری استفاده مجدد کنند."
+            },
+            "qr_link_health": {
+              "title": "QR آماده بودن پیوند",
+              "description": "یک پیوند مشتری جاری برای QR و قرارگیری‌های چاپ شده."
+            },
+            "social_bio_link_consistency": {
+              "title": "پروفایل لینک سازگاری",
+              "description": "یک لینک مشتری فعلی برای پروفایل‌های اجتماعی و سایر رتبه‌ها."
+            },
+            "customer_link_preview": {
+              "title": "پیش‌نمایش لینک مشتری",
+              "description": "حقایق اصلی که مشتریان باید قبل از اقدام به خرید بدانند."
+            },
+            "print_share_assets": {
+              "title": "چاپ و به اشتراک گذاری دارایی‌ها.",
+              "description": "آماده‌سازی پیوند جاری برای پوسترهای QR، کارت‌های شمارش و تصاویر اشتراکی."
+            },
+            "menu_service_readability": {
+              "title": "شفافیت منو یا خدمات.",
+              "description": "دسته‌ها، کالاها یا خدمات و قیمت‌ها در منو انتخاب شده."
+            },
+            "price_availability_gap": {
+              "title": "شفافیت قیمت و موجودی و در دسترس بودن.",
+              "description": "قیمت‌ها، انواع، وضعیت فروش تمام شده و موجودی به مشتریان نشان داده می‌شود."
+            },
+            "menu_pdf_cleanup": {
+              "title": "جایگزینی قدیمی PDF",
+              "description": "یک منبع MenuList و پیوند مشتری که می‌تواند جایگزین پی‌دی‌اف‌های قدیمی شود."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp عمل",
+              "description": "یک WhatsApp یا عمل تماسی جایگزین با مشتری."
+            },
+            "hours_readiness": {
+              "title": "ساعت‌های آماده‌باش",
+              "description": "ساعت‌های کاری منظم که مشتریان بتوانند بر آن تکیه کنند."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp حقایق را پاسخ می‌دهد.",
+              "description": "منو، ساعت کار، تماس و لینک‌های فعلی برای پاسخ‌های پرسنل."
+            },
+            "photo_visual_identity": {
+              "title": "عکس ها و هویت بصری",
+              "description": "لوگو، جلد، عکس کسب و کار یا تصویری از کالا و خدمات."
+            },
+            "customer_question_coverage": {
+              "title": "سوالات رایج مشتریان در مورد خدمات پس از فروش",
+              "description": "حقایق واضح برای پیشنهاد، ساعت‌ها، قیمت، مکان، تماس و اقدام بعدی."
+            },
+            "customer_faq_reply_pack": {
+              "title": "پاسخ‌های مشتری قابل استفاده مجدد",
+              "description": "کارکنان می‌توانند از حقایق کنونی استفاده کنند هنگامی که مشتریان سوالات رایج می‌پرسند."
+            },
+            "booking_inquiry_readiness": {
+              "title": "آماده‌باش برای رزرو و پرسش از مشتریان.",
+              "description": "یک مسیر واضح برای سفارش، رزرو، تماس، پیام، درخواست قیمت یا بازدید."
+            },
+            "google_profile_handoff": {
+              "title": "Google پیوند پروفایل",
+              "description": "پیوند مشتری جاری برای Google Business Profile آماده شده است."
+            },
+            "menu_freshness": {
+              "title": "تازه بودن منو",
+              "description": "یک به روزرسانی اخیر منو هنگامی که قیمت‌ها، کالاها یا موجودی تغییر می‌کند."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "نمودارها",
+        "description": "یک خلاصه بصری از همان فعالیت تنظیم شده که در دایرکتوری نمایش داده می‌شود.",
+        "ranges": {
+          "days7": "۷ روز",
+          "days30": "۳۰ روز"
+        },
+        "metrics": {
+          "menu_activity": "منوی فعالیت",
+          "customer_actions": "عمل مشتری",
+          "search_demand": "جستجو تقاضا",
+          "item_interest": "مورد علاقه:",
+          "unavailable_demand": "تقاضای غیرقابل دسترس",
+          "missing_searches": "جستجوی گمشده"
+        },
+        "trend": {
+          "summary": "خلاصه روندها",
+          "updatedAfterClose": "پس از بسته شدن فروشگاه به روز رسانی می‌شود.",
+          "status": {
+            "up": "بالاتر",
+            "down": "پایین تر",
+            "stable": "ثابت",
+            "not_enough_data": "تاریخ کافی وجود ندارد."
+          },
+          "period": {
+            "week": "بررسی هفته ای",
+            "month": "چک ماه"
+          },
+          "shortPeriod": {
+            "week": "هفته",
+            "month": "ماه"
+          },
+          "needsMoreDays": "به روزهای ثابت تر نیاز دارد.",
+          "versus": "{current} در برابر {previous}",
+          "messages": {
+            "up": "{metric} برای این چک {period} بالاتر است.",
+            "down": "{metric} برای این چک {period} پایین‌تر است.",
+            "stable": "در بررسی {period}، {metric} ثابت است.",
+            "not_enough_data": "تاریخچه {metric} تنظیم شده کافی برای این چک کردن {period} وجود ندارد."
+          },
+          "change": {
+            "gathering": "{period}: در حال جمع‌آوری",
+            "newActivity": "{period}: فعالیت جدید",
+            "steady": "{period}: ثابت",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "مقایسه نمودار",
+          "description": "حرکت هفته و ماه از روزهای ثابت."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "روند منو",
+            "days7": "هفت روز گذشته تسویه شده.",
+            "days30": "۳۰ روز گذشته تسویه شده."
+          },
+          "customerActions": {
+            "title": "عمل مشتری",
+            "description": "مشتریان بعد از باز کردن منو روی چه چیزی کلیک کردند؟"
+          },
+          "sources": {
+            "title": "از کجای دنیا مشتریان می‌آمدند؟",
+            "description": "بازدیدهای منو و جلسات عمل بر اساس منبع"
+          },
+          "items": {
+            "title": "موضوعات مورد علاقه",
+            "description": "اشیاء که مشتریان بیشترین بار آن را باز یا لمس کردند."
+          },
+          "search": {
+            "title": "جستجو تقاضا",
+            "description": "مشتریان به دنبال چه چیزی می‌گشتند؟"
+          },
+          "officialPage": {
+            "title": "صفحه رسمی روند",
+            "description": "دیدگاه‌ها و اقدامات از صفحه رسمی کسب و کار"
+          }
+        },
+        "legends": {
+          "visits": "بازدید",
+          "actionSessions": "جلسات اقدام",
+          "views": "نظرات بازدیدها",
+          "taps": "ضربه‌ها",
+          "noResult": "هیچ نتیجه ای"
+        },
+        "empty": {
+          "default": "هنوز هیچ داده گرافیکی برای این نمایه وجود ندارد.",
+          "menuActivity": "فعالیت منو پس از باز کردن منو توسط مشتری ظاهر خواهد شد.",
+          "customerActions": "فعالیت‌های مشتری پس از تماس، پیام‌رسانی، سفارش، رزرو یا درخواست مسیر توسط مشتریان ظاهر می‌شوند.",
+          "customerActionsPeriod": "در این دوره هنوز هیچ اقدامی از سوی مشتری صورت نگرفته است.",
+          "searchDemand": "تقاضای جستجو پس از آنکه مشتریان از جستجوی منوی استفاده می‌کنند ظاهر می‌شود.",
+          "itemInterest": "بعد از اینکه مشتریان گزینه‌های منو را باز کردند، علاقه به این آیتم ظاهر می‌شود.",
+          "unavailableDemand": "تقاضای غیرقابل دسترس هنگامی که مشتریان بر روی کالاهای غیرقابل دسترسی ضربه بزنند ظاهر می‌شود.",
+          "missingSearches": "هنگامی که مشتریان جستجو می‌کنند اما هیچ تطابقی پیدا نمی‌کنند، جستجوهای گمشده ظاهر می‌شوند.",
+          "sources": "جزئیات منبع پس از آنکه مشتریان از طریق لینک‌ها، QR یا صفحات اجتماعی وارد می‌شوند ظاهر خواهد شد.",
+          "officialPage": "فعالیت صفحه رسمی پس از آنکه مشتریان صفحه عمومی کسب و کار را باز کنند ظاهر خواهد شد."
+        },
+        "footer": {
+          "sameData": "تاریخچه Dashboard",
+          "noExtraTracking": "بدون ردیابی اضافی.",
+          "settledAfterClose": "تسویه پس از پایان روز فروشگاه انجام می‌شود."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "منوی",
+          "viewsLabel": "نماهای منو",
+          "viewsTooltip": "تعداد دفعاتی که مشتریان منو شما را باز کردند.",
+          "thisMonthLabel": "منو این ماه شما"
+        },
+        "product": {
+          "singular": "کاتالوگ",
+          "viewsLabel": "نمای کاتالوگ",
+          "viewsTooltip": "تعداد دفعاتی که مشتریان کاتالوگ شما را باز کردند.",
+          "thisMonthLabel": "فهرست شما در این ماه"
+        },
+        "service": {
+          "singular": "لیست خدمات (Service List)",
+          "viewsLabel": "نمای فهرست خدمات",
+          "viewsTooltip": "تعداد دفعاتی که مشتریان لیست خدمات شما را باز کردند.",
+          "thisMonthLabel": "فهرست خدمات شما در این ماه"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "نیاز به توجه دارد",
+          "active": "منبع رسمی مشتری فعال است.",
+          "readyToPlace": "منبع رسمی مشتری آماده برای قرار دادن است."
+        },
+        "description": {
+          "needsAttention": "قبل از به اشتراک گذاشتن گسترده، منو، ساعت کار یا لینک مشتری را اصلاح کنید.",
+          "active": "نیازی به اقدام نیست. مشتریان می‌توانند از جزئیات عمومی فعلی شما از یک منبع استفاده کنند.",
+          "readyToPlace": "پیوند مشتری شما آماده است. آن را به Google، Instagram ، WhatsApp یا QR اضافه کنید یا چاپ کنید تا مشتریان از منبع فعلی استفاده کنند."
+        },
+        "link": {
+          "ready": "پیوند مشتری آماده است.",
+          "missing": "لینک مشتری مفقود است."
+        },
+        "states": {
+          "set": "تنظیم شد",
+          "missing": "گمشده گم شده",
+          "ready": "آماده‌ام.",
+          "notReady": "آماده نیستم.",
+          "live": "فعال",
+          "hidden": "غیرفعال"
+        },
+        "tags": {
+          "menu": "منو: {status}",
+          "hours": "ساعت: {status}",
+          "customerLink": "پیوند مشتری: {status}",
+          "link": "پیوند: {status}",
+          "placed": "قرار داده شده: {count}/{total}"
+        },
+        "actions": {
+          "fix": "هر آنچه نیاز به توجه دارد را برطرف کنید.",
+          "preview": "پیش‌نمایش منو عمومی",
+          "share": "به اشتراک گذاری منوی"
+        },
+        "updated": {
+          "notUpdated": "هنوز به روز نشده",
+          "recently": "به روز شده اخیرا",
+          "today": "امروز به روز شد",
+          "yesterday": "به روز شده دیروز",
+          "daysAgo": "به روزرسانی {count, plural, one {# روز پیش} other {# روز پیش}}"
+        }
+      },
+      "ownerActions": {
+        "title": "بعدی اعمال مالک",
+        "open": "باز",
+        "placement": {
+          "notConfirmed": "هنوز تأیید نشده است.",
+          "today": "امروز تایید شد.",
+          "yesterday": "دیروز تأیید شد.",
+          "daysAgo": "{count, plural, one {# روز پیش} other {# روز پیش}} تأیید شد."
+        },
+        "status": {
+          "ready": "آماده‌ام.",
+          "missing": "گمشده گم شده",
+          "set": "تنظیم شد",
+          "live": "فعال",
+          "notLive": "نه زنده نیستم.",
+          "confirmedCount": "{count}/{total} تأیید شد.",
+          "on": "روشن",
+          "off": "خاموش",
+          "dailyChanges": "تغییرات روزانه",
+          "hoursException": "ساعت‌های استثنایی",
+          "staffUse": "استفاده از کارکنان",
+          "menuPrices": "قیمت‌های منو",
+          "openCount": "{count, plural, one {باز کردن کنش #} other {# فعالیتها باز می شوند.}}",
+          "stable": "پایدار"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "تنظیم پیوند مشتری",
+            "description": "قبل از اشتراک گذاری QR، پاسخ‌های کارکنان یا پروفایل‌های عمومی، پیوند مشتری را ایجاد کنید."
+          },
+          "setHours": {
+            "label": "تنظیم ساعت ها",
+            "description": "وضعیت باز و بسته بودن عمومی را قبل از بازدید مشتریان روشن نگه دارید."
+          },
+          "publishMenu": {
+            "labelPublish": "انتشار منو",
+            "labelOpen": "منو باز کنید",
+            "descriptionVisible": "قبل از اشتراک‌گذاری گسترده، منو فعلی را منتشر کنید.",
+            "descriptionHidden": "قبل از اینکه مشتریان از لینک استفاده کنند، منو را قابل مشاهده کنید."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "تأیید قرارگیری لینک",
+            "labelPlace": "قرار دادن لینک مشتری",
+            "descriptionPlaced": "Google، Instagram و WhatsApp را به یک منبع اشاره‌گر نگه دارید.",
+            "descriptionUnplaced": "پیوند مشتری مشابه را به Google، Instagram ، WhatsApp و QR اضافه کنید و چاپ کنید."
+          },
+          "openPrivateFeedback": {
+            "label": "باز کردن Feedback خصوصی",
+            "description": "قبل از اینکه مشکلات مهمانان به نقدهای عمومی تبدیل شوند، بازخورد خصوصی را استفاده کنید."
+          },
+          "captureDailyChange": {
+            "label": "به MenuList بگویید چه چیزی تغییر کرده است.",
+            "description": "به MenuList بگویید که امروز چه چیزی تغییر کرده و کارت منو آماده شده را تأیید کنید."
+          },
+          "setTodayStatus": {
+            "label": "وضعیت امروز را تنظیم کنید.",
+            "description": "امروز بسته است، تا دیروقت باز است، آشپزخانه بسته است یا یک منو ویژه."
+          },
+          "prepareStaffHandoff": {
+            "label": "آماده سازی انتقال کارمندان به مدیران جدید.",
+            "description": "به کارکنان پیوند منوی، QR و خطوط پاسخ مشتری را از یک مکان بدهید."
+          },
+          "updatePrices": {
+            "label": "به‌روزرسانی قیمت‌ها",
+            "description": "از مدیر منو برای تغییر قیمت استفاده کنید، سپس قبل از انتشار آن را تأیید کنید."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "تنظیم منو",
+        "complete": "تنظیم منو کامل شد.",
+        "ready": "تنظیمات منوی آماده است.",
+        "actions": {
+          "openMenu": "منو باز کنید",
+          "createMenu": "ایجاد منو",
+          "reviewDetails": "بررسی جزئیات",
+          "publishMenu": "انتشار منو",
+          "openSharingTools": "ابزارهای اشتراک گذاری باز",
+          "prepareDescriptions": "آماده سازی توضیحات برای تهیه.",
+          "addImages": "اضافه کردن تصاویر",
+          "reviewLanguageText": "بازبینی متن زبانی متن را بررسی کنید.",
+          "openMenuCheck": "چک کردن منوی باز",
+          "updatePublicLinks": "به روز رسانی لینک های عمومی",
+          "addPublicPhoto": "اضافه کردن عکس عمومی"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "منبع اضافه شد",
+            "doneDescription": "منبع منو متصل است.",
+            "nextDescription": "یک عکس منو، PDF، پیوند یا شروع دستی را اضافه کنید."
+          },
+          "menuImported": {
+            "label": "واردات منو",
+            "doneDescription": "{count, plural, one {# شیء قابل مشاهده پیدا شد.} other {# مورد قابل مشاهده یافت شد.}}",
+            "nextDescription": "واردات یا اضافه کردن آیتم های منو."
+          },
+          "keyDetailsChecked": {
+            "label": "جزئیات کلیدی بررسی شده",
+            "doneDescription": "قیمت‌ها و جزئیات منوهای کلیدی واضح هستند.",
+            "nextDescription": "قبل از انتشار قیمت‌ها و جزئیات کلیدی را بررسی کنید."
+          },
+          "menuPublished": {
+            "label": "منوی منتشر شده",
+            "doneDescription": "منوی عمومی منتشر شده است.",
+            "nextDescription": "هنگامی که منو برای مشتریان آماده شد، آن را منتشر کنید."
+          },
+          "linkPlaced": {
+            "label": "لینک قرار داده شده",
+            "readyLabel": "لینک آماده است.",
+            "doneDescription": "لینک رسمی برای مشتریان آماده است.",
+            "progressDescription": "{count} از {total} عمل قرار دادن انجام شد.",
+            "nextDescription": "ابزارهای اشتراک گذاری را هنگامی که منوی منتشر می شود باز کنید."
+          },
+          "descriptionsReady": {
+            "label": "توضیحات آماده شده.",
+            "doneDescription": "هر یک از عناصر قابل مشاهده دارای توصیفی است.",
+            "nextDescription": "توضیحاتی را برای گزینه‌های منو آماده کنید."
+          },
+          "imagesReady": {
+            "label": "تصاویر آماده شده.",
+            "doneDescription": "اجزای قابل مشاهده تصاویر دارند.",
+            "nextDescription": "هنگامی که مفید باشد، تصاویر آیتم را اضافه یا تولید کنید."
+          },
+          "translationsReady": {
+            "label": "ترجمه آماده",
+            "doneDescription": "زبان‌های منو انتخاب شده کامل شده‌اند.",
+            "nextDescription": "بررسی زبان‌های منو انتخاب شده."
+          },
+          "publicLinksAdded": {
+            "label": "پیوندهای عمومی اضافه شدند.",
+            "doneDescription": "فعالیت‌های عمومی یا لینک‌های اجتماعی در دسترس هستند.",
+            "nextDescription": "اضافه کردن لینک‌های عمومی مفید برای صفحه کسب و کار."
+          },
+          "publicPhotoAdded": {
+            "label": "عکس عمومی اضافه شد.",
+            "doneDescription": "یک عکس عمومی موجود است.",
+            "nextDescription": "هنگامی که آماده شدید، یک جلد، لوگو یا عکس عمومی را اضافه کنید."
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "هنوز تاریخچه قبوض وجود ندارد.",
     "perMonth": "/ماه",
     "contactUs": "با ما تماس بگیرید"
+  },
+  "StarterActivation": {
+    "activeTitle": "منوی شما آنلاین است",
+    "endingSoonTitle": "منوی خود را آنلاین نگه دارید",
+    "publicMenuQrActive": "منوی عمومی و کد QR شما فعال هستند.",
+    "activeRemaining": "دسترسی به منوی شما فعال است.",
+    "daysRemaining": "{days, plural, one {طرحی را ظرف # روز انتخاب کنید تا منوی خود را آنلاین نگه دارید.} other {طرحی را ظرف # روز انتخاب کنید تا منوی خود را آنلاین نگه دارید.}}",
+    "sharingComplete": "تنظیمات اشتراک‌گذاری شما کامل شده است.",
+    "sharingProgress": "{count, number} از {target, number} مرحله اشتراک‌گذاری کامل شد.",
+    "evidenceRecorded": "ضبط به صورت خودکار: {systemCount, number}. تایید شده توسط شما: {ownerCount, number}.",
+    "evidenceEmpty": "پیوند منو را کپی یا به اشتراک بگذارید، کد QR آن را دانلود کنید یا جایی که آن را قرار داده اید تأیید کنید.",
+    "keepLiveAction": "منوی خود را آنلاین نگه دارید",
+    "noSubscriptionDescription": "طرحی را برای در دسترس نگه داشتن به‌روزرسانی‌های منو و صفحات مشتری انتخاب کنید.",
+    "choosePlanDescription": "منوی شما ذخیره شده است. برنامه ای را انتخاب کنید تا آن را آنلاین و به روز نگه دارید."
   },
   "Transactions": {
     "title": "تاریخچه تراکنش‌ها تاریخچه معاملات",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "اپلیکیشن موبایلی",
     "subscribeTitle": "برای عضویت در شروع کنید ثبت نام کنید.",
     "subscribeDescription": "برای شروع ایجاد منو دیجیتال و مدیریت کسب و کار خود، یک برنامه را انتخاب کنید.",
-    "viewPlans": "نمایش نقشه‌ها"
+    "viewPlans": "نمایش نقشه‌ها",
+    "returnToMobile": "شما در حال مشاهده نسخه دسکتاپ هستید. به موبایل برگردید."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR کدها را نمایش می‌دهد.",

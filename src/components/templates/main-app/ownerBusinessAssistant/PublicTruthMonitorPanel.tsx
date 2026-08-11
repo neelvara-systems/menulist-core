@@ -4,30 +4,18 @@ import { Alert, Button, Card, Flex, Space, Tag, Typography } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import { getPublicTruthMonitorExportText } from '@database/publicTruthMonitor';
 import { usePublicTruthMonitor } from '@hook/publicTruthTools/usePublicTruthMonitor';
-import type { PublicTruthMonitorHistoryEntry } from '@type/publicTruthMonitor';
+import { formatDateTime } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
+import {
+  getOwnerPublicTruthModulePresentation,
+  getOwnerPublicTruthStatusPresentation,
+} from '@lib/public-truth-tools/ownerPublicTruthPresentation';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuDownload, LuFileText, LuHistory, LuRefreshCw } from 'react-icons/lu';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Paragraph, Text, Title } = Typography;
-
-function formatDate(value?: string): string {
-  if (!value) return 'Not run yet';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function statusTag(entry?: PublicTruthMonitorHistoryEntry | null) {
-  if (!entry) return { color: 'default', label: 'Not run' };
-  if (entry.status === 'ready') return { color: 'success', label: 'Ready' };
-  if (entry.status === 'missing_basics') return { color: 'error', label: 'Missing basics' };
-  return { color: 'warning', label: 'Needs checking' };
-}
 
 function downloadTextFile(filename: string, text: string) {
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -48,6 +36,8 @@ export function PublicTruthMonitorPanel({
   storeId?: string | number | null;
   tenantId?: string | number | null;
 }) {
+  const formatter = useFormatter();
+  const t = useTranslations('Dashboard.owner');
   const isEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS
     && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK
     && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MONITOR_ADDON;
@@ -58,9 +48,11 @@ export function PublicTruthMonitorPanel({
     tenantId,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState(false);
   const latest = summary?.latest || null;
-  const tag = statusTag(latest);
+  const tag = latest
+    ? getOwnerPublicTruthStatusPresentation(latest.status, t)
+    : { label: t('businessHealth.publicTruth.notRun'), tone: 'default' as const };
   const history = useMemo(() => (summary?.history || []).slice(0, 6), [summary?.history]);
 
   if (!isEnabled) return null;
@@ -69,11 +61,11 @@ export function PublicTruthMonitorPanel({
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setRefreshError(null);
+    setRefreshError(false);
     try {
       await refresh();
     } catch {
-      setRefreshError('Public truth history could not refresh.');
+      setRefreshError(true);
     } finally {
       setIsRefreshing(false);
     }
@@ -94,16 +86,16 @@ export function PublicTruthMonitorPanel({
             </span>
             <div>
               <Flex align="center" gap={8} wrap="wrap">
-                <Title level={4} style={{ margin: 0 }}>Public truth history</Title>
-                <Tag color={tag.color}>{tag.label}</Tag>
+                <Title level={4} style={{ margin: 0 }}>{t('businessHealth.publicTruth.historyTitle')}</Title>
+                <Tag color={tag.tone}>{tag.label}</Tag>
               </Flex>
               <Paragraph style={{ margin: '6px 0 0' }}>
                 {latest
-                  ? `Last saved ${formatDate(latest.generatedAt)}.`
-                  : 'No saved report yet.'}
+                  ? t('businessHealth.publicTruth.lastSaved', { date: formatDateTime(latest.generatedAt, 'date', formatter) })
+                  : t('businessHealth.publicTruth.noSavedReport')}
               </Paragraph>
               <Text type="secondary">
-                Uses MenuList store and menu facts only. No external sites are scanned.
+                {t('businessHealth.publicTruth.historyBoundary')}
               </Text>
             </div>
           </Flex>
@@ -113,7 +105,7 @@ export function PublicTruthMonitorPanel({
               icon={<LuDownload />}
               onClick={handleDownload}
             >
-              Download report
+              {t('businessHealth.publicTruth.downloadEnglishReport')}
             </Button>
             <Button
               icon={<LuRefreshCw />}
@@ -121,15 +113,17 @@ export function PublicTruthMonitorPanel({
               onClick={handleRefresh}
               type="primary"
             >
-              Run check
+              {t('businessHealth.publicTruth.runCheck')}
             </Button>
           </Space>
         </Flex>
 
         {error || refreshError ? (
           <Alert
-            description="The last saved report is still shown when available."
-            message={refreshError || 'Public truth history could not load'}
+            description={t('businessHealth.publicTruth.historyErrorDescription')}
+            message={refreshError
+              ? t('businessHealth.publicTruth.historyRefreshError')
+              : t('businessHealth.publicTruth.historyLoadError')}
             showIcon
             type="warning"
           />
@@ -138,37 +132,44 @@ export function PublicTruthMonitorPanel({
         {latest ? (
           <div className={styles.publicTruthScoreRow}>
             <div className={styles.metricBox}>
-              <span className={styles.metricLabel}>Ready modules</span>
-              <span className={styles.metricValue}>{latest.readyModuleCount}/{latest.totalModuleCount}</span>
+              <span className={styles.metricLabel}>{t('businessHealth.publicTruth.metrics.readyModules')}</span>
+              <span className={styles.metricValue}>{formatNumber(latest.readyModuleCount)}/{formatNumber(latest.totalModuleCount)}</span>
             </div>
             <div className={styles.metricBox}>
-              <span className={styles.metricLabel}>Missing facts</span>
-              <span className={styles.metricValue}>{latest.missingFactCount}</span>
+              <span className={styles.metricLabel}>{t('businessHealth.publicTruth.metrics.missingFacts')}</span>
+              <span className={styles.metricValue}>{formatNumber(latest.missingFactCount)}</span>
             </div>
             <div className={styles.metricBox}>
-              <span className={styles.metricLabel}>Saved reports</span>
-              <span className={styles.metricValue}>{history.length}/{summary?.historyLimit || 0}</span>
+              <span className={styles.metricLabel}>{t('businessHealth.publicTruth.metrics.savedReports')}</span>
+              <span className={styles.metricValue}>{formatNumber(history.length)}/{formatNumber(summary?.historyLimit || 0)}</span>
             </div>
           </div>
         ) : (
           <Alert
-            description="Run the check to save the first report for this location."
-            message="No saved report"
+            description={t('businessHealth.publicTruth.noSavedReportDescription')}
+            message={t('businessHealth.publicTruth.noSavedReport')}
             showIcon
             type="info"
           />
         )}
 
-        {latest?.primaryFix ? (
+        {latest?.primaryFix ? (() => {
+          const snapshot = latest.moduleSummaries.find((module) => module.id === latest.primaryFix?.id);
+          const presentation = getOwnerPublicTruthModulePresentation(snapshot || {
+            id: latest.primaryFix.id,
+            mobileFixTarget: 'basic_settings',
+            status: 'not_checked',
+          }, t);
+          return (
           <div className={styles.publicTruthSetupJobList}>
             <Flex align="center" gap={8}>
               <LuFileText size={16} />
-              <Text strong>Current fix item</Text>
+              <Text strong>{t('businessHealth.publicTruth.currentFix')}</Text>
             </Flex>
             <div className={styles.publicTruthSetupJobItem}>
-              <Text strong>{latest.primaryFix.title}</Text>
+              <Text strong>{presentation.title}</Text>
               <Text className={styles.publicTruthCheckEvidence} type="secondary">
-                {latest.primaryFix.evidenceText}
+                {presentation.evidence}
               </Text>
               <Button
                 className={styles.publicTruthModuleAction}
@@ -176,26 +177,30 @@ export function PublicTruthMonitorPanel({
                 size="small"
                 type="link"
               >
-                {latest.primaryFix.actionLabel}
+                {presentation.actionLabel}
               </Button>
             </div>
           </div>
-        ) : null}
+          );
+        })() : null}
 
         {history.length > 1 ? (
           <div className={styles.publicTruthCheckList}>
             {history.map((entry) => {
-              const entryTag = statusTag(entry);
+              const entryTag = getOwnerPublicTruthStatusPresentation(entry.status, t);
               return (
                 <div className={styles.publicTruthCheckItem} key={entry.id}>
                   <Flex align="flex-start" gap={8} justify="space-between">
                     <div className={styles.publicTruthCheckItemBody}>
-                      <Text strong>{formatDate(entry.generatedAt)}</Text>
+                      <Text strong>{formatDateTime(entry.generatedAt, 'date', formatter)}</Text>
                       <Text className={styles.publicTruthCheckEvidence} type="secondary">
-                        {entry.readyModuleCount}/{entry.totalModuleCount} modules ready
+                        {t('businessHealth.publicTruth.modulesReady', {
+                          count: entry.readyModuleCount,
+                          total: entry.totalModuleCount,
+                        })}
                       </Text>
                     </div>
-                    <Tag color={entryTag.color} style={{ marginInlineEnd: 0 }}>{entryTag.label}</Tag>
+                    <Tag color={entryTag.tone} style={{ marginInlineEnd: 0 }}>{entryTag.label}</Tag>
                   </Flex>
                 </div>
               );

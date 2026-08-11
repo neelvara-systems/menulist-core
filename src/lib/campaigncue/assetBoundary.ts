@@ -1,4 +1,4 @@
-import { CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
 import type { CampaignCueAsset, CampaignCueChannel } from "@type/campaigncue";
 
@@ -59,6 +59,7 @@ export function parseCampaignCueAssetRecord(params: {
     if (
         value.id !== params.assetId
         || value.workspaceId !== params.workspaceId
+        || (!isAbsent(value.locationId) && !isBoundedString(value.locationId, 120))
         || !isBoundedString(value.name, 120)
         || !ASSET_TYPES.has(value.assetType as CampaignCueAsset["assetType"])
         || !ASSET_STATUSES.has(value.status as CampaignCueAsset["status"])
@@ -118,7 +119,7 @@ export function parseCampaignCueAssetRecord(params: {
         if (!isAbsent(value.file.sizeBytes) && (
             !Number.isSafeInteger(value.file.sizeBytes)
             || Number(value.file.sizeBytes) < 0
-            || Number(value.file.sizeBytes) > CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES
+            || Number(value.file.sizeBytes) > CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES[value.assetType as CampaignCueAsset["assetType"]]
         )) {
             throw new Error("CampaignCue asset size is invalid.");
         }
@@ -165,6 +166,7 @@ export function parseCampaignCueAssetRecord(params: {
     return {
         id: value.id as string,
         workspaceId: value.workspaceId as string,
+        locationId: isAbsent(value.locationId) ? undefined : value.locationId as string,
         name: value.name as string,
         assetType: value.assetType as CampaignCueAsset["assetType"],
         status: value.status as CampaignCueAsset["status"],

@@ -144,6 +144,7 @@ const HERO_FLOATING_ASSETS: HeroFloatingAsset[] = [
 ];
 
 const NAV_LINKS = [
+    { label: 'Pattern to pack', href: '#pattern-to-pack' },
     { label: 'Pack room', href: '#pack-room' },
     { label: 'Trust', href: '#trust' },
     { label: 'FAQ', href: '#faq' },
@@ -325,6 +326,39 @@ const FLOW_MAP_STEPS: WorkflowStep[] = [
         label: 'Memory',
         title: 'Result memory',
         detail: 'Used, skipped, booked, sold, and follow-up notes shape the next cue and can nominate safe reuse.',
+        icon: LuBarChart3,
+    },
+];
+
+const PATTERN_TO_PACK_STEPS: WorkflowStep[] = [
+    {
+        label: 'Owner source',
+        title: 'Share one useful example',
+        detail: 'The owner provides one public link and explains the useful format. CampaignCue does not watch accounts or scrape a feed.',
+        icon: LuLink,
+    },
+    {
+        label: 'Pattern only',
+        title: 'Keep the reusable structure',
+        detail: 'Hook type, pacing, visual beats, and CTA pattern are retained. Source wording, footage, music, likeness, and identity are excluded.',
+        icon: LuSearchCheck,
+    },
+    {
+        label: 'Business truth',
+        title: 'Write from checked facts',
+        detail: 'Original hooks and scenes use the current offer, location, contact, rights, and owner-approved campaign details.',
+        icon: LuShieldCheck,
+    },
+    {
+        label: 'Ready pack',
+        title: 'Prepare the channel work',
+        detail: 'The same idea becomes a short-video storyboard, local copy, print or staff notes, and manual delivery steps where useful.',
+        icon: LuWalletCards,
+    },
+    {
+        label: 'Owner result',
+        title: 'Remember the format outcome',
+        detail: 'The owner records useful, not useful, or not used. CampaignCue learns the structure without treating reach or virality as guaranteed.',
         icon: LuBarChart3,
     },
 ];
@@ -745,6 +779,38 @@ function CampaignCueFlowMap() {
     );
 }
 
+function PatternToPackProof() {
+    return (
+        <section className="campaigncue-pattern-proof" id="pattern-to-pack" aria-label="Owner supplied pattern to checked campaign pack">
+            <div className="campaigncue-pattern-proof-heading">
+                <span>Source to original pack</span>
+                <h2>Use a useful format without copying the creator.</h2>
+                <p>
+                    CampaignCue turns one owner-supplied reference into a bounded format observation, then rebuilds the work from current business facts.
+                    The result stays original, reviewable, export-first, and tied to the owner&apos;s recorded outcome.
+                </p>
+            </div>
+            <ol className="campaigncue-pattern-proof-steps">
+                {PATTERN_TO_PACK_STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    return (
+                        <li key={step.title}>
+                            <div className="campaigncue-pattern-proof-step-number">{String(index + 1).padStart(2, '0')}</div>
+                            <span aria-hidden="true"><Icon /></span>
+                            <strong>{step.title}</strong>
+                            <p>{step.detail}</p>
+                        </li>
+                    );
+                })}
+            </ol>
+            <div className="campaigncue-pattern-proof-boundary">
+                <strong>No account spying. No copied scripts. No automatic posting.</strong>
+                <span>Only owner-supplied references, checked business truth, manual approval, and owner-reported learning.</span>
+            </div>
+        </section>
+    );
+}
+
 function CampaignPackRoom() {
     return (
         <section className="campaigncue-pack-room" id="pack-room" aria-label="Campaign Pack Room preview">
@@ -1124,6 +1190,8 @@ export default async function CampaignCueHomePage() {
             </section>
 
             <CampaignCueFlowMap />
+
+            <PatternToPackProof />
 
             <CampaignPackRoom />
 

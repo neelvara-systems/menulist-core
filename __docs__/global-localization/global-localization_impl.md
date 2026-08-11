@@ -1,7 +1,7 @@
 # Global Localization Implementation
 
 **Status:** Implemented
-**Last updated:** July 19, 2026
+**Last updated:** August 11, 2026
 
 ## End-to-end Flow
 
@@ -24,7 +24,7 @@
 
 ## Owner UI Message Boundary
 
-The canonical owner boundary is derived from the top-level `en-US.json` message tree. `Website` is excluded because public website localization has a separate release contract; `CampaignCue` is excluded because it is an adjacent product. The remaining 49 namespaces currently contain 3,456 owner strings. Every registered locale file must contain the same keys.
+The canonical owner boundary is derived from the top-level `en-US.json` message tree. `Website` is excluded because public website localization has a separate release contract; `CampaignCue` is excluded because it is an adjacent product. The remaining 50 namespaces currently contain 4,025 owner strings. Every registered locale file must contain the same keys.
 
 `scripts/verification/verify-owner-dashboard-locales.js` checks:
 
@@ -44,7 +44,11 @@ The canonical owner boundary is derived from the top-level `en-US.json` message 
 
 `scripts/localization/owner-locale-semantic.js` prepares a complete semantic snapshot, validates every locale before writing, and replaces each JSON file with deterministic formatted output. It protects ICU structures, URLs, emails, product names, technical terms, and the pinned provider provenance; preserves all existing non-source values; and translates only exact-source residue. `scripts/localization/translate-owner-locale-units.py` uses pinned AI4Bharat IndicTrans2 and Google MADLAD-400 model revisions in an isolated maintainer environment. Provider-native placeholders retain sentence context; if a model drops one, only the surrounding English segments are translated before exact reconstruction.
 
-The quality workflow rejects altered tokens and ICU signatures, overlong or under-translated output, exact non-invariant English residue, leaked provider placeholders, unrelated sentence expansion, unexpected email/URL injection, and selected mixed-script artifacts. The current evidence records 696 bounded owner-quality repairs. Its public-customer audit records 75 key-specific contextual corrections and 71 exact values approved only as same-spelling cognates or unit formats. `owner-locale-semantic-coverage.json` records provider provenance, counts, quality policy, and source/per-locale hashes. Native-speaker review can still improve fluency and tone, but it is not masking missing code-side coverage.
+The quality workflow rejects altered tokens and ICU signatures, overlong or under-translated output, exact non-invariant English residue, leaked provider placeholders, unrelated sentence expansion, unexpected email/URL injection, repeated CJK alternatives, invented numbers, mixed-script artifacts, and changed protected product/platform tokens embedded inside complete messages. The current evidence records 7,030 bounded owner-quality repairs. The dashboard audit additionally back-translated the decision-critical Business Health and public-truth set, replaced unsafe generated output with reviewed copy, normalized Meitei orthography, and retained explicit per-key English source fallback when a trustworthy localized value could not be defended. `owner-locale-semantic-coverage.json` records provider provenance, counts, quality policy, and source/per-locale hashes. This is executable coverage, not native-speaker certification.
+
+Mounted dashboard data is localized after the data boundary. Server summaries, checks, public-truth modules, facts, results, and owner actions carry stable IDs; `ownerDashboardPresentation.ts`, `ownerActionPlanPresentation.ts`, `dashboardPresentation.ts`, and `ownerPublicTruthPresentation.ts` map those IDs to the active locale. Raw generated prose is not authoritative for non-English rendering. Business Health assistant answers remain English-only and the localized UI states that boundary before an owner can submit a question. Public-truth text export is labeled as an English report. No translation provider, Firestore read, or runtime network call was added.
+
+The 12-message `StarterActivation` namespace has an additional bounded review record. Its clearer owner source copy was translated through the maintainer-time static Google Translate mobile-web workflow with protected interpolation and `QR` tokens, isolated retries for any mutated token or batch marker, and rendered-output review; Bodo and Kashmiri remain on pinned IndicTrans2. This override is hash-bound under `starterActivationReview` in the semantic evidence and does not add a translation provider to application runtime.
 
 ## Public Customer Message Boundary
 

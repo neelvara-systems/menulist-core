@@ -22,6 +22,10 @@
 - Changed/deleted pattern blocks public-use actions for dependent packs.
 - Non-pattern campaigns remain current when the example changes.
 - Provider flags remain disabled and no provider call runs.
+- Pattern-backed video projects retain only compact hook/format/pacing/duration classification, not raw notes or source wording.
+- Exact rendered versions produce a bounded format signature; legacy unbound renders cannot create pattern outcome learning.
+- Format summaries use only already-loaded workspace video projects and owner-reported outcomes.
+- No account monitor, recurring refresh, competitor-performance record, or new pattern collection exists.
 
 ## Verification
 

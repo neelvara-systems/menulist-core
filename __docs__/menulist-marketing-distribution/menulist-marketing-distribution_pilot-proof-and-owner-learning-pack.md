@@ -91,11 +91,17 @@ Complete one worksheet per candidate.
 | Surface 2 and evidence | Pending |
 | First paid date | Not measured / pending / confirmed |
 | Day-30 state | Not reached / active / cancelled / unknown |
+| First owner update | Not reached / no change yet / confirmed date |
+| Peer-introduction ask readiness | Not ready / confirmed update / day-30 active |
+| Peer-introduction asked date | Not asked / pending / confirmed date |
+| Peer-introduction outcome | Not asked / declined / introduction offered / permissioned introduction recorded |
 | Owner interview date | Pending |
 | Permission scope | Pending |
 | Revocation contact/path | Pending |
 | Internal reviewer | Pending |
 | Owner final approval date | Pending |
+
+The peer-introduction fields govern the timing and outcome of a manual request only. They do not change the payment-only reward eligibility in the [Owner Referral specification](../owner-referral/owner-referral_spec.md).
 
 ## Required Evidence
 
@@ -239,9 +245,10 @@ Run no earlier than 30 days after activation. Target 15 minutes.
 4. Did staff continue using the same link?
 5. What caused any delay, stale information, or cancellation?
 6. Would you recommend the workflow to another business owner? Why or why not?
-7. Is the proof draft still accurate, and do you approve the final version?
+7. If yes, would you like the short permissioned-introduction text? A positive answer does not authorize sharing another owner's contact details.
+8. Is the proof draft still accurate, and do you approve the final version?
 
-The answer to question 6 is learning evidence, not automatic permission to publish a testimonial.
+The answers to questions 6 and 7 are learning evidence, not automatic permission to publish a testimonial or contact another owner.
 
 ## Independent Review Request
 

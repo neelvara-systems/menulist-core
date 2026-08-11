@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'AnswerLattice use cases for solo founders, small teams, and product groups turning scattered product knowledge into governed support.',
+    description: 'See how founders and small SaaS teams turn scattered product knowledge into reviewed support for users across the widget, help center, tickets, and releases.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -46,8 +46,8 @@ const USE_CASES = [
         context: 'Setup checklist, first project, invite flow, import flow',
         question: 'What should I do first?',
         generic: 'Follow the setup checklist and complete each step.',
-        answerlattice: 'You are on Import. Start with docs, setup guides, FAQs, and recurring support questions so drafts and entity candidates can be reviewed.',
-        outcome: 'Return surface-specific guidance and turn repeated gaps into a reviewable knowledge proposal.',
+            answerlattice: 'You are on Import. Start with docs, setup guides, FAQs, and recurring support questions so draft answers and product details can be reviewed.',
+            outcome: 'Give page-specific guidance and turn repeated gaps into a draft improvement the owner can review.',
     },
     {
         title: 'Settings and configuration',
@@ -55,7 +55,7 @@ const USE_CASES = [
         question: 'Can my teammate change billing?',
         generic: 'Check your user role permissions in settings.',
         answerlattice: 'You are on Team Settings. Billing changes require an owner-level permission; if that answer is incomplete, AnswerLattice routes the gap to review.',
-        outcome: 'Ground answers in configured product surfaces instead of sending every user to generic docs.',
+        outcome: 'Use the current product page and role instead of sending every user to generic docs.',
     },
     {
         title: 'Release support',
@@ -78,16 +78,16 @@ const USE_CASES = [
         context: 'No approved answer, low-confidence result, negative feedback, ticket resolution',
         question: 'Why did this action fail?',
         generic: 'Try again or contact support with a screenshot.',
-        answerlattice: 'If approved content is missing, fallback is marked, feedback is captured, and the repeated gap becomes a signal-to-knowledge proposal.',
-        outcome: 'Capture the gap as a signal and route it toward mutation proposals for owner review.',
+        answerlattice: 'If approved content is missing, fallback is marked, feedback is captured, and the repeated gap becomes a draft improvement for review.',
+        outcome: 'Give the user a path now and give the owner a visible support gap to improve.',
     },
     {
         title: 'Errors and edge cases',
         context: 'Failed import, webhook error, blocked action, permission issue',
         question: 'What does this error mean?',
         generic: 'Search the docs for this error or contact support.',
-        answerlattice: 'The error is mapped as a product entity so the next user sees a stable, reviewed explanation tied to the affected workflow.',
-        outcome: 'Treat errors as product entities so future answers can stay stable and searchable.',
+        answerlattice: 'The error is tied to the affected product area so the next user sees a stable, reviewed explanation in the right workflow.',
+        outcome: 'Keep error guidance tied to the right product area so future answers stay stable and searchable.',
     },
 ];
 
@@ -138,7 +138,7 @@ export default async function AnswerlatticeUseCasesPage() {
                         Support use cases from one founder to a growing product team.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Start with one accountable owner and the questions that matter now. Add team coordination and deeper governance only when support ownership, release frequency, or answer risk grows.
+                        Start with one accountable owner and the questions that matter now. Add teammates and deeper review controls only when support ownership, release frequency, or answer risk grows.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -158,7 +158,7 @@ export default async function AnswerlatticeUseCasesPage() {
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
                             { label: 'Best pages', value: 'Billing, onboarding, settings, releases, integrations, errors' },
-                            { label: 'Operating path', value: 'Start, Coordinate, Govern' },
+                            { label: 'Operating path', value: 'Start small, add teammates, deepen review when needed' },
                             { label: 'Best teams', value: 'Founders and bounded product, support, and engineering groups' },
                             { label: 'Best proof', value: 'Generic reply vs reviewed support answer' },
                         ]}

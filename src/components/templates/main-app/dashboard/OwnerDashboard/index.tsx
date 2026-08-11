@@ -23,7 +23,15 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
-import { buildOwnerActionLayer, type OwnerActionId } from '@lib/ownerActions/buildOwnerActionLayer';
+import {
+    buildOwnerActionLayer,
+    getOwnerConfirmedPlacementCount,
+    hasOwnerPublicLink,
+    hasOwnerWorkingHours,
+    type OwnerActionId,
+} from '@lib/ownerActions/buildOwnerActionLayer';
+import { formatDashboardRelativeUpdate } from '@lib/analytics/ownerDashboardPresentation';
+import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import {
     getProjectPageProjectLogContext,
@@ -69,18 +77,9 @@ const renderOwnerActionIcon = (id: OwnerActionId) => {
     return <LuUtensils size={15} />;
 };
 
-const formatRelativeUpdatedLabel = (value: unknown): string => {
-    if (!value) return 'Not updated yet';
-    const parsed = new Date(String(value));
-    if (Number.isNaN(parsed.getTime())) return 'Recently updated';
-    const days = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 86400000));
-    if (days === 0) return 'Updated today';
-    if (days === 1) return 'Updated yesterday';
-    return `Updated ${days} days ago`;
-};
-
 const OwnerDashboard: React.FC = () => {
     const t = useTranslations('Dashboard.owner');
+    const tOwnerActions = useTranslations('Dashboard.owner.ownerActions');
     const router = useRouter();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
@@ -151,7 +150,6 @@ const OwnerDashboard: React.FC = () => {
         activeProjectId
         && storeDetails?.tenantId
         && storeDetails?.storeId
-        && (FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS)
     );
     const {
         data: dashboardProjectData,
@@ -179,18 +177,19 @@ const OwnerDashboard: React.FC = () => {
         : dashboardProjectData === undefined
         ? undefined
         : dashboardProjectData || null;
-    const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
-    const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
-    const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
-        .filter((surface) => Boolean((storeDetails as any)?.menuPresence?.[surface])).length;
+    const hasPublicLink = hasOwnerPublicLink(storeDetails);
+    const hasWorkingHours = hasOwnerWorkingHours(storeDetails);
+    const confirmedPlacementCount = getOwnerConfirmedPlacementCount(storeDetails);
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
-    const menuUpdatedLabel = formatRelativeUpdatedLabel(
+    const menuUpdatedLabel = formatDashboardRelativeUpdate(
         (dashboardProjectForChildren as any)?.modifiedOn
         || (dashboardProjectForChildren as any)?.updatedAt
-        || data?.lastFetched
+        || (dashboardProjectForChildren as any)?.lastPublishedAt,
+        t,
     );
+    const hasLiveMenuSource = isPublishedMenuProject(dashboardProjectForChildren);
     const dashboardAttentionItems = [
-        activeProjectId || dashboardProjectLoading || dashboardProjectForChildren
+        dashboardProjectLoading || hasLiveMenuSource
             ? null
             : { key: 'menu', path: '/projects' },
         hasWorkingHours
@@ -203,24 +202,27 @@ const OwnerDashboard: React.FC = () => {
     const needsAttentionCount = dashboardAttentionItems.length;
     const primaryAttentionPath = dashboardAttentionItems[0]?.path || '/projects';
     const publicSourceTitle = needsAttentionCount
-        ? 'Needs attention'
+        ? t('publicTruthStatus.title.needsAttention')
         : hasConfirmedPlacement
-            ? 'Official customer source is active'
-            : 'Official customer source is ready to place';
+            ? t('publicTruthStatus.title.active')
+            : t('publicTruthStatus.title.readyToPlace');
     const publicSourceDescription = needsAttentionCount
-        ? 'Fix menu, hours, or the customer link before sharing it widely.'
+        ? t('publicTruthStatus.description.needsAttention')
         : hasConfirmedPlacement
-            ? 'No action needed. Customers can use your current public details from one source.'
-            : 'Your customer link is ready. Add it to Google, Instagram, WhatsApp, QR, or print so customers use the current source.';
+            ? t('publicTruthStatus.description.active')
+            : t('publicTruthStatus.description.readyToPlace');
     const ownerActionLayer = FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !dashboardProjectLoading
         ? buildOwnerActionLayer({
             project: dashboardProjectForChildren || null,
             storeDetails: storeDetails as any,
+            translate: tOwnerActions,
         })
         : null;
-    const shouldShowOwnerActionLayer = Boolean(ownerActionLayer && ownerActionLayer.statusLabel !== 'Stable');
+    const shouldShowOwnerActionLayer = Boolean(ownerActionLayer && ownerActionLayer.openCount > 0);
     const primaryStatusActionPath = needsAttentionCount ? primaryAttentionPath : '/projects?view=b2c';
-    const primaryStatusActionLabel = needsAttentionCount ? 'Fix what needs attention' : 'Preview public menu';
+    const primaryStatusActionLabel = needsAttentionCount
+        ? t('publicTruthStatus.actions.fix')
+        : t('publicTruthStatus.actions.preview');
 
     const hasMenuData = Boolean(data?.today || data?.overview || data?.daily30d?.length || data?.weekly || data?.daily || data?.monthly || data?.overall);
     const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
@@ -313,7 +315,7 @@ const OwnerDashboard: React.FC = () => {
                 if (loading && !data?.daily30d?.length && !hasOBPSettledData) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Graphs</Title>
+                        <Title level={4} style={{ margin: 0 }}>{t('viewModes.graph')}</Title>
                         <Text type="secondary">{t('settledTabHelper')}</Text>
                         <OwnerDashboardGraphMode
                             data={data}
@@ -408,7 +410,9 @@ const OwnerDashboard: React.FC = () => {
                                     {publicSourceTitle}
                                 </Title>
                                 <Tag color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    {hasPublicLink ? 'Customer link ready' : 'Customer link missing'}
+                                    {hasPublicLink
+                                        ? t('publicTruthStatus.link.ready')
+                                        : t('publicTruthStatus.link.missing')}
                                 </Tag>
                             </Flex>
                             <Text type="secondary" style={{ fontSize: 15 }}>
@@ -416,16 +420,24 @@ const OwnerDashboard: React.FC = () => {
                             </Text>
                             <Flex gap={8} wrap="wrap">
                                 <Tag icon={<LuUtensils size={13} />} style={{ marginInlineEnd: 0 }}>
-                                    Menu: {menuUpdatedLabel}
+                                    {t('publicTruthStatus.tags.menu', { status: menuUpdatedLabel })}
                                 </Tag>
                                 <Tag icon={<LuClock size={13} />} color={hasWorkingHours ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
-                                    Hours: {hasWorkingHours ? 'Set' : 'Missing'}
+                                    {t('publicTruthStatus.tags.hours', {
+                                        status: hasWorkingHours
+                                            ? t('publicTruthStatus.states.set')
+                                            : t('publicTruthStatus.states.missing'),
+                                    })}
                                 </Tag>
                                 <Tag icon={<LuStore size={13} />} color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    Customer link: {hasPublicLink ? 'Ready' : 'Not ready'}
+                                    {t('publicTruthStatus.tags.customerLink', {
+                                        status: hasPublicLink
+                                            ? t('publicTruthStatus.states.ready')
+                                            : t('publicTruthStatus.states.notReady'),
+                                    })}
                                 </Tag>
                                 <Tag icon={<LuSearch size={13} />} color={hasConfirmedPlacement ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    Placed: {confirmedPlacementCount}/3
+                                    {t('publicTruthStatus.tags.placed', { count: confirmedPlacementCount, total: 3 })}
                                 </Tag>
                             </Flex>
                         </Flex>
@@ -438,14 +450,14 @@ const OwnerDashboard: React.FC = () => {
                                 {primaryStatusActionLabel}
                             </Button>
                             <Button icon={<LuQrCode size={16} />} onClick={() => router.push('/use-menulist')}>
-                                Share menu
+                                {t('publicTruthStatus.actions.share')}
                             </Button>
                         </Flex>
                     </Flex>
                 </Card>
 
                 {shouldShowOwnerActionLayer && ownerActionLayer ? (
-                    <Card className={styles.quickActionsCard} size="small" title="Next owner action">
+                    <Card className={styles.quickActionsCard} size="small" title={t('ownerActions.title')}>
                         <Flex align="flex-start" justify="space-between" gap={12} wrap="wrap">
                             <Flex gap={6} style={{ flex: '1 1 360px', minWidth: 0 }} vertical>
                                 <Flex align="center" gap={8} wrap="wrap">
@@ -457,7 +469,7 @@ const OwnerDashboard: React.FC = () => {
                                 </Flex>
                                 <Text type="secondary">{ownerActionLayer.primaryAction.description}</Text>
                                 <Flex gap={8} wrap="wrap">
-                                    <Tag color={ownerActionLayer.statusLabel === 'Stable' ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                                    <Tag color={ownerActionLayer.openCount === 0 ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
                                         {ownerActionLayer.statusLabel}
                                     </Tag>
                                     <Tag color={ownerActionLayer.placement.confirmedCount > 0 ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
@@ -470,7 +482,7 @@ const OwnerDashboard: React.FC = () => {
                                 onClick={() => router.push(ownerActionLayer.primaryAction.desktopHref)}
                                 type="primary"
                             >
-                                Open
+                                {t('ownerActions.open')}
                             </Button>
                         </Flex>
                     </Card>

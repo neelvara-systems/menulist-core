@@ -5,6 +5,7 @@ import {
     assertCampaignCueWorkspaceRecordScope,
     CampaignCueWorkspaceScopeError,
     resolveCampaignCueSessionIdentity,
+    resolveCampaignCueSessionStoreRole,
 } from "@lib/campaigncue/workspaceScope";
 
 const expectDenied = (label: string, operation: () => unknown) => {
@@ -41,6 +42,28 @@ assert.equal(resolveCampaignCueSessionIdentity({
     tId: "11",
     uId: "user_1",
 }), null, "nonnumeric workspace scope fails closed");
+
+assert.equal(resolveCampaignCueSessionStoreRole({
+    role: "owner",
+    user: {
+        role: "owner",
+        stores: [{ role: "owner", storeId: 22 }],
+    },
+}, "22"), "owner", "matching current-store role aliases resolve");
+assert.equal(resolveCampaignCueSessionStoreRole({
+    role: "owner",
+    user: {
+        role: "owner",
+        stores: [{ role: "staff", storeId: 22 }],
+    },
+}, "22"), null, "conflicting current-store role aliases fail closed");
+assert.equal(resolveCampaignCueSessionStoreRole({
+    role: "owner",
+    user: {
+        role: "owner",
+        stores: [{ role: "staff", storeId: 23 }],
+    },
+}, "22"), "owner", "a different store mapping cannot replace the active-store role");
 
 assert.equal(assertCampaignCueStoreRecordScope(store, { sId: "22", tId: "11" }), store);
 expectDenied("foreign tenant", () => assertCampaignCueStoreRecordScope({ ...store, tenantId: 12, tId: 12 }, { sId: "22", tId: "11" }));

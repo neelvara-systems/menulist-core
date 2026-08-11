@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LuBookmark, LuPackageCheck, LuRefreshCw, LuSearch } from "react-icons/lu";
+import { LuBookmark, LuChevronDown, LuPackageCheck, LuRefreshCw, LuSearch } from "react-icons/lu";
 import {
     CAMPAIGNCUE_DEFAULT_OUTPUT_PICKER_ITEM_ID,
     CAMPAIGNCUE_OUTPUT_PICKER_GROUPS,
@@ -21,8 +21,11 @@ interface PackTemplatePickerProps {
     busy: boolean;
     canSaveCurrent: boolean;
     error?: string;
+    hasMoreTemplates: boolean;
     loading: boolean;
+    loadingMore: boolean;
     onCreateFromOutputIntent: (intent: CampaignCueOutputPickerItem) => void;
+    onLoadMore: () => Promise<void>;
     onOpenTemplate: (template: CampaignCuePackTemplateSummary, intent?: CampaignCueOutputPickerItem) => void;
     onRefresh: () => void;
     onSaveCurrent: () => void;
@@ -36,8 +39,11 @@ export default function PackTemplatePicker({
     busy,
     canSaveCurrent,
     error,
+    hasMoreTemplates,
     loading,
+    loadingMore,
     onCreateFromOutputIntent,
+    onLoadMore,
     onOpenTemplate,
     onRefresh,
     onSaveCurrent,
@@ -47,6 +53,7 @@ export default function PackTemplatePicker({
 }: PackTemplatePickerProps) {
     const [query, setQuery] = useState("");
     const [selectedOutputId, setSelectedOutputId] = useState(CAMPAIGNCUE_DEFAULT_OUTPUT_PICKER_ITEM_ID);
+    const [visibleLimit, setVisibleLimit] = useState(1);
     const selectedOutput = getCampaignCueOutputPickerItem(selectedOutputId)
         || CAMPAIGNCUE_OUTPUT_PICKER_ITEMS[0];
     const searchedTemplates = useMemo(() => searchCampaignCuePackTemplates({
@@ -58,9 +65,7 @@ export default function PackTemplatePicker({
             ? searchedTemplates
             : searchedTemplates.filter((template) => campaignCueOutputItemMatchesTemplate(selectedOutput, template))
     ), [searchedTemplates, selectedOutput, showOutputPicker]);
-    const visibleTemplates = query.trim() || (showOutputPicker && selectedOutput.id !== CAMPAIGNCUE_DEFAULT_OUTPUT_PICKER_ITEM_ID)
-        ? filteredTemplates.slice(0, 6)
-        : filteredTemplates.slice(0, 1);
+    const visibleTemplates = filteredTemplates.slice(0, visibleLimit);
     const groupedOutputItems = useMemo(() => CAMPAIGNCUE_OUTPUT_PICKER_GROUPS.map((group) => ({
         group,
         items: CAMPAIGNCUE_OUTPUT_PICKER_ITEMS.filter((item) => item.groupId === group.id),
@@ -68,6 +73,16 @@ export default function PackTemplatePicker({
     const platformCount = templates.filter((template) => template.templateType === "platform").length;
     const workspaceCount = templates.filter((template) => template.templateType === "workspace").length;
     const selectedOutputHasAction = showOutputPicker && selectedOutput.id !== CAMPAIGNCUE_DEFAULT_OUTPUT_PICKER_ITEM_ID;
+    const hasMoreOptions = filteredTemplates.length > visibleLimit || hasMoreTemplates;
+
+    const showMoreOptions = async () => {
+        if (filteredTemplates.length > visibleLimit) {
+            setVisibleLimit((current) => current + 6);
+            return;
+        }
+        setVisibleLimit((current) => current + 6);
+        await onLoadMore();
+    };
 
     return (
         <section className={styles.section}>
@@ -227,6 +242,20 @@ export default function PackTemplatePicker({
                             </button>
                         </article>
                     ))}
+                </div>
+            ) : null}
+
+            {!loading && hasMoreOptions ? (
+                <div className={styles.topActions}>
+                    <button
+                        className={styles.ghostButton}
+                        disabled={busy || loadingMore}
+                        onClick={() => void showMoreOptions()}
+                        type="button"
+                    >
+                        <LuChevronDown size={16} />
+                        {loadingMore ? "Loading more..." : "Show more options"}
+                    </button>
                 </div>
             ) : null}
         </section>

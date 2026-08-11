@@ -1,7 +1,7 @@
 # AnswerLattice Website Content Contract
 
 > **Status:** Implemented
-> **Last audited:** July 29, 2026
+> **Last audited:** August 11, 2026 (whole-site route and buyer-language pass)
 
 ## Public Source Of Truth
 
@@ -16,28 +16,36 @@ Public pages must not duplicate plan amounts, private dashboard routes, or provi
 
 ## Buyer Journey
 
-1. Homepage states the founder support problem and product boundary.
-2. The owner decision section connects Daily Brief, Knowledge Map, Product Friction Evidence, Release Impact Guard, Answer Tests, and public article topic maps without turning the homepage into a dashboard.
-3. Demo shows a disclosed seeded governance event without Firebase or AI calls.
+1. Homepage starts from the founder's recognizable reality: product knowledge is scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies. It shows how AnswerLattice turns that material into reviewed support across the widget, help center, documentation, FAQs, changelog, fallback, feedback review, and future AI-agent context.
+2. The founder-review section leads with plain outcomes, then links to Daily Brief, Knowledge Map, Product Friction Evidence, Release Impact Guard, Answer Tests, and public article topic maps without turning the homepage into a dashboard.
+3. Demo shows a disclosed seeded support-improvement sequence without Firebase or AI calls.
 4. Product, support-control, knowledge-governance, install, security, trust, resources, and comparisons support evaluation.
 5. Pricing renders the three monthly plans from the plan source.
 6. Get Started validates plan, currency, company, optional product details, selected product pages, and legal links.
 7. The authenticated onboarding route creates a workspace and pending provider checkout.
 8. Billing and Activation own post-creation payment and launch proof.
 
+## Homepage Front Door
+
+The compressed homepage must communicate one transformation before it explains internal product systems:
+
+`scattered founder knowledge -> reviewed support structure -> familiar support destinations -> owner-approved official guidance`
+
+Approved answers, safe fallback, and explicit founder review explain why the support can be trusted. They must remain a differentiator inside the broader support-layer story, not replace that story with answer-only or chatbot positioning. The first fold must not imply a free tier, outsourced support, guaranteed uptime, autonomous publication, or a complete helpdesk replacement.
+
 ## Owner Decision Content
 
-The homepage presents one connected path rather than six unrelated feature cards:
+The homepage presents outcome-first links into one connected decision path rather than six unexplained internal product names:
 
-`qualified Daily Brief -> selected product area -> Product Friction Evidence -> private Knowledge Map context -> Answer Tests and release impact -> explicit owner decision`
+`focused Daily Brief -> selected product area -> Product Friction Evidence -> private Knowledge Map context -> Answer Tests and release impact -> explicit owner decision`
 
 The section may link to implemented product-detail routes. It must not fetch tenant data, render private metrics, start real-time listeners, generate a map, or invoke an AI provider.
 
-The private Knowledge Map may include governed product structure and owner-only review signals. The public knowledge-base map is a separate sanitized article-heading navigation surface. Public pages must not imply that private entities, drafts, tickets, signals, or raw graph relationships are exposed to readers.
+The private Knowledge Map may include reviewed product structure and owner-only review signals. The public knowledge-base map is a separate sanitized article-heading navigation surface. Public pages must not imply that private entities, drafts, tickets, signals, or raw graph relationships are exposed to readers.
 
 ## Discovery
 
-`ANSWERLATTICE_PUBLIC_PAGES` is the sitemap and structured-data page registry. Every registered path must resolve to a public page file and must stay outside private dashboard, API, widget, sign-in, and unauthorized prefixes.
+`ANSWERLATTICE_PUBLIC_PAGES` is the sitemap and structured-data page registry. Every registered path must resolve to a public page file and must stay outside private dashboard, API, widget, sign-in, and unauthorized prefixes. The source verifier currently requires 75 canonical routes and admits only two declared aliases: `/home` for `/` and `/use-cases/vibe-coded-saas` for `/use-cases/ai-built-saas`.
 
 The sitemap intentionally omits `lastmod` until page-specific source timestamps exist. A build timestamp is not page freshness evidence.
 
@@ -47,7 +55,7 @@ The homepage SoftwareApplication offer derives Starter monthly INR pricing from 
 
 The contact form uses a semantic form, native field constraints, consent, honeypot, Turnstile when configured, bounded request/response bodies, rate limiting, and one AnswerLattice-only enquiry write.
 
-Get Started uses a semantic details form, bound labels, server-matching length limits, safe HTTP(S) URL admission, at least one selected product surface, strict response parsing, allowlisted Razorpay checkout URLs, and linked terms/privacy pages.
+Get Started uses a semantic details form, bound labels, server-matching length limits, safe HTTP(S) URL admission, at least one selected product page, strict response parsing, allowlisted Razorpay checkout URLs, and linked terms/privacy pages.
 
 Browser errors remain fixed and bounded. Provider or API exception text is not rendered.
 

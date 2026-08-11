@@ -30,7 +30,7 @@ const CHAPTER_COPY: Record<PreviewTab, {
     'Widget install': {
         kicker: 'Widget',
         title: 'Keep the runtime controlled.',
-        description: 'The install story stays serious: one script, allowed origins, blocked routes, bounded context, and governed server delivery.',
+        description: 'The install story stays serious: one script, allowed origins, blocked routes, bounded context, and controlled server delivery.',
         proof: ['Origin locked', 'Routes blocked', 'Context bounded'],
     },
     'Feedback review': {

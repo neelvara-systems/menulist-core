@@ -37,9 +37,9 @@ export default async function LaunchSetupProductPage() {
                 activeTab="Set up support"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="You always know what is ready and what is missing."
-                bentoDescription="A buyer should know exactly what remains before launch: setup, content, product surfaces, widget runtime, review summaries, and first approved answers."
+                bentoDescription="A buyer should know exactly what remains before launch: workspace setup, source material, product pages, widget verification, review summaries, and first approved answers."
                 bentoCards={[
-                    { title: 'Launch proof', description: 'Keep setup focused on the proof that support is usable: profile, team access, import, surfaces, widget, review summaries, signal sources, and answer review.' },
+                    { title: 'Launch proof', description: 'Keep setup focused on the proof that support is usable: profile, team access, source import, product pages, widget, review summaries, support signals, and answer review.' },
                     { title: 'No enterprise implementation', description: 'Google sign-in and workspace creation get the founder into AnswerLattice without a sales-led project.' },
                     { title: 'Page setup first', description: 'Owners start with the screens where users actually get stuck instead of building a generic docs tree.' },
                     { title: 'Review before users see it', description: 'Generated drafts and early support answers stay review work until the owner approves them.' },
@@ -52,7 +52,7 @@ export default async function LaunchSetupProductPage() {
                     { title: 'Create workspace', description: 'Sign in, enter company and product details, and create the AnswerLattice workspace.' },
                     { title: 'Set team access', description: 'Add workspace members with the right AnswerLattice role before support work spreads.' },
                     { title: 'Import knowledge', description: 'Bring starter docs, FAQs, custom answers, release notes, or common support answers.' },
-                    { title: 'Map product surfaces', description: 'Choose the billing, onboarding, settings, release, and error pages that need contextual help.' },
+                    { title: 'Map product pages', description: 'Choose the billing, onboarding, settings, release, and error pages that need contextual help.' },
                     { title: 'Verify widget install', description: 'Install one script, allow your domains, block sensitive routes, and verify page context.' },
                     { title: 'Approve first answers', description: 'Review drafts and early approved answers before relying on fallback.' },
                 ]}

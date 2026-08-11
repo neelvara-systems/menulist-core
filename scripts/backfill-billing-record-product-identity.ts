@@ -29,7 +29,7 @@ const getArg = (name: string): string | null => {
 };
 
 async function main(): Promise<void> {
-    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID || '';
+    const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
     if (!ALLOWED_PROJECTS.has(projectId)) {
         throw new Error('Billing record identity backfill requires --project-id menulist-qa or menulist.');
     }

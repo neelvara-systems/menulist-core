@@ -18,6 +18,7 @@ add owner writes without evidence that the current map is insufficient.
 | Change selected entity/filter | 0 |
 | Expand or focus a connected entity | 0 |
 | Open with validated entity URL focus | 0 incremental reads |
+| Show missing requested entity warning | 0 incremental reads or writes |
 | Open Canonical Answers for selected entity | 0 until navigation; destination keeps its existing bounded load |
 | Manual refresh | 2 point reads |
 | Open public article topic map | 0 incremental reads |

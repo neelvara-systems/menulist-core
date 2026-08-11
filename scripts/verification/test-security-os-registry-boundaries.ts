@@ -42,6 +42,11 @@ assert.equal(
     evidenceResult.data.evidence.find((entry) => entry.id === 'answerlattice.security-audit')?.networkPolicy,
     'package-registry-read-only',
 );
+const githubIntakeEvidence = evidenceResult.data.evidence
+    .find((entry) => entry.id === 'answerlattice.github-change-intake-boundary');
+assert.equal(githubIntakeEvidence?.executionMode, 'local-read-only');
+assert.equal(githubIntakeEvidence?.networkPolicy, 'none');
+assert.equal(githubIntakeEvidence?.writesProductionData, false);
 for (const evidenceId of [
     'menulist.gemini-spend-window-rules',
     'answerlattice.gemini-spend-window-rules',
@@ -64,7 +69,12 @@ assert.throws(
     /Unknown SecurityOS product filter/,
 );
 const trustBoundaryPlan = getSecurityOsBundlePlan('menulist.data-and-trust-boundaries');
+const answerlatticeIngressPlan = getSecurityOsBundlePlan('answerlattice.authority-and-ingress');
 assert.equal(trustBoundaryPlan.bundle.selectionMode, 'manual-selective');
+assert.equal(
+    answerlatticeIngressPlan.evidence.some((entry) => entry.id === 'answerlattice.github-change-intake-boundary'),
+    true,
+);
 assert.throws(
     () => getSecurityOsBundlePlan('answerlattice.authority-and-ingress', 'menulist'),
     /outside product filter/,
@@ -86,7 +96,7 @@ assert.equal(SecurityOsEvidenceMapSchema.safeParse(invalidEvidence).success, fal
 
 const result = runSecurityOsAudit();
 assert.deepEqual(result.errors, []);
-assert.equal(result.evidenceCount, 42);
+assert.equal(result.evidenceCount, 43);
 assert.equal(result.bundleCount, 7);
 assert.equal(result.surfaceCount, 20);
 

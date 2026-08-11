@@ -72,7 +72,7 @@ export default function FeaturesPage() {
   }));
 
   return (
-    <div className="ws-page">
+    <main className="ws-page">
       {/* Hero */}
       <section style={{ padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-16)', backgroundColor: 'var(--ws-bg-primary)', textAlign: 'center' }}>
         <div className="ws-container" style={{ maxWidth: 'var(--ws-max-w-text)' }}>
@@ -283,6 +283,6 @@ export default function FeaturesPage() {
           </div>
         </AnimateOnScroll>
       </SectionWrapper>
-    </div>
+    </main>
   );
 }

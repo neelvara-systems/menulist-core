@@ -3,7 +3,7 @@
 **Project:** MenuList SignalDesk
 **Status:** Internal workflow implemented for source testing; Feature 1-11 hardening complete through Email Rail, while provider send, paid campaigns, auto-publish, external certification, and pending SignalDesk Firebase deployments remain blocked or owner-controlled
 **Created:** June 23, 2026
-**Last Updated:** August 2, 2026
+**Last Updated:** August 11, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -16,6 +16,18 @@ MenuList SignalDesk is the private growth control room for MenuList acquisition 
 It should let Danny and the growth team observe, monitor, and approve while the system researches, dedupes, scores, prepares evidence, drafts controlled messages, routes replies, suppresses risk, and measures whether the prospect became a real MenuList outcome.
 
 It is not a public product, not a MenuList owner/customer feature, not a generic CRM, and not an autonomous outbound machine.
+
+## Start Here
+
+When you begin using SignalDesk, follow the [Founder Start And Owner Control Runbook](./menulist-signaldesk_operator-runbook.md). It is the canonical first-use workflow for:
+
+- current local, hosted-QA, mobile, field-trial, and provider clearance;
+- first sign-in and one-time safety setup;
+- the evidence-only versus permissioned-contact boundary;
+- the first owner conversation, private preview, and two-surface activation;
+- daily work, weekly decisions, recovery, and end-of-session evidence.
+
+Use the [Implementation Validation](./menulist-signaldesk_validation.md) for current go/no-go truth and the [Bengaluru Activation Trial Operating Pack](./menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md) for the exact first-trial envelope, evidence rows, scripts, experiment values, stop rules, and blockers. The runbook does not authorize contact, provider activation, publication, deployment, or spend.
 
 ## AI Credential Boundary
 
@@ -112,7 +124,7 @@ Do not start with:
 | [Implementation Plan](./menulist-signaldesk_impl.md) | Technical blueprint, architecture, module order, and reserved file layout. |
 | [Firebase Cost Plan](./menulist-signaldesk_firebase.md) | Separate Firebase posture, collections, cost controls, and dashboard read strategy. |
 | [Compliance Policy](./menulist-signaldesk_compliance.md) | Source, channel, consent, suppression, privacy, and no-blast rules. |
-| [Owner Control Runbook](./menulist-signaldesk_operator-runbook.md) | Daily/weekly observe, monitor, approve, pause, and redirect workflow for the founder and growth team. |
+| [Founder Start And Owner Control Runbook](./menulist-signaldesk_operator-runbook.md) | Canonical first-use, first-login, permissioned activation, daily/weekly, recovery, route, and evidence workflow for the founder and growth team. |
 | [Mobile Support](./menulist-signaldesk_mobile-support.md) | Mobile admission decision: emergency controls and read-only summaries only. |
 | [Test Cases](./menulist-signaldesk_test-cases.md) | Product, security, compliance, cost, AI, channel, and attribution test matrix. |
 | [Action Register](./menulist-signaldesk_action-register.md) | Live tracker for documentation and implementation preparation. |
@@ -255,3 +267,4 @@ Approved sources
 | 4.2 | 2026-07-11 | Cross-check fixed expired AI Volume parents end to end: desktop persists/reuses the bounded retry payload, server reconstructs child/call/cost evidence, terminal status finalizes without provider calls, stable interruption evidence remains, and an old parent cannot release another batch's lock. |
 | 4.3 | 2026-07-21 | Feature 18 Operating Layer cross-check added full parent-route/workspace/action gating, child-rail read isolation, permission-specific controls, strict reply/source/pod projections, policy-run integrity, no-write exact replay, corrected mobile scope/cost docs, and focused deterministic E2E coverage. |
 | 4.4 | 2026-08-02 | Added product-project rolling Gemini spend admission, usage-based settlement, and structured jittered 429 handling without widening provider-send or public authority. |
+| 4.5 | 2026-08-11 | Expanded the internal owner-control runbook into the canonical founder start workflow, replacing the stale generic 25-50-target/email-first trial with the current permissioned, exact-25, zero-spend Bengaluru activation path and explicit local-versus-external clearance. |

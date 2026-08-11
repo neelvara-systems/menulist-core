@@ -1,7 +1,7 @@
 # Public Menu Entry - Firebase and Scale
 
 **Status:** Local source complete; scoped QA Function deployment pending
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -42,7 +42,7 @@ normalizes the response in memory. Provider-outage responses omit quota/reset
 headers; real exhaustion retains them. All authenticated intake and poll
 responses are explicitly private/no-store/nosniff.
 
-The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before the existing `recordStarterActivationSignal` call, evicts a known mismatch, and keys browser acknowledgement by exact tenant/store/signal; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write. Success query URLs are browser-output-only and now require the active MenuList platform root or exact tenant subdomain; this adds no read, write, delete, Storage, Function, rule, index, cache, or deployment effect.
+The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before showing the starter Billing action or calling the existing `recordStarterActivationSignal`, evicts a known mismatch, and keys browser acknowledgement by exact tenant/store/signal; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write. The Billing click is consent-gated browser analytics only and carries one fixed source token; it adds no Firebase read or write. Success query URLs are browser-output-only and require the active MenuList platform root or exact tenant subdomain; this adds no read, write, delete, Storage, Function, rule, index, cache, or deployment effect.
 
 ## Scale decisions
 

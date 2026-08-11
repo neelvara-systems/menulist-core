@@ -70,13 +70,13 @@ Deploy independently: `firebase deploy --only functions --project {project} --co
 
 Each separated product gets prefixed env vars:
 
-| Environment | MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` / `FIREBASE_PROJECT_ID` | Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` / `ANSWERLATTICE_FIREBASE_PROJECT_ID` |
+| Environment | MenuList canonical project ID | Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` |
 | --- | --- | --- |
 | Local development | `menulist-qa` | `answerlattice-qa` |
 | Vercel Preview / QA | `menulist-qa` | `answerlattice-qa` |
 | Vercel Production | `menulist` | `answerlattice` |
 
-Answerlattice env vars stay prefixed with `ANSWERLATTICE_` / `NEXT_PUBLIC_ANSWERLATTICE_`, and `ANSWERLATTICE_FIREBASE_MODE=separate` is the active local, preview, and production path. Prefer env-based Admin credentials over a local service-account JSON file.
+Answerlattice env vars stay prefixed with `ANSWERLATTICE_` / `NEXT_PUBLIC_ANSWERLATTICE_`, and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate` is the active local, preview, and production path. The server reuses non-secret public Firebase identifiers; only Admin credentials remain private. Prefer env-based Admin credentials over a local service-account JSON file.
 
 ## 8. When to Separate a New Product
 

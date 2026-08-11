@@ -1,12 +1,19 @@
 import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
-import { CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES, CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_EXPORT_ACTIONS } from "@constant/campaigncue/delivery";
+import { CAMPAIGNCUE_EXPORT_ARCHIVE } from "@constant/campaigncue/exportArchive";
 import { CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS } from "@constant/campaigncue/outputPicker";
+import {
+    CAMPAIGNCUE_RESULT_EVIDENCE_MAX_WINDOW_DAYS,
+    CAMPAIGNCUE_RESULT_EVIDENCE_PROVIDERS,
+    CAMPAIGNCUE_RESULT_EVIDENCE_SCOPES,
+} from "@constant/campaigncue/resultEvidence";
 import {
     CAMPAIGNCUE_PATTERN_CUE_MAX_NOTES_LENGTH,
     CAMPAIGNCUE_PATTERN_CUE_MAX_TAKEAWAY_LENGTH,
     normalizeCampaignCuePatternCueUrl,
 } from "@lib/campaigncue/patternCue";
+import { CAMPAIGNCUE_INBOX_MAX_CANDIDATES } from "@lib/campaigncue/campaignInbox";
 import { z } from "zod";
 
 const idPattern = /^[a-zA-Z0-9_-]+$/;
@@ -28,6 +35,15 @@ const optionalUrl = (maxLength: number) => z.preprocess(
     z.string().trim().url().max(maxLength).refine(isHttpUrl, "Only http and https links are allowed").optional().nullable(),
 );
 
+const optionalHttpUrl = z.preprocess(
+    (value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        return trimmed || undefined;
+    },
+    z.string().trim().url().max(1000).refine(isHttpUrl, "Only http and https links are allowed").optional(),
+);
+
 const optionalText = (maxLength: number) => z.preprocess(
     (value) => {
         if (typeof value !== "string") return value;
@@ -36,6 +52,54 @@ const optionalText = (maxLength: number) => z.preprocess(
     },
     z.string().trim().max(maxLength).optional(),
 );
+
+const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return parsed.getUTCFullYear() === year
+        && parsed.getUTCMonth() === month - 1
+        && parsed.getUTCDate() === day;
+}, "Use a valid calendar date");
+
+const resultEvidenceMetrics = z.object({
+    impressions: z.number().int().min(0).max(1_000_000_000).optional(),
+    reach: z.number().int().min(0).max(1_000_000_000).optional(),
+    profileViews: z.number().int().min(0).max(1_000_000_000).optional(),
+    websiteClicks: z.number().int().min(0).max(1_000_000_000).optional(),
+    callClicks: z.number().int().min(0).max(1_000_000_000).optional(),
+    directionRequests: z.number().int().min(0).max(1_000_000_000).optional(),
+    messages: z.number().int().min(0).max(1_000_000_000).optional(),
+    linkClicks: z.number().int().min(0).max(1_000_000_000).optional(),
+}).strict().refine(
+    (metrics) => Object.values(metrics).some((value) => typeof value === "number"),
+    "Add at least one report number",
+);
+
+const resultEvidence = z.object({
+    provider: z.enum(CAMPAIGNCUE_RESULT_EVIDENCE_PROVIDERS),
+    scope: z.enum(CAMPAIGNCUE_RESULT_EVIDENCE_SCOPES),
+    periodStart: calendarDate,
+    periodEnd: calendarDate,
+    metrics: resultEvidenceMetrics,
+    note: optionalText(200),
+}).strict().superRefine((value, context) => {
+    const start = Date.parse(`${value.periodStart}T00:00:00.000Z`);
+    const end = Date.parse(`${value.periodEnd}T00:00:00.000Z`);
+    const spanDays = Math.floor((end - start) / 86_400_000) + 1;
+    if (end < start) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Report end date must be on or after its start date",
+            path: ["periodEnd"],
+        });
+    } else if (spanDays > CAMPAIGNCUE_RESULT_EVIDENCE_MAX_WINDOW_DAYS) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Report window cannot exceed ${CAMPAIGNCUE_RESULT_EVIDENCE_MAX_WINDOW_DAYS} days`,
+            path: ["periodEnd"],
+        });
+    }
+});
 
 const optionalTextList = (maxItems: number, maxLength: number) => z.preprocess(
     (value) => {
@@ -114,6 +178,25 @@ const containsCustomerContactPayload = (label: string, value: string) => {
 
 export const CampaignCueIdSchema = z.string().regex(idPattern).min(3).max(120);
 
+const campaignCueMediaUploadIdSchema = z.string()
+    .regex(/^upload_[a-z0-9]+_[a-z0-9]{8}$/)
+    .min(18)
+    .max(80);
+
+export const CampaignCueFirebaseSessionAuthorizationSchema = z.discriminatedUnion("purpose", [
+    z.object({
+        purpose: z.literal("template_read"),
+    }).strict(),
+    z.object({
+        purpose: z.literal("workspace_template_write"),
+    }).strict(),
+    z.object({
+        purpose: z.literal("media_upload"),
+        uploadId: campaignCueMediaUploadIdSchema,
+        sourceFileName: z.string().regex(/^source\.[a-z0-9]{1,8}$/).max(15),
+    }).strict(),
+]);
+
 export const CampaignCueChannelSchema = z.enum(CAMPAIGNCUE_CHANNELS);
 
 export const CampaignCueCreateCampaignSchema = z.object({
@@ -136,12 +219,34 @@ export const CampaignCueCreateCampaignSchema = z.object({
     }
 });
 
+const campaignCueExportArchiveFilename = z.string()
+    .trim()
+    .min(5)
+    .max(120)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._ -]*\.zip$/, "Use a ZIP filename");
+
+const campaignCueExportArchiveDigest = z.string().regex(/^[a-f0-9]{64}$/);
+
+export const CampaignCueExportArchivePrepareSchema = z.object({
+    crc32c: z.string().regex(/^[A-Za-z0-9+/]{6}==$/),
+    filename: campaignCueExportArchiveFilename,
+    sha256: campaignCueExportArchiveDigest,
+    sizeBytes: z.number().int().min(1).max(CAMPAIGNCUE_EXPORT_ARCHIVE.maxBytes),
+}).strict();
+
+const campaignCueExportArchiveFinalize = CampaignCueExportArchivePrepareSchema.extend({
+    storagePath: z.string().trim().regex(/^[a-zA-Z0-9/_:.-]+$/).max(500),
+    uploadToken: z.string().trim().regex(idPattern).min(16).max(120),
+}).strict();
+
 export const CampaignCueCampaignActionSchema = z.object({
     action: z.enum(CAMPAIGNCUE_EXPORT_ACTIONS),
     outputId: CampaignCueIdSchema.optional(),
     channel: CampaignCueChannelSchema.optional(),
     scheduledAt: z.string().datetime().optional(),
     note: z.string().trim().max(400).optional(),
+    commentId: CampaignCueIdSchema.optional(),
+    locationId: CampaignCueIdSchema.optional(),
     resultSignalId: z.string().trim().regex(/^[a-zA-Z0-9_-]+$/).min(2).max(80).optional(),
     resultReceipt: z.object({
         usedAt: optionalDateTime,
@@ -156,6 +261,8 @@ export const CampaignCueCampaignActionSchema = z.object({
         evidenceNote: optionalText(400),
         experimentVariable: z.enum(["channel", "timing", "offer", "photo", "cta", "format"]).optional(),
     }).strict().optional(),
+    resultEvidence: resultEvidence.optional(),
+    exportArchive: campaignCueExportArchiveFinalize.optional(),
     staffAssignee: optionalText(80),
     taskType: z.enum(["post", "print", "staff_share", "follow_up", "result_check"]).optional(),
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
@@ -167,6 +274,52 @@ export const CampaignCueCampaignActionSchema = z.object({
             path: ["resultSignalId"],
         });
     }
+    if (
+        input.action === "record_outcome"
+        && input.resultReceipt?.usedAt
+        && Date.parse(input.resultReceipt.usedAt) > Date.now() + (5 * 60 * 1000)
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "The campaign use time cannot be in the future",
+            path: ["resultReceipt", "usedAt"],
+        });
+    }
+    if (input.action !== "record_outcome" && (input.resultSignalId || input.resultReceipt)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Result details are only accepted when recording an outcome",
+            path: [input.resultReceipt ? "resultReceipt" : "resultSignalId"],
+        });
+    }
+    if (input.action === "record_result_evidence" && !input.resultEvidence) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Add the report source, date range, and at least one number",
+            path: ["resultEvidence"],
+        });
+    }
+    if (input.action !== "record_result_evidence" && input.resultEvidence) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Report evidence is only accepted by the result-evidence action",
+            path: ["resultEvidence"],
+        });
+    }
+    if (input.action === "archive_export" && !input.exportArchive) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Upload the campaign pack before saving its cloud copy",
+            path: ["exportArchive"],
+        });
+    }
+    if (input.action !== "archive_export" && input.exportArchive) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A cloud archive is only accepted by the archive action",
+            path: ["exportArchive"],
+        });
+    }
     if (input.action === "schedule" && !input.scheduledAt) {
         context.addIssue({
             code: z.ZodIssueCode.custom,
@@ -174,11 +327,42 @@ export const CampaignCueCampaignActionSchema = z.object({
             path: ["scheduledAt"],
         });
     }
+    if (
+        input.action !== "schedule"
+        && (input.scheduledAt || input.staffAssignee || input.taskType)
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Manual task details are only accepted by the schedule action",
+            path: [input.scheduledAt ? "scheduledAt" : input.staffAssignee ? "staffAssignee" : "taskType"],
+        });
+    }
     if (input.action === "reject" && !input.note) {
         context.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Add a short reason before rejecting the campaign",
             path: ["note"],
+        });
+    }
+    if (input.action === "add_approval_comment" && !input.note) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Add a short review comment",
+            path: ["note"],
+        });
+    }
+    if (input.action === "resolve_approval_comment" && !input.commentId) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Choose the review comment to resolve",
+            path: ["commentId"],
+        });
+    }
+    if (input.action !== "resolve_approval_comment" && input.commentId) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A review comment id is only accepted when resolving that comment",
+            path: ["commentId"],
         });
     }
 });
@@ -206,6 +390,13 @@ export const CampaignCueAssetSchema = z.object({
     outputId: CampaignCueIdSchema.optional(),
     channel: CampaignCueChannelSchema.optional(),
 }).strict().superRefine((value, ctx) => {
+    if (value.sizeBytes !== undefined && value.sizeBytes > CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES[value.assetType]) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `This ${value.assetType} file exceeds the CampaignCue size limit`,
+            path: ["sizeBytes"],
+        });
+    }
     if (value.previewStoragePath && !value.storagePath) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A preview requires a source file", path: ["previewStoragePath"] });
     }
@@ -340,16 +531,99 @@ export const CampaignCueSourceInputSchema = z.object({
     }
 });
 
+const CampaignCueInboxSourceCandidateSchema = z.object({
+    candidateId: z.string().trim().regex(idPattern).min(3).max(80),
+    sourceType: z.enum(["manual_note", "menu_link", "booking_link", "offer", "event", "upload_metadata"]),
+    label: z.string().trim().min(2).max(120),
+    value: z.string().trim().min(2).max(1200),
+    status: z.enum(["active", "needs_review"]),
+}).strict().superRefine((input, context) => {
+    if (
+        (input.sourceType === "menu_link" || input.sourceType === "booking_link")
+        && !isHttpUrl(input.value)
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Menu and booking details must use an http or https link.",
+            path: ["value"],
+        });
+    }
+    if (containsCustomerContactPayload(input.label, input.value)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Do not paste customer names, phone numbers, email addresses, contact lists, or private conversations.",
+            path: ["value"],
+        });
+    }
+});
+
+export const CampaignCueInboxConfirmSchema = z.object({
+    action: z.literal("confirm_inbox"),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
+    candidates: z.array(CampaignCueInboxSourceCandidateSchema)
+        .min(1)
+        .max(CAMPAIGNCUE_INBOX_MAX_CANDIDATES),
+}).strict().superRefine((input, context) => {
+    const candidateIds = new Set<string>();
+    const candidateValues = new Set<string>();
+    input.candidates.forEach((candidate, index) => {
+        if (candidateIds.has(candidate.candidateId)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Each Campaign Inbox detail must have a unique identifier.",
+                path: ["candidates", index, "candidateId"],
+            });
+        }
+        candidateIds.add(candidate.candidateId);
+        const valueKey = [candidate.sourceType, candidate.label, candidate.value]
+            .map((value) => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US"))
+            .join(":");
+        if (candidateValues.has(valueKey)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Duplicate Campaign Inbox details are not allowed.",
+                path: ["candidates", index, "value"],
+            });
+        }
+        candidateValues.add(valueKey);
+    });
+});
+
 export const CampaignCueLocationSchema = z.object({
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     name: z.string().trim().min(2).max(120),
     locality: z.string().trim().max(120).optional(),
+    contacts: z.object({
+        phone: optionalText(80),
+        whatsapp: optionalText(80),
+        bookingUrl: optionalHttpUrl,
+        publicMenuUrl: optionalHttpUrl,
+        website: optionalHttpUrl,
+    }).strict().optional(),
     status: z.enum(["active", "draft"]).default("draft"),
+}).strict();
+
+export const CampaignCueLocationVariantBatchSchema = z.object({
+    baseCampaignId: CampaignCueIdSchema,
+    locationIds: z.array(CampaignCueIdSchema).min(1).max(8),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
+}).strict().superRefine((value, context) => {
+    if (new Set(value.locationIds).size !== value.locationIds.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Choose each location only once",
+            path: ["locationIds"],
+        });
+    }
 });
 
 export type CampaignCueCreateCampaignInput = z.infer<typeof CampaignCueCreateCampaignSchema>;
+export type CampaignCueFirebaseSessionAuthorization = z.infer<typeof CampaignCueFirebaseSessionAuthorizationSchema>;
 export type CampaignCueCampaignActionInput = z.infer<typeof CampaignCueCampaignActionSchema>;
+export type CampaignCueExportArchivePrepareInput = z.infer<typeof CampaignCueExportArchivePrepareSchema>;
 export type CampaignCueAssetInput = z.infer<typeof CampaignCueAssetSchema>;
 export type CampaignCueBusinessPatchInput = z.infer<typeof CampaignCueBusinessPatchSchema>;
 export type CampaignCueSourceInputData = z.infer<typeof CampaignCueSourceInputSchema>;
+export type CampaignCueInboxConfirmData = z.infer<typeof CampaignCueInboxConfirmSchema>;
 export type CampaignCueLocationInput = z.infer<typeof CampaignCueLocationSchema>;
+export type CampaignCueLocationVariantBatchInput = z.infer<typeof CampaignCueLocationVariantBatchSchema>;

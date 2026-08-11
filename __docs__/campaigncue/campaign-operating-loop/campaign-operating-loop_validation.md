@@ -6,7 +6,7 @@
 | --- | --- |
 | Owner Pulse | Business state, capacity, stock, local moment, note, and validity window in Business Brain and Daily Desk. |
 | Commercial Safety Gate | Promotion, discount, maximum discount, minimum price, capacity/stock, and do-not-promote checks in deterministic decision and Trust Center flow. |
-| Pack expiry/drift guard | Persisted order-independent source hash plus earliest recipe/pulse/current-input expiry and server recheck before download, export, mark used, and schedule. |
+| Pack expiry/drift guard | Persisted order-independent source hash plus earliest recipe/pulse/current-input expiry and server recheck before download, export, cloud archive, mark used, and schedule. |
 | Campaign Receipt | Owner signal, optional time and counts, note, variable, and `owner_reported` confidence on the campaign. |
 | One-variable learning | Deterministic channel/timing/offer/photo/CTA/format suggestion in decision and output pack. |
 | Review/reputation pack | Dedicated recipe/opportunity, verified HTTP(S) destination, real completed-interaction note, honest-review policy, and staff/counter handoff. |

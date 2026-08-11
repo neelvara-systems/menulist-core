@@ -6,6 +6,11 @@ export type CampaignCueVideoTransition = "cut" | "fade" | "slide";
 export type CampaignCueVideoProjectStatus = "draft" | "approved" | "rejected";
 export type CampaignCueVideoRenderStatus = "started" | "completed" | "failed" | "cancelled";
 export type CampaignCueVideoResultSignal = "useful" | "not_useful" | "not_used";
+export type CampaignCueVideoVersionBinding = "exact" | "legacy_unverified";
+export type CampaignCueVideoHookType = "question" | "curiosity" | "demonstration" | "offer" | "story" | "direct_benefit";
+export type CampaignCueVideoFormat = "talking_head" | "demonstration" | "montage" | "screen_recording" | "mixed";
+export type CampaignCueVideoPacing = "calm" | "steady" | "fast";
+export type CampaignCueVideoDurationBand = "under_15_seconds" | "15_to_30_seconds" | "31_to_60_seconds" | "over_60_seconds" | "unknown";
 
 export interface CampaignCueVideoAudioTrack {
     mode: "none" | "asset" | "session_file";
@@ -55,7 +60,7 @@ export interface CampaignCueVideoVersionSnapshot {
     createdByUserId: string;
 }
 
-export interface CampaignCueVideoRenderReceipt {
+interface CampaignCueVideoRenderReceiptBase {
     id: string;
     attempt: number;
     status: CampaignCueVideoRenderStatus;
@@ -82,6 +87,11 @@ export interface CampaignCueVideoRenderReceipt {
     completedAt?: unknown;
 }
 
+export type CampaignCueVideoRenderReceipt = CampaignCueVideoRenderReceiptBase & (
+    | { versionBinding: "exact"; projectVersion: number }
+    | { versionBinding: "legacy_unverified"; projectVersion?: never }
+);
+
 export interface CampaignCueVideoReviewNote {
     id: string;
     sceneId?: string;
@@ -93,12 +103,75 @@ export interface CampaignCueVideoReviewNote {
     resolvedBy?: string;
 }
 
-export interface CampaignCueVideoResultMemory {
+interface CampaignCueVideoResultMemoryBase {
     signalId: CampaignCueVideoResultSignal;
     renderReceiptId: string;
     note?: string;
     recordedBy: string;
     recordedAt?: unknown;
+}
+
+export type CampaignCueVideoResultMemory = CampaignCueVideoResultMemoryBase & (
+    | {
+        versionBinding: "exact";
+        projectVersion: number;
+        formatSignature: string;
+        formatSnapshot: CampaignCueVideoFormatSnapshot;
+    }
+    | {
+        versionBinding: "legacy_unverified";
+        projectVersion?: never;
+        formatSignature?: never;
+        formatSnapshot?: never;
+    }
+);
+
+export interface CampaignCueVideoFormatSnapshot {
+    projectVersion: number;
+    aspectRatio: CampaignCueVideoAspectRatio;
+    hookType?: CampaignCueVideoHookType;
+    format?: CampaignCueVideoFormat;
+    pacing?: CampaignCueVideoPacing;
+    durationBand: Exclude<CampaignCueVideoDurationBand, "over_60_seconds" | "unknown">;
+    scenePurposes: CampaignCueVideoScene["purpose"][];
+    durationSeconds: number;
+}
+
+export interface CampaignCueVideoFormatLearning {
+    formatSignature: string;
+    label: string;
+    status: "use_again" | "avoid_for_now" | "insufficient_evidence";
+    usefulCount: number;
+    notUsefulCount: number;
+    notUsedCount: number;
+    summary: string;
+}
+
+export interface CampaignCueVideoContentCoachCheck {
+    id: "opening_clarity" | "real_business_proof" | "pacing" | "text_density" | "cta_visibility" | "source_and_rights";
+    label: string;
+    status: "ready" | "review" | "fix";
+    summary: string;
+    recommendation: string;
+    sceneId?: string;
+}
+
+export interface CampaignCueVideoContentCoach {
+    projectVersion: number;
+    status: "ready" | "needs_review" | "needs_fix";
+    readyCount: number;
+    reviewCount: number;
+    fixCount: number;
+    checks: CampaignCueVideoContentCoachCheck[];
+}
+
+export interface CampaignCueVideoCaptureTask {
+    id: string;
+    sceneId: string;
+    title: string;
+    direction: string;
+    durationSeconds: number;
+    status: "ready" | "record";
 }
 
 export interface CampaignCueVideoReusableBlueprint {
@@ -145,6 +218,10 @@ export interface CampaignCueVideoProject {
         sourceHash: string;
         platform: "instagram" | "tiktok" | "youtube" | "other";
         rightsStatus: "reference_only" | "owner_authorized";
+        hookType?: CampaignCueVideoHookType;
+        format?: CampaignCueVideoFormat;
+        pacing?: CampaignCueVideoPacing;
+        durationBand?: CampaignCueVideoDurationBand;
     };
     trustGate: CampaignCueTrustGate;
     trustFindings: CampaignCueVideoTrustFinding[];
@@ -215,7 +292,10 @@ export type CampaignCueVideoProjectMutationInput =
         action: "render_receipt";
         projectId: string;
         expectedVersion: number;
-        receipt: Omit<CampaignCueVideoRenderReceipt, "createdAt" | "completedAt">;
+        receipt: Omit<
+            Extract<CampaignCueVideoRenderReceipt, { versionBinding: "exact" }>,
+            "createdAt" | "completedAt"
+        >;
         idempotencyKey: string;
     }
     | {

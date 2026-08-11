@@ -111,7 +111,7 @@ export default function HomeProofBandSection({ basePath = '' }: { basePath?: str
 
                 <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-teal-300/20 bg-teal-400/[0.045] p-5 text-sm leading-relaxed text-[#d6d6ef] sm:flex-row sm:items-center sm:justify-between">
                     <p>
-                        Evaluate AnswerLattice through concrete product proof: governance demo, install verifier, ROI calculator, proof pack, current trust facts, and security handoff.
+                        Evaluate AnswerLattice through concrete product proof: review-loop demo, install verifier, ROI calculator, proof pack, current trust facts, and security handoff.
                     </p>
                     <LuCalculator aria-hidden className="hidden shrink-0 text-teal-200 sm:block" size={24} />
                 </div>

@@ -8,20 +8,19 @@ import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useO
 import { useOwnerBusinessLocationsSummary } from '@hook/ownerBusinessAssistant/useOwnerBusinessLocationsSummary';
 import { useOwnerPublicTruthReadiness } from '@hook/publicTruthTools/useOwnerPublicTruthReadiness';
 import {
-    buildOwnerBusinessActivityMetrics,
-    getOwnerBusinessCheckActionLabel,
-    getOwnerBusinessCheckOwnerMessage,
-    getOwnerBusinessPrimaryAnalyticsPeriod,
-} from '@lib/ownerBusinessAssistant/businessSignals';
-import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
-import { formatOwnerBusinessHealthDateKey, getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
-import type {
-    OwnerBusinessHealthCurrentDoc,
-    OwnerBusinessHealthQuestion,
-} from '@lib/ownerBusinessAssistant/types';
+    buildLocalizedOwnerBusinessActivityMetrics,
+    getLocalizedOwnerBusinessPrimaryPeriod,
+    getOwnerBusinessHealthCheckPresentation,
+    getOwnerBusinessHealthDashboardPresentation,
+    getOwnerBusinessHealthQuestionLabel,
+    getOwnerBusinessLocationPresentation,
+} from '@lib/ownerBusinessAssistant/dashboardPresentation';
+import { isEnglishDashboardLocale } from '@lib/analytics/ownerDashboardPresentation';
+import type { OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
 import type { OwnerPublicTruthReadinessMobileFixTarget } from '@lib/public-truth-tools/ownerPublicTruthReadiness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuActivity, LuCheckCircle2, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
@@ -45,19 +44,11 @@ interface MobileBusinessHealthScreenProps {
 
 const ALL_MENUS_SCOPE = '__all_menus__';
 
-const getFeedbackSummaryLine = (current?: OwnerBusinessHealthCurrentDoc | null) => {
-    const feedback = current?.feedbackSummary;
-    if (!feedback) return null;
-    const needsAttention = feedback.periods?.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention?.length ?? 0;
-    if (needsAttention > 0) {
-        return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
-    }
-    const total = feedback.periods?.last30Days?.totalCount ?? feedback.sampledCount ?? 0;
-    return total > 0 ? 'Guest feedback is clear' : null;
-};
-
 export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOpenMoreScreen, onOpenShareTab }: MobileBusinessHealthScreenProps) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
+    const locale = useLocale();
+    const t = useTranslations('Dashboard.owner');
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const { isLoading: isProjectsLoading, projectsById, projectsList, selectedProjectId } = useMobileProjects();
     const [businessHealthProjectId, setBusinessHealthProjectId] = useState<string | null>(selectedProjectId || null);
@@ -101,13 +92,15 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             : null,
         [businessHealthProjectId, scopeProjects],
     );
-    const selectedScopeProjectName = selectedScopeProject?.name || 'Selected menu';
+    const selectedScopeProjectName = selectedScopeProject?.name || t('businessHealth.scope.selectedMenu');
     const scopeSelectorProjects = useMemo<ProjectSelectorItem[]>(() => [
         {
             id: ALL_MENUS_SCOPE,
-            name: 'All menus',
+            name: t('businessHealth.scope.allMenus'),
             active: true,
-            secondaryLabel: scopeProjects.length ? `${scopeProjects.length} menus in this location` : 'Location-level view',
+            secondaryLabel: scopeProjects.length
+                ? t('businessHealth.scope.menuCount', { count: scopeProjects.length })
+                : t('businessHealth.scope.locationLevel'),
         },
         ...scopeProjects.map((project: any) => ({
             id: project.projectId,
@@ -115,9 +108,9 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             deleted: project.deleted === true,
             isDefault: project.isDefault,
             isSpecialMenu: project.isSpecialMenu === true,
-            name: project.name || 'Untitled',
+            name: project.name || t('projectSelector.untitled'),
             projectImage: project.projectImage || null,
-            secondaryLabel: project.active === false ? 'Inactive menu' : undefined,
+            secondaryLabel: project.active === false ? t('businessHealth.scope.inactiveMenu') : undefined,
             specialMenuBaseProjectId: project.specialMenuBaseProjectId,
             specialMenuBaseProjectName: project.specialMenuBaseProjectId
                 ? scopeProjects.find((candidate: any) => candidate.projectId === project.specialMenuBaseProjectId)?.name
@@ -125,13 +118,21 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             specialMenuEndsAt: project.specialMenuEndsAt,
             specialMenuStatus: project.specialMenuStatus,
         })),
-    ], [scopeProjects]);
-    const isFreeTextAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
-    const isSuggestedAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
+    ], [scopeProjects, t]);
+    const isAssistantLanguageSupported = isEnglishDashboardLocale(locale);
+    const isFreeTextAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT
+        && isHealthReady
+        && isAssistantLanguageSupported;
+    const isSuggestedAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS
+        && isHealthReady
+        && isAssistantLanguageSupported;
     const canSendQuestion = isFreeTextAskEnabled && Boolean(question.trim()) && !isAnswering;
-    const askPlaceholder = isHealthReady ? 'Ask about today or this week' : 'Available after the latest check';
-    const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
-    const feedbackSummaryLine = getFeedbackSummaryLine(current);
+    const askPlaceholder = isHealthReady
+        ? t('businessHealth.assistant.placeholderMobile')
+        : t('businessHealth.assistant.placeholderPending');
+    const healthPresentation = current
+        ? getOwnerBusinessHealthDashboardPresentation(current, formatter, t)
+        : null;
     const recentMessages = messages.slice(-8);
     const pendingQuestion = lastQuestion?.question.trim();
     const pendingQuestionInMessages = Boolean(pendingQuestion)
@@ -179,8 +180,11 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 : token.colorInfoBg;
     const visibleChecks = current?.suggestedChecks || [];
     const analyticsMetrics = useMemo(
-        () => buildOwnerBusinessActivityMetrics(getOwnerBusinessPrimaryAnalyticsPeriod(analytics?.periods)),
-        [analytics?.periods],
+        () => buildLocalizedOwnerBusinessActivityMetrics(
+            getLocalizedOwnerBusinessPrimaryPeriod(analytics?.periods),
+            t,
+        ),
+        [analytics?.periods, t],
     );
     const getLocationStatusColor = (status: string) => {
         if (status === 'stable') return 'success';
@@ -188,11 +192,6 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
         if (status === 'watch' || status === 'stale') return 'warning';
         return 'default';
     };
-    const getLocationFreshnessLabel = (localDate?: string) => {
-        const formatted = formatOwnerBusinessHealthDateKey(localDate);
-        return formatted ? `Checked ${formatted}` : null;
-    };
-
     useEffect(() => {
         const storeId = storeDetails?.storeId || null;
         if (scopeStoreRef.current !== storeId) {
@@ -227,15 +226,15 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
         const normalized = value.trim();
         if (!normalized) return;
         if (!isHealthReady) {
-            Toast.show({ content: 'Business Health will answer after the latest check finishes.', duration: 1800 });
+            Toast.show({ content: t('businessHealth.assistant.notReady'), duration: 1800 });
             return;
         }
         if (suggestedQuestionId && !isSuggestedAskEnabled) {
-            Toast.show({ content: 'Suggested questions are not available right now.', duration: 1800 });
+            Toast.show({ content: t('businessHealth.assistant.suggestedUnavailable'), duration: 1800 });
             return;
         }
         if (!suggestedQuestionId && !isFreeTextAskEnabled) {
-            Toast.show({ content: 'Free-text questions are not available right now.', duration: 1800 });
+            Toast.show({ content: t('businessHealth.assistant.freeTextUnavailable'), duration: 1800 });
             return;
         }
         try {
@@ -249,7 +248,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 hasSuggestedQuestionId: Boolean(suggestedQuestionId),
                 questionLength: normalized.length,
             });
-            Toast.show({ content: 'Business Health could not answer that.', duration: 2200 });
+            Toast.show({ content: t('businessHealth.assistant.answerError'), duration: 2200 });
         }
     };
 
@@ -284,7 +283,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             return;
         }
 
-        Toast.show({ content: 'Open this from desktop settings.', duration: 1600 });
+        Toast.show({ content: t('businessHealth.page.desktopSettingsOnly'), duration: 1600 });
     };
 
     const renderFollowUpQuestions = (questions?: OwnerBusinessHealthQuestion[]) => {
@@ -302,7 +301,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             >
                 <Flex align="center" gap={6}>
                     <LuSparkles color={token.colorPrimary} size={14} />
-                    <Text type="secondary" style={{ fontSize: 12 }}>You can ask next</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('businessHealth.assistant.followUps')}</Text>
                 </Flex>
                 <Flex gap={7} vertical>
                     {questions.slice(0, 3).map((suggested) => (
@@ -321,11 +320,11 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                 justifyContent: 'flex-start',
                                 lineHeight: 1.35,
                                 minHeight: 44,
-                                textAlign: 'left',
+                                textAlign: 'start',
                                 whiteSpace: 'normal',
                             }}
                         >
-                            {suggested.label}
+                            {getOwnerBusinessHealthQuestionLabel(suggested, t)}
                         </Button>
                     ))}
                 </Flex>
@@ -387,7 +386,9 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 >
                     <Flex align="center" gap={5}>
                         {isUser ? <LuUser color={token.colorTextSecondary} size={13} /> : <LuActivity color={token.colorTextSecondary} size={13} />}
-                        <Text type="secondary" style={{ fontSize: 12 }}>{isUser ? 'You' : 'Business Health'}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {isUser ? t('businessHealth.assistant.you') : t('businessHealth.title')}
+                        </Text>
                     </Flex>
                     {content ? <Text style={{ lineHeight: 1.55, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{content}</Text> : null}
                     {children}
@@ -399,9 +400,9 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
-                description="Daily business status, checks, and owner questions."
+                description={t('businessHealth.page.description')}
                 onBack={onBack}
-                title="Business Health"
+                title={t('businessHealth.title')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <ProjectSelectorTrigger
@@ -422,12 +423,14 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                         specialMenuStatus: selectedScopeProject.specialMenuStatus,
                     } : {
                         id: ALL_MENUS_SCOPE,
-                        name: 'All menus',
+                        name: t('businessHealth.scope.allMenus'),
                         active: true,
                     }}
-                    helperText={selectedScopeProject ? 'Questions and analytics use this menu.' : 'Questions and analytics use all menus in this location.'}
+                    helperText={selectedScopeProject
+                        ? t('businessHealth.scope.thisMenuHelper')
+                        : t('businessHealth.scope.allMenusHelper')}
                     onClick={() => setIsScopeSelectorOpen(true)}
-                    rightContent={!selectedScopeProject ? <Tag color="processing"><LuLayers size={12} /> All</Tag> : undefined}
+                    rightContent={!selectedScopeProject ? <Tag color="processing"><LuLayers size={12} /> {t('businessHealth.scope.all')}</Tag> : undefined}
                 />
 
                 <Card>
@@ -447,18 +450,24 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                 <LuActivity size={22} />
                             </Flex>
                             <Flex flex={1} style={{ minWidth: 0 }} vertical>
-                                <Title level={4} style={{ margin: 0 }}>{current?.summary.headline || 'Latest check'}</Title>
-                                <Text type="secondary">{current?.sourceRefs?.[0]?.freshnessLabel || current?.localDate || 'Loading'}</Text>
+                                <Title level={4} style={{ margin: 0 }}>
+                                    {healthPresentation?.headline || t('businessHealth.page.latestCheck')}
+                                </Title>
+                                <Text type="secondary">
+                                    {healthPresentation?.statusLabel || t('businessHealth.page.loading')}
+                                </Text>
                             </Flex>
                         </Flex>
-                        <Text>{current?.summary.ownerMessage || (isLoading ? 'Loading Business Health...' : 'Business Health is not ready yet.')}</Text>
-                        {feedbackSummaryLine ? <Text type="secondary" style={{ fontSize: 13 }}>{feedbackSummaryLine}</Text> : null}
-                        {freshnessNote ? <Text type="secondary" style={{ fontSize: 13 }}>{freshnessNote}</Text> : null}
+                        <Text>{healthPresentation?.message || (isLoading
+                            ? t('businessHealth.page.loadingMessage')
+                            : t('businessHealth.page.notReady'))}</Text>
+                        {healthPresentation?.feedbackLine ? <Text type="secondary" style={{ fontSize: 13 }}>{healthPresentation.feedbackLine}</Text> : null}
+                        {healthPresentation?.freshnessNote ? <Text type="secondary" style={{ fontSize: 13 }}>{healthPresentation.freshnessNote}</Text> : null}
                         {showNoActionNeeded ? (
-                            <Tag color="success"><LuCheckCircle2 size={14} /> No action needed</Tag>
+                            <Tag color="success"><LuCheckCircle2 size={14} /> {t('businessHealth.noActionNeeded')}</Tag>
                         ) : null}
                         <Button block fill="outline" onClick={() => void refresh()}>
-                            Refresh
+                            {t('businessHealth.page.refresh')}
                         </Button>
                     </Flex>
                 </Card>
@@ -476,7 +485,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 />
 
                 {isHealthReady && analyticsMetrics.length ? (
-                    <Card title="Today">
+                    <Card title={t('businessHealth.today')}>
                         <Flex gap={8} vertical>
                             {analyticsMetrics.map((metric) => (
                                 <Metric
@@ -490,11 +499,12 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 ) : null}
 
                 {hasMultipleStores ? (
-                    <Card title="Locations">
+                    <Card title={t('businessHealth.locations.title')}>
                         <Flex gap={8} vertical>
-                            {isLocationsLoading && !locationStores.length ? <Text type="secondary">Loading locations...</Text> : null}
-                            {locationStores.slice(0, 6).map((store) => (
-                                <Flex
+                            {isLocationsLoading && !locationStores.length ? <Text type="secondary">{t('businessHealth.locations.loading')}</Text> : null}
+                            {locationStores.slice(0, 6).map((store) => {
+                                const presentation = getOwnerBusinessLocationPresentation(store, locale, formatter, t);
+                                return <Flex
                                     align="flex-start"
                                     gap={8}
                                     justify="space-between"
@@ -505,26 +515,27 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                     }}
                                 >
                                     <Flex style={{ minWidth: 0 }} vertical>
-                                        <Text strong>{store.storeName || `Store ${store.sId}`}</Text>
-                                        {store.topReason ? <Text type="secondary" style={{ fontSize: 12 }}>{store.topReason}</Text> : null}
-                                        {getLocationFreshnessLabel(store.localDate) ? (
-                                            <Text type="secondary" style={{ fontSize: 12 }}>{getLocationFreshnessLabel(store.localDate)}</Text>
+                                        <Text strong>{presentation.name}</Text>
+                                        {presentation.reason ? <Text type="secondary" style={{ fontSize: 12 }}>{presentation.reason}</Text> : null}
+                                        {presentation.checkedLabel ? (
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{presentation.checkedLabel}</Text>
                                         ) : null}
                                     </Flex>
                                     <Tag color={getLocationStatusColor(store.status)}>
-                                        {OWNER_BUSINESS_HEALTH_STATUS_LABELS[store.status] || store.status}
+                                        {presentation.statusLabel}
                                     </Tag>
-                                </Flex>
-                            ))}
+                                </Flex>;
+                            })}
                         </Flex>
                     </Card>
                 ) : null}
 
                 {visibleChecks.length ? (
-                    <Card title="Needs attention">
+                    <Card title={t('businessHealth.page.needsAttention')}>
                         <Flex gap={8} vertical>
-                            {visibleChecks.slice(0, 4).map((check) => (
-                                <Flex
+                            {visibleChecks.slice(0, 4).map((check) => {
+                                const presentation = getOwnerBusinessHealthCheckPresentation(check, t);
+                                return <Flex
                                     gap={8}
                                     key={check.id}
                                     style={{
@@ -535,20 +546,20 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                     vertical
                                 >
                                     <Flex align="center" justify="space-between">
-                                        <Text strong>{check.title}</Text>
+                                        <Text strong>{presentation?.title}</Text>
                                         <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'primary'}>
-                                            {getOwnerBusinessCheckActionLabel(check)}
+                                            {presentation?.action}
                                         </Tag>
                                     </Flex>
-                                    <Text>{getOwnerBusinessCheckOwnerMessage(check)}</Text>
-                                </Flex>
-                            ))}
+                                    <Text>{presentation?.message}</Text>
+                                </Flex>;
+                            })}
                         </Flex>
                     </Card>
                 ) : null}
 
-                {isHealthReady ? (
-                    <Card title="Ask">
+                {isHealthReady && isAssistantLanguageSupported ? (
+                    <Card title={t('businessHealth.assistant.askShort')}>
                         <Flex gap={10} vertical>
                             {showStarterQuestions && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions?.slice(0, 5).map((suggested) => (
                                 <Button
@@ -562,11 +573,11 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                         justifyContent: 'flex-start',
                                         lineHeight: 1.35,
                                         minHeight: 44,
-                                        textAlign: 'left',
+                                        textAlign: 'start',
                                         whiteSpace: 'normal',
                                     }}
                                 >
-                                    {suggested.label}
+                                    {getOwnerBusinessHealthQuestionLabel(suggested, t)}
                                 </Button>
                             )) : null}
                             <Flex gap={8}>
@@ -577,7 +588,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                     value={question}
                                 />
                                 <Button
-                                    ariaLabel="Send question"
+                                    ariaLabel={t('businessHealth.assistant.send')}
                                     disabled={!canSendQuestion}
                                     icon={<LuSend size={18} />}
                                     loading={isAnswering}
@@ -590,7 +601,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                         paddingInline: 0,
                                         width: 48,
                                     }}
-                                    title="Send question"
+                                    title={t('businessHealth.assistant.send')}
                                 />
                             </Flex>
                             {chatMessages.length ? (
@@ -614,6 +625,13 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                             ) : null}
                         </Flex>
                     </Card>
+                ) : isHealthReady ? (
+                    <Card title={t('businessHealth.assistant.askShort')}>
+                        <Flex gap={4} vertical>
+                            <Text strong>{t('businessHealth.assistant.englishOnlyTitle')}</Text>
+                            <Text type="secondary">{t('businessHealth.assistant.englishOnlyDescription')}</Text>
+                        </Flex>
+                    </Card>
                 ) : null}
             </Flex>
             <Popup
@@ -624,15 +642,15 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 <Flex gap={16} style={{ maxHeight: 'min(78vh, 680px)', overflowY: 'auto' }} vertical>
                     <Flex align="flex-start" justify="space-between" gap={12}>
                         <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Title level={3} style={{ margin: 0, textAlign: 'left' }}>
-                                Business Health scope
+                            <Title level={3} style={{ margin: 0, textAlign: 'start' }}>
+                                {t('businessHealth.scope.title')}
                             </Title>
-                            <Text type="secondary" style={{ textAlign: 'left' }}>
-                                Choose all menus or one menu for analytics and questions.
+                            <Text type="secondary" style={{ textAlign: 'start' }}>
+                                {t('businessHealth.scope.dialogDescription')}
                             </Text>
                         </Flex>
                         <Button
-                            ariaLabel="Close"
+                            ariaLabel={t('businessHealth.scope.close')}
                             fill="none"
                             onClick={() => setIsScopeSelectorOpen(false)}
                             size="small"

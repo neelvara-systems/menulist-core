@@ -4,7 +4,6 @@ import {
     LuArrowRight,
     LuArrowUpRight,
     LuBuilding2,
-    LuCheckCircle2,
     LuExternalLink,
     LuFileText,
     LuGlobe2,
@@ -55,8 +54,6 @@ type PageData = {
     description: string;
     headline?: string;
     eyebrow: string;
-    summaryTitle?: string;
-    summaryRows?: string[];
     lastUpdated?: string;
     cards: InfoCard[];
     sections: Array<{
@@ -72,13 +69,6 @@ type PageData = {
         ctaHref: string;
         ctaExternal?: boolean;
     };
-};
-
-type ComparisonRow = {
-    label: string;
-    company: string;
-    products: string;
-    apps: string;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -169,15 +159,9 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     about: {
         slug: 'about',
         title: 'About Neelvara Systems',
-        description: 'Neelvara Systems operates infrastructure for customer-facing business information that should stay accurate without constant maintenance.',
-        headline: 'An operating company for focused information products.',
+        description: 'Neelvara Systems operates MenuList and Answerlattice, focused software for public business facts and approved support answers.',
+        headline: 'The operating company behind MenuList and Answerlattice.',
         eyebrow: 'Company overview',
-        summaryTitle: 'Company reference',
-        summaryRows: [
-            'Focused product lineup',
-            'Clear public boundaries',
-            'Direct company contact',
-        ],
         cards: [
             {
                 title: 'Business information',
@@ -291,12 +275,6 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         description: 'Public entity and product relationship information for Neelvara Systems.',
         headline: 'Company and product relationships, stated plainly.',
         eyebrow: 'Entity information',
-        summaryTitle: 'Legal reference',
-        summaryRows: [
-            'Company website scope',
-            'Separate product policies',
-            'Direct legal contact',
-        ],
         cards: [
             {
                 title: 'Operating trade name',
@@ -363,12 +341,6 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         description: 'This Privacy Policy explains how Neelvara Systems handles information related to this company website.',
         headline: 'A narrow privacy policy for a narrow company website.',
         eyebrow: 'Privacy Policy',
-        summaryTitle: 'Privacy scope',
-        summaryRows: [
-            'Static public pages',
-            'Basic hosting and security logs',
-            'Visitor-initiated email',
-        ],
         lastUpdated: 'June 26, 2026',
         cards: [
             {
@@ -480,12 +452,6 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         description: 'These Terms govern use of the Neelvara Systems company website.',
         headline: 'Terms for this company information website.',
         eyebrow: 'Terms of Use',
-        summaryTitle: 'Website terms',
-        summaryRows: [
-            'General company information',
-            'Separate product terms',
-            'Direct legal contact',
-        ],
         lastUpdated: 'June 26, 2026',
         cards: [
             {
@@ -588,33 +554,6 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     },
 };
 
-export const COMPARISON_ROWS: ComparisonRow[] = [
-    {
-        label: 'Purpose',
-        company: 'Company name, current products, and official contact routes.',
-        products: 'Product capabilities, pricing, onboarding, policies, and support.',
-        apps: 'Signed-in product workflows, account settings, and product data.',
-    },
-    {
-        label: 'Contact',
-        company: 'Business, legal, and privacy email addresses.',
-        products: 'Product support, help docs, and account guidance.',
-        apps: 'Signed-in actions, team operations, and account work.',
-    },
-    {
-        label: 'Data',
-        company: 'Static public pages and visitor-initiated email.',
-        products: 'Product-specific public policies and support paths.',
-        apps: 'Product data governed by each product architecture.',
-    },
-    {
-        label: 'Claims',
-        company: 'Narrow, verifiable company statements.',
-        products: 'Capability, pricing, and product commitments.',
-        apps: 'Operational behavior shown to signed-in users.',
-    },
-];
-
 export function buildPageMetadata(page: PageData): Metadata {
     return {
         title: page.title,
@@ -660,13 +599,10 @@ export function SiteHeader() {
                 </NeelvaraLink>
                 <SiteHeaderNav items={NAV_ITEMS} />
                 <div className="nv-header-actions">
-                    <a className="nv-button nv-button-ghost" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>
-                        Contact
+                    <a className="nv-button nv-button-glass" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>
+                        Email us
+                        <LuMail aria-hidden="true" />
                     </a>
-                    <NeelvaraLink className="nv-button nv-button-glass" href="/products">
-                        Products
-                        <LuArrowRight aria-hidden="true" />
-                    </NeelvaraLink>
                 </div>
             </div>
         </header>
@@ -677,10 +613,10 @@ export function SiteFooter() {
     return (
         <footer className="nv-footer">
             <div className="nv-wrap nv-footer-inner">
-                <div className="nv-footer-brandline">
+                <NeelvaraLink className="nv-footer-brandline" href="/" aria-label="Neelvara Systems home">
                     <NeelvaraLogoMark />
                     <p>© 2026 <span className="nv-wordmark">Neelvara Systems</span></p>
-                </div>
+                </NeelvaraLink>
                 <div className="nv-footer-links" aria-label="Footer navigation">
                     <NeelvaraLink href="/products">Products</NeelvaraLink>
                     <NeelvaraLink href="/about">About</NeelvaraLink>
@@ -803,88 +739,6 @@ export function StructuredData() {
     );
 }
 
-export function PagePrismPanel({
-    eyebrow,
-    title,
-    rows,
-}: {
-    eyebrow: string;
-    title: string;
-    rows: string[];
-}) {
-    return (
-        <aside className="nv-page-prism glass nv-reveal" aria-label={`${title} reference summary`}>
-            <div className="nv-page-prism-top">
-                <span className="mono">Neelvara Systems</span>
-                <NeelvaraLogoMark />
-            </div>
-            <div className="nv-page-prism-heading">
-                <span className="mono">{eyebrow}</span>
-                <h2>{title}</h2>
-            </div>
-            <div className="nv-page-prism-rows">
-                {rows.map((row) => (
-                    <div className="nv-page-prism-row" key={row}>
-                        <LuCheckCircle2 aria-hidden="true" />
-                        <span>{row}</span>
-                    </div>
-                ))}
-            </div>
-        </aside>
-    );
-}
-
-export function ComparisonTable() {
-    return (
-        <>
-            <div className="nv-table-wrap glass nv-reveal">
-                <table className="nv-comparison-table">
-                    <thead>
-                        <tr>
-                            <th>Area</th>
-                            <th>
-                                <span>Neelvara</span>
-                                <em>Company reference</em>
-                            </th>
-                            <th>Product websites</th>
-                            <th>Product apps</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {COMPARISON_ROWS.map((row) => (
-                            <tr key={row.label}>
-                                <th>{row.label}</th>
-                                <td>{row.company}</td>
-                                <td>{row.products}</td>
-                                <td>{row.apps}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="nv-table-cards">
-                {COMPARISON_ROWS.map((row) => (
-                    <article className="glass" key={row.label}>
-                        <span className="mono">{row.label}</span>
-                        <h3>Neelvara</h3>
-                        <p>{row.company}</p>
-                        <dl>
-                            <div>
-                                <dt>Product websites</dt>
-                                <dd>{row.products}</dd>
-                            </div>
-                            <div>
-                                <dt>Product apps</dt>
-                                <dd>{row.apps}</dd>
-                            </div>
-                        </dl>
-                    </article>
-                ))}
-            </div>
-        </>
-    );
-}
-
 export function SecondaryPage({ page }: { page: PageData }) {
     const closing = page.closing ?? {
         eyebrow: 'Company relationship',
@@ -908,11 +762,6 @@ export function SecondaryPage({ page }: { page: PageData }) {
                         <p>{page.description}</p>
                         {page.lastUpdated ? <p className="nv-last-updated">Last updated: {page.lastUpdated}</p> : null}
                     </div>
-                    <PagePrismPanel
-                        eyebrow="Reference summary"
-                        title={page.summaryTitle ?? page.title}
-                        rows={page.summaryRows ?? ['Company reference', 'Product boundaries', 'Direct email routing']}
-                    />
                 </div>
             </section>
             {page.sections.map((section, index) => (
@@ -920,7 +769,7 @@ export function SecondaryPage({ page }: { page: PageData }) {
                     className="nv-section nv-section-tight nv-reveal nv-secondary-section"
                     key={section.title}
                 >
-                    <div className="nv-wrap nv-text-panel glass" data-section-index={index + 1}>
+                    <div className="nv-wrap nv-text-panel nv-policy-row" data-section-index={index + 1}>
                         <div>
                             <h2 className="serif">{section.title}</h2>
                             <p>{section.body}</p>
@@ -967,7 +816,7 @@ export function DirectoryCards() {
                 const Icon = row.icon;
 
                 return (
-                    <a className="nv-routing-card glass" href={row.href} key={row.label}>
+                    <a className="nv-routing-card" href={row.href} key={row.label}>
                         <span className="nv-card-icon">
                             <Icon aria-hidden="true" />
                         </span>

@@ -411,7 +411,7 @@ export default function CreateMenuClient({
 
                         {isSessionLoading ? (
                             <div style={authCheckingStyle} role="status" aria-live="polite">
-                                <LuLoader size={18} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                                <LuLoader aria-hidden="true" size={18} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
                                 <span>{t('CreateMenu.authChecking')}</span>
                             </div>
                         ) : null}
@@ -449,7 +449,7 @@ export default function CreateMenuClient({
                                     style={googleAuthButtonStyle}
                                     type="button"
                                 >
-                                    <FcGoogle size={19} />
+                                    <FcGoogle aria-hidden="true" size={19} />
                                     {t('CreateMenu.googleCta')}
                                 </button>
                                 <p style={authTrustLineStyle}>{t('CreateMenu.authTrustLine')}</p>
@@ -514,7 +514,7 @@ export default function CreateMenuClient({
                                         }}
                                         type="button"
                                     >
-                                        <Icon color={isActive ? 'var(--ws-brand-secondary)' : 'currentColor'} size={17} />
+                                        <Icon aria-hidden="true" color={isActive ? 'var(--ws-brand-secondary)' : 'currentColor'} size={17} />
                                         {item.label}
                                     </button>
                                 );
@@ -595,7 +595,7 @@ export default function CreateMenuClient({
                                     alignItems: 'stretch',
                                     cursor: 'default',
                                     minHeight: '260px',
-                                    textAlign: 'left',
+                                    textAlign: 'start',
                                 }}
                             >
                                 <UploadStateContent
@@ -681,7 +681,7 @@ export default function CreateMenuClient({
                                             }}
                                             type="submit"
                                         >
-                                            <LuLink size={17} />
+                                            <LuLink aria-hidden="true" size={17} />
                                             {t('CreateMenu.linkSubmit')}
                                         </button>
                                     </div>
@@ -758,8 +758,8 @@ function UploadStateContent({
             {state === 'idle' && (
                 <>
                     {isLinkMode
-                        ? <LuLink size={42} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
-                        : <LuUpload size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
+                        ? <LuLink aria-hidden="true" size={42} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                        : <LuUpload aria-hidden="true" size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
                     <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
                         {isLinkMode ? t('CreateMenu.linkTitle') : t('CreateMenu.uploadTitle')}
                     </p>
@@ -771,14 +771,14 @@ function UploadStateContent({
 
             {state === 'optimizing' && (
                 <>
-                    <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+                    <LuLoader aria-hidden="true" size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.preparing')}</p>
                 </>
             )}
 
             {state === 'uploading' && (
                 <>
-                    <LuUpload size={40} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                    <LuUpload aria-hidden="true" size={40} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>
                         {isLinkMode ? t('CreateMenu.readingLink') : t('CreateMenu.uploading')}
                     </p>
@@ -787,14 +787,14 @@ function UploadStateContent({
 
             {state === 'success' && (
                 <>
-                    <LuCheck size={40} color="var(--ws-success)" style={{ marginBottom: '12px' }} />
+                    <LuCheck aria-hidden="true" size={40} color="var(--ws-success)" style={{ marginBottom: '12px' }} />
                     <p style={{ fontSize: '15px', color: 'var(--ws-success)' }}>{t('CreateMenu.redirecting')}</p>
                 </>
             )}
 
             {state === 'error' && (
                 <>
-                    <LuAlertCircle size={40} color="var(--ws-error)" style={{ marginBottom: '12px' }} />
+                    <LuAlertCircle aria-hidden="true" size={40} color="var(--ws-error)" style={{ marginBottom: '12px' }} />
                     <p style={{ fontSize: '15px', color: 'var(--ws-error)', marginBottom: '12px' }}>{error}</p>
                     <button
                         onClick={(e) => {

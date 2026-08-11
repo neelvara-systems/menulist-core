@@ -132,13 +132,13 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
-| 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v14.2.0; MenuList Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `menulist-qa`       | Production: `menulist` |
-| 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_*`, optional `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
+| 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v14.2.0; MenuList Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Core database, auth, storage | `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*` | Auto from project | Local/Preview: `menulist-qa` | Production: `menulist` |
+| 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, optional application credentials | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 2A  | **Firebase (SignalDesk)** | Root app: modular `firebase-admin` v14.2.0; SignalDesk Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Private SignalDesk growth-control data | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `SIGNALDESK_FIREBASE_*` | Auto from the dedicated Functions project | Local/Preview: `menulist-signaldesk-qa` | Production: `menulist-signaldesk` |
-| 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
-| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | MenuList QA key set            | Separate MenuList production key set |
-| 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | MenuList QA database           | Separate MenuList production database |
-| 6   | **Sentry**              | Root app: `@sentry/nextjs` v10.66.0; MenuList Functions: `@sentry/node` v10.68.0 | Error tracking                          | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`                                                             | `SENTRY_DSN`                             | Dev Sentry project             | Prod Sentry project         |
+| 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET` | project-local `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys** | Live mode keys |
+| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | `MENULIST_GEMINI_AI_KEY` plus `_2`, `_3`, `_4` | project-local `GEMINI_AI_KEY` plus `_2`, `_3`, `_4` | MenuList QA key set | Separate MenuList production key set |
+| 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Product-scoped rate limiting and caches | `MENULIST_UPSTASH_*`; Answerlattice uses `ANSWERLATTICE_UPSTASH_*` | Project-specific when used | MenuList QA database | Separate MenuList production database |
+| 6   | **Sentry**              | Root app: `@sentry/nextjs` v10.66.0; MenuList Functions: `@sentry/node` v10.68.0 | Error tracking                          | `NEXT_PUBLIC_SENTRY_DSN`                                                                               | project-local `SENTRY_DSN`               | QA Sentry project              | Prod Sentry project         |
 | 7   | **NextAuth**            | `next-auth` v4.24.15                         | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
 | 8   | **Google Analytics**    | `@google-analytics/data` v5.1.0              | Server-side analytics reads             | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`                                               | N/A                                      | Same (OK for dev)              | Same                        |
 | 9   | **SMTP (Nodemailer)**   | Root runtime alias, MenuList Functions, and Answerlattice Functions: v9.0.3 | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Target-specific secrets                  | Approved QA test sender        | Approved production transactional sender |
@@ -272,8 +272,6 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 
 # Error Tracking (ENABLE_SENTRY)
-SENTRY_DSN=
-SENTRY_DEV_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 
 # Answerlattice Product (if using)
@@ -285,11 +283,8 @@ NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=
 NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=
-ANSWERLATTICE_FIREBASE_MODE=separate
-ANSWERLATTICE_FIREBASE_PROJECT_ID=
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=
-ANSWERLATTICE_FIRESTORE_DATABASE_ID=
 ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET=
 
 # MenuList as Answerlattice external client (optional owner-app widget embed)
@@ -325,15 +320,15 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 
 **Step 2: Configure Local Development**
 
-1. MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` point to `menulist-qa`.
-2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` and `ANSWERLATTICE_FIREBASE_PROJECT_ID` point to `answerlattice-qa`.
+1. MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` points to `menulist-qa`; server code reuses it.
+2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` points to `answerlattice-qa`; browser and server runtimes reuse it.
 3. Answerlattice local site access stays under `/__answerlattice`; do not add local host aliases for Answerlattice website work.
 
 **Step 3: Configure Vercel Production**
 
 1. In Vercel Dashboard → Settings → Environment Variables
-2. Set all MenuList `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars to the production Firebase project `menulist`.
-3. Set all Answerlattice `ANSWERLATTICE_FIREBASE_*` and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` vars to the production Firebase project `answerlattice`.
+2. Set MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_*` Web config and the server-only Admin credentials to the production Firebase project `menulist`.
+3. Set Answerlattice's canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` identifiers to the production Firebase project `answerlattice`, with only Admin credentials under `ANSWERLATTICE_FIREBASE_*`.
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online` in Production.
 5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital`,
    `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.digital`, and
@@ -355,9 +350,8 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 
 1. Razorpay Dashboard → Settings → API Keys → Generate Test Key
 2. Store test keys in `.env.local`:
-   - `RAZORPAY_KEY_ID=rzp_test_...`
-   - `RAZORPAY_KEY_SECRET=...`
-   - `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...`
+   - `MENULIST_RAZORPAY_KEY_SECRET=...`
+   - `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID=rzp_test_...`
 
 **Step 2: Webhook Configuration**
 
@@ -487,9 +481,9 @@ These are mandatory before launch. Without them, core features break.
 - **Where:** Firebase Console → project settings → web app + service account for `menulist`
 - **Steps:**
   1. Keep local/Preview env vars pointed at `menulist-qa`.
-  2. Set Production `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` to `menulist`.
+  2. Set Production `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` to `menulist`; server code reuses it.
   3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` only after QA evidence and explicit production approval.
-- **Env vars provided:** `NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_*` (14 vars)
+- **Env vars provided:** `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*`
 - **Cost:** No new local/preview project; production costs move to `menulist`.
 
 #### 2. Razorpay — Test Keys (Already Have), Live Keys Needed
@@ -536,8 +530,8 @@ required production monitors before launch; do not defer them to post-launch.
   2. Create project "javascript-nextjs-dev" (for dev errors)
   3. Create project "javascript-nextjs" (for prod errors)
   4. Copy DSN from each project settings
-- **Env vars:** `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`
-- **Root app runtime rule:** browser Sentry reads `NEXT_PUBLIC_SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DEV_DSN`; server and edge Sentry read `SENTRY_DSN` or local `SENTRY_DEV_DSN`, with the same app public DSN as a fallback. If no matching DSN is configured, root app Sentry stays disabled.
+- **Env vars:** root app `NEXT_PUBLIC_SENTRY_DSN`; Firebase Functions project-local `SENTRY_DSN`
+- **Root app runtime rule:** browser, server, and edge reuse one `NEXT_PUBLIC_SENTRY_DSN`. Vercel environment and branch scope select the QA or production value. If it is absent, root app Sentry stays disabled.
 - **Functions runtime rule:** deployed Functions read `SENTRY_DSN` only; local emulators may use `SENTRY_DEV_DSN`. If no DSN is configured, Functions Sentry stays disabled and Firebase logs remain active.
 - **Cost:** Free tier — 5,000 errors/month
 - **Feature flag:** `ENABLE_SENTRY: true`
@@ -711,7 +705,7 @@ required production monitors before launch; do not defer them to post-launch.
 #### 15. Sentry (Client-Side) — Same as #4
 
 - Already covered in Sentry setup above
-- Uses `NEXT_PUBLIC_SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DEV_DSN`
+- Uses the environment-scoped `NEXT_PUBLIC_SENTRY_DSN`
 
 ---
 

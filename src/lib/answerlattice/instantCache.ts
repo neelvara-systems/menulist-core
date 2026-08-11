@@ -31,10 +31,12 @@ import {
     normalizeAnswerlatticeResolvedEntityId,
 } from './governanceIdBoundary';
 import { AnswerlatticeProcedureSchema } from './procedureValidation';
+import { getAnswerlatticeUpstashEnv } from '@lib/env/answerlatticeServerEnv';
 
+const answerlatticeUpstashEnv = getAnswerlatticeUpstashEnv();
 const hasRedisConfig = Boolean(
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN,
+    answerlatticeUpstashEnv.url &&
+    answerlatticeUpstashEnv.token,
 );
 const ANSWERLATTICE_ANSWER_TYPE_SET = new Set<string>(Object.values(ANSWERLATTICE_ANSWER_TYPES));
 
@@ -42,8 +44,8 @@ const ANSWERLATTICE_ANSWER_TYPE_SET = new Set<string>(Object.values(ANSWERLATTIC
 // env must degrade to the live retrieval pipeline, never crash module import.
 const redis = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && hasRedisConfig
     ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL!,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+        url: answerlatticeUpstashEnv.url!,
+        token: answerlatticeUpstashEnv.token!,
     })
     : null;
 

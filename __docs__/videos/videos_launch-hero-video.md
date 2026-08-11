@@ -1,10 +1,12 @@
 # Videos - Launch / Hero Video
 
-**Status:** Draft script and production plan
+**Status:** Supporting summary; current scripts live in the numbered hero, launch-cut, and founder handoffs
 **Created:** July 7, 2026
 **Primary output:** 60-75 second launch film plus 30-second launch cut
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
+Current script authority: [75-second hero](./videos_01-product-launch-hero-film.md), [30-second launch cut](./videos_03-launch-announcement-cut.md), and [founder POV](./videos_12-founder-brand-pov-video.md). Use this file only as a compact campaign summary.
 
 ## Purpose
 
@@ -31,22 +33,25 @@ The video must move through this story:
 
 ## Script 1 - Main Product Launch Film
 
-**Duration:** 60-75 seconds
-**Format:** 16:9 master, 9:16 vertical cut
+**Duration:** 75 seconds
+**Format:** Native 16:9 master plus separately composed 9:16 adaptation
 **Use:** Website hero, YouTube, LinkedIn, launch post, sales deck, investor deck
-**Title:** One approved list. Every customer link.
+**Title:** One approved customer link.
 
-| Time | Visual | Voiceover | On-screen text |
-| --- | --- | --- | --- |
-| 0-5s | Owner scrolling through WhatsApp, Instagram, old PDF, and printed menu | Your menu may be in five places. | Old PDFs. Screenshots. QR links. Printed copies. |
-| 5-12s | Customer scans QR; another customer sees old screenshot; owner checks different prices | And when prices, items, or hours change, customers may still find the old version. | One menu change. Many places to fix. |
-| 12-20s | MenuList setup: menu photos, PDF, existing link, service list | Upload photos of the menu or service list you already have. No typing required to start. | Menu photos. PDF. Existing link. |
-| 20-30s | Private preview; owner reviews items, categories, prices, and details | It prepares the customer-facing version for review. Nothing goes public until you approve it. | Private preview first. Owner approval before publishing. |
-| 30-42s | Approved customer link, then QR, official page, print files, owner-shared WhatsApp/Instagram link placement, table card | Once approved, the same list powers your customer link, QR, official business page, print files, and sharing links. | One approved customer link. |
-| 42-52s | Customer uses search, section jumps, language switch, call, WhatsApp, directions | Customers see the current menu, prices, business details, and actions in one clean place. | Menu. Prices. Hours. Actions. |
-| 52-63s | Owner sends: "Cold coffee sold out today." MenuList shows approval card. Owner approves. | When something changes, MenuList prepares the update and waits for owner approval. | Message in. Card prepared. Approval first. |
-| 63-72s | Business Health stable state; customer link live; QR active | MenuList helps your public list stay current without repeated manual cleanup. | No action needed. |
-| 72-75s | Logo and CTA | MenuList. One approved customer link for your business. | Create your customer link. |
+The final hook, 15-scene timing plan, 139-word narration, subtitle schedule, witness-item continuity system, transition map, sound direction, capture list, and encoded close are locked in [Video 1 - 75-Second Product Launch / Hero Film](./videos_01-product-launch-hero-film.md). Do not revive earlier versions of the hero script from this summary.
+
+The final flagship story is:
+
+```text
+existing menu or service-list source
+-> private customer preview
+-> owner review and approval
+-> one approved customer link
+-> verified MenuList customer surfaces
+-> controlled owner-approved update
+```
+
+Business Health remains a dedicated feature-video story. It is intentionally not inserted into the flagship ending because it interrupts the causal source-to-approved-link demonstration.
 
 ## Script 2 - 30-Second Launch Announcement
 
@@ -57,7 +62,7 @@ The video must move through this story:
 | Time | Visual | Voiceover | On-screen text |
 | --- | --- | --- | --- |
 | 0-3s | Old PDF, QR code, WhatsApp menu, printed menu | Your menu should not live in five different places. | Old PDFs. Old screenshots. Wrong prices. |
-| 3-9s | Owner uploads menu photos/PDF/link into MenuList | Upload photos of your existing menu. No typing required. | Upload menu photos. No typing required. |
+| 3-9s | Owner uploads menu photos/PDF/link into MenuList | Upload photos of your existing menu. Start with what you already have. | Upload your current menu. |
 | 9-15s | Private preview and approval screen | You review it before anything goes public. | Owner approval first. |
 | 15-23s | QR, official page, print file, owner-shared link, customer page | Then your QR, page, print files, and customer links stay tied to the approved version. | One approved list. Every customer link. |
 | 23-30s | MenuList logo and CTA | MenuList is ready. Create your customer link. | Create customer link. |

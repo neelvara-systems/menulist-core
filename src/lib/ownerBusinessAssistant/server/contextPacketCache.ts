@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { OWNER_BUSINESS_ASSISTANT_CACHE } from '../constants';
 import type { OwnerBusinessAssistantContextPacket, OwnerBusinessAssistantPacketProfile } from '../types';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
   ownerBusinessAnalyticsPeriodSchema,
   ownerBusinessAnalyticsResponseDataSchema,
@@ -11,14 +12,14 @@ import {
 } from '../readModelBoundary';
 
 const hasRedisConfig = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL &&
-  process.env.UPSTASH_REDIS_REST_TOKEN,
+  menulistServerEnv.upstashRedisRestUrl &&
+  menulistServerEnv.upstashRedisRestToken,
 );
 
 const redis = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE && hasRedisConfig
   ? new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      url: menulistServerEnv.upstashRedisRestUrl!,
+      token: menulistServerEnv.upstashRedisRestToken!,
     })
   : null;
 

@@ -76,8 +76,10 @@ assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'starte
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "id: 'translations_ready'", 'conditional translations progress step');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "translationSignals.length > 0", 'translation step only when language signals exist');
 assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'activeCategories.length > 0', 'category-only import completion');
-assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'Menu setup');
-assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'Menu setup');
+assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', "useTranslations('Dashboard.owner.menuSetup')", 'desktop setup locale namespace');
+assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', "{t('title')}", 'desktop localized setup title');
+assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', "useTranslations('Dashboard.owner.menuSetup')", 'mobile setup locale namespace');
+assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', "{t('title')}", 'mobile localized setup title');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.progressPercent', 'desktop setup percentage');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.requiredSteps.map', 'desktop setup checklist');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', '<Progress', 'desktop setup progress bar');

@@ -10,10 +10,20 @@ Mobile requirements:
 - preserve load failure, stale, no-evidence, and entity-mapping-needed states;
 - keep the AI-assisted summary visibly advisory;
 - render validated advisory actions as 44px **Review evidence** links;
-- provide a 44px **Open in Knowledge Map** action for each ranked card;
+- provide a 44px **Open in Knowledge Map** action for each ranked card only
+  while the Knowledge Map feature is enabled;
 - provide a 44px **Prepare evidence brief** action for each ranked card;
 - open the brief in the existing responsive drawer at full viewport width,
-  with a large review-path selector and stacked 44px copy/download actions;
+  with a large review-path selector, visible next-action explanation, and
+  stacked 44px continue/copy/download actions;
+- preserve the selected entity when the primary action opens Knowledge Map or
+  trusted answers;
+- bind an open brief to one workspace scope and one completed snapshot so a
+  scope switch or background refresh cannot mix evidence;
+- show the same explicit unavailable state as desktop when a requested map
+  topic is absent, without selecting another topic;
+- keep product review as local copy and make watch/no-action close without
+  implying a reminder or saved decision;
 - preserve a Daily Brief entity focus without a mobile-only data path;
 - do not add mobile-only raw signal queries, listeners, or notification claims.
 

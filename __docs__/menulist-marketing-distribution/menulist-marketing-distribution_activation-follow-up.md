@@ -68,7 +68,7 @@ Use these states for pilot tracking, Product Hunt follow-up, partner leads, and 
 | Approved | Owner approved the public version | Publish or guide publish |
 | Published | Customer link exists | Start two-surface checklist |
 | One surface active | Link is used on one customer surface | Ask for second placement |
-| Activated | Two surfaces active within seven days | Ask for paid plan, partner intro, or permissioned proof |
+| Activated | Two surfaces active within seven days | Ask for paid plan or permissioned proof; wait for the stable-value milestone before a peer introduction ask |
 | Stalled | No progress after expected next step | Send plain recovery message; stop after sensible limit |
 | Not fit | Business does not have a public list need | Close without forcing |
 
@@ -145,7 +145,17 @@ Understood. We will update the preview from your corrections and keep the public
 ```text
 Approved. The next step is to publish the customer link and place it where customers already look.
 
-Recommended first two surfaces: WhatsApp and QR, or Instagram and QR.
+For a restaurant pilot, use the owner-authorized Google/Profile menu link as the preferred primary surface, including the preferred menu source setting where Google makes it available. Add one owner-selected surface such as QR, WhatsApp, Instagram, website, or print.
+
+For another business category, or when the relevant Google field is unavailable, choose two useful owner-controlled surfaces instead.
+```
+
+### Published / No Surface Active
+
+```text
+Your customer link is published, but customers do not have a confirmed path to it yet.
+
+Choose one first placement: Google/profile, QR, WhatsApp, Instagram, website, print material, or staff replies. MenuList will record only the placement you confirm.
 ```
 
 ### One Surface Active
@@ -162,6 +172,16 @@ To complete setup, place the same link on one more surface: QR, WhatsApp, Instag
 Your public customer link is now live on two customer surfaces.
 
 Keep using the same link when the list changes, so customers are not sent old PDFs, screenshots, or rate cards.
+```
+
+### Stable-Value Peer Introduction
+
+Ask only after the owner has completed one real menu/list update and confirmed that the public link still works, or during an active day-30 review. This timing governs the manual peer-introduction request only. It does not change the payment-only reward eligibility in the [Owner Referral specification](../owner-referral/owner-referral_spec.md).
+
+```text
+You have now used the same customer link through a real update.
+
+If another business owner you know has the same current-list problem, you may introduce us. Please ask them first before sharing their contact details.
 ```
 
 ### Stalled Preview

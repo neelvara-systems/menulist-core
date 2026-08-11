@@ -16,8 +16,8 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Existing docs, FAQs, owner answers, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
             },
             {
-                title: 'Product surfaces',
-                detail: 'Routes, pages, workflows, tags, and entities map help to the exact product area where users are stuck.',
+                title: 'Product pages',
+                detail: 'Routes, pages, workflows, tags, and product details map help to the exact area where users are stuck.',
             },
             {
                 title: 'Widget install',
@@ -31,11 +31,11 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
     },
     {
         mode: 'Support Control',
-        summary: 'Customer-facing support surfaces share reviewed truth instead of becoming separate content silos.',
+        summary: 'The widget, help center, tickets, feedback, and release support share reviewed knowledge instead of becoming separate content silos.',
         items: [
             {
                 title: 'Help center and hosted docs',
-                detail: 'Articles, public article topic maps, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
+                detail: 'Articles, scannable topic navigation, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
             },
             {
                 title: 'In-app widget',
@@ -47,15 +47,15 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Support Board',
-                detail: 'Owners can track selected support gaps, private notes, status history, assignee context, and answer-proposal handoff without mirroring every ticket by default.',
+                detail: 'Owners can track selected support gaps, private notes, status history, assignee context, and draft-answer handoff without mirroring every ticket by default.',
             },
             {
                 title: 'Known issues and owner brief',
-                detail: 'Owners can publish a contextual, expiring widget notice for a temporary issue and use a read-only Daily Brief to see qualified decisions or a clear quiet state.',
+                detail: 'Owners can publish a contextual, expiring widget notice for a temporary issue and use a read-only Daily Brief to see focused decisions or a clear quiet state.',
             },
             {
                 title: 'Changelog awareness',
-                detail: 'Release notes can be tied to surfaces, entities, tags, and support content that may need review.',
+                detail: 'Release notes can be tied to product areas, tags, and support content that may need review.',
             },
             {
                 title: 'Email notifications',
@@ -65,15 +65,15 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
     },
     {
         mode: 'Support Review',
-        summary: 'AnswerLattice treats support knowledge as product truth that must be reviewed, versioned, and kept current.',
+        summary: 'AnswerLattice treats official support knowledge as something that must be reviewed, versioned, and kept current.',
         items: [
             {
-                title: 'Product surfaces',
-                detail: 'Features, plans, roles, workflows, states, integrations, and errors are mapped as support-relevant surfaces.',
+                title: 'Product areas',
+                detail: 'Features, plans, roles, workflows, states, integrations, and errors are mapped to the places where users need help.',
             },
             {
                 title: 'Knowledge Map',
-                detail: 'Owners can inspect governed entity relationships, approved-answer coverage, drift, and review state from one compact summary, then carry the selected product-area context into answer review.',
+                detail: 'Owners can inspect reviewed product relationships, approved-answer coverage, drift, and review state from one compact summary, then carry the selected product-area context into answer review.',
             },
             {
                 title: 'Approved answers',
@@ -81,11 +81,11 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Stale-answer checks',
-                detail: 'Version mismatch, signal anomaly, scope conflict, and deprecated entity checks flag stale support.',
+                detail: 'Version mismatch, unusual support signals, scope conflicts, and retired product details can flag stale support.',
             },
             {
                 title: 'Signal queue',
-                detail: 'Tickets, feedback, ratings, feature requests, fallback, and escalations become reviewable support signals and mutation proposals.',
+                detail: 'Tickets, feedback, ratings, feature requests, fallback, and escalations become visible support gaps and draft improvements for review.',
             },
             {
                 title: 'Trust and readiness metrics',
@@ -107,7 +107,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Compiled context bundles',
-                detail: 'Approved public-safe context and private server context can be generated into bounded versioned bundles for enabled readers. The widget currently remains on the governed server path.',
+                detail: 'Approved public-safe context and private server context can be generated into bounded versioned bundles for enabled readers. The widget currently remains on the controlled server path.',
             },
             {
                 title: 'Workspace-local review',
@@ -126,8 +126,8 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Optional short-lived signed visitor claims and exact-host HTTPS evidence links improve support context without accepting workspace scope from the browser or recording user sessions.',
             },
             {
-                title: 'Support-truth portability',
-                detail: 'Authorized owners can request a complete bounded JSON export of approved support structure while tickets, conversations, secrets, and audit internals remain excluded.',
+                title: 'Approved knowledge export',
+                detail: 'Authorized owners can use Support Truth Export to request a complete bounded JSON package of approved support structure while tickets, conversations, secrets, and audit internals remain excluded.',
             },
             {
                 title: 'Separate Firebase mode',

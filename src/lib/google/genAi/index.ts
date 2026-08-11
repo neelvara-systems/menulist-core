@@ -15,10 +15,10 @@
  *   genAIClient.files.upload({ file, config })
  * 
  * Configure multiple keys via environment variables:
- *   GEMINI_AI_KEY    (required, primary)
- *   GEMINI_AI_KEY_2  (optional)
- *   GEMINI_AI_KEY_3  (optional)
- *   GEMINI_AI_KEY_4  (optional)
+ *   MENULIST_GEMINI_AI_KEY    (required, primary)
+ *   MENULIST_GEMINI_AI_KEY_2  (optional)
+ *   MENULIST_GEMINI_AI_KEY_3  (optional)
+ *   MENULIST_GEMINI_AI_KEY_4  (optional)
  * 
  * @see __docs__/ai-system-layer/README.md
  */

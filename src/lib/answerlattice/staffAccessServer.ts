@@ -19,6 +19,7 @@ import { buildAnswerlatticeRoleCreationFingerprint, classifyAnswerlatticeRoleCre
 import { AnswerlatticeStaffTransactionError, createAnswerlatticeStaffMembershipTransaction, getAnswerlatticeRoleAssignedUserIdsInTransaction, isAnswerlatticeRoleAssignedInTransaction, removeAnswerlatticeStaffMembershipTransaction, updateAnswerlatticeStaffMembershipTransaction, } from '@lib/answerlattice/staffAccessTransactions';
 import { isAnswerlatticeActiveStoreInScope, } from '@lib/answerlattice/sessionScope';
 import { answerlatticeAuthAdmin, requireAnswerlatticeAuthAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { answerlatticeServerEnv } from '@lib/env/answerlatticeServerEnv';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { logger } from '@lib/monitoring/logger';
@@ -381,7 +382,7 @@ const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId
 
 const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
 
-const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
+const getFirebaseAuthApiKey = () => answerlatticeServerEnv.firebaseApiKey;
 
 const normalizeFirebaseAuthApiKey = (value?: string) => {
     const apiKey = String(value || '').trim();

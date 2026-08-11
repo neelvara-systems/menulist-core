@@ -1,7 +1,7 @@
 # Website Image & Asset Requirements
 
 **Status:** ✅ CURRENT — Market-first product-proof asset plan plus selected clean feature screenshot proof assets
-**Last Updated:** July 10, 2026
+**Last Updated:** August 11, 2026
 **Primary Stage Output:** `website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`
 **Latest Asset Output:** `asset-production/launch-pack-2026-07/menulist-launch-pack.md`
 
@@ -53,6 +53,7 @@ Use lowercase kebab-case filenames:
 ```text
 public/images/website/
 ├── menulist-hero-official-source.webp
+├── menulist-hero-service-source.webp
 ├── menulist-og-official-source.png
 ├── menulist-public-menu-mobile.webp
 ├── menulist-obp-browser.webp
@@ -68,6 +69,12 @@ public/images/website/
 ```
 
 Do not place raw capture files, private demo data, or unapproved screenshots in `public/`.
+
+Approved service-business industry hero (August 11, 2026):
+
+- `/public/images/website/menulist-hero-service-source.webp` is a fictional Urban Glow Studio service-list/public-page proof used by the salon, service-list, and local-service industry hero variants.
+- It follows the existing official-source visual family while replacing restaurant-specific Daily Plate content on non-food routes.
+- The asset deliberately avoids appointment-booking claims, activity metrics, and restaurant-only menu language. It is governed by `menulist.industry.service-businesses.hero-source` in AssetOS.
 
 Approved public screenshot exception (June 15, 2026):
 
@@ -112,6 +119,7 @@ Structure now mirrored in the generated assets:
 | Asset | File | Status | Notes |
 | --- | --- | --- | --- |
 | Hero official-source composite | `public/images/website/menulist-hero-official-source.webp` | Generated fallback demo | Fictional The Daily Plate product composite; retained as the homepage CSS background fallback and OG source |
+| Service-business industry hero | `public/images/website/menulist-hero-service-source.webp` | Approved + visible demo | Fictional Urban Glow Studio service-list/public-page proof; used only on non-food industry hero variants |
 | Hero business-truth motion | `public/images/website/menulist-business-truth-loop.webm` | Approved + visible demo | Mounted directly in current active `HeroSection.tsx` with MP4 and WebP poster fallbacks |
 | Open Graph image | `public/images/website/menulist-og-official-source.png` | Generated | Current website metadata target |
 | Backward-compatible OG image | `public/og-image.png` | Generated | Copy of the new OG image |

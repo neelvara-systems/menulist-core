@@ -10,18 +10,14 @@ const runtimeEnvironment =
 const isDevelopment = runtimeEnvironment === 'development';
 
 function getConfiguredClientSentryDsn(): string {
-    const publicProdDsn = String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();
-    const publicDevDsn = String(process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || '').trim();
-
-    return isDevelopment ? publicDevDsn || publicProdDsn : publicProdDsn || publicDevDsn;
+    return String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();
 }
 
 function getConfiguredServerSentryDsn(): string {
-    const serverProdDsn = String(process.env.SENTRY_DSN || '').trim();
-    const serverDevDsn = String(process.env.SENTRY_DEV_DSN || '').trim();
     const publicDsn = getConfiguredClientSentryDsn();
+    const legacyServerDsn = String(process.env.SENTRY_DSN || '').trim();
 
-    return isDevelopment ? serverDevDsn || serverProdDsn || publicDsn : serverProdDsn || publicDsn;
+    return publicDsn || legacyServerDsn;
 }
 
 const clientDsn = getConfiguredClientSentryDsn();

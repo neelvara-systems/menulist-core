@@ -8,7 +8,7 @@
 
 **System:** SignalDesk Content Distribution Rail and Trust Partner Rail
 
-**Scope:** One canonical customer-proof asset, four bounded derivative jobs, manual publication, and activation-linked measurement
+**Scope:** One canonical customer-proof asset, five bounded derivative jobs, manual publication, and activation-linked measurement
 
 ## Objective
 

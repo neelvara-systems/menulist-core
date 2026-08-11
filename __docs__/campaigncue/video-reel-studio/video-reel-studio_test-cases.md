@@ -36,6 +36,17 @@
 32. Version snapshots retain trust findings and durable reviewed asset ids; session rights confirmation is stored only on the matching render receipt.
 33. Video result recording updates existing campaign result memory, and a useful result creates only a structural reusable layout with no old text or asset ids.
 34. Applying a reusable layout keeps the target project's checked copy, assets, business identity, and source references.
+35. Every new start/terminal receipt carries `versionBinding: exact` and the same `projectVersion`; a terminal receipt for another version is rejected.
+36. Legacy receipts parse as `legacy_unverified`, remain visible, and cannot create result learning or a reusable blueprint.
+37. Recording an older exact completed render uses its retained version snapshot, not the project's latest edited scenes.
+38. Re-recording one project's outcome adjusts useful/not-useful counters and does not increment the analytics outcome count again.
+39. Content coach checks opening, owner-controlled proof, pacing, text density, final action, and facts/rights deterministically with zero provider calls or writes. Generated media, manual metadata without upload provenance, unavailable/restricted media, and unconfirmed session footage do not satisfy the proof check; a ready rights-confirmed upload, import, or session capture can.
+40. Phone shot tasks are derived from included scenes, identify ready versus missing media, and contain no external URL or copied source media.
+41. Format learning groups only exact owner-reported results from the already-loaded project list and never claims reach, virality, revenue, or competitor performance.
+42. Exact result memory rejects a future project version, a snapshot-version mismatch, a duration-band mismatch, or a signature that contradicts its compact snapshot.
+43. Render start and terminal evidence must match the approved version, aspect ratio, duration, durable asset ids, session-media declaration, and rights confirmation.
+44. Render progress remains monotonic and idempotent without creating a separate audit-event document for each checkpoint.
+45. Recording a new local narration revokes any prior session-media rights confirmation.
 
 ## Required Gates
 

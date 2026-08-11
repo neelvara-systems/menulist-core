@@ -1,5 +1,24 @@
 # Video Reel Studio - Validation
 
+## Content Intelligence And Version Integrity - August 10, 2026
+
+The Yorby review was adopted only where it improves an SMB owner's existing CampaignCue workflow. CampaignCue did not add account spying, creator monitoring, managed phone posting, AI avatars, copied viral scripts, provider video generation, a strategy-service dependency, or reach promises.
+
+| Adopted capability | Current implementation | Cost and safety boundary |
+| --- | --- | --- |
+| Content quality guidance | Six deterministic checks cover opening clarity, owner-controlled business proof, pacing, visible-text density, final action, and facts/rights. Generated media or manual metadata without upload/import provenance cannot pass the proof check. | Computed from the loaded draft and already-loaded assets; zero provider calls, reads, or persistence. |
+| Guided capture | Included scenes become a phone shot list with duration, ready/missing media state, and a direct scene link. | Computed from the loaded draft/session map; zero reads or writes. |
+| Optional human feedback | Opening, proof, and final-action prompts can prefill existing bounded review notes. | No consultant account, chat thread, notification fanout, or service dependency. |
+| Format-level learning | Exact owner-reported outcomes are grouped by aspect ratio, optional Pattern Cue classifications, duration band, and scene-purpose order. | Uses the already-loaded bounded project list; no competitor data, prediction, or new collection. |
+| Render-version correctness | New receipts bind start, checkpoints, terminal state, result memory, and reusable blueprint to the exact rendered project version. | Legacy unbound receipts remain readable but fail closed for new learning. |
+| Render-evidence integrity | Server admission matches preset, duration, durable asset ids, session declaration, and rights confirmation to the approved project; terminal evidence cannot change the start evidence. | A forged or contradictory receipt is rejected before persistence. |
+| Persisted-learning integrity | Exact result version, snapshot version, duration band, and format signature must agree and cannot point beyond the current project version. | Contradictory stored evidence fails closed instead of affecting owner guidance. |
+| Counter correctness | Changing one project's recorded result subtracts its prior useful/not-useful contribution and does not add another summary outcome. | Existing campaign/project transaction only; repeat updates avoid the analytics-summary write. |
+| Checkpoint write control | Progress checkpoints retain monotonic project/idempotency state but do not create audit-event documents. | Removes three avoidable event writes from a successful render while preserving start/terminal audit evidence. |
+| Public proof | The CampaignCue homepage explains owner source to abstract pattern to checked pack to owner result. | Explicitly excludes monitoring, copying, automatic posting, and guaranteed performance. |
+
+The focused contract suite now covers exact/legacy receipt behavior, cross-field format evidence, future-version rejection, render preset/duration/asset evidence, counter replacement, content-coach rights handling, generated-versus-owner-controlled proof, phone capture tasks, and client-side format grouping. TypeScript and Zod use the same exact-versus-legacy discriminants, so an exact receipt or result cannot omit or contradict its required version evidence in typed code or persisted data.
+
 ## Completion Cross-Check - August 1, 2026
 
 ### Current verdict
@@ -8,7 +27,7 @@
 - Aligned in current source: 19.
 - Initial reject-list groups still excluded: 10 of 10.
 - Local source, contract, security, Firestore-emulator, and Storage-emulator gates: PASS.
-- Dedicated `campaigncue-qa` Storage deployment: BLOCKED because Firebase CLI authentication is unavailable; the exact retry is recorded below.
+- Dedicated `campaigncue-qa` Storage deployment remains operator evidence. A prior pass was blocked by unavailable Firebase CLI authentication; deployment was not retried in this local implementation pass.
 - Authenticated QA workspace and physical-device codec certification: pending operator evidence, not missing local implementation.
 
 ### Seven-gap closure map
@@ -25,12 +44,13 @@
 
 ### Current verification evidence
 
-- `npm run verify:campaigncue`: passed, including 1,954 runtime checks, video/asset/record contracts, operating-loop verification, Pattern Cue verification, and Firestore/Storage emulator suites.
-- `npx tsc --noEmit --pretty false`: passed.
-- `npm run lint`: passed with zero warnings.
-- `npm run docs:check-links`: 2,789 files and 4,748 internal links scanned; zero broken links. The 62 naming warnings are pre-existing uppercase HyperFrames asset filenames outside this feature.
-- `npm run security-os:audit -- --product campaigncue`: registry integrity passed; the manually selected CampaignCue evidence bundle was then executed through `npm run verify:campaigncue`.
-- `npx firebase-tools deploy --config firebase-campaigncue.json --project campaigncue-qa --only storage --non-interactive`: blocked with `Failed to authenticate, have you run firebase login?`.
+- `npm run verify:campaigncue`: passed, including 1,988 runtime checks, video/asset/record contracts, operating-loop verification, Pattern Cue verification, and Firestore/Storage emulator suites.
+- `npx tsc --noEmit --incremental false --pretty false`: passed.
+- Focused ESLint over every changed TypeScript/JavaScript runtime and verifier file: passed with zero warnings.
+- `npm run docs:check-links`: 2,791 files and 4,772 internal links scanned; zero broken links. The 62 naming warnings are existing uppercase HyperFrames artifact filenames outside this feature.
+- `git diff --check`: passed.
+- Browser smoke at 1440x1000 and 390x844: the public source-to-pack proof rendered all five steps with no horizontal overflow. The authenticated Video Reel Studio and device codec path still require a valid CampaignCue session and physical-browser evidence.
+- No production build or deployment was run for this pass.
 
 ### Current boundary verdict
 
@@ -83,7 +103,7 @@ The current feature spec and implementation are mutually aligned around a determ
 | Lightweight storyboard/timeline editor | Owners can add, remove, move, skip, time, rewrite, and restyle bounded scenes without a professional multi-track timeline. | Aligned |
 | 9:16, 1:1, and 16:9 variants | All three aspect presets are persisted and rendered from one project. | Aligned |
 | Three controlled creative variants | At most three deterministic copy directions are available. | Aligned |
-| Asset Board/Library completion | The registry, rights metadata, private-path validation, signed download, image reuse, and some server-owned export paths exist. The active owner form is still metadata-only; general image/video/audio upload, audio admission, thumbnails, preview extraction, and transcoding are not complete. | Partial |
+| Asset Board/Library completion | Asset Library and Video Studio share the private resumable image/video/audio uploader, one bounded browser preview, authoritative server verification, immutable generation metadata, per-type limits, explicit rights, signed runtime access, and failed-registration cleanup. Asset Library exposes guided image/video capture; audio remains Video Studio-specific. Transcoding and automatic moderation are deliberately absent. | Aligned to the governed private-media boundary |
 | Review, comments, and approval | Version-bound approve/reject exists. Video-specific review threads, arbitrary change notes, client comments, and reviewed-scene annotations do not. | Partial |
 | Render credits, jobs, retries, refunds, and monitoring | Local render attempts have started/completed/failed receipts, progress, bounded history, and retry. There is no durable asynchronous queue, cancellation, partial recovery, quality evaluation, workspace render limits, or credit reserve/capture/refund ledger. Zero-cost local rendering makes provider refunds unnecessary, but it is not equivalent to the complete original render-job contract. | Partial |
 | Trust, source, consent, and likeness review | Current project trust, source references, asset-rights checks, approval, and session right-to-use confirmation are enforced. Version snapshots retain only the aggregate trust gate; session media consent and full findings are not durable per-version records. | Partial |
@@ -99,7 +119,7 @@ The current runtime correctly excludes film/drama production, public avatars/mod
 | # | Area | Classification | Finding | Required correction |
 | --- | --- | --- | --- | --- |
 | 1 | Documentation truth | MISMATCH | Portfolio audit text described deterministic local composition as complete coverage of the initial in-house video decision. | Keep local implementation verification separate from initial capability parity and link this audit wherever completion is claimed. |
-| 2 | Media system | MISSING | General private media intake, video/audio upload, thumbnail/preview extraction, and media lifecycle are absent from the active owner flow. | Complete the governed Asset Library media pipeline before claiming the original media commitment is done. |
+| 2 | Media system | RESOLVED | General private image/video capture is active in Asset Library and image/video/audio intake remains active in Video Studio through one governed uploader. | Keep per-type limits, rights review, retention cleanup, immutable paths, and no-posting boundary under regression coverage. |
 | 3 | Scene generation | DRIFT | Per-scene regeneration currently means copy rotation only. | Either implement bounded scene-plan/media regeneration or keep the public and internal claim explicitly limited to checked-line alternatives. |
 | 4 | Audio | MISSING | One mixed owner file does not provide separate voiceover and background-audio workflows. | Add rights-governed narration and music tracks without voice cloning or third-party scraping. |
 | 5 | Collaboration | MISSING | Approval exists, but video-specific comments and review annotations do not. | Add bounded, tenant-scoped review notes only if they reuse the existing approval architecture without a public client portal. |

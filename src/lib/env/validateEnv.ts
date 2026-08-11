@@ -44,55 +44,51 @@ type EnvRequirement = string | readonly string[];
 
 /** Required for app to function at all */
 const REQUIRED_VARS: readonly EnvRequirement[] = [
-    'NEXT_PUBLIC_FIREBASE_API_KEY',
-    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    ['NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY', 'NEXT_PUBLIC_FIREBASE_API_KEY'],
+    ['NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'],
+    ['NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET', 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'],
     'NEXTAUTH_SECRET',
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',
-    ['GEMINI_AI_KEY', 'GEMINI_API_KEY'],
+    ['MENULIST_GEMINI_AI_KEY', 'GEMINI_AI_KEY', 'GEMINI_API_KEY'],
 ] as const;
 
 /** Required for payments — app starts without them but billing breaks */
-const PAYMENT_VARS: readonly string[] = [
-    'RAZORPAY_KEY_ID',
-    'RAZORPAY_KEY_SECRET',
-    'RAZORPAY_WEBHOOK_SECRET',
-    'NEXT_PUBLIC_RAZORPAY_KEY_ID',
+const PAYMENT_VARS: readonly EnvRequirement[] = [
+    ['NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID', 'MENULIST_RAZORPAY_KEY_ID', 'RAZORPAY_KEY_ID', 'NEXT_PUBLIC_RAZORPAY_KEY_ID'],
+    ['MENULIST_RAZORPAY_KEY_SECRET', 'RAZORPAY_KEY_SECRET'],
+    ['MENULIST_RAZORPAY_WEBHOOK_SECRET', 'RAZORPAY_WEBHOOK_SECRET'],
 ] as const;
 
 /** Required for Firebase Admin SDK (server-side operations) */
-const ADMIN_VARS: readonly string[] = [
-    'FIREBASE_PROJECT_ID',
-    'FIREBASE_CLIENT_EMAIL',
-    'FIREBASE_PRIVATE_KEY',
+const ADMIN_VARS: readonly EnvRequirement[] = [
+    ['NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', 'MENULIST_FIREBASE_PROJECT_ID', 'FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'],
+    ['MENULIST_FIREBASE_CLIENT_EMAIL', 'FIREBASE_CLIENT_EMAIL'],
+    ['MENULIST_FIREBASE_PRIVATE_KEY', 'FIREBASE_PRIVATE_KEY'],
 ] as const;
 
 /** Optional — feature-flagged, app works without them */
-const OPTIONAL_VARS: readonly string[] = [
-    'UPSTASH_REDIS_REST_URL',       // Rate limiting (ENABLE_RATE_LIMITING)
-    'UPSTASH_REDIS_REST_TOKEN',     // Rate limiting
-    'SMTP_HOST',                     // Lifecycle messaging (ENABLE_LIFECYCLE_MESSAGING)
-    'SMTP_PORT',                     // Lifecycle messaging
-    'SMTP_USER',                     // Lifecycle messaging
-    'SMTP_PASS',                     // Lifecycle messaging
+const OPTIONAL_VARS: readonly EnvRequirement[] = [
+    ['MENULIST_UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_URL'],
+    ['MENULIST_UPSTASH_REDIS_REST_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'],
+    ['MENULIST_SMTP_HOST', 'SMTP_HOST'],
+    ['MENULIST_SMTP_PORT', 'SMTP_PORT'],
+    ['MENULIST_SMTP_USER', 'SMTP_USER'],
+    ['MENULIST_SMTP_PASS', 'SMTP_PASS'],
     'INTERNAL_NOTIFICATION_EMAIL',   // Internal/platform email recipient
     'PLATFORM_ALERT_EMAIL_TO',       // Platform alert email recipient override
     'PLATFORM_ALERT_WHATSAPP_TO',    // Platform alert WhatsApp recipient
     'PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME', // Platform alert WhatsApp template
-    'WHATSAPP_PHONE_NUMBER_ID',       // WhatsApp provider phone number id
-    'WHATSAPP_ACCESS_TOKEN',          // WhatsApp provider Graph API token
-    'WHATSAPP_APP_SECRET',            // WhatsApp webhook signature verification
-    'WHATSAPP_VERIFY_TOKEN',          // WhatsApp webhook registration challenge
-    'TELEGRAM_BOT_TOKEN',           // Ops alerts (ENABLE_OPS_ALERTS)
-    'TELEGRAM_CHAT_ID',             // Ops alerts
+    ['MENULIST_WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_PHONE_NUMBER_ID'],
+    ['MENULIST_WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_ACCESS_TOKEN'],
+    ['MENULIST_TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN'],
+    ['MENULIST_TELEGRAM_CHAT_ID', 'TELEGRAM_CHAT_ID'],
     'GA_CLIENT_EMAIL',              // Analytics
     'GA_PRIVATE_KEY',               // Analytics
-    'BATCH_IMAGE_GENERATION_QUEUE_ID',      // Batch menu image generation
-    'BATCH_IMAGE_GENERATION_WORKER_SECRET', // Batch menu image generation worker auth
-    'BATCH_IMAGE_GENERATION_WORKER_URL',    // Batch menu image generation worker
-    'FIREBASE_PROJECT_LOCATION',            // Google Cloud Tasks queue location
-    'FIREBASE_API_KEY',                    // Firebase Auth REST/API calls should use server-side key (not NEXT_PUBLIC)
+    ['MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID', 'BATCH_IMAGE_GENERATION_QUEUE_ID'],
+    ['MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET', 'BATCH_IMAGE_GENERATION_WORKER_SECRET'],
+    ['MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL', 'BATCH_IMAGE_GENERATION_WORKER_URL'],
+    ['MENULIST_FIREBASE_PROJECT_LOCATION', 'FIREBASE_PROJECT_LOCATION'],
     'MENULIST_OWNER_REFERRAL_TOKEN_SECRET', // Owner referral token encryption when acquisition is enabled
     'ANSWERLATTICE_WIDGET_RUNTIME_SECRET',  // Short-lived host-to-iframe widget authorization
 ] as const;
@@ -108,15 +104,13 @@ const isValidOwnerReferralTokenSecret = (value: string | undefined): boolean => 
     }
 };
 
-const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
+const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly EnvRequirement[]> = {
     menulist: [
-        'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-        'FIREBASE_PROJECT_ID',
+        ['NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', 'MENULIST_FIREBASE_PROJECT_ID', 'FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'],
     ],
     neelvara: [],
     answerlattice: [
-        'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
-        'ANSWERLATTICE_FIREBASE_PROJECT_ID',
+        ['NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID', 'ANSWERLATTICE_FIREBASE_PROJECT_ID'],
     ],
     campaigncue: CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
     signaldesk: SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS,
@@ -240,28 +234,24 @@ export function validateEnvironment(): EnvValidationResult {
     }
 
     // Check admin vars (required for server-side operations)
-    for (const varName of ADMIN_VARS) {
-        if (!process.env[varName]) {
-            missing.push(varName);
+    for (const requirement of ADMIN_VARS) {
+        if (!hasAnyEnvVar(requirement)) {
+            missing.push(describeRequirement(requirement));
         }
     }
 
     // Check payment vars (warn, don't fail)
-    for (const varName of PAYMENT_VARS) {
-        if (!process.env[varName]) {
-            warnings.push(`${varName} not set — payment operations will fail`);
+    for (const requirement of PAYMENT_VARS) {
+        if (!hasAnyEnvVar(requirement)) {
+            warnings.push(`${describeRequirement(requirement)} not set — payment operations will fail`);
         }
     }
 
     // Check optional vars (info only)
-    for (const varName of OPTIONAL_VARS) {
-        if (!process.env[varName]) {
-            warnings.push(`${varName} not set — feature requires configuration when enabled`);
+    for (const requirement of OPTIONAL_VARS) {
+        if (!hasAnyEnvVar(requirement)) {
+            warnings.push(`${describeRequirement(requirement)} not set — feature requires configuration when enabled`);
         }
-    }
-
-    if (!process.env.FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        warnings.push('FIREBASE_API_KEY is recommended for server-side Firebase REST calls. NEXT_PUBLIC_FIREBASE_API_KEY is public and should not be used for server-auth operations.');
     }
 
     if (FEATURE_FLAGS.ENABLE_OWNER_REFERRAL && !FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) {
@@ -293,9 +283,11 @@ export function validateEnvironment(): EnvValidationResult {
         if (!hasProductFirebaseConfiguration(productId)) return;
 
         const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
-        PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
-            const actualProjectId = getEnvValue(varName);
-            const message = `${varName} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
+        PRODUCT_PROJECT_VARS[productId].forEach((requirement) => {
+            const candidates = typeof requirement === 'string' ? [requirement] : requirement;
+            const actualProjectId = candidates.map(getEnvValue).find(Boolean);
+            const requirementLabel = describeRequirement(requirement);
+            const message = `${requirementLabel} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
 
             if (!actualProjectId) {
                 if (productId === 'answerlattice' || productId === 'campaigncue' || productId === 'signaldesk') {
@@ -315,6 +307,22 @@ export function validateEnvironment(): EnvValidationResult {
             }
         });
     });
+
+    if (hasProductFirebaseConfiguration('answerlattice')) {
+        const answerlatticeAdminCredentialReady = Boolean(
+            getEnvValue('ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS')
+            || (
+                (getEnvValue('NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID') || getEnvValue('ANSWERLATTICE_FIREBASE_PROJECT_ID'))
+                && getEnvValue('ANSWERLATTICE_FIREBASE_CLIENT_EMAIL')
+                && getEnvValue('ANSWERLATTICE_FIREBASE_PRIVATE_KEY')
+            )
+        );
+        if (!answerlatticeAdminCredentialReady) {
+            const message = 'Answerlattice Admin SDK credentials are missing — Answerlattice APIs cannot access the dedicated Firebase project';
+            if (isVercel) missing.push(message);
+            else warnings.push(message);
+        }
+    }
 
     if (hasProductFirebaseConfiguration('signaldesk')) {
         const signalDeskDescription = describeProduct('signaldesk');

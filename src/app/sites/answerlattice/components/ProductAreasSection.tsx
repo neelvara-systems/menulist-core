@@ -4,7 +4,7 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const AREA_PROOF: Record<string, string> = {
-    'Set up support': 'Workspace, team access, product profile, starter knowledge, key product surfaces, widget key, and activation readiness.',
+    'Set up support': 'Workspace, team access, product profile, starter knowledge, key product pages, widget key, and activation readiness.',
     'In-app help widget': 'Safe page context, allowed origins, blocked routes, hosted help, approved answers, and owner FAQs before fallback.',
     'Help center and tickets': 'Docs, FAQ, owner-published changelog, ticket fallback, feedback, ratings, feature requests, Support Board, conversations, and weekly review output from one support layer.',
     'Review approved answers': 'Product structure, approved answers, stale-answer review, repeated questions, coverage, and readiness metrics.',

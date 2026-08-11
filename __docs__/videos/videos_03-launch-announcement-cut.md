@@ -1,11 +1,15 @@
 # Videos - 30-Second Launch Announcement Cut
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; current product captures pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 3.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -31,6 +35,15 @@ Required boundaries:
 - Keep external surfaces framed as owner-placed links, not automatic external-platform updates.
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
+
+## Market Role And Asset Gate
+
+- **Market role:** Feed-native launch announcement and first paid-test candidate.
+- **Opening contract:** State setup relief and show the existing-menu source in the first `0:03`.
+- **First payoff:** Source photo/PDF begins becoming a private customer preview by `0:06`.
+- **Asset gate:** Current signed-in intake, private preview, owner approval, and supported output captures.
+- **Claim gate:** Do not use an unmeasured `in minutes` promise or an absolute `no typing` claim.
+- **Native adaptations:** Produce independent `9:16`, `16:9`, and required `1:1` layouts with safe-zone QA.
 
 ## Video 3 - 30-Second Launch Announcement Cut
 
@@ -68,47 +81,48 @@ The viewer should understand: "This solves the scattered menu problem without pu
 
 ### G. Narrative Arc
 
-1. Hook: Your menu should not live in five places.
-2. Problem: Old PDFs, screenshots, wrong prices.
-3. Product entry: Upload existing menu photos, no typing required.
+1. Hook: Your current menu is enough to start.
+2. Product entry: Sign in, then upload existing photos or PDF.
+3. Problem: Old PDFs, screenshots, and QR pages keep different versions circulating.
 4. Proof: Review before publishing.
 5. Outcome: QR, page, print, and customer links stay tied to the approved version.
-6. CTA: Create customer link.
+6. Close: MenuList identity, tagline, and `menulist.ai`; companion CTA is `Create customer link`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:03 | 3s | Old PDF, QR, WhatsApp menu, printed menu | 4-way split | Your menu should not live in five different places. | Old PDFs. Old screenshots. Wrong prices. | Hard cuts | Hook must be instant | PDF, QR, WhatsApp, print mockups |
-| 0:03-0:09 | 6s | Owner uploads menu photos/PDF/link | Product UI in phone/laptop frame | Upload photos of your existing menu. No typing required. | Upload menu photos. No typing required. | UI cards slide into one flow | Show owner friction removed | Upload UI |
-| 0:09-0:15 | 6s | Private preview and approve screen | Zoom to approval | MenuList prepares a private customer preview in minutes. You review before anything goes public. | Preview in minutes. Owner approval first. | Soft highlight | Trust moment | Preview and approval UI |
-| 0:15-0:23 | 8s | QR, Official Business Page, print file, owner-shared link, customer page | Approved link at center, outputs around it | Then one approved link powers your QR, page, print files, and customer actions. | One approved list. Every customer link. | Connected-line animation | No external sync implication | QR, OBP, print, customer page |
-| 0:23-0:30 | 7s | Logo and CTA | End card | MenuList. Create your customer link. | Create customer link in minutes. | Fade to end card | Strong CTA | Logo, CTA card |
+| 0:00-0:03 | 3s | Clear menu photo beside current MenuList intake; preview shell begins to resolve | Native vertical source-to-product composition | Your current menu is enough to start. | Your current menu is enough to start. | Immediate source-to-preview movement | Product and owner source are visible in frame zero | Menu photo, current intake UI |
+| 0:03-0:09 | 6s | Current sign-in/intake path accepts photos or PDF; old file variants briefly appear behind it | One cursor path; intake remains the focal point | Sign in, then upload the photos or PDF you already have. | Upload what you already have. No full-menu retyping. | Source cards converge into intake | Do not hide sign-in or correction work | Current intake UI, fictional old variants |
+| 0:09-0:15 | 6s | Private preview rows reveal; owner checks price and business detail | `Private` state remains visible; one correction or focus action | MenuList prepares a private preview. You review what customers will see. | Private preview. Owner approval first. | Row reveal -> review focus | Trust proof, not an AI-magic transformation | Current preview and approval UI |
+| 0:15-0:23 | 8s | Approval action reveals customer link, MenuList QR, Official Business Page, print file, and customer actions | Use a vertical sequence of verified outputs | Nothing goes public until you approve. Then one link supports MenuList QR, official page, print files, and customer actions. | One approved list. Every customer link. | Approval causes each output to arrive | No external synchronization implication | Current approval, link, QR, page, print, actions |
+| 0:23-0:27 | 4s | Source, private preview, and approved link align as a three-step summary | Three large readable states |  | Upload. Review. Approve. | Beat-synced three-state settle | Give the workflow one readable hold | Approved three-step visual |
+| 0:27-0:30 | 3s | Animated MenuList symbol, wordmark, tagline, and URL | Founder-approved lockup and final-frame hold | MenuList. One approved customer link. | MenuList / One approved customer link / menulist.ai | Logo cycle settles; no fade to blank | No fake CTA button | Approved lockup and URL |
 
 ### I. Full Voiceover Script
 
 ```text
-Your menu should not live in five different places.
+Your current menu is enough to start.
 
-Upload photos of your existing menu. No typing required.
+Sign in, then upload the photos or PDF you already have.
 
-MenuList prepares a private customer preview in minutes.
+MenuList prepares a private preview. You review what customers will see.
 
-You review before anything goes public.
+Nothing goes public until you approve.
 
-Then one approved link powers your QR, page, print files, and customer actions.
+Then one link supports MenuList QR, official page, print files, and customer actions.
 
-MenuList. Create your customer link.
+MenuList. One approved customer link.
 ```
 
 ### J. On-Screen Text List
 
-1. Old PDFs. Old screenshots. Wrong prices.
-2. Upload menu photos. No typing required.
-3. Preview in minutes.
+1. Your current menu is enough to start.
+2. Upload what you already have.
+3. Private preview.
 4. Owner approval first.
 5. One approved list. Every customer link.
-6. Create customer link in minutes.
+6. menulist.ai
 
 ### K. UI Screens Required
 
@@ -129,17 +143,17 @@ Music can be slightly more energetic than the hero film but still calm. Use quic
 
 ### N. Design Checklist
 
-- Product appears by 0:06.
+- Product and owner source appear in frame zero.
 - No claim says external platforms update automatically.
 - Captions work without audio.
-- CTA appears for at least 2 seconds.
+- Final identity and URL hold through the last encoded frame; the platform or post supplies the clickable CTA.
 - 9:16 safe zones are respected.
 
 ### O. Versioning Requirements
 
 - 9:16 captioned.
 - 9:16 clean.
-- 1:1 captioned.
+- Native 1:1 captioned composition.
 - 16:9 captioned.
 - With VO.
 - Without VO.
@@ -147,7 +161,8 @@ Music can be slightly more energetic than the hero film but still calm. Use quic
 
 ### P. CTA
 
-Create customer link.
+- Encoded close: `menulist.ai`.
+- Companion post/ad CTA: `Create customer link`.
 
 ### Q. Conversion Contract
 

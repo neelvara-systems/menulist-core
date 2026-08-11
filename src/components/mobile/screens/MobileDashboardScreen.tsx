@@ -5,14 +5,28 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import {
-    buildOwnerBusinessActivityMetrics,
-    getOwnerBusinessPrimaryAnalyticsPeriod,
-} from '@lib/ownerBusinessAssistant/businessSignals';
-import { buildOwnerActionLayer, type OwnerActionId, type OwnerActionItem } from '@lib/ownerActions/buildOwnerActionLayer';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
+    buildLocalizedOwnerBusinessActivityMetrics,
+    getLocalizedOwnerBusinessPrimaryPeriod,
+} from '@lib/ownerBusinessAssistant/dashboardPresentation';
+import {
+    buildOwnerActionLayer,
+    getOwnerConfirmedPlacementCount,
+    hasOwnerPublicLink,
+    hasOwnerWorkingHours,
+    type OwnerActionId,
+    type OwnerActionItem,
+} from '@lib/ownerActions/buildOwnerActionLayer';
+import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
-import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
+import {
+    formatDashboardMonth,
+    formatDashboardPercent,
+    formatDashboardWeekRange,
+    getDashboardLanguageLabel,
+    getDashboardSummaryBullets,
+} from '@lib/analytics/ownerDashboardPresentation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import {
     type AISummary,
@@ -25,7 +39,7 @@ import {
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuUtensils, LuZap } from 'react-icons/lu';
@@ -99,9 +113,12 @@ export default function MobileDashboardScreen({
     onOpenShareTab,
 }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
+    const tOwner = useTranslations('Dashboard.owner');
+    const tOwnerActions = useTranslations('Dashboard.owner.ownerActions');
     const formatter = useFormatter();
+    const locale = useLocale();
     const { token } = theme.useToken();
-    const labels = useOfferingLabels();
+    const labels = useDashboardOfferingLabels();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
         isLoading: loadingProjects,
@@ -195,19 +212,22 @@ export default function MobileDashboardScreen({
                 ? data?.monthly || null
                 : null;
     const businessHealthMetrics = useMemo(
-        () => buildOwnerBusinessActivityMetrics(getOwnerBusinessPrimaryAnalyticsPeriod(businessHealthAnalytics?.periods))
+        () => buildLocalizedOwnerBusinessActivityMetrics(
+            getLocalizedOwnerBusinessPrimaryPeriod(businessHealthAnalytics?.periods),
+            tOwner,
+        )
             .map((metric) => ({ ...metric, delta: metric.detail })),
-        [businessHealthAnalytics?.periods],
+        [businessHealthAnalytics?.periods, tOwner],
     );
-    const businessHealthFreshnessNote = getOwnerBusinessHealthFreshnessNote(businessHealthCurrent);
     const ownerActionLayer = useMemo(() => (
         FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !loadingProjects && selectedProjectId
             ? buildOwnerActionLayer({
                 project: selectedProjectSummary,
                 storeDetails,
+                translate: tOwnerActions,
             })
             : null
-    ), [loadingProjects, selectedProjectId, selectedProjectSummary, storeDetails]);
+    ), [loadingProjects, selectedProjectId, selectedProjectSummary, storeDetails, tOwnerActions]);
 
     const handleOwnerAction = useCallback((item: OwnerActionItem) => {
         const target = item.mobileTarget;
@@ -315,23 +335,22 @@ export default function MobileDashboardScreen({
                         : viewMode === 'overall'
                             ? loading && !overall && !hasOBPSettledData
                             : loading && !currentViewData;
-    const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
-    const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
-    const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
-        .filter((surface) => Boolean(storeDetails?.menuPresence?.[surface as keyof NonNullable<typeof storeDetails.menuPresence>])).length;
+    const hasPublicLink = hasOwnerPublicLink(storeDetails);
+    const hasWorkingHours = hasOwnerWorkingHours(storeDetails);
+    const confirmedPlacementCount = getOwnerConfirmedPlacementCount(storeDetails);
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
-    const selectedMenuIsLive = selectedProjectSummary?.active !== false;
+    const selectedMenuIsLive = isPublishedMenuProject(selectedProjectSummary);
     const attentionCount = [!selectedMenuIsLive, !hasWorkingHours, !hasPublicLink].filter(Boolean).length;
     const publicSourceTitle = attentionCount
-        ? 'Needs attention'
+        ? tOwner('publicTruthStatus.title.needsAttention')
         : hasConfirmedPlacement
-            ? 'Official customer source is active'
-            : 'Customer link is ready to place';
+            ? tOwner('publicTruthStatus.title.active')
+            : tOwner('publicTruthStatus.title.readyToPlace');
     const publicSourceDescription = attentionCount
-        ? 'Fix menu, hours, or the customer link first.'
+        ? tOwner('publicTruthStatus.description.needsAttention')
         : hasConfirmedPlacement
-            ? 'No action needed.'
-            : 'Add the same link to Google, Instagram, WhatsApp, QR, or print.';
+            ? tOwner('publicTruthStatus.description.active')
+            : tOwner('publicTruthStatus.description.readyToPlace');
 
     const overviewStatus = (() => {
         if (!overview) return { color: 'default', text: t('noDataYet') };
@@ -381,8 +400,8 @@ export default function MobileDashboardScreen({
         <Flex gap={12} wrap>
             {renderMetricTile(labels.scansLabel, formatNumber(metrics?.menuVisits || 0), <LuEye color={token.colorPrimary} size={14} />)}
             {renderMetricTile(t('itemTaps'), formatNumber(metrics?.itemClicks || 0), <LuFlame color={token.colorWarning} size={14} />)}
-            {renderMetricTile(t('engagedSessions'), `${metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
-            {renderMetricTile(t('actionRate'), `${metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('engagedSessions'), formatDashboardPercent(metrics?.engagedSessionRate), <LuTrendingUp color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('actionRate'), formatDashboardPercent(metrics?.actionRate), <LuTrendingUp color={token.colorSuccess} size={14} />)}
             {renderMetricTile(t('customerActions'), formatNumber(metrics?.menuActionClicks || 0), <LuHeart color={token.colorSuccess} size={14} />)}
             {renderMetricTile(t('searches'), formatNumber(metrics?.searches || 0), <LuBarChart3 color={token.colorInfo} size={14} />)}
             {renderMetricTile(t('noResultSearches'), formatNumber(metrics?.zeroResultSearches || 0), <LuTrendingDown color={token.colorWarning} size={14} />)}
@@ -412,30 +431,44 @@ export default function MobileDashboardScreen({
                         </Flex>
                     </Flex>
                     <Tag color={hasPublicLink && selectedMenuIsLive ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                        {hasPublicLink && selectedMenuIsLive ? 'Link ready' : 'Not ready'}
+                        {hasPublicLink && selectedMenuIsLive
+                            ? tOwner('publicTruthStatus.link.ready')
+                            : tOwner('publicTruthStatus.states.notReady')}
                     </Tag>
                 </Flex>
 
                 <Flex gap={8} wrap>
                     <Tag color={selectedMenuIsLive ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
-                        Menu: {selectedMenuIsLive ? 'Live' : 'Hidden'}
+                        {tOwner('publicTruthStatus.tags.menu', {
+                            status: selectedMenuIsLive
+                                ? tOwner('publicTruthStatus.states.live')
+                                : tOwner('publicTruthStatus.states.hidden'),
+                        })}
                     </Tag>
                     <Tag color={hasWorkingHours ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
-                        Hours: {hasWorkingHours ? 'Set' : 'Missing'}
+                        {tOwner('publicTruthStatus.tags.hours', {
+                            status: hasWorkingHours
+                                ? tOwner('publicTruthStatus.states.set')
+                                : tOwner('publicTruthStatus.states.missing'),
+                        })}
                     </Tag>
                     <Tag color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                        Link: {hasPublicLink ? 'Ready' : 'Missing'}
+                        {tOwner('publicTruthStatus.tags.link', {
+                            status: hasPublicLink
+                                ? tOwner('publicTruthStatus.states.ready')
+                                : tOwner('publicTruthStatus.states.missing'),
+                        })}
                     </Tag>
                     <Tag color={hasConfirmedPlacement ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                        Placed: {confirmedPlacementCount}/3
+                        {tOwner('publicTruthStatus.tags.placed', { count: confirmedPlacementCount, total: 3 })}
                     </Tag>
                 </Flex>
             </Flex>
         </Card>
     );
 
-    const renderOwnerActionLayer = () => ownerActionLayer && ownerActionLayer.statusLabel !== 'Stable' ? (
-        <Card size="small" title={<Text strong>Next owner action</Text>}>
+    const renderOwnerActionLayer = () => ownerActionLayer && ownerActionLayer.openCount > 0 ? (
+        <Card size="small" title={<Text strong>{tOwner('ownerActions.title')}</Text>}>
             <Flex gap={12} vertical>
                 <Flex gap={8} vertical>
                     <Flex align="center" gap={8} wrap>
@@ -447,7 +480,7 @@ export default function MobileDashboardScreen({
                     </Flex>
                     <Text type="secondary">{ownerActionLayer.primaryAction.description}</Text>
                     <Flex gap={8} wrap>
-                        <Tag color={ownerActionLayer.statusLabel === 'Stable' ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                        <Tag color={ownerActionLayer.openCount === 0 ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
                             {ownerActionLayer.statusLabel}
                         </Tag>
                         <Tag color={ownerActionLayer.placement.confirmedCount > 0 ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
@@ -458,7 +491,7 @@ export default function MobileDashboardScreen({
                 <Button block color="primary" onClick={() => handleOwnerAction(ownerActionLayer.primaryAction)} size="large">
                     <Flex align="center" gap={6} justify="center">
                         {renderOwnerActionIcon(ownerActionLayer.primaryAction.id)}
-                        Open
+                        {tOwner('ownerActions.open')}
                     </Flex>
                 </Button>
             </Flex>
@@ -523,7 +556,7 @@ export default function MobileDashboardScreen({
                 {topLanguage ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
                         {t('topLanguageNow', {
-                            label: topLanguage.label || topLanguage.language,
+                            label: getDashboardLanguageLabel(topLanguage.language, topLanguage.label, locale),
                             sessions: topLanguage.menuSessions || topLanguage.menuViews,
                             adoptions: topLanguage.adoptions || 0,
                         })}
@@ -579,15 +612,18 @@ export default function MobileDashboardScreen({
         );
     };
 
-    const renderAiSummary = (summary?: AISummary) => summary?.bulletPoints?.length ? (
+    const renderAiSummary = (summary?: AISummary, metrics?: OwnerDashboardMetrics) => {
+        const bullets = getDashboardSummaryBullets({ locale, metrics, summary, t: tOwner, limit: 3 });
+        return bullets.length ? (
         <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
             <List>
-                {summary.bulletPoints.map((bullet: string, index: number) => (
+                {bullets.map((bullet: string, index: number) => (
                     <List.Item key={`${bullet}-${index}`} title={<Text>{bullet}</Text>} />
                 ))}
             </List>
         </Card>
-    ) : null;
+        ) : null;
+    };
 
     const renderPeriodView = () => {
         const periodData = selectedPeriodData;
@@ -604,9 +640,9 @@ export default function MobileDashboardScreen({
         const dateLabel = viewMode === 'daily' && 'date' in periodData && periodData.date
             ? formatDateKey(periodData.date, formatter)
             : viewMode === 'weekly' && 'weekStart' in periodData && periodData.weekStart && periodData.weekEnd
-                ? `${formatDateKey(periodData.weekStart, formatter)} - ${formatDateKey(periodData.weekEnd, formatter)}`
+                ? formatDashboardWeekRange(periodData.weekStart, periodData.weekEnd, formatter, viewModeLabel)
                 : viewMode === 'monthly' && 'monthStart' in periodData && periodData.monthStart
-                    ? formatDateKey(periodData.monthStart, formatter)
+                    ? formatDashboardMonth(periodData.monthStart, viewModeLabel)
                     : viewModeLabel;
 
         return (
@@ -639,8 +675,8 @@ export default function MobileDashboardScreen({
                     <Flex gap={12} wrap>
                         {renderMetricTile(t('totalScans'), formatNumber(overall.lifetimeMetrics.totalViews || 0), undefined, 4)}
                         {renderMetricTile(t('totalClicks'), formatNumber(overall.lifetimeMetrics.totalClicks || 0), undefined, 4)}
-                        {renderMetricTile(t('engagedSessions'), `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
-                        {renderMetricTile(t('actionRate'), `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
+                        {renderMetricTile(t('engagedSessions'), formatDashboardPercent(overall.lifetimeMetrics.engagedSessionRate), undefined, 4)}
+                        {renderMetricTile(t('actionRate'), formatDashboardPercent(overall.lifetimeMetrics.actionRate), undefined, 4)}
                         {renderMetricTile(t('customerActions'), formatNumber(overall.lifetimeMetrics.totalMenuActionClicks || 0), undefined, 4)}
                         {renderMetricTile(t('searches'), formatNumber(overall.lifetimeMetrics.totalSearches || 0), undefined, 4)}
                         {renderMetricTile(t('noResultSearches'), formatNumber(overall.lifetimeMetrics.totalZeroResultSearches || 0), undefined, 4)}
@@ -702,7 +738,6 @@ export default function MobileDashboardScreen({
                 {canShowBusinessHealthSummary ? (
                     <MobileBusinessHealthCard
                         current={businessHealthCurrent}
-                        freshnessNote={businessHealthFreshnessNote}
                         metrics={businessHealthMetrics}
                         onClick={onOpenBusinessHealth}
                     />
@@ -814,7 +849,7 @@ export default function MobileDashboardScreen({
                             mode={viewMode}
                         />
                         <MobileMenuAnalyticsDetailsCard data={selectedPeriodData} />
-                        {renderAiSummary(selectedPeriodData?.aiSummary)}
+                        {renderAiSummary(selectedPeriodData?.aiSummary, selectedPeriodData?.metrics)}
 
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -859,15 +894,7 @@ export default function MobileDashboardScreen({
                             projectId={selectedProjectId}
                         />
 
-                        {overview?.aiSummary?.bulletPoints?.length ? (
-                            <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
-                                <List>
-                                    {overview.aiSummary.bulletPoints.map((bullet: string, index: number) => (
-                                        <List.Item key={`${bullet}-${index}`} title={<Text>{bullet}</Text>} />
-                                    ))}
-                                </List>
-                            </Card>
-                        ) : null}
+                        {renderAiSummary(overview?.aiSummary, wtd?.metrics)}
 
                         {/* 4-Week Trend — most engaging visual for SMB owners */}
                         {historicalWeeks.length > 0 ? (() => {
@@ -884,7 +911,9 @@ export default function MobileDashboardScreen({
                                             const pct = Math.round((week.metrics.menuVisits || 0) / maxScans * 100);
                                             return (
                                                 <Flex key={idx} align="center" gap={8}>
-                                                    <Text type="secondary" style={{ fontSize: 11, minWidth: 56 }}>{week.weekLabel}</Text>
+                                                    <Text type="secondary" style={{ fontSize: 11, minWidth: 56 }}>
+                                                        {formatDashboardWeekRange(week.weekStart, week.weekEnd, formatter, tOwner('views.last7Days'))}
+                                                    </Text>
                                                     <div style={{ flex: 1, background: token.colorFillSecondary, borderRadius: 4, height: 8, overflow: 'hidden' }}>
                                                         <div style={{
                                                             background: week.isCurrentWeek ? token.colorPrimary : token.colorPrimaryBorder,
@@ -894,7 +923,7 @@ export default function MobileDashboardScreen({
                                                             transition: 'width 0.4s ease',
                                                         }} />
                                                     </div>
-                                                    <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'right', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
+                                                    <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'end', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
                                                         {formatNumber(week.metrics.menuVisits || 0)}
                                                     </Text>
                                                     {week.isCurrentWeek ? (
@@ -929,8 +958,8 @@ export default function MobileDashboardScreen({
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(labels.scansLabel, formatNumber(mtd.metrics?.menuVisits || 0), <LuEye color={token.colorPrimary} size={12} />, 4)}
                                     {renderMetricTile(t('itemTaps'), formatNumber(mtd.metrics?.itemClicks || 0), <LuFlame color={token.colorWarning} size={12} />, 4)}
-                                    {renderMetricTile(t('engagedSessions'), `${mtd.metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
-                                    {renderMetricTile(t('actionRate'), `${mtd.metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
+                                    {renderMetricTile(t('engagedSessions'), formatDashboardPercent(mtd.metrics?.engagedSessionRate), <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
+                                    {renderMetricTile(t('actionRate'), formatDashboardPercent(mtd.metrics?.actionRate), <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
                                 </Flex>
                                 {mtd.daysWithData > 0 ? (
                                     <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
@@ -940,7 +969,9 @@ export default function MobileDashboardScreen({
                             </Card>
                         ) : null}
                         <MobileMenuAnalyticsDetailsCard data={wtd} title={t('last7DaysMenuDetails')} />
-                        <MobileMenuAnalyticsDetailsCard data={mtd} title={t('monthMenuDetails', { month: mtd?.monthName || t('thisMonth') })} />
+                        <MobileMenuAnalyticsDetailsCard data={mtd} title={t('monthMenuDetails', {
+                            month: t('thisMonth'),
+                        })} />
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>

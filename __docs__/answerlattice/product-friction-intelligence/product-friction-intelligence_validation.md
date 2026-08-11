@@ -31,7 +31,7 @@ The strongest owner value is:
 | Heat overlay | Not justified | A ranked list is more legible and cheaper for the current founder ICP. |
 | Automatic root-cause classification | Unsafe as stated | AI may organize admitted evidence as advisory text; it cannot prove a cause or percentage. |
 | Knowledge gap, UX, bug, missing docs, expectations, policy, and technical-failure types | Not source-proven | These require owner-confirmed classification and clear evidence contracts before persistence. |
-| Release overlay | Correlation only | Do not claim a release caused friction. Validate a bounded comparison separately. |
+| Release overlay | Implemented as a separate bounded overlay | Explicit owner load, direct entity links, complete UTC windows, and correlation-only vocabulary; no automatic review or causal claim. |
 | Suggested fixes | Advisory only | Route to existing reviewed knowledge or product workflows; never auto-publish. |
 | Mobile ranked drill-down | Direction accepted | Use a stacked evidence list, not a canvas or tree. |
 | Nightly summary-first Firebase design | Implemented | Keep current scheduler, deterministic rows, compact summaries, and no owner listener. |
@@ -46,13 +46,17 @@ The strongest owner value is:
 5. Preserved the two-read owner cost and existing scheduler queries.
 6. Rendered strict entity-specific advisory actions and linked ranked evidence
    to the existing read-only Knowledge Map without adding a new read model.
+7. Added the explicit Post-Change Support Evidence Review without changing the
+   nightly friction summary, persisting an outcome, or using a causal score.
+8. Completed the owner-selected review handoff with entity-validated routing to
+   existing governance surfaces, local product-review export, and explicit
+   no-reminder/no-persistence close behavior.
 
 ## Validation-Only Scope
 
 - workflow-tree presentation;
 - product-surface journey placement;
 - owner-confirmed cause taxonomy;
-- release-window correlation;
 - a new filtered raw-evidence surface or raw support-event explorer.
 
 These items require real-client mapping and decision evidence before code.
@@ -73,6 +77,8 @@ The admitted implementation is narrower:
   limitation review, that is not stored as diagnosis;
 - one deterministic, capped Markdown evidence brief;
 - browser-local copy and download;
+- deterministic continuation into existing entity-scoped governance routes
+  when a safe internal destination exists;
 - fixed evidence limitations;
 - zero new Firebase or provider operations.
 
@@ -89,7 +95,7 @@ that delivery occurred.
 | Product Friction Command Center | Daily Brief and Product Friction Evidence | Do not add another command center. Keep the existing bounded priority and evidence surfaces. |
 | Product Problem Briefs | Browser-local Friction Evidence Brief | Admit only the deterministic, read-only packet. Do not add product-problem documents, PRDs, status, assignees, or lifecycle state. |
 | Release Guard | Release impact preview, drift review, and release-scoped Answer Tests | Existing bounded scope is sufficient. Do not claim dependency completeness or release causation. |
-| Post-release relief review | Existing completed-window evidence and release records | Validation only. A later bounded comparison requires real owner demand and must remain correlation, not an automatic 7/14/30-day causal workflow. |
+| Post-release relief review | Post-Change Support Evidence Review inside Product Friction Evidence | Implemented only as an explicit, read-only, complete 14-day UTC comparison over direct entity links. No automatic 7/14/30-day workflow, persisted relief state, or causal conclusion. |
 | Customer Promise Ledger | None | Reject. CRM obligations, delivery commitments, and customer communication state are outside governed-answer infrastructure. |
 | Automatic customer close-the-loop | None | Reject automatic sending. Any future output must remain an owner-approved draft or export, not an outbound messaging system. |
 | Proactive friction prevention | Predictive Support | Already covered by owner-reviewed, exact-page, bounded triggers. Engagement is not proof of resolution. |
@@ -99,10 +105,76 @@ that delivery occurred.
 | Native helpdesk or Jira ingestion | No admitted connector | Keep deferred until the connector admission rule is satisfied by three paying workspaces requesting the same read-only provider. |
 | Problems and Promises navigation | No route or navigation entry | Reject. These labels would establish unsupported product systems and duplicate existing owner paths. |
 
-The only implementation correction admitted by this reconciliation is the
-non-confirming **Review known limitation** path. It asks the owner to verify
-whether a constraint is intentional and approved; it does not persist a
-classification or assert that the product behavior is correct.
+The admitted implementation corrections are the non-confirming **Review known
+limitation** path and deterministic continuation from every review path. The
+known-limitation path asks the owner to verify whether a constraint is
+intentional and approved; it does not persist a classification or assert that
+the product behavior is correct. Continuation reuses existing governance
+routes, local export, or close behavior and introduces no task state.
+The final cross-check also freezes each brief to one scoped snapshot and makes
+Knowledge Map continuation fail closed under its kill switch or missing-entity
+state, without widening the admitted product scope.
+
+## Real-Workspace Decision Validation Protocol
+
+Use this protocol before reopening any rejected expansion above. It validates
+whether the current Daily Brief -> Product Friction Evidence -> existing review
+route helps an owner make a decision; it does not add runtime telemetry, a
+problem lifecycle, or a second task system.
+
+### Minimum evidence packet
+
+- three real founder or small-team workspaces;
+- at least three qualified friction reviews per workspace;
+- a complete, non-stale friction snapshot with an active mapped entity;
+- the current deterministic evidence breakdown and local evidence brief;
+- no sample workspace, seeded conclusion, raw customer transcript, or customer
+  identity in the research record.
+
+### One-session review
+
+For each qualified entity:
+
+1. Start from Daily Brief or the ranked Product Friction Evidence surface.
+2. Inspect the current and previous completed windows and evidence components.
+3. Choose one existing review path without being shown a suggested diagnosis.
+4. Prepare the browser-local evidence brief.
+5. Open the existing Knowledge Map, approved-answer, release, or Answer Test
+   destination, or the external product-investigation system required by that
+   selection.
+6. Record whether the evidence was sufficient to choose the path and what was
+   missing when it was not.
+
+The research record may contain only an anonymous workspace reference, entity
+type, completed-window dates, selected review path, decision time, evidence
+sufficiency, missing deterministic field, destination opened, and whether the
+brief was copied or downloaded. Keep it outside Answerlattice runtime storage.
+
+### Admission decisions
+
+- Keep the current implementation when owners can choose and open the correct
+  existing review path without requesting another internal queue.
+- Refine the existing summary projection only when the same missing
+  deterministic field recurs across all three workspaces and that field is
+  already retained by the bounded source model.
+- Consider controlled Linear or GitHub handoff only when all three paying
+  workspaces show that manual copy/download repeatedly blocks the decision from
+  reaching engineering. External execution remains authoritative.
+- The August 10 owner-relief decision admitted one release/correction window
+  comparison before this research threshold was completed. Keep its rollout
+  claim at local source completion until authenticated workspaces prove it
+  helps decisions; do not expand it beyond direct links, complete windows, and
+  correlation-only language from hypothetical demand.
+- Do not infer unique affected users, product defects, severity, abandonment,
+  churn, revenue impact, or verified relief from support-event counts.
+- Do not add `productProblem`, promise, decision-memory, customer-closure, or
+  action-disposition documents as part of this validation.
+
+At completion, retain one short validation note containing the number of
+qualified reviews, median decision time, evidence-sufficient count, selected
+path distribution, repeated missing field if any, and the resulting keep,
+refine, or reject decision. Product development reopens only from that evidence,
+not from a hypothetical feature list.
 
 ## Rejected Scope
 
@@ -128,4 +200,7 @@ copying metrics or authority. The larger journey-map vision is a
 customer-validation question, not approved implementation scope. A local
 evidence brief is also admitted because it reuses that same bounded summary,
 adds no persistence or paid operation, and keeps the owner's selection
-explicitly separate from measured facts.
+explicitly separate from measured facts. Post-Change Support Evidence Review is
+also admitted as a contained overlay: it reuses retained release, correction,
+entity-link, and signal evidence; costs nothing on mount; and reports observed
+direction without asserting product relief or causation.

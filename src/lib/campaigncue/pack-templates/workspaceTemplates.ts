@@ -1,8 +1,8 @@
-import { doc, getDoc, runTransaction } from "firebase/firestore";
-import { deleteObject, ref, uploadString } from "firebase/storage";
+import { doc, getDoc, runTransaction, type Firestore } from "firebase/firestore";
+import { deleteObject, ref, uploadString, type FirebaseStorage } from "firebase/storage";
 import { CAMPAIGNCUE_COLLECTIONS } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY } from "@constant/campaigncue/packTemplates";
-import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
+import { withCampaignCueFirebaseSession } from "@lib/campaigncue/firebaseSessionClient";
 import { createRuntimeId } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import {
@@ -37,8 +37,8 @@ const safeSegment = (value: string) => (
         .slice(0, 100)
 );
 
-const getWorkspaceTemplateIndexRef = (workspaceId: string) => doc(
-    firebaseClient,
+const getWorkspaceTemplateIndexRef = (firestore: Firestore, workspaceId: string) => doc(
+    firestore,
     CAMPAIGNCUE_COLLECTIONS.WORKSPACES,
     workspaceId,
     CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_COLLECTION,
@@ -72,12 +72,13 @@ const getWorkspaceTemplateCleanupTarget = (
 };
 
 async function deleteWorkspaceTemplateStoragePath(
+    storage: FirebaseStorage,
     path: string | undefined,
     context: CampaignCueWorkspaceTemplateStorageCleanupContext,
 ) {
     if (!path) return;
     try {
-        await deleteObject(ref(firebaseStorage, path));
+        await deleteObject(ref(storage, path));
     } catch (error) {
         if (isMissingStorageObjectError(error)) return;
         logRuntimeFailure("campaigncue_workspace_template_storage_cleanup_failed", error, {
@@ -96,6 +97,7 @@ const getWorkspaceTemplateStoragePaths = (summary?: CampaignCuePackTemplateSumma
 );
 
 async function cleanupWorkspaceTemplateSummaries(
+    storage: FirebaseStorage,
     summaries: CampaignCuePackTemplateSummary[],
     currentPaths: ReadonlySet<string>,
     workspaceId: string,
@@ -117,7 +119,7 @@ async function cleanupWorkspaceTemplateSummaries(
         }
     }
     await Promise.all(Array.from(targets.entries()).map(([path, target]) => (
-        deleteWorkspaceTemplateStoragePath(path, {
+        deleteWorkspaceTemplateStoragePath(storage, path, {
             cleanupTarget: getWorkspaceTemplateCleanupTarget(path),
             templateId: target.templateId,
             workspaceId,
@@ -127,6 +129,16 @@ async function cleanupWorkspaceTemplateSummaries(
 
 export async function saveCampaignCueWorkspacePackTemplate(
     params: CampaignCueWorkspacePackTemplateSaveInput,
+): Promise<CampaignCuePackTemplateSummary> {
+    return withCampaignCueFirebaseSession(params.workspaceId, { purpose: "workspace_template_write" }, ({ firestore, storage }) => (
+        saveCampaignCueWorkspacePackTemplateWithSession(params, firestore, storage)
+    ));
+}
+
+async function saveCampaignCueWorkspacePackTemplateWithSession(
+    params: CampaignCueWorkspacePackTemplateSaveInput,
+    firestore: Firestore,
+    storage: FirebaseStorage,
 ): Promise<CampaignCuePackTemplateSummary> {
     const input = campaignCueWorkspacePackTemplateSaveSchema.parse(params) as CampaignCueWorkspacePackTemplateSaveInput;
     const templateId = safeSegment(input.summary.templateId);
@@ -164,13 +176,13 @@ export async function saveCampaignCueWorkspacePackTemplate(
     let obsoleteRecords: CampaignCuePackTemplateSummary[] = [];
     try {
         uploadedPaths.push(payloadPath);
-        await uploadString(ref(firebaseStorage, payloadPath), payloadJson, "raw", {
+        await uploadString(ref(storage, payloadPath), payloadJson, "raw", {
             cacheControl: "private, max-age=31536000, immutable",
             contentType: "application/json",
         });
         if (editorJson && editorDocumentPath) {
             uploadedPaths.push(editorDocumentPath);
-            await uploadString(ref(firebaseStorage, editorDocumentPath), editorJson, "raw", {
+            await uploadString(ref(storage, editorDocumentPath), editorJson, "raw", {
                 cacheControl: "private, max-age=31536000, immutable",
                 contentType: "application/json",
             });
@@ -178,15 +190,15 @@ export async function saveCampaignCueWorkspacePackTemplate(
 
         if (input.previewDataUrl && previewPath && previewContentType) {
             uploadedPaths.push(previewPath);
-            await uploadString(ref(firebaseStorage, previewPath), input.previewDataUrl, "data_url", {
+            await uploadString(ref(storage, previewPath), input.previewDataUrl, "data_url", {
                 cacheControl: "private, max-age=31536000, immutable",
                 contentType: previewContentType,
             });
         }
 
-        const indexRef = getWorkspaceTemplateIndexRef(input.workspaceId);
+        const indexRef = getWorkspaceTemplateIndexRef(firestore, input.workspaceId);
         persistenceAttempted = true;
-        const summary = await runTransaction(firebaseClient, async (transaction) => {
+        const summary = await runTransaction(firestore, async (transaction) => {
             const indexDoc = await transaction.get(indexRef);
             const currentIndex = indexDoc.exists()
                 ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
@@ -224,12 +236,12 @@ export async function saveCampaignCueWorkspacePackTemplate(
             transaction.set(indexRef, index);
             return nextSummary;
         });
-        await cleanupWorkspaceTemplateSummaries(obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
+        await cleanupWorkspaceTemplateSummaries(storage, obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
         return summary;
     } catch (error) {
         if (persistenceAttempted) {
             try {
-                const indexDoc = await getDoc(getWorkspaceTemplateIndexRef(input.workspaceId));
+                const indexDoc = await getDoc(getWorkspaceTemplateIndexRef(firestore, input.workspaceId));
                 const currentIndex = indexDoc.exists()
                     ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
                     : null;
@@ -241,7 +253,7 @@ export async function saveCampaignCueWorkspacePackTemplate(
                     && template.previewPath === previewPath
                 ));
                 if (committed) {
-                    await cleanupWorkspaceTemplateSummaries(obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
+                    await cleanupWorkspaceTemplateSummaries(storage, obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
                     return committed;
                 }
             } catch (probeError) {
@@ -253,7 +265,7 @@ export async function saveCampaignCueWorkspacePackTemplate(
                 throw error;
             }
         }
-        await cleanupWorkspaceTemplateSummaries([{
+        await cleanupWorkspaceTemplateSummaries(storage, [{
             ...input.summary,
             businessCategory: input.businessCategory,
             createdAt: input.summary.createdAt || now,
@@ -275,12 +287,22 @@ export async function deleteCampaignCueWorkspacePackTemplate(input: {
     templateId: string;
     workspaceId: string;
 }): Promise<void> {
+    return withCampaignCueFirebaseSession(input.workspaceId, { purpose: "workspace_template_write" }, ({ firestore, storage }) => (
+        deleteCampaignCueWorkspacePackTemplateWithSession(input, firestore, storage)
+    ));
+}
+
+async function deleteCampaignCueWorkspacePackTemplateWithSession(
+    input: { templateId: string; workspaceId: string },
+    firestore: Firestore,
+    storage: FirebaseStorage,
+): Promise<void> {
     const parsed = campaignCueWorkspacePackTemplateDeleteSchema.parse(input);
     const templateId = parsed.templateId;
-    const indexRef = getWorkspaceTemplateIndexRef(parsed.workspaceId);
+    const indexRef = getWorkspaceTemplateIndexRef(firestore, parsed.workspaceId);
     let removedAttempt: CampaignCuePackTemplateSummary | undefined;
     try {
-        const removed = await runTransaction(firebaseClient, async (transaction) => {
+        const removed = await runTransaction(firestore, async (transaction) => {
             const indexDoc = await transaction.get(indexRef);
             const currentIndex = indexDoc.exists()
                 ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
@@ -300,7 +322,7 @@ export async function deleteCampaignCueWorkspacePackTemplate(input: {
             transaction.set(indexRef, index);
             return mutation.removed;
         });
-        await cleanupWorkspaceTemplateSummaries(removed ? [removed] : [], new Set(), parsed.workspaceId);
+        await cleanupWorkspaceTemplateSummaries(storage, removed ? [removed] : [], new Set(), parsed.workspaceId);
     } catch (error) {
         if (!removedAttempt) throw error;
         try {
@@ -310,7 +332,7 @@ export async function deleteCampaignCueWorkspacePackTemplate(input: {
                 : null;
             if (currentIndex) assertCampaignCueWorkspaceTemplateIndexScope(currentIndex, parsed.workspaceId);
             if (!currentIndex?.data.some((template) => template.templateId === templateId)) {
-                await cleanupWorkspaceTemplateSummaries([removedAttempt], new Set(), parsed.workspaceId);
+                await cleanupWorkspaceTemplateSummaries(storage, [removedAttempt], new Set(), parsed.workspaceId);
                 return;
             }
         } catch (probeError) {

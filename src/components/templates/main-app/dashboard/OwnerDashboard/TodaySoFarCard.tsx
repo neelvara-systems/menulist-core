@@ -1,8 +1,13 @@
-import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import {
+    formatDashboardPercent,
+    getDashboardLanguageLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
 import { DailyViewData } from '@template/main-app/projects/types';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
 import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Typography } from 'antd';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuClock, LuInfo } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -30,8 +35,9 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     fetchedAt,
     title,
 }) => {
-    const labels = useOfferingLabels();
+    const labels = useDashboardOfferingLabels();
     const formatter = useFormatter();
+    const locale = useLocale();
     const t = useTranslations('Dashboard.owner');
     const cardTitle = title || t('menu');
 
@@ -95,7 +101,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
             {topLanguage ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
                     {t('today.topLanguageNow', {
-                        label: topLanguage.label,
+                        label: getDashboardLanguageLabel(topLanguage.language, topLanguage.label, locale),
                         sessions: topLanguage.menuSessions || topLanguage.menuViews,
                         adoptions: topLanguage.adoptions,
                     })}
@@ -135,7 +141,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                             {cardTitle}
                         </Title>
                         <Popover content={detailContent} title={t('views.todaySoFar')}>
-                            <Button icon={<LuInfo />} size="small" type="text" />
+                            <Button aria-label={t('views.todaySoFar')} icon={<LuInfo />} size="small" type="text" />
                         </Popover>
                     </div>
                     <Text type="secondary">{t('today.currentActivity')}</Text>
@@ -150,28 +156,28 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
 
             <Row gutter={[16, 16]}>
                 <Col xs={12} sm={6}>
-                    <Statistic title={labels.scansLabel} value={data.metrics.menuVisits || 0} />
+                    <Statistic title={labels.scansLabel} value={formatNumber(data.metrics.menuVisits || 0)} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title={t('metrics.searches')} value={data.metrics.searches || 0} />
+                    <Statistic title={t('metrics.searches')} value={formatNumber(data.metrics.searches || 0)} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title={t('metrics.engagedSessions')} suffix="%" value={data.metrics.engagedSessionRate || 0} />
+                    <Statistic title={t('metrics.engagedSessions')} value={formatDashboardPercent(data.metrics.engagedSessionRate)} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title={t('metrics.actionRate')} suffix="%" value={data.metrics.actionRate || 0} />
+                    <Statistic title={t('metrics.actionRate')} value={formatDashboardPercent(data.metrics.actionRate)} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title={t('metrics.customerActions')} value={data.metrics.menuActionClicks || 0} />
+                    <Statistic title={t('metrics.customerActions')} value={formatNumber(data.metrics.menuActionClicks || 0)} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title={t('metrics.unavailableInterest')} value={data.metrics.unavailableItemTaps || 0} />
+                    <Statistic title={t('metrics.unavailableInterest')} value={formatNumber(data.metrics.unavailableItemTaps || 0)} />
                 </Col>
                 {topLanguage ? (
                     <Col xs={12} sm={6}>
                         <div className={styles.simpleMetric}>
                             <Text type="secondary">{t('metrics.topLanguage')}</Text>
-                            <Text strong>{topLanguage.label}</Text>
+                            <Text strong>{getDashboardLanguageLabel(topLanguage.language, topLanguage.label, locale)}</Text>
                         </div>
                     </Col>
                 ) : null}

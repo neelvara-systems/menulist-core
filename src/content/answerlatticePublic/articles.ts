@@ -5,10 +5,10 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         slug: 'answerlattice-operating-guide',
         path: '/resources/answerlattice-operating-guide',
         title: 'AnswerLattice Operating Guide',
-        description: 'Start with the smallest trustworthy support setup, then add team coordination and deeper governance only when ownership or risk grows.',
-        metaTitle: 'AnswerLattice Operating Guide | Start, Coordinate, Govern',
-        metaDescription: 'A progressive AnswerLattice manual for solo founders, small teams, and product groups that need governed support without unnecessary operations.',
-        quickAnswer: 'Start with ten priority questions, a verified widget, safe fallback, and Daily Brief. Add team coordination when ownership spreads, then add deeper governance when releases or answer risk justify it.',
+        description: 'Start with the smallest trustworthy support setup, then add team coordination and deeper review controls only when ownership or risk grows.',
+        metaTitle: 'AnswerLattice Operating Guide | Start Small and Grow',
+        metaDescription: 'A progressive AnswerLattice manual for solo founders, small teams, and product groups that need reviewed support without unnecessary operations.',
+        quickAnswer: 'Start with ten priority questions, a verified widget, safe fallback, and Daily Brief. Add team coordination when ownership spreads, then add deeper review controls when releases or answer risk justify them.',
         readingTime: '10 min read',
         publishedAt: '2026-07-31',
         updatedAt: '2026-07-31',
@@ -22,7 +22,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'one-product-three-depths',
                 title: 'One product, three operating depths',
                 body: [
-                    'Solo founders remain the primary starting point. Small teams and product groups inside larger companies use the same governed system by adding existing controls only when support ownership or answer risk grows.',
+                    'Solo founders remain the primary starting point. Small teams and product groups inside larger companies use the same reviewed support system, adding existing controls only when support ownership or answer risk grows.',
                     'Start, Coordinate, and Govern are guidance levels. They are not workspace modes, automatic scores, separate products, or required setup stages.',
                 ],
                 bullets: [
@@ -42,7 +42,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                     'Create one workspace for one product.',
                     'Add the product profile, support email, and two to five support-heavy pages.',
                     'Import the product material you already trust.',
-                    'Review ten priority customer questions and approve only supported answer truth.',
+                    'Review ten priority customer questions and approve only answers supported by your product knowledge.',
                     'Run canonical-only Answer Tests for critical expected answers.',
                     'Verify one known-answer path and one missing-answer fallback path in the widget.',
                     'Use Daily Brief after launch and leave stable areas alone.',
@@ -58,7 +58,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                     'Do not create custom roles while one owner operates the workspace.',
                     'Do not use Support Board for every ticket.',
                     'Do not configure workflow notifications while one review habit is enough.',
-                    'Do not open advanced Knowledge Map or governance views unless a decision points there.',
+                    'Do not open advanced Knowledge Map or review views unless a decision points there.',
                     'Do not request API distribution before approved answer coverage and key controls are ready.',
                     'Do not build a large article library merely to make setup look complete.',
                 ],
@@ -67,12 +67,12 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'coordinate',
                 title: 'Coordinate when support ownership spreads',
                 body: [
-                    'Move beyond the founder setup when a second person regularly responds to users, reviews answers, ships releases that change support truth, or owns recurring follow-up.',
+                    'Move beyond the founder setup when a second person regularly responds to users, reviews answers, ships releases that change official support, or owns recurring follow-up.',
                 ],
                 checklist: [
                     'Invite only active support, product, or engineering operators.',
                     'Start with protected Owner, Manager, and Support Staff roles.',
-                    'Create a custom role only when a real authority boundary requires it.',
+                    'Create a custom role only when a real permission boundary requires it.',
                     'Add Slack or email notifications when work is being missed outside the workspace.',
                     'Use Support Board only for selected issues that need private notes, ownership, or follow-up.',
                     'Record releases that change plans, roles, limits, navigation, integrations, or errors.',
@@ -81,12 +81,12 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
             },
             {
                 id: 'govern',
-                title: 'Govern when answer risk becomes material',
+                title: 'Add deeper review controls when answer risk grows',
                 body: [
-                    'A growing company does not need every employee in AnswerLattice. A bounded product, support, and engineering group can use deeper controls when several functions rely on the same support truth or releases frequently affect existing answers.',
+                    'A growing company does not need every employee in AnswerLattice. A bounded product, support, and engineering group can use deeper controls when several functions rely on the same reviewed support knowledge or releases frequently affect existing answers.',
                 ],
                 checklist: [
-                    'Keep one accountable owner for official support truth.',
+                    'Keep one accountable owner for official support answers.',
                     'Use Knowledge Map to locate the product area and connected review work.',
                     'Preview release impact before activating customer-visible changes.',
                     'Protect critical answers with repeatable tests.',
@@ -99,11 +99,11 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'feature-triggers',
                 title: 'Introduce features because a real trigger exists',
                 bullets: [
-                    'Team Access: a second person regularly operates support or governance.',
+                    'Team Access: a second person regularly operates support or review work.',
                     'Workflow Notifications: work is missed without an external alert.',
                     'Support Board: a selected issue needs internal ownership or notes.',
                     'Knowledge Map: a decision needs cross-feature product context.',
-                    'Release Impact: a release changes customer-visible product truth.',
+                    'Release Impact: a release changes customer-visible product guidance.',
                     'Answer Tests: an answer is important enough to protect from regression.',
                     'Support Truth Export: a buyer or downstream team needs bounded evidence.',
                     'Public API: approved coverage and key controls are ready.',
@@ -124,10 +124,10 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'larger-company-boundary',
                 title: 'Know the larger-company boundary',
                 body: [
-                    'AnswerLattice can support a product group inside a larger company through team access, permissions, tests, release review, exports, and audit history. It remains governed support infrastructure rather than a contact-center suite.',
+                    'AnswerLattice can support a product group inside a larger company through team access, permissions, tests, release review, exports, and audit history. It remains reviewed support infrastructure rather than a contact-center suite.',
                 ],
                 bullets: [
-                    'Good fit: one product group needs approved support truth across widget, hosted help, people, and releases.',
+                    'Good fit: one product group needs reviewed support knowledge across widget, hosted help, people, and releases.',
                     'Keep the existing helpdesk when the company needs omnichannel routing, workforce management, or SLA operations.',
                     'Do not assume unverified SAML, SCIM, contractual service levels, public certifications, or procurement commitments.',
                     'Evaluate required controls and integrations directly instead of treating employee count as proof of fit.',
@@ -141,11 +141,11 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
             },
             {
                 question: 'Should a larger company invite every employee?',
-                answer: 'No. Invite the bounded group that operates support truth, responds to fallback, maintains product context, or approves changes.',
+                answer: 'No. Invite the bounded group that maintains official support, responds to fallback, keeps product context current, or approves changes.',
             },
             {
                 question: 'Does AnswerLattice replace an existing helpdesk?',
-                answer: 'No. A company can keep its helpdesk for conversations, routing, and SLAs while AnswerLattice governs the approved product truth used across support surfaces.',
+                answer: 'No. A company can keep its helpdesk for conversations, routing, and SLAs while AnswerLattice keeps the approved product knowledge used by the widget, help center, and future AI agents reviewed and current.',
             },
             {
                 question: 'Will AnswerLattice move a workspace between depths automatically?',
@@ -157,10 +157,10 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         slug: 'launch-support-checklist',
         path: '/resources/launch-support-checklist',
         title: 'Launch Support Checklist',
-        description: 'Prepare the first support surfaces before users arrive: stuck pages, starter answers, docs, tickets, and widget verification.',
+        description: 'Prepare the first places users will get help before launch: stuck pages, starter answers, docs, tickets, and widget verification.',
         metaTitle: 'Launch Support Checklist | AnswerLattice Resources',
         metaDescription: 'A practical AnswerLattice checklist for preparing in-app support before a SaaS launch.',
-        quickAnswer: 'Start with the pages where users get stuck, prepare starter support truth, review first answers, then install and verify the widget before launch.',
+        quickAnswer: 'Start with the pages where users get stuck, prepare starter support knowledge, review the first answers, then install and verify the widget before launch.',
         readingTime: '6 min read',
         publishedAt: '2026-06-02',
         updatedAt: '2026-06-02',
@@ -175,7 +175,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 title: 'Start with stuck pages',
                 body: [
                     'A launch support setup does not need every possible answer on day one. It needs the pages where a new user is most likely to pause, misread a plan, miss a setting, or hit an error.',
-                    'AnswerLattice works best when the first support map is tied to concrete product surfaces instead of a broad help center wish list.',
+                    'AnswerLattice works best when the first support map is tied to concrete product pages instead of a broad help center wish list.',
                 ],
                 checklist: [
                     'List billing, onboarding, settings, invite, integration, release, and error pages.',
@@ -185,7 +185,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
             },
             {
                 id: 'starter-truth',
-                title: 'Prepare starter support truth',
+                title: 'Prepare starter support knowledge',
                 body: [
                     'Use docs, FAQs, release notes, setup notes, policies, product screenshots, and owner notes as starter truth. Keep unsupported guesses out of the source package.',
                 ],
@@ -210,7 +210,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         faq: [
             {
                 question: 'Do we need existing support volume before using this checklist?',
-                answer: 'No. The checklist is useful for live, beta, and near-launch products with starter support truth and expected support questions.',
+                answer: 'No. The checklist is useful for live, beta, and near-launch products with starter support knowledge and expected support questions.',
             },
         ],
     },
@@ -367,7 +367,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         description: 'Understand the AnswerLattice support path: reviewed answers and owner answers first, fallback only when coverage is missing.',
         metaTitle: 'Approved Answers Before Fallback | AnswerLattice Resources',
         metaDescription: 'How AnswerLattice keeps approved support answers before fallback while making missing coverage reviewable.',
-        quickAnswer: 'AnswerLattice should prefer reviewed support truth before fallback, then turn missing or repeated gaps into review work.',
+        quickAnswer: 'AnswerLattice should prefer reviewed support knowledge before fallback, then turn missing or repeated gaps into review work.',
         readingTime: '6 min read',
         publishedAt: '2026-06-02',
         updatedAt: '2026-06-02',
@@ -381,7 +381,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'answer-path',
                 title: 'The answer path',
                 body: [
-                    'The useful public claim is not that every answer is perfect. The useful claim is that approved support truth is preferred before fallback, and missing coverage becomes visible.',
+                    'The useful public claim is not that every answer is perfect. The useful claim is that approved support knowledge is preferred before fallback, and missing coverage becomes visible.',
                 ],
                 bullets: [
                     'Reviewed support answers come first.',
@@ -413,9 +413,9 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         slug: 'support-board-workflow',
         path: '/resources/support-board-workflow',
         title: 'Support Board Workflow',
-        description: 'Use private support cards, internal notes, status history, selected follow-up, and answer-proposal handoff safely.',
+        description: 'Use private support cards, internal notes, status history, selected follow-up, and draft-answer handoff safely.',
         metaTitle: 'Support Board Workflow | AnswerLattice Resources',
-        metaDescription: 'A practical AnswerLattice Support Board workflow for private support cards, internal notes, status history, and answer proposal handoff.',
+        metaDescription: 'A practical AnswerLattice Support Board workflow for private support cards, internal notes, status history, and draft-answer handoff.',
         quickAnswer: 'The Support Board is a private owner/staff work surface for selected support follow-up, not a public roadmap or automatic answer publisher.',
         readingTime: '5 min read',
         publishedAt: '2026-06-02',
@@ -435,9 +435,9 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
             },
             {
                 id: 'handoff',
-                title: 'Use answer-proposal handoff carefully',
+                title: 'Use draft-answer handoff carefully',
                 checklist: [
-                    'Create proposals only when a support gap needs reusable support truth.',
+                    'Create a draft answer only when a support gap needs reusable support knowledge.',
                     'Keep internal notes out of published answers.',
                     'Require owner or permitted staff review before answer changes become active.',
                 ],
@@ -475,7 +475,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                     'Ratings, feature requests, suggestions, and product-area feedback can show where users are confused or underserved. The first job is to sort useful signals from noise.',
                 ],
                 bullets: [
-                    'Group feedback by Product Surface.',
+                    'Group feedback by product area.',
                     'Separate bugs, suggestions, feature requests, and answer gaps.',
                     'Keep private review separate from public roadmap promises.',
                 ],
@@ -485,8 +485,8 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 title: 'Choose the next handoff',
                 checklist: [
                     'Send follow-up work to Support Board when staff action is needed.',
-                    'Create answer proposals when a repeated support answer is missing.',
-                    'Leave product-roadmap decisions outside the public support surface.',
+                    'Create draft answers when a repeated support answer is missing.',
+                    'Leave product-roadmap decisions outside public help content.',
                 ],
             },
         ],
@@ -552,7 +552,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
         sections: [
             {
                 id: 'surfaces',
-                title: 'Choose help surfaces',
+                title: 'Choose what users can open',
                 checklist: [
                     'Reviewed articles for longer support topics.',
                     'Owner answers for short repeated questions.',
@@ -571,7 +571,7 @@ export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
                 id: 'handoff',
                 title: 'Connect hosted help to the widget',
                 body: [
-                    'Hosted help is most useful when the same reviewed support truth can support in-app widget answers and support review.',
+                    'Hosted help is most useful when the same reviewed support knowledge can support in-app widget answers and support review.',
                 ],
             },
         ],

@@ -125,13 +125,14 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                 const entries = Object.entries(result.graph)
                     .map(([id, node]) => ({ id, node }))
                     .sort((a, b) => getQualityRank(b.node) - getQualityRank(a.node) || a.node.name.localeCompare(b.node.name));
-                setSelectedId(current => (
-                    requestedEntityId && result.graph[requestedEntityId]
-                        ? requestedEntityId
-                        : current && result.graph[current]
-                            ? current
-                            : entries[0]?.id || ''
-                ));
+                setSelectedId(current => {
+                    if (requestedEntityId) {
+                        return result.graph[requestedEntityId] ? requestedEntityId : '';
+                    }
+                    return current && result.graph[current]
+                        ? current
+                        : entries[0]?.id || '';
+                });
             }
         } catch {
             setLoadFailed(true);
@@ -163,11 +164,15 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
             return !normalizedQuery || `${node.name} ${node.type}`.toLowerCase().includes(normalizedQuery);
         });
     }, [entries, qualityFilter, query, typeFilter]);
+    const requestedEntityMissing = Boolean(
+        requestedEntityId && data && !data.graph[requestedEntityId],
+    );
 
     useEffect(() => {
         if (filteredEntries.some(entry => entry.id === selectedId)) return;
+        if (requestedEntityMissing && !selectedId) return;
         setSelectedId(filteredEntries[0]?.id || '');
-    }, [filteredEntries, selectedId]);
+    }, [filteredEntries, requestedEntityMissing, selectedId]);
 
     const selectedNode = selectedId ? data?.graph[selectedId] : undefined;
     const relatedEntries = useMemo(() => (
@@ -348,6 +353,15 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                 <Button icon={<LuRefreshCw />} onClick={() => void load()}>Refresh</Button>
             </header>
 
+            {requestedEntityMissing ? (
+                <Alert
+                    message="Requested product topic is not in this map"
+                    description="No substitute topic is shown. Review the topic mapping and wait for the next graph rebuild, or select another topic explicitly."
+                    showIcon
+                    type="warning"
+                />
+            ) : null}
+
             {data.freshness === 'stale' ? (
                 <Alert
                     message="Knowledge changed after this map was rebuilt"
@@ -480,7 +494,11 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                     </div>
                 </>
             ) : (
-                <Empty description="No product topic matches the current filters." />
+                <Empty
+                    description={requestedEntityMissing
+                        ? 'The requested topic is unavailable in the current governed map.'
+                        : 'No product topic matches the current filters.'}
+                />
             )}
         </section>
     );

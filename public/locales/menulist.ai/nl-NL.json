@@ -410,7 +410,7 @@
     "errorLoadingAnalytics": "Fout bij laden van Analytics",
     "owner": {
       "viewing": "Bekijken:",
-      "menu": "Menu Menu Menu",
+      "menu": "Het menu",
       "unableToLoad": "Kan dashboard niet laden",
       "refreshOrContactSupport": "Probeer de pagina te vernieuwen. Als het probleem zich blijft voordoen, neem dan contact op met de ondersteuning.",
       "settledTabHelper": "Voltooi analyses alleen wanneer u dit tabblad opent. Na de eerste keer laden gebruikt dit apparaat de opgeslagen resultaten totdat de locatie de volgende eindedagsupdate voltooit.",
@@ -428,7 +428,8 @@
         "daily": "Vorige dag",
         "weekly": "Afgelopen zeven dagen",
         "monthly": "Deze maand",
-        "overall": "Algemeen"
+        "overall": "Algemeen",
+        "graph": "Grafieken"
       },
       "today": {
         "noMenuActivityToday": "Nog geen menu-activiteit vandaag.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Zoekopdrachten zonder resultaat",
         "unavailableInterest": "Niet-beschikbare interesse",
         "topLanguage": "Toptaal",
-        "smartPicksShown": "Slimme keuzes weergegeven",
-        "smartPicksClicks": "Slimme keuze-klikken",
+        "smartPicksShown": "Smart Picks getoond",
+        "smartPicksClicks": "Smart Picks klikken",
         "smartPicksTaps": "Smart Picks-tikken",
-        "smartPicksUsed": "Slimme keuzes gebruikt",
-        "smartPicksEngagement": "Betrokkenheid bij slimme keuzes",
+        "smartPicksUsed": "Smart Picks Gebruikt",
+        "smartPicksEngagement": "Smart Picks-betrokkenheid",
         "totalMenuScans": "Totaal aantal menuscans",
         "totalItemClicks": "Totaal aantal itemklikken",
         "activeDays": "Actieve dagen",
         "daysActive": "Dagen actief",
-        "avgDailyScans": "Gem. Dagelijkse scans",
-        "smartPicksActive": "Slimme keuzes actief",
+        "avgDailyScans": "Dagelijkse scans",
+        "smartPicksActive": "Smart Picks actief",
         "engagementRate": "Betrokkenheidspercentage",
         "topItem": "Topartikel",
         "topCategory": "Topcategorie"
@@ -473,8 +474,8 @@
         "itemClicks": "Aantal keren dat klanten op items hebben getikt",
         "engagedSessions": "Sessies waarin klanten echte menu-interesse toonden",
         "actionRate": "Sessies die hebben geleid tot een uiteindelijke klantactie",
-        "smartPicksShown": "Hoe vaak Slimme keuzes op uw pagina zijn verschenen",
-        "smartPicksUsed": "Percentage klanten dat Slimme keuzes heeft gebruikt",
+        "smartPicksShown": "Hoeveel keer Smart Picks verschijnt op uw pagina",
+        "smartPicksUsed": "percentage klanten die gebruik maken van Smart Picks",
         "customerActions": "Einde acties zoals bellen, WhatsApp, routebeschrijving, reserveren en bestellen",
         "searches": "De dubbele zoekvraag uit het menu verwijderd",
         "unavailableInterest": "Tikken op niet-beschikbare items"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Gisteren geen activiteit geregistreerd",
         "noAnalyticsYet": "Nog geen gegevens. Uw analyses verschijnen zodra klanten beginnen te kijken.",
-        "noItemClicksYet": "Nog geen itemklikken"
+        "noItemClicksYet": "Nog geen itemklikken",
+        "lowActivityTitle": "Lage activiteit",
+        "lowActivityDescription": "Er was niet genoeg activiteit om een nuttige conclusie te trekken voor deze periode.",
+        "noWeeklyData": "Er is nog geen afgehandelde menuactiviteit beschikbaar in de afgelopen 7 dagen.",
+        "noMonthlyData": "Er is nog geen afgehandelde menuactiviteit beschikbaar voor deze maand, maar er zijn wel enkele activiteiten gepland."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% versus vorige week"
+        "vsLastWeek": "{sign}{change}% versus vorige week",
+        "changeVsLastWeek": "{change} vs vorige week"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# dag van geregistreerde activiteit} other {# dagen activiteit geregistreerd}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ja",
         "no": "Nee",
-        "notAvailable": "N.v.t.",
+        "notAvailable": "N/A",
         "active": "Actief",
         "lowActivity": "Lage activiteit",
         "noData": "Geen gegevens"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Wachten op eerste scan",
         "weeklyInsights": "Wekelijkse inzichten",
         "last4WeeksComparison": "Vergelijking van de afgelopen vier weken",
-        "historicalDataWillAppear": "Historische gegevens verschijnen na een paar weken"
+        "historicalDataWillAppear": "Historische gegevens verschijnen na een paar weken",
+        "statusMessages": {
+          "working": "De klanten maken gebruik van uw huidige menu.",
+          "low_activity": "De activiteit van klanten neemt nog steeds toe. Uw huidige menu blijft beschikbaar, maar de activiteiten van uw klanten worden beperkt.",
+          "no_data": "Activiteit verschijnt nadat klanten uw menu openen en er wordt een activiteitsrapport weergegeven."
+        }
       },
       "aiSummary": {
         "daily": "Vorige dag in één oogopslag",
         "weekly": "Deze week in een oogopslag",
-        "monthly": "Deze maand in samenvatting"
+        "monthly": "Deze maand in samenvatting",
+        "localized": {
+          "noActivity": "Er is in deze periode geen afwikkeling van klantactiviteiten geregistreerd.",
+          "menuViews": "Klanten hebben het menu {count} keer geopend.",
+          "itemTaps": "Klanten hebben {count} keer op menu-items getikt.",
+          "customerActions": "Klanten hebben {count} laatste acties voltooid.",
+          "searches": "Klanten hebben {count} keer naar het menu gezocht.",
+          "unavailableInterest": "Niet-beschikbare items hebben {count} tikken ontvangen."
+        }
       },
       "actions": {
         "call": "Bel",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits}-bezoeken · {rate}%",
         "markDone": "Markeer als klaar",
         "markDoneSaved": "Gemarkeerd als klaar. De resultaten worden bijgewerkt wanneer de volgende analysesamenvatting gereed is.",
-        "markDoneFailed": "Deze actie kan niet als voltooid worden gemarkeerd. Probeer het opnieuw."
+        "markDoneFailed": "Deze actie kan niet als voltooid worden gemarkeerd. Probeer het opnieuw.",
+        "bestSourceStatsFormatted": "· {visits} bezoeken · {rate} actiepercentage",
+        "bestSourceMobileFormatted": "Beste bron op dit moment: {source} · {visits} bezoeken · {rate} actiepercentage",
+        "sourceQualityTagFormatted": "{source}: {visits} bezoeken · {sessions} actiesessies · {rate} berichten",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} bezoeken · {rate} pagina's",
+        "priorities": {
+          "high": "Hoge prioriteit",
+          "medium": "Gemiddelde prioriteit",
+          "low": "Lage prioriteit"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabiel",
+            "message": "De beschikbare activiteit ondersteunt een overzichtelijke menucontrole."
+          },
+          "watch": {
+            "label": "Blijf kijken.",
+            "message": "Sommige activiteiten moeten nog eens worden gecontroleerd voordat het menu kan worden gewijzigd."
+          },
+          "no_data": {
+            "label": "Meer gegevens nodig",
+            "message": "Wacht totdat de klantactiviteit zich meer heeft gestabiliseerd voordat u een conclusie trekt."
+          }
+        },
+        "localizedActions": {
+          "reason": "Gebaseerd op de nieuwste geconstateerde klantactiviteit.",
+          "availability": {
+            "title": "Bekijk de beschikbaarheid van het artikel.",
+            "description": "Controleer of niet-beschikbare of verborgen items moeten worden hersteld of uit het zicht moeten worden gehouden.",
+            "action": "Beschikbaarheid controleren"
+          },
+          "customerActions": {
+            "title": "Bekijk de acties van klanten.",
+            "description": "Controleer de menudetails en links die klanten gebruiken voordat ze actie ondernemen.",
+            "action": "Bekijk de acties van klanten."
+          },
+          "details": {
+            "title": "Verbeteren van de details van het object",
+            "description": "Bekijk de namen, opties, beschrijvingen en afbeeldingen van artikelen die mogelijk duidelijker informatie nodig hebben.",
+            "action": "Itemdetails controleren"
+          },
+          "general": {
+            "title": "Wacht op een duidelijker signaal.",
+            "description": "Houd het huidige menu stabiel totdat er meer vaste activiteit beschikbaar is.",
+            "action": "Recensie later"
+          },
+          "menuOrder": {
+            "title": "Bekijk de menuvolgorde.",
+            "description": "Controleer of belangrijke artikelen en categorieën gemakkelijk te vinden zijn voor klanten, bijvoorbeeld door de knop 'zoeken'.",
+            "action": "Bekijk de menuvolgorde."
+          },
+          "pricing": {
+            "title": "Review prijzen",
+            "description": "Controleer de prijzen die zijn gekoppeld aan het laatste klantinteressesignaal.",
+            "action": "Overzicht prijzen"
+          },
+          "search": {
+            "title": "Bekijk de zoekopdrachten van klanten.",
+            "description": "Controleer zoekopdrachten die klanten mogelijk niet naar een nuttig menuresultaat leiden.",
+            "action": "Zoekopdrachten bekijken"
+          },
+          "source": {
+            "title": "Bekijk de bronnen van klantinvoer.",
+            "description": "Controleer of openbare links en QR plaatsingen klanten naar het huidige menu verwijzen.",
+            "action": "Bekijk openbare links."
+          },
+          "timing": {
+            "title": "Recensie menu timing",
+            "description": "Controleer of de getimede categorieën en beschikbaarheid overeenkomen wanneer klanten ernaar zoeken.",
+            "action": "Overzicht Timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Gemarkeerd als klaar",
+            "message": "Het resultaat zal worden gecontroleerd nadat er meer verrekende activiteit beschikbaar is."
+          },
+          "improved": {
+            "label": "Verbeterde",
+            "message": "De volgende afgehandelde controle toont een verbetering."
+          },
+          "no_clear_change": {
+            "label": "Geen duidelijke verandering.",
+            "message": "De volgende verrekende check liet geen duidelijke verandering zien, dus de bank heeft het bedrag opnieuw gecontroleerd."
+          },
+          "not_enough_data": {
+            "label": "Meer gegevens nodig",
+            "message": "Er is nog niet genoeg vaste activiteit om deze verandering te beoordelen."
+          },
+          "pending": {
+            "label": "In behandeling zijnde cheque",
+            "message": "MenuList zal dit controleren nadat er meer afgewikkelde activiteit beschikbaar is."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menudetails",
@@ -573,8 +685,8 @@
           "searchDemand": "Zoekvraag",
           "unavailableInterest": "Niet-beschikbare interesse",
           "languages": "Talen",
-          "filters": "Filters Filters filteren op:",
-          "smartPicks": "Slimme keuzes",
+          "filters": "Filters",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Acties per kantooruren"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menuweergaven",
-          "itemTaps": "Itemtikken",
+          "itemTaps": "Tikken op items",
           "menuSessions": "Menusessies",
           "engagedSessions": "Sessies met activiteit",
           "actionSessions": "Actiesessies",
@@ -617,6 +729,12 @@
           "closed": "Acties wanneer gesloten",
           "open": "Acties wanneer geopend",
           "closedShare": "{rate}% van alle geregistreerde acties vond plaats terwijl het gesloten was"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} Onbeschikbare kranen worden niet aangesproken.",
+          "strongItem": "{count} tikken op items",
+          "needsWork": "{count} views, geen tikken.",
+          "gettingAttention": "{count}-weergaven"
         }
       },
       "smartPicks": {
@@ -652,7 +770,7 @@
         "googleReviews": "Google-recensies",
         "instagram": "Instagram",
         "facebook": "Facebook",
-        "website": "Website Website",
+        "website": "Website",
         "sourceViews": "{count}-weergaven",
         "sourceMenu": "{count}-menu",
         "sourceActions": "{count}-acties",
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Uitsplitsing van snelkoppelingen",
         "installsByPlatform": "Installaties per platform",
         "appStickiness": "App-kleverigheid",
-        "returningOpens30d": "Terugkerende openingen (30d)",
-        "avgOpensPerInstall": "Gem. aantal keren geopend per installatie",
+        "avgOpensPerInstall": "Avg opent per install",
         "iosManualInstalls": "Handmatige iOS-installaties",
         "shortcuts": {
           "menu": "Menu bekijken",
@@ -715,12 +832,13 @@
           "order": "Bestel online"
         },
         "platforms": {
-          "ios": "iOS iOS 10.3.2",
-          "iosLong": "iOS (iPhone/iPad)",
-          "android": "Android Android-toestellen",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "Bureaublad",
           "other": "Anders"
-        }
+        },
+        "tryAgainLater": "Probeer het later nog eens."
       },
       "projectSelector": {
         "deleted": "Verwijderd",
@@ -761,7 +879,8 @@
         "copied": "Gekopieerd",
         "copy": "Kopiëren",
         "openGoogle": "Open Google.",
-        "done": "Gereed"
+        "done": "Gereed",
+        "couldNotOpen": "Google Zakelijk profiel kon niet worden geopend."
       },
       "behaviorNudge": {
         "linkCopied": "Link gekopieerd",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Bekijk het belangrijkste probleem",
         "repairMenu": "Reparatiemenu",
         "review": "Beoordeling",
-        "repair": "Reparatie"
+        "repair": "Reparatie",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {Het item # heeft geen beschrijving.} other {# items hebben geen beschrijvingen.}}",
+            "ok": "Alle items hebben een beschrijving.",
+            "help": "Beschrijvingen helpen klanten elk aanbod te begrijpen."
+          },
+          "images": {
+            "warning": "{count, plural, one {Het item # mist een afbeelding.} other {# items zijn ontbrekende afbeeldingen.}}",
+            "ok": "Alle items hebben afbeeldingen.",
+            "help": "Afbeeldingen kunnen klanten helpen sneller te kiezen."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {In de categorie # ontbreekt een pictogram.} other {# categorieën zijn ontbrekende pictogrammen.}}",
+            "ok": "Alle categorieën hebben pictogrammen.",
+            "help": "Pictogrammen maken categorieën gemakkelijker te doorzoeken."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# item heeft geen prijs.} other {# items zijn ontbrekende prijzen.}}",
+            "ok": "Alle artikelen hebben een prijs.",
+            "help": "Klanten vergelijken prijzen voordat ze een beslissing nemen."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# item is verborgen voor klanten.} other {# items zijn verborgen voor klanten.}}",
+            "ok": "Er zijn geen items verborgen.",
+            "help": "Verborgen items verschijnen niet in het openbare menu en worden niet weergegeven in de lijst met verborgen items."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# prijs moet worden herzien.} other {# prijzen moeten worden herzien.}}",
+            "ok": "De prijzen liggen binnen het verwachte bereik.",
+            "help": "MenuList vergelijkt prijzen van afzonderlijke artikelen binnen dezelfde categorie. Markeer een opzettelijke prijs als beoordeeld."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# item heeft geen vertalingen.} other {# items ontbreken vertalingen.}}",
+            "ok": "Alle zichtbare items worden vertaald.",
+            "help": "Sommige items zijn onvolledig in geselecteerde menutalen."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# Menu detail ontbreekt vertalingen} other {# Menu details ontbreken vertalingen}}",
+            "ok": "Menu details worden vertaald.",
+            "help": "De menunaam, beschrijving of opmerkingen zijn onvolledig in geselecteerde menutalen."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Link gekopieerd.",
+        "direct": "direct",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menukit",
+        "nativeShare": "Device delen",
+        "obp": "Bedrijfspagina",
+        "other": "Anders",
+        "qr": "QR code",
+        "shortcut": "Snelkoppeling naar app",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Zakelijke gezondheid",
+        "open": "Open bedrijfsgezondheid",
+        "today": "Vandaag",
+        "latestActivity": "Laatste activiteit",
+        "noActionNeeded": "Geen actie nodig",
+        "status": {
+          "stable": "Stabiel",
+          "watch": "Heeft aandacht nodig",
+          "needs_review": "Moet worden herzien.",
+          "insufficient_data": "Meer gegevens nodig",
+          "stale": "Moet een nieuwe controle hebben.",
+          "not_ready": "Voorbereidingen maken."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# klantgericht detail moet worden herzien.} other {# klantgerichte gegevens moeten worden beoordeeld.}}",
+          "stable": {
+            "headline": "Uw openbare informatie is stabiel.",
+            "message": "Geen enkel probleem dat gericht is op de klant, vereist actie in de laatste controle."
+          },
+          "watch": {
+            "headline": "Een detail kan aandacht nodig hebben.",
+            "message": "Bekijk de voorgestelde check alvorens openbare informatie te wijzigen."
+          },
+          "needs_review": {
+            "headline": "Bekijk de details van de klant.",
+            "message": "Een of meer openbare gegevens moeten worden gecontroleerd, zoals de naam van de gebruiker."
+          },
+          "insufficient_data": {
+            "headline": "Er is meer actie nodig.",
+            "message": "De huidige informatie stabiel houden terwijl MenuList een nuttig signaal verzamelt."
+          },
+          "stale": {
+            "headline": "De gezondheid van bedrijven heeft een nieuwe check nodig.",
+            "message": "De laatste controle is oud. Uw huidige openbare informatie blijft ongewijzigd."
+          },
+          "not_ready": {
+            "headline": "Business Health maakt zich op voor de zomer.",
+            "message": "De eerste winkelcheck verschijnt hier als deze klaar is, de eerste winkelcheque verschijnen hier wanneer deze voldoende is."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Controleer de menubroncode.",
+            "message": "Er is geen actieve openbare menubron gevonden. Controleer het menu voordat u het deelt, controleer het menu en deel het met anderen.",
+            "title": "Menubron moet worden gecontroleerd."
+          },
+          "low_latest_activity": {
+            "action": "Check de link te delen",
+            "message": "De activiteit van de klant is laag. Controleer. QR, Google, Instagram, WhatsApp, en websitelinks.",
+            "title": "De activiteit van de klant is laag."
+          },
+          "unavailable_item_taps": {
+            "action": "Controleer niet-beschikbare items.",
+            "message": "Klanten toonden interesse in niet-beschikbare artikelen, zodat ze opnieuw op voorraad werden gebracht of verborgen bleven.",
+            "title": "Niet-beschikbare items kregen de aandacht."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Bekijk de feedback van gasten.",
+            "message": "Gastenfeedback moet door de eigenaar worden gecontroleerd voordat openbare gegevens kunnen worden gewijzigd.",
+            "title": "Feedback van gasten moet worden gecontroleerd."
+          },
+          "default": {
+            "action": "Details controleren",
+            "message": "Een klantgericht detail heeft een eigenaarscontrole nodig.",
+            "title": "Een detail moet worden gecontroleerd."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# privé feedback-item moet worden gecontroleerd.} other {# privéfeedbackitems moeten worden gecontroleerd.}}",
+          "clear": "Persoonlijke feedback is duidelijk."
+        },
+        "freshness": {
+          "notReady": "De eerste winkelcontrole zal de datadatum hier laten zien. Business Health is niet realtime, de eerste winkelcheck zal de gegevensdatum in deze tabel laten zien, de tweede winkelcheck geeft de datum weer.",
+          "throughDate": "Gebruikt gegevens via {date}. Vandaag is mogelijk nog niet voltooid.",
+          "latest": "Gebruikt de laatst beschikbare MenuList-gegevens. Vandaag is mogelijk nog niet compleet."
+        },
+        "periods": {
+          "today": "Vandaag",
+          "yesterday": "Vorige dag",
+          "thisWeek": "Deze week",
+          "lastWeek": "Vorige week",
+          "thisMonth": "Deze maand",
+          "lastMonth": "Vorige maand",
+          "last7Days": "Afgelopen 7 dagen",
+          "last30Days": "Afgelopen 30 dagen",
+          "overall": "Algemeen"
+        },
+        "metrics": {
+          "menuViews": "Menuweergaven",
+          "topDemand": "Hoogste vraag",
+          "topDemandDetail": "Promoot: {count} {signal}",
+          "bestSource": "Beste bron:",
+          "bestSourceDetail": "Update link: {count} bezoeken"
+        },
+        "signals": {
+          "views": "Opvattingen",
+          "clicks": "Tikken",
+          "attention": "De aandachtssignalen"
+        },
+        "page": {
+          "description": "Dagelijkse bedrijfsstatus en klantgerichte controles.",
+          "latestCheck": "AI health check",
+          "loading": "Bezig met laden",
+          "loadingMessage": "Loading Business Gezondheid...",
+          "notReady": "Gezondheidszorg is nog niet klaar.",
+          "loadErrorTitle": "Business Health kon niet worden geladen.",
+          "loadErrorDescription": "Ververs deze pagina en probeer het opnieuw.",
+          "refresh": "Vernieuwen",
+          "needsAttention": "Heeft aandacht nodig",
+          "desktopSettingsOnly": "Open dit vanaf desktopinstellingen."
+        },
+        "scope": {
+          "title": "Bedrijfsgezondheidsgebied",
+          "allMenus": "Alle menu's",
+          "selectedMenu": "Geselecteerd menu",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "Weergave op locatieniveau",
+          "inactiveMenu": "Inactief menu Inactieve menu",
+          "thisMenuOnly": "Alleen dit menu.",
+          "allMenusInLocation": "Alle menu's op deze locatie",
+          "thisMenuHelper": "Vragen en activiteiten gebruiken dit menu.",
+          "allMenusHelper": "Vragen en activiteiten gebruiken alle menu's op deze locatie, dus ook de vragen en de activiteit.",
+          "dialogDescription": "Kies alle menu's of één menu voor activiteit en controles, of kies een menu voor de activiteiten en controle.",
+          "all": "Alle",
+          "close": "Sluiten"
+        },
+        "locations": {
+          "title": "Locaties Locatiegegevens",
+          "loading": "Locaties worden geladen...",
+          "empty": "Nog geen locatie-overzicht.",
+          "storeFallback": "Locatie {id}",
+          "checkedOn": "{date} gecontroleerd.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# klantgerichte controle moet worden herzien.} other {# controles van de klant moeten worden herzien.}}",
+          "statusReason": {
+            "stable": "Geen enkel probleem van de klant vereist actie.",
+            "watch": "Een detail dat gericht is op de klant kan aandacht nodig hebben.",
+            "needs_review": "Details die gericht zijn op de klant moeten worden herzien.",
+            "insufficient_data": "Er is meer klantactiviteit nodig voor een nuttige controle, dus er moet meer worden gecontroleerd.",
+            "stale": "Deze locatie heeft een verse check nodig.",
+            "not_ready": "De eerste locatiecheck wordt gereed gemaakt, de eerste locaties worden gecontroleerd."
+          }
+        },
+        "assistant": {
+          "title": "Vraag business gezondheid",
+          "askShort": "Vraag het",
+          "englishOnlyTitle": "Vragen zijn momenteel beschikbaar in het Engels.",
+          "englishOnlyDescription": "Uw status en controles zijn gelokaliseerd. Schakel de app-taal in op Engels om vragen te stellen over Business Health.",
+          "notReady": "Business Health zal antwoorden zodra de laatste controle is afgerond en de laatste checks zijn uitgevoerd.",
+          "suggestedUnavailable": "De gestelde vragen zijn op dit moment niet beschikbaar.",
+          "freeTextUnavailable": "Vrije tekstvragen zijn op dit moment niet beschikbaar.",
+          "answerError": "Bedrijfsgezondheid kon dat niet beantwoorden.",
+          "suggestedQuestions": "Voorgestelde vragen voor de gesprekspartner",
+          "followUps": "Vervolgens kun je het vragen.",
+          "you": "Jij",
+          "empty": "Kies een vraag of stel een vraag over uw bedrijf, kies een onderwerp en stel de vraag.",
+          "placeholderReady": "Vraag naar vandaag, deze week, menu aandacht of volgende controles.",
+          "placeholderMobile": "Vraag naar vandaag of deze week.",
+          "placeholderPending": "Beschikbaar na de laatste controle.",
+          "send": "Stel een vraag Verstuur vraag",
+          "cachedFacts": "Gebaseerd op in de cache opgeslagen MenuList bedrijfsgegevens.",
+          "questions": {
+            "checks": "Wat moet worden gecontroleerd?",
+            "today_stats": "Hoe gaat het vandaag?",
+            "this_week_stats": "Wat is er deze week gebeurd?",
+            "top_item": "Welke onderdelen krijgen aandacht?",
+            "last_week_stats": "Wat is er vorige week gebeurd?",
+            "this_month_stats": "Hoe is het deze maand?",
+            "last_month_stats": "Wat is er vorige maand gebeurd?",
+            "public_menu_status": "Is mijn openbare menu goed?",
+            "profile_status": "Is mijn bedrijfsprofiel compleet?",
+            "feedback_reviews": "Heb je gastfeedback om te controleren?",
+            "feedback_recent": "Wat hebben de gasten onlangs gezegd?",
+            "default": "Wat moet ik volgende controleren?"
+          }
+        },
+        "sources": {
+          "title": "Gegevensbronnen",
+          "menuProjects": "Menu Projecten",
+          "ownerAnalytics": "Activiteit van de eigenaar",
+          "guestFeedback": "Feedback van gasten",
+          "storeSettings": "zakelijke instellingen",
+          "menuListData": "MenuList gegevens",
+          "updatedOn": "{date} bijgewerkt",
+          "latest": "Laatste beschikbare gegevens"
+        },
+        "publicTruth": {
+          "title": "Officiële klantbron.",
+          "checking": "Checken",
+          "checkingFacts": "De openbare feiten van MenuList worden gecontroleerd...",
+          "checkedMenu": "Aangevinkt menu: {name}",
+          "boundary": "Gecontroleerd op basis van de huidige MenuList bedrijfs- en menugegevens. Externe platformen blijven door de eigenaar bevestigd.",
+          "boundaryShort": "Externe platforms blijven door de eigenaar bevestigd.",
+          "historyTitle": "Geschiedenis van openbare informatie",
+          "historyBoundary": "Gebruikt alleen MenuList business en menu facts. Er worden geen externe sites gescand.",
+          "historyBoundaryShort": "MenuList Alleen feiten. Geen externe sites gescand.",
+          "refreshErrorTitle": "De broncontrole van de klant kon niet worden vernieuwd.",
+          "refreshErrorDescription": "De laatste beschikbare MenuList feiten worden hieronder nog steeds weergegeven.",
+          "historyRefreshError": "De openbare informatie geschiedenis kon niet verfrissen.",
+          "historyLoadError": "Public information history kan niet worden geladen.",
+          "historyErrorDescription": "Het laatst opgeslagen rapport wordt nog steeds weergegeven wanneer het beschikbaar is.",
+          "notRun": "Niet uitgevoerd.",
+          "lastSaved": "Laatst opgeslagen {date}",
+          "noSavedReport": "Nog geen opgeslagen rapport.",
+          "noSavedReportDescription": "Voer de controle uit om het eerste rapport voor deze locatie op te slaan.",
+          "downloadEnglishReport": "Download het Engelse rapport (PDF)",
+          "downloadEnglishShort": "Engelse verslag",
+          "runCheck": "Voer een controle uit",
+          "currentFix": "Huidige fix-item",
+          "nextFixes": "Volgende correcties van openbare informatie",
+          "none": "Geen",
+          "attentionCount": "{count, plural, one {# item moet worden gecontroleerd.} other {# items moeten worden gecontroleerd.}}",
+          "readyModuleCount": "Klaar {count}/{total}",
+          "missingCount": "{count} ontbreekt.",
+          "checkCount": "Controleer {count}.",
+          "savedCount": "{count}/{total} opgeslagen.",
+          "modulesReady": "{count}/{total} modules klaar voor gebruik.",
+          "status": {
+            "ready": {
+              "label": "gereed",
+              "message": "Uw officiële informatiebron voor klanten bevat de basisinformatie die zij nodig hebben."
+            },
+            "missing_basics": {
+              "label": "Ontbrekende basiskennis",
+              "message": "Menu, openingstijden, prijzen, acties of klant-link details moeten aandacht krijgen voordat ze op grotere schaal worden gedeeld."
+            },
+            "unclear": {
+              "label": "Waarschijnlijk checking",
+              "message": "De meeste basiskenmerken zijn aanwezig, maar één of meer openbare feiten moeten nog worden gecontroleerd."
+            }
+          },
+          "metrics": {
+            "readyModules": "Modules klaar",
+            "missingFacts": "Ontbrekende feiten Ontbreekt:",
+            "checkedMenu": "Gecontroleerd menu",
+            "savedReports": "Opgeslagen rapporten"
+          },
+          "results": {
+            "present": "gereed",
+            "missing": "verdwenen",
+            "unclear": "Check de",
+            "not_applicable": "Niet nodig.",
+            "not_checked": "Niet gecontroleerd"
+          },
+          "moduleStatus": {
+            "ready": "gereed",
+            "needs_attention": "verdwenen",
+            "check": "Check de",
+            "not_checked": "Niet gecontroleerd"
+          },
+          "facts": {
+            "business_identity": "Bedrijfsnaam Bedrijfseigen naam",
+            "menu_or_service_source": "Menu of servicelijst.",
+            "prices": "Prijzen Prijsen Prijsjes",
+            "hours": "uren",
+            "location": "Locatie Ligging",
+            "contact": "Contact",
+            "customer_actions": "Klantenacties",
+            "public_link": "Klantlink Klantkoppeling",
+            "photos": "Foto’s",
+            "machine_readable_source": "Zoekvriendelijke details Zoek-vriendelijk details"
+          },
+          "evidence": {
+            "owner_entered": "Gekomen in deze check.",
+            "owner_selected": "gekozen door de eigenaar.",
+            "source_text_hint": "Opgenomen in de gegeven bron.",
+            "valid_public_url": "Het formaat van de openbare link is geldig.",
+            "invalid_public_url": "De publieke link heeft een correctie nodig.",
+            "menulist_store": "Huidige MenuList bedrijfsinstellingen gecontroleerd.",
+            "menulist_project": "Het geselecteerde of standaard MenuList-menu is gecontroleerd.",
+            "menulist_summary": "De huidige MenuList menusamenvatting gecontroleerd.",
+            "menulist_public_route": "Huidige MenuList customer-link instellingen gecontroleerd.",
+            "menulist_index_gate": "Huidige MenuList public-discovery regels gecontroleerd.",
+            "not_provided": "Dit feit ontbreekt in de huidige MenuList-gegevens.",
+            "not_checked": "Dit feit is niet veilig gecontroleerd op basis van de huidige MenuList-gegevens.",
+            "priceNotLoaded": "Open het geselecteerde menu eenmaal zodat MenuList de prijzen kan controleren."
+          },
+          "moduleEvidence": {
+            "ready": "Huidige MenuList gegevens tonen aan dat dit gebied klaar is.",
+            "needs_attention": "Huidige MenuList gegevens tonen aan dat er vereiste informatie ontbreekt.",
+            "check": "Controleer dit gebied voordat klanten erop vertrouwen.",
+            "not_checked": "MenuList kon dit gebied niet volledig controleren op de huidige gegevens."
+          },
+          "setupReason": {
+            "needs_attention": "Vereiste klantgerichte informatie ontbreekt.",
+            "check": "Controleer dit voordat klanten ermee vertrouwen.",
+            "not_checked": "MenuList kon dit niet volledig controleren op basis van de huidige gegevens."
+          },
+          "targetActions": {
+            "basic_settings": "Open bedrijfsgegevens.",
+            "domain_settings": "Open de klantlink.",
+            "hours_edit": "Openingstijden:",
+            "menu_tab": "Open het menu",
+            "official_page": "Open bedrijfspagina",
+            "presence_monitor": "Open plaatsingscontrole",
+            "share_tab": "Open Share Tools"
+          },
+          "actions": {
+            "openCustomerSource": "Open de klantbron en laat de klant zelf kiezen.",
+            "openShareTools": "Open delen gereedschap",
+            "fixFact": "Corrigeer {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Basisprincipes van openbare informatie",
+              "description": "Bedrijfsnaam, huidige menu of servicebron, contactpersoon, acties en klantlink."
+            },
+            "business_facts_copy_pack": {
+              "title": "Herbruikbare bedrijfsgegevens.",
+              "description": "Medewerkers kunnen actuele feiten hergebruiken in openbare profielen, antwoorden en doorgiften van klantkoppelingen."
+            },
+            "qr_link_health": {
+              "title": "QR link bereidheid",
+              "description": "Een huidige klantlink voor QR en afgedrukte plaatsingen."
+            },
+            "social_bio_link_consistency": {
+              "title": "Consistentie van profielkoppelingen",
+              "description": "Eén actuele klantlink voor sociale profielen en andere plaatsingen."
+            },
+            "customer_link_preview": {
+              "title": "Voorbeeld van de klantlink voor klanten",
+              "description": "De belangrijkste feiten die klanten moeten zien voordat ze handelen:"
+            },
+            "print_share_assets": {
+              "title": "Assets afdrukken en delen",
+              "description": "Huidige koppeling gereed voor QR posters, telkaarten en afbeeldingen delen."
+            },
+            "menu_service_readability": {
+              "title": "Duidelijkheid van menu of service.",
+              "description": "Categorieën, artikelen of diensten en prijzen in het geselecteerde menu."
+            },
+            "price_availability_gap": {
+              "title": "Prijs en beschikbaarheid duidelijkheid",
+              "description": "Prijzen, varianten, uitverkochte status en beschikbaarheid getoond aan klanten."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Oude PDF vervanging.",
+              "description": "Een huidige MenuList bron en klantkoppeling die oude PDF's kan vervangen."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp actie",
+              "description": "Een duidelijke WhatsApp of een alternatieve klantcontactactie."
+            },
+            "hours_readiness": {
+              "title": "Uren stand-by tijd",
+              "description": "Regelmatige openingstijden waar klanten op kunnen vertrouwen."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp antwoordt op feiten.",
+              "description": "Huidige menukaart, openingstijden, contactgegevens en link naar antwoorden van het personeel."
+            },
+            "photo_visual_identity": {
+              "title": "Foto's en visuele identiteit",
+              "description": "Een logo, omslag, bedrijfsfoto of visuals voor producten en diensten."
+            },
+            "customer_question_coverage": {
+              "title": "Veelgestelde vragen van klanten",
+              "description": "Duidelijke feiten voor aanbieding, openingstijden, prijs, locatie, contact en volgende actie."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Herbruikbare klantantwoorden.",
+              "description": "Actuele feiten die medewerkers kunnen hergebruiken wanneer klanten veelgestelde vragen stellen."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Bereidheid tot boeken en vragen stellen.",
+              "description": "Een duidelijk pad om te bestellen, boeken, reserveren, bellen, een bericht sturen, een offerte aanvragen of een bezoek brengen."
+            },
+            "google_profile_handoff": {
+              "title": "Google profiellink",
+              "description": "De huidige klantkoppeling is voorbereid voor Google Bedrijfsprofiel."
+            },
+            "menu_freshness": {
+              "title": "Menuversheid Versheid van het menu",
+              "description": "Een recente menu-update wanneer prijzen, items of beschikbaarheid zijn gewijzigd."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafieken",
+        "description": "Een visueel overzicht van dezelfde verrekende activiteit die in het dashboard wordt weergegeven.",
+        "ranges": {
+          "days7": "7 dagen",
+          "days30": "30 dagen"
+        },
+        "metrics": {
+          "menu_activity": "Menu Activiteit",
+          "customer_actions": "Klantenacties",
+          "search_demand": "Zoekverzoek",
+          "item_interest": "Item interesses:",
+          "unavailable_demand": "Ontoegankelijke vraag",
+          "missing_searches": "Ontbrekende zoekopdrachten"
+        },
+        "trend": {
+          "summary": "Trendsamenvatting",
+          "updatedAfterClose": "Bijgewerkt na de sluiting van uw winkeldag.",
+          "status": {
+            "up": "hoger",
+            "down": "lager",
+            "stable": "Stabiel",
+            "not_enough_data": "Te weinig geschiedenis."
+          },
+          "period": {
+            "week": "Weekcheck:",
+            "month": "Maandse check"
+          },
+          "shortPeriod": {
+            "week": "De week",
+            "month": "Maand"
+          },
+          "needsMoreDays": "Heeft meer vaste dagen nodig.",
+          "versus": "{current} VS {previous}",
+          "messages": {
+            "up": "{metric} is hoger voor deze controle van {period}.",
+            "down": "{metric} is lager voor deze controle van {period}.",
+            "stable": "{metric} is stabiel voor deze controle op {period}.",
+            "not_enough_data": "Er is niet genoeg geschiedenis van {metric} geregeld voor deze controle {period}."
+          },
+          "change": {
+            "gathering": "{period}: verzamelen van gegevens",
+            "newActivity": "{period}: nieuwe activiteit",
+            "steady": "{period}: stabiel",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Vergelijking Charts",
+          "description": "Week- en maandbeweging vanaf vastgestelde dagen."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menutrend",
+            "days7": "Laatste 7 verrekende dagen",
+            "days30": "Laatste 30 verrekende dagen."
+          },
+          "customerActions": {
+            "title": "Klantenacties",
+            "description": "Wat klanten hebben aangetikt na het openen van het menu."
+          },
+          "sources": {
+            "title": "Waar klanten vandaan kwamen.",
+            "description": "Menubezoeken en actiesessies per bron"
+          },
+          "items": {
+            "title": "Top item interesse:",
+            "description": "Items klanten geopend of getaped meestal"
+          },
+          "search": {
+            "title": "Zoekverzoek",
+            "description": "Welke klanten zochten"
+          },
+          "officialPage": {
+            "title": "Officiële pagina trending",
+            "description": "Weergaven en acties van de Officiële Bedrijfspagina"
+          }
+        },
+        "legends": {
+          "visits": "Bezoek",
+          "actionSessions": "Actiesessies",
+          "views": "Weergaven Views",
+          "taps": "Tikken",
+          "noResult": "Geen resultaat"
+        },
+        "empty": {
+          "default": "Geen grafische gegevens voor deze weergave nog.",
+          "menuActivity": "Menuactiviteit verschijnt nadat klanten het menu hebben geopend en wordt weergegeven in de menubalk.",
+          "customerActions": "Klantacties verschijnen nadat klanten bellen, een bericht sturen, bestellen, reserveren of een routebeschrijving vragen.",
+          "customerActionsPeriod": "Er zijn nog geen acties van klanten in deze periode.",
+          "searchDemand": "De zoekvraag zal verschijnen nadat klanten het menu Zoeken hebben gebruikt.",
+          "itemInterest": "De interesse in een item zal verschijnen nadat klanten menu-items hebben geopend.",
+          "unavailableDemand": "Onbeschikbare vraag zal verschijnen wanneer klanten op onbeschikbaar tikken.",
+          "missingSearches": "Ontbrekende zoekopdrachten verschijnen wanneer klanten zoeken maar geen overeenkomst vinden.",
+          "sources": "Brongegevens verschijnen nadat klanten via links, QR of sociale pagina's zijn gekomen.",
+          "officialPage": "De activiteiten op de officiële pagina verschijnen nadat klanten de openbare bedrijfspagina hebben geopend."
+        },
+        "footer": {
+          "sameData": "Dezelfde dashboardgegevens.",
+          "noExtraTracking": "Geen extra tracking",
+          "settledAfterClose": "Afgehandeld na het einde van de winkeldag."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Het menu",
+          "viewsLabel": "Menuweergaven",
+          "viewsTooltip": "Het aantal keren dat klanten uw menu hebben geopend.",
+          "thisMonthLabel": "Uw menu deze maand:"
+        },
+        "product": {
+          "singular": "catalogus",
+          "viewsLabel": "Catalogusweergaven",
+          "viewsTooltip": "Het aantal keren dat klanten uw catalogus hebben geopend.",
+          "thisMonthLabel": "Uw catalogus deze maand"
+        },
+        "service": {
+          "singular": "Servicelijst",
+          "viewsLabel": "Weergaven van servicelijsten.",
+          "viewsTooltip": "Het aantal keren dat klanten uw servicelijst hebben geopend.",
+          "thisMonthLabel": "Uw servicelijst deze maand"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Heeft aandacht nodig",
+          "active": "Officiële klantbron is actief.",
+          "readyToPlace": "Officiële klantbron is klaar om te plaatsen."
+        },
+        "description": {
+          "needsAttention": "Pas het menu, de openingstijden of de klantlink aan voordat je deze op grote schaal deelt.",
+          "active": "Klanten kunnen uw huidige openbare gegevens gebruiken uit één bron. Geen actie nodig, klanten kunnen uw bestaande openbare informatie vanuit één bron gebruiken.",
+          "readyToPlace": "Uw klantlink is klaar, voeg deze toe aan uw klantenlijst. Google, Instagram, WhatsApp, QR, of afdrukken zodat klanten de huidige bron gebruiken."
+        },
+        "link": {
+          "ready": "Klantenlink klaar voor gebruik.",
+          "missing": "Klantlink ontbreekt."
+        },
+        "states": {
+          "set": "Ingesteld",
+          "missing": "verdwenen",
+          "ready": "gereed",
+          "notReady": "Nog niet klaar?",
+          "live": "Live",
+          "hidden": "Inactief"
+        },
+        "tags": {
+          "menu": "{status}",
+          "hours": "Uren: {status}",
+          "customerLink": "Klantkoppeling: {status}",
+          "link": "Koppeling: {status}",
+          "placed": "Geplaatst: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Repareer wat aandacht nodig heeft.",
+          "preview": "Voorbeeld openbaar menu bekijken",
+          "share": "Deel het menu"
+        },
+        "updated": {
+          "notUpdated": "Nog niet bijgewerkt.",
+          "recently": "Onlangs bijgewerkt",
+          "today": "Vandaag bijgewerkt",
+          "yesterday": "Gisteren bijgewerkt.",
+          "daysAgo": "Bijgewerkt {count, plural, one {# dag geleden} other {# dagen geleden}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Volgende eigenaar actie:",
+        "open": "Openen",
+        "placement": {
+          "notConfirmed": "Nog niet bevestigd.",
+          "today": "Bevestigd vandaag.",
+          "yesterday": "Gisteren bevestigd.",
+          "daysAgo": "bevestigd {count, plural, one {# dag geleden} other {# dagen geleden}}"
+        },
+        "status": {
+          "ready": "gereed",
+          "missing": "verdwenen",
+          "set": "Ingesteld",
+          "live": "Live",
+          "notLive": "Niet leven",
+          "confirmedCount": "{count}/{total} heeft bevestigd.",
+          "on": "Aan",
+          "off": "Uit",
+          "dailyChanges": "Dagelijkse veranderingen",
+          "hoursException": "uren uitzondering",
+          "staffUse": "personeelsgebruik",
+          "menuPrices": "Menu prijzen",
+          "openCount": "{count, plural, one {# actie openen actie sluiten} other {# acties openen}}",
+          "stable": "Stabiel"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Klantkoppeling instellen",
+            "description": "Maak de klantkoppeling aan voordat u QR, antwoorden van medewerkers of openbare profielen deelt."
+          },
+          "setHours": {
+            "label": "Set uren",
+            "description": "Houd de openbare open en gesloten status duidelijk voordat klanten bezoeken."
+          },
+          "publishMenu": {
+            "labelPublish": "Menu publiceren",
+            "labelOpen": "Open het menu",
+            "descriptionVisible": "Publiceer het huidige menu voordat je het op grote schaal deelt.",
+            "descriptionHidden": "Zorg ervoor dat het menu zichtbaar is voordat klanten de link gebruiken."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Bevestig de plaatsing van de link.",
+            "labelPlace": "Plaats klantlink.",
+            "descriptionPlaced": "Google, Instagram en WhatsApp moeten naar dezelfde bron blijven verwijzen.",
+            "descriptionUnplaced": "Voeg dezelfde klantlink toe aan Google, Instagram, WhatsApp, QR en drukwerk."
+          },
+          "openPrivateFeedback": {
+            "label": "Open privé feedback.",
+            "description": "Gebruik privéfeedback voordat problemen van gasten worden omgezet in openbare beoordelingen."
+          },
+          "captureDailyChange": {
+            "label": "Vertel MenuList wat er is veranderd.",
+            "description": "Vertel MenuList wat er vandaag is veranderd en keur de voorbereide menukaart goed."
+          },
+          "setTodayStatus": {
+            "label": "Stel de status van vandaag",
+            "description": "Set vandaag gesloten, laat openen, keuken gesloten of een bericht over een speciaal menu."
+          },
+          "prepareStaffHandoff": {
+            "label": "Bereid de overdracht van personeel voor.",
+            "description": "Geef het personeel de menukoppeling, QR en antwoordregels van klanten op één plek."
+          },
+          "updatePrices": {
+            "label": "Prijzen bijwerken",
+            "description": "Gebruik Menu Manager voor prijswijzigingen en keur deze goed voordat je ze publiceert."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menu-instelling",
+        "complete": "Menu setup is voltooid.",
+        "ready": "Menu setup is klaar.",
+        "actions": {
+          "openMenu": "Open het menu",
+          "createMenu": "Menu maken",
+          "reviewDetails": "Details controleren",
+          "publishMenu": "Menu publiceren",
+          "openSharingTools": "Open delen gereedschap",
+          "prepareDescriptions": "Bereid beschrijvingen voor.",
+          "addImages": "Afbeeldingen toevoegen",
+          "reviewLanguageText": "Controleer de taaltekst.",
+          "openMenuCheck": "Menucontrole openen",
+          "updatePublicLinks": "Werk openbare links bij.",
+          "addPublicPhoto": "Openbare foto toevoegen"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Bron toegevoegd:",
+            "doneDescription": "De menu bron is verbonden.",
+            "nextDescription": "Voeg een menufoto, PDF, link of start handmatig toe."
+          },
+          "menuImported": {
+            "label": "Menu geïmporteerd",
+            "doneDescription": "{count, plural, one {# zichtbaar item gevonden.} other {# zichtbare items gevonden.}}",
+            "nextDescription": "Menu-items importeren of toevoegen."
+          },
+          "keyDetailsChecked": {
+            "label": "Belangrijkste details gecontroleerd.",
+            "doneDescription": "Prijzen en menu details zijn duidelijk.",
+            "nextDescription": "Controleer prijzen en belangrijke details voordat u publiceert."
+          },
+          "menuPublished": {
+            "label": "Menu gepubliceerd",
+            "doneDescription": "Het publieke menu is bekendgemaakt.",
+            "nextDescription": "Publiceer wanneer het menu klaar is voor klanten en publiceer de menukaart op je website."
+          },
+          "linkPlaced": {
+            "label": "Link geplaatst.",
+            "readyLabel": "Link klaar",
+            "doneDescription": "De officiële link is klaar voor klanten.",
+            "progressDescription": "{count} van {total} plaatsingsacties uitgevoerd.",
+            "nextDescription": "Open de tools voor delen wanneer het menu is gepubliceerd en klik op 'Bewerken'."
+          },
+          "descriptionsReady": {
+            "label": "Beschrijvingen klaar",
+            "doneDescription": "zichtbare items hebben beschrijvingen.",
+            "nextDescription": "Maak beschrijvingen voor duidelijker menu items."
+          },
+          "imagesReady": {
+            "label": "Foto's klaar",
+            "doneDescription": "Zichtbare items hebben afbeeldingen.",
+            "nextDescription": "Voeg afbeeldingen toe of genereer deze indien nodig."
+          },
+          "translationsReady": {
+            "label": "Vertalingen klaar",
+            "doneDescription": "De geselecteerde menu talen zijn voltooid.",
+            "nextDescription": "Bekijk de geselecteerde menutalen."
+          },
+          "publicLinksAdded": {
+            "label": "Openbare links toegevoegd.",
+            "doneDescription": "Er zijn publieke acties of sociale links beschikbaar, en er zijn links naar andere websites.",
+            "nextDescription": "Voeg nuttige openbare links toe voor de bedrijfspagina en voeg een bericht toe."
+          },
+          "publicPhotoAdded": {
+            "label": "Openbare foto toegevoegd.",
+            "doneDescription": "Een openbare foto is beschikbaar.",
+            "nextDescription": "Voeg een omslag, logo of openbare foto toe wanneer u klaar bent."
+          }
+        }
       }
     }
   },
@@ -1397,7 +2257,7 @@
       "common": {
         "business": "Zakelijk",
         "team": "het team",
-        "feedback": "Feedback",
+        "feedback": "Feedback Feedback geven",
         "rating": "Beoordeling",
         "switchToDarkTheme": "Schakel over naar het donkere weergavethema",
         "switchToLightTheme": "Schakel over naar het lichtweergavethema",
@@ -1416,7 +2276,7 @@
         "order": "Bestel",
         "visitSocial": "Bezoek onze {platform}",
         "policyLinks": "Beleidslinks",
-        "privacy": "Privacy",
+        "privacy": "Privacybeleid Privacy",
         "terms": "Voorwaarden",
         "refund": "Terugbetaling",
         "shareFeedback": "Deel feedback",
@@ -1580,13 +2440,13 @@
         "sugarFree": "Suikervrij",
         "contains": "Bevat {value}",
         "spice": "Kruidenniveau: {value}",
-        "spiceMild": "Mild",
+        "spiceMild": "Mild Mild mild",
         "spiceMedium": "Middelmatig",
         "spiceHot": "Heet",
         "spiceVeryHot": "Erg heet",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 1 min min min",
         "hoursShort": "{count} uur",
-        "calories": "{count} cal",
+        "calories": "{count} cal.",
         "protein": "Eiwit {value}g",
         "carbs": "Koolhydraten {value}g",
         "fat": "Vet {value}g",
@@ -1621,7 +2481,7 @@
         "popularChoice": "Populaire keuze",
         "readyInMinutes": "Klaar in {minutes} min",
         "readyInstantly": "Direct klaar",
-        "expressMinutes": "Express {minutes} min",
+        "expressMinutes": "Express {minutes} min.",
         "quickMinutesSession": "Snelle sessie van {minutes} min",
         "expressMinutesSession": "Express-sessie van {minutes} minuten",
         "greatValue": "Grote waarde",
@@ -1662,7 +2522,7 @@
         }
       },
       "feedback": {
-        "pageTitle": "Feedback",
+        "pageTitle": "Feedback Feedback geven",
         "metadataTitle": "Deel feedback | {businessName}",
         "metadataDescription": "Deel feedback alleen met het bedrijf.",
         "shareFeedback": "Deel feedback",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Nog geen factureringsgeschiedenis.",
     "perMonth": "/maand incl. btw",
     "contactUs": "Neem contact met ons op via het contactformulier."
+  },
+  "StarterActivation": {
+    "activeTitle": "Uw menu staat online",
+    "endingSoonTitle": "Houd uw menu online",
+    "publicMenuQrActive": "Uw openbare menu en QR code zijn actief.",
+    "activeRemaining": "Uw menutoegang is actief.",
+    "daysRemaining": "{days, plural, one {Kies binnen # dag een abonnement om uw menu online te houden.} other {Kies binnen # dagen een abonnement om uw menu online te houden.}}",
+    "sharingComplete": "Uw instellingen voor delen zijn voltooid.",
+    "sharingProgress": "{count, number} van {target, number} deelstappen voltooid.",
+    "evidenceRecorded": "Automatisch opgenomen: {systemCount, number}. Bevestigd door jou: {ownerCount, number}.",
+    "evidenceEmpty": "Kopieer of deel de menulink, download de QR-code of bevestig waar u deze hebt geplaatst.",
+    "keepLiveAction": "Houd uw menu online",
+    "noSubscriptionDescription": "Kies een abonnement om menu-updates en klantpagina's beschikbaar te houden.",
+    "choosePlanDescription": "Uw menu is opgeslagen. Kies een abonnement om het online en up-to-date te houden."
   },
   "Transactions": {
     "title": "Transactiegeschiedenis",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobile App Mobiele app",
     "subscribeTitle": "Abonneer u op Get Started.",
     "subscribeDescription": "Kies een abonnement om te beginnen met het maken van uw digitale menu en het beheren van uw bedrijf.",
-    "viewPlans": "Bekijk plannen Bekijk pakketten"
+    "viewPlans": "Bekijk plannen Bekijk pakketten",
+    "returnToMobile": "U bekijkt de desktopversie. Terug naar mobiel."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Codes Codes",

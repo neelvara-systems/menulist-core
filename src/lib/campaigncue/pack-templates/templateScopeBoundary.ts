@@ -7,6 +7,7 @@ import type {
     CampaignCueWorkspacePackTemplateIndex,
 } from "@type/campaigncuePackTemplates";
 import { isOwnedWorkspaceTemplateStoragePath } from "./workspaceTemplateIndexBoundary";
+import { isCampaignCuePackTemplateCatalogIdForCategory } from "./category";
 
 const SAFE_ARTIFACT_NAME = /^(?:pack-template|editor-document)(?:-[a-f0-9]{16,64})?\.json$|^preview(?:-[a-f0-9]{16,64})?\.(?:png|jpeg|webp)$/;
 const SAFE_WORKSPACE_ARTIFACT_PATH = /^(?:versions\/[A-Za-z0-9_-]{3,160}\/)?(?:pack-template\.json|editor-document\.json|preview\.(?:png|jpeg|webp))$/;
@@ -112,10 +113,30 @@ function assertWorkspaceSummaryScope(summary: CampaignCuePackTemplateSummary, wo
 export function assertCampaignCuePlatformTemplateCatalogScope(
     catalog: CampaignCuePlatformPackTemplateCatalog,
     businessCategory: CampaignCuePackTemplateBusinessCategory,
+    expectedCatalogId: string = businessCategory,
 ) {
-    if (catalog.catalogId !== businessCategory || catalog.businessCategory !== businessCategory) {
+    if (
+        catalog.catalogId !== expectedCatalogId
+        || catalog.businessCategory !== businessCategory
+        || !isCampaignCuePackTemplateCatalogIdForCategory(catalog.catalogId, businessCategory)
+    ) {
         throw new Error("Platform template catalog identity is invalid.");
     }
+    const overflowDocIds = catalog.overflowDocIds || [];
+    if (new Set(overflowDocIds).size !== overflowDocIds.length) {
+        throw new Error("Platform template catalog contains duplicate overflow ids.");
+    }
+    if (catalog.catalogId !== businessCategory && overflowDocIds.length) {
+        throw new Error("Only the base platform template catalog may reference overflow catalogs.");
+    }
+    overflowDocIds.forEach((catalogId) => {
+        if (
+            catalogId === businessCategory
+            || !isCampaignCuePackTemplateCatalogIdForCategory(catalogId, businessCategory)
+        ) {
+            throw new Error("Platform template overflow catalog identity is invalid.");
+        }
+    });
     assertUniqueTemplateIds(catalog.data);
     catalog.data.forEach((summary) => assertPlatformSummaryScope(summary, businessCategory));
 }

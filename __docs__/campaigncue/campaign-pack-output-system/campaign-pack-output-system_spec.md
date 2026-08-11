@@ -58,8 +58,9 @@ It contains:
 5. Owner creates or opens the latest pack.
 6. Pack review shows readiness, trust status, approval state, requested output focus, and delivery cards.
 7. Owner downloads the campaign pack ZIP only when server trust gates allow public use.
-8. Owner copies or uses fields manually in WhatsApp, Google Business Profile, Instagram/Facebook, print, staff handoff, email/SMS, or ad/agency handoff.
-9. Owner records what happened; a useful result may nominate that recipe for a new current-truth pack.
+8. When useful, the owner may explicitly publish one checked, expiring CampaignCue offer page and download its QR; publication never happens as a side effect of pack generation.
+9. Owner copies or uses fields manually in WhatsApp, Google Business Profile, Instagram/Facebook, print, staff handoff, email/SMS, or ad/agency handoff.
+10. Owner records what happened; a useful result may nominate that recipe for a new current-truth pack.
 
 ## Readiness Contract
 
@@ -90,7 +91,7 @@ When result memory shows that a completed campaign was useful, Campaign Rhythm m
 | Ads / agency | headline, ad copy, destination, budget approval note, UTM when available. |
 | Staff | staff share message, counter script, owner instruction. |
 | UGC / local creator test | creator-fit checklist, lightweight creator brief, 3-test plan, flat-fee boundary note, disclosure, consent, CTA, and result prompt. |
-| Mini-page / QR | title, details, CTA, destination, terms, and hosted-page-disabled note. |
+| Mini-page / QR | title, details, CTA, destination, terms, explicit publish guidance, and the opaque stage-aware public link only while a governed page is currently published. |
 | Campaign Proof Deck | brand system, campaign/social creative set, product/service focus, UGC/reel dialogue-action reference, shot-plan reference, review checklist, and source trace as a review brief. |
 | Language handoff | preferred locale, local-language boundary, and protected fact list for manual translation. |
 
@@ -100,7 +101,7 @@ When result memory shows that a completed campaign was useful, Campaign Rhythm m
 - No WhatsApp sending.
 - No provider account connection.
 - No ad-spend mutation.
-- No hosted public offer page in the current runtime.
+- No automatic hosted-page publication, generic page builder, checkout, or visitor tracking. The separately gated owner action may publish one checked, expiring CampaignCue offer page.
 - No fake PNG/PDF output if the renderer has not produced a binary file.
 - No claim that the proof deck is a final rendered PDF, website, social post, or generated video.
 - No fake AI-avatar or fictional-customer UGC experience treated as a real testimonial.
@@ -118,6 +119,9 @@ When result memory shows that a completed campaign was useful, Campaign Rhythm m
 Use:
 
 - "Download campaign pack ZIP"
+- "Save cloud copy" and "Download saved copy" when the bounded archive feature is enabled and public-use gates pass
+
+Cloud retention is governed separately by [Durable Cloud Export Archive](../durable-cloud-export-archive/README.md). It must not turn the output pack into an unlimited history, public link, or provider-delivery object.
 - "Use this campaign"
 - "Needs input"
 - "Needs review"

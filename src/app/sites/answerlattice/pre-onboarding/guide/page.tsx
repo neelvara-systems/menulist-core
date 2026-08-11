@@ -153,7 +153,7 @@ const LIVE_GATES = [
     'All required source files are uploaded.',
     'Generated drafts are reviewed and accepted or rejected.',
     'Risky answers are escalation-gated.',
-    'Product surfaces are mapped.',
+    'Product pages and workflows are mapped.',
     'Widget key, allowed origins, and blocked routes are configured.',
     'Runtime widget context is seen in AnswerLattice.',
     'Live support test questions pass.',

@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support Teams',
-    description: 'AnswerLattice helps small SaaS support teams reduce repeated tickets with approved answers, ticket fallback, Support Board follow-up, and a signal-to-knowledge queue.',
+    description: 'AnswerLattice helps small SaaS support teams reduce repeated tickets with approved answers, ticket fallback, Support Board follow-up, and a visible support-gap review queue.',
     alternates: { canonical: '/use-cases/support-teams' },
 };
 
@@ -35,9 +35,9 @@ export default async function SupportTeamsUseCasePage() {
             setupSteps={[
                 'Map support-heavy pages such as billing, team settings, and onboarding.',
                 'Import existing macros, FAQs, and common ticket answers.',
-                'Review draft answers before they become authoritative.',
+                'Review draft answers before they become official support.',
                 'Let tickets capture safe context when fallback is needed.',
-                'Use Support Board for selected follow-up and the signal queue to prioritize recurring gaps.',
+                'Use Support Board for selected follow-up and the support-gap queue to prioritize recurring questions.',
             ]}
             primaryCta="Create workspace"
             secondaryCta="See 60-sec demo"

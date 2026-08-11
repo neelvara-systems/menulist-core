@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 
+import { FEATURE_FLAGS } from "@config/features";
 import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
     parseCampaignCueJsonBody,
+    requireCampaignCueFeature,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
     withCampaignCueAuth,
@@ -23,7 +25,6 @@ export const GET = withCampaignCueAuth(async (request: NextRequest, session) => 
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
-
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;
 
@@ -51,6 +52,11 @@ export const POST = withCampaignCueAuth(async (request: NextRequest, session) =>
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
+        const generationDisabled = requireCampaignCueFeature(
+            FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_GENERATION,
+            "Campaign pack creation",
+        );
+        if (generationDisabled) return generationDisabled;
 
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;

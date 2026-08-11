@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { FEATURE_FLAGS } from "@config/features";
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
@@ -210,7 +211,7 @@ async function uploadGeneratedImages({
 }
 
 function hasValidWorkerSecret(request: Request) {
-    const expectedSecret = process.env.BATCH_IMAGE_GENERATION_WORKER_SECRET?.trim();
+    const expectedSecret = menulistServerEnv.batchImageGenerationWorkerSecret?.trim();
     const providedSecret = request.headers.get('x-menulist-task-secret')?.trim();
     if (!expectedSecret || !providedSecret) return false;
 
@@ -275,7 +276,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Image generation is temporarily unavailable.' }, { status: 503 });
     }
 
-    const expectedProjectId = process.env.FIREBASE_PROJECT_ID;
+    const expectedProjectId = menulistServerEnv.firebaseProjectId;
     const requestProjectId = request.headers.get('project-id');
     if (!expectedProjectId || requestProjectId !== expectedProjectId || !hasValidWorkerSecret(request)) {
         logger.security('Unauthorized Batch Image Generation Worker Request', {
@@ -283,7 +284,7 @@ export async function POST(request: Request) {
             error: 'Missing or invalid Cloud Tasks project header/secret',
             hasExpectedProjectId: Boolean(expectedProjectId),
             hasRequestProjectId: Boolean(requestProjectId),
-            hasWorkerSecret: Boolean(process.env.BATCH_IMAGE_GENERATION_WORKER_SECRET),
+            hasWorkerSecret: Boolean(menulistServerEnv.batchImageGenerationWorkerSecret),
         }, 'critical');
 
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

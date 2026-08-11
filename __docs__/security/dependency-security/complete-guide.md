@@ -1,7 +1,7 @@
 # Dependency Security
 
 **Status:** Enforced  
-**Last verified:** August 5, 2026
+**Last verified:** August 11, 2026
 **Scope:** Root Next.js app plus MenuList, Answerlattice, and SignalDesk Functions
 
 ## Authority
@@ -12,11 +12,13 @@ An audit count is not treated as proof that every finding is reachable, but no f
 
 ## Current root disposition
 
-The August 5, 2026 root full and production-only audits contain zero vulnerabilities.
+The August 11, 2026 root full and production-only audits contain zero vulnerabilities.
 
 Stable Next 16.3.0 closed the former upstream exception by moving its private PostCSS dependency from 8.4.31 to patched 8.5.23. The repo upgraded `next`, `eslint-config-next`, and `@next/bundle-analyzer` together and retained the exact root `postcss@8.5.23` pin. No private override, `node_modules` patch, canary, preview, forced audit fix, or framework downgrade was used.
 
 The same audit run exposed newer advisories outside the old Next chain. The existing compatible direct pin moved from `brace-expansion@1.1.16` to `1.1.18`; every modern Minimatch chain resolves `brace-expansion@5.0.9`; and AJV's compatible tooling chain resolves the exact direct `fast-uri@3.1.5` security pin. Both full and production audits are therefore zero rather than replacing one exception with another.
+
+Three later transitive advisories were closed without changing their parent runtimes: root `js-yaml@4.3.0` moved to `4.3.1`, Next/PostCSS's `nanoid@3.3.16` moved to `3.3.17`, and the shared sanitizer dependency `dompurify@3.4.12` moved to `3.4.13`. Exact root overrides and lockfile assertions keep all three patched. MenuList Functions separately overrides its development-only ESLint YAML chain to `js-yaml@4.3.1`.
 
 ## Current Functions disposition
 
@@ -44,6 +46,7 @@ All three `npm ls --all` trees have zero invalid, missing, or extraneous package
 - Safe non-breaking audit updates moved YAML, WebSocket, minimatch, brace expansion, fast-uri, immutable, and diff to patched resolved versions.
 - MenuList Functions overrides its legacy ESLint/Minimatch chain to compatible `brace-expansion@1.1.18`, so development and production audits are both zero without changing the deployed Functions runtime graph.
 - Root resolver pins for `@swc/helpers@0.5.23`, `picomatch@4.0.5`, `webpack@5.109.0`, and `ajv@8.20.0` keep the installed peer tree valid without `--force` or `--legacy-peer-deps`.
+- Root transitive security overrides keep `js-yaml@4.3.1`, `nanoid@3.3.17`, and `dompurify@3.4.13` exact. The dependency-freeze verifier checks both the declarations and resolved lockfile nodes; MenuList Functions applies the same `js-yaml@4.3.1` control to its separate lint tree.
 - Node 22 is the root runtime (`engines.node = 22`, `.nvmrc = 22.23.1`) because Firebase Admin 14 and the root/Functions toolchain share that long-term baseline.
 
 The exact lockfile must reproduce zero root vulnerabilities after `npm ci`, and `npm ls --all` must exit successfully with no invalid or missing peers. On macOS, Sharp's optional cross-platform WebAssembly artifacts can appear as platform-specific installed-tree entries; confirm them against the clean lockfile rather than treating them as declaration drift.
@@ -79,7 +82,7 @@ Stop and investigate if any of these occurs:
 - a direct `firebase-admin` root namespace import appears in the root app or any Functions source tree;
 - any Functions full or production audit becomes non-zero;
 - Fabric native canvas/tar packages reappear;
-- a UUID override, patched root or MenuList Functions brace-expansion/fast-uri pin, or the root Sharp override is removed;
+- a UUID override, a root brace-expansion/fast-uri/js-yaml/nanoid/DOMPurify control, a MenuList Functions brace-expansion/js-yaml control, or the root Sharp override is removed;
 - npm proposes a framework downgrade, canary, `--force`, or peer bypass;
 - declaration, lockfile, and installed-tree versions disagree.
 

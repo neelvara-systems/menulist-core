@@ -428,7 +428,8 @@
         "daily": "ᱞᱟᱦᱟ ᱢᱟᱦᱟᱸ",
         "weekly": "ᱪᱟᱞᱟᱣᱮᱱ ᱗ ᱢᱟᱦᱟ",
         "monthly": "ᱱᱚᱣᱟ ᱪᱟᱸᱫᱚ",
-        "overall": "ᱡᱦᱛᱚᱹᱟᱜ"
+        "overall": "ᱡᱦᱛᱚᱹᱟᱜ",
+        "graph": "ᱜᱨᱟᱯᱷ ᱾"
       },
       "today": {
         "noMenuActivityToday": "ᱛᱮᱦᱮᱧ ᱦᱚᱸ ᱪᱮᱫ ᱢᱮᱱᱭᱩ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱵᱟᱹᱱᱩᱜᱼᱟ᱾",
@@ -440,7 +441,7 @@
         "topLanguageNow": "ᱱᱤᱛᱚᱜ ᱪᱮᱛᱟᱱ ᱯᱟᱹᱨᱥᱤ: {label} ({sessions} ᱫᱷᱚᱱ/ᱧᱮᱞ, {adoptions} ᱛᱟᱦᱮᱸ ᱥᱣᱤᱪ)",
         "noResultSearchesSoFar": "ᱱᱤᱛ ᱦᱟᱵᱤᱡ ᱪᱮᱫ ᱦᱚᱸ ᱚᱨᱡᱚ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱᱟ: {count}",
         "mostTappedUnavailableItem": "ᱡᱚᱛᱚ ᱠᱷᱚᱱ ᱡᱟᱹᱥᱛᱤ ᱴᱮᱯ ᱵᱟᱝ ᱧᱟᱢᱚᱜ ᱡᱤᱱᱤᱥ: {item} ({count})",
-        "customerActionsBreakdown": "ᱜᱚᱨᱟᱦᱟᱠ ᱠᱟᱹᱢᱤ: ᱦᱚᱦᱚ ᱢᱮ {call}, ᱦᱚᱴᱥᱟᱯ {whatsapp}, ᱫᱤᱥᱟᱹ {directions}, ᱨᱟᱠᱷᱟ {reserve}, ᱚᱰᱟᱨ {order}",
+        "customerActionsBreakdown": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱠᱚଃ ᱠᱚᱞ ᱢᱮ {call}, WhatsApp {whatsapp}, ᱰᱟᱦᱟᱨ ᱥᱮᱪ {directions}, ᱨᱤᱡᱟᱨᱵᱷ {reserve}, ᱚᱰᱟᱨ {order} ᱾",
         "currentActivity": "ᱛᱮᱦᱮᱧ ᱞᱟᱹᱜᱤᱫ ᱱᱤᱛᱚᱜ ᱢᱮᱱᱩ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱾",
         "updated": "ᱟᱯᱰᱮᱴ ᱟᱠᱟᱱ {time}",
         "livePartialData": "ᱞᱟᱭᱤᱵᱷ ᱯᱟᱨᱥᱤᱭᱟᱞ ᱰᱟᱴᱟ"
@@ -454,17 +455,17 @@
         "noResultSearches": "ᱵᱟᱝ-ᱚᱨᱡᱚ ᱥᱮᱸᱫᱽᱨᱟ",
         "unavailableInterest": "ᱵᱟᱝ ᱧᱟᱢᱚᱜ ᱠᱟᱱ ᱨᱟᱹᱥᱠᱟᱹ",
         "topLanguage": "ᱪᱮᱛᱟᱱ ᱯᱟᱹᱨᱥᱤ",
-        "smartPicksShown": "ᱥᱢᱟᱨᱴ ᱵᱟᱪᱷᱟᱣ ᱠᱚ ᱩᱫᱩᱜ ᱟᱠᱟᱱᱟ",
-        "smartPicksClicks": "ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱠᱞᱤᱠ",
-        "smartPicksTaps": "ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱴᱮᱯᱥ",
-        "smartPicksUsed": "ᱥᱢᱟᱨᱴ ᱵᱟᱪᱷᱟᱣ ᱠᱚ ᱵᱮᱵᱷᱟᱨ ᱟᱠᱟᱱᱟ",
-        "smartPicksEngagement": "ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱮᱱᱜᱮᱡᱢᱮᱱᱴ",
+        "smartPicksShown": "Smart Picks ᱩᱫᱩᱜ ᱟᱠᱟᱱᱟ ᱾",
+        "smartPicksClicks": "Smart Picks ᱠᱞᱤᱠ ᱢᱮ ᱾",
+        "smartPicksTaps": "Smart Picks ᱴᱮᱯ",
+        "smartPicksUsed": "Smart Picks ᱵᱮᱣᱦᱟᱨ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+        "smartPicksEngagement": "Smart Picks ᱥᱮᱞᱮᱫ ᱾",
         "totalMenuScans": "ᱢᱩᱴ ᱢᱮᱱᱭᱩ ᱥᱠᱮᱱ",
         "totalItemClicks": "ᱢᱩᱴ ᱡᱤᱱᱤᱥ ᱨᱮ ᱚᱛᱟ",
         "activeDays": "ᱮᱠᱴᱤᱵᱷ ᱫᱤᱱ ᱠᱚ",
         "daysActive": "ᱢᱟᱦᱟᱸ ᱮᱠᱴᱤᱵᱷ",
         "avgDailyScans": "ᱜᱚᱲᱦᱚᱱ᱾ ᱫᱤᱱᱟᱹᱢ ᱥᱠᱮᱱ ᱠᱚ",
-        "smartPicksActive": "ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱮᱠᱴᱤᱵᱷ",
+        "smartPicksActive": "Smart Picks ᱮᱥᱮᱨ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
         "engagementRate": "ᱮᱱᱜᱮᱡᱢᱮᱱᱴ ᱫᱚᱨ",
         "topItem": "ᱪᱮᱛᱟᱱ ᱡᱤᱱᱤᱥ",
         "topCategory": "ᱪᱮᱛᱟᱱ ᱛᱷᱚᱠ"
@@ -473,19 +474,24 @@
         "itemClicks": "ᱜᱚᱨᱦᱟᱠ ᱠᱚ ᱡᱤᱱᱤᱥ ᱠᱚ ᱨᱮ ᱛᱤᱱᱟᱹᱜ ᱫᱷᱟᱣ ᱠᱚ ᱴᱮᱯ ᱟᱠᱟᱫᱟ",
         "engagedSessions": "ᱚᱱᱟ ᱫᱷᱚᱱ ᱡᱟᱦᱟᱸ ᱨᱮ ᱜᱚᱨᱦᱟᱠ ᱠᱚ ᱥᱟᱹᱨᱤ ᱢᱮᱱᱩ ᱨᱚᱜ ᱠᱚ ᱩᱫᱩᱜ ᱞᱮᱫᱟ",
         "actionRate": "ᱚᱱᱟ ᱫᱷᱚᱱ ᱡᱟᱦᱟᱸ ᱫᱚ ᱢᱩᱪᱟᱹᱫ ᱜᱚᱨᱟᱦᱟᱠ ᱠᱟᱹᱢᱤ ᱛᱮ ᱪᱟᱞᱟᱣ ᱞᱮᱱᱟ",
-        "smartPicksShown": "ᱟᱢᱟᱜ ᱥᱟᱦᱴᱟ ᱨᱮ ᱛᱤᱱᱟᱹᱜ ᱫᱷᱟᱣ ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱧᱮᱞᱚᱜ ᱠᱟᱱᱟ",
-        "smartPicksUsed": "ᱥᱢᱟᱨᱴ ᱯᱤᱠᱥ ᱵᱮᱵᱷᱟᱨ ᱠᱟᱱ ᱜᱚᱨᱦᱟᱠ ᱠᱚᱣᱟᱜ ᱯᱨᱚᱛᱤᱥᱟᱛ",
-        "customerActions": "ᱢᱩᱪᱟᱹᱫ ᱠᱟᱹᱢᱤ ᱡᱮᱞᱠᱟ ᱠᱚᱞ, ᱦᱚᱴᱥᱟᱯ, ᱫᱤᱥᱟᱹ, ᱨᱟᱠᱷᱟ, ᱟᱨ ᱚᱰᱟᱨ",
+        "smartPicksShown": "ᱟᱢᱟᱜ ᱯᱮᱡ ᱨᱮ ᱛᱤᱱᱟᱹᱜ ᱫᱷᱟᱣ Smart Picks ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾",
+        "smartPicksUsed": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱥᱟᱭᱦᱤᱸᱥ ᱡᱟᱦᱟᱸᱭ ᱠᱚ Smart Picks ᱵᱮᱣᱦᱟᱨ ᱞᱮᱫᱟ ᱾",
+        "customerActions": "ᱠᱚᱞ, WhatsApp, ᱥᱮᱪ, ᱨᱤᱵᱷᱟᱨᱵᱷ ᱟᱨ ᱚᱰᱟᱨ ᱞᱮᱠᱟᱱ ᱢᱩᱪᱟᱹᱫ ᱠᱟᱹᱢᱤ ᱾",
         "searches": "ᱢᱮᱱᱩ ᱠᱷᱚᱱ ᱰᱤ-ᱰᱩᱯᱞᱤᱠᱮᱴᱰ ᱥᱮᱸᱫᱽᱨᱟ ᱪᱟᱦᱤᱫᱟ",
         "unavailableInterest": "ᱵᱟᱝ ᱧᱟᱢᱚᱜ ᱡᱤᱱᱤᱥ ᱠᱚ ᱨᱮ ᱞᱤᱱ ᱢᱮ"
       },
       "empty": {
         "noActivityYesterday": "ᱦᱚᱞᱟ ᱪᱮᱫ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱵᱟᱝ ᱨᱮᱠᱚᱨᱰ ᱟᱠᱟᱱᱟ",
         "noAnalyticsYet": "ᱱᱤᱛ ᱦᱚᱸ ᱰᱟᱴᱟ ᱵᱟᱹᱱᱩᱜᱼᱟ ᱾ ᱜᱚᱨᱦᱟᱠ ᱠᱚ ᱧᱮᱞ ᱮᱦᱚᱵ ᱠᱷᱟᱱ ᱟᱢᱟᱜ ᱮᱱᱟᱞᱤᱴᱤᱠᱥ ᱧᱮᱞᱚᱜᱼᱟ᱾",
-        "noItemClicksYet": "ᱱᱤᱛ ᱦᱚᱸ ᱡᱟᱦᱟᱱ ᱡᱤᱱᱤᱥ ᱵᱟᱝ ᱚᱛᱟ ᱟᱠᱟᱱᱟ"
+        "noItemClicksYet": "ᱱᱤᱛ ᱦᱚᱸ ᱡᱟᱦᱟᱱ ᱡᱤᱱᱤᱥ ᱵᱟᱝ ᱚᱛᱟ ᱟᱠᱟᱱᱟ",
+        "lowActivityTitle": "ᱠᱚᱢ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ",
+        "lowActivityDescription": "ᱱᱚᱶᱟ ᱚᱠᱛᱚ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫᱴᱟᱝ ᱵᱮᱣᱦᱟᱨᱟᱱ ᱢᱩᱪᱟᱹᱫ ᱨᱮ ᱥᱮᱴᱮᱨ ᱞᱟᱹᱜᱤᱫ ᱟᱹᱰᱤ ᱰᱷᱮᱨ ᱠᱟᱹᱢᱤ ᱵᱟᱝ ᱛᱟᱦᱮᱸ ᱠᱟᱱᱟ ᱾",
+        "noWeeklyData": "ᱢᱩᱪᱟᱹᱫ 7 ᱢᱟᱦᱟ ᱠᱷᱚᱱ ᱱᱤᱛ ᱦᱟᱹᱵᱤᱡ ᱡᱟᱦᱟᱱ ᱥᱮᱴᱮᱞᱢᱮᱱᱴ ᱢᱮᱱᱩ ᱠᱟᱹᱢᱤ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾",
+        "noMonthlyData": "ᱱᱚᱶᱟ ᱪᱟᱸᱫᱳ ᱨᱮ ᱱᱤᱛ ᱦᱟᱹᱵᱤᱡ ᱡᱟᱦᱟᱱ ᱥᱮᱴᱮᱞᱢᱮᱱᱴ ᱢᱮᱱᱩ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾"
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% ᱵᱚᱱᱟᱢ ᱪᱟᱞᱟᱣᱮᱱ ᱦᱟᱯᱛᱟ"
+        "vsLastWeek": "{sign}{change}% ᱵᱚᱱᱟᱢ ᱪᱟᱞᱟᱣᱮᱱ ᱦᱟᱯᱛᱟ",
+        "changeVsLastWeek": "{change} vs last week"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱨᱮᱭᱟᱜ ᱢᱟᱦᱟᱸ ᱨᱮᱠᱚᱨᱰ ᱦᱩᱭ ᱟᱠᱟᱱᱟ} other {# ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱨᱮᱭᱟᱜ ᱢᱟᱦᱟ ᱨᱮᱠᱚᱨᱰ ᱦᱩᱭ ᱟᱠᱟᱱᱟ}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "ᱦᱮᱸ",
         "no": "ᱵᱟᱝ",
-        "notAvailable": "ᱵᱟᱝ/ᱮ",
+        "notAvailable": "N/A",
         "active": "ᱮᱠᱴᱤᱵᱷ",
         "lowActivity": "ᱠᱚᱢ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ",
         "noData": "ᱰᱟᱴᱟ ᱵᱟᱹᱱᱩᱜᱼᱟ"
@@ -527,17 +533,30 @@
         "waitingForFirstScan": "ᱯᱩᱭᱞᱩ ᱥᱠᱮᱱ ᱞᱟᱹᱜᱤᱫ ᱛᱟᱺᱜᱤ ᱨᱮ ᱢᱤᱱᱟᱹᱧᱟ",
         "weeklyInsights": "ᱦᱟᱯᱛᱟᱠᱤᱭᱟᱹ ᱵᱷᱤᱛᱨᱤ ᱧᱮᱞ",
         "last4WeeksComparison": "ᱪᱟᱞᱟᱣᱮᱱ ᱔ ᱦᱟᱴ ᱛᱩᱞᱟᱹ ᱡᱚᱠᱷᱟ",
-        "historicalDataWillAppear": "ᱱᱟᱜᱟᱢ ᱰᱟᱴᱟ ᱛᱤᱱᱟᱹᱜ ᱜᱟᱱ ᱦᱟᱴ ᱛᱟᱭᱚᱢ ᱧᱮᱞᱚᱜᱼᱟ"
+        "historicalDataWillAppear": "ᱱᱟᱜᱟᱢ ᱰᱟᱴᱟ ᱛᱤᱱᱟᱹᱜ ᱜᱟᱱ ᱦᱟᱴ ᱛᱟᱭᱚᱢ ᱧᱮᱞᱚᱜᱼᱟ",
+        "statusMessages": {
+          "working": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱟᱢᱟᱜ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱵᱮᱣᱦᱟᱨ ᱮᱫᱟ ᱾",
+          "low_activity": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱱᱤᱛᱦᱚᱸ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾ ᱟᱢᱟᱜ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱫᱚ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+          "no_data": "Activity will appear after customers start opening your menu."
+        }
       },
       "aiSummary": {
         "daily": "ᱢᱤᱫ ᱧᱮᱞ ᱛᱮ ᱞᱟᱦᱟ ᱢᱟᱦᱟᱸ",
         "weekly": "ᱱᱚᱣᱟ ᱦᱟᱯᱛᱟ ᱢᱤᱫ ᱧᱮᱞ ᱛᱮ",
-        "monthly": "ᱱᱚᱣᱟ ᱪᱟᱸᱫᱚ ᱥᱟᱨᱠᱟᱛᱷᱟ ᱨᱮ"
+        "monthly": "ᱱᱚᱣᱟ ᱪᱟᱸᱫᱚ ᱥᱟᱨᱠᱟᱛᱷᱟ ᱨᱮ",
+        "localized": {
+          "noActivity": "ᱱᱚᱶᱟ ᱚᱠᱛᱚ ᱨᱮ ᱡᱟᱦᱟᱱ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱚᱞ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "menuViews": "Customers opened the menu {count} times.",
+          "itemTaps": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱢᱮᱱᱩ ᱟᱭᱴᱮᱢ ᱠᱚ {count} ᱵᱟᱨᱵᱟᱨ ᱴᱮᱯ ᱞᱮᱫᱟ ᱾",
+          "customerActions": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ {count} ᱢᱩᱪᱟᱹᱫ ᱠᱟᱹᱢᱤ ᱠᱚ ᱢᱩᱪᱟᱹᱫ ᱞᱮᱫᱟ ᱾",
+          "searches": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱢᱮᱱᱩ {count} ᱵᱟᱨᱵᱟᱨ ᱛᱚᱞᱟᱥ ᱞᱮᱫᱟ ᱾",
+          "unavailableInterest": "ᱵᱟᱝ ᱧᱟᱢᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ {count} ᱴᱚᱯ ᱠᱚ ᱧᱟᱢ ᱞᱮᱫᱟ ᱾"
+        }
       },
       "actions": {
         "call": "ᱦᱚᱦᱚᱭ",
         "calls": "ᱠᱚᱞ ᱠᱚ",
-        "whatsapp": "ᱦᱣᱟᱴᱥᱟᱯ",
+        "whatsapp": "WhatsApp",
         "directions": "ᱰᱤᱨᱮᱠᱥᱚᱱ ᱧᱟᱢ ᱢᱮ",
         "reserve": "ᱨᱤᱡᱟᱨᱵᱽ",
         "order": "ᱟᱫᱮᱥ"
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} ᱧᱮᱞ · {rate}%",
         "markDone": "ᱦᱩᱭ ᱟᱠᱟᱱ ᱞᱮᱠᱟ ᱪᱤᱱᱦᱟᱹᱭ ᱢᱮ",
         "markDoneSaved": "ᱦᱩᱭ ᱞᱮᱠᱟ ᱪᱤᱱᱦᱟᱹ ᱟᱠᱟᱱᱟ ᱾ ᱫᱚᱥᱟᱨ ᱮᱱᱟᱞᱤᱴᱤᱠᱥ ᱥᱟᱨᱠᱟᱛᱷᱟ ᱥᱟᱯᱲᱟᱣ ᱞᱮᱱᱠᱷᱟᱱ ᱚᱨᱡᱚ ᱫᱚ ᱟᱯᱰᱮᱴᱚᱜᱼᱟ ᱾",
-        "markDoneFailed": "ᱱᱚᱶᱟ ᱠᱟᱹᱢᱤ ᱫᱚ ᱵᱟᱝ ᱪᱤᱱᱦᱟᱹ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾ ᱫᱚᱦᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ᱾"
+        "markDoneFailed": "ᱱᱚᱶᱟ ᱠᱟᱹᱢᱤ ᱫᱚ ᱵᱟᱝ ᱪᱤᱱᱦᱟᱹ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾ ᱫᱚᱦᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ᱾",
+        "bestSourceStatsFormatted": "· {visits} ᱧᱮᱞ· {rate} ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱦᱟᱨ",
+        "bestSourceMobileFormatted": "ᱱᱚᱶᱟ ᱚᱠᱛᱚ ᱥᱚᱨᱮᱥ ᱩᱯᱨᱩᱢᱟ: {source}· {visits} ᱧᱮᱞ· {rate} ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱦᱟᱨ ᱾",
+        "sourceQualityTagFormatted": "{source}: {visits} ᱧᱮᱞ· {sessions} ᱮᱠᱥᱚᱱ ᱥᱮᱥᱚᱱ · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} ᱧᱮᱞ· {rate}",
+        "priorities": {
+          "high": "ᱪᱮᱛᱟᱱ ᱨᱮ ᱰᱷᱮᱨ ᱞᱟᱹᱠᱛᱤ ᱾",
+          "medium": "ᱛᱟᱞᱟ ᱟᱱᱟᱜ ᱪᱮᱛᱟᱱ ᱨᱮ ᱾",
+          "low": "ᱠᱚᱢ ᱞᱟᱹᱠᱛᱤᱭᱟᱱ ᱾"
+        },
+        "confidence": {
+          "stable": {
+            "label": "ᱫᱷᱤᱨᱛᱟ",
+            "message": "The available activity supports a clear menu check."
+          },
+          "watch": {
+            "label": "ᱧᱮᱞ ᱫᱚᱦᱚ ᱢᱮ ᱾",
+            "message": "ᱢᱮᱱᱩ ᱵᱚᱱᱚᱫᱚᱞ ᱢᱟᱲᱟᱝ ᱠᱤᱪᱷᱩ ᱠᱟᱹᱢᱤ ᱞᱟᱹᱜᱤᱫ ᱟᱨᱦᱚᱸ ᱢᱤᱫᱴᱟᱝ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾"
+          },
+          "no_data": {
+            "label": "ᱟᱨᱦᱚᱸ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱞᱟᱹᱠᱛᱤ ᱾",
+            "message": "ᱡᱟᱦᱟᱱ ᱢᱩᱪᱟᱹᱫ ᱨᱮ ᱥᱮᱴᱮᱨ ᱢᱟᱲᱟᱝ ᱟᱨᱦᱚᱸ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱟᱹᱢᱤ ᱞᱟᱹᱜᱤᱫ ᱮᱰᱮᱠᱷᱟᱱ ᱛᱮ ᱫᱚᱦᱚ ᱢᱮ ᱾"
+          }
+        },
+        "localizedActions": {
+          "reason": "ᱢᱩᱪᱟᱹᱫ ᱨᱮ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱪᱮᱛᱟᱱ ᱴᱮᱦᱟᱴ ᱠᱟᱛᱮ ᱾",
+          "availability": {
+            "title": "ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱧᱟᱢ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "description": "ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱ ᱥᱮ ᱞᱩᱭᱟᱹᱲ ᱟᱠᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱨᱩᱣᱟᱹᱲ ᱠᱚᱨᱟᱣ ᱞᱟᱹᱠᱛᱤ ᱥᱮ ᱧᱮᱞ ᱠᱷᱚᱱ ᱵᱷᱮᱜᱟᱨ ᱫᱚᱦᱚ ᱦᱩᱭᱩᱜ ᱛᱟᱢᱟ ᱥᱮ ᱵᱟᱝ ᱚᱱᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱧᱟᱢ ᱨᱮᱭᱟᱜ ᱯᱚᱨᱤᱢᱟᱱ ᱧᱮᱞ ᱢᱮ ᱾"
+          },
+          "customerActions": {
+            "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "description": "ᱠᱟᱹᱢᱤ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱵᱮᱣᱦᱟᱨ ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱟᱨ ᱞᱤᱝᱠᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "details": {
+            "title": "ᱟᱭᱴᱮᱢ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱱᱟᱯᱟᱭ ᱢᱮ ᱾",
+            "description": "ᱡᱟᱦᱟᱸ ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱧᱩᱛᱩᱢ, ᱮᱴᱟᱜ ᱦᱚᱨᱟ, ᱵᱚᱨᱱᱚᱱ ᱟᱨ ᱪᱤᱛᱟᱹᱨᱠᱚ ᱧᱮᱞ ᱢᱮ ᱡᱟᱦᱟ ᱞᱟᱹᱜᱤᱫ ᱟᱨᱦᱚᱸ ᱪᱟᱹᱨᱤᱪ ᱛᱚᱛᱩᱛᱚ ᱞᱟᱹᱠᱛᱤ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+            "action": "ᱟᱭᱴᱮᱢ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "general": {
+            "title": "ᱢᱤᱫᱴᱟᱝ ᱥᱚᱨᱟᱥᱚᱨᱤ ᱪᱤᱱᱦᱟᱹ ᱞᱟᱹᱜᱤᱫ ᱛᱮ ᱮᱰᱮᱠᱷᱟᱱ ᱾",
+            "description": "ᱟᱨᱦᱚᱸ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱵᱟᱝ ᱧᱟᱢ ᱫᱷᱟᱹᱵᱤᱡ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱫᱚ ᱛᱷᱟᱭᱤ ᱫᱚᱦᱚ ᱢᱮ ᱾",
+            "action": "ᱛᱟᱭᱚᱢᱛᱮ ᱧᱮᱞ ᱢᱮ ᱾"
+          },
+          "menuOrder": {
+            "title": "ᱢᱮᱱᱩ ᱚᱰᱟᱨ ᱧᱮᱞ ᱢᱮ ᱾",
+            "description": "Check whether important items and categories are easy for customers to find.",
+            "action": "ᱢᱮᱱᱩ ᱚᱰᱟᱨ ᱧᱮᱞ ᱢᱮ ᱾"
+          },
+          "pricing": {
+            "title": "ᱜᱚᱱᱚᱝ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "description": "ᱱᱟᱦᱟᱜ ᱠᱤᱨᱤᱧᱤᱭᱟᱹᱼᱥᱮᱨ ᱨᱮᱭᱟᱜ ᱥᱝᱜᱮᱞ ᱥᱟᱞᱟᱜ ᱥᱮᱞᱮᱫ ᱜᱚᱱᱚᱝ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱜᱚᱱᱚᱝ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "search": {
+            "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱛᱚᱞᱟᱥ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "description": "ᱡᱟᱦᱟᱸ ᱛᱚᱞᱟᱥᱠᱚ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱢᱤᱫᱴᱟᱝ ᱵᱮᱣᱦᱟᱨᱟᱱ ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱢᱩᱪᱟᱹᱫ ᱥᱮᱫ ᱵᱟᱝ ᱪᱟᱞᱟᱣ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱚᱱᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱛᱚᱞᱟᱥ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "source": {
+            "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱥᱮᱞᱮᱫ ᱨᱮᱭᱟᱜ ᱩᱯᱨᱩᱢᱟᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "description": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱞᱤᱝᱠ ᱟᱨ QR ᱯᱞᱟᱭᱢᱮᱱᱴ ᱠᱚᱫᱚ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱨᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨ ᱟᱠᱟᱫᱟ ᱥᱮ ᱵᱟᱝ ᱚᱱᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱞᱤᱝᱠ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "timing": {
+            "title": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱚᱠᱛᱚ ᱧᱮᱞ ᱢᱮ ᱾",
+            "description": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱩᱱᱠᱚ ᱛᱚᱞᱟᱥ ᱚᱠᱛᱚ ᱚᱠᱛᱚ ᱨᱮᱭᱟᱜ ᱦᱟᱹᱴᱤᱧ ᱟᱨ ᱧᱟᱢ ᱨᱮᱭᱟᱜ ᱥᱟᱞᱟᱜ ᱢᱤᱫ ᱟᱠᱟᱱᱟ ᱥᱮ ᱵᱟᱝ ᱚᱱᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "action": "ᱚᱠᱛᱚ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "ᱪᱤᱱᱦᱟᱹ ᱠᱚᱨᱟᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "message": "ᱟᱨᱦᱚᱸ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱧᱟᱢ ᱛᱟᱭᱚᱢ ᱢᱩᱪᱟᱹᱫ ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭᱩᱜᱼᱟ ᱾"
+          },
+          "improved": {
+            "label": "ᱱᱟᱯᱟᱭ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "message": "ᱛᱟᱭᱚᱢ ᱫᱟᱨᱟᱢ ᱥᱮᱴᱮᱞᱰ ᱪᱮᱠ ᱨᱮ ᱢᱤᱫᱴᱟᱝ ᱵᱟᱹᱲᱛᱤ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "no_clear_change": {
+            "label": "ᱡᱟᱦᱟᱱ ᱥᱚᱨᱟᱥᱚᱨᱤ ᱵᱚᱱᱚᱫᱚᱞ ᱵᱟᱝ ᱾",
+            "message": "ᱛᱟᱭᱚᱢ ᱫᱟᱨᱟᱢ ᱥᱮᱴᱮᱞᱰ ᱪᱮᱠ ᱨᱮ ᱡᱟᱦᱟᱱ ᱥᱚᱨᱟᱥᱚᱨᱤ ᱵᱚᱱᱚᱫᱚᱞ ᱵᱟᱝ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "not_enough_data": {
+            "label": "ᱟᱨᱦᱚᱸ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱞᱟᱹᱠᱛᱤ ᱾",
+            "message": "ᱱᱚᱶᱟ ᱵᱚᱱᱚᱫᱚᱞ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱱᱤᱛᱦᱚᱸ ᱟᱹᱰᱤ ᱜᱟᱱ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+          },
+          "pending": {
+            "label": "ᱴᱮᱠᱟᱣ ᱟᱠᱟᱱ ᱪᱮᱠ ᱾",
+            "message": "ᱟᱨᱦᱚᱸ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱧᱟᱢ ᱛᱟᱭᱚᱢ MenuList ᱱᱚᱶᱟ ᱵᱤᱰᱟᱹᱣᱼᱟ ᱾"
+          }
+        }
       },
       "details": {
         "menuDetails": "ᱢᱮᱱᱩ ᱵᱤᱵᱨᱚᱬ",
@@ -574,7 +686,7 @@
           "unavailableInterest": "ᱵᱟᱝ ᱧᱟᱢᱚᱜ ᱠᱟᱱ ᱨᱟᱹᱥᱠᱟᱹ",
           "languages": "ᱯᱟᱹᱨᱥᱤ ᱠᱚ",
           "filters": "ᱯᱷᱤᱞᱴᱟᱨ",
-          "smartPicks": "ᱥᱢᱟᱨᱴ ᱵᱟᱪᱷᱟᱣ",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "ᱵᱮᱯᱟᱨ ᱚᱠᱛᱚ ᱞᱮᱠᱟᱛᱮ ᱠᱟᱹᱢᱤ ᱠᱚ"
         },
         "descriptions": {
@@ -617,6 +729,12 @@
           "open": "ᱡᱷᱤᱡ ᱡᱷᱚᱜ ᱠᱟᱹᱢᱤ ᱠᱚ",
           "unknown": "ᱠᱟᱹᱢᱤ ᱠᱚ ᱡᱚᱠᱷᱚᱱ ᱴᱟᱲᱟᱝ ᱥᱛᱤᱛᱤ ᱵᱟᱝ ᱧᱟᱢᱚᱜ ᱠᱟᱱᱟ",
           "closed": "ᱵᱚᱱᱫᱚᱜ ᱠᱟᱱ ᱡᱷᱚᱜ ᱠᱟᱹᱢᱤ ᱠᱚ"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱ ᱴᱚᱯ ᱾",
+          "strongItem": "{count} ᱡᱤᱱᱤᱥ ᱴᱮᱯᱥ",
+          "needsWork": "{count} ᱧᱮᱞ ᱟᱠᱟᱱᱟ, ᱡᱟᱦᱟᱱ ᱴᱮᱯ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+          "gettingAttention": "{count} ᱧᱮᱞ ᱠᱚ"
         }
       },
       "smartPicks": {
@@ -627,7 +745,7 @@
       "overall": {
         "allTimeSummary": "ᱥᱟᱱᱟᱢ ᱚᱠᱛᱚ ᱥᱟᱨᱠᱟᱛᱷᱟ",
         "since": "ᱡᱚᱠᱷᱚᱱ {date}",
-        "actionsSummary": "ᱠᱟᱹᱢᱤ ᱠᱚᱺ ᱦᱚᱦᱚ ᱢᱮ {call}, ᱦᱚᱴᱥᱟᱯ {whatsapp}, ᱫᱤᱥᱟᱹ {directions}, ᱨᱟᱠᱷᱟ {reserve}, ᱚᱰᱟᱨ {order}",
+        "actionsSummary": "Actions: Call {call}, WhatsApp {whatsapp}, Directions {directions}, Reserve {reserve}, Order {order}",
         "topItemsSummary": "ᱪᱮᱛᱟᱱ ᱡᱤᱱᱤᱥ: {items}",
         "itemTapsSummary": "{item} ({count} ᱴᱮᱯᱥ)",
         "topCategorySummary": "ᱪᱮᱛᱟᱱ ᱛᱷᱚᱠ: {categories}",
@@ -642,16 +760,16 @@
         "officialBusinessPage": "ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱵᱮᱯᱟᱨ ᱥᱟᱦᱴᱟ",
         "loadingCurrentActivity": "ᱱᱤᱛᱚᱜ OBP ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱞᱳᱰ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ",
         "loadingActivity": "ᱚᱵᱤᱯᱤ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱞᱳᱰᱤᱝ ᱠᱟᱱᱟ",
-        "sharedInfo": "ᱠᱚᱞ, ᱦᱚᱴᱥᱟᱯ, ᱰᱤᱨᱮᱠᱥᱚᱱ, ᱨᱤᱡᱟᱨᱣ, ᱟᱨ ᱚᱰᱟᱨ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱚᱵᱤᱯᱤ ᱠᱞᱤᱠ ᱠᱟᱹᱢᱤ ᱠᱚ ᱞᱮᱠᱷᱟᱜᱼᱟ ᱾ ᱥᱮᱭᱟᱨ ᱠᱚ ᱫᱚ ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱵᱤᱡᱽᱱᱮᱥ ᱞᱤᱝᱠ ᱠᱟᱨᱰ ᱠᱷᱚᱱ ᱦᱤᱡᱩᱜ ᱠᱟᱱᱟ, ᱟᱨ ᱞᱤᱝᱠ ᱴᱮᱯ ᱠᱚ ᱫᱚ ᱜᱩᱜᱽᱞ ᱨᱤᱵᱷᱤᱣ, ᱤᱱᱥᱴᱟᱜᱽᱨᱟᱢ, ᱯᱷᱮᱥᱵᱩᱠ, ᱟᱨ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱧᱮᱞ ᱠᱚ ᱯᱟᱹᱵᱤᱞ OBP ᱠᱷᱚᱱ ᱠᱚ ᱞᱮᱠᱷᱟ ᱠᱟᱱᱟ᱾",
+        "sharedInfo": "ᱮᱠᱥᱚᱱ ᱠᱚ ᱠᱚᱞ, WhatsApp, ᱰᱤᱨᱟᱭᱠᱥᱚᱱ, ᱨᱤᱥᱟᱨᱵᱷ ᱟᱨ ᱚᱰᱟᱨ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱳᱵᱤᱯᱤ ᱠᱞᱤᱠ ᱠᱚ ᱞᱮᱠᱷᱟᱼᱟ ᱾ ᱥᱮᱭᱟᱨ ᱠᱚᱫᱚ ᱚᱯᱷᱤᱥᱮᱞ ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱠᱟᱨᱰ ᱠᱷᱚᱱ ᱦᱮᱡᱚᱜᱼᱟ, ᱟᱨ ᱞᱤᱝᱠ ᱴᱮᱯ ᱠᱚ ᱞᱮᱠᱷᱟ Google ᱵᱤᱪᱷᱚᱱᱟ, Instagram, Facebook, ᱟᱨ ᱦᱚᱲ ᱳᱵᱤᱵᱤᱯᱤ ᱠᱷᱚᱱ ᱳᱭᱮᱵᱽᱥᱟᱭᱤᱴ ᱵᱷᱤᱡᱤᱴ ᱾",
         "noActivityToday": "ᱛᱮᱦᱮᱧ ᱦᱚᱸ ᱚᱵᱤᱯᱤ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱵᱟᱹᱱᱩᱜᱼᱟ᱾",
         "noComparison": "ᱵᱟᱝ ᱛᱩᱞᱟᱹ ᱡᱚᱠᱷᱟ",
         "sameAsLastWeek": "ᱪᱟᱞᱟᱣᱮᱱ ᱦᱟᱯᱛᱟ ᱞᱮᱠᱟ ᱜᱮ",
-        "whatsappShares": "ᱦᱣᱟᱴᱥᱟᱯ ᱦᱟᱹᱴᱤᱧ ᱠᱚ",
+        "whatsappShares": "WhatsApp ᱥᱮᱭᱟᱨ",
         "copyLink": "ᱞᱤᱝᱠ ᱱᱚᱠᱚᱞ ᱢᱮ",
         "copyMessage": "ᱠᱷᱚᱵᱚᱨ ᱱᱚᱠᱚᱞ ᱢᱮ",
-        "googleReviews": "ᱜᱩᱜᱚᱞ ᱧᱮᱞ ᱫᱚᱦᱲᱟ",
-        "instagram": "ᱤᱱᱥᱴᱟᱜᱽᱨᱟᱢ",
-        "facebook": "ᱯᱷᱮᱥᱵᱩᱠ",
+        "googleReviews": "Google ᱵᱤᱰᱟᱹᱣ ᱾",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "ᱣᱮᱵᱽᱥᱟᱭᱤᱴ",
         "sourceViews": "{count} ᱧᱮᱞ ᱠᱚ",
         "sourceMenu": "{count} ᱢᱮᱱᱩ",
@@ -680,8 +798,8 @@
         "actionBreakdown": "ᱠᱟᱹᱢᱤ ᱨᱟᱹᱯᱩᱫ",
         "shareBreakdown": "ᱦᱟᱹᱴᱤᱧ ᱵᱨᱮᱠᱰᱟᱣᱩᱱ",
         "mobileInfoIntro": "ᱱᱚᱣᱟ ᱠᱟᱨᱰ ᱩᱫᱩᱜ ᱮᱫᱟᱭ ᱪᱮᱫ ᱞᱮᱠᱟ ᱜᱚᱨᱦᱟᱠ ᱠᱚ ᱟᱢᱟᱜ ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱵᱮᱯᱟᱨ ᱥᱟᱦᱴᱟ ᱥᱟᱶ ᱢᱮᱱᱩ ᱡᱷᱤᱡᱽ ᱞᱟᱦᱟᱨᱮ ᱥᱮ ᱚᱱᱟ ᱟᱲᱮ ᱟᱲᱮ ᱨᱮᱠᱚ ᱜᱟᱯᱟᱞᱢᱟᱨᱟᱣᱟ᱾",
-        "mobileInfoActions": "ᱠᱟᱹᱢᱤ ᱠᱚ ᱫᱚ ᱠᱚᱞ, ᱦᱚᱴᱥᱟᱯ, ᱰᱤᱨᱮᱠᱥᱚᱱ, ᱨᱤᱡᱟᱨᱣ ᱟᱨ ᱚᱰᱟᱨ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱠᱞᱤᱠ ᱠᱚ ᱞᱮᱠᱷᱟᱭᱟ ᱾",
-        "mobileInfoLinks": "ᱥᱮᱭᱟᱨ ᱠᱚ ᱫᱚ ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱵᱤᱡᱽᱱᱮᱥ ᱞᱤᱝᱠ ᱠᱟᱨᱰ ᱠᱷᱚᱱ ᱦᱤᱡᱩᱜ ᱠᱟᱱᱟ, ᱟᱨ ᱞᱤᱝᱠ ᱴᱮᱯ ᱠᱚ ᱫᱚ ᱜᱩᱜᱚᱞ ᱧᱮᱞ ᱫᱚᱦᱚ, ᱤᱱᱥᱴᱟᱜᱽᱨᱟᱢ, ᱯᱷᱮᱥᱵᱩᱠ, ᱟᱨ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱧᱮᱞ ᱠᱚ ᱡᱟᱹᱛᱤ ᱚᱵᱤᱯᱤ ᱠᱷᱚᱱ ᱞᱮᱠᱷᱟᱭᱟ᱾",
+        "mobileInfoActions": "Actions count final clicks on Call, WhatsApp, Directions, Reserve, and Order.",
+        "mobileInfoLinks": "ᱥᱮᱭᱟᱨ ᱠᱚᱫᱚ ᱚᱯᱷᱤᱥᱮᱞ ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱠᱟᱨᱰ ᱠᱷᱚᱱ ᱦᱮᱡᱚᱜᱼᱟ, ᱟᱨ ᱞᱤᱝᱠ ᱴᱮᱯ ᱠᱚ ᱠᱟᱣᱩᱱᱴ Google ᱨᱤᱵᱷᱤᱣ, Instagram, Facebook, ᱟᱨ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱳᱵᱤᱥᱟᱭᱴ ᱵᱷᱤᱡᱤᱴ ᱠᱷᱚᱱ ᱳᱵᱤᱯᱤ ᱾",
         "todayPartialInfo": "ᱛᱮᱦᱮᱧ ᱦᱟᱵᱤᱡ ᱫᱚ ᱥᱩᱢᱩᱝ ᱟᱫᱷᱟ ᱞᱟᱭᱤᱵᱽ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱠᱟᱱᱟ ᱾ ᱱᱚᱣᱟ ᱫᱚ ᱱᱤᱛ ᱦᱚᱸ ᱞᱟᱦᱟ ᱢᱟᱦᱟᱸ, ᱢᱩᱪᱟᱹᱫ ᱗ ᱢᱟᱦᱟᱸ, ᱱᱚᱣᱟ ᱪᱟᱸᱫᱚ, ᱟᱨ ᱵᱟᱝ ᱡᱤᱭᱚᱱ ᱢᱩᱴ ᱨᱮ ᱵᱟᱝ ᱥᱮᱞᱮᱫ ᱟᱠᱟᱱᱟ ᱾"
       },
       "customerApp": {
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "ᱥᱚᱴᱠᱟᱴ ᱵᱨᱮᱠᱰᱟᱣᱩᱱ",
         "installsByPlatform": "ᱯᱞᱮᱴᱯᱷᱚᱨᱢ ᱞᱮᱠᱟᱛᱮ ᱤᱱᱥᱴᱚᱞ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ",
         "appStickiness": "ᱮᱯ ᱞᱟᱴᱠᱟᱣᱚᱜ",
-        "returningOpens30d": "ᱨᱩᱣᱟᱹᱲ ᱡᱷᱤᱡᱚᱜ ᱠᱟᱱᱟ (᱓᱐ᱰᱤ)",
         "avgOpensPerInstall": "ᱯᱨᱚᱛᱤ ᱤᱱᱥᱴᱚᱞ ᱨᱮ ᱜᱚᱲᱦᱚᱱ ᱡᱷᱤᱡᱚᱜᱼᱟ",
         "iosManualInstalls": "iOS ᱢᱮᱱᱩᱣᱟᱞ ᱤᱱᱥᱴᱚᱞ ᱠᱟᱱᱟ",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "ᱚᱱᱞᱟᱭᱤᱱ ᱚᱨᱰᱟᱨ ᱢᱮ"
         },
         "platforms": {
-          "ios": "ᱟᱭᱳᱮᱥ",
-          "iosLong": "iOS (ᱟᱭᱤᱯᱷᱚᱱ / ᱟᱭᱯᱮᱰ)",
-          "android": "ᱮᱱᱰᱨᱳᱭᱮᱰ",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "ᱰᱮᱥᱠᱴᱚᱯ",
           "other": "ᱮᱴᱟᱜ"
-        }
+        },
+        "tryAgainLater": "ᱛᱟᱭᱚᱢᱛᱮ ᱟᱨᱦᱚᱸ ᱨᱤᱠᱟᱹᱭ ᱢᱮ ᱾"
       },
       "projectSelector": {
         "deleted": "ᱢᱮᱴᱟᱣ ᱟᱠᱟᱱᱟ",
@@ -752,16 +870,17 @@
       "googleListing": {
         "linkCopied": "ᱞᱤᱝᱠ ᱱᱚᱠᱚᱞ ᱦᱩᱭ ᱟᱠᱟᱱᱟ",
         "couldNotCopy": "ᱞᱤᱝᱠ ᱵᱟᱝ ᱱᱚᱠᱚᱞ ᱫᱟᱲᱮᱭᱟᱜ ᱠᱟᱱᱟ",
-        "markedUpdated": "ᱜᱩᱜᱚᱞ ᱥᱩᱪᱤ ᱫᱚ ᱱᱟᱣᱟ ᱞᱮᱠᱟ ᱪᱤᱱᱦᱟᱹ ᱟᱠᱟᱱᱟ",
+        "markedUpdated": "Google ᱛᱟᱹᱞᱤᱠᱟ ᱨᱮ ᱱᱟᱦᱟᱜ ᱞᱮᱠᱟᱛᱮ ᱪᱤᱱᱦᱟᱹ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
         "couldNotSave": "ᱵᱟᱝ ᱥᱟᱧᱪᱟᱣ ᱫᱟᱲᱮᱭᱟᱜ ᱠᱟᱱᱟ",
-        "title": "ᱜᱩᱜᱚᱞ ᱥᱩᱪᱤ",
+        "title": "Google ᱛᱟᱹᱞᱤᱠᱟ ᱾",
         "updatedDescription": "ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱞᱤᱝᱠ ᱟᱢᱟᱜ ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱥᱟᱦᱴᱟ ᱨᱮ ᱥᱮᱴ ᱟᱠᱟᱱᱟ",
-        "setOfficialLink": "ᱜᱩᱜᱚᱞ ᱨᱮ ᱟᱢᱟᱜ ᱚᱯᱷᱤᱥᱤᱭᱟᱞ ᱞᱤᱝᱠ ᱥᱮᱴ ᱢᱮ",
-        "updateProfileWebsite": "ᱟᱢᱟᱜ ᱜᱩᱜᱚᱞ ᱵᱤᱡᱽᱱᱮᱥ ᱯᱨᱚᱯᱷᱟᱭᱤᱞ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ {url} ᱨᱮ ᱟᱯᱰᱮᱴ ᱢᱮ",
+        "setOfficialLink": "Google ᱨᱮ ᱟᱢᱟᱜ ᱚᱯᱷᱤᱥᱮᱞ ᱞᱤᱝᱠ ᱥᱮᱴ ᱢᱮ ᱾",
+        "updateProfileWebsite": "Update your Google Business Profile website to {url}",
         "copied": "ᱱᱚᱠᱚᱞ ᱦᱩᱭ ᱟᱠᱟᱱᱟ",
         "copy": "ᱱᱚᱠᱚᱞ ᱢᱮ",
-        "openGoogle": "ᱜᱩᱜᱚᱞ ᱡᱷᱤᱡᱽ ᱢᱮ",
-        "done": "ᱥᱮᱛ"
+        "openGoogle": "ᱮᱛᱚᱦᱚᱵ ᱢᱮ Google",
+        "done": "ᱥᱮᱛ",
+        "couldNotOpen": "Could not open Google Business Profile"
       },
       "behaviorNudge": {
         "linkCopied": "ᱞᱤᱝᱠ ᱱᱚᱠᱚᱞ ᱦᱩᱭ ᱟᱠᱟᱱᱟ",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "ᱪᱮᱛᱟᱱ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱧᱮᱞ ᱫᱚᱦᱲᱟᱭ ᱢᱮ",
         "repairMenu": "ᱢᱮᱱᱩ ᱵᱟᱱᱟᱣ",
         "review": "ᱧᱮᱞᱟᱹᱨᱩ",
-        "repair": "ᱥᱟᱨᱟᱳ"
+        "repair": "ᱥᱟᱨᱟᱳ",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# ᱟᱭᱴᱮᱢ ᱢᱤᱫᱴᱟᱝ ᱵᱚᱨᱱᱚᱱ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱟᱭᱴᱮᱢ ᱠᱚᱫᱚ ᱵᱚᱨᱱᱚᱱ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+            "ok": "ᱥᱟᱱᱟᱢ ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "help": "ᱵᱚᱨᱱᱚᱱᱠᱚ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱡᱚᱛᱚ ᱮᱢ ᱨᱮᱭᱟᱜ ᱠᱟᱛᱷᱟ ᱵᱟᱰᱟᱭ ᱨᱮ ᱜᱚᱲᱚ ᱟᱭ ᱾"
+          },
+          "images": {
+            "warning": "{count, plural, one {# ᱟᱭᱴᱮᱢ ᱢᱤᱫᱴᱟᱝ ᱪᱤᱛᱟᱹᱨ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱟᱭᱴᱮᱢ ᱠᱚᱫᱚ ᱪᱤᱛᱟᱹᱨ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+            "ok": "ᱥᱟᱱᱟᱢ ᱡᱤᱱᱤᱥ ᱨᱮ ᱪᱤᱛᱟᱹᱨ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "help": "ᱪᱤᱛᱟᱹᱨᱠᱚ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱟᱹᱰᱤ ᱞᱚᱜᱚᱱ ᱵᱟᱪᱷᱱᱟᱣ ᱨᱮ ᱜᱚᱲᱚ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾"
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# ᱛᱷᱚᱱᱚᱛ ᱨᱮ ᱢᱤᱫᱴᱟᱝ ᱟᱭᱠᱚᱱ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱛᱷᱚᱱᱚᱛ ᱠᱚ ᱟᱭᱠᱚᱱ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+            "ok": "ᱥᱟᱱᱟᱢ ᱛᱷᱚᱱᱚᱛ ᱨᱮ ᱟᱭᱠᱚᱱ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "help": "Icons make categories easier to scan."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱜᱚᱱᱚᱝ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱡᱤᱱᱤᱥ ᱠᱚ ᱜᱚᱱᱚᱝ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾}}",
+            "ok": "ᱥᱟᱱᱟᱢ ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱜᱚᱱᱚᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "help": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱜᱚᱴᱟ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟ ᱜᱚᱱᱚᱝ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱞᱮᱫᱟ ᱾"
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# ᱡᱤᱱᱤᱥ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱴᱷᱮᱱ ᱠᱷᱚᱱ ᱞᱩᱭ ᱫᱚᱦᱚ ᱟᱠᱟᱱᱟ ᱾} other {# ᱡᱤᱱᱤᱥ ᱠᱚ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱴᱷᱮᱱ ᱠᱷᱚᱱ ᱞᱩᱭ ᱫᱚᱦᱚ ᱟᱠᱟᱱᱟ ᱾}}",
+            "ok": "ᱡᱟᱦᱟᱱ ᱡᱤᱱᱤᱥ ᱫᱚ ᱵᱟᱝ ᱞᱩᱭᱟᱹᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "help": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱢᱮᱱᱩ ᱨᱮ ᱦᱤᱫᱮᱱ ᱟᱭᱴᱮᱢ ᱵᱟᱝ ᱧᱮᱞᱚᱜᱼᱟ ᱾"
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# ᱜᱚᱱᱚᱝ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱠᱛᱤ ᱾} other {# ᱜᱚᱱᱚᱝ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+            "ok": "ᱜᱚᱱᱚᱝ ᱠᱚ ᱚᱱᱩᱢᱟᱹᱱ ᱨᱮᱭᱟᱜ ᱥᱤᱢᱟᱹ ᱢᱩᱫᱨᱮ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "help": "MenuList compares single-item prices inside the same category. Mark an intentional price as reviewed."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# item is missing translations} other {# items are missing translations}}",
+            "ok": "ᱥᱟᱱᱟᱢ ᱧᱮᱞ ᱧᱟᱢ ᱟᱭᱴᱮᱢ ᱠᱚ ᱵᱚᱨᱱᱚᱱ ᱠᱚᱨᱟᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "help": "ᱵᱟᱪᱷᱱᱟᱣ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱯᱟᱹᱨᱥᱤ ᱨᱮ ᱠᱤᱪᱷᱩ ᱟᱭᱴᱮᱢ ᱵᱟᱝ ᱢᱩᱪᱟᱹᱫ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menu detail is missing translations} other {# menu details are missing translations}}",
+            "ok": "Menu details are translated",
+            "help": "ᱵᱟᱪᱷᱱᱟᱣ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱯᱟᱹᱨᱥᱤ ᱨᱮ ᱢᱮᱱᱩ ᱧᱩᱛᱩᱢ, ᱵᱚᱨᱱᱚᱱ ᱥᱮ ᱱᱳᱴ ᱠᱚ ᱵᱟᱝ ᱢᱩᱪᱟᱹᱫ ᱟᱠᱟᱱᱟ ᱾"
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "ᱞᱤᱝᱠ ᱠᱚ ᱠᱚᱯᱤ ᱞᱮᱫᱟ ᱾",
+        "direct": "ᱥᱚᱨᱟᱥᱚᱨᱤ ᱾",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "ᱢᱮᱱᱩ ᱠᱤᱴ ᱾",
+        "nativeShare": "ᱰᱩᱭᱤᱥ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾",
+        "obp": "ᱵᱮᱯᱟᱨ ᱥᱟᱦᱴᱟ",
+        "other": "ᱮᱴᱟᱜ",
+        "qr": "QR ᱠᱳᱰ",
+        "shortcut": "App shortcut",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "ᱵᱮᱯᱟᱨ ᱦᱚᱲᱢᱚ ᱥᱟᱶᱟᱨ",
+        "open": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱱᱟᱯᱟᱭ ᱮᱛᱚᱦᱚᱵ ᱢᱮ ᱾",
+        "today": "ᱛᱤᱦᱤᱧ",
+        "latestActivity": "ᱢᱩᱪᱟᱹᱫ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱾",
+        "noActionNeeded": "ᱪᱮᱫ ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+        "status": {
+          "stable": "ᱫᱷᱤᱨᱛᱟ",
+          "watch": "ᱫᱷᱭᱟᱱ ᱞᱟᱹᱠᱛᱤᱜ ᱠᱟᱱᱟ",
+          "needs_review": "ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+          "insufficient_data": "ᱟᱨᱦᱚᱸ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱞᱟᱹᱠᱛᱤ ᱾",
+          "stale": "ᱢᱤᱫᱴᱟᱝ ᱱᱟᱶᱟ ᱪᱮᱠ ᱞᱟᱹᱠᱛᱤ ᱠᱟᱱᱟ ᱾",
+          "not_ready": "ᱵᱮᱱᱟᱣᱚᱜ ᱾"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱨᱮ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+          "stable": {
+            "headline": "ᱟᱢᱟᱜ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱰᱚᱜᱚᱨ ᱫᱚ ᱛᱷᱟᱭᱤ ᱾",
+            "message": "ᱢᱩᱪᱟᱹᱫ ᱪᱮᱠ ᱨᱮ ᱡᱟᱦᱟᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱴᱷᱮᱱ ᱠᱷᱚᱱ ᱮᱴᱟᱜ ᱡᱟᱦᱟᱱ ᱟᱱᱟᱴ ᱨᱮᱭᱟᱜ ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+          },
+          "watch": {
+            "headline": "ᱢᱤᱫᱴᱟᱝ ᱵᱚᱨᱱᱚᱱ ᱨᱮ ᱢᱚᱱᱮ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+            "message": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱰᱚᱜᱚᱨ ᱵᱚᱱᱚᱫᱚᱞ ᱢᱟᱲᱟᱝ ᱛᱮ ᱯᱚᱨᱟᱢᱚᱥ ᱟᱠᱟᱱ ᱪᱮᱠ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "needs_review": {
+            "headline": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "message": "ᱢᱤᱫ ᱥᱮ ᱚᱱᱟ ᱠᱷᱚᱱ ᱡᱟᱹᱥᱛᱤ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱵᱤᱰᱟᱹᱣ ᱠᱚᱨᱟᱣ ᱞᱟᱹᱠᱛᱤ ᱾"
+          },
+          "insufficient_data": {
+            "headline": "ᱟᱨᱦᱚᱸ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "message": "ᱱᱟᱦᱟᱜ ᱰᱚᱜᱚᱨ ᱫᱚ ᱛᱷᱟᱭᱤ ᱫᱚᱦᱚ ᱢᱮ, ᱡᱚᱠᱷᱚᱱ MenuList ᱢᱤᱫᱴᱟᱝ ᱵᱮᱣᱦᱟᱨᱟᱱ ᱥᱚᱜᱤᱱᱮᱞ ᱠᱚ ᱥᱮᱞᱮᱫ ᱞᱮᱫᱟ ᱾"
+          },
+          "stale": {
+            "headline": "ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱥᱟᱧᱪᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫᱴᱟᱝ ᱱᱟᱶᱟ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "message": "ᱢᱩᱪᱟᱹᱫ ᱪᱮᱠ ᱫᱚ ᱢᱟᱨᱮᱱ ᱾ ᱟᱢᱟᱜ ᱱᱟᱦᱟᱜ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱰᱚᱜᱚᱨ ᱵᱟᱝ ᱛᱟᱦᱮᱸᱱᱟ ᱾"
+          },
+          "not_ready": {
+            "headline": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱟᱧᱪᱟᱣ ᱵᱮᱱᱟᱣᱚᱜ ᱠᱟᱱᱟ ᱾",
+            "message": "ᱯᱳᱭᱞᱳ ᱫᱳᱠᱟᱱ ᱨᱮᱭᱟᱜ ᱪᱮᱠ ᱫᱚ ᱵᱮᱱᱟᱣ ᱛᱟᱭᱚᱢ ᱱᱚᱶᱟ ᱨᱮ ᱧᱮᱞ ᱧᱟᱢᱼᱟ ᱾"
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱥᱩᱡᱟᱹᱭ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "message": "ᱡᱟᱦᱟᱱ ᱠᱟᱹᱢᱤ ᱟᱱ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱥᱩᱡᱽ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾ ᱱᱚᱶᱟ ᱦᱟᱹᱴᱤᱧ ᱢᱟᱲᱟᱝ ᱨᱮ ᱢᱮᱱᱩ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "title": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱥᱚᱨᱥ ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭᱩᱜ ᱞᱟᱹᱠᱛᱤ ᱾"
+          },
+          "low_latest_activity": {
+            "action": "ᱦᱟᱹᱴᱤᱧ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "message": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱠᱚᱢ ᱾ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾ QR, Google, Instagram, WhatsAppᱟᱨ ᱳᱭᱮᱵᱽᱥᱟᱭᱤᱴ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱾",
+            "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱠᱚᱢ ᱾"
+          },
+          "unavailable_item_taps": {
+            "action": "ᱵᱟᱝ ᱧᱟᱢᱟᱱ ᱟᱭᱴᱮᱢ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "message": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱵᱟᱝ ᱧᱟᱢᱟᱱ ᱡᱤᱱᱤᱥᱠᱚ ᱪᱮᱛᱟᱱ ᱨᱮ ᱪᱩᱲᱟᱹ ᱮ ᱩᱫᱩᱜ ᱞᱮᱫᱟ ᱾ ᱚᱱᱟ ᱠᱚᱫᱚ ᱨᱤᱥᱴᱚᱠ ᱢᱮ ᱥᱮ ᱚᱱᱟ ᱠᱚ ᱞᱩᱭ ᱫᱚᱦᱚ ᱢᱮ ᱾",
+            "title": "ᱵᱟᱝ ᱧᱟᱢᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱧᱮᱞ ᱧᱟᱢ ᱞᱮᱫᱟ ᱾"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Review guest feedback",
+            "message": "Guest feedback needs an owner check before public details are changed.",
+            "title": "Guest feedback needs checking"
+          },
+          "default": {
+            "action": "ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "message": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫᱴᱟᱝ ᱵᱷᱟᱹᱨᱥᱩᱢᱟᱹᱱ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "title": "ᱢᱤᱫᱴᱟᱝ ᱵᱚᱨᱱᱚᱱ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# ᱵᱮᱼᱥᱟᱠᱷᱟᱣᱟᱱ ᱯᱷᱤᱰᱵᱮᱠ ᱟᱭᱴᱮᱢ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱵᱮᱼᱥᱟᱠᱷᱟᱣᱟᱱ ᱯᱷᱤᱰᱵᱮᱠ ᱟᱭᱴᱮᱢ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+          "clear": "Private feedback is clear."
+        },
+        "freshness": {
+          "notReady": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱟᱧᱪᱟᱣ ᱫᱚ ᱱᱟᱦᱟᱜ ᱚᱠᱛᱚ ᱵᱟᱝ ᱠᱟᱱᱟ ᱾ ᱯᱳᱭᱞᱳ ᱫᱳᱠᱟᱱ ᱵᱤᱰᱟᱹᱣ ᱨᱮ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱨᱮᱭᱟᱜ ᱫᱤᱱ ᱩᱫᱩᱜ ᱦᱩᱭᱩᱜᱼᱟ ᱾",
+          "throughDate": "{date} ᱛᱟᱞᱟᱛᱮ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱵᱮᱣᱦᱟᱨ ᱢᱮ ᱾ ᱛᱮᱦᱮᱧ ᱱᱤᱛᱦᱚᱸ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "latest": "ᱱᱟᱦᱟᱜ ᱧᱟᱢ ᱟᱠᱟᱱ MenuList ᱛᱚᱛᱚᱛᱚᱛᱛᱚ ᱵᱮᱣᱦᱟᱨ ᱢᱮ ᱾ ᱛᱮᱦᱮᱧ ᱫᱚ ᱱᱤᱛᱦᱚᱸ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾"
+        },
+        "periods": {
+          "today": "ᱛᱤᱦᱤᱧ",
+          "yesterday": "ᱞᱟᱦᱟ ᱢᱟᱦᱟᱸ",
+          "thisWeek": "ᱱᱚᱶᱟ ᱦᱟᱯᱛᱟ ᱨᱮ ᱾",
+          "lastWeek": "ᱪᱟᱞᱟᱣᱮᱱ ᱦᱟᱯᱛᱟ ᱨᱮ ᱾",
+          "thisMonth": "ᱱᱚᱶᱟ ᱪᱟᱸᱫᱳ ᱨᱮ ᱾",
+          "lastMonth": "ᱪᱟᱞᱟᱣᱮᱱ ᱪᱟᱸᱫᱚ ᱨᱮ ᱾",
+          "last7Days": "ᱢᱩᱪᱟᱹᱫ 7 ᱢᱟᱦᱟ ᱾",
+          "last30Days": "ᱢᱩᱪᱟᱹᱫ 30 ᱢᱟᱦᱟ ᱾",
+          "overall": "ᱡᱦᱛᱚᱹᱟᱜ"
+        },
+        "metrics": {
+          "menuViews": "ᱢᱮᱱᱩ ᱧᱮᱞ ᱠᱚ",
+          "topDemand": "Top demand",
+          "topDemandDetail": "ᱯᱟᱥᱱᱟᱣ ᱢᱮ: {count} {signal}",
+          "bestSource": "ᱥᱚᱨᱮᱥ ᱩᱯᱨᱩᱢᱟ ᱾",
+          "bestSourceDetail": "ᱞᱤᱝᱠ ᱫᱚ ᱢᱩᱪᱟᱹᱫ ᱢᱮ: {count} ᱧᱮᱞ ᱾"
+        },
+        "signals": {
+          "views": "ᱧᱮᱞ ᱾",
+          "clicks": "ᱡᱤᱱᱤᱥ ᱴᱮᱯᱥ",
+          "attention": "ᱢᱚᱱᱮ ᱨᱮᱭᱟᱜ ᱪᱤᱱᱦᱟᱹ ᱾"
+        },
+        "page": {
+          "description": "ᱫᱤᱱ ᱨᱮᱭᱟᱜ ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱴᱷᱟᱶ ᱟᱨ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱠ ᱾",
+          "latestCheck": "AI health check",
+          "loading": "ᱞᱳᱰᱤᱝ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾",
+          "loadingMessage": "Loading Business Health...",
+          "notReady": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱟᱧᱪᱟᱣ ᱱᱤᱛᱦᱚᱸ ᱵᱮᱱᱟᱣ ᱵᱟᱝ ᱟᱠᱟᱱᱟ ᱾",
+          "loadErrorTitle": "ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱥᱟᱧᱪᱟᱣ ᱫᱚ ᱞᱳᱰ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "loadErrorDescription": "ᱱᱚᱶᱟ ᱯᱮᱡ ᱫᱚ ᱨᱤᱯᱷᱨᱮᱥ ᱢᱮ ᱟᱨ ᱟᱨᱦᱚᱸ ᱨᱤᱠᱟᱹᱭ ᱢᱮ ᱾",
+          "refresh": "ᱛᱟᱹᱯᱤᱥ ᱢᱮ",
+          "needsAttention": "ᱫᱷᱭᱟᱱ ᱞᱟᱹᱠᱛᱤᱜ ᱠᱟᱱᱟ",
+          "desktopSettingsOnly": "Open this from desktop settings."
+        },
+        "scope": {
+          "title": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱟᱧᱪᱟᱣ ᱨᱮᱭᱟᱜ ᱯᱚᱨᱤᱢᱟᱱ ᱾",
+          "allMenus": "ᱥᱟᱱᱟᱢ ᱢᱮᱱᱩ ᱾",
+          "selectedMenu": "ᱵᱟᱪᱷᱱᱟᱣ ᱢᱮᱱᱩ ᱾",
+          "menuCount": "{count, plural, one {ᱱᱚᱶᱟ ᱴᱷᱟᱶ ᱨᱮ # ᱢᱮᱱᱩ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {ᱱᱚᱶᱟ ᱴᱷᱟᱶ ᱨᱮ # ᱢᱮᱱᱩ ᱾}}",
+          "locationLevel": "ᱴᱷᱟᱶᱼᱥᱮᱨ ᱨᱮᱭᱟᱜ ᱧᱮᱞ ᱾",
+          "inactiveMenu": "ᱵᱮᱼᱥᱟᱠᱛᱤᱣᱟᱱ ᱢᱮᱱᱩ ᱾",
+          "thisMenuOnly": "ᱱᱚᱶᱟ ᱢᱮᱱᱩ ᱥᱩᱢᱩᱝ ᱾",
+          "allMenusInLocation": "ᱱᱚᱶᱟ ᱴᱷᱟᱶ ᱨᱮᱭᱟᱜ ᱥᱟᱱᱟᱢ ᱢᱮᱱᱩ ᱾",
+          "thisMenuHelper": "Questions and activity use this menu.",
+          "allMenusHelper": "Questions and activity use all menus in this location.",
+          "dialogDescription": "ᱠᱟᱹᱢᱤ ᱟᱨ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱱᱟᱢ ᱢᱮᱱᱩ ᱥᱮ ᱢᱤᱫᱴᱟᱝ ᱢᱮᱱᱩ ᱵᱟᱪᱷᱱᱟᱣ ᱢᱮ ᱾",
+          "all": "ᱥᱟᱱᱟᱢ ᱜᱮ ᱾",
+          "close": "ᱵᱚᱱᱚᱫᱚᱞ ᱢᱮ ᱾"
+        },
+        "locations": {
+          "title": "ᱴᱷᱟᱶ ᱠᱚ ᱾",
+          "loading": "ᱴᱷᱟᱶ ᱠᱚ ᱞᱳᱰ ᱠᱚᱨᱟᱣ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ...",
+          "empty": "ᱱᱤᱛᱦᱚᱸ ᱡᱟᱦᱟᱱ ᱴᱷᱟᱶ ᱨᱮᱭᱟᱜ ᱥᱚᱢᱨᱟᱥᱤ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+          "storeFallback": "ᱴᱷᱟᱶ {id}",
+          "checkedOn": "ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ {date}",
+          "checkCount": "{count, plural, one {# ᱪᱮᱠ ᱢᱮ ᱾} other {# ᱪᱮᱠ ᱢᱮ ᱾}}",
+          "checksNeedReview": "{count, plural, one {# ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱠ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱠᱛᱤ ᱾} other {# ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱠ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱞᱟᱹᱠᱛᱤ ᱾}}",
+          "statusReason": {
+            "stable": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱴᱷᱮᱱ ᱠᱷᱚᱱ ᱡᱟᱦᱟᱱ ᱟᱱᱟᱴ ᱞᱟᱹᱜᱤᱫ ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱝ ᱛᱟᱦᱮᱸᱱᱟ ᱾",
+            "watch": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱵᱤᱪᱷᱚᱱᱟ ᱨᱮ ᱢᱚᱱᱮ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+            "needs_review": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "insufficient_data": "ᱢᱤᱫᱴᱟᱝ ᱵᱮᱣᱦᱟᱨᱟᱱ ᱪᱮᱠ ᱞᱟᱹᱜᱤᱫ ᱟᱨᱦᱚᱸ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "stale": "ᱱᱚᱶᱟ ᱴᱷᱟᱶ ᱨᱮ ᱢᱤᱫᱴᱟᱝ ᱱᱟᱶᱟ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "not_ready": "ᱯᱳᱭᱞᱳ ᱴᱷᱟᱶ ᱵᱤᱰᱟᱹᱣ ᱫᱚ ᱵᱮᱱᱟᱣᱚᱜ ᱠᱟᱱᱟ ᱾"
+          }
+        },
+        "assistant": {
+          "title": "ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱥᱟᱧᱪᱟᱣ ᱤᱫᱤ ᱠᱟᱛᱮ ᱵᱟᱰᱟᱭ ᱢᱮ ᱾",
+          "askShort": "ᱵᱟᱰᱟᱭ ᱢᱮ ᱾",
+          "englishOnlyTitle": "ᱱᱟᱦᱟᱜ ᱨᱮ ᱵᱤᱪᱷᱚᱱᱟ ᱠᱚ ᱵᱨᱤᱴᱤᱥ ᱯᱟᱹᱨᱥᱤᱛᱮ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+          "englishOnlyDescription": "Your status and checks are localized. Switch the app language to English to ask Business Health questions.",
+          "notReady": "ᱱᱟᱦᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱩᱪᱟᱹᱫ ᱛᱟᱭᱚᱢ ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱥᱟᱧᱪᱟᱣ ᱫᱚ ᱚᱱᱟ ᱨᱮᱭᱟᱜ ᱩᱛᱛᱚᱨ ᱮᱢᱼᱟ ᱾",
+          "suggestedUnavailable": "Suggested questions are not available right now.",
+          "freeTextUnavailable": "Free-text questions are not available right now.",
+          "answerError": "ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱥᱟᱧᱪᱟᱣ ᱚᱱᱟ ᱨᱮᱭᱟᱜ ᱡᱟᱦᱟᱱ ᱩᱛᱛᱚᱨ ᱵᱟᱝ ᱮᱢ ᱫᱟᱲᱮᱹᱭᱟᱜᱼᱟ ᱾",
+          "suggestedQuestions": "Suggested questions",
+          "followUps": "ᱟᱢ ᱛᱟᱭᱚᱢ ᱛᱮᱢ ᱵᱟᱰᱟᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "you": "ᱟᱢ ᱾",
+          "empty": "Choose a question or ask about your business.",
+          "placeholderReady": "ᱛᱮᱦᱮᱧ, ᱱᱚᱶᱟ ᱦᱟᱯᱛᱟ, ᱢᱮᱱᱩ ᱨᱮ ᱢᱚᱱᱮ ᱫᱚᱦᱚ ᱥᱮ ᱛᱟᱭᱚᱢ ᱫᱟᱨᱟᱢ ᱪᱮᱠ ᱠᱚ ᱤᱫᱤ ᱠᱟᱛᱮ ᱵᱟᱰᱟᱭ ᱢᱮ ᱾",
+          "placeholderMobile": "ᱛᱮᱦᱮᱧ ᱥᱮ ᱱᱚᱶᱟ ᱦᱟᱯᱛᱟ ᱨᱮᱭᱟᱜ ᱠᱟᱛᱷᱟᱢ ᱵᱟᱰᱟᱭ ᱢᱮ ᱾",
+          "placeholderPending": "ᱢᱩᱪᱟᱹᱫ ᱪᱮᱠ ᱛᱟᱭᱚᱢ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+          "send": "Send question",
+          "cachedFacts": "ᱠᱮᱪ ᱟᱠᱟᱱ MenuList ᱵᱮᱯᱟᱨᱤᱭᱟᱹ ᱛᱚᱛᱚᱛᱛᱚ ᱪᱮᱛᱟᱱ ᱴᱮᱦᱟᱴ ᱠᱟᱛᱮ ᱾",
+          "questions": {
+            "checks": "ᱪᱮᱫ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ?",
+            "today_stats": "ᱛᱮᱦᱮᱧ ᱪᱮᱫ ᱞᱮᱠᱟ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ?",
+            "this_week_stats": "ᱱᱚᱶᱟ ᱦᱟᱯᱛᱟ ᱪᱮᱫ ᱜᱷᱚᱴᱟᱣ ᱟᱠᱟᱱᱟ?",
+            "top_item": "ᱪᱮᱫ ᱡᱤᱱᱤᱥ ᱫᱚ ᱢᱚᱱᱮ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ?",
+            "last_week_stats": "ᱪᱟᱞᱟᱣᱮᱱ ᱦᱟᱯᱛᱟ ᱪᱮᱫ ᱜᱷᱚᱴᱟᱣ ᱟᱠᱟᱱᱟ?",
+            "this_month_stats": "ᱱᱚᱶᱟ ᱪᱟᱸᱫᱳ ᱫᱚ ᱪᱮᱫ ᱞᱮᱠᱟ?",
+            "last_month_stats": "ᱪᱟᱞᱟᱣᱮᱱ ᱪᱟᱸᱫᱳ ᱪᱮᱫ ᱜᱷᱚᱴᱟᱣ ᱟᱠᱟᱱᱟ?",
+            "public_menu_status": "ᱤᱧᱟᱹᱜ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱢᱮᱱᱩ ᱪᱮᱫ ᱱᱟᱯᱟᱭ?",
+            "profile_status": "Is my business profile complete?",
+            "feedback_reviews": "ᱡᱟᱦᱟᱱ ᱥᱟᱸᱫᱮᱥᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱵᱤᱪᱷᱚᱱᱟ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ?",
+            "feedback_recent": "What did guests say recently?",
+            "default": "ᱤᱧ ᱛᱟᱭᱚᱢᱛᱮ ᱪᱮᱫ ᱵᱤᱰᱟᱹᱣ ᱠᱚᱨᱟᱣ ᱞᱟᱹᱠᱛᱤ?"
+          }
+        },
+        "sources": {
+          "title": "ᱛᱚᱛᱚᱛᱚᱛᱚ ᱨᱮᱭᱟᱜ ᱩᱯᱨᱩᱢᱟ ᱾",
+          "menuProjects": "ᱢᱮᱱᱩ ᱯᱚᱨᱡᱚᱠᱴ ᱾",
+          "ownerAnalytics": "Owner activity",
+          "guestFeedback": "Guest feedback",
+          "storeSettings": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱮᱴᱤᱝ ᱾",
+          "menuListData": "MenuList ᱛᱚᱛᱚᱛᱚᱛᱛᱚ",
+          "updatedOn": "ᱱᱟᱦᱟᱜ ᱟᱠᱟᱱᱟ {date}",
+          "latest": "ᱱᱟᱦᱟᱜ ᱛᱚᱛᱚᱛᱚᱛᱛᱚ ᱧᱟᱢᱚᱜᱼᱟ ᱾"
+        },
+        "publicTruth": {
+          "title": "ᱥᱚᱨᱠᱟᱨᱤ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱥᱩᱡᱟᱹᱭ ᱾",
+          "checking": "ᱵᱤᱰᱟᱹᱣ ᱠᱚᱨᱟᱣ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾",
+          "checkingFacts": "ᱵᱤᱰᱟᱹᱣ ᱠᱚᱨᱟᱣ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾ MenuList ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱠᱟᱛᱷᱟ...",
+          "checkedMenu": "ᱵᱤᱰᱟᱹᱣ ᱢᱮᱱᱩଃ {name}",
+          "boundary": "Checked from current MenuList business and menu data. External platforms stay owner-confirmed.",
+          "boundaryShort": "ᱵᱟᱛᱤᱞ ᱨᱮᱭᱟᱜ ᱯᱞᱚᱴᱯᱷᱟᱨᱚᱢ ᱠᱚᱫᱚ ᱟᱡᱟᱱᱼᱥᱩᱢᱤᱛ ᱛᱟᱦᱮᱸᱱᱟ ᱾",
+          "historyTitle": "ᱦᱚᱲ ᱛᱚᱛᱚᱛᱚᱛᱛᱚ ᱱᱟᱜᱟᱢ",
+          "historyBoundary": "ᱥᱩᱢᱩᱝ MenuList ᱵᱮᱯᱟᱨ ᱟᱨ ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱛᱚᱛᱚᱛᱛᱚ ᱠᱚ ᱵᱮᱣᱦᱟᱨᱼᱟ ᱾ ᱡᱟᱦᱟᱱ ᱵᱤᱞᱟᱹᱛ ᱥᱟᱭᱤᱴ ᱥᱠᱮᱱ ᱵᱟᱝ ᱦᱩᱭᱩᱜᱼᱟ ᱾",
+          "historyBoundaryShort": "ᱥᱩᱢᱩᱝ MenuList ᱛᱚᱛᱚᱛᱛᱚ ᱾ ᱡᱟᱦᱟᱱ ᱵᱤᱞᱟᱹᱛ ᱥᱟᱭᱤᱴ ᱥᱠᱮᱱ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "refreshErrorTitle": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹᱼᱥᱳᱨᱥ ᱪᱮᱠ ᱨᱮᱯᱷᱨᱮᱥ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "refreshErrorDescription": "ᱢᱩᱪᱟᱹᱫ ᱧᱟᱢ ᱟᱠᱟᱱ MenuList ᱛᱚᱛᱚᱛᱛᱚ ᱱᱤᱛᱦᱚᱸ ᱞᱟᱛᱟᱨ ᱨᱮ ᱩᱫᱩᱜ ᱟᱠᱟᱱᱟ ᱾",
+          "historyRefreshError": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱰᱚᱜᱚᱨ ᱱᱟᱜᱟᱢ ᱫᱚ ᱨᱤᱯᱷᱮᱥ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "historyLoadError": "ᱦᱚᱲ ᱛᱚᱛᱚᱛᱚᱛᱛᱚ ᱱᱟᱜᱟᱢ ᱞᱳᱰ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "historyErrorDescription": "ᱢᱩᱪᱟᱹᱫ ᱥᱟᱧᱪᱟᱣ ᱟᱠᱟᱱ ᱰᱚᱜᱚᱨ ᱫᱚ ᱱᱤᱛᱦᱚᱸ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨ ᱦᱳᱭᱳᱜᱼᱟ ᱾",
+          "notRun": "ᱪᱟᱞᱟᱣ ᱵᱟᱝ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾",
+          "lastSaved": "ᱢᱩᱪᱟᱹᱫ ᱥᱮᱵᱷ ᱠᱚᱨᱟᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ {date} ᱾",
+          "noSavedReport": "ᱱᱤᱛᱦᱚᱸ ᱡᱟᱦᱟᱱ ᱥᱟᱧᱪᱟᱣ ᱟᱠᱟᱱ ᱰᱚᱜᱚᱨ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+          "noSavedReportDescription": "ᱱᱚᱶᱟ ᱴᱷᱟᱶ ᱞᱟᱹᱜᱤᱫ ᱯᱳᱭᱞᱳ ᱰᱚᱜᱚᱨ ᱥᱟᱧᱪᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱠ ᱫᱚ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+          "downloadEnglishReport": "ᱤᱝᱨᱮᱡᱤ ᱨᱮᱯᱳᱨᱴ ᱰᱟᱣᱩᱱᱞᱳᱰ ᱢᱮ ᱾",
+          "downloadEnglishShort": "ᱵᱨᱤᱴᱤᱥ ᱰᱚᱜᱚᱨ ᱾",
+          "runCheck": "ᱪᱮᱠ ᱪᱟᱞᱟᱣ ᱢᱮ ᱾",
+          "currentFix": "ᱱᱟᱦᱟᱜ ᱯᱷᱤᱠᱥ ᱟᱭᱴᱮᱢ ᱾",
+          "nextFixes": "ᱛᱟᱭᱚᱢ ᱫᱟᱨᱟᱢ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱵᱚᱱᱚᱫᱚᱞ ᱾",
+          "none": "ᱡᱟᱦᱟᱱ ᱵᱟᱝ ᱾",
+          "attentionCount": "{count, plural, one {# ᱟᱭᱴᱮᱢ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾} other {# ᱟᱭᱴᱮᱢ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾}}",
+          "readyModuleCount": "ᱵᱮᱱᱟᱣ {count}/{total}",
+          "missingCount": "ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ {count}",
+          "checkCount": "{count} ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+          "savedCount": "ᱥᱟᱧᱪᱟᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ {count}/{total}",
+          "modulesReady": "{count}/{total} ᱢᱳᱰᱤᱭᱩᱞ ᱠᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+          "status": {
+            "ready": {
+              "label": "ᱵᱮᱱᱟᱣ ᱾",
+              "message": "ᱟᱢᱟᱜ ᱠᱟᱹᱢᱤᱭᱟᱹ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱩᱯᱨᱩᱢᱟ ᱨᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱨᱮᱭᱟᱜ ᱢᱩᱲᱩᱫ ᱠᱚ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+            },
+            "missing_basics": {
+              "label": "ᱮᱛᱚᱦᱚᱵ ᱠᱚ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+              "message": "Menu, hours, prices, actions, or customer-link details need attention before wider sharing."
+            },
+            "unclear": {
+              "label": "ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+              "message": "ᱡᱟᱹᱥᱛᱤ ᱜᱟᱱ ᱜᱮ ᱮᱛᱚᱦᱚᱵ ᱠᱟᱛᱷᱟ ᱢᱮᱱᱟᱜᱼᱟ, ᱢᱮᱱᱠᱷᱟᱱ ᱢᱤᱫ ᱥᱮ ᱟᱨᱦᱚᱸ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱛᱚᱛᱩᱛᱚ ᱱᱤᱛᱦᱚᱸ ᱵᱤᱰᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+            }
+          },
+          "metrics": {
+            "readyModules": "ᱵᱮᱱᱟᱣ ᱢᱮᱰᱤᱣᱩᱞ ᱾",
+            "missingFacts": "ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱ ᱛᱚᱛᱩᱛᱚ ᱾",
+            "checkedMenu": "ᱵᱤᱰᱟᱹᱣ ᱢᱮᱱᱩ ᱾",
+            "savedReports": "ᱥᱟᱧᱪᱟᱣ ᱟᱠᱟᱱ ᱰᱚᱜᱚᱨ ᱾"
+          },
+          "results": {
+            "present": "ᱵᱮᱱᱟᱣ ᱾",
+            "missing": "ᱵᱟᱝ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾",
+            "unclear": "ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "not_applicable": "ᱞᱟᱹᱠᱛᱤ ᱵᱟᱝ ᱾",
+            "not_checked": "ᱵᱤᱰᱟᱹᱣ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "moduleStatus": {
+            "ready": "ᱵᱮᱱᱟᱣ ᱾",
+            "needs_attention": "ᱵᱟᱝ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾",
+            "check": "ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "not_checked": "ᱵᱤᱰᱟᱹᱣ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "facts": {
+            "business_identity": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱧᱩᱛᱩᱢ ᱾",
+            "menu_or_service_source": "ᱢᱮᱱᱩ ᱵᱟᱝᱠᱷᱟᱱ ᱥᱟᱨᱵᱷᱤᱥ ᱨᱮᱭᱟᱜ ᱥᱩᱪᱤ ᱾",
+            "prices": "ᱜᱚᱱᱚᱝ ᱾",
+            "hours": "ᱴᱟᱲᱟᱝ ᱾",
+            "location": "ᱴᱷᱟᱶ ᱾",
+            "contact": "ᱡᱳᱜᱟᱡᱳᱜ ᱢᱮ ᱾",
+            "customer_actions": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱾",
+            "public_link": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱾",
+            "photos": "ᱪᱤᱛᱟᱹᱨ ᱾",
+            "machine_readable_source": "ᱛᱚᱞᱟᱥᱼᱯᱷᱟᱹᱨᱥᱟᱹᱨᱤ ᱵᱚᱨᱱᱚᱱ ᱾"
+          },
+          "evidence": {
+            "owner_entered": "ᱱᱚᱶᱟ ᱪᱮᱠ ᱨᱮ ᱥᱮᱞᱮᱫ ᱞᱮᱱᱟ ᱾",
+            "owner_selected": "Selected by the owner.",
+            "source_text_hint": "ᱮᱢ ᱟᱠᱟᱱ ᱥᱩᱡᱟᱨᱮ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾",
+            "valid_public_url": "ᱦᱚᱲ ᱞᱤᱝᱠ ᱯᱷᱚᱨᱢᱮᱴ ᱫᱚ ᱵᱮᱼᱵᱟᱹᱛᱤᱞ ᱾",
+            "invalid_public_url": "ᱦᱚᱲ ᱠᱚ ᱞᱟᱹᱜᱤᱫ ᱞᱤᱝᱠ ᱫᱚ ᱥᱟᱨᱵᱷᱟᱨ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "menulist_store": "ᱱᱟᱦᱟᱜ MenuList ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱮᱴᱤᱝ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱟᱠᱟᱫᱟ ᱾",
+            "menulist_project": "ᱵᱟᱪᱷᱱᱟᱣ ᱥᱮ ᱰᱤᱯᱚᱞᱴ MenuList ᱢᱮᱱᱩ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "menulist_summary": "ᱱᱟᱦᱟᱜ MenuList ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱥᱚᱢᱨᱟᱥᱤ ᱵᱤᱰᱟᱹᱣ ᱟᱠᱟᱫᱟ ᱾",
+            "menulist_public_route": "ᱱᱟᱦᱟᱜ MenuList ᱠᱤᱨᱤᱧᱤᱭᱟᱹᱼᱞᱤᱝᱠ ᱥᱮᱴᱤᱝ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱟᱠᱟᱫᱟ ᱾",
+            "menulist_index_gate": "ᱱᱟᱦᱟᱜ MenuList ᱦᱚᱲᱼᱥᱟᱠᱷᱟᱲ ᱟᱹᱨᱤ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱟᱠᱟᱫᱟ ᱾",
+            "not_provided": "ᱱᱟᱦᱟᱜ MenuList ᱛᱚᱛᱚᱛᱚᱛ ᱠᱷᱚᱱ ᱱᱚᱶᱟ ᱫᱚ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+            "not_checked": "ᱱᱟᱦᱟᱜ MenuList ᱛᱚᱛᱚᱛᱚᱛ ᱠᱷᱚᱱ ᱱᱚᱶᱟ ᱠᱟᱛᱷᱟ ᱫᱚ ᱵᱟᱝ ᱥᱟᱨᱵᱷᱟᱨ ᱞᱮᱠᱟᱛᱮ ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "priceNotLoaded": "Open the selected menu once so MenuList can check its prices."
+          },
+          "moduleEvidence": {
+            "ready": "ᱱᱟᱦᱟᱜ MenuList ᱛᱚᱛᱚᱛᱛᱚ ᱩᱫᱩᱜᱟ ᱡᱮ ᱱᱚᱶᱟ ᱴᱚᱴᱷᱟ ᱫᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "needs_attention": "ᱱᱟᱦᱟᱜ MenuList ᱛᱚᱛᱚᱛᱛᱚ ᱩᱫᱩᱜᱟ ᱡᱮ, ᱞᱟᱹᱠᱛᱤ ᱛᱚᱛᱩᱛᱚ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "check": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱱᱚᱶᱟ ᱪᱮᱛᱟᱱ ᱴᱮᱦᱟᱴ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟ ᱱᱚᱶᱟ ᱴᱚᱴᱷᱟ ᱨᱮ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "not_checked": "ᱱᱟᱦᱟᱜ ᱛᱚᱛᱚᱛᱚᱛ ᱠᱷᱚᱱ MenuList ᱱᱚᱶᱟ ᱴᱚᱴᱷᱟ ᱫᱚ ᱜᱚᱴᱟ ᱞᱮᱠᱟᱛᱮ ᱵᱤᱰᱟᱹᱣ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "setupReason": {
+            "needs_attention": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱹᱠᱛᱤ ᱛᱚᱛᱩᱛᱚ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+            "check": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱱᱚᱶᱟ ᱪᱮᱛᱟᱱ ᱴᱮᱦᱟᱴ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟ ᱱᱚᱶᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "not_checked": "ᱱᱟᱦᱟᱜ ᱛᱚᱛᱚᱛᱚᱛ ᱠᱷᱚᱱ MenuList ᱱᱚᱶᱟ ᱫᱚ ᱜᱚᱴᱟ ᱞᱮᱠᱟᱛᱮ ᱵᱤᱰᱟᱹᱣ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾"
+          },
+          "targetActions": {
+            "basic_settings": "Open business details",
+            "domain_settings": "Open customer link",
+            "hours_edit": "ᱠᱷᱚᱞᱮ ᱚᱠᱛᱚ ᱾",
+            "menu_tab": "Open menu",
+            "official_page": "Open business page",
+            "presence_monitor": "Open placement check",
+            "share_tab": "Open share tools"
+          },
+          "actions": {
+            "openCustomerSource": "Open customer source",
+            "openShareTools": "Open sharing tools",
+            "fixFact": "{fact} ᱜᱚᱴᱟ ᱢᱮ ᱾"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱨᱮᱭᱟᱜ ᱢᱩᱲᱩᱫ ᱠᱚ ᱾",
+              "description": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱧᱩᱛᱩᱢ, ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱥᱮ ᱯᱚᱨᱤᱥᱮᱵᱟ ᱨᱮᱭᱟᱜ ᱩᱯᱨᱩᱢᱟ, ᱡᱳᱜᱟᱡᱳᱜ, ᱠᱟᱹᱢᱤ ᱟᱨ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱾"
+            },
+            "business_facts_copy_pack": {
+              "title": "ᱟᱨᱦᱚᱸ ᱵᱮᱣᱦᱟᱨ ᱨᱮᱭᱟᱜ ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱾",
+              "description": "Current facts staff can reuse in public profiles, replies, and customer-link handoffs."
+            },
+            "qr_link_health": {
+              "title": "QR ᱞᱤᱝᱠ ᱨᱮᱭᱟᱜ ᱥᱟᱯᱲᱟᱣ ᱾",
+              "description": "QR ᱟᱨ ᱩᱪᱷᱟᱹᱱ ᱟᱠᱟᱱ ᱴᱷᱟᱶ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫᱴᱟᱝ ᱱᱟᱦᱟᱜ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱾"
+            },
+            "social_bio_link_consistency": {
+              "title": "Profile link consistency",
+              "description": "One current customer link for social profiles and other placements."
+            },
+            "customer_link_preview": {
+              "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱨᱮᱭᱟᱜ ᱢᱟᱲᱟᱝ ᱧᱮᱞ ᱾",
+              "description": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱠᱟᱹᱢᱤ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟᱨᱮ ᱢᱩᱲᱩᱫ ᱛᱚᱛᱚᱛᱚᱛᱛᱚᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱠᱛᱤ ᱾"
+            },
+            "print_share_assets": {
+              "title": "ᱥᱟᱧᱪᱟᱣ ᱠᱚ ᱩᱪᱷᱟᱹᱱ ᱟᱨ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾",
+              "description": "ᱱᱟᱦᱟᱜᱼᱞᱤᱝᱠ ᱨᱮᱭᱟᱜ ᱥᱟᱯᱲᱟᱣ ᱾ QR ᱯᱮᱥᱴᱟᱨ, ᱠᱟᱣᱩᱱᱴᱟᱨ ᱠᱟᱨᱰ ᱟᱨ ᱪᱤᱛᱟᱹᱨ ᱠᱚ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾"
+            },
+            "menu_service_readability": {
+              "title": "ᱢᱮᱱᱩ ᱵᱟᱝᱠᱷᱟᱱ ᱥᱟᱨᱵᱷᱤᱥ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱾",
+              "description": "ᱵᱟᱪᱷᱱᱟᱣ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱨᱮ ᱦᱟᱹᱴᱤᱧ, ᱡᱤᱱᱤᱥ ᱥᱮ ᱥᱟᱨᱵᱷᱟᱨ ᱟᱨ ᱜᱚᱱᱚᱝ ᱾"
+            },
+            "price_availability_gap": {
+              "title": "ᱜᱚᱱᱚᱝ ᱟᱨ ᱧᱟᱢ ᱨᱮᱭᱟᱜ ᱥᱟᱹᱵᱩᱫ ᱾",
+              "description": "ᱜᱚᱱᱚᱝ, ᱵᱷᱮᱜᱟᱨ, ᱟᱹᱠᱷᱨᱤᱧ ᱟᱠᱟᱱ ᱯᱚᱱᱚᱛ ᱟᱨ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱴᱷᱮᱱ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨ ᱟᱠᱟᱱᱟ ᱾"
+            },
+            "menu_pdf_cleanup": {
+              "title": "ᱢᱟᱨᱮᱱ PDF ᱵᱚᱱᱚᱫᱚᱞ ᱾",
+              "description": "ᱢᱤᱫᱴᱟᱝ ᱱᱟᱦᱟᱜ MenuList ᱥᱚᱨᱟᱥ ᱟᱨ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱡᱟᱦᱟᱸ ᱢᱟᱨᱮᱱ PDF ᱠᱚ ᱵᱚᱱᱚᱫᱚᱞ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾"
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp ᱠᱟᱹᱢᱤ ᱾",
+              "description": "A clear WhatsApp or alternate customer contact action."
+            },
+            "hours_readiness": {
+              "title": "ᱴᱟᱲᱟᱝ ᱨᱮᱭᱟᱜ ᱥᱟᱯᱲᱟᱣ ᱾",
+              "description": "ᱜᱚᱴᱟ ᱚᱠᱛᱚ ᱨᱮᱭᱟᱜ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱪᱮᱛᱟᱱ ᱴᱮᱦᱟᱴ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾"
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp ᱠᱟᱛᱷᱟ ᱠᱚ ᱨᱮᱭᱟᱜ ᱩᱛᱛᱚᱨ ᱢᱮ ᱾",
+              "description": "Current menu, hours, contact, and link facts for staff replies."
+            },
+            "photo_visual_identity": {
+              "title": "ᱪᱤᱛᱟᱹᱨ ᱟᱨ ᱧᱮᱞᱟᱱ ᱪᱤᱱᱦᱟᱹ ᱾",
+              "description": "ᱢᱤᱫᱴᱟᱝ ᱞᱳᱜᱳ, ᱠᱟᱵᱷᱟᱨ, ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱪᱤᱛᱟᱹᱨ ᱥᱮ ᱟᱭᱴᱮᱢ ᱟᱨ ᱥᱟᱨᱵᱷᱤᱥ ᱵᱷᱤᱡᱩᱭᱮᱞ ᱾"
+            },
+            "customer_question_coverage": {
+              "title": "Common customer questions",
+              "description": "Clear facts for offer, hours, price, location, contact, and next action."
+            },
+            "customer_faq_reply_pack": {
+              "title": "ᱟᱨᱦᱚᱸ ᱵᱮᱣᱦᱟᱨ ᱫᱟᱲᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱛᱷᱟ ᱾",
+              "description": "Current facts staff can reuse when customers ask common questions."
+            },
+            "booking_inquiry_readiness": {
+              "title": "ᱠᱤᱨᱤᱧ ᱟᱨ ᱛᱚᱞᱟᱥ ᱨᱮᱭᱟᱜ ᱥᱟᱯᱲᱟᱣ ᱾",
+              "description": "A clear path to order, book, reserve, call, message, request a quote, or visit."
+            },
+            "google_profile_handoff": {
+              "title": "Google profile link",
+              "description": "The current customer link prepared for Google Business Profile."
+            },
+            "menu_freshness": {
+              "title": "Menu freshness",
+              "description": "ᱢᱤᱫᱴᱟᱝ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱚᱠᱛᱚ, ᱡᱚᱠᱷᱚᱱ ᱜᱚᱱᱚᱝ, ᱡᱤᱱᱤᱥ ᱥᱮ ᱧᱟᱢ ᱨᱮᱭᱟᱜ ᱵᱚᱱᱚᱫᱚᱞ ᱦᱳᱭᱳᱜᱼᱟ ᱾"
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "ᱜᱨᱟᱯᱷ ᱾",
+        "description": "ᱰᱮᱥᱵᱳᱨᱰ ᱨᱮ ᱩᱫᱩᱜ ᱟᱠᱟᱱ ᱢᱤᱫ ᱞᱮᱠᱟᱱ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱨᱮᱭᱟᱜ ᱢᱤᱫᱴᱟᱝ ᱧᱮᱞᱟᱱ ᱥᱟᱵᱟᱫ ᱾",
+        "ranges": {
+          "days7": "7 ᱢᱟᱦᱟ ᱾",
+          "days30": "30 ᱢᱟᱦᱟ ᱾"
+        },
+        "metrics": {
+          "menu_activity": "ᱢᱮᱱᱩ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱾",
+          "customer_actions": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱾",
+          "search_demand": "ᱛᱚᱞᱟᱥ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱾",
+          "item_interest": "ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱥᱩᱫ ᱾",
+          "unavailable_demand": "ᱵᱟᱝ ᱧᱟᱢ ᱟᱱ ᱞᱟᱹᱠᱛᱤ ᱾",
+          "missing_searches": "ᱛᱚᱞᱟᱥ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾"
+        },
+        "trend": {
+          "summary": "ᱴᱨᱮᱱᱰ ᱨᱮᱭᱟᱜ ᱥᱚᱢᱨᱟᱴᱤ",
+          "updatedAfterClose": "ᱟᱢᱟᱜ ᱫᱳᱠᱟᱱ ᱨᱮᱭᱟᱜ ᱫᱤᱱ ᱢᱩᱪᱟᱹᱫ ᱛᱟᱭᱚᱢ ᱛᱮ ᱚᱱᱟ ᱫᱚ ᱚᱰᱮᱯᱮᱴ ᱠᱚᱨᱟᱣ ᱦᱳᱭᱳᱜᱼᱟ ᱾",
+          "status": {
+            "up": "ᱪᱮᱛᱟᱱ ᱨᱮ ᱾",
+            "down": "ᱞᱟᱛᱟᱨ ᱨᱮ ᱾",
+            "stable": "ᱥᱴᱤᱰᱤ ᱾",
+            "not_enough_data": "ᱱᱟᱜᱟᱢ ᱵᱟᱝ ᱟᱹᱰᱤ ᱡᱟᱹᱥᱛᱤ ᱾"
+          },
+          "period": {
+            "week": "ᱦᱟᱯᱛᱟ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+            "month": "ᱪᱟᱸᱫᱳ ᱨᱮᱭᱟᱜ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "shortPeriod": {
+            "week": "ᱦᱟᱯᱛᱟ ᱾",
+            "month": "ᱪᱟᱸᱫᱳ ᱾"
+          },
+          "needsMoreDays": "ᱟᱨᱦᱚᱸ ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱫᱤᱱ ᱠᱚ ᱞᱟᱹᱠᱛᱤ ᱾",
+          "versus": "{current} vs {previous}",
+          "messages": {
+            "up": "ᱱᱚᱶᱟ {period} ᱪᱮᱠ ᱞᱟᱹᱜᱤᱫ {metric} ᱡᱟᱹᱥᱛᱤ ᱾",
+            "down": "ᱱᱚᱶᱟ {period} ᱪᱮᱠ ᱞᱟᱹᱜᱤᱫ {metric} ᱠᱚᱢ ᱾",
+            "stable": "ᱱᱚᱶᱟ {period} ᱪᱮᱠ ᱞᱟᱹᱜᱤᱫ {metric} ᱫᱚ ᱥᱴᱤᱰᱤ ᱾",
+            "not_enough_data": "ᱱᱚᱶᱟ {period} ᱪᱮᱠ ᱞᱟᱹᱜᱤᱫ ᱟᱹᱰᱤ ᱜᱟᱱ ᱥᱮᱴᱮᱞᱰ {metric} ᱱᱟᱜᱟᱢ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾"
+          },
+          "change": {
+            "gathering": "{period}: ᱡᱳᱜᱟᱡᱳᱜ ᱾",
+            "newActivity": "{period}: ᱱᱟᱶᱟ ᱠᱟᱹᱢᱤ ᱾",
+            "steady": "{period}: ᱥᱴᱤᱰᱤ ᱾",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Comparison charts",
+          "description": "ᱜᱚᱴᱟ ᱟᱠᱟᱱ ᱫᱤᱱ ᱠᱷᱚᱱ ᱦᱟᱯᱛᱟ ᱟᱨ ᱪᱟᱸᱫᱳ ᱨᱮᱭᱟᱜ ᱵᱚᱱᱚᱫᱚᱞ ᱾"
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menu trend",
+            "days7": "ᱢᱩᱪᱟᱹᱫ 7 ᱫᱤᱱ ᱠᱚ ᱜᱚᱴᱟ ᱞᱮᱫᱟ ᱾",
+            "days30": "ᱢᱩᱪᱟᱹᱫ 30 ᱫᱤᱱ ᱠᱚ ᱜᱚᱴᱟ ᱞᱮᱫᱟ ᱾"
+          },
+          "customerActions": {
+            "title": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱦᱚᱨᱟ ᱾",
+            "description": "What customers tapped after opening the menu"
+          },
+          "sources": {
+            "title": "Where customers came from",
+            "description": "ᱥᱩᱡᱚᱠ ᱞᱮᱠᱟᱛᱮ ᱢᱮᱱᱩ ᱧᱮᱞ ᱟᱨ ᱮᱠᱥᱚᱱ ᱥᱮᱥᱚᱱ ᱾"
+          },
+          "items": {
+            "title": "ᱪᱮᱛᱟᱱ ᱨᱮᱭᱟᱜ ᱡᱤᱱᱤᱥ ᱨᱮᱭᱟᱜ ᱥᱩᱫ ᱾",
+            "description": "Items customers opened or tapped most"
+          },
+          "search": {
+            "title": "ᱛᱚᱞᱟᱥ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱾",
+            "description": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱪᱮᱫ ᱛᱚᱞᱟᱥ ᱞᱮᱫᱟ ᱾"
+          },
+          "officialPage": {
+            "title": "ᱥᱚᱨᱠᱟᱨᱤ ᱯᱮᱡ ᱨᱮᱭᱟᱜ ᱴᱨᱮᱱᱰ ᱾",
+            "description": "ᱥᱚᱨᱠᱟᱨᱤ ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱯᱮᱡ ᱠᱷᱚᱱ ᱧᱮᱞ ᱟᱨ ᱠᱟᱹᱢᱤ ᱾"
+          }
+        },
+        "legends": {
+          "visits": "ᱥᱟᱸᱜᱷᱟᱨ ᱾",
+          "actionSessions": "ᱠᱟᱹᱢᱤ ᱫᱷᱚᱱ",
+          "views": "ᱧᱮᱞ ᱾",
+          "taps": "ᱡᱤᱱᱤᱥ ᱴᱮᱯᱥ",
+          "noResult": "No result"
+        },
+        "empty": {
+          "default": "ᱱᱚᱶᱟ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱱᱤᱛ ᱦᱟᱹᱵᱤᱡ ᱡᱟᱦᱟᱱ ᱜᱨᱟᱯᱷ ᱛᱚᱛᱚᱛᱚᱛᱚ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾",
+          "menuActivity": "Menu activity will appear after customers open the menu.",
+          "customerActions": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱠᱚᱞ, ᱢᱮᱱ, ᱚᱰᱟᱨ, ᱨᱤᱵᱷᱟᱨᱵᱷ ᱥᱮ ᱰᱟᱦᱟᱨ ᱵᱟᱰᱟᱭ ᱛᱟᱭᱚᱢ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱠᱚ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨᱚᱜᱼᱟ ᱾",
+          "customerActionsPeriod": "ᱱᱚᱶᱟ ᱚᱠᱛᱚ ᱨᱮ ᱱᱤᱛ ᱦᱟᱹᱵᱤᱡ ᱡᱟᱦᱟᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱟᱹᱢᱤ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "searchDemand": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱢᱮᱱᱩ ᱛᱚᱞᱟᱥ ᱵᱮᱣᱦᱟᱨ ᱛᱟᱭᱚᱢ ᱛᱚᱞᱟᱥ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱧᱮᱞ ᱧᱟᱢᱼᱟ ᱾",
+          "itemInterest": "Item interest will appear after customers open menu items.",
+          "unavailableDemand": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱡᱟᱦᱟᱸ ᱵᱟᱝ ᱧᱟᱢᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱴᱮᱯᱼᱟ ᱩᱱᱫᱚ ᱵᱟᱝ ᱧᱟᱢ ᱟᱱ ᱞᱟᱹᱠᱛᱤ ᱠᱚ ᱧᱮᱞ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+          "missingSearches": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱛᱚᱞᱟᱥ ᱠᱟᱛᱮ ᱨᱮᱦᱚᱸ ᱚᱱᱟ ᱥᱟᱶ ᱮᱴᱟᱜ ᱡᱟᱦᱟᱱ ᱡᱳᱜᱟᱡᱳᱜ ᱵᱟᱝ ᱧᱟᱢ ᱠᱷᱟᱱ, ᱩᱱᱫᱚ ᱵᱟᱝ ᱧᱟᱢ ᱟᱠᱟᱱ ᱛᱚᱞᱟᱥ ᱠᱚ ᱧᱮᱞ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+          "sources": "ᱞᱤᱝᱠ, QR, ᱵᱟᱝᱠᱷᱟᱱ ᱥᱟᱡᱟᱹᱨᱤ ᱯᱮᱡ ᱠᱷᱚᱱ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱦᱮᱡ ᱛᱟᱭᱚᱢ ᱥᱩᱡᱽ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨᱚᱜᱼᱟ ᱾",
+          "officialPage": "Official page activity will appear after customers open the public business page."
+        },
+        "footer": {
+          "sameData": "ᱢᱤᱫ ᱞᱮᱠᱟᱱ ᱰᱮᱥᱵᱳᱨᱰ ᱨᱮᱭᱟᱜ ᱛᱚᱛᱚᱛᱚᱛᱛᱚ ᱾",
+          "noExtraTracking": "ᱡᱟᱦᱟᱱ ᱡᱟᱹᱥᱛᱤ ᱴᱨᱟᱠᱤᱝ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+          "settledAfterClose": "ᱫᱳᱠᱟᱱ ᱨᱮᱭᱟᱜ ᱫᱤᱱ ᱢᱩᱪᱟᱹᱫ ᱛᱟᱭᱚᱢ ᱛᱷᱟᱯᱚᱱ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾"
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "ᱢᱮᱱᱩ ᱾",
+          "viewsLabel": "ᱢᱮᱱᱩ ᱧᱮᱞ ᱠᱚ",
+          "viewsTooltip": "Number of times customers opened your menu",
+          "thisMonthLabel": "ᱱᱚᱶᱟ ᱪᱟᱸᱫᱚ ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱾"
+        },
+        "product": {
+          "singular": "ᱠᱟᱴᱟᱞᱳᱜ ᱾",
+          "viewsLabel": "ᱠᱟᱴᱟᱞᱚᱜ ᱧᱮᱞ ᱾",
+          "viewsTooltip": "Number of times customers opened your catalog",
+          "thisMonthLabel": "Your catalog this month"
+        },
+        "service": {
+          "singular": "ᱥᱟᱨᱵᱷᱤᱥ ᱨᱮᱭᱟᱜ ᱛᱟᱹᱞᱤᱠᱟ ᱾",
+          "viewsLabel": "ᱥᱟᱨᱵᱷᱤᱥᱼᱞᱤᱥᱴ ᱧᱮᱞ ᱾",
+          "viewsTooltip": "Number of times customers opened your service list",
+          "thisMonthLabel": "ᱱᱚᱶᱟ ᱪᱟᱸᱫᱳ ᱨᱮ ᱟᱢᱟᱜ ᱥᱟᱨᱵᱷᱤᱥ ᱨᱮᱭᱟᱜ ᱥᱩᱪᱤ ᱾"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "ᱫᱷᱭᱟᱱ ᱞᱟᱹᱠᱛᱤᱜ ᱠᱟᱱᱟ",
+          "active": "ᱥᱚᱨᱠᱟᱨᱤ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱥᱩᱡᱽ ᱫᱚ ᱠᱟᱹᱢᱤ ᱟᱱᱟᱜ ᱾",
+          "readyToPlace": "ᱥᱚᱨᱠᱟᱨᱤ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱥᱩᱡᱽ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ ᱮ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾"
+        },
+        "description": {
+          "needsAttention": "ᱢᱮᱱᱩ, ᱴᱟᱲᱟᱝ ᱥᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱫᱚ ᱟᱭᱢᱟ ᱦᱟᱹᱴᱤᱧ ᱠᱚᱨᱟᱣ ᱞᱟᱦᱟᱨᱮ ᱚᱱᱟ ᱜᱚᱴᱟ ᱢᱮ ᱾",
+          "active": "ᱡᱟᱦᱟᱱ ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱝ ᱾ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱢᱤᱫᱴᱟᱝ ᱩᱯᱨᱩᱢᱟ ᱠᱷᱚᱱ ᱟᱢᱟᱜ ᱱᱟᱦᱟᱜ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱵᱮᱣᱦᱟᱨ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾",
+          "readyToPlace": "ᱟᱢᱟᱜ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱫᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾ ᱱᱚᱶᱟ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾ Google, Instagram, WhatsApp, QR, ᱵᱟᱝᱠᱷᱟᱱ ᱯᱨᱤᱱᱴ ᱢᱮ ᱡᱟᱦᱟᱸᱛᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱱᱟᱦᱟᱜ ᱥᱚᱨᱟᱥ ᱵᱮᱣᱦᱟᱨᱼᱟ ᱾"
+        },
+        "link": {
+          "ready": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+          "missing": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱵᱟᱝ ᱧᱟᱢᱚᱜᱼᱟ ᱾"
+        },
+        "states": {
+          "set": "ᱥᱮᱴ ᱢᱮ ᱾",
+          "missing": "ᱵᱟᱝ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾",
+          "ready": "ᱵᱮᱱᱟᱣ ᱾",
+          "notReady": "ᱵᱮᱱᱟᱣ ᱵᱟᱝ ᱾",
+          "live": "ᱡᱩᱭᱟᱹᱱ ᱢᱮ ᱾",
+          "hidden": "ᱤᱱᱮᱠᱴᱤᱵᱷ"
+        },
+        "tags": {
+          "menu": "ᱢᱮᱱᱩଃ {status}",
+          "hours": "ᱴᱟᱲᱟᱝଃ {status}",
+          "customerLink": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠଃ {status}",
+          "link": "ᱞᱤᱝᱠଃ {status}",
+          "placed": "ᱛᱷᱟᱯᱚᱱଃ {count}/{total}"
+        },
+        "actions": {
+          "fix": "ᱡᱟᱦᱟᱸ ᱪᱮᱛᱟᱱ ᱢᱚᱱᱮ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱚᱱᱟ ᱜᱚᱴᱟ ᱢᱮ ᱾",
+          "preview": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱢᱮᱱᱩ ᱢᱟᱲᱟᱝ ᱧᱮᱞ ᱢᱮ ᱾",
+          "share": "ᱢᱮᱱᱩ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾"
+        },
+        "updated": {
+          "notUpdated": "Not updated yet",
+          "recently": "ᱱᱟᱦᱟᱜ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱟᱠᱟᱱ ᱾",
+          "today": "ᱛᱮᱦᱮᱧ ᱟᱯᱰᱮᱴ ᱦᱩᱭ ᱟᱠᱟᱱᱟ",
+          "yesterday": "ᱪᱟᱞᱟᱣᱮᱱ ᱫᱤᱱ ᱨᱮ ᱢᱩᱪᱟᱹᱫ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "daysAgo": "ᱦᱩᱭ ᱟᱠᱟᱱᱟ {count, plural, one {# ᱫᱤᱱ ᱞᱟᱦᱟ} other {# ᱫᱤᱱ ᱞᱟᱦᱟ}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Next owner action",
+        "open": "ᱡᱷᱤᱡᱽ",
+        "placement": {
+          "notConfirmed": "ᱱᱤᱛᱦᱚᱸ ᱥᱟᱹᱵᱩᱫ ᱵᱟᱝ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "today": "ᱛᱮᱦᱮᱧ ᱥᱟᱹᱵᱩᱫ ᱟᱠᱟᱱᱟ ᱾",
+          "yesterday": "ᱪᱟᱞᱟᱣᱮᱱ ᱫᱤᱱ ᱨᱮ ᱜᱚᱴᱟ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+          "daysAgo": "ᱥᱟᱹᱵᱩᱫ ᱟᱠᱟᱱᱟ {count, plural, one {# ᱫᱤᱱ ᱞᱟᱦᱟ} other {# ᱫᱤᱱ ᱞᱟᱦᱟ}}"
+        },
+        "status": {
+          "ready": "ᱵᱮᱱᱟᱣ ᱾",
+          "missing": "ᱵᱟᱝ ᱧᱮᱞ ᱟᱠᱟᱱᱟ ᱾",
+          "set": "ᱥᱮᱴ ᱢᱮ ᱾",
+          "live": "ᱡᱩᱭᱟᱹᱱ ᱢᱮ ᱾",
+          "notLive": "ᱡᱩᱭᱟᱹᱱ ᱵᱟᱝ ᱾",
+          "confirmedCount": "{count}/{total} ᱥᱟᱹᱵᱩᱫ ᱟᱠᱟᱱᱟ ᱾",
+          "on": "ᱪᱮᱛᱟᱱ",
+          "off": "ᱵᱚᱱᱫᱚ",
+          "dailyChanges": "ᱫᱤᱱ ᱨᱮᱭᱟᱜ ᱵᱚᱱᱚᱫᱚᱞ ᱾",
+          "hoursException": "ᱴᱟᱲᱟᱝ ᱵᱮᱶᱦᱟᱨ ᱾",
+          "staffUse": "ᱠᱟᱹᱢᱤᱭᱟᱹ ᱠᱚ ᱵᱮᱣᱦᱟᱨ ᱾",
+          "menuPrices": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱜᱚᱱᱚᱝ ᱾",
+          "openCount": "{count, plural, one {# ᱮᱠᱥᱚᱱ ᱫᱚ ᱮᱦᱚᱵ ᱟᱠᱟᱱᱟ ᱾} other {# ᱠᱟᱹᱢᱤ ᱠᱚ ᱮᱦᱚᱵ ᱟᱠᱟᱱᱟ ᱾}}",
+          "stable": "ᱫᱷᱤᱨᱛᱟ"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱥᱮᱴ ᱢᱮ ᱾",
+            "description": "Create the customer link before sharing QR, staff replies, or public profiles."
+          },
+          "setHours": {
+            "label": "ᱴᱟᱲᱟᱝ ᱠᱚ ᱥᱮᱴ ᱢᱮ ᱾",
+            "description": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱥᱮᱱ ᱢᱟᱲᱟᱝ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱪᱷᱟᱹᱲ ᱟᱨ ᱵᱚᱱᱚᱫᱚᱞ ᱨᱮᱭᱟᱜ ᱴᱷᱟᱶ ᱫᱚ ᱪᱮᱨᱟᱭ ᱫᱚᱦᱚ ᱢᱮ ᱾"
+          },
+          "publishMenu": {
+            "labelPublish": "ᱢᱮᱱᱩ ᱩᱪᱷᱟᱹᱱ ᱢᱮ ᱾",
+            "labelOpen": "Open menu",
+            "descriptionVisible": "ᱯᱟᱥᱱᱟᱣ ᱦᱟᱹᱴᱤᱧ ᱢᱟᱲᱟᱝ ᱱᱟᱦᱟᱜ ᱢᱮᱱᱩ ᱩᱪᱷᱟᱹᱱ ᱢᱮ ᱾",
+            "descriptionHidden": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱞᱤᱝᱠ ᱵᱮᱣᱦᱟᱨ ᱢᱟᱲᱟᱝ ᱨᱮ ᱢᱮᱱᱩ ᱫᱚ ᱧᱮᱞ ᱢᱮ ᱾"
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "ᱞᱤᱝᱠ ᱨᱮᱭᱟᱜ ᱴᱷᱟᱶ ᱜᱚᱴᱟ ᱢᱮ ᱾",
+            "labelPlace": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱞᱤᱝᱠ ᱫᱚᱦᱚ ᱢᱮ ᱾",
+            "descriptionPlaced": "Google, Instagram ᱟᱨ WhatsApp ᱢᱤᱫ ᱜᱮ ᱥᱩᱡᱟᱨᱮ ᱩᱫᱩᱜ ᱥᱚᱫᱚᱨ ᱢᱮ ᱾",
+            "descriptionUnplaced": "ᱚᱱᱟ ᱜᱮ ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱞᱤᱝᱠ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾ Google, Instagram, WhatsApp, QRᱟᱨ ᱯᱨᱤᱱᱴ ᱢᱮ ᱾"
+          },
+          "openPrivateFeedback": {
+            "label": "Open private feedback",
+            "description": "Use private feedback before guest issues turn into public reviews."
+          },
+          "captureDailyChange": {
+            "label": "ᱪᱮᱫ ᱵᱚᱱᱚᱫᱚᱞ ᱟᱠᱟᱱᱟ ᱞᱟᱹᱭ ᱢᱮ MenuList ᱾",
+            "description": "ᱞᱟᱹᱭ ᱢᱮ ᱾ MenuList ᱛᱮᱦᱮᱧ ᱪᱮᱫ ᱵᱚᱱᱚᱫᱚᱞ ᱟᱠᱟᱱᱟ ᱟᱨ ᱵᱮᱱᱟᱣ ᱢᱮᱱᱩ ᱠᱟᱨᱰ ᱫᱚ ᱥᱤᱜᱤᱞ ᱢᱮ ᱾"
+          },
+          "setTodayStatus": {
+            "label": "ᱛᱮᱦᱮᱧ ᱨᱮᱭᱟᱜ ᱴᱷᱟᱶ ᱥᱮᱴ ᱢᱮ ᱾",
+            "description": "Set closed today, opening late, kitchen closed, or a special-menu notice."
+          },
+          "prepareStaffHandoff": {
+            "label": "ᱠᱟᱹᱢᱤᱭᱟᱹ ᱠᱚᱣᱟᱜ ᱦᱮᱱᱰ ᱚᱯᱷ ᱵᱮᱱᱟᱣ ᱢᱮ ᱾",
+            "description": "Give staff the menu link, QR, and customer reply lines from one place."
+          },
+          "updatePrices": {
+            "label": "ᱜᱚᱱᱚᱝ ᱠᱚ ᱢᱩᱪᱟᱹᱫ ᱢᱮ ᱾",
+            "description": "Use Menu Manager for price changes, then approve before publishing."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "ᱢᱮᱱᱩ ᱥᱮᱴᱼᱯ ᱾",
+        "complete": "ᱢᱮᱱᱩ ᱥᱮᱴᱯᱯ ᱢᱩᱪᱟᱹᱫ ᱟᱠᱟᱱᱟ ᱾",
+        "ready": "ᱢᱮᱱᱩ ᱥᱮᱴᱯ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+        "actions": {
+          "openMenu": "Open menu",
+          "createMenu": "ᱢᱮᱱᱩ ᱵᱮᱱᱟᱣ ᱢᱮ ᱾",
+          "reviewDetails": "ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+          "publishMenu": "ᱢᱮᱱᱩ ᱩᱪᱷᱟᱹᱱ ᱢᱮ ᱾",
+          "openSharingTools": "Open sharing tools",
+          "prepareDescriptions": "ᱵᱚᱨᱱᱚᱱ ᱵᱮᱱᱟᱣ ᱢᱮ ᱾",
+          "addImages": "ᱪᱤᱛᱟᱹᱨ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾",
+          "reviewLanguageText": "ᱯᱟᱹᱨᱥᱤ ᱨᱮᱭᱟᱜ ᱚᱞ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾",
+          "openMenuCheck": "Open menu check",
+          "updatePublicLinks": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱞᱤᱝᱠ ᱠᱚ ᱢᱩᱪᱟᱹᱫ ᱢᱮ ᱾",
+          "addPublicPhoto": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱪᱤᱛᱟᱹᱨ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "ᱥᱩᱡᱳᱜ ᱥᱮᱞᱮᱫ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱥᱩᱡ ᱫᱚ ᱥᱮᱞᱮᱫ ᱟᱠᱟᱱᱟ ᱾",
+            "nextDescription": "Add a menu photo, PDF, link, or start manually."
+          },
+          "menuImported": {
+            "label": "Menu imported",
+            "doneDescription": "{count, plural, one {# ᱧᱮᱞ ᱧᱟᱢ ᱟᱭᱴᱮᱢ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾} other {# ᱧᱮᱞ ᱧᱟᱢ ᱟᱭᱴᱮᱢ ᱠᱚ ᱧᱟᱢ ᱟᱠᱟᱱᱟ ᱾}}",
+            "nextDescription": "ᱢᱮᱱᱩ ᱟᱭᱴᱮᱢ ᱠᱚ ᱮᱢᱯᱳᱨᱴ ᱢᱮ ᱥᱮ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾"
+          },
+          "keyDetailsChecked": {
+            "label": "ᱢᱩᱲᱩᱫ ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱞᱮᱫᱟ ᱾",
+            "doneDescription": "ᱜᱚᱱᱚᱝ ᱟᱨ ᱢᱩᱲᱩᱫ ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱵᱚᱨᱱᱚᱱ ᱫᱚ ᱜᱚᱴᱟᱼᱵᱩᱴᱟᱹ ᱾",
+            "nextDescription": "ᱩᱪᱷᱟᱹᱱ ᱢᱟᱲᱟᱝ ᱜᱚᱱᱚᱝ ᱟᱨ ᱢᱩᱲᱩᱫ ᱵᱚᱨᱱᱚᱱ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "menuPublished": {
+            "label": "ᱩᱪᱷᱟᱹᱱ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱾",
+            "doneDescription": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱢᱮᱱᱩ ᱩᱪᱷᱟᱹᱱ ᱟᱠᱟᱱᱟ ᱾",
+            "nextDescription": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱞᱟᱹᱜᱤᱫ ᱢᱮᱱᱩ ᱫᱚ ᱡᱚᱠᱷᱚᱱ ᱵᱮᱱᱟᱣ ᱦᱳᱭᱳᱜᱼᱟ ᱩᱱᱫᱚ ᱩᱪᱷᱟᱹᱱ ᱢᱮ ᱾"
+          },
+          "linkPlaced": {
+            "label": "ᱞᱤᱝᱠ ᱫᱚᱦᱚ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "readyLabel": "ᱞᱤᱝᱠ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱠᱤᱨᱤᱧᱤᱭᱟᱹ ᱠᱚ ᱞᱟᱹᱜᱤᱫ ᱚᱯᱷᱤᱥᱮᱞ ᱞᱤᱝᱠ ᱫᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "progressDescription": "{total} ᱛᱷᱟᱯᱚᱱ ᱠᱟᱹᱢᱤ ᱨᱮᱭᱟᱜ {count} ᱠᱚᱨᱟᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "nextDescription": "Open the sharing tools when the menu is published."
+          },
+          "descriptionsReady": {
+            "label": "ᱵᱚᱨᱱᱚᱱ ᱠᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱧᱮᱞ ᱧᱟᱢ ᱟᱭᱴᱮᱢ ᱠᱚ ᱵᱚᱨᱱᱚᱱ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "nextDescription": "ᱢᱮᱱᱩ ᱨᱮᱭᱟᱜ ᱵᱷᱮᱜᱟᱨ ᱟᱭᱴᱮᱢ ᱞᱟᱹᱜᱤᱫ ᱵᱚᱨᱱᱚᱱ ᱵᱮᱱᱟᱣ ᱢᱮ ᱾"
+          },
+          "imagesReady": {
+            "label": "ᱪᱤᱛᱟᱹᱨ ᱠᱚ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱧᱮᱞ ᱧᱟᱢ ᱟᱭᱴᱮᱢ ᱠᱚ ᱪᱤᱛᱟᱹᱨ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
+            "nextDescription": "ᱡᱟᱦᱟᱸ ᱚᱠᱛᱚ ᱵᱮᱣᱦᱟᱨ ᱦᱩᱭᱩᱜᱼᱟ ᱩᱱ ᱚᱠᱛᱚ ᱟᱭᱴᱮᱢ ᱪᱤᱛᱟᱹᱨ ᱥᱮᱞᱮᱫ ᱢᱮ ᱥᱮ ᱵᱮᱱᱟᱣ ᱢᱮ ᱾"
+          },
+          "translationsReady": {
+            "label": "Translations ready",
+            "doneDescription": "ᱵᱟᱪᱷᱱᱟᱣ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱯᱟᱹᱨᱥᱤ ᱠᱚ ᱢᱩᱪᱟᱹᱫ ᱟᱠᱟᱱᱟ ᱾",
+            "nextDescription": "ᱵᱟᱪᱷᱱᱟᱣ ᱟᱠᱟᱱ ᱢᱮᱱᱩ ᱯᱟᱹᱨᱥᱤᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱢᱮ ᱾"
+          },
+          "publicLinksAdded": {
+            "label": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱞᱤᱝᱠ ᱥᱮᱞᱮᱫ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱠᱟᱹᱢᱤ ᱥᱮ ᱥᱟᱶᱛᱟ ᱨᱮᱭᱟᱜ ᱡᱳᱜᱟᱡᱳᱜ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+            "nextDescription": "ᱵᱮᱯᱟᱨ ᱨᱮᱭᱟᱜ ᱯᱮᱡ ᱞᱟᱹᱜᱤᱫ ᱵᱮᱣᱦᱟᱨᱟᱱ ᱦᱚᱲ ᱠᱚ ᱞᱟᱹᱜᱤᱫ ᱞᱤᱝᱠ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾"
+          },
+          "publicPhotoAdded": {
+            "label": "ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱪᱤᱛᱟᱹᱨ ᱥᱮᱞᱮᱫ ᱦᱩᱭ ᱟᱠᱟᱱᱟ ᱾",
+            "doneDescription": "ᱢᱤᱫᱴᱟᱝ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱪᱤᱛᱟᱹᱨ ᱧᱟᱢᱚᱜᱼᱟ ᱾",
+            "nextDescription": "ᱵᱮᱱᱟᱣ ᱚᱠᱛᱚ ᱢᱤᱫᱴᱟᱝ ᱠᱟᱵᱷᱟᱨ, ᱞᱳᱜᱳ ᱥᱮ ᱦᱚᱲ ᱠᱚᱣᱟᱜ ᱪᱤᱛᱟᱹᱨ ᱥᱮᱞᱮᱫ ᱢᱮ ᱾"
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "ᱱᱤᱛᱦᱚᱸ ᱵᱤᱞᱤᱝ ᱨᱮᱭᱟᱜ ᱱᱟᱜᱟᱢ ᱵᱟᱝ ᱢᱮᱱᱟᱜᱼᱟ ᱾",
     "perMonth": "/ ᱪᱟᱸᱫᱚ ᱾",
     "contactUs": "ᱟᱢ ᱥᱟᱶ ᱡᱳᱜᱟᱡᱳᱜ ᱢᱮ ᱾"
+  },
+  "StarterActivation": {
+    "activeTitle": "ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱚᱱᱞᱟᱭᱤᱱ ᱢᱮᱱᱟᱜᱼᱟ",
+    "endingSoonTitle": "ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱚᱱᱞᱟᱭᱤᱱ ᱫᱚᱦᱚᱭ ᱢᱮ",
+    "publicMenuQrActive": "ᱟᱢᱟᱜ ᱯᱟᱵᱷᱤᱠ ᱢᱮᱱᱩ ᱟᱨ QR ᱠᱚᱰ ᱮᱠᱴᱤᱵᱷ ᱜᱮᱭᱟ ᱾",
+    "activeRemaining": "ᱟᱢᱟᱜ ᱢᱮᱱᱭᱩ ᱮᱠᱥᱮᱥ ᱮᱠᱴᱤᱵᱷ ᱜᱮᱭᱟ ᱾",
+    "daysRemaining": "{days, plural, one {ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱚᱱᱞᱟᱭᱤᱱ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ # ᱫᱤᱱ ᱨᱮ ᱢᱤᱫ ᱯᱞᱟᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ᱾} other {ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱚᱱᱞᱟᱭᱤᱱ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ # ᱫᱤᱱ ᱵᱷᱤᱛᱨᱤ ᱨᱮ ᱢᱤᱫ ᱯᱞᱟᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ᱾}}",
+    "sharingComplete": "ᱟᱢᱟᱜ ᱦᱟᱹᱴᱤᱧ ᱥᱮᱴᱟᱯ ᱫᱚ ᱯᱩᱨᱟᱹᱣ ᱮᱱᱟ ᱾",
+    "sharingProgress": "{count, number} ᱨᱮᱭᱟᱜ {target, number} ᱦᱟᱹᱴᱤᱧ ᱫᱷᱟᱯ ᱯᱩᱨᱟᱹᱣ ᱮᱱᱟ᱾",
+    "evidenceRecorded": "ᱟᱡ ᱛᱮ ᱨᱮᱠᱚᱨᱰ ᱦᱩᱭᱮᱱᱟ: {systemCount, number}᱾ ᱟᱢ ᱦᱚᱛᱮᱛᱮ ᱴᱷᱟᱹᱣᱠᱟᱹ ᱟᱠᱟᱱᱟ: {ownerCount, number}᱾",
+    "evidenceEmpty": "ᱢᱮᱱᱩ ᱞᱤᱝᱠ ᱠᱚᱯᱤ ᱢᱮ ᱵᱟᱝᱠᱷᱟᱱ ᱦᱟᱹᱴᱤᱧ ᱢᱮ, ᱱᱚᱣᱟ ᱨᱮᱭᱟᱜ QR ᱠᱚᱰ ᱰᱟᱩᱱᱞᱳᱰ ᱢᱮ, ᱵᱟᱝᱠᱷᱟᱱ ᱴᱷᱟᱹᱣᱠᱟᱹ ᱢᱮ ᱚᱠᱟᱨᱮ ᱟᱢ ᱱᱚᱣᱟᱢ ᱫᱚᱦᱚ ᱟᱠᱟᱫᱟ᱾",
+    "keepLiveAction": "ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱚᱱᱞᱟᱭᱤᱱ ᱫᱚᱦᱚᱭ ᱢᱮ",
+    "noSubscriptionDescription": "ᱢᱮᱱᱩ ᱟᱯᱰᱮᱴ ᱟᱨ ᱜᱚᱨᱟᱦᱟᱠ ᱥᱟᱦᱴᱟ ᱧᱟᱢᱚᱜ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫ ᱯᱚᱱᱛᱷᱟ ᱵᱟᱪᱷᱟᱣ ᱢᱮ ᱾",
+    "choosePlanDescription": "ᱟᱢᱟᱜ ᱢᱮᱱᱩ ᱥᱟᱧᱪᱟᱣ ᱮᱱᱟ ᱾ ᱱᱚᱣᱟ ᱚᱱᱞᱟᱭᱤᱱ ᱟᱨ ᱟᱯ ᱴᱩ ᱰᱮᱴ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫ ᱯᱞᱟᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ ᱾"
   },
   "Transactions": {
     "title": "ᱵᱚᱱᱚᱫᱚᱞ ᱨᱮᱭᱟᱜ ᱱᱟᱜᱟᱢ ᱾",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "ᱢᱳᱵᱟᱭᱤᱞ ᱮᱯ ᱾",
     "subscribeTitle": "ᱮᱛᱚᱦᱚᱵ ᱞᱟᱹᱜᱤᱫ سبسᱠᱨᱟᱭᱵ ᱢᱮ ᱾",
     "subscribeDescription": "ᱟᱢᱟᱜ ڊجیٽل ᱢᱮᱱᱩ ᱵᱮᱱᱟᱣ ᱟᱨ ᱟᱢᱟᱜ ᱵᱮᱯᱟᱨ ᱪᱟᱪᱟᱞᱟᱣ ᱮᱦᱚᱵ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫᱴᱟᱝ ᱩᱭᱦᱟᱹᱨ ᱦᱚᱨᱟ ᱵᱟᱪᱷᱱᱟᱣ ᱢᱮ ᱾",
-    "viewPlans": "ᱯᱚᱨᱤᱠᱚᱞ ᱧᱮᱞ ᱢᱮ ᱾"
+    "viewPlans": "ᱯᱚᱨᱤᱠᱚᱞ ᱧᱮᱞ ᱢᱮ ᱾",
+    "returnToMobile": "ᱟᱢ ᱰᱮᱥᱠᱴᱚᱯ ᱵᱷᱟᱨᱥᱚᱱ ᱧᱮᱞ ᱠᱟᱱᱟᱢ ᱾ ᱢᱚᱵᱟᱭᱤᱞ ᱨᱮ ᱨᱩᱣᱟᱹᱲ ᱢᱮ ᱾"
   },
   "UseMenuList": {
     "qrSectionTitle": "QR ᱠᱳᱰ ᱠᱚ",

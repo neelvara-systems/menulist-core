@@ -25,6 +25,8 @@ It can include:
 2. Check whether anything says Needs input or Needs review.
 3. Check Pack readiness. It measures completeness and safety, not predicted performance.
 4. Select Download campaign pack ZIP.
+
+When private cloud retention is available, **Save cloud copy** stores the current ZIP and **Download saved copy** retrieves it later. Replacing it updates the current copy; it does not create an unlimited version history or post the campaign anywhere.
 5. Open the folder for the channel you want to use.
 6. Copy the text into the channel you control.
 7. Download or export visual files from the editor when a rendered file is needed.

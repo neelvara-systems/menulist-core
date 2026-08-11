@@ -7,10 +7,10 @@
  * unless the key/project design is intentionally separated.
  * 
  * Key Discovery:
- * - GEMINI_AI_KEY (required, primary)
- * - GEMINI_AI_KEY_2 (optional)
- * - GEMINI_AI_KEY_3 (optional)
- * - GEMINI_AI_KEY_4 (optional)
+ * - MENULIST_GEMINI_AI_KEY (required, primary)
+ * - MENULIST_GEMINI_AI_KEY_2 (optional)
+ * - MENULIST_GEMINI_AI_KEY_3 (optional)
+ * - MENULIST_GEMINI_AI_KEY_4 (optional)
  * 
  * @see __docs__/ai-system-layer/README.md
  */
@@ -66,10 +66,10 @@ const MAX_COOLDOWN_MS = 5 * 60_000;
 export type GeminiKeyEnvVarCandidates = readonly (readonly string[])[];
 
 const KEY_ENV_VAR_CANDIDATES: GeminiKeyEnvVarCandidates = [
-    ['GEMINI_AI_KEY', 'GEMINI_API_KEY'],
-    ['GEMINI_AI_KEY_2'],
-    ['GEMINI_AI_KEY_3'],
-    ['GEMINI_AI_KEY_4'],
+    ['MENULIST_GEMINI_AI_KEY', 'GEMINI_AI_KEY', 'GEMINI_API_KEY'],
+    ['MENULIST_GEMINI_AI_KEY_2', 'GEMINI_AI_KEY_2'],
+    ['MENULIST_GEMINI_AI_KEY_3', 'GEMINI_AI_KEY_3'],
+    ['MENULIST_GEMINI_AI_KEY_4', 'GEMINI_AI_KEY_4'],
 ] as const;
 
 const getKeyManagerSlotContext = (slotIndex: number, candidateEnvVarCount = 1) => ({

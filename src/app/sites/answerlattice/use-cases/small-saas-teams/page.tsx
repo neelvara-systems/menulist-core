@@ -26,7 +26,7 @@ export default async function SmallSaasTeamsUseCasePage() {
             canonicalPath="/use-cases/small-saas-teams"
             eyebrow="For small SaaS teams"
             title="Handle early support before it becomes a team problem."
-            description="AnswerLattice gives small SaaS teams one support layer for in-app help, hosted docs, FAQs, changelog, ticket fallback, feedback review, approved answers, and weekly support gaps."
+            description="AnswerLattice gives small SaaS teams one support layer for in-app help, hosted docs, FAQs, changelog, ticket fallback, feedback review, approved answers, and visible support gaps."
             problem="Small SaaS teams usually split support across docs, tickets, release notes, Slack notes, and founder memory. Users still ask the same onboarding, billing, settings, and error questions while the team is trying to ship."
             question="Where should users go when the docs are incomplete?"
             genericAnswer="Add more help articles and ask users to contact support when they are stuck."
@@ -34,10 +34,10 @@ export default async function SmallSaasTeamsUseCasePage() {
             ownerReview="The team can improve support without turning every ticket into a one-off reply. Repeated gaps, stale answers, low-rated responses, and support-heavy pages stay visible until a human approves the next official answer."
             setupSteps={[
                 'Start with the same bounded founder path: one workspace, priority questions, trusted sources, and a verified widget.',
-                'Invite only the teammates who regularly respond, review support truth, or maintain product context.',
+                'Invite only the teammates who regularly respond, review official support, or maintain product context.',
                 'Map the pages where users get stuck: onboarding, billing, settings, integrations, and errors.',
                 'Add workflow notifications or selected Support Board work only when shared ownership requires them.',
-                'Review support gaps and release impact weekly before changes become official answers.',
+                'Review support gaps and release impact before changes become official answers.',
             ]}
             primaryCta="Create workspace"
             secondaryCta="See 60-sec demo"

@@ -2,29 +2,14 @@ import { Button, Card, Skeleton, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useContext } from 'react';
 import { LuActivity, LuArrowRight } from 'react-icons/lu';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
-import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
-import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
-import {
-  getOwnerBusinessCheckActionLabel,
-  getOwnerBusinessCheckOwnerMessage,
-} from '@lib/ownerBusinessAssistant/businessSignals';
+import { getOwnerBusinessHealthDashboardPresentation } from '@lib/ownerBusinessAssistant/dashboardPresentation';
 import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Paragraph, Text, Title } = Typography;
-
-const getDashboardFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
-  const feedback = current.feedbackSummary;
-  if (!feedback) return null;
-  const needsAttention = feedback.periods.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
-  if (needsAttention > 0) {
-    return `${needsAttention} private feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking before guests leave public reviews`;
-  }
-  const total = feedback.periods.last30Days?.totalCount ?? feedback.sampledCount;
-  return total > 0 ? 'Private feedback is clear' : null;
-};
 
 export function BusinessHealthDashboardCard({ current: providedCurrent, isLoading: providedIsLoading, projectId, storeScopeKey }: {
   current?: OwnerBusinessHealthCurrentDoc | null;
@@ -33,6 +18,8 @@ export function BusinessHealthDashboardCard({ current: providedCurrent, isLoadin
   storeScopeKey?: string | number;
 }) {
   const router = useRouter();
+  const formatter = useFormatter();
+  const t = useTranslations('Dashboard.owner');
   const { storeDetails } = useContext(PlatformGlobalDataContext);
   const usesProvidedCurrent = providedCurrent !== undefined || providedIsLoading !== undefined;
   const fallback = useOwnerBusinessHealthCurrent(undefined, storeScopeKey || storeDetails?.storeId, { enabled: !usesProvidedCurrent });
@@ -45,9 +32,7 @@ export function BusinessHealthDashboardCard({ current: providedCurrent, isLoadin
   }
 
   if (!current) return null;
-  const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
-  const feedbackLine = getDashboardFeedbackLine(current);
-  const firstSignal = current.suggestedChecks?.[0];
+  const presentation = getOwnerBusinessHealthDashboardPresentation(current, formatter, t);
 
   return (
     <Card className={styles.dashboardCard}>
@@ -55,21 +40,21 @@ export function BusinessHealthDashboardCard({ current: providedCurrent, isLoadin
         <Space align="start" size={12}>
           <span className={styles.statusIcon}><LuActivity size={22} /></span>
           <div>
-            <Text type="secondary">Business Health · {OWNER_BUSINESS_HEALTH_STATUS_LABELS[current.status]}</Text>
-            <Title level={4} style={{ margin: '4px 0' }}>{current.summary.headline}</Title>
-            <Paragraph style={{ margin: 0 }}>{current.summary.ownerMessage}</Paragraph>
-            {firstSignal ? (
+            <Text type="secondary">{presentation.title} · {presentation.statusLabel}</Text>
+            <Title level={4} style={{ margin: '4px 0' }}>{presentation.headline}</Title>
+            <Paragraph style={{ margin: 0 }}>{presentation.message}</Paragraph>
+            {presentation.firstSignal ? (
               <div className={styles.dashboardInlineSignal}>
-                <Text strong>{getOwnerBusinessCheckActionLabel(firstSignal)}</Text>
-                <Text>{getOwnerBusinessCheckOwnerMessage(firstSignal)}</Text>
+                <Text strong>{presentation.firstSignal.action}</Text>
+                <Text>{presentation.firstSignal.message}</Text>
               </div>
             ) : null}
-            {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
-            {freshnessNote ? <Text type="secondary">{freshnessNote}</Text> : null}
+            {presentation.feedbackLine ? <Text type="secondary">{presentation.feedbackLine}</Text> : null}
+            <Text type="secondary">{presentation.freshnessNote}</Text>
           </div>
         </Space>
         <Button icon={<LuArrowRight />} onClick={() => router.push(healthHref)}>
-          Open Business Health
+          {t('businessHealth.open')}
         </Button>
       </Space>
     </Card>

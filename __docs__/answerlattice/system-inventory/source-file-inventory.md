@@ -1,6 +1,6 @@
 # Answerlattice Source File Inventory
 
-> **Status:** Current as of 2026-07-20
+> **Status:** Current as of 2026-08-11
 > **Purpose:** Record the Answerlattice source/doc surface reviewed for the system inventory.
 > **Rule:** Code paths are primary. Existing docs are secondary and must be reconciled to runtime behavior.
 
@@ -486,10 +486,22 @@ Focused MCP verification:
 Focused Features 41-44 product-boundary verification:
 
 - `scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js`
+- `scripts/verification/test-answerlattice-github-change-intake.ts`
 - `scripts/verification/verify-answerlattice-signal-quality-boundary.js`
 - `scripts/verification/verify-answerlattice-native-helpdesk-connectors-boundary.js`
 - `scripts/verification/verify-answerlattice-autonomous-action-boundary.js`
 - `scripts/verification/verify-answerlattice-runtime-truth.js`
+
+Focused GitHub Change Intake runtime:
+
+- `src/lib/answerlattice/githubChangeIntakeContracts.ts`
+- `src/lib/answerlattice/githubChangeIntakeServer.ts`
+- `src/app/api/answerlattice/knowledge-intake/github/connect/route.ts`
+- `src/app/api/answerlattice/knowledge-intake/github/setup/route.ts`
+- `src/app/api/answerlattice/knowledge-intake/github/callback/route.ts`
+- `src/app/api/answerlattice/knowledge-intake/github/connection/route.ts`
+- `src/app/api/answerlattice/webhooks/github/route.ts`
+- `src/components/templates/answerlattice/knowledgeIntake/GitHubChangeIntakeCard.tsx`
 
 ---
 

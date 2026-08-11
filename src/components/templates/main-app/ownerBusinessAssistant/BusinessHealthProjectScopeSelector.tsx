@@ -7,6 +7,8 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import type { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import { Avatar, Card, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
 import type { MenuProps } from 'antd';
+import { getLocaleDirection } from '@lib/localization/config';
+import { useLocale, useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo } from 'react';
 import { LuCheck, LuChevronDown, LuLayers, LuSparkles, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
@@ -48,23 +50,25 @@ const getInitials = (name: string) => {
   return name.slice(0, 2).toUpperCase();
 };
 
-const resolveProjectName = (value: BusinessHealthScopeProject['name'] | undefined) =>
-  getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), 'Untitled');
+const resolveProjectName = (value: BusinessHealthScopeProject['name'] | undefined, fallback: string) =>
+  getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), fallback);
 
 const isSelectableProject = (project: BusinessHealthScopeProject) => project.deleted !== true;
 
-const renderProjectTags = (project?: BusinessHealthScopeProject | null) => {
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
+
+const renderProjectTags = (project: BusinessHealthScopeProject | null | undefined, t: DashboardTranslator) => {
   if (!project) return null;
 
   return (
     <>
-      {project.isDefault ? <Tag color="processing" style={{ marginInlineEnd: 0 }}>Default</Tag> : null}
-      {project.isSpecialMenu ? <Tag color="success" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Special</Tag> : null}
+      {project.isDefault ? <Tag color="processing" style={{ marginInlineEnd: 0 }}>{t('projectSelector.default')}</Tag> : null}
+      {project.isSpecialMenu ? <Tag color="success" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>{t('projectSelector.special')}</Tag> : null}
       {project.active === false ? (
         <Tag color="error" style={{ marginInlineEnd: 0 }}>
           <Flex align="center" gap={4}>
             <LuXCircle size={13} />
-            <span>Inactive</span>
+            <span>{t('projectSelector.inactive')}</span>
           </Flex>
         </Tag>
       ) : null}
@@ -80,6 +84,8 @@ export function BusinessHealthProjectScopeSelector({
   selectedProjectId?: string;
 }) {
   const { token } = useToken();
+  const locale = useLocale();
+  const t = useTranslations('Dashboard.owner');
   const { storeDetails } = useContext(PlatformGlobalDataContext);
   const storeScope = storeDetails?.storeId ? String(storeDetails.storeId) : null;
   const tenantScope = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
@@ -104,7 +110,9 @@ export function BusinessHealthProjectScopeSelector({
     }
   }, [isLoading, onChange, projects, selectedProjectId]);
 
-  const selectedName = selectedProject ? resolveProjectName(selectedProject.name) : 'All menus';
+  const selectedName = selectedProject
+    ? resolveProjectName(selectedProject.name, t('projectSelector.untitled'))
+    : t('businessHealth.scope.allMenus');
   const selectedColor = selectedProject
     ? getAvatarColor(selectedName, token)
     : { bg: token.colorPrimaryBg, text: token.colorPrimary };
@@ -119,9 +127,11 @@ export function BusinessHealthProjectScopeSelector({
             <LuLayers size={14} />
           </Avatar>
           <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-            <Text>All menus</Text>
+            <Text>{t('businessHealth.scope.allMenus')}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {projects.length ? `${projects.length} menus in this location` : 'Location-level view'}
+              {projects.length
+                ? t('businessHealth.scope.menuCount', { count: projects.length })
+                : t('businessHealth.scope.locationLevel')}
             </Text>
           </Flex>
           {activeScope === ALL_MENUS_SCOPE ? <LuCheck size={14} color={token.colorPrimary} /> : null}
@@ -130,7 +140,7 @@ export function BusinessHealthProjectScopeSelector({
       onClick: () => onChange(undefined),
     },
     ...projects.map((project) => {
-      const name = resolveProjectName(project.name);
+      const name = resolveProjectName(project.name, t('projectSelector.untitled'));
       const color = getAvatarColor(name, token);
       return {
         key: project.projectId || name,
@@ -146,7 +156,7 @@ export function BusinessHealthProjectScopeSelector({
             <Flex vertical style={{ flex: 1, minWidth: 0 }}>
               <Text>{name}</Text>
             </Flex>
-            {renderProjectTags(project)}
+            {renderProjectTags(project, t)}
             {project.projectId === selectedProject?.projectId ? <LuCheck size={14} color={token.colorPrimary} /> : null}
           </Flex>
         ),
@@ -159,13 +169,17 @@ export function BusinessHealthProjectScopeSelector({
     <Card className={styles.scopeSelectorCard} bodyStyle={{ padding: 12 }}>
       <Flex align="center" gap={12} justify="space-between" wrap="wrap">
         <Flex vertical style={{ minWidth: 0 }}>
-          <Text type="secondary">Viewing</Text>
-          <Text strong>Business Health scope</Text>
+          <Text type="secondary">{t('viewing')}</Text>
+          <Text strong>{t('businessHealth.scope.title')}</Text>
         </Flex>
         {isLoading ? (
           <Skeleton.Input active size="small" style={{ width: 180 }} />
         ) : (
-          <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
+          <Dropdown
+            menu={{ items: menuItems }}
+            placement={getLocaleDirection(locale) === 'rtl' ? 'bottomLeft' : 'bottomRight'}
+            trigger={['click']}
+          >
             <Flex
               align="center"
               className={styles.scopeSelectorTrigger}
@@ -181,7 +195,9 @@ export function BusinessHealthProjectScopeSelector({
               <Flex vertical style={{ minWidth: 0 }}>
                 <Text strong ellipsis style={{ maxWidth: 180 }}>{selectedName}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  {selectedProject ? 'This menu only' : 'All menus in this location'}
+                  {selectedProject
+                    ? t('businessHealth.scope.thisMenuOnly')
+                    : t('businessHealth.scope.allMenusInLocation')}
                 </Text>
               </Flex>
               <LuChevronDown size={14} color={token.colorTextSecondary} />

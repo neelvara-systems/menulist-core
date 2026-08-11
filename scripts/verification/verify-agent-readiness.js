@@ -326,11 +326,17 @@ function verifyMenuListStorageBucketFallbackBoundary() {
   ].forEach((file) => {
     const content = read(file);
     assertIncludes(content, 'function getProjectStorageBucketFallback()', `${file} project-derived Storage bucket fallback`);
-    assertIncludes(content, 'process.env.FIREBASE_STORAGE_BUCKET', `${file} server Storage bucket env`);
-    assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', `${file} public Storage bucket env`);
     assertIncludes(content, 'process.env.GCLOUD_PROJECT', `${file} active Firebase project fallback`);
     assertIncludes(content, 'process.env.GCP_PROJECT', `${file} active GCP project fallback`);
-    assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID', `${file} public Firebase project fallback`);
+    if (file.startsWith('functions/')) {
+      assertIncludes(content, 'process.env.FIREBASE_STORAGE_BUCKET', `${file} project-local server Storage bucket env`);
+      assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', `${file} project-local public Storage bucket env`);
+      assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID', `${file} project-local public Firebase project fallback`);
+    } else {
+      assertIncludes(content, 'menulistServerEnv.firebaseStorageBucket', `${file} MenuList server Storage bucket env`);
+      assertIncludes(content, 'menulistPublicEnv.firebaseStorageBucket', `${file} MenuList public Storage bucket env`);
+      assertIncludes(content, 'menulistPublicEnv.firebaseProjectId', `${file} MenuList public Firebase project fallback`);
+    }
   });
 
   const firebaseClient = read('src/lib/firebase/firebaseClient.ts');
@@ -752,11 +758,10 @@ function verifyEnvironmentTargets() {
     ['Staging env template', envStagingExample],
     ['Production env template', envProductionExample],
   ]) {
-    assertIncludes(content, 'MENULIST_FIREBASE_PROJECT_ID', `${label} canonical MenuList Firebase env naming`);
-    assertIncludes(content, 'MENULIST_FIREBASE_API_KEY=', `${label} canonical MenuList server Firebase API key`);
     assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', `${label} canonical public MenuList Firebase env naming`);
+    assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY=', `${label} canonical MenuList Firebase API key`);
     assertIncludes(content, 'MENULIST_GEMINI_AI_KEY', `${label} canonical MenuList Gemini env naming`);
-    assertIncludes(content, 'MENULIST_RAZORPAY_KEY_ID', `${label} canonical MenuList Razorpay env naming`);
+    assertIncludes(content, 'NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID', `${label} canonical MenuList Razorpay env naming`);
     assertIncludes(content, 'MENULIST_UPSTASH_REDIS_REST_URL', `${label} canonical MenuList Upstash env naming`);
     assertIncludes(content, 'ANSWERLATTICE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
     assertIncludes(content, 'CAMPAIGNCUE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
@@ -764,14 +769,20 @@ function verifyEnvironmentTargets() {
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_USER', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_PASSWORD', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_SESSION_SECRET', `${label} MyCodex static auth env`);
-    assertIncludes(content, 'WHATSAPP_ACCESS_TOKEN', `${label} WhatsApp provider env naming`);
-    assertIncludes(content, 'FIREBASE_PROJECT_ID=', `${label} Cloud Tasks project id prerequisite`);
-    assertIncludes(content, 'FIREBASE_API_KEY=', `${label} current MenuList server Firebase API key alias`);
-    assertIncludes(content, 'FIREBASE_PROJECT_LOCATION=us-central1', `${label} Cloud Tasks queue location prerequisite`);
-    assertIncludes(content, 'Uses FIREBASE_PROJECT_ID and FIREBASE_PROJECT_LOCATION above to build the queue path.', `${label} Cloud Tasks project/location note`);
-    assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_URL', `${label} Cloud Tasks worker URL prerequisite`);
-    assertIncludes(content, 'BATCH_IMAGE_GENERATION_QUEUE_ID', `${label} Cloud Tasks queue id prerequisite`);
-    assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_SECRET', `${label} Cloud Tasks worker secret prerequisite`);
+    assertIncludes(content, 'MENULIST_WHATSAPP_ACCESS_TOKEN=', `${label} WhatsApp provider env naming`);
+    assertIncludes(content, 'MENULIST_FIREBASE_PROJECT_LOCATION=us-central1', `${label} Cloud Tasks queue location prerequisite`);
+    assertIncludes(content, 'Uses NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID and MENULIST_FIREBASE_PROJECT_LOCATION above.', `${label} Cloud Tasks project/location note`);
+    assertIncludes(content, 'MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL', `${label} Cloud Tasks worker URL prerequisite`);
+    assertIncludes(content, 'MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID', `${label} Cloud Tasks queue id prerequisite`);
+    assertIncludes(content, 'MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET', `${label} Cloud Tasks worker secret prerequisite`);
+    assertNotIncludes(content, '\nFIREBASE_PROJECT_ID=', `${label} must not duplicate MenuList Firebase project id`);
+    assertNotIncludes(content, '\nMENULIST_FIREBASE_PROJECT_ID=', `${label} must not duplicate public MenuList Firebase project id`);
+    assertNotIncludes(content, '\nMENULIST_FIREBASE_API_KEY=', `${label} must not duplicate public MenuList Firebase API key`);
+    assertNotIncludes(content, '\nMENULIST_FIREBASE_STORAGE_BUCKET=', `${label} must not duplicate public MenuList Firebase storage bucket`);
+    assertNotIncludes(content, '\nGEMINI_AI_KEY=', `${label} must not duplicate MenuList Gemini key`);
+    assertNotIncludes(content, '\nRAZORPAY_KEY_ID=', `${label} must not duplicate MenuList Razorpay key`);
+    assertNotIncludes(content, '\nMENULIST_RAZORPAY_KEY_ID=', `${label} must not duplicate public MenuList Razorpay key id`);
+    assertNotIncludes(content, '\nUPSTASH_REDIS_REST_URL=', `${label} must not duplicate MenuList Upstash URL`);
     assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING=false', `${label} messaging onboarding provider processing must fail closed`);
     assertNotIncludes(content, 'WHATSAPP_API_TOKEN', `${label} must not use stale WhatsApp API token env naming`);
     assertNotIncludes(content, 'MENULIST_SIGNALDESK_', `${label} must not use stale MenuList-prefixed SignalDesk env keys`);
@@ -2411,7 +2422,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(storeTypeSource, "businessIndustry?: string; // Plan type marker: 'B2C' | 'B2B'.", 'StoreDataType businessIndustry source contract');
   assert(businessTypesSharedSource === businessTypesFunctionsSource, 'Business type shared data must match Functions mirror byte-for-byte');
   assertIncludes(businessTypeMigrationScript, "const DRY_RUN = !args.includes('--write');", 'Business type migration dry-run default');
-  assertIncludes(businessTypeMigrationScript, "getArg('--project-id') || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT", 'Business type migration explicit project selection');
+  assertIncludes(businessTypeMigrationScript, "getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT", 'Business type migration explicit product-scoped project selection');
   assertIncludes(businessTypeMigrationScript, 'Refusing write: pass --confirm-project', 'Business type migration project confirmation guard');
   assertIncludes(businessTypeMigrationScript, 'Refusing write: pass --all-stores-and-tenants', 'Business type migration broad-scope confirmation guard');
   assertIncludes(businessTypeMigrationScript, 'getBusinessCategoryFromSharedData(businessType)', 'Business type migration shared category resolver');
@@ -2672,13 +2683,11 @@ function verifyEnvironmentTargets() {
     assertNotIncludes(content, 'firebase deploy --only functions --project menulist', `${label} broad MenuList production Functions deploy command`);
   }
   assertIncludes(productSetupDoc, '`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE`', 'Product setup doc mobile QA verification-only env boundary');
-  assertIncludes(envStagingExample, 'RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay test key prefix');
-  assertIncludes(envStagingExample, 'NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay public test key prefix');
-  assertIncludes(envProductionExample, 'RAZORPAY_KEY_ID=rzp_live_<id>', 'Production env template Razorpay live key prefix');
-  assertIncludes(envProductionExample, 'NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_<id>', 'Production env template Razorpay public live key prefix');
-  assertIncludes(productionCertificationRunbook, '`RAZORPAY_KEY_ID` and `NEXT_PUBLIC_RAZORPAY_KEY_ID` both start with `rzp_test_`', 'Production certification runbook Razorpay sandbox public/private key prefix');
-  assertIncludes(productionCertificationRunbook, '`RAZORPAY_KEY_SECRET` belongs to the same Razorpay test account as `RAZORPAY_KEY_ID`', 'Production certification runbook Razorpay same-account secret');
-  assertIncludes(productionCertificationRunbook, '`RAZORPAY_WEBHOOK_SECRET` belongs to the same Razorpay test webhook endpoint used for this smoke', 'Production certification runbook Razorpay webhook secret scope');
+  assertIncludes(envStagingExample, 'NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay public test key prefix');
+  assertIncludes(envProductionExample, 'NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID=rzp_live_<id>', 'Production env template Razorpay public live key prefix');
+  assertIncludes(productionCertificationRunbook, '`NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID` starts with `rzp_test_`', 'Production certification runbook Razorpay sandbox key prefix');
+  assertIncludes(productionCertificationRunbook, '`MENULIST_RAZORPAY_KEY_SECRET` belongs to the same Razorpay test account as `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`', 'Production certification runbook Razorpay same-account secret');
+  assertIncludes(productionCertificationRunbook, '`MENULIST_RAZORPAY_WEBHOOK_SECRET` belongs to the same Razorpay test webhook endpoint used for this smoke', 'Production certification runbook Razorpay webhook secret scope');
   assertIncludes(productionCertificationRunbook, 'MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE=1', 'Production certification runbook mobile owner explicit fixture mode');
   assertIncludes(productionCertificationRunbook, 'MOBILE_QA_PROJECT_ID=<non-production-project-id>', 'Production certification runbook mobile owner project id prerequisite');
   assertIncludes(productionCertificationRunbook, 'MOBILE_QA_PROJECT_NAME="<expected menu/project name>"', 'Production certification runbook mobile owner project name prerequisite');
@@ -2957,14 +2966,14 @@ function verifyMenuListDiscovery() {
     const localEnv = read('.env');
     assertIncludes(localEnv, 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital', 'Local/QA platform domain config');
     assertIncludes(localEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist-qa', 'Local/QA public MenuList Firebase project');
-    assertIncludes(localEnv, 'MENULIST_FIREBASE_PROJECT_ID=menulist-qa', 'Local/QA server MenuList Firebase project');
+    assertNotIncludes(localEnv, '\nMENULIST_FIREBASE_PROJECT_ID=', 'Local/QA must not duplicate public MenuList Firebase project');
     assertNotIncludes(localEnv.toLowerCase(), 'ecomsai', 'Local/QA ignored env retired project');
   }
   if (exists('.env.prod')) {
     const productionEnv = read('.env.prod');
     assertIncludes(productionEnv, 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Production platform domain config');
     assertIncludes(productionEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist', 'Production public MenuList Firebase project');
-    assertIncludes(productionEnv, 'MENULIST_FIREBASE_PROJECT_ID=menulist', 'Production server MenuList Firebase project');
+    assertNotIncludes(productionEnv, '\nMENULIST_FIREBASE_PROJECT_ID=', 'Production must not duplicate public MenuList Firebase project');
     assertNotIncludes(productionEnv.toLowerCase(), 'ecomsai', 'Production ignored env retired project');
   }
   assert(getPlatformDiscoveryBaseUrl() === 'https://menulist.ai', 'MenuList discovery base URL must default to https://menulist.ai');

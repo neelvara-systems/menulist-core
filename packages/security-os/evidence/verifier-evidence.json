@@ -355,6 +355,17 @@
       "description": "Exercises Answerlattice knowledge-intake authorization against a demo Firestore emulator project."
     },
     {
+      "id": "answerlattice.github-change-intake-boundary",
+      "kind": "verifier",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js",
+      "command": "npm run verify:answerlattice-native-intake-connectors",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks GitHub setup ownership, signed webhook admission, bounded provider data, least-data intake, replay, cost, and fail-closed rollout contracts."
+    },
+    {
       "id": "answerlattice.integrations-rules",
       "kind": "emulator-test",
       "products": ["answerlattice"],
@@ -525,6 +536,7 @@
         "answerlattice.core-doctrine",
         "answerlattice.public-api-rules",
         "answerlattice.knowledge-intake-rules",
+        "answerlattice.github-change-intake-boundary",
         "answerlattice.integrations-rules",
         "answerlattice.billing-rules",
         "answerlattice.chat-sessions-rules",

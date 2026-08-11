@@ -51,7 +51,19 @@ Supported proposal types are `new_answer_required` and `content_refinement`.
 
 ### 6. Post-Implementation Impact
 
-The Answerlattice Nightly Mutation Impact Entity ID Boundary normalizes the implemented proposal entity before any follow-up query. The task compares the same admitted signal types across exact 14-day pre- and post-implementation windows, reads one row beyond each 200-row cap, and fails closed instead of storing a partial improvement result.
+The existing **Answerlattice Nightly Mutation Impact Entity ID Boundary**
+normalizes the first implemented-proposal entity before its follow-up query.
+The legacy nightly task compares the same admitted signal types across equal
+timestamp-relative 14-day windows, reads one row beyond each 200-row cap, and
+fails closed instead of storing a partial result. Its persisted
+`impactResult.improvementPercent` remains internal backward-compatible state;
+the owner UI does not present that causal-sounding field as product relief.
+
+The separate Post-Change Support Evidence Review re-reads the exact implemented
+proposal, uses all of its direct entity links, excludes the implementation UTC
+day, and compares complete UTC windows with correlation-only labels. It adds no
+scheduler write or replacement impact document. See
+`../post-change-support-evidence-review/README.md`.
 
 ## Failure Behavior
 

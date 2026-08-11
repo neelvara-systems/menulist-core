@@ -1,10 +1,23 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.3.9
-> **Last Updated:** 2026-07-31
+> **Version:** 1.3.11
+> **Last Updated:** 2026-08-11
 > **Audience:** CEO / PM / Marketing
 
 ---
+
+## August 11, 2026 Whole-Site Buyer-Language Audit Addendum
+
+The complete public route set follows one conversion hierarchy:
+
+`scattered founder knowledge -> reviewed support structure -> familiar support destinations -> owner-approved official guidance`
+
+- The route inventory contains 75 canonical public routes plus two intentional aliases: `/home` for `/` and `/use-cases/vibe-coded-saas` for `/use-cases/ai-built-saas`.
+- Top-level and buyer-facing pages lead with the recognizable inputs founders already have: docs, tickets, release notes, screenshots, recordings, notes, and repeated replies.
+- Those pages explain the concrete outputs users can open: the in-app widget, hosted help center, documentation, FAQs, changelog, ticket fallback, and feedback paths.
+- Approved answers, safe page context, explicit owner review, Answer Tests, and visible support gaps explain why the resulting support can be trusted. They are differentiators inside the broader support-system story, not the entire category.
+- Exact technical product names may remain on technical, install, security, product-detail, and release-history pages when they identify implemented behavior. Navigation, metadata, first folds, and conversion copy use plain buyer language first.
+- This content audit changes no AnswerLattice runtime, tenant data, Firebase operation, provider call, dependency, billing contract, or support-credit behavior.
 
 ## July 19, 2026 Feature-Flow Audit Addendum
 
@@ -17,7 +30,7 @@ The public acquisition flow is admitted only when all of these remain coherent:
 - Get Started requires one or more selected main product pages and mirrors server field limits before the existing authenticated onboarding boundary.
 - The mobile navigation behaves as a modal dialog with initial focus, focus containment, Escape close, and trigger restoration.
 - Sitemap freshness must use real page-specific timestamps or omit `lastmod`; build time is not page modification evidence.
-- The public category is `governed support layer`. Do not use uptime-style language as the category or imply uninterrupted service; the unsupported `the first 24/7 support layer` superlative remains prohibited.
+- Formal product doctrine remains governed answer infrastructure. The public buyer category is a `reviewed support layer` or `support system`; governance is supporting proof, not the lead label. Do not use uptime-style language as the category or imply uninterrupted service; the unsupported `the first 24/7 support layer` superlative remains prohibited.
 - Support-credit copy must match operation-level runtime accounting and must not imply that approved widget answers, draft review, or ordinary browsing are charged.
 - Trust and Privacy must render shared retention constants where they exist and must not claim Gemini no-training or zero retention without deployed provider-account evidence.
 - Terms may state the verified Neelvara Systems operating trade-name relationship. Registered-entity identity, jurisdiction, warranty, liability, SLA, customer-specific refund, and governing-law clauses remain pending founder/legal approval and must not be invented from runtime behavior.
@@ -25,7 +38,7 @@ The public acquisition flow is admitted only when all of these remain coherent:
 
 ## Purpose
 
-Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as a governed support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
+Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as a reviewed support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
 
 The first-use path remains optimized for a solo technical founder. Deeper pages may show how the same product supports a small team or a bounded product/support/engineering group inside a growing company. This progression must be taught as optional operating guidance, not as product modes, maturity scoring, or enterprise-readiness proof.
 
@@ -62,13 +75,13 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what AnswerLattice is in < 5 seconds: a complete first support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the product simulation, install path, and product-suite pages as supporting proof paths.
+**Goal:** Communicate what AnswerLattice is in < 5 seconds: a reviewed support system that turns scattered founder knowledge into support users can open. Drive to self-service setup first, with the product simulation, install path, and product-suite pages as supporting proof paths.
 
 **Sections:**
-1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow should make the answer-order contract immediate: approved answers before fallback. The supporting copy must explain that scattered product knowledge becomes reviewed support knowledge, approved answers are served first, fallback opens only when coverage is missing, and each miss becomes review work. Keep in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps visible without claiming outsourced support, full helpdesk replacement, or autonomous support.
+1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow must frame scattered product knowledge becoming structured support. Supporting copy, capability chips, and proof must make both sides of that transformation visible: docs, tickets, releases, screenshots, recordings, notes, and repeated replies become reviewed support knowledge for the in-product widget, hosted help center, documentation, FAQs, changelog, fallback, feedback review, and future AI-agent context. Approved answers first, safe fallback, and owner review remain the trust differentiator without narrowing the product to Q&A or claiming outsourced support, full helpdesk replacement, or autonomous support. Essential hero text and actions must be readable within 500ms without blur; media may settle within 800ms, and reduced-motion mode must remain immediate.
 2. **First Trusted Answers** — Bounded launch workflow for the first priority questions, owner review, and customer answer evidence.
 3. **Support Improvement Loop** — Concrete known-answer, missing-coverage, fallback, founder-review, and tested-improvement sequence with source, scope, and Answer Test proof.
-4. **Owner Decision System** — One focused section connecting Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps. It must distinguish owner governance from public article navigation and state that these views do not publish answers, change releases, or create a second task system.
+4. **Owner Decision System** — One focused section connecting Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps. It must distinguish owner review from public article navigation and state that these views do not publish answers, change releases, or create a second task system.
 5. **Install Surface Quickstarts** — Install confidence section for the widget contract, framework-specific setup paths, safe context rules, and verification before launch.
 6. **Founder Fit and Category Boundary** — One consolidated section with a best-fit founder panel plus the three boundary messages: not another chatbot, not a full helpdesk, and not static docs.
 7. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
@@ -90,13 +103,13 @@ Prism-glass card hover effects must feel attached to the user's pointer on deskt
 **Goal:** Explain the product in founder/operator language while preserving the real AnswerLattice architecture.
 
 **Sections:**
-- Hero with SaaS and digital-product support-layer promise, setup/demo/source-prep CTAs, and compact proof strip explaining what AnswerLattice is, what it connects, why it converts, and what stays safe
+- Hero with SaaS and digital-product support-layer promise, setup/demo/source-prep CTAs, and compact proof strip explaining what AnswerLattice starts from, what it turns that material into, why the result is trustworthy, and what stays private
 - Product area cards that route to landing-style subpages for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers
 - Product feature directory that exposes the support-system details behind team access, knowledge intake, knowledge base, FAQ management, changelog, tickets, Support Board, feedback review, workflow notifications, and proactive help without making the homepage longer
 - Team access should be presented as production readiness inside setup, security, pricing, and a dedicated feature page because it affects workspace trust and buyer evaluation.
 - Connected support-suite section that shows setup, in-app help, hosted help, tickets, feedback, and approved-answer review as one product system before the page moves into narrower feature detail.
 - Category comparison section that separates AnswerLattice from chatbots, helpdesks, and static knowledge bases without unsupported competitor-specific claims.
-- Day-One Launch Pack section that packages quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
+- Day-One Launch Pack section that packages quickstarts, first product-page mappings, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
 - Product scene reused from the homepage so buyers see the owner workflow before the architecture deep dive
 - Owner Decision System section that presents Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests as connected views over the same governed product model, not five standalone analytics products
 - AnswerLattice Engine section:
@@ -167,7 +180,7 @@ Rules:
 
 ### Positioning Guardrail
 
-The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "support pressure", and "product users need trusted support", but it must not say AnswerLattice "handles all support" or imply uninterrupted availability, human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a governed support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
+The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "support pressure", and "product users need trusted support", but it must not say AnswerLattice "handles all support" or imply uninterrupted availability, human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice turns scattered product knowledge into a reviewed support layer delivered through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
 
 ### Non-Home Page Conversion Pattern
 
@@ -569,12 +582,12 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | AnswerLattice - Governed Support Layer for Founder-Led SaaS | AnswerLattice turns scattered support knowledge into approved answers for an in-app widget, hosted help, fallback, feedback, and a human review loop. |
+| `/` | AnswerLattice - Governed Support Layer for SaaS Products | AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, and replies into reviewed support for your widget, help center, FAQs, and fallback. |
 | `/product` | Product \| AnswerLattice | One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
 | `/product/launch-setup` | Set Up Support \| AnswerLattice | Create an AnswerLattice workspace, add team access, import starter knowledge, map product pages, and verify the widget before launch. |
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |
 | `/product/page-aware-widget` | In-App Help Widget \| AnswerLattice | Install AnswerLattice as an in-app widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, approved answers, and owner answers before fallback. |
-| `/product/support-control` | Help Center and Tickets \| AnswerLattice | Operate hosted help, public article topic maps, FAQs, tickets, feedback, Support Board, a qualified Daily Brief, and evidence handoff from one support layer. |
+| `/product/support-control` | Help Center and Tickets \| AnswerLattice | Operate hosted help, public article topic maps, FAQs, tickets, feedback, Support Board, a focused Daily Brief, and evidence handoff from one support layer. |
 | `/product/knowledge-governance` | Knowledge Map and Approved Answer Review \| AnswerLattice | Move from Product Friction Evidence into the private Knowledge Map, approved-answer review, Answer Tests, release impact, and explicit owner decisions. |
 | `/product/support-board` | Support Board \| AnswerLattice | Private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff. |
 | `/product/feedback-review` | Feedback Review \| AnswerLattice | Collect ratings, product feedback, feature requests, and suggestions, then review useful items as support signals before board or answer-proposal handoff. |
@@ -649,6 +662,8 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-11 | 1.3.11 | Audited all 77 public page files, established 75 canonical routes plus two explicit aliases, and required plain scattered-input-to-reviewed-support framing across every buyer path while preserving exact technical contracts where needed. |
+| 2026-08-11 | 1.3.10 | Required the compressed homepage to show scattered inputs, reviewed support structure, recognizable support surfaces, fast non-blurred first-fold motion, and outcome-first founder-review language. |
 | 2026-07-29 | 1.3.7 | Required the connected owner-decision website path across Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps while retaining the compressed homepage and zero-cost static public boundary. |
 | 2026-07-31 | 1.3.9 | Added one static progressive-adoption path for solo founders, small teams, and bounded product groups; preserved the founder-first homepage and prohibited workspace modes, maturity scoring, and unsupported enterprise claims. |
 | 2026-07-19 | 1.3.2 | Required the governed-support category, operation-level support-credit parity, shared retention wording, explicit AI-provider no-training/zero-retention non-claims, and source-bounded operating/legal terms. |

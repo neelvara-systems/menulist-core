@@ -124,6 +124,8 @@ const resolveReviewNote = z.object({
 const renderReceiptBase = {
     id,
     attempt: z.number().int().min(1).max(100),
+    projectVersion: z.number().int().min(1).max(10_000),
+    versionBinding: z.literal("exact"),
     aspectRatio,
     durationSeconds: z.number().finite().min(1).max(CAMPAIGNCUE_VIDEO_STUDIO.MAX_TOTAL_SECONDS),
     rightsEvidence: z.object({

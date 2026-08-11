@@ -9,11 +9,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
+    description: 'Plain answers about turning scattered product knowledge into reviewed help, setup, widget support, hosted help, tickets, pricing, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | AnswerLattice',
-        description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
+        description: 'Plain answers about turning scattered product knowledge into reviewed help, setup, widget support, hosted help, tickets, pricing, and data handling.',
         url: `${ANSWERLATTICE_SITE_URL}/faq`,
     },
 };
@@ -56,7 +56,7 @@ const FAQS = [
     },
     {
         question: 'Does Knowledge Intake publish answers automatically?',
-        answer: 'No. Intake creates review drafts for help articles, FAQs, surfaces, changelog entries, or approved-answer proposals. Owners accept and publish selected items; official support answers still require owner approval.',
+        answer: 'No. Intake creates review drafts for help articles, FAQs, product pages, changelog entries, and approved answers. Owners choose what to accept and publish; official support answers still require owner approval.',
     },
     {
         question: 'Will AnswerLattice make up answers?',
@@ -68,7 +68,7 @@ const FAQS = [
     },
     {
         question: 'Is AnswerLattice a chatbot?',
-        answer: 'No. AnswerLattice includes AI-assisted support surfaces, but the core product is a support layer: in-app help, hosted help, FAQs, changelog, tickets, feedback, approved answers, and owner review.',
+        answer: 'No. AnswerLattice can assist with user support, but the product is much broader than a chat box: in-app help, hosted help, FAQs, changelog, tickets, feedback, approved answers, and owner review.',
     },
     {
         question: 'Is AnswerLattice a helpdesk?',
@@ -76,7 +76,7 @@ const FAQS = [
     },
     {
         question: 'What is an approved answer?',
-        answer: 'An approved answer is a reviewed, scoped support answer tied to product truth such as a feature, workflow, plan, role, release, state, or product surface.',
+        answer: 'An approved answer is a reviewed support answer tied to documented product details such as a feature, workflow, plan, role, release, state, or product area.',
     },
     {
         question: 'How quickly can a small SaaS team start?',
@@ -88,7 +88,7 @@ const FAQS = [
     },
     {
         question: 'How does in-app context work?',
-        answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the AnswerLattice widget. AnswerLattice uses those hints to prefer approved support content mapped to that product surface.',
+        answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the AnswerLattice widget. AnswerLattice uses those hints to prefer approved support content mapped to the page where the user needs help.',
     },
     {
         question: 'Can users attach screenshots in the widget?',
@@ -104,7 +104,7 @@ const FAQS = [
     },
     {
         question: 'What happens when AnswerLattice does not know the answer?',
-        answer: 'AnswerLattice can use fallback, capture the miss as a signal, and route repeated gaps into reviewable proposals or draft answers. Those drafts require human approval before becoming authoritative.',
+        answer: 'AnswerLattice can use fallback, record the missing answer, and turn repeated gaps into draft answers for review. Those drafts require human approval before becoming official support.',
     },
     {
         question: 'Can I hide the widget on specific routes?',
@@ -128,19 +128,19 @@ const FAQS = [
     },
     {
         question: 'Can I add my own repeated answer?',
-        answer: 'Yes. Owners can write exact repeated questions and answers, attach article, tag, entity, and page context, publish them, and let AnswerLattice use them after approved answers and before fallback when the user question matches.',
+        answer: 'Yes. Owners can write exact repeated questions and answers, attach articles, tags, and page context, publish them, and let AnswerLattice use them after approved answers and before fallback when the user question matches.',
     },
     {
         question: 'Can AnswerLattice work with an existing helpdesk?',
-        answer: 'Yes. AnswerLattice can complement ticket tools as the reviewed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
+        answer: 'Yes. AnswerLattice can complement ticket tools as the reviewed support-knowledge layer. Broad helpdesk integrations are not currently offered.',
     },
     {
         question: 'What is the Support Board?',
-        answer: 'Support Board is a private owner/staff workboard for selected support gaps, internal notes, status history, and answer-proposal handoff. It helps owners track follow-up without turning AnswerLattice into a project-management tool.',
+        answer: 'Support Board is a private owner and staff workboard for selected support gaps, internal notes, status history, and draft-answer handoff. It helps owners track follow-up without turning AnswerLattice into a project-management tool.',
     },
     {
         question: 'What happens to feedback and feature requests?',
-        answer: 'Users can submit ratings, product-area feedback, feature requests, and suggestions from the Help Center. Owners review those items privately and can move useful signals into Support Board or answer-proposal review. AnswerLattice is not a public voting board.',
+        answer: 'Users can submit ratings, product-area feedback, feature requests, and suggestions from the Help Center. Owners review those items privately and can move useful feedback into Support Board or draft-answer review. AnswerLattice is not a public voting board.',
     },
     {
         question: 'Does Support Board sync every ticket or signal?',
@@ -148,7 +148,7 @@ const FAQS = [
     },
     {
         question: 'Can AnswerLattice notify my team in Slack or email?',
-        answer: 'Yes. AnswerLattice supports Slack and email workflow notifications for nightly governance summaries, coverage drops, repeated AI workflow failures, and test delivery. Jira, Linear, GitHub, Notion, and custom webhook destinations are not currently offered.',
+        answer: 'Yes. AnswerLattice supports Slack and email notifications for nightly support-review summaries, coverage drops, repeated workflow failures, and test delivery. Jira, Linear, GitHub, Notion, and custom webhook destinations are not currently offered.',
     },
     {
         question: 'Will proactive help interrupt users everywhere?',
@@ -184,7 +184,7 @@ const FAQS = [
     },
     {
         question: 'Does AnswerLattice roll back a failed answer automatically?',
-        answer: 'No. A failed test can prepare a prior audited answer version as a mutation proposal. The live answer is not overwritten, and applying accepted content remains a separate governed edit.',
+        answer: 'No. A failed test can prepare a prior audited answer version as a rollback draft for review. The live answer is not overwritten, and applying accepted content remains a separate owner-approved edit.',
     },
     {
         question: 'Can a temporary issue notice replace an approved answer?',
@@ -196,19 +196,19 @@ const FAQS = [
     },
     {
         question: 'What does Daily Brief change?',
-        answer: 'Nothing in your support data directly. Daily Brief is the read-only opening view inside Support Assistant. It shows up to four qualified current decisions from governed summaries, or a clear quiet state when complete evidence needs no action, then links the owner to the correct review screen.',
+        answer: 'Nothing in your support data directly. Daily Brief is the read-only opening view inside Support Assistant. It shows up to four focused current decisions from support summaries, or a clear quiet state when the available evidence needs no action, then links the owner to the correct review screen.',
     },
     {
         question: 'What is Knowledge Map?',
-        answer: 'Knowledge Map is the owner view of governed product relationships, approved-answer coverage, drift, and review state. It uses the existing bounded graph summary and does not expose a raw graph or become a diagram editor.',
+        answer: 'Knowledge Map is the owner view of reviewed product relationships, approved-answer coverage, drift, and review state. It uses a bounded relationship summary and does not expose a raw graph or become a diagram editor.',
     },
     {
-        question: 'Does an article topic map expose private product data?',
-        answer: 'No. Public article topic maps are built from sanitized headings and existing published navigation. Private ontology, source, canonical-answer, ticket, and governance records do not enter the public payload.',
+        question: 'Does generated article navigation expose private product data?',
+        answer: 'No. Public article navigation is built from safe published headings. Private relationship, source, approved-answer, ticket, and review records do not enter the public payload.',
     },
     {
         question: 'Can I export my approved support knowledge?',
-        answer: 'Yes, with export permission. The bounded JSON package includes approved product structure, articles, FAQs, releases, changelog entries, and canonical answers. It excludes tickets, conversations, visitor details, secrets, keys, credentials, and raw audit logs.',
+        answer: 'Yes, with export permission. The bounded JSON package includes approved product structure, articles, FAQs, releases, changelog entries, and approved answers. It excludes tickets, conversations, visitor details, secrets, keys, credentials, and raw audit logs.',
     },
 ];
 
@@ -261,7 +261,7 @@ export default async function AnswerlatticeFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding AnswerLattice.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, source intake, widget support, hosted help, approved answers, fallback tickets, pricing, review tools, and data handling.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink

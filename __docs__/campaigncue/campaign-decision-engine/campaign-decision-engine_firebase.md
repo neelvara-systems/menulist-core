@@ -12,7 +12,7 @@ Campaign Decision Engine adds no Firestore collection, realtime listener, Storag
 | Daily Desk render | 0 reads. |
 | Owner UI explanation | 0 reads. |
 | Campaign creation | Uses the existing bounded source/assets/locations/schedules/analytics reads and adds the bounded campaigns list to score result memory before storing the selected decision. No raw event scan. |
-| Decision public-use recheck | Decision rendering adds no read. Only download/export/mark-used/schedule for a freshness-enabled pack conditionally reads the existing current source snapshot. |
+| Decision public-use recheck | Decision rendering adds no read. Only download/export/cloud-archive/mark-used/schedule for a freshness-enabled pack conditionally reads the existing current source snapshot. |
 
 Overview `readsPerLoad` remains `8`.
 

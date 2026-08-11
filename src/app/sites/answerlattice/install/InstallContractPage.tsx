@@ -39,7 +39,7 @@ export default async function AnswerlatticeInstallContractPage({ docKey }: { doc
             <main className="al-page-flow">
                 <section className="al-page-hero">
                     <div className="al-page-hero__inner">
-                        <p className="al-page-hero__eyebrow">AnswerLattice Agent Install Layer</p>
+                        <p className="al-page-hero__eyebrow">Install AnswerLattice</p>
                         <div className="grid gap-8 lg:grid-cols-[1fr_0.82fr] lg:items-center">
                             <div>
                                 <h1 className="al-page-hero__title">

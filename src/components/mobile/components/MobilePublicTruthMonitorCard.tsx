@@ -3,24 +3,16 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getPublicTruthMonitorExportText } from '@database/publicTruthMonitor';
 import { usePublicTruthMonitor } from '@hook/publicTruthTools/usePublicTruthMonitor';
-import type { PublicTruthMonitorHistoryEntry } from '@type/publicTruthMonitor';
 import { formatDateTime } from '@util/dateTime';
+import {
+    getOwnerPublicTruthModulePresentation,
+    getOwnerPublicTruthStatusPresentation,
+} from '@lib/public-truth-tools/ownerPublicTruthPresentation';
 import { theme } from 'antd';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuDownload, LuHistory, LuRefreshCw } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
-
-function formatDate(value?: string): string {
-    if (!value) return 'Not run yet';
-    return formatDateTime(value, 'date');
-}
-
-function statusTag(entry?: PublicTruthMonitorHistoryEntry | null) {
-    if (!entry) return { color: 'default' as const, label: 'Not run' };
-    if (entry.status === 'ready') return { color: 'success' as const, label: 'Ready' };
-    if (entry.status === 'missing_basics') return { color: 'danger' as const, label: 'Missing basics' };
-    return { color: 'warning' as const, label: 'Needs checking' };
-}
 
 function downloadTextFile(filename: string, text: string) {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -42,6 +34,8 @@ export default function MobilePublicTruthMonitorCard({
     tenantId?: string | number | null;
 }) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
+    const t = useTranslations('Dashboard.owner');
     const isEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS
         && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK
         && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MONITOR_ADDON;
@@ -53,7 +47,9 @@ export default function MobilePublicTruthMonitorCard({
     });
     const [isRefreshing, setIsRefreshing] = useState(false);
     const latest = summary?.latest || null;
-    const status = statusTag(latest);
+    const status = latest
+        ? getOwnerPublicTruthStatusPresentation(latest.status, t)
+        : { label: t('businessHealth.publicTruth.notRun'), tone: 'default' as const };
     const history = useMemo(() => (summary?.history || []).slice(0, 3), [summary?.history]);
 
     if (!isEnabled) return null;
@@ -64,7 +60,7 @@ export default function MobilePublicTruthMonitorCard({
         try {
             await refresh();
         } catch {
-            Toast.show({ content: 'Public truth history could not refresh.', duration: 1800 });
+            Toast.show({ content: t('businessHealth.publicTruth.historyRefreshError'), duration: 1800 });
         } finally {
             setIsRefreshing(false);
         }
@@ -96,25 +92,40 @@ export default function MobilePublicTruthMonitorCard({
                     </Flex>
                     <Flex flex={1} gap={6} style={{ minWidth: 0 }} vertical>
                         <Flex align="center" gap={8} justify="space-between">
-                            <Text type="secondary" style={{ fontSize: 12 }}>Public truth history</Text>
-                            <Tag color={status.color}>{status.label}</Tag>
+                            <Text type="secondary" style={{ fontSize: 12 }}>{t('businessHealth.publicTruth.historyTitle')}</Text>
+                            <Tag color={status.tone === 'error' ? 'danger' : status.tone}>{status.label}</Tag>
                         </Flex>
-                        <Text strong>{latest ? `Last saved ${formatDate(latest.generatedAt)}` : 'No saved report yet.'}</Text>
+                        <Text strong>{latest
+                            ? t('businessHealth.publicTruth.lastSaved', { date: formatDateTime(latest.generatedAt, 'date', formatter) })
+                            : t('businessHealth.publicTruth.noSavedReport')}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            MenuList facts only. No external sites scanned.
+                            {t('businessHealth.publicTruth.historyBoundaryShort')}
                         </Text>
                     </Flex>
                 </Flex>
 
                 {latest ? (
                     <Flex gap={8} wrap>
-                        <Tag color="success">Ready {latest.readyModuleCount}/{latest.totalModuleCount}</Tag>
-                        {latest.missingFactCount ? <Tag color="danger">Missing {latest.missingFactCount}</Tag> : null}
-                        <Tag color="default">Saved {summary?.history.length || 0}/{summary?.historyLimit || 0}</Tag>
+                        <Tag color="success">{t('businessHealth.publicTruth.readyModuleCount', {
+                            count: latest.readyModuleCount,
+                            total: latest.totalModuleCount,
+                        })}</Tag>
+                        {latest.missingFactCount ? <Tag color="danger">{t('businessHealth.publicTruth.missingCount', { count: latest.missingFactCount })}</Tag> : null}
+                        <Tag color="default">{t('businessHealth.publicTruth.savedCount', {
+                            count: summary?.history.length || 0,
+                            total: summary?.historyLimit || 0,
+                        })}</Tag>
                     </Flex>
                 ) : null}
 
-                {latest?.primaryFix ? (
+                {latest?.primaryFix ? (() => {
+                    const snapshot = latest.moduleSummaries.find((module) => module.id === latest.primaryFix?.id);
+                    const presentation = getOwnerPublicTruthModulePresentation(snapshot || {
+                        id: latest.primaryFix.id,
+                        mobileFixTarget: 'basic_settings',
+                        status: 'not_checked',
+                    }, t);
+                    return (
                     <Flex
                         gap={6}
                         style={{
@@ -125,12 +136,13 @@ export default function MobilePublicTruthMonitorCard({
                         }}
                         vertical
                     >
-                        <Text strong>{latest.primaryFix.title}</Text>
+                        <Text strong>{presentation.title}</Text>
                         <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
-                            {latest.primaryFix.evidenceText}
+                            {presentation.evidence}
                         </Text>
                     </Flex>
-                ) : null}
+                    );
+                })() : null}
 
                 {history.length > 1 ? (
                     <Flex gap={7} vertical>
@@ -145,9 +157,12 @@ export default function MobilePublicTruthMonitorCard({
                                     paddingTop: 8,
                                 }}
                             >
-                                <Text>{formatDate(entry.generatedAt)}</Text>
+                                <Text>{formatDateTime(entry.generatedAt, 'date', formatter)}</Text>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {entry.readyModuleCount}/{entry.totalModuleCount} ready
+                                    {t('businessHealth.publicTruth.modulesReady', {
+                                        count: entry.readyModuleCount,
+                                        total: entry.totalModuleCount,
+                                    })}
                                 </Text>
                             </Flex>
                         ))}
@@ -163,7 +178,7 @@ export default function MobilePublicTruthMonitorCard({
                     >
                         <Flex align="center" gap={6} justify="center">
                             <LuDownload size={15} />
-                            <Text>Download</Text>
+                            <Text>{t('businessHealth.publicTruth.downloadEnglishShort')}</Text>
                         </Flex>
                     </Button>
                     <Button
@@ -175,7 +190,7 @@ export default function MobilePublicTruthMonitorCard({
                     >
                         <Flex align="center" gap={6} justify="center">
                             <LuRefreshCw size={15} />
-                            <Text style={{ color: 'inherit' }}>Run check</Text>
+                            <Text style={{ color: 'inherit' }}>{t('businessHealth.publicTruth.runCheck')}</Text>
                         </Flex>
                     </Button>
                 </Flex>

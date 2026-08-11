@@ -17,6 +17,12 @@ import type {
     WeeklyViewData,
     WTDViewData,
 } from '@template/main-app/projects/types';
+import {
+    formatDashboardPercent,
+    getDashboardLanguageLabel,
+    getOwnerDashboardSourceLabel,
+} from './ownerDashboardPresentation';
+import { formatNumber } from '@util/formatters';
 
 export type OwnerMenuAnalyticsDetailData =
     | DailyViewData
@@ -329,11 +335,11 @@ function dashboardLabel(
 }
 
 function formatCount(value?: number): string {
-    return normalizeAnalyticsCount(value).toLocaleString();
+    return formatNumber(normalizeAnalyticsCount(value));
 }
 
 function formatRate(value?: number): string {
-    return `${normalizeAnalyticsRate(value)}%`;
+    return formatDashboardPercent(normalizeAnalyticsRate(value));
 }
 
 function hasPositiveValue(values: Array<number | undefined>): boolean {
@@ -348,12 +354,13 @@ function pushSection(sections: MenuAnalyticsDetailSection[], section: MenuAnalyt
 
 function buildMetricRows(metrics: OwnerDashboardMetrics, t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     const rows = [
-        { key: 'menu-visits', label: dashboardLabel(t, 'details.metrics.menuViews', 'Menu views'), value: formatCount(metrics.menuVisits) },
-        { key: 'item-clicks', label: dashboardLabel(t, 'details.metrics.itemTaps', 'Item taps'), value: formatCount(metrics.itemClicks) },
-        { key: 'menu-sessions', label: dashboardLabel(t, 'details.metrics.menuSessions', 'Menu sessions'), value: formatCount(metrics.menuSessions) },
+        { key: 'menu-visits', label: dashboardLabel(t, 'details.metrics.menuViews', 'Menu views'), rawValue: metrics.menuVisits, value: formatCount(metrics.menuVisits) },
+        { key: 'item-clicks', label: dashboardLabel(t, 'details.metrics.itemTaps', 'Item taps'), rawValue: metrics.itemClicks, value: formatCount(metrics.itemClicks) },
+        { key: 'menu-sessions', label: dashboardLabel(t, 'details.metrics.menuSessions', 'Menu sessions'), rawValue: metrics.menuSessions, value: formatCount(metrics.menuSessions) },
         {
             key: 'engaged-sessions',
             label: dashboardLabel(t, 'details.metrics.engagedSessions', 'Sessions with activity'),
+            rawValue: metrics.engagedSessions,
             value: formatCount(metrics.engagedSessions),
             detail: dashboardLabel(t, 'details.metricDetails.ofMenuSessions', `${formatRate(metrics.engagedSessionRate)} of menu sessions`, {
                 rate: formatRate(metrics.engagedSessionRate),
@@ -362,20 +369,23 @@ function buildMetricRows(metrics: OwnerDashboardMetrics, t?: OwnerDashboardTrans
         {
             key: 'action-sessions',
             label: dashboardLabel(t, 'details.metrics.actionSessions', 'Action sessions'),
+            rawValue: metrics.actionSessions,
             value: formatCount(metrics.actionSessions),
             detail: dashboardLabel(t, 'details.metricDetails.ofMenuSessions', `${formatRate(metrics.actionRate)} of menu sessions`, {
                 rate: formatRate(metrics.actionRate),
             }),
         },
-        { key: 'customer-actions', label: dashboardLabel(t, 'metrics.customerActions', 'Customer actions'), value: formatCount(metrics.menuActionClicks) },
-        { key: 'searches', label: dashboardLabel(t, 'metrics.searches', 'Searches'), value: formatCount(metrics.searches) },
-        { key: 'zero-result-searches', label: dashboardLabel(t, 'metrics.noResultSearches', 'No-result searches'), value: formatCount(metrics.zeroResultSearches) },
-        { key: 'unavailable-interest', label: dashboardLabel(t, 'metrics.unavailableInterest', 'Unavailable interest'), value: formatCount(metrics.unavailableItemTaps) },
-        { key: 'smart-picks-shown', label: dashboardLabel(t, 'metrics.smartPicksShown', 'Smart Picks shown'), value: formatCount(metrics.smartPicksRendered) },
-        { key: 'smart-picks-clicks', label: dashboardLabel(t, 'metrics.smartPicksTaps', 'Smart Picks taps'), value: formatCount(metrics.smartPicksClicks) },
+        { key: 'customer-actions', label: dashboardLabel(t, 'metrics.customerActions', 'Customer actions'), rawValue: metrics.menuActionClicks, value: formatCount(metrics.menuActionClicks) },
+        { key: 'searches', label: dashboardLabel(t, 'metrics.searches', 'Searches'), rawValue: metrics.searches, value: formatCount(metrics.searches) },
+        { key: 'zero-result-searches', label: dashboardLabel(t, 'metrics.noResultSearches', 'No-result searches'), rawValue: metrics.zeroResultSearches, value: formatCount(metrics.zeroResultSearches) },
+        { key: 'unavailable-interest', label: dashboardLabel(t, 'metrics.unavailableInterest', 'Unavailable interest'), rawValue: metrics.unavailableItemTaps, value: formatCount(metrics.unavailableItemTaps) },
+        { key: 'smart-picks-shown', label: dashboardLabel(t, 'metrics.smartPicksShown', 'Smart Picks shown'), rawValue: metrics.smartPicksRendered, value: formatCount(metrics.smartPicksRendered) },
+        { key: 'smart-picks-clicks', label: dashboardLabel(t, 'metrics.smartPicksTaps', 'Smart Picks taps'), rawValue: metrics.smartPicksClicks, value: formatCount(metrics.smartPicksClicks) },
     ];
 
-    return rows.filter((row) => Number(row.value.replace(/,/g, '')) > 0);
+    return rows
+        .filter((row) => normalizeAnalyticsCount(row.rawValue) > 0)
+        .map(({ rawValue: _rawValue, ...row }) => row);
 }
 
 function buildSourceRows(sourceQuality?: SourceQuality[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
@@ -383,7 +393,7 @@ function buildSourceRows(sourceQuality?: SourceQuality[], t?: OwnerDashboardTran
         .filter((source) => hasPositiveValue([source.menuSessions, source.actionSessions, source.actionClicks]))
         .map((source) => ({
             key: `source-${source.source}`,
-            label: source.label || source.source,
+            label: getOwnerDashboardSourceLabel(source.source, source.label, t || ((_key) => source.label || source.source)),
             value: dashboardLabel(t, 'details.units.sessions', `${formatCount(source.menuSessions)} sessions`, {
                 count: formatCount(source.menuSessions),
             }),
@@ -413,16 +423,28 @@ function buildTrafficRows(label: string, values?: TrafficBreakdown[], t?: OwnerD
 function buildTopItemRows(items?: TopItem[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (items || [])
         .filter((item) => hasPositiveValue([item.clicks, item.views, item.recommendationClicks, item.unavailableTaps]))
-        .map((item, index) => ({
-            key: `item-${item.itemId}`,
-            label: `${index + 1}. ${item.name || item.itemId}`,
-            value: dashboardLabel(t, 'details.units.taps', `${formatCount(item.clicks)} taps`, {
-                count: formatCount(item.clicks),
-            }),
-            detail: item.statusLabel
-                ? [item.statusLabel, item.statusReason].filter(Boolean).join(' · ')
-                : undefined,
-        }));
+        .map((item, index) => {
+            const clicks = Number(item.clicks || 0);
+            const recommendationClicks = Number(item.recommendationClicks || 0);
+            const unavailableTaps = Number(item.unavailableTaps || 0);
+            const views = Number(item.views || 0);
+            return {
+                key: `item-${item.itemId}`,
+                label: `${index + 1}. ${item.name || item.itemId}`,
+                value: dashboardLabel(t, 'details.units.taps', `${formatCount(clicks)} taps`, {
+                    count: formatCount(clicks),
+                }),
+                detail: unavailableTaps > 0
+                    ? dashboardLabel(t, 'details.itemStatus.unavailableDemand', `${formatCount(unavailableTaps)} unavailable taps`, { count: formatCount(unavailableTaps) })
+                    : clicks >= 5 || recommendationClicks >= 3
+                        ? dashboardLabel(t, 'details.itemStatus.strongItem', `${formatCount(clicks + recommendationClicks)} item taps`, { count: formatCount(clicks + recommendationClicks) })
+                        : views >= 5 && clicks + recommendationClicks === 0
+                            ? dashboardLabel(t, 'details.itemStatus.needsWork', `${formatCount(views)} views, no taps`, { count: formatCount(views) })
+                            : views >= 5
+                                ? dashboardLabel(t, 'details.itemStatus.gettingAttention', `${formatCount(views)} views`, { count: formatCount(views) })
+                                : undefined,
+            };
+        });
 }
 
 function buildCategoryRows(categories?: TopCategory[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
@@ -447,9 +469,11 @@ function buildActionRows(actions?: MenuActionBreakdown, t?: OwnerDashboardTransl
         .map((key) => ({
             key: `action-${key}`,
             label: dashboardLabel(t, `actions.${key}`, MENU_ACTION_LABEL_KEYS[key]),
+            rawValue: actions[key],
             value: formatCount(actions[key]),
         }))
-        .filter((row) => Number(row.value.replace(/,/g, '')) > 0);
+        .filter((row) => normalizeAnalyticsCount(row.rawValue) > 0)
+        .map(({ rawValue: _rawValue, ...row }) => row);
 }
 
 function buildOpenHoursRows(
@@ -462,24 +486,29 @@ function buildOpenHoursRows(
         {
             key: 'open-hours-open',
             label: dashboardLabel(t, 'details.openHours.open', 'Actions when open'),
+            rawValue: breakdown.open,
             value: formatCount(breakdown.open),
         },
         {
             key: 'open-hours-closed',
             label: dashboardLabel(t, 'details.openHours.closed', 'Actions when closed'),
+            rawValue: breakdown.closed,
             value: formatCount(breakdown.closed),
             detail: Number(breakdown.closed || 0) > 0
                 ? dashboardLabel(t, 'details.openHours.closedShare', `${breakdown.closedShare || 0}% of all recorded actions happened while closed`, {
-                    rate: breakdown.closedShare || 0,
+                    rate: formatRate(breakdown.closedShare),
                 })
                 : undefined,
         },
         {
             key: 'open-hours-unknown',
             label: dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable'),
+            rawValue: breakdown.unknown,
             value: formatCount(breakdown.unknown),
         },
-    ].filter((row) => Number(row.value.replace(/,/g, '')) > 0);
+    ]
+        .filter((row) => normalizeAnalyticsCount(row.rawValue) > 0)
+        .map(({ rawValue: _rawValue, ...row }) => row);
 }
 
 function buildSearchRows(
@@ -522,12 +551,12 @@ function buildSearchRows(
     return rows;
 }
 
-function buildLanguageRows(languages?: LanguageUsage[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
+function buildLanguageRows(languages?: LanguageUsage[], t?: OwnerDashboardTranslator, locale = 'en-US'): MenuAnalyticsDetailRow[] {
     return (languages || [])
         .filter((language) => hasPositiveValue([language.menuSessions, language.menuViews, language.adoptions]))
         .map((language) => ({
             key: `language-${language.language}`,
-            label: language.label || language.language.toUpperCase(),
+            label: getDashboardLanguageLabel(language.language, language.label, locale),
             value: dashboardLabel(t, 'details.units.sessionsViews', `${formatCount(language.menuSessions || language.menuViews)} sessions/views`, {
                 count: formatCount(language.menuSessions || language.menuViews),
             }),
@@ -585,6 +614,7 @@ function buildSmartPickRows(blockPerformance?: BlockPerformance, t?: OwnerDashbo
 export function buildMenuAnalyticsDetailSections(
     data: OwnerMenuAnalyticsDetailData | null | undefined,
     t?: OwnerDashboardTranslator,
+    locale = 'en-US',
 ): MenuAnalyticsDetailSection[] {
     const projected = projectOwnerAnalyticsDetailData(data);
     if (!projected) return [];
@@ -657,7 +687,7 @@ export function buildMenuAnalyticsDetailSections(
     pushSection(sections, {
         key: 'languages',
         title: dashboardLabel(t, 'details.sections.languages', 'Languages'),
-        rows: buildLanguageRows(projected.topLanguages, t),
+        rows: buildLanguageRows(projected.topLanguages, t, locale),
     });
 
     pushSection(sections, {

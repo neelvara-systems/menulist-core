@@ -10,7 +10,7 @@
 
 - Quiet now, stock ready, capacity available.
 - Maximum discount and do-not-promote rules checked.
-- Truth receipt rechecked before download or manual scheduling.
+- Truth receipt rechecked before download, cloud archive, or manual scheduling.
 - Owner-managed customer destinations packaged without account connection.
 - Staff handoff and next one-variable test included.
 - Campaign rhythm shows whether to approve, use, record, safely reuse, or schedule next.

@@ -63,11 +63,14 @@ const iPhoneUserAgent = [
 function getFirebaseAdmin() {
   if (getApps().length) return getFirestore();
 
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const privateKey = (process.env.MENULIST_FIREBASE_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY)?.replace(/\\n/g, '\n');
+  const clientEmail = process.env.MENULIST_FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID
+    || process.env.MENULIST_FIREBASE_PROJECT_ID
+    || process.env.FIREBASE_PROJECT_ID
+    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   if (!privateKey || !clientEmail || !projectId) {
-    throw new Error(`${envFile} must provide FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.`);
+    throw new Error(`${envFile} must provide NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID, MENULIST_FIREBASE_CLIENT_EMAIL, and MENULIST_FIREBASE_PRIVATE_KEY.`);
   }
 
   initializeApp({

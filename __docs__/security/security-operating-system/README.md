@@ -16,7 +16,7 @@ It follows the useful operating shape of Website Asset Operating System: governe
 
 - MenuList and Answerlattice have detailed surface maps and grouped evidence-selection paths.
 - CampaignCue, SignalDesk, and MyCodex have registered-only bundles; Neelvara remains explicitly unknown rather than being claimed as audited.
-- 42 existing policies, verifiers, and local emulator tests are mapped into 7 manually selectable bundles.
+- 43 existing policies, verifiers, and local emulator tests are mapped into 7 manually selectable bundles.
 - `npm run security-os:audit` validates registry integrity without executing every mapped check.
 - `npm run security-os:plan` lists bundles and prints a selected bundle's execution/network policies without executing evidence.
 - `npm run verify:security-os` verifies the package, docs, skill, feature flag, and prohibited-integration boundary.

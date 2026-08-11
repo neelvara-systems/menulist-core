@@ -2,7 +2,7 @@
 
 **Status:** Implemented  
 **Feature Flag:** None (always active, deepMerge fallback ensures safety)  
-**Last Updated:** July 18, 2026
+**Last Updated:** August 10, 2026
 
 ## Overview
 
@@ -14,14 +14,27 @@ Multi-language support for the MenuList marketing website (`menulist.ai`). Lever
 |--------|----------|----------|----------|
 | en-US | English | Complete global website source + resource routes | Default |
 | hi-IN | Hindi | Complete maintained global website copy + reviewed resource routes | Primary market |
-| ar-SA | Arabic (RTL) | English fallback for global pages + reviewed resource routes | Middle East |
-| es-ES | Spanish | English fallback for global pages + reviewed resource routes | Global |
-| ta-IN | Tamil | English fallback for global pages + reviewed resource routes | South India |
-| te-IN | Telugu | English fallback for global pages + reviewed resource routes | South India |
-| mr-IN | Marathi | English fallback for global pages + reviewed resource routes | West India |
-| bn-IN | Bengali | English fallback for global pages + reviewed resource routes | East India |
+| ar-SA | Arabic (RTL) | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | Middle East |
+| es-ES | Spanish | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | Global |
+| ta-IN | Tamil | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | South India |
+| te-IN | Telugu | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | South India |
+| mr-IN | Marathi | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | West India |
+| bn-IN | Bengali | Complete create-menu journey and shared website chrome + reviewed resources; English fallback in other page bodies | East India |
 
 en-GB excluded from website switcher (negligible difference for marketing copy).
+
+The owner-acquisition `/create-menu` route is an explicit exception to the
+general global-page fallback policy. `CreateMenu` (115 messages),
+`CreateMenuPreview` (32), `CreateMenuSuccess` (23), and the shared first-load
+`AnalyticsConsent` panel (11) are complete in all eight configured languages.
+The shared `Header` (61), `Footer` (56), `ThemeSwitcher` (7),
+`LanguageSwitcher` (1), and `Accessibility` (1) dictionaries are complete in
+the same packs, so `/create-menu` does not reintroduce English through mounted
+website chrome. Non-English additions are maintainer-time static translations
+with protected placeholders/brands, bounded language-specific corrections,
+source gates, and rendered Arabic/Spanish review. The application runtime makes
+no translation-provider call. Other global-page body namespaces may still use
+the documented English fallback.
 
 ## Architecture
 
@@ -53,6 +66,10 @@ Single `Website` namespace with section-based keys:
 ```
 Website.Header.*       — Navigation, CTA, login
 Website.Footer.*       — Links, brand, copyright
+Website.ThemeSwitcher.* — Theme labels and accessible names
+Website.LanguageSwitcher.* — Language control label
+Website.Accessibility.* — Shared website accessibility labels
+Website.AnalyticsConsent.* — First-load consent and footer preference labels
 Website.Hero.*         — Hero section
 Website.Problem.*      — Problem tiles
 Website.Solution.*     — Solution bullets

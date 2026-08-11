@@ -17,6 +17,7 @@ import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnosti
 import { sendPlatformAlertDelivery } from '@lib/ops/platformNotificationDelivery';
 import { Timestamp } from 'firebase-admin/firestore';
 import { FEATURE_FLAGS } from '@config/features';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 const db = admin.firestore();
 
@@ -111,8 +112,8 @@ export async function createAlert(
           opsData.alertsMutedUntil.toMillis() > Date.now();
 
         if (!isMuted) {
-          const botToken = process.env.TELEGRAM_BOT_TOKEN;
-          const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
+          const botToken = menulistServerEnv.telegramBotToken;
+          const chatId = menulistServerEnv.telegramChatId?.trim();
           if (botToken && chatId) {
             const telegramSendMessageUrl = getTelegramSendMessageUrl(botToken);
             if (!telegramSendMessageUrl) {

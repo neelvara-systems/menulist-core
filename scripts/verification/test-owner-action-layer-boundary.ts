@@ -26,6 +26,28 @@ assert.equal(valid.primaryAction.id, 'capture_daily_change');
 assert.equal(valid.placement.confirmedCount, 1);
 assert.equal(valid.placement.latestConfirmedTimestamp, '2026-07-20T12:00:00.000Z');
 
+const missingProject = buildOwnerActionLayer({
+    now,
+    project: null,
+    storeDetails: {
+        feedbackEnabled: true,
+        menuPresence: {
+            googleBusiness: '2026-07-20T12:00:00.000Z',
+        },
+        subdomain: 'example',
+        workingHours: {
+            monday: '09:00-17:00',
+        },
+    },
+});
+assert.equal(missingProject.primaryAction.id, 'publish_menu');
+assert.equal(
+    missingProject.actions.filter((item) => item.id === 'publish_menu').length,
+    1,
+    'publish menu must remain one canonical action when no project exists',
+);
+assert.equal(missingProject.openCount, 1, 'missing project must not inflate the open-action count');
+
 for (const project of [
     {
         active: false,

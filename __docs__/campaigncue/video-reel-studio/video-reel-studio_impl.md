@@ -21,7 +21,7 @@ No Topview SDK/API, paid generation API, remote render provider, server FFmpeg p
 | --- | --- | --- |
 | `/api/campaigncue/video-projects` | `GET` | List at most the governed page size of admitted project records. |
 | `/api/campaigncue/video-projects` | `POST` | Create, save, approve, reject, or record one render receipt using a strict action schema and idempotency key. |
-| `/api/campaigncue/firebase-token` | `GET` | Mint one short-lived custom token for the current CampaignCue user/tenant/store so Firebase Storage rules can authorize direct private upload. |
+| `/api/campaigncue/firebase-token?purpose=media_upload&uploadId=...&sourceFileName=...` | `GET` | Mint one short-lived, purpose-scoped token bound to the current CampaignCue workspace, one immutable upload folder, and one exact source filename. The token cannot read private media or access template/catalog data. |
 | `/api/campaigncue/assets` | `POST` | Verify authoritative source/preview Storage objects and register one admitted image, video, or audio asset. |
 
 Every request uses the CampaignCue protected-auth wrapper, the shared CampaignCue scope/tenant guard, bounded JSON parsing, Zod, fail-closed Upstash rate limiting, exact workspace/campaign/output binding, and the dedicated CampaignCue Admin client. Every response branch is private/no-store/nosniff. Client writes to the collection remain denied.
@@ -30,7 +30,7 @@ Every request uses the CampaignCue protected-auth wrapper, the shared CampaignCu
 
 1. Read the exact current workspace and campaign.
 2. Require a video output belonging to that campaign.
-3. Build one source-backed project from campaign copy, handoff fields, brand snapshot, approved source references, and Pattern Cue metadata already admitted on the output.
+3. Build one source-backed project from campaign copy, handoff fields, brand snapshot, approved source references, and compact Pattern Cue metadata already admitted on the output, including hook type, format, pacing, and duration band when present.
 4. Build at most three hook/caption directions and at most eight scenes.
 5. Run deterministic trust checks.
 6. Commit one project, one audit event, and one completed idempotency record.
@@ -64,12 +64,19 @@ Every request uses the CampaignCue protected-auth wrapper, the shared CampaignCu
 
 The same client can always derive and download a bounded plain-text storyboard from the current project. This fallback does not require Canvas, MediaRecorder, a provider, or another Firestore write.
 
-Receipt input is discriminated by status. A start records rights evidence and an explicit all-zero credit lifecycle; progress checkpoints must increase; completed requires MIME and size; failed/cancelled require a governed reason. A receipt ID may start once, and only its matching active attempt may progress or terminate. The persisted decoder accepts the former receipt shape for read compatibility but all new writes use the complete contract.
+Receipt input is discriminated by status. A start records rights evidence, exact `projectVersion`, `versionBinding: exact`, and an explicit all-zero credit lifecycle; progress checkpoints must increase; completed requires MIME and size; failed/cancelled require a governed reason. The server verifies the approved aspect ratio, duration, selected durable asset ids, required session-audio declaration, and session-rights confirmation, then keeps that evidence immutable through the terminal receipt. A receipt ID may start once, and only its matching active attempt and project version may progress or terminate. The persisted decoder accepts the former receipt shape as `legacy_unverified` for read compatibility, but legacy receipts cannot feed result learning or structural reuse.
+
+## Deterministic Content Coach And Capture Guide
+
+- `evaluateCampaignCueVideoContentCoach()` derives six checks from the current in-memory draft: opening clarity, owner-controlled business proof, pacing, visible-text density, final action, and facts/rights. It receives the already-loaded Asset Library records so generated, missing, blocked, restricted, or rights-unconfirmed media cannot be mislabeled as ready real proof; eligible uploaded/imported media and session footage require confirmed rights.
+- Checks return `ready`, `review`, or `fix`, include a bounded owner explanation, and may point back to one scene. They do not alter the project or call a provider.
+- `buildCampaignCueVideoCaptureChecklist()` converts included scenes into a phone-friendly shot list and marks whether saved/session media is already available.
+- Both views are computed from data already loaded by Video Reel Studio. They add no API, Firestore, Storage, or analytics operation.
 
 ## Source Media Boundary
 
 - Project documents may hold CampaignCue asset ids, never signed URLs or binary payloads.
-- Direct owner uploads use the CampaignCue Firebase client, a short-lived custom-auth token, workspace-scoped Storage rules, resumable upload, local preview generation, and authoritative server verification before Asset Library registration.
+- Direct owner uploads use the CampaignCue Firebase client, a short-lived `media_upload` token bound to the exact upload id/source filename, content-manager Storage rules, resumable upload, one `preview.webp`, and authoritative server verification before Asset Library registration. Direct Firebase reads remain denied; preview/download APIs issue short-lived server-authorized URLs.
 - Existing Asset Library objects are resolved through its protected short-lived download endpoint.
 - Local file selections use browser object URLs for the active session only.
 - Local image/video/audio selection requires an explicit right-to-use confirmation for that render session.
@@ -81,8 +88,12 @@ Receipt input is discriminated by status. A start records rights evidence and an
 ## Review And Learning
 
 - Review notes stay capped in the project document; no chat thread, notification fanout, or public client portal is added.
+- The UI offers optional opening/proof/action prompts for staff, adviser, agency, or client review. CampaignCue does not depend on a managed consulting service.
 - Recording a video result updates the video project and existing campaign result memory in the same transaction.
-- A useful result stores only a reusable structural blueprint: purpose, timing, motion, transition, aspect ratio, and caption layout. Reuse applies that structure to current checked copy and sources; it never copies the old text, asset ids, offer, or business identity.
+- Result memory is bound to the completed receipt's exact version snapshot. Runtime admission verifies that the result version, snapshot version, duration band, and content-free signature agree before the record can drive learning.
+- Repeated owner updates replace the previous project contribution and adjust aggregate counters; they do not create duplicate outcome counts.
+- The loaded project list is grouped client-side into `use_again`, `avoid_for_now`, or `insufficient_evidence`. This is workspace-specific owner evidence, not a reach prediction.
+- A useful result stores only a reusable structural blueprint from the rendered version: purpose, timing, motion, transition, aspect ratio, and caption layout. Reuse applies that structure to current checked copy and sources; it never copies the old text, asset ids, offer, or business identity.
 
 ## Trust Checks
 

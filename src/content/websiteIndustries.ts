@@ -29,6 +29,7 @@ export type WebsiteIndustryPage = {
         question: string;
     }>;
     fit: string[];
+    heroVisual: 'food' | 'service';
     highlight: string;
     metaDescription: string;
     metaTitle: string;
@@ -49,6 +50,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/restaurants',
         metaTitle: 'Official Menu Source for Restaurants | MenuList',
         metaDescription: 'Keep one approved restaurant menu current across QR codes, Google links, WhatsApp, website links, print assets, screens, and customer-facing pages.',
+        heroVisual: 'food',
         eyebrow: 'For restaurants',
         title: 'Official menu source for the menu customers actually see.',
         highlight: 'Official menu source',
@@ -94,6 +96,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/cafes-bakeries',
         metaTitle: 'Digital Menu Source for Cafes and Bakeries | MenuList',
         metaDescription: 'Keep cafe, bakery, dessert, and beverage menus current across QR, Google, social links, website links, seasonal specials, and print materials.',
+        heroVisual: 'food',
         eyebrow: 'For cafes and bakeries',
         title: 'Keep cafe and bakery menus current everywhere customers look.',
         highlight: 'menus current',
@@ -138,6 +141,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/takeaway-cloud-kitchens',
         metaTitle: 'Public Menu Source for Takeaways and Cloud Kitchens | MenuList',
         metaDescription: 'Keep takeaway and cloud kitchen menus consistent across QR links, WhatsApp, Google, social profiles, website links, packaging, and customer share links.',
+        heroVisual: 'food',
         eyebrow: 'For takeaways and cloud kitchens',
         title: 'One public menu source for takeaways and cloud kitchens.',
         highlight: 'public menu source',
@@ -182,6 +186,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/multi-location-food-businesses',
         metaTitle: 'Multi-location Menu Source Control | MenuList',
         metaDescription: 'Keep branch menus consistent with a master menu, outlet overrides, branch pricing, local availability, QR links, Google links, and public branch pages.',
+        heroVisual: 'food',
         eyebrow: 'For multi-location food businesses',
         title: 'Menu source control for multi-location food businesses.',
         highlight: 'source control',
@@ -226,6 +231,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/salons-spas',
         metaTitle: 'Digital Service List for Salons and Spas | MenuList',
         metaDescription: 'Turn salon, barber, beauty, and spa service lists into one official customer link for WhatsApp, Instagram, Google, QR, and front-desk sharing.',
+        heroVisual: 'service',
         eyebrow: 'For salons and spas',
         title: 'One official service list for beauty, grooming, and spa customers.',
         highlight: 'official service list',
@@ -271,6 +277,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/service-list-businesses',
         metaTitle: 'Official Service List Link for SMBs | MenuList',
         metaDescription: 'Create one customer-facing service-list link for SMB price lists, packages, rate cards, QR codes, WhatsApp replies, social links, and business pages.',
+        heroVisual: 'service',
         eyebrow: 'For service-list businesses',
         title: 'Turn a service list or price list into one customer link.',
         highlight: 'one customer link',
@@ -316,6 +323,7 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
         canonicalPath: '/industries/local-service-businesses',
         metaTitle: 'Package and Rate Card Links for Local Services | MenuList',
         metaDescription: 'Publish one current package or rate-card link for local service businesses using WhatsApp, QR, Instagram, website buttons, and customer inquiry flows.',
+        heroVisual: 'service',
         eyebrow: 'For local service businesses',
         title: 'One current package list before customers ask for rates.',
         highlight: 'current package list',

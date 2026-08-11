@@ -3,7 +3,7 @@ import { ThemeProvider } from "@/components/website/shadcn/theme-provider";
 import LocalisationProvider from '@providers/localisationProvider';
 import "@styles/app.scss";
 import { Metadata } from 'next';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import WebsiteThemeShortcut from '@/components/website/shared/WebsiteThemeShortcut';
 import WebsiteDocumentTheme from '@/components/website/shared/WebsiteDocumentTheme';
 import WebsiteProductPathProvider from '@/components/website/shared/WebsiteProductPathProvider';
@@ -78,14 +78,17 @@ interface WebsiteLayoutProps {
 
 export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
     // Get locale for internationalization
-    const locale = await getLocale();
+    const [locale, t] = await Promise.all([
+        getLocale(),
+        getTranslations('Website'),
+    ]);
 
     return (
         <LocalisationProvider locale={locale}>
             <WebsiteAuthProvider>
                 <ThemeProvider>
                     <WebsiteProductPathProvider>
-                        <SkipToContentLink />
+                        <SkipToContentLink>{t('Accessibility.skipToContent')}</SkipToContentLink>
                         <WebsiteDocumentTheme />
                         <WebsiteThemeShortcut />
                         <WebsiteAnalyticsConsent />

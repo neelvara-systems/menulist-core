@@ -32,6 +32,7 @@ import {
 } from '@lib/answerlattice/predictiveSupportContracts';
 import { parseAnswerlatticePredictiveTriggerIndex } from '@lib/answerlattice/runtimeSummaryContracts';
 import { parseAnswerlatticeRetrievalCanonicalAnswer } from '@lib/answerlattice/retrievalContracts';
+import { getAnswerlatticeUpstashEnv } from '@lib/env/answerlatticeServerEnv';
 import {
     buildAnswerlatticePredictiveCooldownKey,
     claimAnswerlatticePredictiveCooldown,
@@ -200,7 +201,10 @@ function filterByPage(
 // COOLDOWN (Upstash Redis)
 // ═══════════════════════════════════════════════════════════════
 
-const isRedisConfigured = () => Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+const isRedisConfigured = () => {
+    const env = getAnswerlatticeUpstashEnv();
+    return Boolean(env.url && env.token);
+};
 
 /**
  * Atomically claims the user/workspace/trigger cooldown.
@@ -220,10 +224,8 @@ async function claimCooldown(
 
     try {
         const { Redis } = await import('@upstash/redis');
-        const redis = new Redis({
-            url: process.env.UPSTASH_REDIS_REST_URL || '',
-            token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-        });
+        const env = getAnswerlatticeUpstashEnv();
+        const redis = new Redis({ url: env.url || '', token: env.token || '' });
         return await claimAnswerlatticePredictiveCooldown({
             store: redis,
             key,

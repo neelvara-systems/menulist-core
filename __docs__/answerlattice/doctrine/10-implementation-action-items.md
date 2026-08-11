@@ -58,15 +58,11 @@ NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=<project-id>.appspot.com
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=<from Firebase console>
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=<from Firebase console>
 NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=<optional database id>
-ANSWERLATTICE_FIREBASE_MODE=separate
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa              # local/preview
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice                 # production
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=<from service account JSON>
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=<from service account JSON>
-ANSWERLATTICE_FIRESTORE_DATABASE_ID=<optional database id>
 ```
 
-The active local and preview path uses `separate` mode with `answerlattice-qa`. Production uses `separate` mode with `answerlattice`. Use `shared` only for explicit legacy/emulator recovery.
+The server reuses the canonical public mode, project ID, storage bucket, and optional database ID. The active local and preview path uses `separate` mode with `answerlattice-qa`. Production uses `separate` mode with `answerlattice`. Use `shared` only for explicit legacy/emulator recovery.
 
 Also download the service account JSON and save as `answerlattice-service-account.json` in project root.
 

@@ -28,6 +28,7 @@ Submit one public example. CampaignCue extracts the reusable format, creates ori
 - CTA category
 - Three original hooks based on Business Brain facts
 - Originality, rights, consent, claim, and disclosure guardrails
+- Compact hook/format/pacing/duration classifications that may be attached to a Video Reel Studio project and later compared only against this workspace's owner-reported result
 
 ## Invariants
 
@@ -39,6 +40,8 @@ Submit one public example. CampaignCue extracts the reusable format, creates ori
 6. Campaign packs pin the pattern source ID and hash.
 7. Replacing the current example makes only packs that used the old example stale.
 8. Manual export and owner approval remain mandatory.
+9. Pattern outcome learning is bound to the exact rendered project version and never imports competitor reach, views, engagement, or account history.
+10. Pattern Cue never becomes a monitoring service. The owner must deliberately replace the single current example.
 
 ## Non-Goals
 

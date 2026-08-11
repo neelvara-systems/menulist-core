@@ -1,7 +1,7 @@
 # Public Menu Entry - Website Content
 
 **Status:** Local source complete; release evidence pending
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -26,6 +26,12 @@ Sign in, add a clear menu photo, a PDF up to 15 pages, or a public menu link you
 Choose a photo or PDF from your saved files, take a menu photo, or paste a supported public page, PDF, or image link. MenuList prepares a review first. Nothing is published anonymously.
 
 The customer link reflects the version the owner approved and published. For later menu edits, save the approved edit from Projects; publish design or page changes when needed. Customer-facing menus can take up to 60 seconds to refresh.
+
+## Success and plan handoff
+
+After a new starter claim, show the permanent customer link first, followed by one clear **Keep this menu online** action. Explain that the starter menu is public for seven days and that choosing a plan keeps the same customer link online after setup. The action opens the existing Billing route after the same bounded session refresh used by the workspace handoff. It does not start checkout automatically, shorten the starter period, or move QR Code or Assets out of their dedicated modules.
+
+Upload, preview, success, Header, Footer, theme/language controls, accessibility skip link, and analytics-consent labels are complete in English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. A locale may not silently fall back to English inside this journey, including first-load consent and shared navigation. The pending success state must say that the menu link is not ready, continue to MenuList, and omit QR/placement instructions until a validated link exists. Heading highlights must be literal substrings of the full localized heading, and Arabic uses direction-aware logical alignment while customer URLs remain isolated LTR. Extracted menu content is a separate language boundary: preview uses the language marked primary, applies shared localized-text fallback, sets the menu card's own `lang` and writing direction, and isolates prices so an Arabic interface can review an English menu and vice versa without reordering customer truth. Desktop shared navigation must keep translated labels clear and non-overlapping; widths below desktop admission use the drawer, whose edge and closed motion follow page direction.
 
 ## FAQ
 

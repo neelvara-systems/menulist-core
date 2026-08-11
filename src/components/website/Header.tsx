@@ -89,11 +89,9 @@ export default function Header() {
     }
 
     event.preventDefault();
+    const trigger = event.currentTarget.querySelector<HTMLElement>('[aria-controls]');
     setOpenDesktopMenu(null);
-    const activeElement = document.activeElement;
-    if (activeElement instanceof HTMLElement) {
-      activeElement.blur();
-    }
+    window.requestAnimationFrame(() => trigger?.focus());
   };
   const handleDesktopMenuBlur = (
     event: ReactFocusEvent<HTMLDivElement>,
@@ -260,7 +258,7 @@ export default function Header() {
               alignItems: "center",
               gap: "var(--ws-space-8)",
             }}
-            className="ws-desktop-nav"
+            className="ws-desktop-nav ws-desktop-nav--primary"
           >
             {navItemKeys.map((item) => {
               const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));
@@ -275,16 +273,15 @@ export default function Header() {
                     onKeyDown={handleDesktopDropdownKeyDown}
                     onMouseEnter={() => setOpenDesktopMenu("features")}
                     onMouseLeave={() => setOpenDesktopMenu(null)}
-                    onFocusCapture={() => setOpenDesktopMenu("features")}
                     onBlurCapture={(event) => handleDesktopMenuBlur(event, "features")}
                   >
                     <button
                       type="button"
                       className="ws-header-feature-menu__trigger"
-                      aria-label={t("Header.featuresMenuAria")}
+                      aria-haspopup="true"
                       aria-expanded={openDesktopMenu === "features"}
                       aria-controls="ws-desktop-features-panel"
-                      onClick={() => setOpenDesktopMenu("features")}
+                      onClick={() => setOpenDesktopMenu((current) => current === "features" ? null : "features")}
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,
@@ -377,7 +374,7 @@ export default function Header() {
                     <Link
                       href="/resources"
                       className="ws-header-resource-menu__trigger"
-                      aria-label={t("Header.resourcesMenuAria")}
+                      aria-haspopup="true"
                       aria-expanded={openDesktopMenu === "resources"}
                       aria-controls="ws-desktop-resources-panel"
                       style={{
@@ -453,7 +450,7 @@ export default function Header() {
               alignItems: "center",
               gap: "var(--ws-space-3)",
             }}
-            className="ws-desktop-nav"
+            className="ws-desktop-nav ws-desktop-nav--actions"
           >
             {status === "authenticated" && session?.user ? (
               <>
@@ -545,7 +542,7 @@ export default function Header() {
               color: "var(--ws-text-primary)",
               touchAction: "manipulation",
             }}
-            aria-label={t("Header.openMenu")}
+            aria-label={isOpen ? t("Header.closeMenu") : t("Header.openMenu")}
             aria-expanded={isOpen}
           >
             <LuMenu size={24} />
@@ -565,13 +562,14 @@ export default function Header() {
             className="ws-drawer-panel ws-drawer-panel--open"
             role="dialog"
             aria-modal="true"
-            aria-label={t("Header.openMenu")}
+            aria-labelledby="ws-mobile-navigation-title"
           >
             <div className="ws-drawer-header">
               <Link
                 href="/"
                 onClick={closeDrawer}
                 className="ws-drawer-brand"
+                id="ws-mobile-navigation-title"
                 aria-label="MenuList"
               >
                 <BrandWordmark

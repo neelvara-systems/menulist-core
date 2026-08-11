@@ -2,6 +2,8 @@
 
 Asset Library covers campaign assets, source files, generated variants, usage rights, reuse, approval state, and cross-channel storage.
 
+The bounded Campaign Pack cloud copy reuses one deterministic `export` record in this existing library. It does not add an archive collection or turn Asset Library into an unlimited version manager. See [Durable Cloud Export Archive](../durable-cloud-export-archive/README.md).
+
 | File | Audience | Purpose |
 | --- | --- | --- |
 | [asset-library_spec.md](./asset-library_spec.md) | Product, design | Asset library requirements. |

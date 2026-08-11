@@ -8,8 +8,9 @@ import { getExpectedFirebaseProjectId } from "@constant/deploymentTargets";
 import firebaseConfig from "./config";
 import { logFirebaseBootstrapFailure } from "./firebaseDiagnostics";
 import { resolveMenuListFirebaseClientBoundary } from "./menuListFirebaseClientBoundary";
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
 
-const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+const appCheckDebugToken = menulistPublicEnv.firebaseAppCheckDebugToken;
 const expectedMenuListProjectId = getExpectedFirebaseProjectId('menulist');
 
 const isLocalAppCheckHost = (hostname: string): boolean => {

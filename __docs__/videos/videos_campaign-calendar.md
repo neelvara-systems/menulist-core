@@ -72,11 +72,25 @@ Goal: convert skeptical owners.
 | Topic | Video angle | Answer |
 | --- | --- | --- |
 | Automatic publishing | Will it publish automatically? | No. Owner approval first. |
-| Existing menu | Can I upload my existing menu? | Yes. Upload menu photos, a PDF, or an owned public link. No typing required to start. |
+| Existing menu | Can I upload my existing menu? | Yes. Upload menu photos, a PDF, or an owned public link. You do not need to retype the whole menu before beginning. |
 | After publishing | What happens after publishing? | QR, page, print, actions, activity, and feedback stay tied to the approved list. |
 | Price changes | What if prices change? | Message in, approval card, receipt after supported update. |
 | Multi-location | What about multiple outlets? | Master list with outlet-level flexibility. |
 | External platforms | Does it update Google/Instagram/Zomato automatically? | No. Owners can place the approved link where customers look; direct external posting is not the promise. |
+
+## Feature Launch Continuation: Day 8 To Day 60
+
+The main launch campaign establishes the category. Feature videos then deepen understanding in three waves. Do not post all 14 as a consecutive feature dump. Alternate feature proof with owner questions, short demos, and objection handling.
+
+Use [videos_feature-videos.md](./videos_feature-videos.md) for strategy and [feature-launch/feature-launch-inventory.md](./feature-launch/feature-launch-inventory.md) for the canonical feature-to-video mapping.
+
+| Window | Feature sequence | Viewer question answered |
+| --- | --- | --- |
+| Days 8-20 | Menu import, Owner Phone Dashboard, QR Menu And Links, Official Business Page, Business Health | Can I start with what I have, and will MenuList reduce daily work? |
+| Days 21-40 | Print-Ready Kit, Customer Feedback Loop, Activity And Analytics, Menu Quality Validation | How does the approved source stay useful and correct after publishing? |
+| Days 41-60 | Menu Content Prep, Featured Choices, AI Menu Manager, Public Discovery, Multi-location | How does MenuList handle richer content and greater complexity without removing owner control? |
+
+Recommended rhythm: one feature master per week, one proof cut from that master, and one FAQ or founder response tied to the same feature. Create distinct ledger entries for every distributable version.
 
 ## Minimum Launch Pack
 
@@ -99,7 +113,7 @@ Goal: convert skeptical owners.
 
 - 1 hero film.
 - 1 product demo.
-- 5 feature videos.
+- 14 feature-launch authorities released in three governed waves.
 - 15 reels.
 - 5 paid ad cuts.
 - 4 onboarding clips.
@@ -121,6 +135,9 @@ Goal: convert skeptical owners.
 13. Official Business Page reel.
 14. Multi-location reel.
 15. Founder/brand POV video.
+16. Feature Wave 1: Menu import, Owner Phone Dashboard, QR Menu And Links, Official Business Page, Business Health.
+17. Feature Wave 2: Print-Ready Kit, Customer Feedback Loop, Activity And Analytics, Menu Quality Validation.
+18. Feature Wave 3: Menu Content Prep, Featured Choices, AI Menu Manager, Public Discovery, Multi-location.
 
 Reason: validate setup relief and owner control in one small conversion system before expanding the approved language and motion system into every launch asset.
 

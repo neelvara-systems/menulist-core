@@ -4049,6 +4049,7 @@ function verifyAnalyticsErrorBoundary() {
   const analyticsService = read('src/services/analytics/index.ts');
   const analyticsDashboard = read('src/components/templates/main-app/dashboard/AnalyticsDashboard/index.tsx');
   const customerAppMetrics = read('src/components/templates/main-app/dashboard/AnalyticsDashboard/CustomerAppMetrics.tsx');
+  const menuListEnUsLocale = read('public/locales/menulist.ai/en-US.json');
   const googleMenuPerformance = read('src/components/templates/main-app/dashboard/googleAnalytics/MenuPerformance.tsx');
   const googleQuickStats = read('src/components/templates/main-app/dashboard/googleAnalytics/QuickStats.tsx');
   const googleLocationInsights = read('src/components/templates/main-app/dashboard/googleAnalytics/LocationInsights.tsx');
@@ -5269,7 +5270,8 @@ function verifyAnalyticsErrorBoundary() {
   assert(!chatInsights.includes('PlatformGlobalDataContext'), 'Chat Insights must not read MenuList store state for Answerlattice analytics status');
   assert(!chatInsights.includes('analyticsMetadata?.lastStatus'), 'Chat Insights must not render cross-product analytics job status');
   assert(analyticsDashboard.includes('description="Try again later."'), 'Analytics dashboard must use fixed error description');
-  assert(customerAppMetrics.includes('description="Try again later."'), 'Customer App metrics must use fixed error description');
+  assert(customerAppMetrics.includes("description={t('customerApp.tryAgainLater')}"), 'Customer App metrics must use the governed localized error description');
+  assert(menuListEnUsLocale.includes('"tryAgainLater": "Try again later."'), 'Customer App metrics locale must keep fixed owner-safe error copy');
   assert(!analyticsDashboard.includes('description={error.message}'), 'Analytics dashboard must not render raw exception text');
   assert(!customerAppMetrics.includes('description={error.message}'), 'Customer App metrics must not render raw exception text');
 
@@ -6259,7 +6261,7 @@ function verifyOwnerUtilitySecureLogging() {
       'if (!/^\\d+$/.test(normalizedPort)) return null;',
       'Number.isSafeInteger(port) && port >= SMTP_MIN_PORT && port <= SMTP_MAX_PORT',
       'export function getSmtpConfigFromEnv(env: NodeJS.ProcessEnv = process.env): SmtpConfig | null',
-      'const port = parseSmtpPort(env.SMTP_PORT);',
+      'const port = parseSmtpPort(env.MENULIST_SMTP_PORT || env.SMTP_PORT);',
       'pass.trim().length === 0',
       'secure: port === 465',
       'export function isSmtpConfigured',

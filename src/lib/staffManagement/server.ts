@@ -22,6 +22,7 @@ import {
     getBoundedSecurityStringContext,
 } from "@lib/security/securityDiagnostics";
 import { logger } from "@lib/monitoring/logger";
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import type { StoreRoleDataType } from "@type/platform/roles";
 import type { StoreDataType } from "@type/platform/store";
@@ -884,7 +885,7 @@ const applyRateLimit = async (
     );
 };
 
-const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
+const getFirebaseAuthApiKey = () => menulistServerEnv.firebaseApiKey;
 
 const normalizeFirebaseAuthApiKey = (value?: string) => {
     const apiKey = String(value || "").trim();

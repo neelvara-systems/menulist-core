@@ -1,9 +1,10 @@
 import { Card, Skeleton, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import {
-  buildOwnerBusinessActivityMetrics,
-  getOwnerBusinessPrimaryAnalyticsPeriod,
-} from '@lib/ownerBusinessAssistant/businessSignals';
+  buildLocalizedOwnerBusinessActivityMetrics,
+  getLocalizedOwnerBusinessPrimaryPeriod,
+} from '@lib/ownerBusinessAssistant/dashboardPresentation';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Text } = Typography;
@@ -13,8 +14,9 @@ export function BusinessHealthAnalyticsStrip({ enabled = true, projectId, storeS
   projectId?: string;
   storeScopeKey?: string | number;
 }) {
+  const t = useTranslations('Dashboard.owner');
   const { analytics, isLoading } = useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey, { enabled });
-  const primaryPeriod = getOwnerBusinessPrimaryAnalyticsPeriod(analytics?.periods);
+  const primaryPeriod = getLocalizedOwnerBusinessPrimaryPeriod(analytics?.periods);
 
   if (isLoading && !analytics) {
     return <Card className={styles.analyticsStrip}><Skeleton active paragraph={{ rows: 1 }} /></Card>;
@@ -22,15 +24,15 @@ export function BusinessHealthAnalyticsStrip({ enabled = true, projectId, storeS
 
   if (!primaryPeriod) return null;
 
-  const metrics = buildOwnerBusinessActivityMetrics(primaryPeriod);
+  const metrics = buildLocalizedOwnerBusinessActivityMetrics(primaryPeriod, t);
 
   if (!metrics.length) return null;
 
   return (
     <Card className={styles.analyticsStrip} bodyStyle={{ padding: 12 }}>
       <div className={styles.analyticsStripHeader}>
-        <Text strong>{primaryPeriod.key === 'today' ? 'Today' : 'Latest activity'}</Text>
-        <Text type="secondary">{primaryPeriod.rangeLabel}</Text>
+        <Text strong>{primaryPeriod.key === 'today' ? t('businessHealth.today') : t('businessHealth.latestActivity')}</Text>
+        <Text type="secondary">{t(`businessHealth.periods.${primaryPeriod.key}`)}</Text>
       </div>
       <div className={styles.metricGrid}>
         {metrics.map((metric) => (

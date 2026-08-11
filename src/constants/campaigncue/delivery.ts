@@ -3,12 +3,17 @@ export const CAMPAIGNCUE_DELIVERY_MODE = "export_download_only" as const;
 export const CAMPAIGNCUE_EXPORT_ACTIONS = [
     "download",
     "export",
+    "archive_export",
     "mark_used",
     "record_outcome",
+    "record_result_evidence",
     "request_approval",
     "approve",
     "reject",
+    "add_approval_comment",
+    "resolve_approval_comment",
     "schedule",
+    "accept_experiment",
 ] as const;
 
 export const CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS = [

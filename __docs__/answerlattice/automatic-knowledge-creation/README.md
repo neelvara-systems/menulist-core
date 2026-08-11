@@ -41,6 +41,9 @@ support event
 - Signal-to-Knowledge Queue: draft review, edit, approve, reject, and regenerate.
 - Support Board: deterministic manual proposal creation from a governed card.
 - Governance server: authoritative proposal decisions and canonical mutation.
+- Product Friction Evidence: explicit complete-window owner review after an
+  implemented correction; the legacy nightly impact field is not displayed as
+  causal proof.
 
 ## Primary Source Files
 

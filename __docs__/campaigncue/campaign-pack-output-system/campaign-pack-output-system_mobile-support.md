@@ -13,6 +13,7 @@
 
 - Output pack summary uses existing responsive CampaignCue cards.
 - The ZIP button remains a single clear action.
+- Cloud save/replace and saved-copy download remain review actions with 44 px touch targets; they do not enable dense mobile editing.
 - Channel fields remain copyable through existing manual delivery cards.
 - Pack readiness is shown as five short owner-readable checks, not a dense analytics score.
 - Campaign Rhythm shows one next action; due/scheduled task lists remain agenda-first.
@@ -23,5 +24,7 @@
 ## Constraints
 
 Some mobile browsers handle ZIP downloads differently. Owner help copy should tell owners that the downloaded ZIP is a package of text/brief files and that channel posting remains manual.
+
+Signed upload/download behavior still requires iOS and Android PWA evidence after CampaignCue bucket CORS and IAM are configured.
 
 Dense editor work remains desktop-first. Mobile supports review, approval, copy/download, reminder creation, safe reuse, and result capture through the shared CampaignCue responsive surface.

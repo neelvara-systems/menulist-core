@@ -22,6 +22,8 @@ import type {
     PublicMenuDraftItem,
 } from '@data/shared/publicMenuDraftData';
 import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
+import { getLocaleDirection } from '@lib/localization/config';
+import { getLocalizedText } from '@lib/localization/text';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
@@ -544,7 +546,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return (
             <AnimateOnScroll>
                 <div style={containerStyle}>
-                    <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                    <LuLoader aria-hidden="true" size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
                     <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>{t('CreateMenu.previewLoading')}</p>
                     <style>{spinCSS}</style>
                 </div>
@@ -556,7 +558,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return (
             <AnimateOnScroll>
                 <div style={containerStyle}>
-                    <LuAlertCircle size={48} color="var(--ws-warning)" />
+                    <LuAlertCircle aria-hidden="true" size={48} color="var(--ws-warning)" />
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '16px', maxWidth: '360px', textAlign: 'center' }}>
                         {t('CreateMenu.previewErrorConnection')}
                     </p>
@@ -567,6 +569,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                             setPollCycle((cycle) => cycle + 1);
                         }}
                         style={primaryBtnStyle}
+                        type="button"
                     >
                         {t('CreateMenu.tryAgain')}
                     </button>
@@ -580,7 +583,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return (
             <AnimateOnScroll>
                 <div style={containerStyle}>
-                    <LuLoader size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                    <LuLoader aria-hidden="true" size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '20px' }}>
                         {t('CreateMenu.previewReadingTitle')}
                     </h2>
@@ -614,15 +617,15 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return (
             <AnimateOnScroll>
                 <div style={containerStyle}>
-                    <LuAlertCircle size={48} color="var(--ws-warning)" />
+                    <LuAlertCircle aria-hidden="true" size={48} color="var(--ws-warning)" />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
                         {t('CreateMenu.previewExpiredTitle')}
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
                         {t('CreateMenu.previewExpiredBody')}
                     </p>
-                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle}>
-                        <LuUpload size={16} /> {t('CreateMenu.previewUploadCta')}
+                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle} type="button">
+                        <LuUpload aria-hidden="true" size={16} /> {t('CreateMenu.previewUploadCta')}
                     </button>
                 </div>
             </AnimateOnScroll>
@@ -634,15 +637,15 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return (
             <AnimateOnScroll>
                 <div style={containerStyle}>
-                    <LuAlertCircle size={48} color="var(--ws-error)" />
+                    <LuAlertCircle aria-hidden="true" size={48} color="var(--ws-error)" />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
                         {t('CreateMenu.previewFailedTitle')}
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
                         {t('CreateMenu.previewFailedFallback')}
                     </p>
-                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle}>
-                        <LuUpload size={16} /> {t('CreateMenu.tryAgain')}
+                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle} type="button">
+                        <LuUpload aria-hidden="true" size={16} /> {t('CreateMenu.tryAgain')}
                     </button>
                 </div>
             </AnimateOnScroll>
@@ -654,7 +657,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const categories = extractedData?.categories || [];
     const items = extractedData?.items || [];
     const detectedDetails = buildPublicPreviewDetectedDetails(draft, t);
-    const lang = extractedData?.languages?.[0]?.code || 'en';
+    const menuLanguage = extractedData?.languages?.find((language) => language.isPrimary)?.code
+        || extractedData?.languages?.[0]?.code
+        || 'en';
+    const menuDirection = getLocaleDirection(menuLanguage);
 
     return (
         <div style={{
@@ -677,13 +683,13 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         fontWeight: 600,
                         marginBottom: '16px',
                     }}>
-                        <LuCheck size={16} /> {t('CreateMenu.previewReadyForReview')}
+                        <LuCheck aria-hidden="true" size={16} /> {t('CreateMenu.previewReadyForReview')}
                     </div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
+                    <h1 dir="auto" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
                         {detectedBusinessName || t('CreateMenu.previewDefaultMenuSource')}
                     </h1>
                     {detectedBusinessType && (
-                        <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
+                        <p dir="auto" style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
                     )}
                     {detectedDetails.length > 0 && (
                         <div style={{
@@ -724,7 +730,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                         />
                                     ) : null}
                                     <span style={{ overflowWrap: 'anywhere' }}>
-                                        {detail.label}: {detail.value}
+                                        {detail.label}: <bdi>{detail.value}</bdi>
                                     </span>
                                 </span>
                             ))}
@@ -741,7 +747,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     border: '1px solid var(--ws-border-default)',
                     overflow: 'hidden',
                     marginBottom: '24px',
-                }}>
+                    textAlign: 'start',
+                }} dir={menuDirection} lang={menuLanguage}>
                     {categories.map((cat, categoryIndex) => {
                         const catItems = items.filter(item => item.category === cat.id);
                         if (catItems.length === 0) return null;
@@ -755,14 +762,16 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                         padding: '12px 16px',
                                         borderBottom: '1px solid var(--ws-border-default)',
                                     }}>
-                                        <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>
-                                            {cat.name?.[lang] || cat.name?.en || cat.id}
+                                        <h3 dir="auto" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>
+                                            {getLocalizedText(cat.name, menuLanguage, menuLanguage, cat.id)}
                                         </h3>
                                     </div>
 
                                     {/* Items */}
                                     {catItems.map((item, idx) => {
                                         const itemTags = getPreviewItemTags(item);
+                                        const itemName = getLocalizedText(item.name, menuLanguage, menuLanguage, item.id);
+                                        const itemDescription = getLocalizedText(item.description, menuLanguage, menuLanguage);
                                         return (
                                             <div
                                                 key={item.id}
@@ -776,18 +785,18 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                 }}
                                             >
                                                 <div style={{ flex: 1 }}>
-                                                    <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
-                                                        {item.name?.[lang] || item.name?.en || item.id}
+                                                    <p dir="auto" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
+                                                        {itemName}
                                                     </p>
-                                                    {item.description?.[lang] && (
-                                                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-                                                            {item.description[lang]}
+                                                    {itemDescription && (
+                                                        <p dir="auto" style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
+                                                            {itemDescription}
                                                         </p>
                                                     )}
                                                     {itemTags.length > 0 && (
                                                         <div style={{ marginTop: '5px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                             {itemTags.map((tag) => (
-                                                                <span key={tag} style={{
+                                                                <span dir="auto" key={tag} style={{
                                                                     fontSize: '11px',
                                                                     color: 'var(--ws-text-secondary)',
                                                                     backgroundColor: 'var(--ws-bg-subtle)',
@@ -804,15 +813,15 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                     {item.attributes && item.attributes.length > 0 && (
                                                         <div style={{ marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                             {item.attributes.map((attr) => (
-                                                                <span key={attr.id} style={{
+                                                                <span dir="auto" key={attr.id} style={{
                                                                     fontSize: '11px',
                                                                     color: 'var(--ws-text-secondary)',
                                                                     backgroundColor: 'var(--ws-border-subtle)',
                                                                     padding: '2px 8px',
                                                                     borderRadius: '4px',
                                                                 }}>
-                                                                    {attr.name?.[lang] || attr.name?.en || attr.id}
-                                                                    {attr.price ? ` — ${attr.price}` : ''}
+                                                                    {getLocalizedText(attr.name, menuLanguage, menuLanguage, attr.id)}
+                                                                    {attr.price ? <> — <bdi>{attr.price}</bdi></> : null}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -825,7 +834,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                         color: 'var(--ws-text-primary)',
                                                         whiteSpace: 'nowrap',
                                                     }}>
-                                                        {item.price}
+                                                        <bdi>{item.price}</bdi>
                                                     </span>
                                                 )}
                                             </div>
@@ -841,6 +850,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         <div style={{ padding: '16px' }}>
                             {items.map((item) => {
                                 const itemTags = getPreviewItemTags(item);
+                                const itemName = getLocalizedText(item.name, menuLanguage, menuLanguage, item.id);
                                 return (
                                     <div key={item.id} style={{
                                         display: 'flex',
@@ -849,12 +859,12 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                         borderBottom: '1px solid var(--ws-border-subtle)',
                                         gap: '12px',
                                     }}>
-                                        <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
-                                            {item.name?.[lang] || item.name?.en || item.id}
+                                        <span dir="auto" style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
+                                            {itemName}
                                             {itemTags.length > 0 && (
                                                 <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '5px' }}>
                                                     {itemTags.map((tag) => (
-                                                        <span key={tag} style={{
+                                                        <span dir="auto" key={tag} style={{
                                                             fontSize: '11px',
                                                             color: 'var(--ws-text-secondary)',
                                                             backgroundColor: 'var(--ws-bg-subtle)',
@@ -869,7 +879,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                             )}
                                         </span>
                                         {item.price && (
-                                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
+                                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}><bdi>{item.price}</bdi></span>
                                         )}
                                     </div>
                                 );
@@ -925,6 +935,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     <div style={{ width: '100%', maxWidth: '520px' }}>
                         <AnimateStaggerChild index={0}>
                             <input
+                                dir="auto"
                                 type="text"
                                 value={businessName}
                                 onChange={(e) => { setBusinessName(e.target.value); setClaimError(null); }}
@@ -943,6 +954,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         </AnimateStaggerChild>
                         {!hasExistingAccount ? <AnimateStaggerChild index={1}>
                             <input
+                                dir="auto"
                                 type="text"
                                 value={city}
                                 onChange={(e) => { setCity(e.target.value); setClaimError(null); }}
@@ -961,6 +973,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         </AnimateStaggerChild> : null}
                         <AnimateStaggerChild index={2}>
                             <input
+                                dir="ltr"
                                 type="tel"
                                 value={phone}
                                 onChange={(e) => { setPhone(e.target.value); setClaimError(null); }}
@@ -979,6 +992,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         </AnimateStaggerChild>
                         <AnimateStaggerChild index={3}>
                             <input
+                                dir="auto"
                                 type="text"
                                 value={addressLine}
                                 onChange={(e) => { setAddressLine(e.target.value); setClaimError(null); }}
@@ -1009,10 +1023,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                     opacity: claiming ? 0.7 : 1,
                                     cursor: claiming ? 'default' : 'pointer',
                                 }}
+                                type="button"
                             >
                                 {claiming
-                                    ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('CreateMenu.previewClaiming')}</>
-                                    : <><LuSend size={18} /> {t('CreateMenu.previewClaimCta')}</>}
+                                    ? <><LuLoader aria-hidden="true" size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('CreateMenu.previewClaiming')}</>
+                                    : <><LuSend aria-hidden="true" size={18} /> {t('CreateMenu.previewClaimCta')}</>}
                             </button>
                         </AnimateStaggerChild>
                     </div>
@@ -1024,8 +1039,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                             width: '100%',
                             maxWidth: '520px',
                             marginTop: 0,
-                        }}>
-                            <LuLogIn size={18} /> {t('CreateMenu.previewSignupCta')}
+                        }} type="button">
+                            <LuLogIn aria-hidden="true" size={18} /> {t('CreateMenu.previewSignupCta')}
                         </button>
                         <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: 0 }}>
                             {t('CreateMenu.previewSignupCaption')}

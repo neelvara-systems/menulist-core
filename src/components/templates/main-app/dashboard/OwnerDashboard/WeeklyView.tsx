@@ -12,8 +12,9 @@
  */
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { EMPTY_STATE_MESSAGES, WeeklyViewData } from '@template/main-app/projects/types';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import { formatDashboardPercent } from '@lib/analytics/ownerDashboardPresentation';
+import { WeeklyViewData } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Row, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -30,7 +31,7 @@ interface WeeklyViewProps {
 }
 
 const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
-    const labels = useOfferingLabels();
+    const labels = useDashboardOfferingLabels();
     const t = useTranslations('Dashboard.owner');
     const { token } = theme.useToken();
 
@@ -49,7 +50,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                     imageStyle={{ height: 112 }}
                     description={
                         <Text type="secondary">
-                            {EMPTY_STATE_MESSAGES.noWeeklyData.description}
+                            {t('empty.noWeeklyData')}
                         </Text>
                     }
                 />
@@ -67,7 +68,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
         <div className={styles.weeklyView}>
             {/* AI Summary - Most prominent */}
             {aiSummary && (
-                <AISummaryCard summary={aiSummary} period="weekly" />
+                <AISummaryCard summary={aiSummary} metrics={metrics} period="weekly" />
             )}
 
             {/* Key Metrics */}
@@ -78,9 +79,8 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                         value={metrics.menuVisits}
                         icon={<LuEye />}
                         subtitle={metricsChange?.menuVisitsChange !== undefined
-                            ? t('weekly.vsLastWeek', {
-                                sign: metricsChange.menuVisitsChange > 0 ? '+' : '',
-                                change: metricsChange.menuVisitsChange,
+                            ? t('weekly.changeVsLastWeek', {
+                                change: formatDashboardPercent(metricsChange.menuVisitsChange, true),
                             })
                             : undefined}
                         tooltip={labels.scansTooltip}
@@ -97,14 +97,14 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.engagedSessions')}
-                        value={`${metrics.engagedSessionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.engagedSessionRate)}
                         tooltip={t('tooltips.engagedSessions')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.actionRate')}
-                        value={`${metrics.actionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.actionRate)}
                         tooltip={t('tooltips.actionRate')}
                     />
                 </Col>
@@ -119,7 +119,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.smartPicksUsed')}
-                        value={`${smartPicksEngagementRate}%`}
+                        value={formatDashboardPercent(smartPicksEngagementRate)}
                         icon={<LuFlame />}
                         subtitle={t('units.clicks', { count: metrics.smartPicksClicks })}
                         tooltip={t('tooltips.smartPicksUsed')}

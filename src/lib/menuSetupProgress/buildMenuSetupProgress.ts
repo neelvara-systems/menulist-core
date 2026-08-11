@@ -78,7 +78,14 @@ interface BuildMenuSetupProgressInput {
     project?: (Project & Record<string, unknown>) | null;
     qualitySignals?: QualitySignal[];
     storeDetails?: Partial<StoreDataType> | null;
+    translate?: MenuSetupProgressTranslator;
 }
+
+type MenuSetupProgressTranslationValues = Record<string, string | number>;
+export type MenuSetupProgressTranslator = (
+    key: string,
+    values?: MenuSetupProgressTranslationValues,
+) => string;
 
 const CRITICAL_MENU_SETUP_SIGNAL_IDS = new Set(['prices', 'priceOutliers']);
 
@@ -124,6 +131,15 @@ function buildAction(id: MenuSetupProgressActionId, label: string, href: string)
     return { id, href, label };
 }
 
+function copy(
+    translate: MenuSetupProgressTranslator | undefined,
+    key: string,
+    fallback: string,
+    values?: MenuSetupProgressTranslationValues,
+): string {
+    return translate ? translate(key, values) : fallback;
+}
+
 function buildStep(input: Omit<MenuSetupProgressStep, 'done'>): MenuSetupProgressStep {
     return {
         ...input,
@@ -146,6 +162,7 @@ export function buildMenuSetupProgress({
     project,
     qualitySignals,
     storeDetails,
+    translate,
 }: BuildMenuSetupProgressInput): MenuSetupProgressSummary {
     const signals = resolveQualitySignals(project, qualitySignals);
     const files = Array.isArray(project?.files) ? project.files : [];
@@ -184,100 +201,129 @@ export function buildMenuSetupProgress({
 
     const requiredSteps: MenuSetupProgressStep[] = [
         buildStep({
-            action: buildAction('open_create_menu', hasProjectSource ? 'Open menu' : 'Create menu', hasProjectSource ? '/projects' : '/create-menu'),
-            description: hasProjectSource ? 'Menu source is connected.' : 'Add a menu photo, PDF, link, or start manually.',
+            action: buildAction(
+                'open_create_menu',
+                hasProjectSource
+                    ? copy(translate, 'actions.openMenu', 'Open menu')
+                    : copy(translate, 'actions.createMenu', 'Create menu'),
+                hasProjectSource ? '/projects' : '/create-menu',
+            ),
+            description: hasProjectSource
+                ? copy(translate, 'steps.sourceAdded.doneDescription', 'Menu source is connected.')
+                : copy(translate, 'steps.sourceAdded.nextDescription', 'Add a menu photo, PDF, link, or start manually.'),
             group: 'required',
             id: 'source_added',
-            label: 'Source added',
+            label: copy(translate, 'steps.sourceAdded.label', 'Source added'),
             status: hasProjectSource ? 'done' : 'next',
         }),
         buildStep({
-            action: buildAction('open_menu_editor', 'Open menu', '/projects'),
-            description: hasMenuItems ? `${activeItems.length} visible item${activeItems.length === 1 ? '' : 's'} found.` : 'Import or add menu items.',
+            action: buildAction('open_menu_editor', copy(translate, 'actions.openMenu', 'Open menu'), '/projects'),
+            description: hasMenuItems
+                ? copy(translate, 'steps.menuImported.doneDescription', `${activeItems.length} visible item${activeItems.length === 1 ? '' : 's'} found.`, { count: activeItems.length })
+                : copy(translate, 'steps.menuImported.nextDescription', 'Import or add menu items.'),
             group: 'required',
             id: 'menu_imported',
-            label: 'Menu imported',
+            label: copy(translate, 'steps.menuImported.label', 'Menu imported'),
             status: hasMenuItems ? 'done' : hasProjectSource ? 'next' : 'blocked',
         }),
         buildStep({
-            action: buildAction('open_menu_check', 'Review details', '/projects'),
+            action: buildAction('open_menu_check', copy(translate, 'actions.reviewDetails', 'Review details'), '/projects'),
             description: keyDetailsChecked
-                ? 'Prices and key menu details are clear.'
-                : criticalWarnings[0]?.label || 'Check prices and key details before publishing.',
+                ? copy(translate, 'steps.keyDetailsChecked.doneDescription', 'Prices and key menu details are clear.')
+                : copy(translate, 'steps.keyDetailsChecked.nextDescription', 'Check prices and key details before publishing.'),
             group: 'required',
             id: 'key_details_checked',
-            label: 'Key details checked',
+            label: copy(translate, 'steps.keyDetailsChecked.label', 'Key details checked'),
             status: keyDetailsChecked ? 'done' : hasMenuItems ? 'needs_attention' : 'blocked',
         }),
         buildStep({
-            action: buildAction('open_publish', 'Publish menu', '/projects'),
-            description: published ? 'Public menu has been published.' : 'Publish when the menu is ready for customers.',
+            action: buildAction('open_publish', copy(translate, 'actions.publishMenu', 'Publish menu'), '/projects'),
+            description: published
+                ? copy(translate, 'steps.menuPublished.doneDescription', 'Public menu has been published.')
+                : copy(translate, 'steps.menuPublished.nextDescription', 'Publish when the menu is ready for customers.'),
             group: 'required',
             id: 'menu_published',
-            label: 'Menu published',
+            label: copy(translate, 'steps.menuPublished.label', 'Menu published'),
             status: published ? 'done' : keyDetailsChecked ? 'next' : 'blocked',
         }),
         buildStep({
-            action: buildAction('open_share', 'Open sharing tools', '/use-menulist'),
+            action: buildAction('open_share', copy(translate, 'actions.openSharingTools', 'Open sharing tools'), '/use-menulist'),
             description: placementDone
-                ? 'Official link is ready for customers.'
+                ? copy(translate, 'steps.linkPlaced.doneDescription', 'Official link is ready for customers.')
                 : starterActivation.appliesToStarterActivation
-                    ? `${starterActivation.signalCount} of ${starterActivation.target} placement actions done.`
-                    : 'Open the share tools when the menu is published.',
+                    ? copy(
+                        translate,
+                        'steps.linkPlaced.progressDescription',
+                        `${starterActivation.signalCount} of ${starterActivation.target} placement actions done.`,
+                        { count: starterActivation.signalCount, total: starterActivation.target },
+                    )
+                    : copy(translate, 'steps.linkPlaced.nextDescription', 'Open the share tools when the menu is published.'),
             group: 'required',
             id: 'link_placed',
-            label: starterActivation.appliesToStarterActivation ? 'Link placed' : 'Link ready',
+            label: starterActivation.appliesToStarterActivation
+                ? copy(translate, 'steps.linkPlaced.label', 'Link placed')
+                : copy(translate, 'steps.linkPlaced.readyLabel', 'Link ready'),
             status: placementDone ? 'done' : published ? 'next' : 'blocked',
         }),
     ];
 
     const optionalSteps: MenuSetupProgressStep[] = [
         buildStep({
-            action: buildAction('open_menu_check', 'Prepare descriptions', '/projects'),
+            action: buildAction('open_menu_check', copy(translate, 'actions.prepareDescriptions', 'Prepare descriptions'), '/projects'),
             description: isSignalClear(signals, 'descriptions', hasMenuItems)
-                ? 'Visible items have descriptions.'
-                : getSignal(signals, 'descriptions')?.label || 'Generate descriptions for clearer menu items.',
+                ? copy(translate, 'steps.descriptionsReady.doneDescription', 'Visible items have descriptions.')
+                : copy(translate, 'steps.descriptionsReady.nextDescription', 'Generate descriptions for clearer menu items.'),
             group: 'optional',
             id: 'descriptions_ready',
-            label: 'Descriptions ready',
+            label: copy(translate, 'steps.descriptionsReady.label', 'Descriptions ready'),
             status: isSignalClear(signals, 'descriptions', hasMenuItems) ? 'done' : 'optional',
         }),
         buildStep({
-            action: buildAction('open_menu_check', 'Add images', '/projects'),
+            action: buildAction('open_menu_check', copy(translate, 'actions.addImages', 'Add images'), '/projects'),
             description: isSignalClear(signals, 'images', hasMenuItems)
-                ? 'Visible items have images.'
-                : getSignal(signals, 'images')?.label || 'Add or generate item images when useful.',
+                ? copy(translate, 'steps.imagesReady.doneDescription', 'Visible items have images.')
+                : copy(translate, 'steps.imagesReady.nextDescription', 'Add or generate item images when useful.'),
             group: 'optional',
             id: 'images_ready',
-            label: 'Images ready',
+            label: copy(translate, 'steps.imagesReady.label', 'Images ready'),
             status: isSignalClear(signals, 'images', hasMenuItems) ? 'done' : 'optional',
         }),
         ...(hasTranslationSignals ? [
             buildStep({
-                action: buildAction('open_menu_check', translationWarning ? 'Review language text' : 'Open menu check', '/projects'),
+                action: buildAction(
+                    'open_menu_check',
+                    translationWarning
+                        ? copy(translate, 'actions.reviewLanguageText', 'Review language text')
+                        : copy(translate, 'actions.openMenuCheck', 'Open menu check'),
+                    '/projects',
+                ),
                 description: translationsReady
-                    ? 'Selected menu languages are complete.'
-                    : translationWarning?.label || 'Review selected menu languages.',
+                    ? copy(translate, 'steps.translationsReady.doneDescription', 'Selected menu languages are complete.')
+                    : copy(translate, 'steps.translationsReady.nextDescription', 'Review selected menu languages.'),
                 group: 'optional' as const,
                 id: 'translations_ready' as const,
-                label: 'Translations ready',
+                label: copy(translate, 'steps.translationsReady.label', 'Translations ready'),
                 status: translationsReady ? 'done' as const : 'optional' as const,
             }),
         ] : []),
         buildStep({
-            action: buildAction('open_public_presence', 'Update public links', '/business-settings?section=business-profile&focus=official-page-actions'),
-            description: hasPublicLinks ? 'Public action or social links are available.' : 'Add useful public links for the official business page.',
+            action: buildAction('open_public_presence', copy(translate, 'actions.updatePublicLinks', 'Update public links'), '/business-settings?section=business-profile&focus=official-page-actions'),
+            description: hasPublicLinks
+                ? copy(translate, 'steps.publicLinksAdded.doneDescription', 'Public action or social links are available.')
+                : copy(translate, 'steps.publicLinksAdded.nextDescription', 'Add useful public links for the official business page.'),
             group: 'optional',
             id: 'obp_links_added',
-            label: 'Public links added',
+            label: copy(translate, 'steps.publicLinksAdded.label', 'Public links added'),
             status: hasPublicLinks ? 'done' : 'optional',
         }),
         buildStep({
-            action: buildAction('open_public_photos', 'Add public photo', '/business-settings?section=business-profile&focus=official-page-photos'),
-            description: hasPublicPhoto ? 'Public photo is available.' : 'Add a cover, logo, or public photo when ready.',
+            action: buildAction('open_public_photos', copy(translate, 'actions.addPublicPhoto', 'Add public photo'), '/business-settings?section=business-profile&focus=official-page-photos'),
+            description: hasPublicPhoto
+                ? copy(translate, 'steps.publicPhotoAdded.doneDescription', 'Public photo is available.')
+                : copy(translate, 'steps.publicPhotoAdded.nextDescription', 'Add a cover, logo, or public photo when ready.'),
             group: 'optional',
             id: 'obp_photo_added',
-            label: 'Public photo added',
+            label: copy(translate, 'steps.publicPhotoAdded.label', 'Public photo added'),
             status: hasPublicPhoto ? 'done' : 'optional',
         }),
     ];
@@ -299,9 +345,9 @@ export function buildMenuSetupProgress({
     })();
 
     const compactCopy = (() => {
-        if (phase === 'running') return 'Menu setup is complete.';
+        if (phase === 'running') return copy(translate, 'complete', 'Menu setup is complete.');
         if (nextStep) return nextStep.description;
-        return 'Menu setup is ready.';
+        return copy(translate, 'ready', 'Menu setup is ready.');
     })();
 
     const shouldShow = phase !== 'running';

@@ -1,7 +1,7 @@
 # Public Menu Entry - Marketing Boundary
 
 **Status:** Local source complete; not a launch certification
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -20,6 +20,7 @@ One approved link the owner can place in QR, WhatsApp, and Google profile surfac
 - Camera, saved photo, bounded PDF, or supported public link input.
 - Owner review before the menu is created.
 - Permanent MenuList URL controlled by the owner.
+- A new starter menu is public for seven days; the success screen can use **Keep this menu online** to direct the owner to Billing and retain the same link after setup.
 - Existing customers can add a menu to their current account.
 
 ## Do not claim

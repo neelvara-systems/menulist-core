@@ -7,9 +7,17 @@ import {
     createEmptyAnswerlatticeAnswerTestSummary,
     getAnswerlatticeAnswerTestSummaryId,
 } from '../../src/lib/answerlattice/answerTestContracts';
+import { ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES } from '../../src/lib/answerlattice/releaseContracts';
 import { executeAnswerlatticeReleaseAction } from '../../src/lib/answerlattice/releaseServer';
 import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
-import { isAnswerlatticeContextBundleManifestForScope } from '../../src/lib/answerlattice/compiledContext';
+import {
+    getAnswerlatticeBundleManifestDocId,
+    getAnswerlatticeSourceVersionsDocId,
+    getPrivateBundlePath,
+    getPublicBundlePath,
+    isAnswerlatticeContextBundleManifestForScope,
+} from '../../src/lib/answerlattice/compiledContext';
+import { getContextContentSummaryDocId } from '../../src/lib/answerlattice/productSurfaceContent';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const access: AnswerlatticeAccessContext = {
@@ -26,6 +34,25 @@ const access: AnswerlatticeAccessContext = {
 };
 const scope = { tId: 1, sId: 101 };
 const db = requireAnswerlatticeFirestoreAdmin();
+const initialSourceVersions = {
+    pId: 'AL',
+    ...scope,
+    workspaceProfile: 0,
+    widgetConfig: 0,
+    kb: 0,
+    docsNav: 0,
+    entities: 0,
+    entityRelations: 0,
+    canonical: 0,
+    surfaces: 0,
+    releases: 0,
+    branding: 0,
+    mcpPolicy: 0,
+    predictiveTriggers: 0,
+};
+const initialBundleVersion = 1;
+const initialPublicBundleId = 'pb_emulator1';
+const initialBundleHash = `sha256:${'f'.repeat(64)}`;
 
 const createAction = (requestId: string, versionNormalized: number, entityChanges = ['billing']) => ({
     action: 'create' as const,
@@ -88,6 +115,69 @@ async function run(): Promise<void> {
     await db.collection('platformSummary')
         .doc(getAnswerlatticeAnswerTestSummaryId(1, 101))
         .set(answerTestSummary);
+    await db.collection('platformSummary')
+        .doc(getContextContentSummaryDocId(scope.tId, scope.sId))
+        .set({
+            pId: 'AL',
+            ...scope,
+            generatedAt: '2026-07-11T09:00:00.000Z',
+            surfaceCount: 1,
+            articleCount: 1,
+            faqCount: 1,
+            changelogCount: 1,
+            ticketCount: 0,
+            surfaces: {
+                billing: {
+                    key: 'billing',
+                    label: 'Billing settings',
+                    routePatterns: ['/settings/billing'],
+                    entityIds: ['billing'],
+                    visibility: { helpWidget: true, helpCenter: true, changelog: true },
+                    articles: [{ id: 'article-billing', title: 'Manage billing' }],
+                    faqs: [{ id: 'faq-billing', question: 'Where are invoices?' }],
+                    changelogs: [{ id: 'change-billing', pageId: 'page-main', title: 'Billing update' }],
+                    tickets: { total: 0, open: 0, recentDisplayIds: [] },
+                },
+            },
+        });
+    await db.collection('platformSummary')
+        .doc(getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId))
+        .set(initialSourceVersions);
+    await db.collection('platformSummary')
+        .doc(getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId))
+        .set({
+            schemaVersion: 1,
+            pId: 'AL',
+            ...scope,
+            status: 'ready',
+            bundleVersion: initialBundleVersion,
+            activeVersion: initialBundleVersion,
+            lastReadyVersion: initialBundleVersion,
+            publicBundleId: initialPublicBundleId,
+            sourceVersions: initialSourceVersions,
+            bundles: {
+                'public:widget-bootstrap.json': {
+                    path: getPublicBundlePath(initialPublicBundleId, initialBundleVersion, 'widget-bootstrap.json'),
+                    bytes: 100,
+                    hash: initialBundleHash,
+                },
+                'public:canonical-lite.json': {
+                    path: getPublicBundlePath(initialPublicBundleId, initialBundleVersion, 'canonical-lite.json'),
+                    bytes: 100,
+                    hash: initialBundleHash,
+                },
+                'private:mcp/product-summary.json': {
+                    path: getPrivateBundlePath(scope.tId, scope.sId, initialBundleVersion, 'mcp/product-summary.json'),
+                    bytes: 100,
+                    hash: initialBundleHash,
+                },
+                'private:mcp/canonical-index.json': {
+                    path: getPrivateBundlePath(scope.tId, scope.sId, initialBundleVersion, 'mcp/canonical-index.json'),
+                    bytes: 100,
+                    hash: initialBundleHash,
+                },
+            },
+        });
     await db.collection('answerlattice_canonicalAnswers').doc('answer-billing').set({
         pId: 'AL',
         tId: 1,
@@ -137,6 +227,18 @@ async function run(): Promise<void> {
     assert.equal(preview.affectedAnswers[0]?.title, 'Billing limits');
     assert.equal(preview.answerTestProof.state, 'missing');
     assert.equal(preview.answerTestProof.criticalCaseCount, 1);
+    assert.ok(preview.changeControl, 'release preview must include support truth change-control proof');
+    assert.equal(preview.changeControl.sourceWatch.state, 'not_enabled');
+    assert.equal(preview.changeControl.surfaceReview.state, 'available');
+    assert.equal(preview.changeControl.surfaceReview.mappedSurfaceCount, 1);
+    assert.deepEqual(preview.changeControl.surfaceReview.mappedEntityIds, ['billing']);
+    assert.equal(preview.changeControl.propagationProof.state, 'ready');
+    assert.equal(preview.changeControl.propagationProof.publicBundleReady, true);
+    assert.equal(preview.changeControl.propagationProof.privateBundleReady, true);
+    assert.ok(
+        Buffer.byteLength(JSON.stringify(preview), 'utf8') <= ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES,
+        'wired release preview must fit the browser response cap',
+    );
     assert.deepEqual(preview.directDependencyCoverage, {
         mappingScope: 'direct_entity_links_only',
         changedEntityIds: ['billing'],

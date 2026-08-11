@@ -173,10 +173,10 @@ assertIncludes(queryRoute, 'checkRateLimit', 'query route rate limit');
 assertIncludes(queryRoute, 'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT', 'query route permission');
 
 assertIncludes(productPage, 'Start with a daily support brief', 'Answerlattice product page');
-assertIncludes(productPage, 'reads compact summaries, stays read-only', 'Answerlattice product page read-only claim');
+assertIncludes(productPage, 'reads support summaries, stays read-only', 'Answerlattice product page read-only claim');
 assertNotIncludes(productPage, 'Ask a read-only Support Assistant', 'Answerlattice product page duplicate card');
-assertIncludes(supportControlPage, 'qualified read-only Daily Brief', 'Support Control public page');
-assertIncludes(supportControlPage, 'performs no mutation', 'Support Control public page boundary');
+assertIncludes(supportControlPage, 'focused read-only Daily Brief', 'Support Control public page');
+assertIncludes(supportControlPage, 'never changes support data', 'Support Control public page boundary');
 assertIncludes(faqPage, 'What does Daily Brief change?', 'Answerlattice FAQ');
 assertIncludes(updatesPage, 'read-only Daily Brief', 'Answerlattice updates page');
 assertNotIncludes(supportControlPage, 'Daily Founder Brief', 'retired Support Control public label');

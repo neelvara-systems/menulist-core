@@ -23,9 +23,10 @@
 5. The current observation is stored as `workspace.patternCueSource` using fixed ID `cc_source_pattern_current`.
 6. Overview and campaign-create paths project that workspace field into the existing in-memory `sourceInputs` list without another read.
 7. Decision readiness filters out `inspiration_pattern`.
-8. Campaign creation selects the current pattern only when the requested pack contains a video or UGC output, then adds it to that output's brief text, handoff fields, source references, metadata, and trust review.
+8. Campaign creation selects the current pattern only when the requested pack contains a video or UGC output, then adds it to that output's brief text, handoff fields, source references, metadata, and trust review. The compact metadata includes source hash, platform, rights posture, hook type, format, pacing, and duration band.
 9. Only a pack that actually contains a pattern-backed video or UGC output pins `patternCueSourceInputId` and `patternCueSourceHash`.
 10. Public-use actions compare the pinned hash with the current workspace hash.
+11. Video Reel Studio snapshots the compact classification with its project, binds result memory to an exact rendered version, and groups owner-reported outcomes client-side. Pattern Cue itself adds no history collection or monitoring job.
 
 Persisted-observation type guards are total and non-coercive. Unknown values,
 hostile property access, and malformed URL values return `false`/`other`

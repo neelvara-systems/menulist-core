@@ -43,9 +43,9 @@ not justify a second map, event pipeline, or analytics store.
     summary. The owner selects a review path, then copies or downloads the
     deterministic Markdown packet.
 
-No workflow tree, release overlay, root-cause percentages, persisted
-classification, issue delivery, or decision-memory write is admitted in this
-code scope.
+No workflow tree, causal release attribution, root-cause percentages,
+persisted classification, issue delivery, or decision-memory write is admitted
+in this code scope.
 
 ## Nightly Aggregation
 
@@ -93,6 +93,8 @@ Every completed provider response is written to the scoped AI-operation ledger b
 - `FrictionTab.tsx` renders the strict advisory `suggestedActions` array only
   for entity IDs present in the admitted snapshot and routes those actions to
   read-only map review.
+- `PostChangeSupportEvidenceReview.tsx` mounts behind its own flag and performs
+  no request until the owner chooses **Review recent changes**.
 
 ## Client-Side Evidence Brief
 
@@ -114,6 +116,40 @@ and a browser-local Blob download. It does not import a database module, call
 Desktop uses the existing table action; narrow viewports use a 44px labeled
 action on each stacked entity item.
 
+`FrictionTab.tsx` captures the selected entity, completed metric window, source
+timestamp, and exact `tId:sId` scope in one in-memory selection object. The
+drawer renders only when that scope still matches. Scope changes also clear the
+selection, while a background snapshot refresh cannot rewrite an already-open
+brief's evidence dates or source timestamp.
+
+`frictionReviewRouting.ts` maps each admitted path to an explicit outcome. It
+revalidates the entity ID before generating an internal route, preserves that
+entity in Knowledge Map or trusted-answer navigation, and fails invalid context
+closed to local copy. Product-behavior handoff never invokes an integration.
+Watch and no-action close locally and state plainly that no reminder or saved
+decision exists. `FrictionEvidenceBriefDrawer.tsx` renders the outcome helper
+text and uses one 44px primary action plus local copy/download fallbacks.
+The resolver and every direct friction-map link honor the Knowledge Map feature
+flag; the disabled fallback remains a local packet. Knowledge Map preserves an
+empty selection and renders a warning when requested entity context is valid
+but absent from the current graph, rather than falling back to a different
+topic.
+
+## Post-Change Support Evidence Review
+
+`/api/answerlattice/post-change-evidence` is a private, authenticated,
+rate-limited, `MANAGE_GOVERNANCE` read route. It lists a bounded set of active
+releases and implemented knowledge corrections, then re-reads one selected
+change and derives its time and direct entity links from stored truth.
+
+Eligible reviews compare complete 14-day UTC windows, exclude the change day,
+and count only ticket, negative-feedback, and escalation events. Waiting,
+outside-retention, insufficient-baseline, and cap-plus-one saturation states
+return without a partial conclusion. The strict response contains counts and
+fixed limitations only; raw signal text, metadata, IDs, and customer identity
+remain server-side. See
+`../post-change-support-evidence-review/README.md` for the full contract.
+
 ## Security and Permissions
 
 - daily stats and summary writes are server-only;
@@ -124,7 +160,12 @@ action on each stacked entity item.
 
 ## Cost and Scale
 
-The owner view uses at most two compact Firestore reads. Nightly cost depends on admitted signal, miss, entity, and history counts plus daily writes. Provider cost is recorded through the existing AI operations accounting path. Do not maintain static currency estimates in this dossier.
+The standard owner view uses at most two compact Firestore reads. Post-change
+review adds zero reads on mount; explicit candidate and exact comparison costs
+are isolated in its dossier. Nightly cost depends on admitted signal, miss,
+entity, and history counts plus daily writes. Provider cost is recorded through
+the existing AI operations accounting path. Do not maintain static currency
+estimates in this dossier.
 
 Raise limits only with a partitioning, scheduler-duration, and Firebase-cost decision. Do not increase a cap only to suppress saturation failures.
 
@@ -135,6 +176,11 @@ call, or new document family.
 
 Entity-focused URL handoffs add no Firestore operation. The Knowledge Map pays
 its existing two point reads only after the owner explicitly opens it.
+
+Review-path resolution, helper copy, drawer close, and client navigation add no
+Firebase operation. The Knowledge Map and trusted-answer destinations retain
+their existing bounded reads only after explicit navigation; this feature does
+not prefetch data, duplicate it, or cache another read model.
 
 Preparing, changing, copying, and downloading an evidence brief all operate on
 the already-loaded in-memory snapshot. They add zero Firestore reads, writes,

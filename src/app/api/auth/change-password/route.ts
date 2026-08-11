@@ -17,6 +17,7 @@ import { getCurrentUser, resolveCurrentSessionUserDocumentId } from "@lib/auth/c
 import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -192,7 +193,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     // Verify current password by attempting to sign in
     // (Admin SDK doesn't have a "verify password" method, so we use a workaround)
-    const firebaseApiKey = normalizeFirebaseAuthApiKey(process.env.FIREBASE_API_KEY);
+    const firebaseApiKey = normalizeFirebaseAuthApiKey(menulistServerEnv.firebaseApiKey);
     if (!firebaseApiKey) {
       logAuthFailure(
         "change_password_firebase_api_key_missing",

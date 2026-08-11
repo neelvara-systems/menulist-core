@@ -1,28 +1,41 @@
 export const dynamic = "force-dynamic";
 
+import { FEATURE_FLAGS } from "@config/features";
 import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
     parseCampaignCueJsonBody,
+    requireCampaignCueFeature,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
     withCampaignCueAuth,
 } from "@lib/campaigncue/apiGuards";
 import {
     buildCampaignCueApiError,
+    createCampaignCueInboxSourcesServer,
     createCampaignCueSourceInputServer,
     listCampaignCueSourceInputsServer,
     logCampaignCueServerError,
 } from "@lib/campaigncue/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { CampaignCueSourceInputSchema } from "@lib/validation/campaigncueSchemas";
+import { CampaignCueInboxConfirmSchema, CampaignCueSourceInputSchema } from "@lib/validation/campaigncueSchemas";
 import { NextRequest, NextResponse } from "next/server";
+
+const isCampaignCueInboxConfirmation = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value && typeof value === "object" && !Array.isArray(value))
+    && (value as Record<string, unknown>).action === "confirm_inbox"
+);
 
 export const GET = withCampaignCueAuth(async (request: NextRequest, session) => {
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
+        const sourcesDisabled = requireCampaignCueFeature(
+            FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS,
+            "Campaign source inputs",
+        );
+        if (sourcesDisabled) return sourcesDisabled;
 
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;
@@ -51,6 +64,11 @@ export const POST = withCampaignCueAuth(async (request: NextRequest, session) =>
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
+        const sourcesDisabled = requireCampaignCueFeature(
+            FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS,
+            "Campaign source inputs",
+        );
+        if (sourcesDisabled) return sourcesDisabled;
 
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;
@@ -69,6 +87,19 @@ export const POST = withCampaignCueAuth(async (request: NextRequest, session) =>
             session,
         });
         if (!body.success) return body.response;
+
+        if (isCampaignCueInboxConfirmation(body.data)) {
+            const validation = validateAPIInput(CampaignCueInboxConfirmSchema, body.data);
+            if (!validation.success) {
+                const details = "error" in validation ? validation.error : "Invalid input";
+                return NextResponse.json({ error: "Invalid input", details }, { status: 400 });
+            }
+            const result = await createCampaignCueInboxSourcesServer({
+                input: validation.data,
+                scope: scoped.scope,
+            });
+            return NextResponse.json({ data: result }, { status: 201 });
+        }
 
         const validation = validateAPIInput(CampaignCueSourceInputSchema, body.data);
         if (!validation.success) {

@@ -8,6 +8,7 @@ import {
 import type { Project } from '@template/main-app/projects/types';
 import type { StoreDataType } from '@type/platform/store';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { LuListChecks } from 'react-icons/lu';
 import { Button, Card, Flex, Text } from '../antd';
@@ -30,9 +31,10 @@ export default function MobileMenuSetupProgress({
     storeDetails,
 }: MobileMenuSetupProgressProps) {
     const { token } = theme.useToken();
+    const t = useTranslations('Dashboard.owner.menuSetup');
     const summary = useMemo(
-        () => buildMenuSetupProgress({ project, storeDetails }),
-        [project, storeDetails],
+        () => buildMenuSetupProgress({ project, storeDetails, translate: t }),
+        [project, storeDetails, t],
     );
 
     if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || !summary.shouldShow) return null;
@@ -56,11 +58,11 @@ export default function MobileMenuSetupProgress({
             <Flex gap={12} vertical>
                 <Flex align="center" gap={8}>
                     <LuListChecks color={token.colorPrimary} size={17} />
-                    <Text strong>Menu setup</Text>
+                    <Text strong>{t('title')}</Text>
                 </Flex>
 
                 <Flex gap={3} vertical>
-                    <Text strong>{summary.nextStep?.label || 'Menu setup'}</Text>
+                    <Text strong>{summary.nextStep?.label || t('title')}</Text>
                     <Text type="secondary">{summary.compactCopy}</Text>
                 </Flex>
 

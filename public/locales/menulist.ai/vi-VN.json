@@ -428,7 +428,8 @@
         "daily": "Ngày hôm trước",
         "weekly": "7 ngày qua",
         "monthly": "Tháng này",
-        "overall": "Tổng thể"
+        "overall": "Tổng thể",
+        "graph": "Biểu đồ"
       },
       "today": {
         "noMenuActivityToday": "Hôm nay chưa có hoạt động nào trên menu.",
@@ -446,25 +447,25 @@
         "livePartialData": "Dữ liệu trực tiếp một phần"
       },
       "metrics": {
-        "itemClicks": "Số lần nhấp vào mục",
+        "itemClicks": "mục click",
         "engagedSessions": "Phiên có hoạt động",
         "actionRate": "Tỷ lệ hành động",
-        "customerActions": "Hành động của khách hàng",
+        "customerActions": "Hành động khách hàng",
         "searches": "Tìm kiếm",
         "noResultSearches": "Tìm kiếm không có kết quả",
         "unavailableInterest": "Lãi suất không khả dụng",
         "topLanguage": "Ngôn ngữ hàng đầu",
-        "smartPicksShown": "Đã hiển thị các lựa chọn thông minh",
-        "smartPicksClicks": "Số nhấp chuột lựa chọn thông minh",
-        "smartPicksTaps": "Nhấn vào Lựa chọn thông minh",
-        "smartPicksUsed": "Lựa chọn thông minh đã được sử dụng",
-        "smartPicksEngagement": "Tương tác với lựa chọn thông minh",
+        "smartPicksShown": "Smart Picks hiển thị",
+        "smartPicksClicks": "Smart Picks Click",
+        "smartPicksTaps": "Smart Picks Đánh giá",
+        "smartPicksUsed": "Smart Picks sử dụng",
+        "smartPicksEngagement": "Smart Picks tham gia",
         "totalMenuScans": "Quét tổng số menu",
         "totalItemClicks": "Tổng số lần nhấp vào mục",
         "activeDays": "Ngày hoạt động",
         "daysActive": "Số ngày hoạt động",
         "avgDailyScans": "Trung bình Quét hàng ngày",
-        "smartPicksActive": "Lựa chọn thông minh đang hoạt động",
+        "smartPicksActive": "Smart Picks hoạt động",
         "engagementRate": "Tỷ lệ tương tác",
         "topItem": "Mục hàng đầu",
         "topCategory": "Danh mục hàng đầu"
@@ -473,7 +474,7 @@
         "itemClicks": "Số lần khách hàng chạm vào mặt hàng",
         "engagedSessions": "Những phiên mà khách hàng thực sự quan tâm đến thực đơn",
         "actionRate": "Các phiên dẫn đến hành động cuối cùng của khách hàng",
-        "smartPicksShown": "Số lần Lựa chọn thông minh xuất hiện trên trang của bạn",
+        "smartPicksShown": "Bao nhiêu lần Smart Picks xuất hiện trên trang của bạn",
         "smartPicksUsed": "Tỷ lệ khách hàng đã sử dụng Smart Picks",
         "customerActions": "Các hành động cuối cùng như gọi điện, WhatsApp, chỉ đường, đặt chỗ và đặt hàng",
         "searches": "Nhu cầu tìm kiếm được loại bỏ trùng lặp khỏi menu",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Không có hoạt động nào được ghi lại ngày hôm qua",
         "noAnalyticsYet": "Chưa có dữ liệu. Số liệu phân tích của bạn sẽ xuất hiện khi khách hàng bắt đầu xem.",
-        "noItemClicksYet": "Chưa có mục nào được nhấp chuột"
+        "noItemClicksYet": "Chưa có mục nào được nhấp chuột",
+        "lowActivityTitle": "Hoạt động thấp",
+        "lowActivityDescription": "Không có đủ hoạt động để rút ra một kết luận hữu ích cho giai đoạn này.",
+        "noWeeklyData": "Không có hoạt động menu được giải quyết trong 7 ngày qua.",
+        "noMonthlyData": "Vẫn chưa có hoạt động menu được giải quyết trong tháng này."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% so với tuần trước"
+        "vsLastWeek": "{sign}{change}% so với tuần trước",
+        "changeVsLastWeek": "{change} vs tuần trước"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# ngày hoạt động được ghi lại} other {# số ngày hoạt động được ghi lại}}"
@@ -509,13 +515,13 @@
         "timesDisplayed": "số lần hiển thị",
         "finalClicks": "nhấp chuột cuối cùng",
         "demandChecks": "yêu cầu kiểm tra",
-        "noMatchFound": "không tìm thấy kết quả phù hợp",
-        "missedDemand": "nhu cầu bị bỏ lỡ"
+        "noMatchFound": "Không tìm thấy trận đấu",
+        "missedDemand": "nhu cầu thiếu"
       },
       "states": {
         "yes": "Có",
         "no": "Không",
-        "notAvailable": "Không áp dụng",
+        "notAvailable": "N/A",
         "active": "Đang hoạt động",
         "lowActivity": "Hoạt động thấp",
         "noData": "Không có dữ liệu"
@@ -525,14 +531,27 @@
         "menuWorking": "Thực đơn của bạn đang hoạt động!",
         "gettingStarted": "Bắt đầu",
         "waitingForFirstScan": "Đang chờ quét lần đầu",
-        "weeklyInsights": "Thông tin chi tiết hàng tuần",
+        "weeklyInsights": "Thông tin hàng tuần",
         "last4WeeksComparison": "So sánh 4 tuần qua",
-        "historicalDataWillAppear": "Dữ liệu lịch sử sẽ xuất hiện sau vài tuần"
+        "historicalDataWillAppear": "Dữ liệu lịch sử sẽ xuất hiện sau vài tuần",
+        "statusMessages": {
+          "working": "Khách hàng đang sử dụng thực đơn hiện tại của bạn.",
+          "low_activity": "Hoạt động của khách hàng vẫn đang được xây dựng. Menu hiện tại của bạn vẫn còn sẵn sàng.",
+          "no_data": "Hoạt động sẽ xuất hiện sau khi khách hàng bắt đầu mở menu của bạn."
+        }
       },
       "aiSummary": {
         "daily": "Sơ lược về ngày hôm trước",
         "weekly": "Tổng quan về tuần này",
-        "monthly": "Tóm tắt tháng này"
+        "monthly": "Tóm tắt tháng này",
+        "localized": {
+          "noActivity": "Không có hoạt động khách hàng thanh toán nào được ghi nhận trong giai đoạn này.",
+          "menuViews": "Khách hàng đã mở thực đơn {count} lần.",
+          "itemTaps": "Khách hàng đã nhấn vào các mục thực đơn {count} lần.",
+          "customerActions": "Khách hàng đã hoàn thành {count} hành động cuối cùng.",
+          "searches": "Khách hàng đã tìm kiếm thực đơn {count} lần.",
+          "unavailableInterest": "Mục không có được nhận {count} cú nhấp."
+        }
       },
       "actions": {
         "call": "Gọi",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: lượt truy cập {visits} · {rate}%",
         "markDone": "Đánh dấu là xong",
         "markDoneSaved": "Đã đánh dấu là xong. Kết quả sẽ cập nhật khi bản tóm tắt phân tích tiếp theo sẵn sàng.",
-        "markDoneFailed": "Không thể đánh dấu hành động này là đã thực hiện. Hãy thử lại."
+        "markDoneFailed": "Không thể đánh dấu hành động này là đã thực hiện. Hãy thử lại.",
+        "bestSourceStatsFormatted": "· {visits} lượt truy cập · {rate} tỉ lệ hành động",
+        "bestSourceMobileFormatted": "Nguồn tốt nhất lúc này: {source} · {visits} lượt truy cập · {rate} tỉ lệ hành động.",
+        "sourceQualityTagFormatted": "{source}: {visits} lượt truy cập · {sessions} phiên hoạt động · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} lượt truy cập · {rate}",
+        "priorities": {
+          "high": "Ưu tiên cao",
+          "medium": "Ưu tiên trung bình",
+          "low": "Ưu tiên thấp"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Ổn định",
+            "message": "Hoạt động có sẵn hỗ trợ một kiểm tra menu rõ ràng."
+          },
+          "watch": {
+            "label": "tiếp tục xem",
+            "message": "Một số hoạt động có thể cần kiểm tra lại trước khi thay đổi thực đơn."
+          },
+          "no_data": {
+            "label": "cần thêm dữ liệu",
+            "message": "Chờ cho hoạt động của khách hàng được định hình hơn trước khi đưa ra kết luận."
+          }
+        },
+        "localizedActions": {
+          "reason": "Dựa trên hoạt động khách hàng được thanh toán gần đây nhất.",
+          "availability": {
+            "title": "Xem lại số lượng hàng có sẵn.",
+            "description": "Kiểm tra xem các mục không có hoặc ẩn có nên được khôi phục hay giữ kín.",
+            "action": "Kiểm tra tình trạng còn hàng"
+          },
+          "customerActions": {
+            "title": "Xem lại hành động của khách hàng.",
+            "description": "Kiểm tra chi tiết menu và các liên kết khách hàng sử dụng trước khi hành động.",
+            "action": "Xem lại hành động của khách hàng."
+          },
+          "details": {
+            "title": "Cải thiện chi tiết về các món đồ.",
+            "description": "Xem lại tên các mục, tùy chọn, mô tả và hình ảnh có thể cần thông tin rõ ràng hơn.",
+            "action": "Xem chi tiết item"
+          },
+          "general": {
+            "title": "Chờ một tín hiệu rõ ràng hơn.",
+            "description": "Giữ menu hiện tại ổn định cho đến khi có nhiều hoạt động được giải quyết hơn.",
+            "action": "Xem lại sau."
+          },
+          "menuOrder": {
+            "title": "Xem lại thứ tự thực đơn",
+            "description": "Kiểm tra xem các mặt hàng và danh mục quan trọng có dễ dàng cho khách hàng tìm thấy không.",
+            "action": "Xem lại thứ tự thực đơn"
+          },
+          "pricing": {
+            "title": "Xem lại giá cả",
+            "description": "Kiểm tra các giá liên kết với tín hiệu khách hàng quan tâm mới nhất.",
+            "action": "Xem giá Cập nhật giá"
+          },
+          "search": {
+            "title": "Xem lại các kết quả tìm kiếm của khách hàng.",
+            "description": "Kiểm tra các tìm kiếm có thể không dẫn khách hàng đến kết quả thực đơn hữu ích.",
+            "action": "Review tìm kiếm"
+          },
+          "source": {
+            "title": "Xem lại nguồn nhập dữ liệu của khách hàng.",
+            "description": "Kiểm tra xem các liên kết công cộng và QR có chỉ dẫn khách hàng đến thực đơn hiện tại không.",
+            "action": "Đánh giá liên kết công cộng"
+          },
+          "timing": {
+            "title": "Đánh giá menu timing",
+            "description": "Kiểm tra xem các danh mục có thời gian và khả năng cung cấp có phù hợp khi khách hàng tìm kiếm chúng không.",
+            "action": "Đánh giá timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Đánh dấu hoàn thành",
+            "message": "Kết quả sẽ được kiểm tra sau khi có thêm các hoạt động được xác định."
+          },
+          "improved": {
+            "label": "cải thiện",
+            "message": "Kiểm tra tiếp theo cho thấy sự cải thiện."
+          },
+          "no_clear_change": {
+            "label": "Không có thay đổi rõ ràng",
+            "message": "Kiểm tra tiếp theo không cho thấy sự thay đổi rõ ràng."
+          },
+          "not_enough_data": {
+            "label": "cần thêm dữ liệu",
+            "message": "Vẫn chưa có đủ hoạt động ổn định để đánh giá sự thay đổi này."
+          },
+          "pending": {
+            "label": "Thời gian kiểm tra",
+            "message": "MenuList sẽ kiểm tra điều này sau khi có thêm hoạt động được giải quyết."
+          }
+        }
       },
       "details": {
         "menuDetails": "Chi tiết thực đơn",
@@ -569,12 +681,12 @@
           "campaignTracking": "Theo dõi chiến dịch",
           "topItems": "Các mục hàng đầu",
           "categories": "Danh mục",
-          "customerActions": "Hành động của khách hàng",
+          "customerActions": "Hành động khách hàng",
           "searchDemand": "Nhu cầu tìm kiếm",
           "unavailableInterest": "Lãi suất không khả dụng",
           "languages": "Ngôn ngữ",
           "filters": "Bộ lọc",
-          "smartPicks": "Lựa chọn thông minh",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Hành động theo giờ làm việc"
         },
         "descriptions": {
@@ -584,11 +696,11 @@
         },
         "metrics": {
           "menuViews": "Chế độ xem menu",
-          "itemTaps": "Vòi vật phẩm",
+          "itemTaps": "Lượt nhấn vào món",
           "menuSessions": "Phiên thực đơn",
           "engagedSessions": "Phiên có hoạt động",
           "actionSessions": "Phiên hành động",
-          "totalSearches": "Tổng số lượt tìm kiếm"
+          "totalSearches": "Total Tìm kiếm"
         },
         "metricDetails": {
           "ofMenuSessions": "{rate} của các phiên menu"
@@ -617,10 +729,16 @@
           "closed": "Hành động khi đóng",
           "unknown": "Hành động khi trạng thái giờ không khả dụng",
           "closedShare": "{rate}% tất cả các hành động được ghi lại đã xảy ra khi đóng cửa"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} không thể dùng taps.",
+          "strongItem": "{count} Lượt nhấn vào món",
+          "needsWork": "{count} lượt xem, không có cú nhấp.",
+          "gettingAttention": "Lượt xem {count}"
         }
       },
       "smartPicks": {
-        "popularItems": "Các mặt hàng phổ biến",
+        "popularItems": "Các mục phổ biến",
         "quickPick": "Chọn nhanh",
         "bestValue": "Giá trị tốt nhất"
       },
@@ -649,7 +767,7 @@
         "whatsappShares": "Chia sẻ WhatsApp",
         "copyLink": "Sao chép liên kết",
         "copyMessage": "Sao chép tin nhắn",
-        "googleReviews": "Bài đánh giá trên Google",
+        "googleReviews": "Google Đánh giá",
         "instagram": "Instagram",
         "facebook": "Facebook",
         "website": "Trang web",
@@ -663,7 +781,7 @@
         "stayed": "{count} ở lại",
         "weeklyTrend": "Xu hướng hàng tuần (4 tuần qua)",
         "pageViews": "Lượt xem trang",
-        "viewMenuClicks": "Xem số lần nhấp chuột vào menu",
+        "viewMenuClicks": "Xem menu click",
         "actions": "Hành động",
         "linkTaps": "Nhấn liên kết",
         "shares": "Chia sẻ",
@@ -690,14 +808,14 @@
         "noInstallsYet": "Chưa có lượt cài đặt nào.",
         "noInstallsDescription": "Các con số xuất hiện ở đây sau khi khách hàng bắt đầu cài đặt ứng dụng menu của bạn.",
         "mobileNoInstallsDescription": "Chưa có lượt cài đặt nào. Các con số sẽ xuất hiện ở đây khi khách hàng bắt đầu cài đặt ứng dụng menu của bạn.",
-        "installedCustomers": "Khách hàng đã cài đặt",
+        "installedCustomers": "Khách hàng cài đặt",
         "installed": "Đã cài đặt",
         "appOpens30d": "Mở ứng dụng (30 ngày)",
-        "installs30d": "Số lượt cài đặt (30 ngày)",
+        "installs30d": "Cài đặt (30d)",
         "installConversion": "Chuyển đổi cài đặt",
         "conversion": "Chuyển đổi",
         "topShortcut": "Phím tắt hàng đầu",
-        "totalShortcutUses": "Tổng số lần sử dụng phím tắt",
+        "totalShortcutUses": "Tổng sử dụng Shortcut",
         "iosInferredTitle": "Có thể suy ra lượt cài đặt iOS Safari",
         "iosInferredWithCount": "Safari không cung cấp sự kiện cài đặt tiêu chuẩn. Số lượt cài đặt {count} iOS trong chế độ xem này được suy ra từ các lần khởi chạy độc lập hoặc hành vi Thêm vào Màn hình chính, do đó, số lượt cài đặt iOS có thể được ước tính thay vì được xác nhận đầy đủ và có thể xuất hiện sau khi mở ứng dụng độc lập đầu tiên. Số lượng khách hàng đã cài đặt được tính dựa trên thiết bị và trình duyệt, không phải số người chính xác.",
         "iosInferredNoCount": "Safari không cung cấp sự kiện cài đặt tiêu chuẩn. Số lượt cài đặt iOS có thể được suy ra từ các lần khởi chạy độc lập hoặc hành vi Thêm vào Màn hình chính, do đó, chúng có thể được ước tính thay vì được xác nhận đầy đủ và có thể xuất hiện sau khi mở ứng dụng độc lập đầu tiên. Số lượng khách hàng đã cài đặt được tính dựa trên thiết bị và trình duyệt, không phải số người chính xác.",
@@ -705,8 +823,7 @@
         "mobileIosInferredNoCount": "Có thể suy ra các lượt cài đặt iOS Safari. Safari không cung cấp sự kiện cài đặt tiêu chuẩn nên số lượt cài đặt iOS có thể được ước tính từ các lần khởi chạy độc lập hoặc hành vi Thêm vào Màn hình chính và có thể xuất hiện sau khi mở ứng dụng độc lập đầu tiên. Số lượng khách hàng đã cài đặt được tính dựa trên thiết bị và trình duyệt, không phải số người chính xác.",
         "shortcutBreakdown": "Phân tích phím tắt",
         "installsByPlatform": "Số lượt cài đặt theo nền tảng",
-        "appStickiness": "Độ bám dính của ứng dụng",
-        "returningOpens30d": "Trở về mở ra (30d)",
+        "appStickiness": "Ứng dụng stickiness",
         "avgOpensPerInstall": "Số lượt mở trung bình trên mỗi lượt cài đặt",
         "iosManualInstalls": "Cài đặt thủ công iOS",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "Đặt hàng trực tuyến"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Android Android",
-          "desktop": "Máy tính để bàn",
+          "android": "Android",
+          "desktop": "máy tính Desktop",
           "other": "Khác"
-        }
+        },
+        "tryAgainLater": "Hãy thử lại sau."
       },
       "projectSelector": {
         "deleted": "Đã xóa",
@@ -729,15 +847,15 @@
         "special": "Đặc biệt",
         "cancelled": "Đã hủy",
         "default": "Mặc định",
-        "untitled": "Không có tiêu đề",
+        "untitled": "không tên",
         "fromBase": "Từ {name}",
         "noCatalogs": "Không có danh mục",
         "selectCatalog": "Chọn danh mục"
       },
       "health": {
-        "customerTrust": "Niềm tin của khách hàng",
+        "customerTrust": "Khách hàng Trust",
         "visitorTrends": "Dựa trên xu hướng của khách truy cập",
-        "customerLoyalty": "Lòng trung thành của khách hàng",
+        "customerLoyalty": "Loyalty Khách hàng",
         "returnPatterns": "Dựa trên mô hình trả về",
         "businessHealth": "Sức khỏe doanh nghiệp",
         "overallTrends": "Dựa trên xu hướng chung",
@@ -750,7 +868,7 @@
         }
       },
       "googleListing": {
-        "linkCopied": "Đã sao chép liên kết",
+        "linkCopied": "Link sao chép",
         "couldNotCopy": "Không thể sao chép liên kết",
         "markedUpdated": "Danh sách Google được đánh dấu là đã cập nhật",
         "couldNotSave": "Không thể lưu",
@@ -761,10 +879,11 @@
         "copied": "Đã sao chép",
         "copy": "Sao chép",
         "openGoogle": "Mở Google",
-        "done": "Xong"
+        "done": "Xong",
+        "couldNotOpen": "Không thể mở Google Business Profile."
       },
       "behaviorNudge": {
-        "linkCopied": "Đã sao chép liên kết",
+        "linkCopied": "Link sao chép",
         "couldNotCopy": "Không thể sao chép liên kết",
         "title": "Đây là liên kết menu khách hàng chính thức của bạn",
         "description": "Sử dụng tính năng này thay vì gửi ảnh thực đơn hoặc tệp PDF. Khách hàng sẽ luôn nhìn thấy thực đơn mới nhất của bạn.",
@@ -780,13 +899,754 @@
       "menuQuality": {
         "menuCheck": "Kiểm tra thực đơn",
         "checkedJustNow": "Vừa kiểm tra xong",
-        "noActionNeeded": "Không cần thực hiện hành động nào",
+        "noActionNeeded": "Không cần hành động",
         "publicMenuReady": "Thực đơn công khai của bạn đã sẵn sàng.",
         "repairNow": "Sửa chữa những gì có thể sửa được ngay bây giờ",
         "reviewTopIssue": "Xem lại vấn đề hàng đầu",
         "repairMenu": "Menu sửa chữa",
         "review": "Đánh giá",
-        "repair": "Sửa chữa"
+        "repair": "Sửa chữa",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# item đang thiếu một mô tả} other {# Các mục đang thiếu các mô tả}}",
+            "ok": "Tất cả các mặt hàng đều có mô tả.",
+            "help": "Mô tả giúp khách hàng hiểu được mỗi sản phẩm."
+          },
+          "images": {
+            "warning": "{count, plural, one {# item đang thiếu một hình ảnh} other {# items are missing hình ảnh}}",
+            "ok": "Tất cả các mặt hàng có hình ảnh.",
+            "help": "Hình ảnh có thể giúp khách hàng chọn lựa nhanh hơn."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Phân loại # thiếu một biểu tượng.} other {Các danh mục # thiếu biểu tượng.}}",
+            "ok": "Tất cả các loại đều có biểu tượng.",
+            "help": "Biểu tượng giúp các danh mục dễ dàng quét hơn."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# item đang thiếu một giá} other {# Các sản phẩm đang thiếu giá}}",
+            "ok": "Tất cả các mặt hàng đều có giá.",
+            "help": "Khách hàng so sánh giá trước khi quyết định."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# item đã bị ẩn khỏi khách hàng.} other {# mặt hàng đã bị ẩn khỏi khách hàng.}}",
+            "ok": "Không có mục nào ẩn",
+            "help": "Mục ẩn không xuất hiện trong thực đơn công khai."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {Giá của # cần được xem xét lại.} other {Giá của # cần được xem xét lại.}}",
+            "ok": "Giá cả trong phạm vi mong đợi.",
+            "help": "MenuList so sánh giá của từng mặt hàng trong cùng một nhóm. Đánh dấu một giá có ý định là đã xem xét."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# item đang thiếu bản dịch} other {# Các bài viết đang thiếu dịch}}",
+            "ok": "Tất cả các mục có thể nhìn thấy đều được dịch.",
+            "help": "Một số mục không hoàn chỉnh trong các ngôn ngữ thực đơn đã chọn."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menu chi tiết đang thiếu các bản dịch} other {# Các chi tiết menu đang thiếu bản dịch}}",
+            "ok": "Chi tiết thực đơn được dịch sang tiếng Anh.",
+            "help": "Tên, mô tả hoặc ghi chú của thực đơn không đầy đủ trong các ngôn ngữ thực đơn đã chọn."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Bản sao link",
+        "direct": "trực tiếp",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Bộ menu bao gồm:",
+        "nativeShare": "Chia sẻ thiết bị",
+        "obp": "Trang kinh doanh",
+        "other": "Khác",
+        "qr": "Mã QR",
+        "shortcut": "Phím tắt ứng dụng",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Sức khỏe doanh nghiệp",
+        "open": "Sức khỏe kinh doanh mở",
+        "today": "Hôm nay",
+        "latestActivity": "Hoạt động gần nhất",
+        "noActionNeeded": "Không cần thực hiện hành động nào",
+        "status": {
+          "stable": "Ổn định",
+          "watch": "Cần chú ý",
+          "needs_review": "Cần xem lại.",
+          "insufficient_data": "cần thêm dữ liệu",
+          "stale": "Cần kiểm tra lại.",
+          "not_ready": "Sẵn sàng"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# chi tiết đối diện với khách hàng cần được xem xét.} other {# chi tiết đối diện với khách hàng cần được xem xét.}}",
+          "stable": {
+            "headline": "Thông tin công khai của bạn ổn định.",
+            "message": "Không có vấn đề nào đối mặt với khách hàng cần phải hành động trong kiểm tra mới nhất."
+          },
+          "watch": {
+            "headline": "Một chi tiết có thể cần được chú ý.",
+            "message": "Xem lại kiểm tra đề xuất trước khi thay đổi thông tin công cộng."
+          },
+          "needs_review": {
+            "headline": "Xem lại các chi tiết đối diện với khách hàng.",
+            "message": "Một hoặc nhiều chi tiết công khai nên được kiểm tra."
+          },
+          "insufficient_data": {
+            "headline": "Cần có nhiều hoạt động hơn nữa.",
+            "message": "Giữ thông tin hiện tại ổn định trong khi MenuList thu thập một tín hiệu hữu ích."
+          },
+          "stale": {
+            "headline": "Sức khỏe kinh doanh cần kiểm tra lại.",
+            "message": "Kiểm tra cuối cùng đã cũ. Thông tin công khai hiện tại của bạn vẫn không thay đổi."
+          },
+          "not_ready": {
+            "headline": "Sức khỏe kinh doanh đang sẵn sàng.",
+            "message": "Kiểm tra cửa hàng đầu tiên sẽ xuất hiện ở đây khi nó sẵn sàng."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Kiểm tra menu nguồn",
+            "message": "Không tìm thấy nguồn thực đơn công cộng hoạt động. Kiểm tra thực đơn trước khi chia sẻ nó.",
+            "title": "Nguồn thực đơn cần kiểm tra."
+          },
+          "low_latest_activity": {
+            "action": "Kiểm tra chia sẻ link",
+            "message": "Tỷ lệ hoạt động của khách hàng thấp. Kiểm tra lại. QR, Google, Instagram, WhatsApp, và liên kết website.",
+            "title": "Tỷ lệ hoạt động của khách hàng thấp."
+          },
+          "unavailable_item_taps": {
+            "action": "Kiểm tra các mục không có sẵn.",
+            "message": "Khách hàng thể hiện sự quan tâm đến các mặt hàng không có sẵn. Đổi hàng hoặc giữ chúng ẩn.",
+            "title": "Các mặt hàng không có sẵn đã nhận được sự chú ý."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Xem phản hồi của khách hàng.",
+            "message": "Phản hồi của khách cần được chủ sở hữu kiểm tra trước khi thay đổi chi tiết công khai.",
+            "title": "Lời phản hồi của khách cần được kiểm tra."
+          },
+          "default": {
+            "action": "Kiểm tra chi tiết",
+            "message": "Một chi tiết đối diện với khách hàng cần kiểm tra của chủ sở hữu.",
+            "title": "Một chi tiết cần kiểm tra."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# mục phản hồi riêng cần kiểm tra.} other {# các mục phản hồi riêng cần kiểm tra.}}",
+          "clear": "Lời phản hồi của cá nhân rõ ràng."
+        },
+        "freshness": {
+          "notReady": "Sức khỏe kinh doanh không phải là thời gian thực. Kiểm tra cửa hàng đầu tiên sẽ hiển thị ngày dữ liệu ở đây.",
+          "throughDate": "Dữ liệu được sử dụng thông qua {date}. Ngày hôm nay có thể chưa hoàn tất.",
+          "latest": "Dữ liệu MenuList có sẵn mới nhất đang được sử dụng. Ngày hôm nay có thể chưa hoàn thành."
+        },
+        "periods": {
+          "today": "Hôm nay",
+          "yesterday": "Ngày hôm trước",
+          "thisWeek": "Tuần này",
+          "lastWeek": "Tuần trước",
+          "thisMonth": "Tháng này",
+          "lastMonth": "Tháng trước",
+          "last7Days": "7 ngày qua",
+          "last30Days": "30 ngày qua",
+          "overall": "Tổng thể"
+        },
+        "metrics": {
+          "menuViews": "Chế độ xem menu",
+          "topDemand": "Nhu cầu cao nhất",
+          "topDemandDetail": "Tăng cấp: {count} {signal}",
+          "bestSource": "Nguồn tốt nhất",
+          "bestSourceDetail": "Cập nhật liên kết: {count} visits"
+        },
+        "signals": {
+          "views": "quan điểm",
+          "clicks": "Lượt nhấn",
+          "attention": "tín hiệu chú ý"
+        },
+        "page": {
+          "description": "Tình trạng kinh doanh hàng ngày và kiểm tra đối diện với khách hàng.",
+          "latestCheck": "AI health check",
+          "loading": "tải",
+          "loadingMessage": "Đang tải Sức khỏe kinh doanh...",
+          "notReady": "Sức khỏe kinh doanh vẫn chưa sẵn sàng.",
+          "loadErrorTitle": "Không thể tải Business Health.",
+          "loadErrorDescription": "Xin hãy cập nhật trang này và thử lại.",
+          "refresh": "Làm mới",
+          "needsAttention": "Cần chú ý",
+          "desktopSettingsOnly": "Mở nó từ cài đặt màn hình."
+        },
+        "scope": {
+          "title": "Vùng ảnh hưởng của Sức khỏe kinh doanh",
+          "allMenus": "Tất cả menu",
+          "selectedMenu": "Menu được chọn",
+          "menuCount": "{count, plural, one {Menu # ở vị trí này.} other {# menu ở vị trí này.}}",
+          "locationLevel": "Xem ở cấp độ vị trí",
+          "inactiveMenu": "Trình đơn không hoạt động",
+          "thisMenuOnly": "Menu này chỉ",
+          "allMenusInLocation": "Tất cả các trình đơn trong vị trí này.",
+          "thisMenuHelper": "Câu hỏi và hoạt động sử dụng thực đơn này.",
+          "allMenusHelper": "Câu hỏi và hoạt động sử dụng tất cả các thực đơn ở vị trí này.",
+          "dialogDescription": "Chọn tất cả các menu hoặc một menu cho hoạt động và kiểm tra.",
+          "all": "Tất cả",
+          "close": "Đóng"
+        },
+        "locations": {
+          "title": "Các địa điểm",
+          "loading": "Đang tải vị trí...",
+          "empty": "Vẫn chưa có bản tóm tắt vị trí.",
+          "storeFallback": "Vị trí {id}",
+          "checkedOn": "Đánh giá {date}",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# kiểm tra đối diện với khách hàng cần xem lại.} other {# các kiểm tra đối diện với khách hàng cần được xem xét.}}",
+          "statusReason": {
+            "stable": "Không có vấn đề nào đối mặt với khách hàng cần phải hành động.",
+            "watch": "Một chi tiết đối diện với khách hàng có thể cần được chú ý.",
+            "needs_review": "Các chi tiết đối diện với khách hàng cần được xem xét.",
+            "insufficient_data": "Cần nhiều hoạt động khách hàng hơn để kiểm tra có ích.",
+            "stale": "Vị trí này cần được kiểm tra lại.",
+            "not_ready": "Kiểm tra vị trí đầu tiên đang sẵn sàng."
+          }
+        },
+        "assistant": {
+          "title": "Yêu cầu sức khỏe kinh doanh",
+          "askShort": "hỏi",
+          "englishOnlyTitle": "Câu hỏi hiện có sẵn bằng tiếng Anh.",
+          "englishOnlyDescription": "Tình trạng và kiểm tra của bạn được định dạng. Chuyển ngôn ngữ ứng dụng sang tiếng Anh để hỏi các câu hỏi về Sức khỏe kinh doanh.",
+          "notReady": "Business Health sẽ trả lời sau khi kiểm tra cuối cùng hoàn thành.",
+          "suggestedUnavailable": "Các câu hỏi đề xuất hiện không có sẵn.",
+          "freeTextUnavailable": "Câu hỏi văn bản tự do không có sẵn lúc này.",
+          "answerError": "Business Health không thể trả lời câu hỏi đó.",
+          "suggestedQuestions": "Câu hỏi được gợi ý",
+          "followUps": "Bạn có thể hỏi tiếp theo",
+          "you": "Bạn",
+          "empty": "Chọn một câu hỏi hoặc hỏi về doanh nghiệp của bạn.",
+          "placeholderReady": "Hỏi về hôm nay, tuần này, menu chú ý, hoặc kiểm tra tiếp theo.",
+          "placeholderMobile": "Hỏi về hôm nay hoặc tuần này.",
+          "placeholderPending": "Sẵn sàng sau khi kiểm tra cuối cùng.",
+          "send": "Gửi câu hỏi",
+          "cachedFacts": "Dựa trên các thực tế kinh doanh MenuList được lưu trữ trong cache.",
+          "questions": {
+            "checks": "- Có gì cần kiểm tra?",
+            "today_stats": "Hôm nay thế nào rồi?",
+            "this_week_stats": "Tuần này có chuyện gì vậy?",
+            "top_item": "Điều gì đang thu hút sự chú ý?",
+            "last_week_stats": "Tuần trước đã xảy ra chuyện gì?",
+            "this_month_stats": "Tháng này thế nào?",
+            "last_month_stats": "Tháng trước đã xảy ra chuyện gì?",
+            "public_menu_status": "Chương trình ăn uống của tôi có ổn không?",
+            "profile_status": "Hồ sơ kinh doanh của tôi có đầy đủ không?",
+            "feedback_reviews": "Có phản hồi nào để kiểm tra không?",
+            "feedback_recent": "Gần đây khách hàng nói gì?",
+            "default": "Tôi nên kiểm tra điều gì tiếp theo?"
+          }
+        },
+        "sources": {
+          "title": "Nguồn dữ liệu:",
+          "menuProjects": "Menu dự án",
+          "ownerAnalytics": "Hoạt động của chủ sở hữu",
+          "guestFeedback": "Trả lời của khách hàng",
+          "storeSettings": "thiết lập kinh doanh",
+          "menuListData": "Dữ liệu MenuList",
+          "updatedOn": "Đã cập nhật {date}",
+          "latest": "Dữ liệu mới nhất có sẵn"
+        },
+        "publicTruth": {
+          "title": "Nguồn khách hàng chính thức:",
+          "checking": "Kiểm tra",
+          "checkingFacts": "Đang kiểm tra MenuList sự kiện công khai...",
+          "checkedMenu": "Thực đơn đã kiểm tra: {name}",
+          "boundary": "Kiểm tra từ dữ liệu kinh doanh và thực đơn MenuList hiện tại. Các nền tảng bên ngoài vẫn được xác nhận bởi chủ sở hữu.",
+          "boundaryShort": "Các nền tảng bên ngoài vẫn được chủ sở hữu xác nhận.",
+          "historyTitle": "Lịch sử thông tin công cộng",
+          "historyBoundary": "Chỉ sử dụng MenuList business và thực đơn facts. Không có trang web bên ngoài nào được quét.",
+          "historyBoundaryShort": "Chỉ có MenuList sự thật. Không có trang web bên ngoài được quét.",
+          "refreshErrorTitle": "Kiểm tra nguồn khách hàng không thể cập nhật.",
+          "refreshErrorDescription": "Sự thật MenuList có sẵn cuối cùng vẫn được hiển thị bên dưới.",
+          "historyRefreshError": "Không thể cập nhật lịch sử thông tin công khai.",
+          "historyLoadError": "Không thể tải lịch sử thông tin công cộng.",
+          "historyErrorDescription": "Báo cáo được lưu cuối cùng vẫn được hiển thị khi có sẵn.",
+          "notRun": "Không chạy được.",
+          "lastSaved": "Lưu lần cuối {date}",
+          "noSavedReport": "Không có báo cáo được tiết kiệm",
+          "noSavedReportDescription": "Chạy kiểm tra để lưu báo cáo đầu tiên cho vị trí này.",
+          "downloadEnglishReport": "Tải báo cáo tiếng Anh về vụ việc",
+          "downloadEnglishShort": "Báo cáo tiếng Anh:",
+          "runCheck": "Run kiểm tra",
+          "currentFix": "Mục sửa hiện tại",
+          "nextFixes": "Sửa lỗi công khai tiếp theo",
+          "none": "Không có.",
+          "attentionCount": "{count, plural, one {Điều kiện # cần kiểm tra.} other {# mục cần kiểm tra.}}",
+          "readyModuleCount": "Sẵn sàng {count}/{total}",
+          "missingCount": "Thiếu {count}.",
+          "checkCount": "Kiểm tra {count}.",
+          "savedCount": "Lưu {count}/{total}",
+          "modulesReady": "{count}/{total} module đã sẵn sàng.",
+          "status": {
+            "ready": {
+              "label": "Sẵn sàng.",
+              "message": "Nguồn khách hàng chính thức của bạn có những thông tin cơ bản mà khách hàng cần."
+            },
+            "missing_basics": {
+              "label": "thiếu cơ bản",
+              "message": "Menu, giờ làm việc, giá cả, hành động hoặc chi tiết liên kết khách hàng cần được chú ý trước khi chia sẻ rộng rãi."
+            },
+            "unclear": {
+              "label": "Cần kiểm tra",
+              "message": "Hầu hết các thông tin cơ bản đã có sẵn, nhưng một hoặc nhiều sự thật công khai vẫn cần kiểm tra."
+            }
+          },
+          "metrics": {
+            "readyModules": "Các mô-đun sẵn sàng",
+            "missingFacts": "Những sự thật thiếu sót",
+            "checkedMenu": "Đánh giá menu",
+            "savedReports": "Báo cáo tiết kiệm"
+          },
+          "results": {
+            "present": "Sẵn sàng.",
+            "missing": "mất tích",
+            "unclear": "Kiểm tra",
+            "not_applicable": "Không cần thiết.",
+            "not_checked": "Không kiểm tra."
+          },
+          "moduleStatus": {
+            "ready": "Sẵn sàng.",
+            "needs_attention": "mất tích",
+            "check": "Kiểm tra",
+            "not_checked": "Không kiểm tra."
+          },
+          "facts": {
+            "business_identity": "Tên doanh nghiệp:",
+            "menu_or_service_source": "Danh sách menu hoặc dịch vụ.",
+            "prices": "Giá cả",
+            "hours": "giờ",
+            "location": "Vị trí",
+            "contact": "Liên hệ Contact Us",
+            "customer_actions": "hành động khách hàng",
+            "public_link": "Khách hàng Link",
+            "photos": "Ảnh: Hình ảnh",
+            "machine_readable_source": "Thông tin thân thiện tìm kiếm"
+          },
+          "evidence": {
+            "owner_entered": "Đã ghi vào kiểm tra này.",
+            "owner_selected": "Được chủ sở hữu chọn.",
+            "source_text_hint": "Tìm thấy trong nguồn cung cấp.",
+            "valid_public_url": "Dạng thức liên kết công cộng là hợp lệ.",
+            "invalid_public_url": "Liên kết công cộng cần được sửa chữa.",
+            "menulist_store": "Đã kiểm tra cài đặt công việc hiện tại của MenuList.",
+            "menulist_project": "Thử thách đã được chọn hoặc thực đơn mặc định MenuList.",
+            "menulist_summary": "Kiểm tra tổng hợp thực đơn MenuList hiện tại.",
+            "menulist_public_route": "Đã kiểm tra cài đặt liên kết khách hàng hiện tại của MenuList.",
+            "menulist_index_gate": "Kiểm tra các quy tắc khám phá công khai hiện tại của MenuList.",
+            "not_provided": "Sự thật này thiếu trong dữ liệu MenuList hiện tại.",
+            "not_checked": "Sự thật này không được kiểm tra an toàn từ dữ liệu MenuList hiện tại.",
+            "priceNotLoaded": "Mở thực đơn đã chọn một lần để MenuList có thể kiểm tra giá của nó."
+          },
+          "moduleEvidence": {
+            "ready": "Dữ liệu hiện tại MenuList cho thấy khu vực này đã sẵn sàng.",
+            "needs_attention": "Dữ liệu MenuList hiện tại cho thấy thiếu thông tin cần thiết.",
+            "check": "Kiểm tra khu vực này trước khi khách hàng tin tưởng vào nó.",
+            "not_checked": "MenuList không thể kiểm tra đầy đủ khu vực này từ dữ liệu hiện tại."
+          },
+          "setupReason": {
+            "needs_attention": "Thiếu thông tin cần thiết đối diện với khách hàng.",
+            "check": "Kiểm tra điều này trước khi khách hàng tin tưởng vào nó.",
+            "not_checked": "MenuList không thể kiểm tra đầy đủ điều này từ dữ liệu hiện tại."
+          },
+          "targetActions": {
+            "basic_settings": "Mở chi tiết doanh nghiệp",
+            "domain_settings": "Mở khách hàng link",
+            "hours_edit": "Giờ mở cửa:",
+            "menu_tab": "Menu mở",
+            "official_page": "Trang kinh doanh mở",
+            "presence_monitor": "Kiểm tra vị trí mở",
+            "share_tab": "Công cụ chia sẻ mở"
+          },
+          "actions": {
+            "openCustomerSource": "Mở nguồn khách hàng mở.",
+            "openShareTools": "Công cụ chia sẻ mở",
+            "fixFact": "Sửa chữa {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Thông tin công cộng cơ bản",
+              "description": "Tên doanh nghiệp, thực đơn hoặc nguồn dịch vụ hiện tại, liên hệ, hành động và liên kết khách hàng."
+            },
+            "business_facts_copy_pack": {
+              "title": "Chi tiết kinh doanh tái sử dụng được.",
+              "description": "Các nhân viên có thể sử dụng lại các thông tin hiện tại trong hồ sơ công cộng, trả lời và chuyển giao liên kết khách hàng."
+            },
+            "qr_link_health": {
+              "title": "QR Sẵn sàng kết nối",
+              "description": "Một liên kết khách hàng hiện tại cho QR và các vị trí in."
+            },
+            "social_bio_link_consistency": {
+              "title": "Định dạng liên kết một cách nhất quán.",
+              "description": "Một liên kết khách hàng hiện tại cho hồ sơ xã hội và các vị trí khác."
+            },
+            "customer_link_preview": {
+              "title": "Xem trước liên kết khách hàng",
+              "description": "Những thực tế chính mà khách hàng nên xem trước khi hành động."
+            },
+            "print_share_assets": {
+              "title": "In và chia sẻ tài sản.",
+              "description": "Sẵn sàng liên kết hiện tại cho QR poster, thẻ đếm và chia sẻ hình ảnh."
+            },
+            "menu_service_readability": {
+              "title": "Sự rõ ràng của menu hoặc dịch vụ.",
+              "description": "Danh mục, các mặt hàng hoặc dịch vụ và giá trong thực đơn đã chọn."
+            },
+            "price_availability_gap": {
+              "title": "Sự rõ ràng về giá và khả năng cung cấp.",
+              "description": "Giá, biến thể, tình trạng hết hàng và số lượng có sẵn được hiển thị cho khách hàng."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Thay thế PDF cũ.",
+              "description": "Một liên kết nguồn và khách hàng MenuList hiện tại có thể thay thế cho các PDF cũ."
+            },
+            "whatsapp_action_link": {
+              "title": "Hành động WhatsApp",
+              "description": "Một WhatsApp rõ ràng hoặc hành động liên hệ khách hàng thay thế."
+            },
+            "hours_readiness": {
+              "title": "Thời gian chuẩn bị",
+              "description": "Thời gian làm việc thường xuyên mà khách hàng có thể tin tưởng."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp trả lời đúng sự thật.",
+              "description": "Menu hiện tại, giờ mở cửa, liên hệ và link để nhân viên trả lời."
+            },
+            "photo_visual_identity": {
+              "title": "Hình ảnh và danh tính thị giác",
+              "description": "Một logo, bìa, ảnh doanh nghiệp, hoặc đồ vật và dịch vụ hình ảnh."
+            },
+            "customer_question_coverage": {
+              "title": "Câu hỏi phổ biến của khách hàng",
+              "description": "Sự thật rõ ràng về đề nghị, giờ làm việc, giá, địa điểm, liên hệ và hành động tiếp theo."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Câu trả lời khách hàng tái sử dụng được.",
+              "description": "Các nhân viên có thể sử dụng lại các thông tin hiện tại khi khách hàng hỏi những câu hỏi phổ biến."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Sẵn sàng đặt phòng và hỏi han.",
+              "description": "Một con đường rõ ràng để đặt hàng, đặt phòng, đặt trước, gọi điện, nhắn tin, yêu cầu báo giá hoặc ghé thăm."
+            },
+            "google_profile_handoff": {
+              "title": "Liên kết hồ sơ Google",
+              "description": "Liên kết khách hàng hiện tại đã được chuẩn bị cho Google Business Profile."
+            },
+            "menu_freshness": {
+              "title": "Sự tươi mới của thực đơn",
+              "description": "Một bảng thực đơn gần đây cập nhật khi giá, các mặt hàng hoặc sự sẵn có thay đổi."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Biểu đồ",
+        "description": "Một tóm tắt trực quan từ cùng một hoạt động được giải quyết được hiển thị trong bảng điều khiển.",
+        "ranges": {
+          "days7": "7 ngày",
+          "days30": "30 ngày"
+        },
+        "metrics": {
+          "menu_activity": "Menu hoạt động",
+          "customer_actions": "hành động khách hàng",
+          "search_demand": "Tiêu chí tìm kiếm:",
+          "item_interest": "Chủ đề Interest",
+          "unavailable_demand": "Yêu cầu không đủ",
+          "missing_searches": "Tìm kiếm mất tích"
+        },
+        "trend": {
+          "summary": "Xu hướng tổng hợp",
+          "updatedAfterClose": "Cập nhật sau khi cửa hàng đóng cửa.",
+          "status": {
+            "up": "cao hơn",
+            "down": "thấp hơn",
+            "stable": "Ổn định",
+            "not_enough_data": "Không đủ lịch sử."
+          },
+          "period": {
+            "week": "Kiểm tra hàng tuần",
+            "month": "Kiểm tra hàng tháng"
+          },
+          "shortPeriod": {
+            "week": "Tuần",
+            "month": "tháng"
+          },
+          "needsMoreDays": "Cần nhiều ngày ổn định hơn.",
+          "versus": "{current} so với {previous}",
+          "messages": {
+            "up": "{metric} cao hơn cho kiểm tra {period} này.",
+            "down": "{metric} thấp hơn cho kiểm tra {period} này.",
+            "stable": "{metric} ổn định cho kiểm tra {period} này.",
+            "not_enough_data": "Không có đủ lịch sử {metric} đã giải quyết cho việc kiểm tra {period} này."
+          },
+          "change": {
+            "gathering": "{period}: đang thu thập",
+            "newActivity": "{period}: hoạt động mới",
+            "steady": "{period}: ổn định.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Chart so sánh",
+          "description": "Tuần và tháng chuyển động từ ngày ổn định."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menu xu hướng",
+            "days7": "7 ngày sắp xếp",
+            "days30": "30 ngày cuối cùng đã được giải quyết."
+          },
+          "customerActions": {
+            "title": "hành động khách hàng",
+            "description": "Điều gì khách hàng nhấn vào sau khi mở menu?"
+          },
+          "sources": {
+            "title": "Khách hàng đến từ đâu?",
+            "description": "Menu truy cập và các phiên hành động theo nguồn."
+          },
+          "items": {
+            "title": "Điểm thú vị hàng đầu",
+            "description": "Những mặt hàng khách hàng mở hoặc nhấn nhiều nhất."
+          },
+          "search": {
+            "title": "Tiêu chí tìm kiếm:",
+            "description": "Điều gì khách hàng tìm kiếm?"
+          },
+          "officialPage": {
+            "title": "Trang chính thức Trend",
+            "description": "Quan điểm và hành động từ Trang Kinh doanh chính thức."
+          }
+        },
+        "legends": {
+          "visits": "Ghé thăm",
+          "actionSessions": "Phiên hành động",
+          "views": "Nhìn",
+          "taps": "Lượt nhấn",
+          "noResult": "Không kết quả"
+        },
+        "empty": {
+          "default": "Vẫn chưa có dữ liệu đồ thị cho khung xem này.",
+          "menuActivity": "Hoạt động menu sẽ xuất hiện sau khi khách hàng mở menu.",
+          "customerActions": "Hành động của khách hàng sẽ xuất hiện sau khi khách hàng gọi, gửi tin nhắn, đặt hàng, đặt phòng hoặc hỏi hướng dẫn.",
+          "customerActionsPeriod": "Chưa có hành động của khách hàng trong giai đoạn này.",
+          "searchDemand": "Cần tìm kiếm xuất hiện sau khi khách hàng sử dụng tìm kiểm menu.",
+          "itemInterest": "Sự quan tâm đến các mặt hàng xuất hiện sau khi khách hàng mở các mục trong thực đơn.",
+          "unavailableDemand": "Khách hàng sẽ thấy yêu cầu không có sẵn khi nhấn vào các mặt hàng không có.",
+          "missingSearches": "Tìm kiếm thiếu sẽ xuất hiện khi khách hàng tìm kiếm nhưng không tìm thấy kết quả tương ứng.",
+          "sources": "Chi tiết về nguồn sẽ xuất hiện sau khi khách hàng đến từ các liên kết, QR hoặc các trang mạng xã hội.",
+          "officialPage": "Hoạt động trên trang chính thức sẽ xuất hiện sau khi khách hàng mở trang công ty công khai."
+        },
+        "footer": {
+          "sameData": "Dữ liệu Dashboard",
+          "noExtraTracking": "Không có thêm tracking",
+          "settledAfterClose": "Đóng sau khi kết thúc ngày làm việc của cửa hàng."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menu",
+          "viewsLabel": "Chế độ xem menu",
+          "viewsTooltip": "Số lần khách hàng mở menu của bạn.",
+          "thisMonthLabel": "Chương trình của bạn trong tháng này."
+        },
+        "product": {
+          "singular": "Danh mục",
+          "viewsLabel": "Catalog nhìn",
+          "viewsTooltip": "Số lần khách hàng mở danh mục của bạn.",
+          "thisMonthLabel": "Tháng này, danh mục của bạn sẽ được cập nhật."
+        },
+        "service": {
+          "singular": "Danh sách dịch vụ",
+          "viewsLabel": "Xem danh sách dịch vụ",
+          "viewsTooltip": "Số lần khách hàng mở danh sách dịch vụ của bạn.",
+          "thisMonthLabel": "Danh sách dịch vụ của bạn trong tháng này."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Cần chú ý",
+          "active": "Nguồn khách hàng chính thức đang hoạt động.",
+          "readyToPlace": "Nguồn khách hàng chính thức đã sẵn sàng để đặt."
+        },
+        "description": {
+          "needsAttention": "Sửa menu, giờ làm việc hoặc liên kết khách hàng trước khi chia sẻ rộng rãi.",
+          "active": "Không cần hành động. Khách hàng có thể sử dụng thông tin công khai hiện tại của bạn từ một nguồn duy nhất.",
+          "readyToPlace": "Liên kết khách hàng của bạn đã sẵn sàng.Thêm nó vào Google, Instagram, WhatsApp, QR, hoặc in để khách hàng sử dụng nguồn hiện tại."
+        },
+        "link": {
+          "ready": "Khách hàng link sẵn sàng",
+          "missing": "Thiếu liên kết khách hàng."
+        },
+        "states": {
+          "set": "Đã thiết lập",
+          "missing": "mất tích",
+          "ready": "Sẵn sàng.",
+          "notReady": "Chưa sẵn sàng.",
+          "live": "Đang hiển thị",
+          "hidden": "Không hoạt động"
+        },
+        "tags": {
+          "menu": "Thực đơn: {status}",
+          "hours": "Giờ: {status}",
+          "customerLink": "Liên kết khách hàng: {status}",
+          "link": "Liên kết: {status}",
+          "placed": "Đặt: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Sửa chữa những gì cần chú ý.",
+          "preview": "Xem trước menu công cộng",
+          "share": "Chia sẻ menu"
+        },
+        "updated": {
+          "notUpdated": "Chưa cập nhật.",
+          "recently": "Cập nhật gần đây",
+          "today": "Cập nhật hôm nay",
+          "yesterday": "Cập nhật hôm qua",
+          "daysAgo": "Cập nhật {count, plural, one {# ngày trước} other {# ngày trước}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Tiếp theo chủ sở hữu",
+        "open": "Mở",
+        "placement": {
+          "notConfirmed": "Chưa xác nhận.",
+          "today": "Đã xác nhận",
+          "yesterday": "Đã xác nhận",
+          "daysAgo": "xác nhận {count, plural, one {# ngày trước} other {# ngày trước}}"
+        },
+        "status": {
+          "ready": "Sẵn sàng.",
+          "missing": "mất tích",
+          "set": "Đã thiết lập",
+          "live": "Đang hiển thị",
+          "notLive": "Không sống",
+          "confirmedCount": "{count}/{total} đã xác nhận.",
+          "on": "Bật",
+          "off": "Tắt",
+          "dailyChanges": "Thay đổi hàng ngày",
+          "hoursException": "Thời gian ngoại lệ",
+          "staffUse": "Nhân viên sử dụng",
+          "menuPrices": "Menu Giá",
+          "openCount": "{count, plural, one {Hành động # mở} other {Hoạt động # mở ra.}}",
+          "stable": "Ổn định"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Đặt liên kết khách hàng",
+            "description": "Tạo liên kết khách hàng trước khi chia sẻ QR, câu trả lời của nhân viên hoặc hồ sơ công cộng."
+          },
+          "setHours": {
+            "label": "Set giờ",
+            "description": "Giữ trạng thái mở và đóng công khai rõ ràng trước khi khách hàng đến thăm."
+          },
+          "publishMenu": {
+            "labelPublish": "Đăng thực đơn",
+            "labelOpen": "Menu mở",
+            "descriptionVisible": "Công bố thực đơn hiện tại trước khi chia sẻ rộng rãi.",
+            "descriptionHidden": "Làm cho menu hiển thị trước khi khách hàng sử dụng liên kết."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Xác nhận vị trí liên kết.",
+            "labelPlace": "Vị trí khách hàng link",
+            "descriptionPlaced": "Giữ Google, Instagram và WhatsApp chỉ vào cùng một nguồn.",
+            "descriptionUnplaced": "Thêm cùng một liên kết khách hàng vào Google, Instagram, WhatsApp, QR và tài liệu in."
+          },
+          "openPrivateFeedback": {
+            "label": "Mở phản hồi riêng tư mở rộng.",
+            "description": "Sử dụng phản hồi riêng tư trước khi vấn đề của khách trở thành đánh giá công khai."
+          },
+          "captureDailyChange": {
+            "label": "Cho MenuList biết điều gì đã thay đổi.",
+            "description": "Nói cho MenuList biết những thay đổi hôm nay và phê duyệt thẻ thực đơn đã chuẩn bị."
+          },
+          "setTodayStatus": {
+            "label": "Đặt trạng thái hôm nay.",
+            "description": "Đặt đóng cửa hôm nay, mở cửa muộn, nhà bếp đóng hoặc thông báo thực đơn đặc biệt."
+          },
+          "prepareStaffHandoff": {
+            "label": "Chuẩn bị bàn giao nhân viên.",
+            "description": "Cho nhân viên liên kết menu, QR và dòng trả lời của khách hàng từ một nơi."
+          },
+          "updatePrices": {
+            "label": "Cập nhật giá",
+            "description": "Dùng Menu Manager để thay đổi giá, sau đó phê duyệt trước khi công bố."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Thiết lập thực đơn",
+        "complete": "Cấu hình thực đơn đã hoàn tất.",
+        "ready": "Cấu hình thực đơn đã sẵn sàng.",
+        "actions": {
+          "openMenu": "Menu mở",
+          "createMenu": "Tạo thực đơn",
+          "reviewDetails": "Kiểm tra chi tiết",
+          "publishMenu": "Đăng thực đơn",
+          "openSharingTools": "Công cụ chia sẻ mở",
+          "prepareDescriptions": "Chuẩn bị mô tả",
+          "addImages": "Thêm ảnh vào",
+          "reviewLanguageText": "Xem lại văn bản ngôn ngữ.",
+          "openMenuCheck": "Menu mở check",
+          "updatePublicLinks": "Cập nhật liên kết công cộng",
+          "addPublicPhoto": "Thêm ảnh công cộng"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Nguồn thêm vào:",
+            "doneDescription": "Nguồn thực đơn đã được kết nối.",
+            "nextDescription": "Thêm ảnh thực đơn, PDF, liên kết hoặc khởi động thủ công."
+          },
+          "menuImported": {
+            "label": "Menu nhập khẩu",
+            "doneDescription": "{count, plural, one {Tìm thấy mục có thể nhìn thấy #.} other {Tìm thấy # mục có thể nhìn thấy.}}",
+            "nextDescription": "Nhập khẩu hoặc thêm mục thực đơn."
+          },
+          "keyDetailsChecked": {
+            "label": "Đã kiểm tra thông tin chính",
+            "doneDescription": "Giá cả và chi tiết thực đơn chính là rõ ràng.",
+            "nextDescription": "Kiểm tra giá và chi tiết chính trước khi xuất bản."
+          },
+          "menuPublished": {
+            "label": "Menu xuất bản",
+            "doneDescription": "Menu công khai đã được công bố.",
+            "nextDescription": "Công bố khi thực đơn sẵn sàng cho khách hàng."
+          },
+          "linkPlaced": {
+            "label": "Link được đặt",
+            "readyLabel": "Link sẵn sàng.",
+            "doneDescription": "Liên kết chính thức đã sẵn sàng cho khách hàng.",
+            "progressDescription": "{count} trong {total} hành động đặt đã hoàn thành.",
+            "nextDescription": "Mở các công cụ chia sẻ khi thực đơn được xuất bản."
+          },
+          "descriptionsReady": {
+            "label": "Mô tả sẵn sàng",
+            "doneDescription": "Các mục có thể nhìn thấy có mô tả.",
+            "nextDescription": "Chuẩn bị mô tả cho các mục thực đơn rõ ràng hơn."
+          },
+          "imagesReady": {
+            "label": "Hình ảnh sẵn sàng",
+            "doneDescription": "Các mục có thể nhìn thấy có hình ảnh.",
+            "nextDescription": "Thêm hoặc tạo hình ảnh khi cần thiết."
+          },
+          "translationsReady": {
+            "label": "Dịch sẵn sàng.",
+            "doneDescription": "Các ngôn ngữ thực đơn đã được chọn đã hoàn tất.",
+            "nextDescription": "Xem lại các ngôn ngữ thực đơn đã chọn."
+          },
+          "publicLinksAdded": {
+            "label": "Liên kết công cộng thêm",
+            "doneDescription": "Có thể truy cập vào các liên kết hành động công cộng hoặc xã hội.",
+            "nextDescription": "Thêm các liên kết công cộng hữu ích cho trang kinh doanh."
+          },
+          "publicPhotoAdded": {
+            "label": "Public photo added.",
+            "doneDescription": "Có một ảnh công cộng.",
+            "nextDescription": "Thêm một trang bìa, logo hoặc ảnh công cộng khi sẵn sàng."
+          }
+        }
       }
     }
   },
@@ -1463,7 +2323,7 @@
         "itemInCategoryAt": "{itemName} ở {categoryName}, có sẵn tại {businessName}.",
         "itemAt": "{itemName}, có tại {businessName}.",
         "metadataObpTitle": "{businessName} — Menu, Giờ, Liên hệ",
-        "metadataMenuTitle": "{businessName} | Thực đơn",
+        "metadataMenuTitle": "Thực đơn {businessName}",
         "metadataObpDescription": "{businessName} — Xem menu, kiểm tra giờ, nhận chỉ đường và tìm chi tiết liên hệ. Trang kinh doanh chính thức.",
         "metadataMenuDescription": "Xem menu kỹ thuật số cho {businessName}.",
         "metadataUnavailableTitle": "Thực đơn không có sẵn | {businessName}",
@@ -1587,7 +2447,7 @@
         "minutesShort": "{count} phút",
         "hoursShort": "{count} giờ",
         "calories": "{count}cal",
-        "protein": "Chất đạm {value}g",
+        "protein": "Chất đạm {value} g",
         "carbs": "Carb {value}g",
         "fat": "Chất béo {value}g",
         "serving": "Đang phục vụ {value}",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Vẫn chưa có lịch sử thanh toán.",
     "perMonth": "/tháng",
     "contactUs": "Liên hệ với chúng tôi"
+  },
+  "StarterActivation": {
+    "activeTitle": "Thực đơn của bạn đang trực tuyến",
+    "endingSoonTitle": "Giữ thực đơn của bạn trực tuyến",
+    "publicMenuQrActive": "Menu công khai và mã QR của bạn đang hoạt động.",
+    "activeRemaining": "Quyền truy cập menu của bạn đang hoạt động.",
+    "daysRemaining": "{days, plural, one {Chọn gói trong vòng # ngày để duy trì thực đơn của bạn trực tuyến.} other {Chọn gói trong vòng # ngày để duy trì thực đơn của bạn trực tuyến.}}",
+    "sharingComplete": "Quá trình thiết lập chia sẻ của bạn đã hoàn tất.",
+    "sharingProgress": "Đã hoàn tất {count, number} trong tổng số {target, number} bước chia sẻ.",
+    "evidenceRecorded": "Được ghi tự động: {systemCount, number}. Được bạn xác nhận: {ownerCount, number}.",
+    "evidenceEmpty": "Sao chép hoặc chia sẻ liên kết menu, tải xuống mã QR hoặc xác nhận nơi bạn đã đặt nó.",
+    "keepLiveAction": "Giữ thực đơn của bạn trực tuyến",
+    "noSubscriptionDescription": "Chọn gói để luôn cập nhật menu và trang khách hàng.",
+    "choosePlanDescription": "Thực đơn của bạn đã được lưu. Chọn một gói để giữ cho nó trực tuyến và cập nhật."
   },
   "Transactions": {
     "title": "Lịch sử giao dịch Lịch lịch sử giao tiếp",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Ứng dụng di động",
     "subscribeTitle": "Đăng ký nhận tin nhắn Bắt đầu ngay",
     "subscribeDescription": "Chọn một kế hoạch để bắt đầu tạo ra thực đơn số và quản lý doanh nghiệp của bạn.",
-    "viewPlans": "Xem các kế hoạch xem chi tiết"
+    "viewPlans": "Xem các kế hoạch xem chi tiết",
+    "returnToMobile": "Bạn đang xem phiên bản máy tính. Trở lại điện thoại di động."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Mã mã số thuế của bạn.",

@@ -31,11 +31,12 @@ import {
     PUBLIC_CREATE_MENU_LAST_CLAIM_KEY,
 } from '@lib/publicCreateMenu/lastClaimHandoff';
 import { isPublicCreateMenuSuccessHostname } from '@lib/publicCreateMenu/successUrl';
+import { trackWebsiteMarketingEvent } from '@lib/website/plausible';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 
 const CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT = 80;
@@ -237,6 +238,27 @@ function getCreateMenuSuccessStarterSignalContext(
     };
 }
 
+function resolveCreateMenuSuccessStarterClaim(rawClaim: string | null, session: unknown) {
+    const claim = parsePublicCreateMenuLastClaimHandoff(rawClaim);
+    if (!claim) {
+        return { claim: null, shouldEvict: Boolean(rawClaim) };
+    }
+
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (!sessionScope) {
+        return { claim: null, shouldEvict: false };
+    }
+
+    if (
+        claim.tenantId !== sessionScope.tenantScope.numericId
+        || claim.storeId !== sessionScope.storeScope.numericId
+    ) {
+        return { claim: null, shouldEvict: true };
+    }
+
+    return { claim, shouldEvict: false };
+}
+
 function hasCreateMenuSuccessClipboardWrite() {
     return typeof navigator !== 'undefined'
         && typeof navigator.clipboard?.writeText === 'function';
@@ -302,8 +324,9 @@ export default function CreateMenuSuccessClient() {
 
     const [copied, setCopied] = useState(false);
     const [handoffError, setHandoffError] = useState<string | null>(null);
+    const [hasStarterBillingHandoff, setHasStarterBillingHandoff] = useState(false);
     const copiedTimerRef = useRef<number | null>(null);
-    const dashboardHandoffInFlightRef = useRef(false);
+    const authenticatedHandoffInFlightRef = useRef(false);
     const recordedSignalsRef = useRef(new Set<string>());
 
     useEffect(() => () => {
@@ -313,24 +336,35 @@ export default function CreateMenuSuccessClient() {
         }
     }, []);
 
+    useEffect(() => {
+        let rawClaim: string | null = null;
+        try {
+            rawClaim = window.sessionStorage.getItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
+            const resolution = resolveCreateMenuSuccessStarterClaim(rawClaim, session);
+            if (resolution.shouldEvict) {
+                window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
+            }
+            setHasStarterBillingHandoff(Boolean(resolution.claim));
+        } catch (error) {
+            setHasStarterBillingHandoff(false);
+            logCreateMenuSuccessFailure(
+                'public_create_menu_success_starter_cta_claim_read_failed',
+                error,
+                getBoundedCreateMenuSuccessStringContext('rawClaim', rawClaim),
+            );
+        }
+    }, [session]);
+
     const recordStarterSignal = useCallback((signal: StarterActivationSignal) => {
         let rawClaim: string | null = null;
         try {
             rawClaim = window.sessionStorage.getItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
-            const claim = parsePublicCreateMenuLastClaimHandoff(rawClaim);
-            const sessionScope = resolveStorePermissionSessionScope(session);
-            if (!claim) {
-                if (rawClaim) window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
-                return;
-            }
-            if (!sessionScope) return;
-            if (
-                claim.tenantId !== sessionScope.tenantScope.numericId
-                || claim.storeId !== sessionScope.storeScope.numericId
-            ) {
+            const resolution = resolveCreateMenuSuccessStarterClaim(rawClaim, session);
+            if (resolution.shouldEvict) {
                 window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
-                return;
             }
+            const claim = resolution.claim;
+            if (!claim) return;
             const storeId = claim.storeId;
             const signalKey = `${claim.tenantId}:${claim.storeId}:${signal}`;
             if (recordedSignalsRef.current.has(signalKey)) return;
@@ -408,9 +442,9 @@ export default function CreateMenuSuccessClient() {
         }
     }, [hasOfficialPageUrl, menuUrl, officialPageUrl, recordStarterSignal, t]);
 
-    const handleDashboardHandoff = useCallback(async () => {
-        if (dashboardHandoffInFlightRef.current) return;
-        dashboardHandoffInFlightRef.current = true;
+    const handleAuthenticatedHandoff = useCallback(async (destination: '/billing' | '/use-menulist') => {
+        if (authenticatedHandoffInFlightRef.current) return;
+        authenticatedHandoffInFlightRef.current = true;
         let refreshTimer: ReturnType<typeof setTimeout> | null = null;
         try {
             await Promise.race([
@@ -429,10 +463,22 @@ export default function CreateMenuSuccessClient() {
             });
         } finally {
             if (refreshTimer !== null) clearTimeout(refreshTimer);
-            dashboardHandoffInFlightRef.current = false;
-            router.push('/use-menulist');
+            authenticatedHandoffInFlightRef.current = false;
+            router.push(destination);
         }
     }, [hasMenuUrl, hasOfficialPageUrl, router, updateSession]);
+
+    const handleKeepLiveHandoff = useCallback(() => {
+        if (authenticatedHandoffInFlightRef.current) return;
+        trackWebsiteMarketingEvent('create_menu_keep_live_clicked', {
+            source: 'create_menu_success',
+        });
+        void handleAuthenticatedHandoff('/billing');
+    }, [handleAuthenticatedHandoff]);
+
+    const handleDashboardHandoff = useCallback(() => {
+        void handleAuthenticatedHandoff('/use-menulist');
+    }, [handleAuthenticatedHandoff]);
 
     return (
         <div className="ws-page">
@@ -456,15 +502,19 @@ export default function CreateMenuSuccessClient() {
                             justifyContent: 'center',
                             margin: '0 auto 20px',
                         }}>
-                            <LuCheck size={32} color="var(--ws-success)" />
+                            <LuCheck aria-hidden="true" size={32} color="var(--ws-success)" />
                         </div>
                     </AnimateOnScroll>
 
                     <WebsiteHeadline
                         as="h1"
                         size="compact"
-                        text={t('CreateMenuSuccess.title')}
-                        highlightedText={t('CreateMenuSuccess.titleHighlight')}
+                        text={hasMenuUrl
+                            ? t('CreateMenuSuccess.title')
+                            : t('CreateMenuSuccess.pendingTitle')}
+                        highlightedText={hasMenuUrl
+                            ? t('CreateMenuSuccess.titleHighlight')
+                            : t('CreateMenuSuccess.pendingTitleHighlight')}
                         style={{ marginBottom: '8px' }}
                     />
 
@@ -491,6 +541,7 @@ export default function CreateMenuSuccessClient() {
                                     {t('CreateMenuSuccess.linkLabel')}
                                 </p>
                                 <a
+                                    dir="ltr"
                                     href={menuUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -499,10 +550,11 @@ export default function CreateMenuSuccessClient() {
                                         fontWeight: 600,
                                         color: 'var(--ws-brand-secondary)',
                                         textDecoration: 'none',
+                                        unicodeBidi: 'isolate',
                                         wordBreak: 'break-all',
                                     }}
                                 >
-                                    {menuUrl} <LuExternalLink size={14} style={{ verticalAlign: 'middle' }} />
+                                    {menuUrl} <LuExternalLink aria-hidden="true" size={14} style={{ verticalAlign: 'middle' }} />
                                 </a>
                                 {hasOfficialPageUrl && (
                                     <div style={{
@@ -514,6 +566,7 @@ export default function CreateMenuSuccessClient() {
                                             {t('CreateMenuSuccess.officialPageLabel')}
                                         </p>
                                         <a
+                                            dir="ltr"
                                             href={officialPageUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -522,14 +575,61 @@ export default function CreateMenuSuccessClient() {
                                                 fontWeight: 600,
                                                 color: 'var(--ws-text-secondary)',
                                                 textDecoration: 'none',
+                                                unicodeBidi: 'isolate',
                                                 wordBreak: 'break-all',
                                             }}
                                         >
-                                            {officialPageUrl} <LuExternalLink size={13} style={{ verticalAlign: 'middle' }} />
+                                            {officialPageUrl} <LuExternalLink aria-hidden="true" size={13} style={{ verticalAlign: 'middle' }} />
                                         </a>
                                     </div>
                                 )}
                             </div>
+                        </AnimateOnScroll>
+                    )}
+
+                    {hasMenuUrl && hasStarterBillingHandoff && (
+                        <AnimateOnScroll delay={0.13}>
+                            <section
+                                aria-labelledby="create-menu-keep-live-title"
+                                style={{
+                                    backgroundColor: 'var(--ws-bg-accent)',
+                                    border: '1px solid var(--ws-border-default)',
+                                    borderRadius: 'var(--ws-radius-lg)',
+                                    padding: '20px',
+                                    marginBottom: '24px',
+                                    textAlign: 'start',
+                                }}
+                            >
+                                <h2
+                                    id="create-menu-keep-live-title"
+                                    style={{
+                                        color: 'var(--ws-text-primary)',
+                                        fontSize: '18px',
+                                        fontWeight: 700,
+                                        lineHeight: 1.35,
+                                        margin: '0 0 6px',
+                                    }}
+                                >
+                                    {t('CreateMenuSuccess.keepLiveTitle')}
+                                </h2>
+                                <p style={{
+                                    color: 'var(--ws-text-secondary)',
+                                    fontSize: '14px',
+                                    lineHeight: 1.55,
+                                    margin: '0 0 16px',
+                                }}>
+                                    {t('CreateMenuSuccess.keepLiveBody')}
+                                </p>
+                                <button
+                                    className="ws-btn ws-btn--primary"
+                                    onClick={handleKeepLiveHandoff}
+                                    style={{ width: '100%' }}
+                                    type="button"
+                                >
+                                    <LuCreditCard aria-hidden="true" size={18} />
+                                    {t('CreateMenuSuccess.keepLiveCta')}
+                                </button>
+                            </section>
                         </AnimateOnScroll>
                     )}
 
@@ -560,8 +660,9 @@ export default function CreateMenuSuccessClient() {
                                         transition: 'background-color var(--ws-transition-fast)',
                                         width: '100%',
                                     }}
+                                    type="button"
                                 >
-                                    {copied ? <><LuCheck size={18} /> {t('CreateMenuSuccess.copied')}</> : <><LuCopy size={18} /> {t('CreateMenuSuccess.copyLink')}</>}
+                                    {copied ? <><LuCheck aria-hidden="true" size={18} /> {t('CreateMenuSuccess.copied')}</> : <><LuCopy aria-hidden="true" size={18} /> {t('CreateMenuSuccess.copyLink')}</>}
                                 </button>
 
                                 <button
@@ -581,8 +682,9 @@ export default function CreateMenuSuccessClient() {
                                         cursor: 'pointer',
                                         width: '100%',
                                     }}
+                                    type="button"
                                 >
-                                    <LuMessageCircle size={18} /> {t('CreateMenuSuccess.whatsAppCta')}
+                                    <LuMessageCircle aria-hidden="true" size={18} /> {t('CreateMenuSuccess.whatsAppCta')}
                                 </button>
                                 {handoffError && (
                                     <p style={{
@@ -599,18 +701,18 @@ export default function CreateMenuSuccessClient() {
                     )}
 
                     {/* QR Code hint */}
-                    <AnimateOnScroll delay={0.22}>
+                    {hasMenuUrl && <AnimateOnScroll delay={0.22}>
                         <div style={{
                             backgroundColor: 'var(--ws-bg-warning-soft)',
                             borderRadius: 'var(--ws-radius-xl)',
                             padding: '16px 20px',
                             marginBottom: '20px',
-                            textAlign: 'left',
+                            textAlign: 'start',
                             display: 'flex',
                             gap: '12px',
                             alignItems: 'center',
                         }}>
-                            <LuQrCode size={20} color="var(--ws-warning)" style={{ flexShrink: 0 }} />
+                            <LuQrCode aria-hidden="true" size={20} color="var(--ws-warning)" style={{ flexShrink: 0 }} />
                             <div>
                                 <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-warning-text)', marginBottom: '4px' }}>
                                     {t('CreateMenuSuccess.qrTitle')}
@@ -620,21 +722,21 @@ export default function CreateMenuSuccessClient() {
                                 </p>
                             </div>
                         </div>
-                    </AnimateOnScroll>
+                    </AnimateOnScroll>}
 
                     {/* Google Maps hint */}
-                    <AnimateOnScroll delay={0.28}>
+                    {hasMenuUrl && <AnimateOnScroll delay={0.28}>
                         <div style={{
                             backgroundColor: 'var(--ws-bg-accent)',
                             borderRadius: 'var(--ws-radius-xl)',
                             padding: '16px 20px',
                             marginBottom: '32px',
-                            textAlign: 'left',
+                            textAlign: 'start',
                             display: 'flex',
                             gap: '12px',
                             alignItems: 'center',
                         }}>
-                            <LuMapPin size={20} color="var(--ws-brand-secondary)" style={{ flexShrink: 0 }} />
+                            <LuMapPin aria-hidden="true" size={20} color="var(--ws-brand-secondary)" style={{ flexShrink: 0 }} />
                             <div>
                                 <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-brand-secondary)', marginBottom: '4px' }}>
                                     {t('CreateMenuSuccess.mapsTitle')}
@@ -644,7 +746,7 @@ export default function CreateMenuSuccessClient() {
                                 </p>
                             </div>
                         </div>
-                    </AnimateOnScroll>
+                    </AnimateOnScroll>}
 
                     {/* Go to dashboard */}
                     <AnimateOnScroll delay={0.34}>
@@ -652,7 +754,7 @@ export default function CreateMenuSuccessClient() {
                             href="/use-menulist"
                             onClick={(event) => {
                                 event.preventDefault();
-                                void handleDashboardHandoff();
+                                handleDashboardHandoff();
                             }}
                             style={{
                                 display: 'inline-flex',

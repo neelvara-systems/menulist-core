@@ -52,7 +52,7 @@ export default function SupportKnowledgeMapSection({
                     className="mb-12"
                     eyebrow="Support knowledge map"
                     title={isProduct
-                        ? 'One reviewed source behind every support surface.'
+                        ? 'One reviewed source behind your widget, help center, tickets, and FAQs.'
                         : 'Turn sources, app screens, and support answers into one map.'}
                     description="Add the product knowledge already scattered across public pages, docs, files, tickets, FAQs, custom owner answers, release notes, screenshots, short support recordings, notes, and common answers. AnswerLattice maps it to the pages where users ask for help, then serves approved answers or owner answers before fallback."
                 />
@@ -109,7 +109,7 @@ export default function SupportKnowledgeMapSection({
                         </div>
                     </div>
 
-                    <div className="al-support-map__column" aria-label="Support surfaces and review outputs">
+                    <div className="al-support-map__column" aria-label="User help and owner review outputs">
                         <div className="al-support-map__label">Outputs</div>
                         {OUTPUT_SURFACES.map((item, index) => (
                             <article key={item.label} className={`al-support-map__card al-support-map__card--output al-map-destination-pulse al-map-card-output-arrival-${index}`}>

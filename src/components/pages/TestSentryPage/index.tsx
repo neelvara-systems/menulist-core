@@ -16,8 +16,8 @@ const TEST_PRODUCT_CONTEXT = getBoundedRuntimeStringContext('testProductId', 'se
  * Sentry Testing Dashboard Component
  * 
  * Provides UI to test different Sentry log levels and error scenarios
- * - Dev Mode: Dev Sentry project when ENABLE_SENTRY and a dev DSN are configured
- * - Production: Logs sent to production Sentry dashboard when the production DSN is configured
+ * - Local/QA: QA Sentry project when ENABLE_SENTRY and the scoped DSN are configured
+ * - Production: Production Sentry project from the Production-scoped DSN
  * 
  * Usage: Mount under /platform/test-sentry for authenticated testing
  */
@@ -248,7 +248,7 @@ export default function TestSentryPage() {
           <Text>• Login to your account first</Text>
           <Text>• Click test buttons</Text>
           <Text>• Verify styled logs appear in console</Text>
-          <Text>• If `ENABLE_SENTRY` and a dev DSN are configured, check the dev Sentry dashboard</Text>
+          <Text>• If `ENABLE_SENTRY` and the environment-scoped DSN are configured, check the QA Sentry dashboard</Text>
           <Text>• Check for user context log after login</Text>
           <Text>• Test breadcrumb tracking (user actions, API calls)</Text>
           

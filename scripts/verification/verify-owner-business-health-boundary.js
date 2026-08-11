@@ -166,22 +166,28 @@ forbidToken(ownerAssistantMessageList, 'Confidence:', 'owner-facing Business Hea
 requireToken(ownerAssistantMessageList, 'OwnerAssistantFreshnessLabel', 'owner-facing Business Health freshness label');
 
 [
-  'Official customer source',
+  "useTranslations('Dashboard.owner')",
+  "t('businessHealth.publicTruth.title')",
   'report.modules.map',
   'report.setupJobList',
-  'Next public fixes',
+  "t('businessHealth.publicTruth.nextFixes')",
+  'getOwnerPublicTruthModulePresentation(module, t)',
+  'getOwnerPublicTruthSetupJobPresentation(job, t)',
   'job.fixHref',
-  'job.actionLabel',
-  'External platforms stay owner-confirmed',
+  'presentation.actionLabel',
+  "t('businessHealth.publicTruth.boundary')",
 ].forEach((token) => requireToken(publicTruthOwnerCard, token, 'desktop public truth owner card'));
 
 [
+  "useTranslations('Dashboard.owner')",
   'report.modules.map',
   'report?.setupJobList',
-  'Next public fixes',
+  "t('businessHealth.publicTruth.nextFixes')",
+  'getOwnerPublicTruthModulePresentation(module, t)',
+  'getOwnerPublicTruthSetupJobPresentation(job, t)',
   'job.mobileFixTarget',
-  'job.actionLabel',
-  'External platforms stay owner-confirmed',
+  'presentation.actionLabel',
+  "t('businessHealth.publicTruth.boundaryShort')",
 ].forEach((token) => requireToken(mobilePublicTruthOwnerCard, token, 'mobile public truth owner card'));
 forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth owner card route bypass');
 

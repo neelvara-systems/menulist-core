@@ -46,6 +46,12 @@ async function run(): Promise<void> {
             await setDoc(doc(adminDb, 'answerlattice_knowledgeSources', 'source_1'), scoped({ id: 'source_1' }));
             await setDoc(doc(adminDb, 'answerlattice_intakeReviewItems', 'review_1'), scoped({ id: 'review_1' }));
             await setDoc(doc(adminDb, 'answerlattice_intakeUsageLedger', 'ledger_1'), scoped({ id: 'ledger_1' }));
+            await setDoc(doc(adminDb, 'answerlattice_githubIntakeBindings', 'binding_1'), scoped({
+                id: 'binding_1',
+                installationId: 987,
+                repository: { id: 654, fullName: 'answerlattice/product-app' },
+                scopeKey: '1:101',
+            }));
             await setDoc(doc(adminDb, 'platformSummary', 'knowledgeIntakeSummary_1_101'), scoped({
                 id: 'knowledgeIntakeSummary_1_101',
                 activeJobs: 1,
@@ -84,6 +90,17 @@ async function run(): Promise<void> {
             scoped({ id: 'knowledgeIntakeSummary_1_999', sId: 999, activeJobs: 1 }),
         ));
         await assertFails(getDoc(doc(ownerDb, 'answerlattice_knowledgeIntakeJobs', 'wrong_product')));
+        for (const contextDb of [ownerDb, otherDb, platformDb]) {
+            await assertFails(getDoc(doc(contextDb, 'answerlattice_githubIntakeBindings', 'binding_1')));
+            await assertFails(setDoc(
+                doc(contextDb, 'answerlattice_githubIntakeBindings', 'binding_direct'),
+                scoped({ id: 'binding_direct' }),
+            ));
+            await assertFails(updateDoc(
+                doc(contextDb, 'answerlattice_githubIntakeBindings', 'binding_1'),
+                { modifiedOn: NOW },
+            ));
+        }
         for (const [collectionName, documentId] of [
             ['kb_generation_jobs', 'legacy_job_1'],
             ['kb_staging_sections', 'legacy_section_1'],

@@ -57,9 +57,13 @@ async function getBasePath(): Promise<string> {
 }
 
 const HERO_CHIPS = [
-    'Approved answers first',
-    'Safe fallback when missing',
-    'Founder review before publish',
+    'In-app widget',
+    'Hosted help center',
+    'Docs and FAQs',
+    'Changelog',
+    'Ticket fallback',
+    'Feedback review',
+    'Approved answers',
 ];
 
 const HERO_TITLE_LINES = [
@@ -70,10 +74,10 @@ const HERO_TITLE_LINES = [
 const HERO_TITLE_TEXT = HERO_TITLE_LINES.map((line) => line.join(' ')).join(' ');
 
 const CAPABILITY_PROOF = [
-    { label: 'Answer order', value: 'Approved answers come before fallback.' },
-    { label: 'Missing coverage', value: 'Fallback creates tickets and support gaps.' },
-    { label: 'Founder review', value: 'You approve what becomes official support.' },
-    { label: 'User questions', value: 'Billing, onboarding, settings, releases, and errors stay covered.' },
+    { label: 'Scattered inputs', value: 'Docs, screenshots, recordings, notes, tickets, releases, and repeated replies.' },
+    { label: 'Support structure', value: 'Documentation, FAQs, approved answers, page context, changelog, and support gaps.' },
+    { label: 'Where users get help', value: 'In-app widget, hosted help center, feedback review, and future AI-agent context.' },
+    { label: 'Review loop', value: 'Missing answers become tickets; you approve what becomes official support.' },
 ];
 
 const SUITE_BUILD_STEPS = [
@@ -112,7 +116,7 @@ const SUPPORT_LAYER_PHASES = [
     },
     {
         label: 'Serve',
-        title: 'Use it across every support surface',
+        title: 'Use it everywhere users ask for help',
         detail: 'In-app widget, hosted help center, fallback tickets, feedback review, and future AI-agent context.',
     },
 ];
@@ -433,7 +437,7 @@ const SETUP_STEPS = [
 const TRUST_CARDS = [
     {
         title: 'AI can draft. You decide what is official.',
-        description: 'AnswerLattice is built around approved support knowledge. Drafts, proposals, and repeated gaps stay reviewable until you approve them.',
+        description: 'AnswerLattice is built around approved support knowledge. Draft answers, suggested changes, and repeated gaps stay reviewable until you approve them.',
         icon: LuShieldCheck,
     },
     {
@@ -442,7 +446,7 @@ const TRUST_CARDS = [
         icon: LuTicket,
     },
     {
-        title: 'Your support surfaces share the same truth.',
+        title: 'Your widget, help center, tickets, and feedback share the same reviewed knowledge.',
         description: 'Widget, help center, FAQ, changelog, tickets, and feedback all point back to the same reviewed support layer.',
         icon: LuLayoutDashboard,
     },
@@ -450,33 +454,33 @@ const TRUST_CARDS = [
 
 const REVIEW_SIGNALS = [
     {
-        title: 'Daily Brief',
-        detail: 'See up to four qualified decisions, or a clear quiet state when current evidence needs no action.',
+        title: "See today's support priorities",
+        detail: 'The Daily Brief shows up to four focused decisions, or a clear quiet state when nothing needs review.',
         href: '/product/support-control',
     },
     {
-        title: 'Knowledge Map',
-        detail: 'Inspect product relationships, approved-answer coverage, drift, and review state.',
+        title: 'Find gaps in your support knowledge',
+        detail: 'The Knowledge Map shows product relationships, approved-answer coverage, stale guidance, and open review work.',
         href: '/product/knowledge-governance',
     },
     {
-        title: 'Product Friction Evidence',
-        detail: 'Compare mapped product areas and open the exact area creating current support pressure.',
+        title: 'See which product areas drive questions',
+        detail: 'Compare mapped product areas and open the area creating the most support pressure.',
         href: '/product/knowledge-governance',
     },
     {
-        title: 'Release impact',
-        detail: 'Review directly linked approved answers and current Answer Tests before activating a versioned release.',
+        title: 'Review what changed before release',
+        detail: 'See which approved answers and saved checks a versioned release could affect before activation.',
         href: '/product/changelog',
     },
     {
-        title: 'Answer Tests',
-        detail: 'Check critical questions, required claims, evidence, fallback, and safe escalation before reuse.',
+        title: 'Verify critical answers before reuse',
+        detail: 'Check required facts, evidence, fallback, and safe escalation before customers depend on an answer.',
         href: '/product/knowledge-governance',
     },
     {
-        title: 'Article topic maps',
-        detail: 'Let readers scan a published guide by topic without exposing private governance data.',
+        title: 'Help readers scan long guides',
+        detail: 'Organize published article headings by topic without exposing private support data.',
         href: '/product/knowledge-base',
     },
 ];
@@ -507,7 +511,7 @@ const POSITIONING_BOUNDARIES = [
 
 function getHeroWordStyle(index: number): CSSProperties {
     return {
-        '--al-hero-word-delay': `${80 + index * 82}ms`,
+        '--al-hero-word-delay': `${18 + index * 30}ms`,
     } as CSSProperties;
 }
 
@@ -517,7 +521,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto max-w-6xl text-center">
                     <p className="al-home-hero__eyebrow mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Approved answers before fallback
+                        Scattered product knowledge into structured support
                     </p>
                     <h1
                         className="al-home-hero-title mx-auto max-w-6xl text-4xl font-extrabold leading-[1.14] tracking-normal text-white sm:text-5xl lg:text-6xl xl:text-[4.2rem]"
@@ -553,8 +557,8 @@ function HomepageHero({ basePath }: { basePath: string }) {
                             </Fragment>
                         ))}
                     </h1>
-                    <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        Answer repeated product questions from approved sources, fall back safely when coverage is missing, and turn unresolved questions into founder review work.
+                    <p className="al-home-hero__subtitle mx-auto mt-6 max-w-4xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
+                        AnswerLattice turns scattered docs, tickets, release notes, screenshots, recordings, owner notes, and repeated replies into reviewed support knowledge for your in-app widget, hosted help center, documentation, FAQs, changelog, and future AI-agent context. Approved answers come first; missing coverage becomes a ticket and review work.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -607,8 +611,8 @@ function HomepageHero({ basePath }: { basePath: string }) {
 function FirstTrustedAnswersSection({ basePath }: { basePath: string }) {
     const steps = [
         ['01', 'Teach from product sources', 'Select the website, docs, notes, releases, screenshots, or repeated replies you are willing to use as support evidence.'],
-        ['02', 'Generate a product-specific ten', 'Prepare ten editable questions and draft answers with source links, applicability, risk, and missing-evidence warnings.'],
-        ['03', 'Run free checks first', 'Canonical-only Answer Tests verify expected behavior without calling an AI provider.'],
+        ['02', 'Generate ten product-specific drafts', 'Prepare ten editable questions and draft answers with source links, applicability, risk, and missing-evidence warnings.'],
+        ['03', 'Run deterministic checks', 'Deterministic Answer Tests verify the expected answer path without calling an AI provider.'],
         ['04', 'Measure real outcomes', 'Track explicit Solved and Still need help responses instead of treating no escalation as proof.'],
     ] as const;
 
@@ -650,7 +654,7 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="One support layer"
-                    title="Turn scattered product knowledge into every support surface users expect."
+                    title="Turn scattered product knowledge into support users can actually use."
                     description="AnswerLattice starts from the material founders already have, shapes it into reviewed support knowledge, then serves it through the widget, help center, FAQs, tickets, changelog, feedback, and future AI-agent context."
                 />
 
@@ -735,9 +739,9 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                     <div className="al-suite-stack__intro">
                         <p>Support layer build path</p>
                         <h3>One setup flow turns messy inputs into support users can use.</h3>
-                        <span>Each step adds structure: sources, page context, support surfaces, and the review loop.</span>
+                        <span>Each step adds structure: source material, product-page context, places users get help, and the review loop.</span>
                     </div>
-                    <div className="al-suite-stack__cards" aria-label="How AnswerLattice turns scattered product knowledge into support surfaces">
+                    <div className="al-suite-stack__cards" aria-label="How AnswerLattice turns scattered product knowledge into usable support">
                         {SUITE_BUILD_STEPS.map((step, index) => (
                             <article
                                 key={step.title}
@@ -1002,7 +1006,7 @@ function SupportSurfaceStorySection() {
         >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="From inputs to support surfaces"
+                    eyebrow="From inputs to user support"
                     title="One support layer across every place users ask for help."
                     description="Start with scattered product knowledge. Turn it into structured in-product help, hosted pages, approved answers, and review work when coverage is missing."
                 />
@@ -1378,12 +1382,12 @@ function FounderReviewSection({ basePath }: { basePath: string }) {
                     />
                 </div>
                 <div className="order-1 lg:order-2" data-answerlattice-reveal>
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner decision system</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Founder review</p>
                     <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                        Open once. Know what deserves your decision.
+                        Review the support decisions that actually need you.
                     </h2>
                     <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                        The Daily Brief prioritizes qualified current work. Knowledge Map shows where it belongs. Friction evidence explains demand, while release impact and Answer Tests help you review changes before users depend on them.
+                        Start with today&apos;s support priorities, see where knowledge is missing, review release impact, verify critical answers, and keep long help articles easy to scan. The Daily Brief, Knowledge Map, Product Friction Evidence, and Answer Tests stay available when you need the underlying evidence.
                     </p>
                     <div className="mt-7 grid gap-x-6 sm:grid-cols-2">
                         {REVIEW_SIGNALS.map((item) => (
@@ -1403,7 +1407,7 @@ function FounderReviewSection({ basePath }: { basePath: string }) {
                         ))}
                     </div>
                     <p className="mt-5 text-sm leading-6 text-[#737391]">
-                        These views reuse governed summaries and explicit owner navigation. They do not publish answers, change releases, or create a second task system.
+                        These views organize existing support evidence and link you to the right review screen. They never publish answers, activate releases, or create a second task system.
                     </p>
                 </div>
             </div>

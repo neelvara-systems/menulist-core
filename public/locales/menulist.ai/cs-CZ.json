@@ -410,7 +410,7 @@
     "errorLoadingAnalytics": "Chyba při načítání Analytics",
     "owner": {
       "viewing": "Zobrazení:",
-      "menu": "Nabídka",
+      "menu": "Menu",
       "unableToLoad": "Nelze načíst řídicí panel",
       "refreshOrContactSupport": "Zkuste prosím obnovit stránku. Pokud problém přetrvává, kontaktujte podporu.",
       "settledTabHelper": "Dokončete načítání analýzy, pouze když otevřete tuto kartu. Po prvním načtení toto zařízení používá uložené výsledky, dokud umístění nedokončí další aktualizaci na konci dne.",
@@ -428,7 +428,8 @@
         "daily": "Předchozí den",
         "weekly": "Posledních 7 dní",
         "monthly": "Tento měsíc",
-        "overall": "Celkově"
+        "overall": "Celkově",
+        "graph": "Grafy"
       },
       "today": {
         "noMenuActivityToday": "Dnes zatím žádná aktivita v nabídce.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Vyhledávání bez výsledku",
         "unavailableInterest": "Nedostupný zájem",
         "topLanguage": "Nejlepší jazyk",
-        "smartPicksShown": "Zobrazeny chytré tipy",
-        "smartPicksClicks": "Kliknutí pomocí chytrého výběru",
+        "smartPicksShown": "Smart Picks představení",
+        "smartPicksClicks": "Smart Picks kliknutí",
         "smartPicksTaps": "Klepnutí Smart Picks",
-        "smartPicksUsed": "Použité chytré tipy",
-        "smartPicksEngagement": "Chytré výběry zapojení",
+        "smartPicksUsed": "Smart Picks Použité",
+        "smartPicksEngagement": "Smart Picks závazek",
         "totalMenuScans": "Celkový počet prohledávání nabídek",
         "totalItemClicks": "Celkový počet kliknutí na položky",
         "activeDays": "Dny aktivity",
         "daysActive": "Dny aktivity",
-        "avgDailyScans": "Prům. Denní skenování",
-        "smartPicksActive": "Inteligentní výběr je aktivní",
+        "avgDailyScans": "Daily Scans - denní skenování",
+        "smartPicksActive": "Smart Picks aktivní",
         "engagementRate": "Míra zapojení",
         "topItem": "Nejlepší položka",
         "topCategory": "Nejlepší kategorie"
@@ -473,8 +474,8 @@
         "itemClicks": "Počet, kolikrát zákazníci klepli na položky",
         "engagedSessions": "Relace, kdy zákazníci projevili skutečný zájem o menu",
         "actionRate": "Relace, které vedly ke konečné akci zákazníka",
-        "smartPicksShown": "Kolikrát se Chytrá volba objevila na vaší stránce",
-        "smartPicksUsed": "Procento zákazníků, kteří použili Chytrý výběr",
+        "smartPicksShown": "Kolikrát Smart Picks Objevil se na vaší stránce",
+        "smartPicksUsed": "Procento zákazníků, kteří používají Smart Picks",
         "customerActions": "Konečné akce, jako je volání, WhatsApp, trasa, rezervace a objednávka",
         "searches": "Deduplikovaná poptávka po vyhledávání z nabídky",
         "unavailableInterest": "Klepne na nedostupné položky"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Včera nebyla zaznamenána žádná aktivita",
         "noAnalyticsYet": "Zatím žádná data. Vaše analýzy se objeví, jakmile si zákazníci začnou prohlížet.",
-        "noItemClicksYet": "Zatím neklikne žádná položka"
+        "noItemClicksYet": "Zatím neklikne žádná položka",
+        "lowActivityTitle": "Nízká aktivita",
+        "lowActivityDescription": "Nebylo zde dostatečné množství aktivity, aby bylo možné vyvodit užitečný závěr pro toto období.",
+        "noWeeklyData": "Za posledních 7 dní nebyla nalezena žádná aktivita v menu.",
+        "noMonthlyData": "V tomto měsíci zatím není k dispozici žádná vypořádaná nabídka aktivit."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change} % oproti minulému týdnu"
+        "vsLastWeek": "{sign}{change} % oproti minulému týdnu",
+        "changeVsLastWeek": "{change} vs minulý týden"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# den zaznamenané aktivity} other {# dny zaznamenané aktivity}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ano",
         "no": "Ne",
-        "notAvailable": "Není k dispozici",
+        "notAvailable": "N/A",
         "active": "Aktivní",
         "lowActivity": "Nízká aktivita",
         "noData": "Žádná data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Čekání na první skenování",
         "weeklyInsights": "Týdenní statistiky",
         "last4WeeksComparison": "Porovnání za poslední 4 týdny",
-        "historicalDataWillAppear": "Historická data se objeví po několika týdnech"
+        "historicalDataWillAppear": "Historická data se objeví po několika týdnech",
+        "statusMessages": {
+          "working": "Zákazníci používají vaše aktuální menu.",
+          "low_activity": "Aktivita zákazníků se stále zvyšuje. Vaše aktuální nabídka zůstává k dispozici.",
+          "no_data": "Aktivita se objeví, jakmile zákazníci začnou otevírat vaši nabídku."
+        }
       },
       "aiSummary": {
         "daily": "Předchozí den na první pohled",
         "weekly": "Přehled tohoto týdne",
-        "monthly": "Tento měsíc v souhrnu"
+        "monthly": "Tento měsíc v souhrnu",
+        "localized": {
+          "noActivity": "Za toto období nebyla zaznamenána žádná vyrovnaná aktivita zákazníků.",
+          "menuViews": "Zákazníci otevřeli nabídku {count} krát.",
+          "itemTaps": "Zákazníci klepli na položky nabídky {count} krát.",
+          "customerActions": "Zákazníci dokončili {count} závěrečných akcí.",
+          "searches": "Zákazníci hledali menu {count} krát.",
+          "unavailableInterest": "Nedostupné položky obdržely {count} klepnutí."
+        }
       },
       "actions": {
         "call": "Zavolejte",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} návštěv · {rate}%",
         "markDoneSaved": "Označeno jako hotovo. Výsledky se aktualizují, až bude připraven další souhrn analýzy.",
         "markDoneFailed": "Tuto akci nelze označit za provedenou. Zkuste to znovu.",
-        "markDone": "Označit jako hotovo"
+        "markDone": "Označit jako hotovo",
+        "bestSourceStatsFormatted": "· {visits} návštěv · {rate} míra akcí",
+        "bestSourceMobileFormatted": "Nejlepší zdroj právě teď: {source} · {visits} návštěv · {rate} míra akce.",
+        "sourceQualityTagFormatted": "{source}: {visits} Návštěva · {sessions} akční schůzky · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} návštěv · {rate}",
+        "priorities": {
+          "high": "Vysoká priorita",
+          "medium": "Střední priorita",
+          "low": "Nízká priorita"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabilní",
+            "message": "Dostupná aktivita podporuje přehlednou kontrolu menu."
+          },
+          "watch": {
+            "label": "Sledujte nás nadále.",
+            "message": "Některé činnosti mohou vyžadovat další kontrolu před změnou menu."
+          },
+          "no_data": {
+            "label": "Je zapotřebí více dat.",
+            "message": "Než učiníte závěr, počkejte na ustálenější aktivitu zákazníků."
+          }
+        },
+        "localizedActions": {
+          "reason": "Na základě poslední vyúčtované aktivity zákazníka.",
+          "availability": {
+            "title": "Zkontrolujte dostupnost položky.",
+            "description": "Zkontrolujte, zda by nedostupné nebo skryté položky měly být obnoveny nebo ponechány mimo pohled.",
+            "action": "Zkontrolovat dostupnost"
+          },
+          "customerActions": {
+            "title": "Zkontrolujte akce zákazníků.",
+            "description": "Než podniknete nějaké kroky, zkontrolujte si podrobnosti o nabídce a odkazy, které zákazníci používají.",
+            "action": "Zkontrolujte akce zákazníků."
+          },
+          "details": {
+            "title": "Vylepšit podrobnosti o položce",
+            "description": "Zkontrolujte názvy položek, možnosti, popisy a obrázky, které mohou vyžadovat jasnější informace.",
+            "action": "Zkontrolujte podrobnosti o položce."
+          },
+          "general": {
+            "title": "Počkejte na jasnější signál.",
+            "description": "Udržovat aktuální nabídku stabilní, dokud nebude k dispozici více ustálená činnost.",
+            "action": "Zkontrolujte později."
+          },
+          "menuOrder": {
+            "title": "Zkontrolujte pořadí menu.",
+            "description": "Zkontrolujte, zda jsou důležité položky a kategorie pro zákazníky snadno k nalezení.",
+            "action": "Zkontrolujte pořadí menu."
+          },
+          "pricing": {
+            "title": "Zkontrolujte ceny Recenze ceníku",
+            "description": "Zkontrolujte ceny spojené s nejnovějším signálem zájmu zákazníků.",
+            "action": "Zkontrolujte ceny Zkontrolovat ceny"
+          },
+          "search": {
+            "title": "Zkontrolujte vyhledávání zákazníků.",
+            "description": "Zkontrolujte vyhledávání, která nemusí vést zákazníky k užitečnému výsledku nabídky.",
+            "action": "Zkontrolujte vyhledávání."
+          },
+          "source": {
+            "title": "Zkontrolujte zdroje vstupů zákazníků.",
+            "description": "Zkontrolujte, zda veřejné odkazy a umístění QR směřují zákazníky na aktuální nabídku.",
+            "action": "Zkontrolujte veřejné odkazy."
+          },
+          "timing": {
+            "title": "Zkontrolujte načasování nabídky.",
+            "description": "Zkontrolujte, zda se časově načasované kategorie a dostupnost shodují v době, kdy je zákazníci hledají.",
+            "action": "Načasování přezkoumání"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Označeno jako hotovo",
+            "message": "Výsledek bude ověřen poté, co bude k dispozici více vyrovnané činnosti."
+          },
+          "improved": {
+            "label": "Zlepšení",
+            "message": "Následující vyrovnaná kontrola ukazuje zlepšení."
+          },
+          "no_clear_change": {
+            "label": "Žádná zjevná změna.",
+            "message": "Při dalším vyúčtovaném šeku nebyla zjištěna žádná jasná změna, takže se zdálo, že je vše v pořádku."
+          },
+          "not_enough_data": {
+            "label": "Je zapotřebí více dat.",
+            "message": "Zatím není dostatek ustálené aktivity, aby bylo možné tuto změnu posoudit."
+          },
+          "pending": {
+            "label": "Dlouhá kontrola",
+            "message": "MenuList to zkontroluje, až bude k dispozici více vyrovnané aktivity."
+          }
+        }
       },
       "details": {
         "menuDetails": "Podrobnosti nabídky",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Nedostupný zájem",
           "languages": "Jazyky",
           "filters": "Filtry",
-          "smartPicks": "Chytrý výběr",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Akce dle otevírací doby"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Zobrazení nabídky",
-          "itemTaps": "Klepnutí na položku",
+          "itemTaps": "Klepnutí na položky",
           "menuSessions": "Relace nabídky",
           "engagedSessions": "Sezení s aktivitou",
           "actionSessions": "Relace akcí",
@@ -617,6 +729,12 @@
           "unknown": "Akce, když byl stav otevírací doby nedostupný",
           "closed": "Akce při zavření",
           "closedShare": "{rate}% všech zaznamenaných akcí se stalo při zavření"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} nedostupné odbočky",
+          "strongItem": "{count} Klepnutí na položky",
+          "needsWork": "{count} zobrazení, žádné klepnutí.",
+          "gettingAttention": "{count} zobrazení"
         }
       },
       "smartPicks": {
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Rozdělení zkratek",
         "installsByPlatform": "Instalace podle platformy",
         "appStickiness": "Přilnavost aplikace",
-        "returningOpens30d": "Otevře se návrat (30d)",
-        "avgOpensPerInstall": "Prům. počet otevření na instalaci",
+        "avgOpensPerInstall": "Avg se otevírá na instalaci",
         "iosManualInstalls": "ruční instalace systému iOS",
         "shortcuts": {
           "menu": "Nabídka Zobrazit",
@@ -715,12 +832,13 @@
           "order": "Objednávejte online"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Android Android Android",
+          "android": "Android",
           "desktop": "Počítač",
           "other": "Jiné"
-        }
+        },
+        "tryAgainLater": "Zkuste to znovu později."
       },
       "projectSelector": {
         "deleted": "Smazáno",
@@ -761,7 +879,8 @@
         "copied": "Zkopírováno",
         "copy": "Kopírovat",
         "openGoogle": "Otevřete Google",
-        "done": "Hotovo"
+        "done": "Hotovo",
+        "couldNotOpen": "Nelze otevřít obchodní profil Google."
       },
       "behaviorNudge": {
         "linkCopied": "Odkaz zkopírován",
@@ -782,11 +901,752 @@
         "checkedJustNow": "Právě zkontrolováno",
         "noActionNeeded": "Není potřeba žádná akce",
         "publicMenuReady": "Vaše veřejná nabídka je připravena.",
-        "repairNow": "Opravit, co lze nyní opravit",
+        "repairNow": "Opravte to, co je nyní možné fixovat",
         "reviewTopIssue": "Zkontrolujte hlavní problém",
         "repairMenu": "Nabídka Opravit",
         "review": "Recenze",
-        "repair": "Oprava"
+        "repair": "Oprava",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {Položce # chybí popis.} other {# položkám chybí popisy.}}",
+            "ok": "Všechny položky mají popisy.",
+            "help": "Popisy pomáhají zákazníkům porozumět jednotlivým nabídkám."
+          },
+          "images": {
+            "warning": "{count, plural, one {Položce # chybí obrázek.} other {# položek jsou chybějící obrázky.}}",
+            "ok": "Všechny položky mají obrázky.",
+            "help": "Obrázky mohou zákazníkům pomoci rychleji se rozhodnout."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {V kategorii # chybí ikona.} other {V kategoriích # chybí ikony.}}",
+            "ok": "Všechny kategorie mají ikony.",
+            "help": "Ikony usnadňují procházení kategorií."
+          },
+          "prices": {
+            "warning": "{count, plural, one {Položce # chybí cena.} other {# položkám chybí ceny.}}",
+            "ok": "Všechny položky mají ceny.",
+            "help": "Zákazníci porovnávají ceny dříve, než se rozhodnou."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {Položka # je před zákazníky skryta.} other {# položek je před zákazníky skryto.}}",
+            "ok": "Žádné položky nejsou skryty.",
+            "help": "Skryté položky se ve veřejné nabídce nezobrazují, ale zobrazí se v hlavním menu."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {Cena # vyžaduje přezkoumání.} other {# ceny vyžadují přezkoumání.}}",
+            "ok": "Ceny jsou v očekávaném rozmezí.",
+            "help": "MenuList porovnává ceny jednotlivých položek v rámci stejné kategorie. Označit záměrnou cenu jako zkontrolovanou."
+          },
+          "translations": {
+            "warning": "{count, plural, one {Položka # nemá překlady.} other {# položkám chybí překlady.}}",
+            "ok": "Všechny viditelné položky jsou přeloženy.",
+            "help": "Některé položky jsou ve vybraných jazycích nabídek neúplné."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menu detail is missing translations Chybí překlady.} other {Chybí překlady podrobností o nabídce #.}}",
+            "ok": "Podrobnosti o nabídce jsou přeloženy.",
+            "help": "Název nabídky, popis nebo poznámky jsou ve vybraných jazycích nabídek neúplné."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Zkopírovaný odkaz",
+        "direct": "Přímý přístup",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menu kyt",
+        "nativeShare": "Device sdílení",
+        "obp": "Obchodní stránka",
+        "other": "Jiné",
+        "qr": "QR Kód",
+        "shortcut": "Aplikace Shortcut",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Obchodní zdraví",
+        "open": "Otevřené podnikání Zdraví",
+        "today": "Dnes",
+        "latestActivity": "Nejnovější aktivita",
+        "noActionNeeded": "Není potřeba žádná akce",
+        "status": {
+          "stable": "Stabilní",
+          "watch": "Vyžaduje pozornost",
+          "needs_review": "Potřebuje přezkoumání.",
+          "insufficient_data": "Je zapotřebí více dat.",
+          "stale": "Potřebuje čerstvou kontrolu.",
+          "not_ready": "Příprava na start"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# detaily týkající se zákazníka je třeba zkontrolovat.} other {Podrobnosti o #, které jsou určeny zákazníkům, je třeba zkontrolovat.}}",
+          "stable": {
+            "headline": "Vaše veřejné informace jsou stabilní.",
+            "message": "V poslední kontrole nebyly zjištěny žádné problémy, které by vyžadovaly zásah zákazníka."
+          },
+          "watch": {
+            "headline": "Detail může vyžadovat pozornost.",
+            "message": "Před změnou veřejných informací si prosím zkontrolujte navrhovanou kontrolu."
+          },
+          "needs_review": {
+            "headline": "Zkontrolujte detaily o zákazníkovi.",
+            "message": "Jeden nebo více veřejných údajů by mělo být zkontrolováno, aby bylo zajištěno, že jsou správné."
+          },
+          "insufficient_data": {
+            "headline": "Je zapotřebí více aktivity.",
+            "message": "Udržovat aktuální informace stabilní, zatímco MenuList shromažďuje užitečný signál."
+          },
+          "stale": {
+            "headline": "Zdraví podniku potřebuje novou kontrolu.",
+            "message": "Poslední kontrola je stará. Vaše aktuální veřejné informace zůstávají beze změny."
+          },
+          "not_ready": {
+            "headline": "Business Health se připravuje na příchod nového roku.",
+            "message": "První kontrola obchodu se zde objeví, až bude připravena."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Zkontrolovat zdrojový kód menu",
+            "message": "Nebyl nalezen žádný aktivní veřejný zdroj nabídky. Před sdílením si zkontrolujte menu.",
+            "title": "Zdroj menu je třeba zkontrolovat."
+          },
+          "low_latest_activity": {
+            "action": "Zkontrolujte odkazy pro sdílení.",
+            "message": "Aktivita zákazníků je nízká. Zkontrolujte. QR, Google, Instagram, WhatsApp, a odkazy na webové stránky.",
+            "title": "Aktivita zákazníků je nízká."
+          },
+          "unavailable_item_taps": {
+            "action": "Zkontrolujte nedostupné položky.",
+            "message": "Zákazníci projevili zájem o nedostupné zboží, které bylo třeba doplnit nebo skrýt.",
+            "title": "Nedostupné položky si získaly pozornost."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Přečtěte si zpětnou vazbu od hostů.",
+            "message": "Zpětná vazba od hosta vyžaduje kontrolu vlastníka předtím, než se změní veřejné údaje.",
+            "title": "Zpětná vazba od hostů vyžaduje kontrolu."
+          },
+          "default": {
+            "action": "Zkontrolovat podrobnosti",
+            "message": "Detail orientovaný na zákazníka potřebuje kontrolu vlastníka.",
+            "title": "Detail vyžaduje kontrolu."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# soukromá položka zpětné vazby potřebuje kontrolu.} other {# soukromé položky zpětné vazby potřebují kontrolu.}}",
+          "clear": "Osobní zpětná vazba je jasná."
+        },
+        "freshness": {
+          "notReady": "Stav podniku není v reálném čase. První kontrola obchodu zobrazí datum dat zde.",
+          "throughDate": "Používá data přes {date}. Dnešní den ještě nemusí být dokončen.",
+          "latest": "Používá nejnovější dostupná data MenuList. Dnešní den ještě nemusí být kompletní."
+        },
+        "periods": {
+          "today": "Dnes",
+          "yesterday": "Předchozí den",
+          "thisWeek": "Tento týden",
+          "lastWeek": "Minulý týden",
+          "thisMonth": "Tento měsíc",
+          "lastMonth": "Minulý měsíc",
+          "last7Days": "Posledních 7 dní",
+          "last30Days": "Posledních 30 dní",
+          "overall": "Celkově"
+        },
+        "metrics": {
+          "menuViews": "Zobrazení nabídky",
+          "topDemand": "Nejvyšší zájem",
+          "topDemandDetail": "Povýšení: {count} {signal}",
+          "bestSource": "Nejlepší zdroj",
+          "bestSourceDetail": "Aktualizace linků: {count} Návštěva"
+        },
+        "signals": {
+          "views": "pohledy",
+          "clicks": "Klepnutí",
+          "attention": "Pozornost signálů"
+        },
+        "page": {
+          "description": "Denní obchodní stav a kontroly zákazníků.",
+          "latestCheck": "AI health check",
+          "loading": "Nabíjení",
+          "loadingMessage": "Nabídka podnikatelského zdraví...",
+          "notReady": "Obchodní zdravotnictví zatím není připraveno.",
+          "loadErrorTitle": "Nelze načíst Business Health.",
+          "loadErrorDescription": "Prosím, aktualizujte tuto stránku a zkuste znovu.",
+          "refresh": "Obnovit",
+          "needsAttention": "Vyžaduje pozornost",
+          "desktopSettingsOnly": "Otevřete ji z nastavení plochy."
+        },
+        "scope": {
+          "title": "Obchod Zdravotnictví Rozsah Oblast podnikání",
+          "allMenus": "Všechny menu",
+          "selectedMenu": "Vybrané menu.",
+          "menuCount": "{count, plural, one {# menu v tomto umístění.} other {# nabídek v tomto umístění.}}",
+          "locationLevel": "Zobrazení na úrovni lokality",
+          "inactiveMenu": "Inaktivní menu",
+          "thisMenuOnly": "Pouze toto menu.",
+          "allMenusInLocation": "Všechna menu v tomto umístění.",
+          "thisMenuHelper": "Otázky a aktivity používají tento menu.",
+          "allMenusHelper": "Otázky a aktivity používají všechna menu v tomto umístění.",
+          "dialogDescription": "Vyberte všechny nabídky nebo jednu nabídku pro aktivitu a kontroly.",
+          "all": "Všechny Všechna",
+          "close": "Zavřít"
+        },
+        "locations": {
+          "title": "Lokality Umístění",
+          "loading": "Načítání lokalit...",
+          "empty": "Zatím není k dispozici žádný souhrn umístění.",
+          "storeFallback": "Umístění {id}",
+          "checkedOn": "Zkontrolováno {date}.",
+          "checkCount": "{count, plural, one {# kontrola} other {# kontrol}}",
+          "checksNeedReview": "{count, plural, one {# kontrola zákazníka vyžaduje kontrolu.} other {# kontroly zákazníků potřebují přezkoumání.}}",
+          "statusReason": {
+            "stable": "Žádný problém zákazníka nevyžaduje akci.",
+            "watch": "Detaily, které jsou směrovány k zákazníkovi, mohou vyžadovat pozornost.",
+            "needs_review": "Podrobnosti týkající se zákazníků je třeba zkontrolovat.",
+            "insufficient_data": "Pro užitečnou kontrolu je zapotřebí více aktivity zákazníka, než by bylo možné získat z kontroly.",
+            "stale": "Tato lokalita potřebuje čerstvou kontrolu.",
+            "not_ready": "První kontrola lokality se připravuje, připravujeme první kontrolu místa."
+          }
+        },
+        "assistant": {
+          "title": "Zeptejte se podnikatelské zdraví",
+          "askShort": "Zeptejte se",
+          "englishOnlyTitle": "Otázky jsou v současné době k dispozici v angličtině.",
+          "englishOnlyDescription": "Váš stav a kontroly jsou lokalizovány. Chcete-li klást otázky týkající se zdraví podniku, přepněte jazyk aplikace na angličtinu.",
+          "notReady": "Oddělení Business Health odpoví na vaši zprávu po dokončení poslední kontroly.",
+          "suggestedUnavailable": "Doporučené otázky nejsou v současné době k dispozici.",
+          "freeTextUnavailable": "Otázky s volným textem nejsou momentálně k dispozici.",
+          "answerError": "Obchodní zdraví na to nemohl odpovědět.",
+          "suggestedQuestions": "Doporučené otázky k rozhovoru",
+          "followUps": "Můžete se zeptat dál.",
+          "you": "Ty jsi",
+          "empty": "Vyberte si otázku nebo se zeptejte na něco o vašem podnikání.",
+          "placeholderReady": "Zeptejte se na dnešek, tento týden, pozornost v menu nebo další kontroly.",
+          "placeholderMobile": "Zeptejte se na dnešek nebo tento týden.",
+          "placeholderPending": "K dispozici po poslední kontrole.",
+          "send": "Odeslat dotaz Poslat dotazy",
+          "cachedFacts": "Na základě obchodních faktů MenuList uložených v mezipaměti.",
+          "questions": {
+            "checks": "Co je třeba zkontrolovat?",
+            "today_stats": "Jak se dnes máte?",
+            "this_week_stats": "Co se stalo tento týden?",
+            "top_item": "Která položka si získává pozornost?",
+            "last_week_stats": "Co se stalo minulý týden?",
+            "this_month_stats": "Jaký je tento měsíc?",
+            "last_month_stats": "Co se stalo minulý měsíc?",
+            "public_menu_status": "Je moje veřejná nabídka v pořádku?",
+            "profile_status": "Je můj firemní profil kompletní?",
+            "feedback_reviews": "Nějaká zpětná vazba od hostů, kterou si chcete prohlédnout?",
+            "feedback_recent": "Co si myslí nedávní hosté?",
+            "default": "Co mám zkontrolovat dál?"
+          }
+        },
+        "sources": {
+          "title": "Zdroje dat:",
+          "menuProjects": "Menu projektů",
+          "ownerAnalytics": "Aktivita majitele",
+          "guestFeedback": "Zpětná vazba od hostů",
+          "storeSettings": "Obchodní prostředí Podnikové prostředky",
+          "menuListData": "MenuList Údaje",
+          "updatedOn": "Aktualizováno {date}",
+          "latest": "Nejnovější dostupné údaje"
+        },
+        "publicTruth": {
+          "title": "Oficiální zdroj zákazníků.",
+          "checking": "Kontrola probíhá.",
+          "checkingFacts": "Kontroluji veřejná fakta MenuList...",
+          "checkedMenu": "Zaškrtnuté menu: {name}",
+          "boundary": "Zkontrolováno z aktuálních dat MenuList o obchodech a nabídkách. Externí platformy zůstávají potvrzeny vlastníkem.",
+          "boundaryShort": "Externí platformy zůstávají potvrzeny vlastníkem.",
+          "historyTitle": "Historie veřejných informací",
+          "historyBoundary": "Používá pouze MenuList business a menu facts. Nejsou kontrolovány žádné externí stránky.",
+          "historyBoundaryShort": "MenuList pouze fakta. Žádné externí stránky nebyly prohledány.",
+          "refreshErrorTitle": "Kontrola zdroje zákazníka nemohla aktualizovat.",
+          "refreshErrorDescription": "Poslední dostupná fakta MenuList jsou stále zobrazena níže.",
+          "historyRefreshError": "Historie veřejných informací se nemůže oživit.",
+          "historyLoadError": "Historie veřejných informací nemohla být nabitá.",
+          "historyErrorDescription": "Poslední uložený report je stále zobrazen, pokud je k dispozici.",
+          "notRun": "Není spuštěno.",
+          "lastSaved": "Naposledy uloženo {date}",
+          "noSavedReport": "Zatím nebyla uložena žádná zpráva.",
+          "noSavedReportDescription": "Spusťte kontrolu pro uložení prvního přehledu pro toto umístění.",
+          "downloadEnglishReport": "Stáhnout anglickou zprávu",
+          "downloadEnglishShort": "Anglická zpráva o zkoušce",
+          "runCheck": "běh kontroly",
+          "currentFix": "Aktuální fixní položka",
+          "nextFixes": "Další veřejné úpravy",
+          "none": "Žádné Žádný",
+          "attentionCount": "{count, plural, one {Položka # vyžaduje kontrolu.} other {Položky # vyžadují kontrolu.}}",
+          "readyModuleCount": "Připraveno {count}/{total}",
+          "missingCount": "Chybí {count}.",
+          "checkCount": "Zkontrolujte {count}.",
+          "savedCount": "Uloženo {count}/{total}",
+          "modulesReady": "{count}/{total} modulů je připraveno.",
+          "status": {
+            "ready": {
+              "label": "Připraven Ready",
+              "message": "Váš oficiální zákaznický zdroj má základní informace, které zákazníci potřebují."
+            },
+            "missing_basics": {
+              "label": "Chybějící základy.",
+              "message": "Menu, otevírací doba, ceny, akce nebo detaily o propojení se zákazníkem vyžadují pozornost před širším sdílením."
+            },
+            "unclear": {
+              "label": "Potřebuje kontrolu.",
+              "message": "Většina základů je k dispozici, ale jeden nebo více veřejných faktů stále potřebuje kontrolu."
+            }
+          },
+          "metrics": {
+            "readyModules": "Připravené moduly",
+            "missingFacts": "Chybějící fakta",
+            "checkedMenu": "Zaškrtnuté menu.",
+            "savedReports": "Uložené přehledy"
+          },
+          "results": {
+            "present": "Připraven Ready",
+            "missing": "Chybějící",
+            "unclear": "Zkontrolujte",
+            "not_applicable": "Není potřeba.",
+            "not_checked": "Nezkontrolováno"
+          },
+          "moduleStatus": {
+            "ready": "Připraven Ready",
+            "needs_attention": "Chybějící",
+            "check": "Zkontrolujte",
+            "not_checked": "Nezkontrolováno"
+          },
+          "facts": {
+            "business_identity": "Obchodní název:",
+            "menu_or_service_source": "Seznam menu nebo služeb.",
+            "prices": "Ceny",
+            "hours": "Hodiny",
+            "location": "Umístění Poloha",
+            "contact": "Kontaktujte nás",
+            "customer_actions": "Zákazní akce",
+            "public_link": "Zákazník link",
+            "photos": "Fotky",
+            "machine_readable_source": "Podrobnosti pro vyhledávání detailů"
+          },
+          "evidence": {
+            "owner_entered": "Zadáno v této kontrole.",
+            "owner_selected": "Vybrané majitelem.",
+            "source_text_hint": "Nalezeno v poskytnutém zdroji.",
+            "valid_public_url": "Formát veřejného odkazu je platný.",
+            "invalid_public_url": "Veřejný odkaz vyžaduje opravu.",
+            "menulist_store": "Zkontrolováno aktuální nastavení MenuList businessu.",
+            "menulist_project": "Zkontrolováno vybrané nebo výchozí menu MenuList.",
+            "menulist_summary": "Zkontrolováno aktuální shrnutí nabídky MenuList.",
+            "menulist_public_route": "Zkontrolováno aktuální nastavení propojení se zákazníkem MenuList.",
+            "menulist_index_gate": "Byla zkontrolována aktuální pravidla pro veřejné zjišťování MenuList.",
+            "not_provided": "Tato skutečnost chybí v aktuálních datech MenuList.",
+            "not_checked": "Tato skutečnost nebyla bezpečně ověřena z aktuálních dat MenuList.",
+            "priceNotLoaded": "Otevře vybrané menu jednou, aby MenuList mohl zkontrolovat jeho ceny."
+          },
+          "moduleEvidence": {
+            "ready": "Aktuální data MenuList ukazují, že tato oblast je připravena.",
+            "needs_attention": "Aktuální data MenuList ukazují, že chybí požadované informace.",
+            "check": "Zkontrolujte tuto oblast dříve, než se na ni zákazníci spolehnou.",
+            "not_checked": "MenuList nemohl z aktuálních dat plně zkontrolovat tuto oblast."
+          },
+          "setupReason": {
+            "needs_attention": "Chybí požadované informace pro zákazníky.",
+            "check": "Zkontrolujte to dříve, než se na to zákazníci spolehnou.",
+            "not_checked": "MenuList nemohl z aktuálních dat plně zkontrolovat, že se jedná o správnou hodnotu."
+          },
+          "targetActions": {
+            "basic_settings": "Otevřít detaily firmy Otevřené detaily podniku",
+            "domain_settings": "Otevřít odkaz na zákazníka",
+            "hours_edit": "Otevírací doba:",
+            "menu_tab": "Otevřené menu",
+            "official_page": "Otevřít stránku firmy Otevřená stránka firmy",
+            "presence_monitor": "Otevřená kontrola umístění",
+            "share_tab": "Otevřete nástroje pro sdílení."
+          },
+          "actions": {
+            "openCustomerSource": "Otevřený zdroj zákazníků.",
+            "openShareTools": "Otevřete nástroje pro sdílení.",
+            "fixFact": "Oprava {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Základy veřejných informací",
+              "description": "Název firmy, aktuální menu nebo zdroj služeb, kontakt, akce a odkaz na zákazníka."
+            },
+            "business_facts_copy_pack": {
+              "title": "Opakovaně použitelné obchodní údaje.",
+              "description": "Aktuální fakta mohou zaměstnanci znovu použít ve veřejných profilech, odpovědích a předávání odkazů na zákazníky."
+            },
+            "qr_link_health": {
+              "title": "QR připravenost odkazu.",
+              "description": "Aktuální odkaz zákazníka pro QR a umístění tisku."
+            },
+            "social_bio_link_consistency": {
+              "title": "Konzistentnost odkazů profilu.",
+              "description": "Jeden aktuální zákaznický odkaz pro profily na sociálních sítích a další umístění."
+            },
+            "customer_link_preview": {
+              "title": "Náhled odkazu zákazníka",
+              "description": "Hlavní fakta, která by zákazníci měli vidět dříve, než budou jednat."
+            },
+            "print_share_assets": {
+              "title": "Tiskněte a sdílejte datové zdroje.",
+              "description": "Připravenost aktuálního odkazu pro QR plakáty, počítací karty a sdílené obrázky."
+            },
+            "menu_service_readability": {
+              "title": "Přehlednost menu nebo služeb.",
+              "description": "Kategorie, položky nebo služby a ceny ve zvoleném menu."
+            },
+            "price_availability_gap": {
+              "title": "Jasnost cen a dostupnosti.",
+              "description": "Ceny, varianty, vyprodanost a dostupnost zobrazené zákazníkům."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Stará náhrada PDF",
+              "description": "Aktuální MenuList zdrojový a zákaznický odkaz, který může nahradit staré soubory PDF."
+            },
+            "whatsapp_action_link": {
+              "title": "Akce WhatsApp",
+              "description": "Jasné WhatsApp nebo alternativní akce pro kontaktování zákazníka."
+            },
+            "hours_readiness": {
+              "title": "Hodiny pohotovosti",
+              "description": "Pravidelná otevírací doba, na kterou se zákazníci mohou spolehnout."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp odpověď fakty",
+              "description": "Aktuální menu, otevírací doba, kontaktní údaje a odkazy na odpovědi zaměstnanců."
+            },
+            "photo_visual_identity": {
+              "title": "Fotografie a vizuální identita.",
+              "description": "Logo, obálka, firemní fotografie nebo vizuální prvky pro produkty a služby."
+            },
+            "customer_question_coverage": {
+              "title": "Časté dotazy zákazníků",
+              "description": "Jasná fakta pro nabídku, otevírací dobu, cenu, umístění, kontakt a další kroky."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Opakovaně použitelné odpovědi zákazníků.",
+              "description": "Aktuální fakta mohou zaměstnanci znovu použít, když se zákazníci ptají na běžné otázky."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Rezervační a poptávková připravenost.",
+              "description": "Jasná cesta k objednání, rezervaci, volání, zprávě, žádosti o cenovou nabídku nebo návštěvě."
+            },
+            "google_profile_handoff": {
+              "title": "Google odkaz na profil",
+              "description": "Aktuální odkaz zákazníka připravený pro Google Obchodní profil."
+            },
+            "menu_freshness": {
+              "title": "Menu čerstvé",
+              "description": "Nedávná aktualizace menu, když se změnily ceny, položky nebo dostupnost."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafy",
+        "description": "Vizuální souhrn ze stejné vyrovnané aktivity zobrazené na řídicím panelu.",
+        "ranges": {
+          "days7": "7 dní",
+          "days30": "30 dní"
+        },
+        "metrics": {
+          "menu_activity": "Menu aktivity",
+          "customer_actions": "Zákazní akce",
+          "search_demand": "Hledání poptávky",
+          "item_interest": "Předmět zájmu",
+          "unavailable_demand": "Nedostupná poptávka Nedostępna poptávky",
+          "missing_searches": "Chybějící vyhledávání"
+        },
+        "trend": {
+          "summary": "Souhrn trendů",
+          "updatedAfterClose": "Aktualizace po uzavření obchodu.",
+          "status": {
+            "up": "Vyšší",
+            "down": "Níže",
+            "stable": "Stabilní",
+            "not_enough_data": "Nedostatečný přínos historie."
+          },
+          "period": {
+            "week": "Týdenní přehled týdne",
+            "month": "Měsíční check"
+          },
+          "shortPeriod": {
+            "week": "Týden",
+            "month": "Měsíc"
+          },
+          "needsMoreDays": "Potřebuje více usazených dnů.",
+          "versus": "{current} oproti {previous}",
+          "messages": {
+            "up": "{metric} je vyšší pro tuto kontrolu {period}.",
+            "down": "{metric} je pro tuto kontrolu {period} nižší.",
+            "stable": "{metric} je stabilní pro tuto kontrolu {period}.",
+            "not_enough_data": "Pro tuto kontrolu {period} není k dispozici dostatek vyřízené historie {metric}."
+          },
+          "change": {
+            "gathering": "{period}: shromažďování.",
+            "newActivity": "{period}: nová aktivita",
+            "steady": "{period}: stabilní",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Porovnání grafů",
+          "description": "Týdenní a měsíční pohyby ze stanovených dnů."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Trend menu",
+            "days7": "Posledních 7 vyrovnaných dnů",
+            "days30": "Posledních 30 vyrovnaných dnů"
+          },
+          "customerActions": {
+            "title": "Zákazní akce",
+            "description": "Na co zákazníci klepnuli po otevření nabídky?"
+          },
+          "sources": {
+            "title": "Odkud zákazníci přicházeli?",
+            "description": "Návštěvy menu a akční relace podle zdroje"
+          },
+          "items": {
+            "title": "Nejzajímavější položka zájmu",
+            "description": "Položky, které zákazníci otevřeli nebo na něž klepli nejčastěji"
+          },
+          "search": {
+            "title": "Hledání poptávky",
+            "description": "Co zákazníci hledali?"
+          },
+          "officialPage": {
+            "title": "Oficiální stránka trendu",
+            "description": "Zobrazení a akce z oficiální stránky podniku."
+          }
+        },
+        "legends": {
+          "visits": "Návštěva",
+          "actionSessions": "Relace akcí",
+          "views": "pohledy",
+          "taps": "Klepnutí",
+          "noResult": "Žádný výsledek."
+        },
+        "empty": {
+          "default": "Pro tento pohled zatím nejsou k dispozici žádná data grafu.",
+          "menuActivity": "Aktivita v nabídce se zobrazí poté, co zákazníci otevřou nabídku.",
+          "customerActions": "Akce zákazníků se zobrazí poté, co zákazníci zavolají, pošlou zprávu, objednají, rezervují nebo požádají o pokyny.",
+          "customerActionsPeriod": "V tomto období nebyly zatím provedeny žádné akce zákazníků.",
+          "searchDemand": "Poptávka po vyhledávání se objeví, jakmile zákazníci použijí vyhledávací nabídku.",
+          "itemInterest": "Zájem o položku se objeví poté, co zákazníci otevřou položky nabídky.",
+          "unavailableDemand": "Nedostupná poptávka se objeví, když zákazníci klepnou na nedostupné položky.",
+          "missingSearches": "Chybějící vyhledávání se zobrazí, když zákazníci hledají, ale nenaleznou žádnou shodu.",
+          "sources": "Podrobnosti o zdroji se zobrazí poté, co zákazníci přicházejí z odkazů, QR nebo sociálních stránek.",
+          "officialPage": "Aktivita na oficiální stránce se zobrazí poté, co zákazníci otevřou veřejnou stránku podniku."
+        },
+        "footer": {
+          "sameData": "Databáze Dashboard",
+          "noExtraTracking": "Žádné další sledování.",
+          "settledAfterClose": "Vypořádány po skončení obchodního dne v obchodě."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menu",
+          "viewsLabel": "Zobrazení nabídky",
+          "viewsTooltip": "Počet otevření vašeho menu zákazníky.",
+          "thisMonthLabel": "Vaše menu pro tento měsíc"
+        },
+        "product": {
+          "singular": "Katalog",
+          "viewsLabel": "Katalog zobrazení",
+          "viewsTooltip": "Počet otevření vašeho katalogu zákazníky.",
+          "thisMonthLabel": "Váš katalog pro tento měsíc"
+        },
+        "service": {
+          "singular": "Seznam služeb",
+          "viewsLabel": "Zobrazení seznamu služeb",
+          "viewsTooltip": "Počet otevření vašeho seznamu služeb zákazníky.",
+          "thisMonthLabel": "Váš seznam služeb pro tento měsíc"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Vyžaduje pozornost",
+          "active": "Oficiální zákaznický zdroj je aktivní.",
+          "readyToPlace": "Oficiální zdroj zákazníka je připraven k umístění."
+        },
+        "description": {
+          "needsAttention": "Opravte menu, otevírací dobu nebo odkaz na zákazníka předtím, než je budete sdílet.",
+          "active": "Zákazníci mohou používat vaše aktuální veřejné údaje z jednoho zdroje. Není třeba provádět žádnou akci, zákazníci budou moci využívat vaše stávající veřejně dostupné údaje.",
+          "readyToPlace": "Váš odkaz zákazníka je připraven. Přidejte jej do Google, Instagram nebo WhatsApp či QR anebo ho vytiskněte, aby zákazníci mohli používat aktuální zdroj."
+        },
+        "link": {
+          "ready": "Zákazník připraven",
+          "missing": "Chybí odkaz na zákazníka."
+        },
+        "states": {
+          "set": "Nastaveno",
+          "missing": "Chybějící",
+          "ready": "Připraven Ready",
+          "notReady": "Nejsem připraven.",
+          "live": "Aktivní",
+          "hidden": "Neaktivní"
+        },
+        "tags": {
+          "menu": "Nabídka: {status}",
+          "hours": "Hodiny: {status}",
+          "customerLink": "Odkaz zákazníka: {status}",
+          "link": "Odkaz: {status}",
+          "placed": "Umístěno: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Opravte, co potřebuje pozornost.",
+          "preview": "Náhled veřejné nabídky",
+          "share": "Sdílejte menu"
+        },
+        "updated": {
+          "notUpdated": "Zatím není aktualizováno.",
+          "recently": "Nedávno aktualizované položky",
+          "today": "Dnes aktualizováno",
+          "yesterday": "Aktualizováno včera.",
+          "daysAgo": "Aktualizace {count, plural, one {# před dnem} other {# Před dny}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Následující Akce majitele",
+        "open": "Otevřít",
+        "placement": {
+          "notConfirmed": "Zatím není potvrzeno.",
+          "today": "Dnes potvrzeno.",
+          "yesterday": "Potvrzeno včera.",
+          "daysAgo": "Potvrzeno {count, plural, one {# před dnem} other {# Před dny}}"
+        },
+        "status": {
+          "ready": "Připraven Ready",
+          "missing": "Chybějící",
+          "set": "Nastaveno",
+          "live": "Aktivní",
+          "notLive": "Není živý.",
+          "confirmedCount": "{count}/{total} potvrdil(a)",
+          "on": "Zapnuto",
+          "off": "Vypnuto",
+          "dailyChanges": "Denní změny",
+          "hoursException": "Hodiny výjimky",
+          "staffUse": "personální využití",
+          "menuPrices": "Menu ceny",
+          "openCount": "{count, plural, one {# action open action otevřít} other {# Otevřené akce otevřít}}",
+          "stable": "Stabilní"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Nastavit odkaz na zákazníka",
+            "description": "Před sdílením QR, odpovědí zaměstnanců nebo veřejných profilů vytvořte odkaz na zákazníka."
+          },
+          "setHours": {
+            "label": "Nastavte si hodiny.",
+            "description": "Udržujte veřejný stav otevřeno a zavřeno jasné před návštěvou zákazníků."
+          },
+          "publishMenu": {
+            "labelPublish": "Publikovat menu",
+            "labelOpen": "Otevřené menu",
+            "descriptionVisible": "Publikujte aktuální menu před širokým sdílením.",
+            "descriptionHidden": "Umožněte zákazníkům zobrazit nabídku předtím, než použijí odkaz."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Potvrďte umístění odkazu.",
+            "labelPlace": "Umístěte zákaznický odkaz.",
+            "descriptionPlaced": "Udržujte Google, Instagram a WhatsApp ukazující na stejný zdroj.",
+            "descriptionUnplaced": "Přidejte stejný zákaznický odkaz na Google, Instagram, WhatsApp, QR a tištěné materiály."
+          },
+          "openPrivateFeedback": {
+            "label": "Otevřít soukromou zpětnou vazbu",
+            "description": "Použijte soukromou zpětnou vazbu dříve, než se problémy hostů změní na veřejné recenze."
+          },
+          "captureDailyChange": {
+            "label": "Řekněte MenuList, co se změnilo.",
+            "description": "Řekněte MenuList, co se dnes změnilo a schvalte připravenou kartu menu."
+          },
+          "setTodayStatus": {
+            "label": "Nastavte si dnešní stav.",
+            "description": "Dnes zavřeno, otevírá se pozdě, kuchyně je zavřená nebo oznámení o speciálním menu."
+          },
+          "prepareStaffHandoff": {
+            "label": "Připravte předání zaměstnanců.",
+            "description": "Dejte zaměstnancům odkaz na nabídku, QR a řádky odpovědí zákazníků z jednoho místa."
+          },
+          "updatePrices": {
+            "label": "Aktualizovat ceny",
+            "description": "Pro změny cen použijte Správce menu, poté je před zveřejněním schvalte."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Nastavení menu",
+        "complete": "Nastavení menu je dokončeno.",
+        "ready": "Nastavení menu je připraveno.",
+        "actions": {
+          "openMenu": "Otevřené menu",
+          "createMenu": "Vytvořit menu",
+          "reviewDetails": "Zkontrolovat podrobnosti",
+          "publishMenu": "Publikovat menu",
+          "openSharingTools": "Otevřete nástroje pro sdílení.",
+          "prepareDescriptions": "Připravte si popisy.",
+          "addImages": "Přidávejte obrázky.",
+          "reviewLanguageText": "Zkontrolujte jazykový text.",
+          "openMenuCheck": "Otevřené menu check",
+          "updatePublicLinks": "Aktualizovat veřejné odkazy.",
+          "addPublicPhoto": "Přidejte veřejnou fotografii"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Přidán zdrojový kód.",
+            "doneDescription": "Menu zdroj je připojen.",
+            "nextDescription": "Přidejte fotografii menu, PDF, odkaz nebo spusťte ručně."
+          },
+          "menuImported": {
+            "label": "Importované menu",
+            "doneDescription": "{count, plural, one {Nalezena viditelná položka #.} other {Nalezeno # viditelných položek.}}",
+            "nextDescription": "Import nebo přidávání položek nabídky."
+          },
+          "keyDetailsChecked": {
+            "label": "Klíčové detaily zkontrolovány.",
+            "doneDescription": "Ceny a klíčové menu jsou jasné.",
+            "nextDescription": "Před zveřejněním si zkontrolujte ceny a klíčové detaily."
+          },
+          "menuPublished": {
+            "label": "Publikované menu",
+            "doneDescription": "Publikováno je veřejné menu.",
+            "nextDescription": "Publikujte, až bude menu připraveno pro zákazníky."
+          },
+          "linkPlaced": {
+            "label": "Odkaz umístěn.",
+            "readyLabel": "Link připravený",
+            "doneDescription": "Oficiální odkaz je pro zákazníky připraven.",
+            "progressDescription": "{count} z {total} akcí umístění provedeno.",
+            "nextDescription": "Po publikování nabídky otevřete nástroje pro sdílení a klikněte na tlačítko Sdílet."
+          },
+          "descriptionsReady": {
+            "label": "Popisy připravené.",
+            "doneDescription": "Viditelné položky mají popisy.",
+            "nextDescription": "Připravte si popisy pro přehlednější položky menu."
+          },
+          "imagesReady": {
+            "label": "Obrázky připravené",
+            "doneDescription": "Viditelné položky mají obrázky.",
+            "nextDescription": "V případě potřeby přidejte nebo vygenerujte obrázky položek."
+          },
+          "translationsReady": {
+            "label": "Překlady připraveny.",
+            "doneDescription": "Vybrané menu jazyky jsou kompletní.",
+            "nextDescription": "Zkontrolujte vybrané jazyky nabídek."
+          },
+          "publicLinksAdded": {
+            "label": "Přidány veřejné odkazy.",
+            "doneDescription": "K dispozici jsou veřejné akce nebo odkazy na sociální sítě.",
+            "nextDescription": "Přidejte užitečné veřejné odkazy na stránku firmy."
+          },
+          "publicPhotoAdded": {
+            "label": "Přidána veřejná fotografie.",
+            "doneDescription": "Veřejná fotografie je k dispozici.",
+            "nextDescription": "Až budete připraveni, přidejte obálku, logo nebo veřejnou fotku."
+          }
+        }
       }
     }
   },
@@ -1463,7 +2323,7 @@
         "itemInCategoryAt": "{itemName} v {categoryName}, dostupné na {businessName}.",
         "itemAt": "{itemName}, k dispozici na {businessName}.",
         "metadataObpTitle": "{businessName} — Menu, Otevírací doba, Kontakt",
-        "metadataMenuTitle": "{businessName} | Menu",
+        "metadataMenuTitle": "{businessName} | Menu Menu",
         "metadataObpDescription": "{businessName} – Zobrazte nabídku, zkontrolujte otevírací dobu, získejte trasu a vyhledejte kontaktní údaje. Oficiální obchodní stránka.",
         "metadataMenuDescription": "Zobrazte digitální nabídku pro {businessName}.",
         "metadataUnavailableTitle": "Menu není k dispozici | {businessName}",
@@ -1584,10 +2444,10 @@
         "spiceMedium": "Střední",
         "spiceHot": "Horký",
         "spiceVeryHot": "Velmi horké",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} min min min.",
         "hoursShort": "{count} hod",
         "calories": "{count} kal",
-        "protein": "Bílkoviny {value}g",
+        "protein": "Bílkoviny {value} g",
         "carbs": "Sacharidy {value}g",
         "fat": "Tuk {value}g",
         "serving": "Podává se {value}",
@@ -1621,7 +2481,7 @@
         "popularChoice": "Populární volba",
         "readyInMinutes": "Připraveno za {minutes} min",
         "readyInstantly": "Připraveno okamžitě",
-        "expressMinutes": "Expresní {minutes} min",
+        "expressMinutes": "Expresně za {minutes} min",
         "quickMinutesSession": "Rychlá relace {minutes} min",
         "expressMinutesSession": "{minutes}minutové expresní sezení",
         "greatValue": "Skvělá hodnota",
@@ -1631,7 +2491,7 @@
         "goodChoice": "Dobrá volba",
         "worthTheInvestment": "Investice stojí za to",
         "ownerChoice": "Volba majitele",
-        "menuOffering": "Menu",
+        "menuOffering": "Menu Menu Menu",
         "servicesOffering": "Služby",
         "catalogOffering": "Katalog",
         "offeringsOffering": "Nabídky",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Zatím žádná historie fakturace.",
     "perMonth": "/měsíc",
     "contactUs": "Kontaktujte nás Kontaktujte nám"
+  },
+  "StarterActivation": {
+    "activeTitle": "Vaše menu je online",
+    "endingSoonTitle": "Udržujte svůj jídelníček online",
+    "publicMenuQrActive": "Vaše veřejná nabídka a kód QR jsou aktivní.",
+    "activeRemaining": "Přístup do nabídky je aktivní.",
+    "daysRemaining": "{days, plural, one {Vyberte si plán do # dne, aby vaše menu zůstalo online.} other {Vyberte si plán do # dnů, aby vaše menu zůstalo online.}}",
+    "sharingComplete": "Nastavení sdílení je dokončeno.",
+    "sharingProgress": "Dokončeno {count, number} z {target, number} kroků sdílení.",
+    "evidenceRecorded": "Zaznamenáno automaticky: {systemCount, number}. Potvrzeno vámi: {ownerCount, number}.",
+    "evidenceEmpty": "Zkopírujte nebo sdílejte odkaz na nabídku, stáhněte si jeho kód QR nebo potvrďte, kam jste jej umístili.",
+    "keepLiveAction": "Udržujte svůj jídelníček online",
+    "noSubscriptionDescription": "Vyberte plán, abyste měli k dispozici aktualizace menu a zákaznické stránky.",
+    "choosePlanDescription": "Vaše nabídka je uložena. Vyberte si plán, aby byl online a aktuální."
   },
   "Transactions": {
     "title": "Historie transakcí Historie Transakce",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobilní aplikace Mobile App",
     "subscribeTitle": "Přihlaste se k odběru Get Started.",
     "subscribeDescription": "Vyberte si plán, který vám umožní začít vytvářet digitální menu a spravovat vaše podnikání.",
-    "viewPlans": "Zobrazit plány Zobrazovat plány"
+    "viewPlans": "Zobrazit plány Zobrazovat plány",
+    "returnToMobile": "Prohlížíte si verzi pro stolní počítače. Vraťte se na mobilní verzi."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Kódy Kódy",

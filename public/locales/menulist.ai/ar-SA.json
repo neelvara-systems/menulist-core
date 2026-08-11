@@ -780,7 +780,7 @@
         "dairyFree": "خالي من منتجات الألبان",
         "sugarFree": "خالي من السكر",
         "contains": "يحتوي على {value}",
-        "spice": "مستوى التوابل: {value}",
+        "spice": "درجة التوابل: {value}",
         "spiceMild": "معتدل",
         "spiceMedium": "متوسط",
         "spiceHot": "حار",
@@ -1320,6 +1320,20 @@
       "purchased_accidentally": "اشتريته عن طريق الصدفة.",
       "other": "آخر"
     }
+  },
+  "StarterActivation": {
+    "activeTitle": "القائمة الخاصة بك متاحة على الإنترنت",
+    "endingSoonTitle": "احتفظ بقائمتك على الإنترنت",
+    "publicMenuQrActive": "القائمة العامة ورمز QR نشطان.",
+    "activeRemaining": "الوصول إلى القائمة نشط.",
+    "daysRemaining": "{days, plural, one {اختر خطة خلال # يوم لإبقاء قائمتك على الإنترنت.} other {اختر خطة خلال # يوم لإبقاء قائمتك على الإنترنت.}}",
+    "sharingComplete": "اكتمل إعداد المشاركة.",
+    "sharingProgress": "اكتملت {count, number} من {target, number} من خطوات المشاركة.",
+    "evidenceRecorded": "تم التسجيل تلقائيًا: {systemCount, number}. تم التأكيد بواسطتك: {ownerCount, number}.",
+    "evidenceEmpty": "انسخ رابط القائمة أو شاركه، أو قم بتنزيل رمز QR الخاص به، أو قم بتأكيد المكان الذي وضعته فيه.",
+    "keepLiveAction": "احتفظ بقائمتك على الإنترنت",
+    "noSubscriptionDescription": "اختر خطة للحفاظ على تحديثات القائمة وصفحات العملاء متاحة.",
+    "choosePlanDescription": "تم حفظ القائمة الخاصة بك. اختر خطة لإبقائها متصلة بالإنترنت ومحدثة."
   },
   "Transactions": {
     "title": "Transactions",
@@ -3049,7 +3063,8 @@
         "daily": "اليوم السابق",
         "weekly": "آخر 7 أيام",
         "monthly": "هذا الشهر",
-        "overall": "إجمالي"
+        "overall": "إجمالي",
+        "graph": "الرسوم البيانية"
       },
       "today": {
         "noMenuActivityToday": "لا يوجد نشاط القائمة حتى الآن اليوم.",
@@ -3075,17 +3090,17 @@
         "noResultSearches": "عمليات البحث بدون نتيجة",
         "unavailableInterest": "الفائدة غير المتاحة",
         "topLanguage": "أعلى اللغة",
-        "smartPicksShown": "اللقطات الذكية المعروضة",
-        "smartPicksClicks": "نقرات اللقطات الذكية",
-        "smartPicksTaps": "الصنابير اللقطات الذكية",
-        "smartPicksUsed": "اللقطات الذكية المستخدمة",
-        "smartPicksEngagement": "المشاركة في اللقطات الذكية",
+        "smartPicksShown": "Smart Picks عرض",
+        "smartPicksClicks": "Smart Picks كليك",
+        "smartPicksTaps": "Smart Picks TAPS",
+        "smartPicksUsed": "Smart Picks المستخدمة",
+        "smartPicksEngagement": "Smart Picks الالتزام",
         "totalMenuScans": "إجمالي عمليات مسح القائمة",
         "totalItemClicks": "إجمالي نقرات العنصر",
         "activeDays": "الأيام النشطة",
         "daysActive": "الأيام النشطة",
         "avgDailyScans": "متوسط المسح اليومي",
-        "smartPicksActive": "اللقطات الذكية نشطة",
+        "smartPicksActive": "Smart Picks نشطة",
         "engagementRate": "معدل المشاركة",
         "topItem": "العنصر الأعلى",
         "topCategory": "الفئة الأعلى"
@@ -3094,19 +3109,24 @@
         "itemClicks": "عدد مرات نقر العملاء على العناصر",
         "engagedSessions": "الجلسات التي أظهر فيها العملاء اهتمامًا حقيقيًا بالقائمة",
         "actionRate": "الجلسات التي أدت إلى الإجراء النهائي للعميل",
-        "smartPicksShown": "كم مرة ظهرت اللقطات الذكية على صفحتك",
-        "smartPicksUsed": "النسبة المئوية للعملاء الذين استخدموا اللقطات الذكية",
-        "customerActions": "الإجراءات النهائية مثل الاتصال والواتس اب والاتجاهات والحجز والطلب",
+        "smartPicksShown": "كم مرة Smart Picks ظهرت على صفحتك",
+        "smartPicksUsed": "نسبة العملاء الذين يستخدمون Smart Picks",
+        "customerActions": "الإجراءات النهائية مثل المكالمة، WhatsApp، الاتجاهات ، الاحتياطي ، والأوامر",
         "searches": "إلغاء طلب البحث المكرر من القائمة",
         "unavailableInterest": "النقرات على العناصر غير المتاحة"
       },
       "empty": {
         "noActivityYesterday": "لم يتم تسجيل أي نشاط أمس",
         "noAnalyticsYet": "لا توجد بيانات حتى الآن. ستظهر تحليلاتك بمجرد أن يبدأ العملاء في المشاهدة.",
-        "noItemClicksYet": "لم يتم النقر على أي عنصر حتى الآن"
+        "noItemClicksYet": "لم يتم النقر على أي عنصر حتى الآن",
+        "lowActivityTitle": "نشاط منخفض",
+        "lowActivityDescription": "لم يكن هناك ما يكفي من النشاط لجذب استنتاج مفيد لهذه الفترة.",
+        "noWeeklyData": "لا يوجد نشاط مستقر في القائمة متاح خلال الأيام السبعة الماضية بعد.",
+        "noMonthlyData": "لا يوجد نشاط قائمه مستقرة متاح لهذا الشهر بعد."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% مقابل الأسبوع الماضي"
+        "vsLastWeek": "{sign}{change}% مقابل الأسبوع الماضي",
+        "changeVsLastWeek": "{change} مقابل الأسبوع الماضي"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# يوم نشاط مسجل} other {# أيام نشاط مسجلة}}"
@@ -3136,7 +3156,7 @@
       "states": {
         "yes": "نعم",
         "no": "لا",
-        "notAvailable": "غير متاح",
+        "notAvailable": "N/A",
         "active": "نشطة",
         "lowActivity": "نشاط منخفض",
         "noData": "لا توجد بيانات"
@@ -3148,17 +3168,30 @@
         "waitingForFirstScan": "في انتظار الفحص الأول",
         "weeklyInsights": "رؤى أسبوعية",
         "last4WeeksComparison": "مقارنة آخر 4 أسابيع",
-        "historicalDataWillAppear": "سوف تظهر البيانات التاريخية بعد بضعة أسابيع"
+        "historicalDataWillAppear": "سوف تظهر البيانات التاريخية بعد بضعة أسابيع",
+        "statusMessages": {
+          "working": "يقوم العملاء باستخدام قائمة الطعام الحالية.",
+          "low_activity": "لا يزال نشاط العملاء في طور البناء، وتظل قائمتك الحالية متاحة، ولا تزال قائمة المنتجات الخاصة بك متوفرة.",
+          "no_data": "سيظهر النشاط بعد أن يبدأ العملاء في فتح قائمة منتجاتك."
+        }
       },
       "aiSummary": {
         "daily": "اليوم السابق في لمحة",
         "weekly": "هذا الأسبوع في لمحة",
-        "monthly": "هذا الشهر باختصار"
+        "monthly": "هذا الشهر باختصار",
+        "localized": {
+          "noActivity": "ولم يسجل أي نشاط من أنشطة العملاء المصفاة خلال هذه الفترة.",
+          "menuViews": "فتح العملاء القائمة {count} مرة.",
+          "itemTaps": "لمس العملاء بنود القائمة {count} مرة.",
+          "customerActions": "أنجز العملاء {count} من الإجراءات النهائية.",
+          "searches": "قام العملاء بالبحث عن القائمة {count} مرة.",
+          "unavailableInterest": "تلقّت البنود غير المتاحة {count} من النقرات."
+        }
       },
       "actions": {
         "call": "اتصال",
         "calls": "المكالمات",
-        "whatsapp": "واتساب",
+        "whatsapp": "WhatsApp",
         "directions": "احصل على الاتجاهات",
         "reserve": "حجز",
         "order": "طلب"
@@ -3177,7 +3210,100 @@
         "sourceQualityTagCompact": "{source}: زيارات {visits} · {rate}%",
         "markDoneFailed": "لا يمكن وضع علامة \"تم\" على هذا الإجراء. حاول ثانية.",
         "markDoneSaved": "تم وضع علامة \"تم\". سيتم تحديث النتائج عندما يصبح ملخص التحليلات التالي جاهزًا.",
-        "markDone": "وضع علامة \"تم\"."
+        "markDone": "وضع علامة \"تم\".",
+        "bestSourceStatsFormatted": "· {visits} زيارات · {rate} معدل الإجراءات",
+        "bestSourceMobileFormatted": "أفضل مصدر في الوقت الراهن: {source} · {visits} زيارات · {rate} معدل الإجراءات.",
+        "sourceQualityTagFormatted": "{source}: {visits} زيارة · {sessions} جلسة عمل · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} زيارة · {rate}",
+        "priorities": {
+          "high": "أولوية عالية",
+          "medium": "أولوية متوسطة",
+          "low": "أولوية منخفضة"
+        },
+        "confidence": {
+          "stable": {
+            "label": "مستقر",
+            "message": "يدعم النشاط المتاح فحص القائمة الواضح."
+          },
+          "watch": {
+            "label": "واصلوا المشاهدة.",
+            "message": "وقد يحتاج بعض الأنشطة إلى فحص آخر قبل تغيير القائمة."
+          },
+          "no_data": {
+            "label": "ويلزم مزيد من البيانات.",
+            "message": "انتظر نشاط العميل أكثر استقرارا قبل التوصل إلى نتيجة."
+          }
+        },
+        "localizedActions": {
+          "reason": "استنادا إلى آخر نشاط للزبائن تم تسويته.",
+          "availability": {
+            "title": "استعراض مدى توافر البند.",
+            "description": "تحقق مما إذا كان ينبغي استعادة البنود غير المتاحة أو المخفية أو إبقاؤها بعيدا عن الرؤية.",
+            "action": "مراجعة التوفر"
+          },
+          "customerActions": {
+            "title": "استعراض إجراءات العملاء.",
+            "description": "تحقق من تفاصيل القائمة والروابط التي يستخدمها العملاء قبل اتخاذ أي إجراء.",
+            "action": "استعراض إجراءات العملاء."
+          },
+          "details": {
+            "title": "تحسين تفاصيل البند.",
+            "description": "استعراض أسماء الأصناف والخيارات والأوصاف والصور التي قد تحتاج إلى معلومات أوضح.",
+            "action": "استعراض تفاصيل البند."
+          },
+          "general": {
+            "title": "انتظر إشارة أوضح.",
+            "description": "إبقاء القائمة الحالية مستقرة إلى أن يتوفر نشاط أكثر استقرارا.",
+            "action": "استعرض لاحقا."
+          },
+          "menuOrder": {
+            "title": "استعراض ترتيب القائمة",
+            "description": "تحقق مما إذا كان من السهل على العملاء العثور على الأصناف والفئات الهامة.",
+            "action": "استعراض ترتيب القائمة"
+          },
+          "pricing": {
+            "title": "استعراض التسعير",
+            "description": "تحقق من الأسعار المرتبطة بآخر إشارة اهتمام العميل.",
+            "action": "استعراض الأسعار مراجعة الأسعار"
+          },
+          "search": {
+            "title": "استعراض بحث الزبائن",
+            "description": "تحقق من عمليات البحث التي قد لا تؤدي العملاء إلى نتيجة مفيدة في القائمة.",
+            "action": "استعراض عمليات البحث"
+          },
+          "source": {
+            "title": "استعرض مصادر دخول العملاء.",
+            "description": "تحقق مما إذا كانت الروابط العامة وQR من الأماكن توجيه العملاء إلى القائمة الحالية.",
+            "action": "استعرض الروابط العامة."
+          },
+          "timing": {
+            "title": "استعراض توقيت قائمة الاختيارات.",
+            "description": "تحقق مما إذا كانت الفئات المحددة الزمن والتوافر متطابقين عندما يبحث عنها العملاء.",
+            "action": "مراجعة التوقيت"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "علامة جاهزة",
+            "message": "سيتم التحقق من النتيجة بعد أن يكون هناك المزيد من الأنشطة المناسبة المتاحة."
+          },
+          "improved": {
+            "label": "تحسين",
+            "message": "يظهر التحقق التالي تحسنًا."
+          },
+          "no_clear_change": {
+            "label": "لا تغيير واضح",
+            "message": "ولم يظهر الشيك المُسوَّى التالي أي تغير واضح، ولم يُظهر شيك التسوية التالي أي تغيير واضح."
+          },
+          "not_enough_data": {
+            "label": "ويلزم مزيد من البيانات.",
+            "message": "لا يوجد ما يكفي من الأنشطة المنظمة لتقييم هذا التغيير حتى الآن."
+          },
+          "pending": {
+            "label": "الشيك قيد النظر",
+            "message": "سوف يتحقق MenuList من هذا بعد أن يتوفر المزيد من النشاط المنظم."
+          }
+        }
       },
       "details": {
         "menuDetails": "تفاصيل القائمة",
@@ -3195,7 +3321,7 @@
           "unavailableInterest": "الفائدة غير المتاحة",
           "languages": "اللغات",
           "filters": "المرشحات",
-          "smartPicks": "اللقطات الذكية",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "الإجراءات حسب ساعات العمل"
         },
         "descriptions": {
@@ -3205,7 +3331,7 @@
         },
         "metrics": {
           "menuViews": "طرق عرض القائمة",
-          "itemTaps": "صنابير العنصر",
+          "itemTaps": "نقرات العناصر",
           "menuSessions": "جلسات القائمة",
           "engagedSessions": "جلسات مع النشاط",
           "actionSessions": "جلسات العمل",
@@ -3238,6 +3364,12 @@
           "open": "الإجراءات عندما تكون مفتوحة",
           "unknown": "الإجراءات عندما كانت حالة الساعات غير متاحة",
           "closedShare": "{rate}% من جميع الإجراءات المسجلة حدثت أثناء الإغلاق"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} الصنابير غير المتاحة",
+          "strongItem": "{count} نقرات العناصر",
+          "needsWork": "{count} مشاهدات، لا توجد لمس.",
+          "gettingAttention": "مشاهدات {count}"
         }
       },
       "smartPicks": {
@@ -3267,12 +3399,12 @@
         "noActivityToday": "لا يوجد نشاط OBP بعد اليوم.",
         "noComparison": "لا مقارنة",
         "sameAsLastWeek": "نفس الأسبوع الماضي",
-        "whatsappShares": "مشاركات واتساب",
+        "whatsappShares": "WhatsApp الأسهم",
         "copyLink": "نسخ الوصلة",
         "copyMessage": "نسخ الرسالة",
         "googleReviews": "مراجعات Google",
-        "instagram": "انستغرام",
-        "facebook": "فيسبوك",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "الموقع الإلكتروني",
         "sourceViews": "مشاهدات {count}",
         "sourceMenu": "القائمة {count}",
@@ -3301,7 +3433,7 @@
         "actionBreakdown": "انهيار العمل",
         "shareBreakdown": "انهيار المشاركة",
         "mobileInfoIntro": "تعرض هذه البطاقة كيفية تفاعل العملاء مع صفحتك التجارية الرسمية قبل فتح القائمة أو أثناء فتحها.",
-        "mobileInfoActions": "تحسب الإجراءات النقرات النهائية على الاتصال وواتساب والاتجاهات والحجز والطلب.",
+        "mobileInfoActions": "حصص حساب النقرات النهائية على المكالمات، WhatsApp، الاتجاهات، الاحتياطي، والطلب.",
         "mobileInfoLinks": "تأتي المشاركات من بطاقة ارتباط الأعمال الرسمية، وتحسب نقرات الارتباط مراجعة Google وInstagram وFacebook وزيارات موقع الويب من OBP العام.",
         "todayPartialInfo": "اليوم حتى الآن نشاط حي جزئي فقط. لم يتم تضمينه بعد في اليوم السابق، أو آخر 7 أيام، أو هذا الشهر، أو إجماليات العمر."
       },
@@ -3327,7 +3459,6 @@
         "shortcutBreakdown": "انهيار الاختصار",
         "installsByPlatform": "عمليات التثبيت حسب النظام الأساسي",
         "appStickiness": "التصاق التطبيق",
-        "returningOpens30d": "فتح العودة (30 د)",
         "avgOpensPerInstall": "متوسط ​​عدد مرات الفتح لكل عملية تثبيت",
         "iosManualInstalls": "عمليات التثبيت اليدوية لنظام iOS",
         "shortcuts": {
@@ -3336,12 +3467,13 @@
           "order": "اطلب عبر الإنترنت"
         },
         "platforms": {
-          "ios": "دائرة الرقابة الداخلية",
-          "iosLong": "دائرة الرقابة الداخلية (اي فون / آي باد)",
-          "android": "أندرويد",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "سطح المكتب",
           "other": "آخر"
-        }
+        },
+        "tryAgainLater": "حاول مرة أخرى في وقت لاحق."
       },
       "projectSelector": {
         "deleted": "محذوفة",
@@ -3375,14 +3507,15 @@
         "couldNotCopy": "تعذر نسخ الرابط",
         "markedUpdated": "تم وضع علامة على قائمة Google على أنها محدثة",
         "couldNotSave": "لا يمكن الحفظ",
-        "title": "قائمة جوجل",
+        "title": "Google قائمة",
         "updatedDescription": "تم تعيين رابط موقع الويب إلى صفحتك الرسمية",
-        "setOfficialLink": "قم بتعيين الرابط الرسمي الخاص بك على جوجل",
+        "setOfficialLink": "إعداد الرابط الرسمي الخاص بك على Google",
         "updateProfileWebsite": "قم بتحديث موقع الويب الخاص بالملف التجاري على Google إلى {url}",
         "copied": "منقول",
         "copy": "نسخ",
-        "openGoogle": "افتح جوجل",
-        "done": "منتهي"
+        "openGoogle": "مفتوحة Google",
+        "done": "منتهي",
+        "couldNotOpen": "تعذر فتح ملف Google Business Profile."
       },
       "behaviorNudge": {
         "linkCopied": "تم نسخ الرابط",
@@ -3407,7 +3540,748 @@
         "reviewTopIssue": "مراجعة القضية العليا",
         "repairMenu": "إصلاح القائمة",
         "review": "مراجعة",
-        "repair": "بصلح"
+        "repair": "بصلح",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {يفتقر البند # إلى وصف.} other {# البنود مفقودة الأوصاف.}}",
+            "ok": "وجميع البنود لها أوصاف.",
+            "help": "وتساعد الأوصاف العملاء على فهم كل عرض."
+          },
+          "images": {
+            "warning": "{count, plural, one {البند # يفتقر إلى صورة.} other {البنود # هي صور مفقودة.}}",
+            "ok": "وجميع البنود تحتوي على صور.",
+            "help": "الصور يمكن أن تساعد العملاء على الاختيار بشكل أسرع."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {تفتقر الفئة # إلى أيقونة.} other {# الفئات هي أيقونات مفقودة.}}",
+            "ok": "تحتوي جميع الفئات على أيقونات.",
+            "help": "الأيقونات تجعل الفئات أسهل في الفحص."
+          },
+          "prices": {
+            "warning": "{count, plural, one {يفتقر البند # إلى السعر.} other {# البنود هي أسعار مفقودة.}}",
+            "ok": "وجميع البنود لها أسعارها.",
+            "help": "ويقوم الزبائن بمقارنة الأسعار قبل اتخاذ قرارهم، كما يقومون بالاختيار من بين منتجات مختلفة."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {البند # مخفي عن الزبائن.} other {بنود # مخفية عن العملاء.}}",
+            "ok": "لا توجد بنود مخفية.",
+            "help": "لا تظهر العناصر الخفية في القائمة العامة."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {يحتاج السعر # إلى مراجعة.} other {# الأسعار بحاجة إلى مراجعة.}}",
+            "ok": "وتقع الأسعار في حدود النطاق المتوقع.",
+            "help": "MenuList تقارن أسعار سلعة واحدة داخل نفس الفئة. ضع علامة على السعر المقصود باعتباره مستعرضاً."
+          },
+          "translations": {
+            "warning": "{count, plural, one {البند # يفتقر إلى ترجمات} other {البنود # مفقودة الترجمات}}",
+            "ok": "وتترجم جميع البنود المرئية.",
+            "help": "بعض البنود غير مكتملة بلغات مختارة من القوائم."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {تفاصيل قائمة # مفقودة الترجمات} other {تفاصيل قائمة # مفقودة الترجمات}}",
+            "ok": "وتترجم تفاصيل القائمة.",
+            "help": "اسم القائمة أو وصفها أو ملاحظاتها غير كاملة في لغات مختارة من اللغات المستخدمة في القوائم."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "الرابط المنسوخ.",
+        "direct": "مباشرة",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "مجموعة قائمة الطعام",
+        "nativeShare": "تقاسم الأجهزة",
+        "obp": "صفحة الأعمال",
+        "other": "آخر",
+        "qr": "رمز QR",
+        "shortcut": "تطبيق قصير",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "صحة الأعمال",
+        "open": "صحة الأعمال التجارية المفتوحة",
+        "today": "اليوم",
+        "latestActivity": "أحدث نشاط",
+        "noActionNeeded": "لا يلزم إجراء",
+        "status": {
+          "stable": "مستقر",
+          "watch": "يحتاج إلى اهتمام",
+          "needs_review": "استعراض الاحتياجات",
+          "insufficient_data": "ويلزم مزيد من البيانات.",
+          "stale": "يحتاج إلى فحص جديد.",
+          "not_ready": "الاستعدادات جارية."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# تحتاج التفاصيل المتعلقة بالعملاء إلى مراجعة.} other {# تحتاج تفاصيل العميل إلى مراجعة.}}",
+          "stable": {
+            "headline": "إن المعلومات العامة الخاصة بك مستقرة.",
+            "message": "ولا توجد مشكلة تواجه العملاء وتحتاج إلى اتخاذ إجراء بشأنها في آخر عملية فحص."
+          },
+          "watch": {
+            "headline": "قد يحتاج تفصيل ما إلى اهتمام.",
+            "message": "استعراض الفحص المقترح قبل تغيير المعلومات العامة."
+          },
+          "needs_review": {
+            "headline": "استعراض التفاصيل المتعلقة بالعملاء.",
+            "message": "وينبغي التحقق من تفاصيل عامة واحدة أو أكثر، ويجب التأكد من أن التفاصيل العامة صحيحة."
+          },
+          "insufficient_data": {
+            "headline": "ويلزم القيام بمزيد من الأنشطة.",
+            "message": "يحافظ على استقرار المعلومات الحالية بينما تجمع MenuList إشارة مفيدة."
+          },
+          "stale": {
+            "headline": "وتحتاج صحة الأعمال إلى فحص جديد.",
+            "message": "آخر تحقق قديمة، وتظل معلوماتك العامة الحالية دون تغيير، ولا يوجد أي تغيير في المعلومات التي تم التحقق منها مؤخرا."
+          },
+          "not_ready": {
+            "headline": "تستعد صحة الأعمال للانطلاق.",
+            "message": "سيظهر أول تحقق من المخزن هنا عندما يكون جاهزاً."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "تحقق من مصدر القائمة.",
+            "message": "لم يتم العثور على مصدر قائمة عام نشط. تحقق من القائمة قبل مشاركتها. لا يوجد مصدر خيار عام نشيط.",
+            "title": "يحتاج مصدر القائمة إلى التحقق من التحقق."
+          },
+          "low_latest_activity": {
+            "action": "تحقق من روابط التشارك.",
+            "message": "نشاط العميل منخفض. تحقق من QR، وGoogle ، وInstagram وWhatsApp والروابط على المواقع الشبكية.",
+            "title": "انخفاض نشاط العملاء."
+          },
+          "unavailable_item_taps": {
+            "action": "تحقق من الأصناف غير المتاحة.",
+            "message": "وأبدى الزبائن اهتماما بالأصناف غير المتاحة، فأعادوا تخزينها أو أخفوها.",
+            "title": "وحظيت الأصناف غير المتاحة بالاهتمام."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "استعرض تعليقات الضيوف.",
+            "message": "تحتاج تعليقات الزوار إلى تفتيش من قبل المالك قبل تغيير التفاصيل العامة.",
+            "title": "تحتاج تعليقات الضيوف إلى التحقق من التحقق."
+          },
+          "default": {
+            "action": "مراجعة التفاصيل",
+            "message": "إن التفاصيل التي تواجه العميل تحتاج إلى تفتيش من قبل المالك.",
+            "title": "هناك تفصيل يحتاج إلى التحقق منه."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {يحتاج عنصر التعليقات الخاصة لـ # إلى التحقق.} other {تحتاج بنود التعليقات الخاصة لـ # إلى التحقق.}}",
+          "clear": "Private feedback is clear."
+        },
+        "freshness": {
+          "notReady": "صحة الأعمال ليست في الوقت الحقيقي. سيظهر أول تحقق من المخزن تاريخ البيانات هنا. ولن يتم عرض تاريخ البيانات في هذا المكان.",
+          "throughDate": "يستخدم البيانات من خلال {date}. اليوم قد لا يكون كاملا بعد.",
+          "latest": "يستخدم آخر بيانات MenuList المتاحة. قد لا يكون اليوم كاملا بعد."
+        },
+        "periods": {
+          "today": "اليوم",
+          "yesterday": "اليوم السابق",
+          "thisWeek": "هذا الأسبوع",
+          "lastWeek": "الأسبوع الماضي",
+          "thisMonth": "هذا الشهر",
+          "lastMonth": "الشهر الماضي",
+          "last7Days": "آخر 7 أيام",
+          "last30Days": "آخر 30 يومًا",
+          "overall": "إجمالي"
+        },
+        "metrics": {
+          "menuViews": "طرق عرض القائمة",
+          "topDemand": "أعلى طلب",
+          "topDemandDetail": "الترقية: {count} {signal}",
+          "bestSource": "أفضل مصدر",
+          "bestSourceDetail": "رابط تحديث: {count} زيارات"
+        },
+        "signals": {
+          "views": "رؤية",
+          "clicks": "نقرات",
+          "attention": "إشارات الاهتمام"
+        },
+        "page": {
+          "description": "حالة الأعمال اليومية والتحقق من العملاء، التحقق من الوضع اليومي للعملاء.",
+          "latestCheck": "AI health check",
+          "loading": "أشحن التحميل",
+          "loadingMessage": "تحميل صحة الأعمال...",
+          "notReady": "Business Health is not ready yet.",
+          "loadErrorTitle": "لم يتمكن مركز صحة الأعمال من تحميل البيانات.",
+          "loadErrorDescription": "يرجى تجديد هذه الصفحة ومحاولة مرة أخرى.",
+          "refresh": "تحديث",
+          "needsAttention": "يحتاج إلى اهتمام",
+          "desktopSettingsOnly": "افتح هذا من إعدادات سطح المكتب."
+        },
+        "scope": {
+          "title": "نطاق الصحة في مجال الأعمال التجارية",
+          "allMenus": "جميع قوائم الأكل",
+          "selectedMenu": "القائمة المختارة",
+          "menuCount": "{count, plural, one {قائمة # في هذا المكان} other {# قوائم في هذا المكان}}",
+          "locationLevel": "نظرة على مستوى الموقع",
+          "inactiveMenu": "قائمة غير نشطة",
+          "thisMenuOnly": "هذه القائمة فقط.",
+          "allMenusInLocation": "جميع قوائم الأكل في هذا المكان.",
+          "thisMenuHelper": "تستخدم الأسئلة والنشاط هذه القائمة.",
+          "allMenusHelper": "تستخدم الأسئلة والنشاط جميع قوائم الاختيار في هذا المكان.",
+          "dialogDescription": "اختار جميع القوائم أو قائمة واحدة للنشاط والتحقق.",
+          "all": "الجميع جميعهم",
+          "close": "Close"
+        },
+        "locations": {
+          "title": "المواقع",
+          "loading": "مواقع الشحن...",
+          "empty": "لا يوجد موجز للموقع بعد.",
+          "storeFallback": "الموقع {id}",
+          "checkedOn": "التحقق {date}",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# تحتاج عملية التحقق من العملاء إلى مراجعة.} other {# تحتاج عمليات التحقق من العملاء إلى مراجعة.}}",
+          "statusReason": {
+            "stable": "لا توجد مشكلة تواجه العملاء تتطلب اتخاذ إجراء.",
+            "watch": "قد يحتاج تفاصيل العملاء إلى الاهتمام.",
+            "needs_review": "وتحتاج التفاصيل المتعلقة بالعملاء إلى مراجعة.",
+            "insufficient_data": "المزيد من نشاط العملاء مطلوب لفحص مفيد.",
+            "stale": "يحتاج هذا الموقع إلى فحص جديد، لذا قم بإعادة التحقق منه.",
+            "not_ready": "أول فحص للموقع جاهز."
+          }
+        },
+        "assistant": {
+          "title": "اسأل عن الصحة في مجال الأعمال",
+          "askShort": "اسألوا.",
+          "englishOnlyTitle": "الأسئلة متاحة حاليا باللغة الإنكليزية.",
+          "englishOnlyDescription": "وضعيتك وعمليات التحقق الخاصة بك مترجمة إلى اللغة المحلية. قم بتغيير لغة التطبيق إلى الإنجليزية لطرح أسئلة صحة الأعمال التجارية.",
+          "notReady": "وسترد صحة الأعمال بعد الانتهاء من آخر عملية تحقق.",
+          "suggestedUnavailable": "الأسئلة المقترحة غير متاحة في الوقت الحالي.",
+          "freeTextUnavailable": "أسئلة النص المجاني غير متوفرة حاليا.",
+          "answerError": "لم تستطع صحة الأعمال الإجابة على هذا السؤال، فهي لا تملك إجابة.",
+          "suggestedQuestions": "أسئلة مقترحة",
+          "followUps": "يمكنك أن تسأل بعد ذلك.",
+          "you": "أنت",
+          "empty": "اختار سؤالا أو اسأل عن عملك التجاري.اختار سؤالاً أو اسئلة حول عملك.",
+          "placeholderReady": "اسأل عن اليوم، أو هذا الأسبوع، أو اهتمامات القائمة، أو عمليات التحقق المقبلة.",
+          "placeholderMobile": "اسأل عن اليوم أو هذا الأسبوع.",
+          "placeholderPending": "متاحة بعد التحقق الأخير.",
+          "send": "أرسل سؤالا إرسال سؤال",
+          "cachedFacts": "استنادا إلى حقائق الأعمال التجارية المخزنة في MenuList",
+          "questions": {
+            "checks": "ما الذي يحتاج إلى التحقق؟",
+            "today_stats": "كيف حالك اليوم؟",
+            "this_week_stats": "ماذا حدث هذا الأسبوع؟",
+            "top_item": "ما هي العناصر التي تجذب الانتباه؟",
+            "last_week_stats": "ماذا حدث الأسبوع الماضي؟",
+            "this_month_stats": "كيف حالك هذا الشهر؟",
+            "last_month_stats": "ماذا حدث الشهر الماضي؟",
+            "public_menu_status": "هل قائمة الطعام العامة جيدة؟",
+            "profile_status": "هل ملف عملي التجاري كامل؟",
+            "feedback_reviews": "هل لديك أي تعليقات من الضيوف للتحقق منها؟",
+            "feedback_recent": "ماذا قال الضيوف في الآونة الأخيرة؟",
+            "default": "ما الذي يجب أن أقوم بالتحقق منه بعد ذلك؟"
+          }
+        },
+        "sources": {
+          "title": "مصادر البيانات",
+          "menuProjects": "مشروع القائمة",
+          "ownerAnalytics": "نشاط المالك",
+          "guestFeedback": "تعليقات الضيوف على الموقع",
+          "storeSettings": "أوضاع الأعمال التجارية:",
+          "menuListData": "بيانات MenuList",
+          "updatedOn": "تم التحديث {date}",
+          "latest": "أحدث البيانات المتاحة."
+        },
+        "publicTruth": {
+          "title": "المصدر الرسمي للزبائن",
+          "checking": "التحقق من الحساب",
+          "checkingFacts": "يجري التحقق من الحقائق العامة لـ MenuList...",
+          "checkedMenu": "قائمة تم التحقق منها: {name}",
+          "boundary": "تم التحقق من بيانات MenuList الحالية الخاصة بالأعمال وقوائم الطعام. وتظل المنصات الخارجية مؤكدة من قبل المالك.",
+          "boundaryShort": "وتظل المنصات الخارجية مؤكدة من قبل المالك.",
+          "historyTitle": "تاريخ الإعلام العام",
+          "historyBoundary": "لا تستخدم سوى MenuList حقائق الأعمال وقوائم الاختيار. ولا يتم مسح أي مواقع خارجية.",
+          "historyBoundaryShort": "MenuList الحقائق فقط. لم يتم مسح أي مواقع خارجية.",
+          "refreshErrorTitle": "لم يتمكن التحقق من مصدر العميل من تجديد البيانات.",
+          "refreshErrorDescription": "لا تزال آخر MenuList حقائق متاحة مبينة أدناه.",
+          "historyRefreshError": "لم يكن من الممكن تحديث تاريخ الإعلام، ولم يكن بالإمكان تجديده.",
+          "historyLoadError": "تاريخ المعلومات العامة لا يمكن تحميلها.",
+          "historyErrorDescription": "لا يزال التقرير الأخير الذي تم حفظه يظهر عندما يكون متاحًا.",
+          "notRun": "لم يتم تشغيله.",
+          "lastSaved": "آخر مرة تم فيها حفظ {date}",
+          "noSavedReport": "لا توجد تقارير محفوظة حتى الآن",
+          "noSavedReportDescription": "قم بإجراء الفحص لحفظ التقرير الأول لهذا الموقع.",
+          "downloadEnglishReport": "تنزيل التقرير باللغة الإنجليزية",
+          "downloadEnglishShort": "تقرير اللغة الإنجليزية",
+          "runCheck": "سباق التحقق",
+          "currentFix": "البند الحالي من بنود التسوية",
+          "nextFixes": "التصحيحات التالية للمعلومات العامة",
+          "none": "لا أحد",
+          "attentionCount": "{count, plural, one {البند # بحاجة إلى التحقق من صحة.} other {تحتاج بنود # إلى التحقق من صحتها.}}",
+          "readyModuleCount": "جاهز {count}/{total}",
+          "missingCount": "{count} مفقودة.",
+          "checkCount": "تحقق من {count}.",
+          "savedCount": "تم حفظ {count}/{total}",
+          "modulesReady": "النماذج {count}/{total} جاهزة.",
+          "status": {
+            "ready": {
+              "label": "جاهز مستعد.",
+              "message": "يحتوي مصدرك الرسمي لمعلومات العملاء على المعلومات الأساسية التي يحتاجون إليها."
+            },
+            "missing_basics": {
+              "label": "الأساسيات المفقودة",
+              "message": "تحتاج تفاصيل قائمة الطعام أو ساعات العمل أو الأسعار أو التدابير أو روابط الزبائن إلى اهتمام قبل أن يتم تبادلها على نطاق أوسع."
+            },
+            "unclear": {
+              "label": "تحتاج إلى التحقق",
+              "message": "ومعظم الأساسيات موجودة، ولكن لا تزال هناك حاجة إلى التحقق من حقائق عامة واحدة أو أكثر."
+            }
+          },
+          "metrics": {
+            "readyModules": "وحدات جاهزة",
+            "missingFacts": "الحقائق المفقودة:",
+            "checkedMenu": "قائمة الاختيارات المحددة.",
+            "savedReports": "التقارير المحفوظة"
+          },
+          "results": {
+            "present": "جاهز مستعد.",
+            "missing": "مفقود",
+            "unclear": "التحقق",
+            "not_applicable": "لا حاجة إليها.",
+            "not_checked": "لم يتم تحديدها."
+          },
+          "moduleStatus": {
+            "ready": "جاهز مستعد.",
+            "needs_attention": "مفقود",
+            "check": "التحقق",
+            "not_checked": "لم يتم تحديدها."
+          },
+          "facts": {
+            "business_identity": "اسم الأعمال",
+            "menu_or_service_source": "القائمة أو",
+            "prices": "الأسعار",
+            "hours": "ساعات",
+            "location": "الموقع",
+            "contact": "اتصالات الاتصال",
+            "customer_actions": "تصرفات العملاء",
+            "public_link": "رابط القائمة",
+            "photos": "صور فوتوغرافية للصور",
+            "machine_readable_source": "تفاصيل سهلة البحث"
+          },
+          "evidence": {
+            "owner_entered": "في هذا التحقق.",
+            "owner_selected": "يختاره المالك، ويختاره مالك البيت.",
+            "source_text_hint": "عُثر عليها في المصدر المقدم.",
+            "valid_public_url": "تنسيق الارتباط العام صالحة.",
+            "invalid_public_url": "الرابط العام بحاجة إلى تصحيح، ويجب أن يكون صحيحا.",
+            "menulist_store": "تم التحقق من الإعدادات الحالية لعمل MenuList.",
+            "menulist_project": "تم التحقق من القائمة المختارة أو الافتراضية MenuList.",
+            "menulist_summary": "تم التحقق من موجز القائمة الحالية MenuList.",
+            "menulist_public_route": "تم التحقق من إعدادات MenuList الحالية لوصلة العميل.",
+            "menulist_index_gate": "تم التحقق من قواعد الاكتشاف العام الحالية لـ MenuList.",
+            "not_provided": "وهذه الحقيقة مفقودة من البيانات الحالية لـ MenuList.",
+            "not_checked": "ولم يتم التحقق من هذه الحقيقة بأمان من البيانات الحالية لـ MenuList.",
+            "priceNotLoaded": "افتح قائمة الاختيار المختارة مرة واحدة حتى يستطيع MenuList التحقق من أسعارها."
+          },
+          "moduleEvidence": {
+            "ready": "تظهر البيانات الحالية لـ MenuList أن هذه المنطقة جاهزة.",
+            "needs_attention": "تظهر البيانات الحالية لـ MenuList أن المعلومات المطلوبة مفقودة.",
+            "check": "تحقق من هذا المجال قبل أن يعتمد عليه العملاء.",
+            "not_checked": "لم تتمكن MenuList من التحقق بالكامل من هذه المنطقة من البيانات الحالية."
+          },
+          "setupReason": {
+            "needs_attention": "المعلومات المطلوبة الموجهة إلى العميل مفقودة.",
+            "check": "تحقق من هذا قبل أن يعتمد عليه العملاء، فهذا أمر مهم للغاية.",
+            "not_checked": "لم تتمكن MenuList من التحقق تماما من هذا الأمر من البيانات الحالية."
+          },
+          "targetActions": {
+            "basic_settings": "افتح تفاصيل العمل التجاري.",
+            "domain_settings": "افتح رابط العميل.",
+            "hours_edit": "ساعات العمل:",
+            "menu_tab": "افتح القائمة.",
+            "official_page": "افتح صفحة الأعمال التجارية",
+            "presence_monitor": "فتح تحقق من التنسيب مفتوح.",
+            "share_tab": "أدوات المشاركة المفتوحة"
+          },
+          "actions": {
+            "openCustomerSource": "مصادر العملاء المفتوحة",
+            "openShareTools": "أدوات التقاسم المفتوحة",
+            "fixFact": "إصلاح {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "أسس الإعلام:",
+              "description": "اسم الشركة، القائمة الحالية أو مصدر الخدمة، الاتصال، الإجراءات، وصلة العميل."
+            },
+            "business_facts_copy_pack": {
+              "title": "تفاصيل الأعمال التجارية التي يمكن إعادة استخدامها.",
+              "description": "ويمكن للموظفين إعادة استخدام الحقائق الراهنة في التقارير العامة، والردود، وتسليم وصلات العملاء."
+            },
+            "qr_link_health": {
+              "title": "استعداد الوصلة QR",
+              "description": "رابط زبون حالي لـ QR ووضعيات مطبوعة."
+            },
+            "social_bio_link_consistency": {
+              "title": "اتساق الروابط في ملف الشخصية",
+              "description": "رابط زبون واحد حالي للملفات الشخصية الاجتماعية وغيرها من أماكن التوزيع."
+            },
+            "customer_link_preview": {
+              "title": "عرض مسبق لرابط العميل",
+              "description": "الحقائق الرئيسية التي ينبغي للعملاء أن يروا قبل التصرف."
+            },
+            "print_share_assets": {
+              "title": "طباعة وتقاسم الأصول.",
+              "description": "جاهزية الوصلة الحالية للملصقات وبطاقات العد وتقاسم الصور لـ QR."
+            },
+            "menu_service_readability": {
+              "title": "وضوح القائمة أو الخدمات.",
+              "description": "الفئات، الأصناف أو الخدمات، والأسعار في القائمة المختارة."
+            },
+            "price_availability_gap": {
+              "title": "وضوح السعر والتوافر.",
+              "description": "الأسعار، والمتغيرات، وحالة بيع السلع، والتوافر المبين للعملاء."
+            },
+            "menu_pdf_cleanup": {
+              "title": "البديل القديم PDF",
+              "description": "مصدر MenuList الحالي ووصلة العميل التي يمكن أن تحل محل ملفات PDF القديمة."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp العملية",
+              "description": "إجراء واضح WhatsApp أو إجراء بديل للاتصال بالزبائن."
+            },
+            "hours_readiness": {
+              "title": "ساعات الاستعداد",
+              "description": "ساعات عمل منتظمة يمكن للعملاء الاعتماد عليها."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp حقائق الرد",
+              "description": "القائمة الحالية، والساعات، والاتصال، وروابط الحقائق لردود الموظفين."
+            },
+            "photo_visual_identity": {
+              "title": "الصور الفوتوغرافية والهوية البصرية",
+              "description": "شعار أو غلاف أو صورة تجارية أو عناصر بصرية للسلعة والخدمات."
+            },
+            "customer_question_coverage": {
+              "title": "الأسئلة الشائعة للعملاء",
+              "description": "حقائق واضحة للعرض، والساعات، والسعر، والموقع، والاتصال، والإجراء التالي."
+            },
+            "customer_faq_reply_pack": {
+              "title": "إجابات العملاء التي يمكن إعادة استخدامها.",
+              "description": "يمكن للموظفين إعادة استخدام الحقائق الراهنة عندما يطرح الزبائن أسئلة شائعة."
+            },
+            "booking_inquiry_readiness": {
+              "title": "الاستعداد للحجز والاستفسار.",
+              "description": "مسار واضح للطلب أو الحجز أو الاحتفاظ أو الاتصال أو إرسال رسالة أو طلب عرض أسعار أو الزيارة."
+            },
+            "google_profile_handoff": {
+              "title": "رابط ملف Google الشخصية",
+              "description": "وصلة العميل الحالي التي تم إعدادها لـ Google نبذة عن العمل."
+            },
+            "menu_freshness": {
+              "title": "طازجة قائمة الطعام",
+              "description": "تحديث قائمة الاختيارات مؤخراً عندما تتغير الأسعار أو الأصناف أو التوافر."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "الرسوم البيانية",
+        "description": "موجز بصري من نفس النشاط المستقر المبين في لوحة التحكم.",
+        "ranges": {
+          "days7": "7 أيام",
+          "days30": "30 يومًا"
+        },
+        "metrics": {
+          "menu_activity": "القائمة النشاط",
+          "customer_actions": "تصرفات العملاء",
+          "search_demand": "البحث الطلب",
+          "item_interest": "بند المصلحة:",
+          "unavailable_demand": "الطلب غير المتاح",
+          "missing_searches": "عمليات البحث عن المفقودين"
+        },
+        "trend": {
+          "summary": "موجز الاتجاهات",
+          "updatedAfterClose": "يتم تحديث البيانات بعد يوم إغلاق متجرك.",
+          "status": {
+            "up": "أعلى درجة.",
+            "down": "الساق السفلى",
+            "stable": "مستقر",
+            "not_enough_data": "قصة غير كافية"
+          },
+          "period": {
+            "week": "مراجعة أسبوعية للحسابات",
+            "month": "التحقق الشهري من الحساب"
+          },
+          "shortPeriod": {
+            "week": "الأسبوع",
+            "month": "الشهر"
+          },
+          "needsMoreDays": "يحتاج إلى أيام أكثر استقرارا.",
+          "versus": "{current} ضد {previous}",
+          "messages": {
+            "up": "{metric} أعلى من هذا التحقق {period}.",
+            "down": "{metric} أقل من هذا التحقق {period}.",
+            "stable": "{metric} ثابت بالنسبة لهذا التحقق من {period}.",
+            "not_enough_data": "لا يوجد ما يكفي من تاريخ {metric} المحدد لهذا التحقق {period}."
+          },
+          "change": {
+            "gathering": "{period}: يجري تجميع البيانات",
+            "newActivity": "{period}: نشاط جديد",
+            "steady": "{period}: ثابتة",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "جداول مقارنة للمقارنة",
+          "description": "حركة الأسبوع والشهر من الأيام المستقرة."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "اتجاهات القائمة",
+            "days7": "آخر 7 أيام مستقرة.",
+            "days30": "آخر 30 يوما من الأيام المستحقة."
+          },
+          "customerActions": {
+            "title": "تصرفات العملاء",
+            "description": "ما الذي لمسه الزبائن بعد فتح القائمة؟"
+          },
+          "sources": {
+            "title": "من أين جاء الزبائن؟",
+            "description": "قائمة الزيارات وجلسات العمل حسب المصدر"
+          },
+          "items": {
+            "title": "أهم بنود الاهتمام",
+            "description": "معظم البنود التي فتحها أو لمسها العملاء هي بنود مفتوحة."
+          },
+          "search": {
+            "title": "البحث الطلب",
+            "description": "ما الذي يبحث عنه العملاء؟"
+          },
+          "officialPage": {
+            "title": "الصفحة الرسمية الاتجاه",
+            "description": "الآراء والإجراءات من الصفحة الرسمية للأعمال التجارية."
+          }
+        },
+        "legends": {
+          "visits": "زيارة",
+          "actionSessions": "جلسات العمل",
+          "views": "نظرة",
+          "taps": "نقرات",
+          "noResult": "لا نتيجة"
+        },
+        "empty": {
+          "default": "لا توجد بيانات بيانية لهذا العرض بعد.",
+          "menuActivity": "سيتم عرض نشاط القائمة بعد أن يفتح العملاء القائدة.",
+          "customerActions": "ستظهر إجراءات العملاء بعد أن يتصل العملاء أو يرسلون رسالة أو يطلبون أو يحجزون أو يطالبون بالتعليمات.",
+          "customerActionsPeriod": "لم تحدث أي أنشطة للعميل خلال هذه الفترة بعد.",
+          "searchDemand": "سيظهر طلب البحث بعد أن يستخدم العملاء قائمة البحث.",
+          "itemInterest": "سيظهر الاهتمام بالبند بعد أن يفتح الزبائن بنود القائمة.",
+          "unavailableDemand": "سيظهر الطلب غير المتاح عندما يلمس العملاء الأصناف غير المتاحة.",
+          "missingSearches": "وستظهر عمليات البحث المفقودة عندما يبحث العملاء ولكنهم لا يجدون أي تطابق.",
+          "sources": "ستظهر تفاصيل المصدر بعد وصول العملاء من الروابط، أو QR، أو صفحات التواصل الاجتماعي.",
+          "officialPage": "سيظهر نشاط الصفحة الرسمية بعد أن يفتح العملاء صفحة العمل العامة."
+        },
+        "footer": {
+          "sameData": "نفس بيانات لوحة القياس.",
+          "noExtraTracking": "لا توجد متابعة إضافية",
+          "settledAfterClose": "تسوى بعد نهاية يوم العمل في المتجر."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "قائمة الاختيارات",
+          "viewsLabel": "طرق عرض القائمة",
+          "viewsTooltip": "عدد المرات التي فتح فيها العملاء قائمة الوجبات الخاصة بك.",
+          "thisMonthLabel": "قائمة طعامك لهذا الشهر"
+        },
+        "product": {
+          "singular": "فهرس المنتجات",
+          "viewsLabel": "مشاهدات الكتالوج",
+          "viewsTooltip": "عدد المرات التي فتح فيها العملاء كتالوجك.",
+          "thisMonthLabel": "فهرسك هذا الشهر"
+        },
+        "service": {
+          "singular": "قائمة الخدمات",
+          "viewsLabel": "رؤى قوائم الخدمات",
+          "viewsTooltip": "عدد المرات التي فتح فيها العملاء قائمة خدماتك",
+          "thisMonthLabel": "قائمة خدماتك لهذا الشهر"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "يحتاج إلى اهتمام",
+          "active": "مصدر العميل الرسمي هو نشط.",
+          "readyToPlace": "مصدر العميل الرسمي مستعد لوضع العلامة التجارية."
+        },
+        "description": {
+          "needsAttention": "أصلح القائمة أو ساعات العمل أو رابط العميل قبل تقاسمها على نطاق واسع.",
+          "active": "لا حاجة إلى اتخاذ أي إجراء. يمكن للعملاء استخدام تفاصيلك العامة الحالية من مصدر واحد. ولا يحتاجون إلى القيام بأي شيء آخر.",
+          "readyToPlace": "وصلة العميل جاهزة. أضفها إلى Google، أو Instagram أو WhatsApp ، أو QR, أو طبعها حتى يستخدم العملاء المصدر الحالي."
+        },
+        "link": {
+          "ready": "وصلة العميل جاهزة.",
+          "missing": "رابط العميل مفقود."
+        },
+        "states": {
+          "set": "تم الضبط",
+          "missing": "مفقود",
+          "ready": "جاهز مستعد.",
+          "notReady": "ليس مستعدا.",
+          "live": "مباشر",
+          "hidden": "مخفي خفية"
+        },
+        "tags": {
+          "menu": "القائمة: {status}",
+          "hours": "الساعات: {status}",
+          "customerLink": "رابط العميل: {status}",
+          "link": "رابط: {status}",
+          "placed": "تم وضعه: {count}/{total}"
+        },
+        "actions": {
+          "fix": "أصلح ما يحتاج إلى الاهتمام.",
+          "preview": "استعراض قائمة الاختيار العامة.",
+          "share": "مشاركة القائمة"
+        },
+        "updated": {
+          "notUpdated": "لم يتم تحديثه بعد.",
+          "recently": "تم تحديثه مؤخرا.",
+          "today": "تم التحديث اليوم",
+          "yesterday": "استكمل بالأمس.",
+          "daysAgo": "تم تحديث {count, plural, one {منذ # يوماً مضت} other {منذ # يوماً مضت}}."
+        }
+      },
+      "ownerActions": {
+        "title": "الإجراء التالي الذي يتخذه المالك:",
+        "open": "فتح",
+        "placement": {
+          "notConfirmed": "لم يتأكد بعد.",
+          "today": "تأكيد اليوم",
+          "yesterday": "تأكيد أمس",
+          "daysAgo": "تم تأكيد {count, plural, one {منذ # يوماً مضت} other {منذ # يوماً مضت}}"
+        },
+        "status": {
+          "ready": "جاهز مستعد.",
+          "missing": "مفقود",
+          "set": "تم الضبط",
+          "live": "مباشر",
+          "notLive": "لا تعيش",
+          "confirmedCount": "أكد {count}/{total}",
+          "on": "تشغيل",
+          "off": "إيقاف",
+          "dailyChanges": "التغييرات اليومية",
+          "hoursException": "ساعات استثنائية.",
+          "staffUse": "استخدام الموظفين",
+          "menuPrices": "أسعار قوائم الطعام",
+          "openCount": "{count, plural, one {# فتح باب التقاضي.} other {تفتح إجراءات # العمليات.}}",
+          "stable": "مستقر"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "حدد رابط العميل.",
+            "description": "إنشاء رابط العميل قبل تقاسم QR، أو ردود الموظفين، أو اللمحات العامة."
+          },
+          "setHours": {
+            "label": "تحديد ساعات العمل.",
+            "description": "الحفاظ على الحالة العامة المفتوحة والمغلقة واضحة قبل زيارة العملاء."
+          },
+          "publishMenu": {
+            "labelPublish": "نشر القائمة",
+            "labelOpen": "افتح القائمة.",
+            "descriptionVisible": "نشر القائمة الحالية قبل تقاسمها على نطاق واسع.",
+            "descriptionHidden": "جعل القائمة مرئية قبل أن يستخدم العملاء الرابط."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "أكد وضع الرابط.",
+            "labelPlace": "ضع رابط العميل.",
+            "descriptionPlaced": "اجعل Google وInstagram، وWhatsApp تشير إلى نفس المصدر.",
+            "descriptionUnplaced": "أضف نفس رابط العميل إلى Google، وInstagram وWhatsApp ، وQR ثم طبع."
+          },
+          "openPrivateFeedback": {
+            "label": "يرجى إبداء تعليقاتكم الخاصة المفتوحة.",
+            "description": "استخدم ردود الفعل الخاصة قبل أن تتحول قضايا الضيوف إلى مراجعات عامة."
+          },
+          "captureDailyChange": {
+            "label": "أخبر MenuList ما الذي تغير.",
+            "description": "أخبر MenuList بما تغير اليوم واعتمد بطاقة القائمة المعدة."
+          },
+          "setTodayStatus": {
+            "label": "حدد حالة اليوم.",
+            "description": "المطبخ مغلق اليوم، أو يفتح في وقت متأخر، أو مطبخ مغلول، أو إشعار بقائمة الوجبات الخاصة."
+          },
+          "prepareStaffHandoff": {
+            "label": "إعداد تسليم الموظفين",
+            "description": "أعط الموظفين رابط القائمة، QR، وخطوط ردود العملاء من مكان واحد."
+          },
+          "updatePrices": {
+            "label": "تحديث الأسعار",
+            "description": "استخدم مدير القائمة لتغيير الأسعار، ثم الموافقة قبل نشرها."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "إعداد القائمة",
+        "complete": "اكتملت عملية إنشاء القائمة.",
+        "ready": "إن إعداد القائمة جاهز.",
+        "actions": {
+          "openMenu": "افتح القائمة.",
+          "createMenu": "إنشاء قائمة",
+          "reviewDetails": "مراجعة التفاصيل",
+          "publishMenu": "نشر القائمة",
+          "openSharingTools": "أدوات التقاسم المفتوحة",
+          "prepareDescriptions": "إعداد الأوصاف.",
+          "addImages": "أضف صوراً.",
+          "reviewLanguageText": "استعراض النص باللغة التي تم بها.",
+          "openMenuCheck": "فحص القائمة مفتوحة",
+          "updatePublicLinks": "تحديث الروابط العامة.",
+          "addPublicPhoto": "أضف صورة عامة."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "مصدر إضافي",
+            "doneDescription": "تم توصيل مصدر القائمة.",
+            "nextDescription": "أضف صورة لقائمة، PDF، وصلة، أو ابدأ يدويا."
+          },
+          "menuImported": {
+            "label": "القائمة المستوردة",
+            "doneDescription": "{count, plural, one {عُثر على عنصر مرئي #.} other {عُثر على # من البنود المرئية.}}",
+            "nextDescription": "إدخال أو إضافة عناصر القائمة."
+          },
+          "keyDetailsChecked": {
+            "label": "التفاصيل الرئيسية التي تم التحقق منها",
+            "doneDescription": "الأسعار وتفاصيل القوائم الرئيسية واضحة، والأسعار واضحة أيضاً.",
+            "nextDescription": "تحقق من الأسعار والتفاصيل الرئيسية قبل النشر."
+          },
+          "menuPublished": {
+            "label": "نُشرت قائمة الطعام.",
+            "doneDescription": "وقد نشرت قائمة الطعام العامة، كما تم نشر القائمة العامة للمطاعم.",
+            "nextDescription": "نشر عندما يكون القائمة جاهزة للعملاء."
+          },
+          "linkPlaced": {
+            "label": "تم وضع الرابط.",
+            "readyLabel": "وصلة جاهزة.",
+            "doneDescription": "وصلة التسجيل الرسمية جاهزة للعملاء، وهناك رابط مباشر إلى موقعنا.",
+            "progressDescription": "تم إنجاز {count} من {total} إجراءات وضع.",
+            "nextDescription": "افتح أدوات المشاركة عند نشر القائمة."
+          },
+          "descriptionsReady": {
+            "label": "الأوصاف جاهزة.",
+            "doneDescription": "وللبنود المرئية أوصاف.",
+            "nextDescription": "إعداد وصفات للحصول على عناصر القائمة أكثر وضوحا."
+          },
+          "imagesReady": {
+            "label": "الصور جاهزة.",
+            "doneDescription": "تحتوي البنود المرئية على صور.",
+            "nextDescription": "أضف أو أنتج صوراً للبند عندما يكون ذلك مفيداً."
+          },
+          "translationsReady": {
+            "label": "الترجمات جاهزة.",
+            "doneDescription": "اكتملت لغات القوائم المختارة.",
+            "nextDescription": "استعراض لغات القائمة المختارة."
+          },
+          "publicLinksAdded": {
+            "label": "أضيفت روابط عامة.",
+            "doneDescription": "وتتوافر الإجراءات العامة أو الروابط الاجتماعية، كما أن هناك إمكانية للعمل العام.",
+            "nextDescription": "إضافة روابط عامة مفيدة إلى صفحة الأعمال."
+          },
+          "publicPhotoAdded": {
+            "label": "أضيفت صورة عامة.",
+            "doneDescription": "صورة عامة متاحة.",
+            "nextDescription": "أضف غلافاً أو شعاراً أو صورة عامة عندما تكون مستعداً."
+          }
+        }
       }
     }
   },
@@ -3418,37 +4292,125 @@
   },
   "Website": {
     "Header": {
-      "howItWorks": "كيف يعمل",
-      "features": "المميزات",
+      "howItWorks": "طريقة العمل",
+      "demo": "عرض توضيحي",
+      "features": "الميزات",
+      "featuresMenuAria": "فتح ميزات MenuList",
+      "featuresMenuTitle": "ميزات MenuList",
+      "featureOverviewTitle": "نظرة عامة على الميزات",
+      "featureOverviewDesc": "تعرف على ما يمكن أن يفعله MenuList لشركتك.",
+      "featureProofTitle": "ابدأ بقائمة واحدة معتمدة",
+      "featureProofDesc": "تحافظ هذه الميزات على توجيه رابط العملاء ورمز QR والصفحة والمواد المطبوعة إلى أحدث قائمة معتمدة.",
+      "featureProofCta": "إنشاء رابط للعملاء",
+      "featureMenuImport": "استيراد القائمة",
+      "featureMenuImportDesc": "ابدأ من القائمة أو قائمة الخدمات المتوفرة لديك بالفعل.",
+      "featureMenuContentPrep": "إعداد محتوى القائمة",
+      "featureMenuContentPrepDesc": "تجهيز الأوصاف والصور واللغات لمراجعتها.",
+      "featureMenuQualityValidation": "التحقق من جودة القائمة",
+      "featureMenuQualityValidationDesc": "اكتشف أخطاء الأسعار والنواقص ومشكلات الجاهزية قبل النشر.",
+      "featureFeaturedChoices": "اختيارات مميزة",
+      "featureFeaturedChoicesDesc": "قم بتوجيه العملاء إلى الخيارات الشائعة والسريعة والقيمة.",
+      "featureOfficialBusinessPage": "صفحة النشاط التجاري الرسمية",
+      "featureOfficialBusinessPageDesc": "رابط واحد للعملاء يعرض معلومات نشاطك التجاري.",
+      "featureQrMenuLinks": "قائمة QR والروابط",
+      "featureQrMenuLinksDesc": "مشاركة القائمة المعتمدة الحالية في كل مكان.",
+      "featurePrintReadyKit": "حزمة جاهزة للطباعة",
+      "featurePrintReadyKitDesc": "القوالب والمحرر وQR وملفات الطابعة.",
+      "featureOwnerPhoneDashboard": "لوحة تحكم المالك على الهاتف",
+      "featureOwnerPhoneDashboardDesc": "إدارة عمل القائمة اليومية من هاتفك.",
+      "featureAnalytics": "عرض النشاط",
+      "featureAnalyticsDesc": "اطلع على الزيارات وفتحات QR وعمليات البحث وإجراءات العملاء.",
+      "featureBusinessHealth": "حالة النشاط التجاري",
+      "featureBusinessHealthDesc": "انظر ما يحتاج إلى الاهتمام اليوم.",
+      "featureCustomerFeedbackLoop": "ملاحظات العملاء",
+      "featureCustomerFeedbackLoopDesc": "بلاغات خاصة عن المشكلات من الصفحات العامة.",
+      "featurePublicDiscovery": "سهولة العثور على نشاطك",
+      "featurePublicDiscoveryDesc": "اجعل صفحتك العامة أسهل للعملاء في العثور عليها وقراءتها.",
+      "resources": "موارد",
+      "resourcesMenuAria": "فتح موارد MenuList",
+      "resourcesMenuTitle": "موارد MenuList",
+      "resourceToolsHub": "أدوات MenuList",
+      "resourceMenuEngineering": "هندسة القائمة",
+      "resourceQrMenuGuide": "دليل قائمة QR",
+      "resourceDigitalVsPdf": "القائمة الرقمية مقارنة بملف PDF",
+      "resourceGoogleMenuGuide": "دليل القائمة على Google",
+      "resourceRestaurantMenuSeo": "تحسين ظهور قائمة المطعم في البحث",
+      "resourceAiSearchDiscovery": "البحث بالـ AI واكتشاف القائمة",
+      "resourceOfficialMenuSource": "الرابط الرسمي للعملاء",
+      "resourceAllResources": "جميع الموارد",
       "pricing": "الأسعار",
-      "multiLocation": "مواقع متعددة",
+      "multiLocation": "متعدد المواقع",
       "login": "تسجيل الدخول",
-      "cta": "ارفع قائمتك →",
+      "dashboard": "لوحة التحكم",
+      "logout": "تسجيل الخروج",
+      "cta": "ابدأ معاينة القائمة",
+      "ctaAria": "ابدأ معاينة MenuList الخاصة بك",
       "openMenu": "فتح قائمة التنقل",
       "closeMenu": "إغلاق القائمة",
+      "featureGroupStart": "ابدأ",
+      "featureGroupPublish": "انشر",
+      "featureGroupOperate": "أدِر",
       "aiMenuManager": "AI Menu Manager",
       "featureAiMenuManager": "AI Menu Manager",
-      "featureAiMenuManagerDesc": "Update your menu by message, with approval cards.",
-      "featureBusinessHealth": "Business Health",
-      "featureBusinessHealthDesc": "AI health check for your menu."
+      "featureAiMenuManagerDesc": "قم بتحديث قائمتك عن طريق الرسالة، مع بطاقات الموافقة."
     },
     "Footer": {
-      "tagline": "حيث تعيش قائمتك.",
+      "tagline": "رابط عميل واحد معتمد لقائمة طعامك وخدماتك وتفاصيل عملك.",
+      "sourceLine": "يحافظ MenuList على قائمتك المعتمدة خلف كل رابط ورمز QR ومادة مطبوعة يستخدمها العملاء.",
+      "ctaEyebrow": "نحن جاهزون عندما تصبح قائمتك جاهزة",
+      "ctaTitle": "انشر رابطًا موثوقًا لعملائك.",
+      "ctaBody": "ابدأ من القائمة أو قائمة الأسعار أو الكتالوج أو قائمة الخدمات الموجودة لديك بالفعل. يقوم MenuList بإعداد النسخة الموجهة للعملاء ويحتفظ بالروابط والمواد المحيطة بها.",
+      "ctaPrimary": "إنشاء رابط للعملاء →",
+      "ctaSecondary": "عرض الخطط",
+      "proofLabel": "أدلة الثقة في MenuList",
+      "proof0Title": "موافقة المالك قبل النشر",
+      "proof0Desc": "يجب أن تأتي القائمة العامة أو قائمة الخدمات من الشركة، وليس من ملفات PDF القديمة أو لقطات الشاشة المتناثرة.",
+      "proof1Title": "قائمة واحدة معتمدة",
+      "proof1Desc": "يستمر العملاء في الوصول إلى الإصدار الحالي بدلاً من ملفات PDF القديمة أو لقطات الشاشة أو الروابط المتفرقة.",
+      "proof2Title": "بسيط لموقع واحد، وجاهز لمواقع متعددة.",
+      "proof2Desc": "ابدأ بعمل واحد. اجعل الهيكل جاهزًا للمواقع والحوكمة والاتساق العام.",
       "productHeading": "المنتج",
-      "legalHeading": "قانوني",
+      "sourceHeading": "ابدأ",
+      "resourcesHeading": "الموارد",
+      "legalHeading": "المعلومات القانونية",
+      "navigationLabel": "روابط تذييل الصفحة",
       "howItWorks": "كيف يعمل",
-      "features": "المميزات",
-      "multiLocation": "مواقع متعددة",
+      "features": "الميزات",
+      "multiLocation": "متعدد المواقع",
       "pricing": "الأسعار",
+      "publicProof": "إثبات عام",
+      "officialPage": "صفحة النشاط التجاري الرسمية",
+      "toolsHub": "أدوات MenuList",
+      "getStarted": "إنشاء رابط للعملاء",
       "about": "من نحن",
       "privacyPolicy": "سياسة الخصوصية",
       "termsOfService": "شروط الخدمة",
-      "refundPolicy": "سياسة الاسترداد",
-      "trustSecurity": "الثقة والأمان",
-      "contact": "اتصل بنا",
+      "refundPolicy": "سياسة استرداد الأموال",
+      "trustSecurity": "الثقة والأمن",
+      "contact": "تواصل معنا",
+      "resourcesHub": "كل الموارد",
+      "menuSourceAudit": "تدقيق رابط القائمة",
+      "menuEngineering": "هندسة القائمة",
+      "qrMenuForRestaurants": "قائمة QR للمطاعم",
+      "digitalMenuVsPdf": "القائمة الرقمية مقارنة بملف PDF",
+      "googleBusinessProfileMenu": "قائمة ملف النشاط التجاري على Google",
+      "restaurantMenuSeo": "تحسين محركات البحث لقائمة المطاعم",
+      "aiSearchDiscovery": "البحث بالـ AI واكتشاف القائمة",
+      "officialMenuSource": "رابط العميل الرسمي",
+      "faq": "FAQ",
+      "googleMenuSource": "رابط القائمة على Google",
+      "qrPlacement": "أماكن وضع رمز QR",
+      "menuUpdateChecklist": "قائمة التحقق من تحديث القائمة",
       "copyright": "© {year} MenuList. صُنع في الهند.",
-      "bottomTagline": "صفحات القائمة الرسمية. مصممة ليتم العثور عليها.",
-      "aiMenuManager": "AI Menu Manager"
+      "bottomTagline": "رابط عام واحد يسهل على العملاء العثور عليه.",
+      "preferencesLabel": "تفضيلات الموقع",
+      "languagePreference": "اللغة",
+      "themePreference": "المظهر",
+      "socialLabel": "روابط MenuList على الشبكات الاجتماعية",
+      "homeAria": "الصفحة الرئيسية لـ MenuList",
+      "scrollToTop": "العودة إلى الأعلى",
+      "aiMenuManager": "AI Menu Manager",
+      "aiSummaryLabel": "احصل على ملخص عن MenuList باستخدام AI:"
     },
     "Hero": {
       "titlePart1": "ارفع قائمتك.",
@@ -3630,6 +4592,7 @@
       "pipelinePdf": "PDF",
       "pipelineLink": "رابط موجود",
       "pipelineText": "نص",
+      "pipelineServiceListLink": "رابط قائمة الخدمات",
       "pipelineInputLabel": "ابدأ بـ",
       "pipelinePrepares": "MenuList يُجهز",
       "pipelinePublished": "✓ تم النشر",
@@ -3980,7 +4943,7 @@
       "successAnother": "إرسال رسالة أخرى"
     },
     "LanguageSwitcher": {
-      "label": "اللغة"
+      "label": "لغة"
     },
     "Pricing": {
       "proof2": "Approval-based. Owner-approved.",
@@ -4194,6 +5157,207 @@
       "finalHighlight": "before customers notice.",
       "finalSubtitle": "Business Health gives MenuList an AI-era diagnostic hook without making the product autonomous: it checks, explains, and hands fixes to approved flows.",
       "finalLink": "Back to all features"
+    },
+    "CreateMenu": {
+      "title": "قم بإنشاء رابط العميل الرسمي الخاص بك",
+      "titleHighlight": "رابط العميل الرسمي",
+      "subtitle": "قم بتسجيل الدخول، وأضف قائمة، أو كتالوج، أو قائمة أسعار، أو صورة لقائمة الخدمات، أو ملف PDF، أو رابط القائمة العامة المملوكة، وقم بمراجعة الإصدار المُجهز الذي يواجه العملاء قبل نشر أي شيء للعامة.",
+      "authTitle": "قم بتسجيل الدخول لبدء الرابط الرسمي الخاص بك",
+      "authHint": "يؤدي هذا إلى إبقاء قائمة الأعمال والمعاينة والرابط العام متصلاً بحسابك.",
+      "authChecking": "جارٍ التحقق من تسجيل الدخول المحفوظ...",
+      "authStepsLabel": "إنشاء خطوات ربط العميل",
+      "authStep0Title": "تسجيل الدخول",
+      "authStep0Desc": "قم بتوصيل المعاينة بحساب عملك.",
+      "authStep1Title": "أضف قائمتك الحالية",
+      "authStep1Desc": "استخدم صورة أو ملف PDF أو رابطًا عامًا مملوكًا أو كتالوجًا أو قائمة أسعار أو قائمة خدمات.",
+      "authStep2Title": "المراجعة قبل النشر",
+      "authStep2Desc": "لا شيء يصبح عامًا حتى تتحقق من الإصدار الذي يواجه العميل.",
+      "authSupportedLabel": "المدخلات المدعومة",
+      "authSupportedInputs": "صورة أو لقطة شاشة أو PDF أو كتالوج أو قائمة أسعار أو قائمة خدمات أو رابط القائمة العامة المملوكة.",
+      "authTrustLine": "لن يتم نشر أي شيء للعامة حتى تقوم بمراجعته.",
+      "authCta": "تسجيل الدخول والمتابعة",
+      "phoneLabel": "رقم هاتف WhatsApp",
+      "phonePlaceholder": "98765 43210",
+      "whatsAppCodeCta": "أرسل رمز WhatsApp",
+      "authDivider": "أو",
+      "googleCta": "تابع مع Google",
+      "otpCodeLabel": "رمز التحقق",
+      "otpCodePlaceholder": "رمز مكون من 6 أرقام",
+      "otpCodeSent": "تم إرسال الرمز إلى {phone}.",
+      "otpVerifyCta": "التحقق والمتابعة",
+      "otpChangeNumber": "تغيير الرقم",
+      "otpResend": "إعادة إرسال الرمز",
+      "otpResendIn": "أعد الإرسال بعد {seconds} ثانية",
+      "otpSuccess": "تم التحقق من الهاتف. فتح حسابك...",
+      "inputModeLabel": "اختر كيفية بدء رابط العميل الرسمي الخاص بك",
+      "inputPhotoTab": "تحميل الملف",
+      "inputLinkTab": "استخدم الرابط الموجود",
+      "uploadTitle": "قم بتحميل القائمة أو قائمة الخدمات التي يراها العملاء بالفعل",
+      "uploadHint": "التقط صورة أو اختر قائمة واضحة أو كتالوج أو قائمة أسعار أو قائمة خدمات بتنسيق PDF أو صورة",
+      "uploadFormatHint": "JPG أو PNG أو WebP أو PDF حتى {maxFileMb} ميغابايت و{maxPages} من الصفحات",
+      "linkTitle": "ابدأ من رابط القائمة العامة الذي تستخدمه بالفعل",
+      "linkHint": "قم بلصق قائمة عامة أو كتالوج أو قائمة أسعار أو قائمة خدمات أو ملف PDF أو رابط الصورة الذي يشاركه عملك بالفعل.",
+      "linkInputLabel": "رابط القائمة العامة",
+      "linkPlaceholder": "https://yourbusiness.com/menu-or-services",
+      "linkPermission": "أؤكد أن هذه هي قائمة أعمالي، أو الكتالوج، أو قائمة الأسعار، أو قائمة الخدمات، أو أنني أملك الإذن باستيرادها.",
+      "linkSubmit": "إعداد معاينة الرابط",
+      "accountUploadTitle": "تحميل القائمة العامة الحالية",
+      "accountUploadHint": "التقط صورة أو اختر قائمة واضحة أو كتالوج أو قائمة أسعار أو قائمة خدمات بتنسيق PDF أو صورة",
+      "preparing": "جارٍ تحضير ملفك...",
+      "uploading": "جارٍ التحميل...",
+      "readingLink": "جارٍ قراءة رابط القائمة العامة...",
+      "redirecting": "جارٍ إعادة التوجيه إلى المعاينة...",
+      "tryAgain": "حاول ثانية",
+      "proof0": "تم ربط الحساب قبل التحميل",
+      "proof1": "مراجعة المالك قبل النشر",
+      "proof2": "يعمل مع القوائم والكتالوجات وقوائم الأسعار وقوائم الخدمات",
+      "howTitle": "من القائمة الحالية إلى رابط العميل",
+      "step0Title": "أضف القائمة التي يراها العملاء بالفعل",
+      "step0Desc": "قم بتحميل صورة أو ملف PDF، أو الصق قائمة مملوكة أو كتالوج أو قائمة أسعار أو رابط قائمة الخدمات بعد تسجيل الدخول.",
+      "step1Title": "قم بمراجعة الإصدار الذي يواجه العميل",
+      "step1Desc": "يقوم MenuList بإعداد النسخة المنظمة، لكن المالك يتحقق منها قبل أن تصبح عامة.",
+      "step2Title": "نشر الرابط الرسمي",
+      "step2Desc": "استخدم نفس الرابط المعتمد لملفات تعريف QR وWhatsApp وGoogle والطباعة وإجراءات العملاء عندما تكون مستعدًا.",
+      "disabledTitle": "قم بتحميل القائمة الخاصة بك أو قائمة الخدمات",
+      "disabledHighlight": "تحميل",
+      "disabledBody": "جارٍ إعداد مسار التحميل هذا. ابدأ من الإعداد الموجه في الوقت الحالي.",
+      "previewDisabledTitle": "جارٍ إعداد معاينة القائمة",
+      "previewDisabledHighlight": "معاينة القائمة",
+      "previewDisabledBody": "ابدأ من الإعداد الموجه في الوقت الحالي.",
+      "previewSignupCta": "حفظ والمتابعة",
+      "previewSignupCaption": "المعاينة جاهزة. قم بتسجيل الدخول لحفظه والمتابعة.",
+      "previewClaimCta": "إنشاء الرابط الرسمي",
+      "previewClaiming": "إنشاء رابط العميل الرسمي الخاص بك...",
+      "invalidType": "يرجى تحميل ملف JPEG، PNG، WebP، أو PDF.",
+      "invalidLink": "أدخل رابط القائمة العامة وأكد أن لديك الإذن باستيراده.",
+      "fileTooLarge": "استخدم ملفًا يصل حجمه إلى 10 ميجا بايت وملف PDF يصل إلى 15 صفحة.",
+      "uploadLimit": "لقد وصلت إلى الحد الأقصى للتحميل. يرجى المحاولة مرة أخرى خلال 24 ساعة.",
+      "uploadFailed": "فشل التحميل. يرجى المحاولة مرة أخرى.",
+      "linkFailed": "لم نتمكن من قراءة رابط القائمة العامة هذا. قم بتحميل صورة أو ملف PDF، أو جرب رابط قائمة عامة آخر.",
+      "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "previewLoading": "جارٍ تحميل المعاينة...",
+      "previewReadingTitle": "قراءة قائمتك...",
+      "previewReadingSubtitle": "قد يستغرق هذا لحظة قصيرة.",
+      "previewErrorExpired": "انتهت صلاحية المسودة.",
+      "previewErrorNotFound": "لم يتم العثور على المسودة.",
+      "previewErrorLoadFailed": "فشل تحميل المعاينة.",
+      "previewErrorConnection": "خطأ في الاتصال.",
+      "previewExpiredTitle": "انتهت صلاحية المسودة",
+      "previewExpiredBody": "انتهت صلاحية هذه المسودة. قم بتحميل قائمتك الحالية مرة أخرى لإنشاء مراجعة جديدة.",
+      "previewUploadCta": "تحميل القائمة",
+      "previewFailedTitle": "لا يمكن قراءة قائمتك",
+      "previewFailedFallback": "يرجى المحاولة مرة أخرى باستخدام صورة أوضح أو ملف PDF أو رابط القائمة العامة.",
+      "previewReadyForReview": "جاهز للمراجعة",
+      "previewDefaultMenuSource": "قائمتك",
+      "previewNoItems": "لم يتم استخراج أي عناصر. حاول تحميل صورة أو ملف PDF أكثر وضوحًا.",
+      "previewStatsCategories": "فئات",
+      "previewStatsItems": "العناصر",
+      "previewBusinessNamePlaceholder": "اسم عملك",
+      "previewCityPlaceholder": "المدينة أو المنطقة",
+      "previewPhonePlaceholder": "رقم الهاتف العام أو رقم WhatsApp",
+      "previewAddressPlaceholder": "العنوان (اختياري)",
+      "previewClaimBusinessNameRequired": "الرجاء إدخال اسم عملك (حرفين على الأقل).",
+      "previewClaimCityRequired": "الرجاء إدخال مدينتك أو منطقتك.",
+      "previewClaimFailed": "فشل النشر. يرجى المحاولة مرة أخرى.",
+      "previewDetailMenuName": "اسم القائمة",
+      "previewDetailPhone": "هاتف",
+      "previewDetailAddress": "عنوان",
+      "previewDetailCurrency": "عملة",
+      "previewDetailBrandColor": "لون العلامة التجارية",
+      "previewDetailImageBackground": "خلفية الصورة",
+      "previewTagNonVeg": "غير نباتي",
+      "previewTagGlutenFree": "خالي من الغلوتين",
+      "previewTagDairyFree": "خالي من منتجات الألبان",
+      "previewTagKeto": "كيتو",
+      "previewTagVegetarian": "نباتي",
+      "previewTagVegan": "نباتي صرف",
+      "previewTagHalal": "حلال",
+      "previewTagKosher": "كوشير",
+      "previewTagOrganic": "عضوي"
+    },
+    "CreateMenuPreview": {
+      "eyebrow": "جرب قائمتك الحالية",
+      "title": "انظر القائمة الخاصة بك كرابط العميل.",
+      "highlight": "رابط العميل",
+      "subtitle": "ابدأ بصورة أو رابط القائمة العامة. يقوم MenuList بإعداد نسخة خاصة لك للتحقق منها.",
+      "sourceLabel": "طرق لبدء معاينة MenuList",
+      "photoTitle": "التقط صورة أو قم بتحميلها",
+      "photoBody": "استخدم القائمة أو قائمة الخدمات التي يراها العملاء بالفعل.",
+      "linkTitle": "الصق الرابط العام الحالي الخاص بك",
+      "linkBody": "استخدم القائمة أو الكتالوج أو قائمة الأسعار أو قائمة الخدمات أو الصورة أو رابط PDF الذي تتحكم فيه.",
+      "previewLabel": "معاينة خاصة",
+      "previewUrl": "your-business.menulist.online",
+      "previewStatus": "ليس علنيا بعد",
+      "previewTitle": "قائمة جاهزة للعملاء",
+      "sampleLabel": "مثال على إخراج المعاينة الخاصة",
+      "photoPreviewKicker": "بدءا من الصورة",
+      "photoPreviewTitle": "تصبح الصورة معاينة خاصة",
+      "photoSample0": "يتم إعداد الأقسام من القائمة المرئية",
+      "photoSample1": "تبقى الأسعار مرتبطة بالعناصر الصحيحة",
+      "photoSample2": "تتم مراجعة المالك قبل نشر الرابط للعامة",
+      "linkPreviewKicker": "بدءًا من الرابط الحالي الخاص بك",
+      "linkPreviewTitle": "يصبح الرابط الخاص بك معاينة خاصة",
+      "linkSample0": "يقرأ MenuList القائمة العامة بعد تسجيل الدخول",
+      "linkSample1": "تم إعداد العناصر والأسعار لتتمكن من التحقق منها",
+      "linkSample2": "لا شيء يصبح عامًا حتى توافق عليه",
+      "previewStep0": "تتم إضافة القائمة الخاصة بك بعد تسجيل الدخول",
+      "previewStep1": "تم إعداد العناصر لك للتحقق",
+      "previewStep2": "أنت توافق على رابط العميل",
+      "trust0": "خاص حتى توافق عليه",
+      "trust1": "لا شيء ينشر تلقائيا",
+      "trust2": "تم الاحتفاظ بالمعاينة لمدة 24 ساعة",
+      "cta": "ابدأ معاينة القائمة",
+      "note": "قم بتسجيل الدخول أولاً حتى تظل المعاينة الخاصة بك خاصة."
+    },
+    "CreateMenuSuccess": {
+      "defaultBusinessName": "نشاطك التجاري",
+      "title": "قائمة الطعام الخاصة بك متاحة على الإنترنت.",
+      "titleHighlight": "متاحة على الإنترنت",
+      "liveSubtitle": "يمكن للعملاء الآن فتح قائمة الطعام الخاصة بـ {businessName} من هذا الرابط.",
+      "pendingSubtitle": "انتقل إلى MenuList للتحقق من حالة قائمة الطعام.",
+      "linkLabel": "رابط قائمة الطعام العامة",
+      "officialPageLabel": "صفحة النشاط التجاري",
+      "copied": "تم نسخ الرابط",
+      "copyLink": "نسخ الرابط",
+      "copyFailed": "تعذر نسخ الرابط. حاول مرة أخرى.",
+      "whatsAppCta": "المشاركة عبر WhatsApp",
+      "whatsAppFailed": "تعذر فتح WhatsApp. حاول مرة أخرى.",
+      "whatsAppMessage": "هذه قائمة الطعام الحالية لدينا: {menuUrl}",
+      "qrTitle": "رمز QR الخاص بك لن يتغير",
+      "qrBody": "استخدم هذا الرابط في رمز QR وعند مشاركة قائمة الطعام. سيبقى كما هو بعد اختيار خطة.",
+      "keepLiveTitle": "أبقِ قائمة الطعام متاحة على الإنترنت",
+      "keepLiveBody": "قائمة الطعام هذه متاحة على الإنترنت لمدة 7 أيام. اختر خطة لإبقاء رابط العملاء هذا متاحًا بعد الإعداد.",
+      "keepLiveCta": "أبقِ قائمة الطعام متاحة على الإنترنت",
+      "mapsTitle": "شارك الرابط في الأماكن التي يبحث فيها العملاء",
+      "mapsBody": "أضف رابط قائمة الطعام إلى ملفك التجاري على Google وWhatsApp وInstagram ومواد التغليف وغيرها من الأماكن التي يراجعها العملاء.",
+      "dashboardCta": "المتابعة إلى MenuList",
+      "pendingTitle": "رابط قائمة الطعام غير جاهز بعد.",
+      "pendingTitleHighlight": "غير جاهز بعد"
+    },
+    "AnalyticsConsent": {
+      "panelAria": "تفضيل خصوصية التحليلات",
+      "title": "خصوصية التحليلات",
+      "body": "التحليلات اختيارية. تعمل مساحة التخزين الأساسية دائمًا.",
+      "accept": "حسنًا",
+      "decline": "رفض",
+      "learnMore": "الخصوصية",
+      "close": "إغلاق لوحة خصوصية التحليلات",
+      "currentAccepted": "الخيار الحالي: تم قبول التحليلات.",
+      "currentDeclined": "الخيار الحالي: التخزين الأساسي فقط.",
+      "preferenceButton": "التحليلات",
+      "preferenceButtonAria": "تغيير تفضيل خصوصية التحليلات"
+    },
+    "ThemeSwitcher": {
+      "label": "المظهر",
+      "light": "فاتح",
+      "system": "حسب النظام",
+      "dark": "داكن",
+      "lightAria": "استخدام المظهر الفاتح",
+      "systemAria": "استخدام مظهر النظام",
+      "darkAria": "استخدام المظهر الداكن"
+    },
+    "Accessibility": {
+      "skipToContent": "الانتقال إلى المحتوى الرئيسي"
     }
   },
   "MobileProjectSelector": {
@@ -4415,7 +5579,8 @@
     "loadingMobileApp": "التطبيق المحمول",
     "subscribeTitle": "اشتر على قناة البدء في العمل",
     "subscribeDescription": "اختار خطة للبدء في إنشاء قائمتك الرقمية وإدارة أعمالك التجارية. اختار الخطة التي تناسبك.",
-    "viewPlans": "رؤية الخطط عرض الخطط"
+    "viewPlans": "رؤية الخطط عرض الخطط",
+    "returnToMobile": "أنت تنظر إلى نسخة سطح المكتب. عودة إلى الهاتف المحمول."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR رموز الرموز",

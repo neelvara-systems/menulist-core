@@ -26,14 +26,14 @@ export default async function FoundersUseCasePage() {
             canonicalPath="/use-cases/founders"
             eyebrow="For founders"
             title="Your product is live. Your support cannot be random."
-            description="You built and shipped fast. AnswerLattice helps users get correct answers from billing, onboarding, settings, releases, and error pages while you keep building."
+            description="You built and shipped fast. AnswerLattice turns what you already know into reviewed help for billing, onboarding, settings, releases, and error pages while you keep building."
             problem="AI helps you create the product quickly, but users still need support, docs, answers, and fallback. Without a support layer, every repeated question comes back to you."
             question="Why did my invoice fail?"
             genericAnswer="Please check your billing settings or contact support."
             answerlatticeAnswer="You are on Billing Invoices. AnswerLattice serves the approved billing retry answer first, links the invoice FAQ, and only falls back to a ticket if payment still fails."
             ownerReview="You approve what becomes official. When AnswerLattice misses, the gap becomes review work instead of disappearing into chat history."
             setupSteps={[
-                'Sign in and create the AnswerLattice paid Starter workspace.',
+                'Choose a plan, sign in, and create your AnswerLattice workspace.',
                 'Add company, product, support email, and support-heavy pages.',
                 'Import docs, FAQs, owner answers, release notes, and recurring support answers.',
                 'Install the widget and verify page context.',

@@ -2,7 +2,7 @@
 
 ## Runtime Contract
 
-Analytics Learning must store channel events and compact metric snapshots separately. Reporting should read precomputed summaries where possible to control Firebase cost.
+Analytics Learning stores observed action events separately from the compact dashboard summary. Provider metric snapshots are not active. Reporting reads the precomputed summary to control Firebase cost.
 
 ## Flow
 
@@ -16,19 +16,19 @@ Analytics Learning must store channel events and compact metric snapshots separa
 
 | Object | Purpose |
 | --- | --- |
-| `campaignEvents` | Observed CampaignCue actions such as campaign creation, download, pack export, schedule, approval, manual use, trust-gate export blocking, asset registration, source input, and location draft. |
+| `events` | Existing workspace-scoped observed CampaignCue actions such as campaign creation, download, pack export, schedule, approval, manual use, trust-gate export blocking, asset registration, source input, and location draft. |
 | `metricSnapshots` | Imported channel metric snapshots; not active in the current runtime. |
-| `campaignSummaries` | Precomputed campaign result summaries. |
-| `learningSignals` | Signals used by Opportunity Engine. |
+| `analyticsSummaries/dashboard.campaignMemory` | Bounded owner-reported recipe/channel evidence used by the deterministic Decision Engine. |
+| `campaigns/{campaignId}.resultMemory` | Latest bounded receipt and per-campaign result counters. |
 | `clientReports` | Agency/client reporting snapshots. |
 
 ## Current Runtime
 
 - `GET /api/campaigncue/analytics` reads one workspace document, one dashboard summary document, provider posture, and the cost model. It does not load the full workspace overview.
 - Campaign creation and campaign actions write observed workspace events.
-- The dashboard summary is updated with atomic Firestore increments during mutations so reporting does not scan raw events and concurrent owner actions do not lose counts.
+- Ordinary action counters use atomic increments. Outcome recording conditionally reads and replaces the current dashboard summary inside the existing idempotent transaction so bounded Campaign Memory cannot lose concurrent updates.
 - Successful owner mutations merge API responses into the workspace UI locally, so analytics and lists do not trigger a full overview reload after each action.
-- Owner-reported outcomes are stored as manual-confidence events and dashboard counters. Provider-imported metrics, credit ledger events, send/delivery/reply callbacks, social account connection, and direct publish status are not active until a separate future provider layer is configured.
+- Owner-reported outcomes are stored on the campaign, reflected in bounded Campaign Memory, and represented by a minimized event that does not duplicate the raw owner note. Provider-imported metrics, credit ledger events, send/delivery/reply callbacks, social account connection, and direct publish status are not active until a separate future provider layer is configured.
 
 ## Event Contract
 

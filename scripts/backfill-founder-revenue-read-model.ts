@@ -585,7 +585,7 @@ async function writeMovement(db: FirebaseFirestore.Firestore, candidate: Movemen
 }
 
 export async function main(argv: readonly string[] = process.argv.slice(2)) {
-  const projectId = getArg(argv, '--project-id') || process.env.FIREBASE_PROJECT_ID;
+  const projectId = getArg(argv, '--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
   if (!projectId) {
     throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running Founder Monitor revenue backfill.');
   }

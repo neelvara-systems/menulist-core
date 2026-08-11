@@ -1,6 +1,11 @@
 'use client';
 
-import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import {
+    formatDashboardPercent,
+    getOwnerDashboardSourceLabel,
+    type DashboardTranslator,
+} from '@lib/analytics/ownerDashboardPresentation';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import type {
     DailyViewData,
@@ -17,6 +22,7 @@ import type {
 import { formatInUserTimezone } from '@util/dateTime';
 import { formatNumber } from '@util/formatters';
 import { Card, Empty, Flex, Segmented, Tag, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React, { useMemo, useState } from 'react';
 import { LuActivity, LuMinus, LuMoveDown, LuMoveUp } from 'react-icons/lu';
 import {
@@ -68,13 +74,6 @@ type ComparisonTrendKey = 'scans' | 'customerActions' | 'searches' | 'itemTaps' 
 type ComparisonTrendTone = 'positive' | 'problem';
 
 const ACTION_KEYS: Array<keyof MenuActionBreakdown> = ['call', 'whatsapp', 'directions', 'reserve', 'order'];
-const ACTION_LABELS: Record<keyof MenuActionBreakdown, string> = {
-    call: 'Calls',
-    whatsapp: 'WhatsApp',
-    directions: 'Get directions',
-    reserve: 'Reserve',
-    order: 'Order',
-};
 const TREND_STABLE_CHANGE_PCT = 15;
 const TREND_METRICS: OwnerDashboardTrendMetric[] = [
     'menu_activity',
@@ -108,13 +107,8 @@ function addDaysToDateKey(dateKey: string, days: number): string {
     return date.toISOString().split('T')[0];
 }
 
-function trendMetricLabel(metric: OwnerDashboardTrendMetric): string {
-    if (metric === 'customer_actions') return 'Customer actions';
-    if (metric === 'search_demand') return 'Search demand';
-    if (metric === 'item_interest') return 'Item interest';
-    if (metric === 'unavailable_demand') return 'Unavailable demand';
-    if (metric === 'missing_searches') return 'Missing searches';
-    return 'Menu activity';
+function trendMetricLabel(metric: OwnerDashboardTrendMetric, t: DashboardTranslator): string {
+    return t(`graph.metrics.${metric}`);
 }
 
 function trendMetricMinimum(metric: OwnerDashboardTrendMetric): number {
@@ -129,43 +123,6 @@ function trendRowValue(row: TrendRow, metric: OwnerDashboardTrendMetric): number
     if (metric === 'unavailable_demand') return row.unavailableInterest;
     if (metric === 'missing_searches') return row.missingSearches;
     return row.scans;
-}
-
-function trendMessage(metric: OwnerDashboardTrendMetric, status: OwnerDashboardTrendStatus, period: 'week' | 'month'): string {
-    if (status === 'not_enough_data') {
-        return period === 'month' ? 'Not enough settled monthly history yet.' : 'Not enough settled activity yet.';
-    }
-
-    const week = period === 'week';
-    if (metric === 'customer_actions') {
-        if (status === 'up') return week ? 'More customers took action this week.' : 'More customers took action than the same part of last month.';
-        if (status === 'down') return week ? 'Customer actions are lower this week.' : 'Customer actions are lower than the same part of last month.';
-        return 'Customer actions are steady.';
-    }
-    if (metric === 'search_demand') {
-        if (status === 'up') return week ? 'Search demand is rising this week.' : 'Search demand is higher than the same part of last month.';
-        if (status === 'down') return week ? 'Search demand is quieter this week.' : 'Search demand is lower than the same part of last month.';
-        return 'Search demand is steady.';
-    }
-    if (metric === 'item_interest') {
-        if (status === 'up') return week ? 'More customers opened items this week.' : 'Item interest is higher than the same part of last month.';
-        if (status === 'down') return week ? 'Item interest is lower this week.' : 'Item interest is lower than the same part of last month.';
-        return 'Item interest is steady.';
-    }
-    if (metric === 'unavailable_demand') {
-        if (status === 'up') return week ? 'More customers tapped unavailable items this week.' : 'Unavailable demand is higher than the same part of last month.';
-        if (status === 'down') return week ? 'Unavailable demand is lower this week.' : 'Unavailable demand is lower than the same part of last month.';
-        return 'Unavailable demand is steady.';
-    }
-    if (metric === 'missing_searches') {
-        if (status === 'up') return week ? 'More searches found no match this week.' : 'Missing searches are higher than the same part of last month.';
-        if (status === 'down') return week ? 'Missing searches are lower this week.' : 'Missing searches are lower than the same part of last month.';
-        return 'Missing searches are steady.';
-    }
-
-    if (status === 'up') return week ? 'More customers used the menu this week.' : 'Menu activity is higher than the same part of last month.';
-    if (status === 'down') return week ? 'Menu activity is lower than last week.' : 'Menu activity is lower than the same part of last month.';
-    return 'Menu activity is steady.';
 }
 
 function getSamePeriodLastMonthRange(settlementDate: string) {
@@ -232,9 +189,9 @@ function buildTrendComparison(params: {
     return {
         metric: params.metric,
         period: params.period,
-        label: trendMetricLabel(params.metric),
+        label: params.metric,
         status,
-        message: trendMessage(params.metric, status, params.period),
+        message: `${params.period}:${params.metric}:${status}`,
         currentValue,
         previousValue,
         changePct: enoughData ? changePct : null,
@@ -286,31 +243,38 @@ function buildFallbackTrendSummary(rows: TrendRow[]): OwnerDashboardTrendSummary
     };
 }
 
-function trendStatusLabel(status: OwnerDashboardTrendStatus): string {
-    if (status === 'up') return 'Higher';
-    if (status === 'down') return 'Lower';
-    if (status === 'stable') return 'Steady';
-    return 'Not enough history';
+function trendStatusLabel(status: OwnerDashboardTrendStatus, t: DashboardTranslator): string {
+    return t(`graph.trend.status.${status}`);
 }
 
-function trendPeriodLabel(comparison: OwnerDashboardTrendComparison): string {
-    return comparison.period === 'month' ? 'Month check' : 'Week check';
+function trendPeriodLabel(comparison: OwnerDashboardTrendComparison, t: DashboardTranslator): string {
+    return t(`graph.trend.period.${comparison.period}`);
 }
 
-function trendValueLabel(comparison: OwnerDashboardTrendComparison): string {
-    if (comparison.status === 'not_enough_data') return 'Needs more settled days';
-    return `${compactNumber(comparison.currentValue)} vs ${compactNumber(comparison.previousValue)}`;
+function trendValueLabel(comparison: OwnerDashboardTrendComparison, t: DashboardTranslator): string {
+    if (comparison.status === 'not_enough_data') return t('graph.trend.needsMoreDays');
+    return t('graph.trend.versus', {
+        current: compactNumber(comparison.currentValue),
+        previous: compactNumber(comparison.previousValue),
+    });
 }
 
-function trendChangeLabel(comparison: OwnerDashboardTrendComparison | undefined, period: 'week' | 'month'): string {
-    const periodLabel = period === 'month' ? 'Month' : 'Week';
+function trendChangeLabel(
+    comparison: OwnerDashboardTrendComparison | undefined,
+    period: 'week' | 'month',
+    t: DashboardTranslator,
+): string {
+    const periodLabel = t(`graph.trend.shortPeriod.${period}`);
     if (!comparison || comparison.status === 'not_enough_data') {
-        return `${periodLabel}: gathering`;
+        return t('graph.trend.change.gathering', { period: periodLabel });
     }
 
-    if (comparison.changePct === null) return `${periodLabel}: new activity`;
-    if (comparison.status === 'stable') return `${periodLabel}: steady`;
-    return `${periodLabel}: ${comparison.changePct > 0 ? '+' : ''}${comparison.changePct}%`;
+    if (comparison.changePct === null) return t('graph.trend.change.newActivity', { period: periodLabel });
+    if (comparison.status === 'stable') return t('graph.trend.change.steady', { period: periodLabel });
+    return t('graph.trend.change.value', {
+        period: periodLabel,
+        change: formatDashboardPercent(comparison.changePct, true),
+    });
 }
 
 function findTrendComparison(
@@ -337,7 +301,7 @@ function collectMenuDays(data: OwnerDashboardData | null): DailyViewData[] {
         .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function sumMenuActions(days: DailyViewData[]): BarRow[] {
+function sumMenuActions(days: DailyViewData[], t: DashboardTranslator): BarRow[] {
     const totals = ACTION_KEYS.reduce<Record<keyof MenuActionBreakdown, number>>((acc, key) => {
         acc[key] = 0;
         return acc;
@@ -356,11 +320,11 @@ function sumMenuActions(days: DailyViewData[]): BarRow[] {
     });
 
     return ACTION_KEYS
-        .map((key) => ({ key, label: ACTION_LABELS[key], value: totals[key] }))
+        .map((key) => ({ key, label: t(`actions.${key === 'call' ? 'calls' : key}`), value: totals[key] }))
         .filter((row) => row.value > 0);
 }
 
-function getBestSourceRows(data: OwnerDashboardData | null): BarRow[] {
+function getBestSourceRows(data: OwnerDashboardData | null, t: DashboardTranslator): BarRow[] {
     const sources: SourceQuality[] = (
         data?.wtd?.sourceQuality?.length ? data.wtd.sourceQuality
         : data?.weekly?.sourceQuality?.length ? data.weekly.sourceQuality
@@ -373,7 +337,7 @@ function getBestSourceRows(data: OwnerDashboardData | null): BarRow[] {
         .slice(0, 6)
         .map((source) => ({
             key: source.source,
-            label: source.label,
+            label: getOwnerDashboardSourceLabel(source.source, source.label, t),
             value: source.menuSessions || 0,
             secondary: source.actionSessions || source.actionClicks || 0,
         }))
@@ -443,7 +407,8 @@ function sumTrendRows(rows: TrendRow[], key: ComparisonTrendKey): number {
 }
 
 const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data, obpData }) => {
-    const labels = useOfferingLabels();
+    const labels = useDashboardOfferingLabels();
+    const t = useTranslations('Dashboard.owner');
     const { token } = theme.useToken();
     const [range, setRange] = useState<GraphRange>('30d');
 
@@ -481,8 +446,8 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
 
     const trendRows = useMemo(() => allTrendRows.slice(range === '7d' ? -7 : -30), [allTrendRows, range]);
     const rangeMenuDays = useMemo(() => menuDays.slice(range === '7d' ? -7 : -30), [menuDays, range]);
-    const actionRows = useMemo(() => sumMenuActions(rangeMenuDays), [rangeMenuDays]);
-    const sourceRows = useMemo(() => getBestSourceRows(data), [data]);
+    const actionRows = useMemo(() => sumMenuActions(rangeMenuDays, t), [rangeMenuDays, t]);
+    const sourceRows = useMemo(() => getBestSourceRows(data, t), [data, t]);
     const topItemRows = useMemo(() => getTopItemRows(data), [data]);
     const searchRows = useMemo(() => getSearchRows(data), [data]);
     const fallbackTrendSummaryRows = useMemo<TrendRow[]>(() => (
@@ -523,69 +488,69 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
     const comparisonCharts = useMemo(() => ([
         {
             key: 'scans' as ComparisonTrendKey,
-            title: trendMetricLabel('menu_activity'),
+            title: trendMetricLabel('menu_activity', t),
             dataKey: 'scans' as ComparisonTrendKey,
             metric: 'menu_activity' as OwnerDashboardTrendMetric,
             tone: 'positive' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'scans'),
             stroke: token.colorPrimary,
             fill: token.colorPrimaryBg,
-            emptyDescription: 'Menu activity will appear after customers open the menu.',
+            emptyDescription: t('graph.empty.menuActivity'),
         },
         {
             key: 'customerActions' as ComparisonTrendKey,
-            title: trendMetricLabel('customer_actions'),
+            title: trendMetricLabel('customer_actions', t),
             dataKey: 'customerActions' as ComparisonTrendKey,
             metric: 'customer_actions' as OwnerDashboardTrendMetric,
             tone: 'positive' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'customerActions'),
             stroke: token.colorSuccess,
             fill: token.colorSuccessBg,
-            emptyDescription: 'Customer actions will appear after customers call, message, order, reserve, or ask for directions.',
+            emptyDescription: t('graph.empty.customerActions'),
         },
         {
             key: 'searches' as ComparisonTrendKey,
-            title: trendMetricLabel('search_demand'),
+            title: trendMetricLabel('search_demand', t),
             dataKey: 'searches' as ComparisonTrendKey,
             metric: 'search_demand' as OwnerDashboardTrendMetric,
             tone: 'positive' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'searches'),
             stroke: token.colorWarning,
             fill: token.colorWarningBg,
-            emptyDescription: 'Search demand will appear after customers use menu search.',
+            emptyDescription: t('graph.empty.searchDemand'),
         },
         {
             key: 'itemTaps' as ComparisonTrendKey,
-            title: trendMetricLabel('item_interest'),
+            title: trendMetricLabel('item_interest', t),
             dataKey: 'itemTaps' as ComparisonTrendKey,
             metric: 'item_interest' as OwnerDashboardTrendMetric,
             tone: 'positive' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'itemTaps'),
             stroke: token.colorInfo,
             fill: token.colorInfoBg,
-            emptyDescription: 'Item interest will appear after customers open menu items.',
+            emptyDescription: t('graph.empty.itemInterest'),
         },
         {
             key: 'unavailableInterest' as ComparisonTrendKey,
-            title: trendMetricLabel('unavailable_demand'),
+            title: trendMetricLabel('unavailable_demand', t),
             dataKey: 'unavailableInterest' as ComparisonTrendKey,
             metric: 'unavailable_demand' as OwnerDashboardTrendMetric,
             tone: 'problem' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'unavailableInterest'),
             stroke: token.colorWarning,
             fill: token.colorWarningBg,
-            emptyDescription: 'Unavailable demand will appear when customers tap unavailable items.',
+            emptyDescription: t('graph.empty.unavailableDemand'),
         },
         {
             key: 'missingSearches' as ComparisonTrendKey,
-            title: trendMetricLabel('missing_searches'),
+            title: trendMetricLabel('missing_searches', t),
             dataKey: 'missingSearches' as ComparisonTrendKey,
             metric: 'missing_searches' as OwnerDashboardTrendMetric,
             tone: 'problem' as ComparisonTrendTone,
             value: sumTrendRows(trendRows, 'missingSearches'),
             stroke: token.colorError,
             fill: token.colorErrorBg,
-            emptyDescription: 'Missing searches will appear when customers search but find no match.',
+            emptyDescription: t('graph.empty.missingSearches'),
         },
     ]), [
         token.colorError,
@@ -598,6 +563,7 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
         token.colorSuccessBg,
         token.colorWarning,
         token.colorWarningBg,
+        t,
         trendRows,
     ]);
 
@@ -608,7 +574,7 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
         boxShadow: token.boxShadowSecondary,
     };
 
-    const renderEmpty = (description = 'No graph data for this view yet.') => (
+    const renderEmpty = (description = t('graph.empty.default')) => (
         <Empty
             description={<Text type="secondary">{description}</Text>}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -646,7 +612,7 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
         tone: ComparisonTrendTone,
     ) => (
         <span className={`${styles.comparisonBadge} ${getComparisonBadgeClass(comparison, tone)}`}>
-            {trendChangeLabel(comparison, period)}
+            {trendChangeLabel(comparison, period, t)}
         </span>
     );
 
@@ -676,17 +642,17 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
             <Card className={styles.graphHeaderCard} variant="borderless">
                 <Flex justify="space-between" align="center" gap={16} wrap="wrap" className={styles.graphHeader}>
                     <div>
-                        <Title level={4}>Graphs</Title>
+                        <Title level={4}>{t('graph.title')}</Title>
                         <Text type="secondary">
-                            Visual summary from the same settled activity shown in the dashboard.
+                            {t('graph.description')}
                         </Text>
                     </div>
                     <Segmented
                         value={range}
                         onChange={(value) => setRange(value as GraphRange)}
                         options={[
-                            { label: '7 days', value: '7d' },
-                            { label: '30 days', value: '30d' },
+                            { label: t('graph.ranges.days7'), value: '7d' },
+                            { label: t('graph.ranges.days30'), value: '30d' },
                         ]}
                     />
                 </Flex>
@@ -698,21 +664,24 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                     </div>
                     <div className={styles.graphSummaryItem}>
                         <span className={styles.graphSummaryValue}>{compactNumber(totalActions)}</span>
-                        <span className={styles.graphSummaryLabel}>Customer actions</span>
+                        <span className={styles.graphSummaryLabel}>{t('metrics.customerActions')}</span>
                     </div>
                     <div className={styles.graphSummaryItem}>
                         <span className={styles.graphSummaryValue}>{compactNumber(totalSearches)}</span>
-                        <span className={styles.graphSummaryLabel}>Searches</span>
+                        <span className={styles.graphSummaryLabel}>{t('metrics.searches')}</span>
                     </div>
                 </div>
 
                 {trendSummary ? (
                     <div className={styles.trendSummaryPanel}>
                         <div className={styles.trendPrimary}>
-                            <Text className={styles.trendEyebrow}>Trend summary</Text>
-                            <Title level={5}>{trendSummary.primary.message}</Title>
+                            <Text className={styles.trendEyebrow}>{t('graph.trend.summary')}</Text>
+                            <Title level={5}>{t(`graph.trend.messages.${trendSummary.primary.status}`, {
+                                metric: trendMetricLabel(trendSummary.primary.metric, t),
+                                period: t(`graph.trend.shortPeriod.${trendSummary.primary.period}`),
+                            })}</Title>
                             <Text type="secondary">
-                                Updated after your store day closes.
+                                {t('graph.trend.updatedAfterClose')}
                             </Text>
                         </div>
                         <div className={styles.trendSignalGrid}>
@@ -723,11 +692,11 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                 >
                                     <div className={styles.trendSignalTop}>
                                         <span className={styles.trendSignalIcon}>{renderTrendIcon(comparison.status)}</span>
-                                        <span>{trendStatusLabel(comparison.status)}</span>
+                                        <span>{trendStatusLabel(comparison.status, t)}</span>
                                     </div>
-                                    <span className={styles.trendSignalLabel}>{comparison.label}</span>
+                                    <span className={styles.trendSignalLabel}>{trendMetricLabel(comparison.metric, t)}</span>
                                     <span className={styles.trendSignalMeta}>
-                                        {trendPeriodLabel(comparison)} - {trendValueLabel(comparison)}
+                                        {trendPeriodLabel(comparison, t)} · {trendValueLabel(comparison, t)}
                                     </span>
                                 </div>
                             ))}
@@ -738,8 +707,8 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
 
             <div className={styles.comparisonChartsHeader}>
                 <div>
-                    <Title level={5}>Comparison charts</Title>
-                    <Text type="secondary">Week and month movement from settled days.</Text>
+                    <Title level={5}>{t('graph.comparison.title')}</Title>
+                    <Text type="secondary">{t('graph.comparison.description')}</Text>
                 </div>
             </div>
 
@@ -802,8 +771,8 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
             </div>
 
             {renderChartShell(
-                'Menu trend',
-                `${range === '7d' ? 'Last 7' : 'Last 30'} settled days`,
+                t('graph.charts.menuTrend.title'),
+                t(range === '7d' ? 'graph.charts.menuTrend.days7' : 'graph.charts.menuTrend.days30'),
                 <div className={styles.graphViewport}>
                     <div className={styles.graphCanvas}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -817,8 +786,8 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                 />
                                 <Legend />
                                 <Line type="monotone" dataKey="scans" name={labels.scansLabel} stroke={token.colorPrimary} strokeWidth={2.4} dot={false} />
-                                <Line type="monotone" dataKey="itemTaps" name="Item taps" stroke={token.colorInfo} strokeWidth={2.2} dot={false} />
-                                <Line type="monotone" dataKey="customerActions" name="Actions" stroke={token.colorSuccess} strokeWidth={2.2} dot={false} />
+                                <Line type="monotone" dataKey="itemTaps" name={t('metrics.itemClicks')} stroke={token.colorInfo} strokeWidth={2.2} dot={false} />
+                                <Line type="monotone" dataKey="customerActions" name={t('obp.actions')} stroke={token.colorSuccess} strokeWidth={2.2} dot={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
@@ -828,8 +797,8 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
 
             <div className={styles.graphGridTwo}>
                 {renderChartShell(
-                    'Customer actions',
-                    'What customers tapped after opening the menu',
+                    t('graph.charts.customerActions.title'),
+                    t('graph.charts.customerActions.description'),
                     <div className={styles.graphViewport}>
                         <div className={styles.graphCanvasCompact}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -841,18 +810,18 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                         contentStyle={tooltipStyle}
                                         formatter={(value: number | string) => compactNumber(Number(value || 0))}
                                     />
-                                    <Bar dataKey="value" name="Actions" fill={token.colorSuccess} radius={[6, 6, 0, 0]} maxBarSize={44} />
+                                    <Bar dataKey="value" name={t('obp.actions')} fill={token.colorSuccess} radius={[6, 6, 0, 0]} maxBarSize={44} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>,
                     actionRows.length === 0,
-                    'No customer actions in this period yet.',
+                    t('graph.empty.customerActionsPeriod'),
                 )}
 
                 {renderChartShell(
-                    'Where customers came from',
-                    'Menu visits and action sessions by source',
+                    t('graph.charts.sources.title'),
+                    t('graph.charts.sources.description'),
                     <div className={styles.graphViewport}>
                         <div className={styles.graphCanvasCompact}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -865,21 +834,21 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                         formatter={(value: number | string, name: string) => [compactNumber(Number(value || 0)), name]}
                                     />
                                     <Legend />
-                                    <Bar dataKey="value" name="Visits" fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={24} />
-                                    <Bar dataKey="secondary" name="Action sessions" fill={token.colorSuccess} radius={[0, 6, 6, 0]} maxBarSize={24} />
+                                    <Bar dataKey="value" name={t('graph.legends.visits')} fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={24} />
+                                    <Bar dataKey="secondary" name={t('graph.legends.actionSessions')} fill={token.colorSuccess} radius={[0, 6, 6, 0]} maxBarSize={24} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>,
                     sourceRows.length === 0,
-                    'Source details will appear after customers arrive from links, QR, or social pages.',
+                    t('graph.empty.sources'),
                 )}
             </div>
 
             <div className={styles.graphGridTwo}>
                 {renderChartShell(
-                    'Top item interest',
-                    'Items customers opened or tapped most',
+                    t('graph.charts.items.title'),
+                    t('graph.charts.items.description'),
                     <div className={styles.graphViewport}>
                         <div className={styles.graphCanvasCompact}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -892,19 +861,19 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                         formatter={(value: number | string, name: string) => [compactNumber(Number(value || 0)), name]}
                                     />
                                     <Legend />
-                                    <Bar dataKey="secondary" name="Views" fill={token.colorInfo} radius={[0, 6, 6, 0]} maxBarSize={22} />
-                                    <Bar dataKey="value" name="Taps" fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={22} />
+                                    <Bar dataKey="secondary" name={t('graph.legends.views')} fill={token.colorInfo} radius={[0, 6, 6, 0]} maxBarSize={22} />
+                                    <Bar dataKey="value" name={t('graph.legends.taps')} fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={22} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>,
                     topItemRows.length === 0,
-                    'Item interest will appear after customers open menu items.',
+                    t('graph.empty.itemInterest'),
                 )}
 
                 {renderChartShell(
-                    'Search demand',
-                    'What customers searched for',
+                    t('graph.charts.search.title'),
+                    t('graph.charts.search.description'),
                     <div className={styles.graphViewport}>
                         <div className={styles.graphCanvasCompact}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -917,20 +886,20 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                         formatter={(value: number | string, name: string) => [compactNumber(Number(value || 0)), name]}
                                     />
                                     <Legend />
-                                    <Bar dataKey="value" name="Searches" fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={22} />
-                                    <Bar dataKey="secondary" name="No result" fill={token.colorWarning} radius={[0, 6, 6, 0]} maxBarSize={22} />
+                                    <Bar dataKey="value" name={t('metrics.searches')} fill={token.colorPrimary} radius={[0, 6, 6, 0]} maxBarSize={22} />
+                                    <Bar dataKey="secondary" name={t('graph.legends.noResult')} fill={token.colorWarning} radius={[0, 6, 6, 0]} maxBarSize={22} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>,
                     searchRows.length === 0,
-                    'Search demand will appear after customers use menu search.',
+                    t('graph.empty.searchDemand'),
                 )}
             </div>
 
             {renderChartShell(
-                'Official page trend',
-                'Views and actions from the Official Business Page',
+                t('graph.charts.officialPage.title'),
+                t('graph.charts.officialPage.description'),
                 <div className={styles.graphViewport}>
                     <div className={styles.graphCanvas}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -943,20 +912,20 @@ const OwnerDashboardGraphMode: React.FC<OwnerDashboardGraphModeProps> = ({ data,
                                     formatter={(value: number | string, name: string) => [compactNumber(Number(value || 0)), name]}
                                 />
                                 <Legend />
-                                <Area type="monotone" dataKey="obpViews" name="Page views" stroke={token.colorPrimary} fill={token.colorPrimaryBg} fillOpacity={0.55} />
-                                <Area type="monotone" dataKey="obpActions" name="Actions" stroke={token.colorSuccess} fill={token.colorSuccessBg} fillOpacity={0.6} />
+                                <Area type="monotone" dataKey="obpViews" name={t('obp.pageViews')} stroke={token.colorPrimary} fill={token.colorPrimaryBg} fillOpacity={0.55} />
+                                <Area type="monotone" dataKey="obpActions" name={t('obp.actions')} stroke={token.colorSuccess} fill={token.colorSuccessBg} fillOpacity={0.6} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>,
                 !hasUsefulValue(trendRows, ['obpViews', 'obpActions']),
-                'Official page activity will appear after customers open the public business page.',
+                t('graph.empty.officialPage'),
             )}
 
             <Flex gap={8} wrap="wrap">
-                <Tag>Same dashboard data</Tag>
-                <Tag>No extra tracking</Tag>
-                <Tag>Settled after store day-end</Tag>
+                <Tag>{t('graph.footer.sameData')}</Tag>
+                <Tag>{t('graph.footer.noExtraTracking')}</Tag>
+                <Tag>{t('graph.footer.settledAfterClose')}</Tag>
             </Flex>
         </div>
     );

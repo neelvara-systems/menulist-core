@@ -428,7 +428,8 @@
         "daily": "Föregående dag",
         "weekly": "Senaste 7 dagarna",
         "monthly": "Denna månad",
-        "overall": "Totalt"
+        "overall": "Totalt",
+        "graph": "Diagram"
       },
       "today": {
         "noMenuActivityToday": "Ingen menyaktivitet än idag.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Sökningar utan resultat",
         "unavailableInterest": "Otillgängligt intresse",
         "topLanguage": "Toppspråk",
-        "smartPicksShown": "Smarta val visas",
-        "smartPicksClicks": "Klick med smarta val",
+        "smartPicksShown": "Smart Picks uppvisas",
+        "smartPicksClicks": "Smart Picks klickar",
         "smartPicksTaps": "Smart Picks-tryckningar",
-        "smartPicksUsed": "Använda smarta val",
+        "smartPicksUsed": "Smart Picks Används",
         "smartPicksEngagement": "Smart Picks Engagemang",
         "totalMenuScans": "Total menyskanningar",
         "totalItemClicks": "Totalt artikelklick",
         "activeDays": "Aktiva dagar",
         "daysActive": "Dagar aktiva",
-        "avgDailyScans": "Gen. Dagliga skanningar",
-        "smartPicksActive": "Smarta val aktiva",
+        "avgDailyScans": "Avg.",
+        "smartPicksActive": "Smart Picks Aktiva",
         "engagementRate": "Engagemangsgrad",
         "topItem": "Toppartikel",
         "topCategory": "Topkategori"
@@ -473,8 +474,8 @@
         "itemClicks": "Antal gånger kunder tryckt på varor",
         "engagedSessions": "Sessioner där kunder visade verkligt menyintresse",
         "actionRate": "Sessioner som ledde till en slutlig kundåtgärd",
-        "smartPicksShown": "Hur många gånger Smarta val visades på din sida",
-        "smartPicksUsed": "Procentandel av kunder som använde Smarta val",
+        "smartPicksShown": "Hur många gånger Smart Picks visas på din sida",
+        "smartPicksUsed": "andelen kunder som använt Smart Picks",
         "customerActions": "Slutliga åtgärder som att ringa, WhatsApp, vägbeskrivningar, reservera och beställa",
         "searches": "Deduplicerad sökfråga från menyn",
         "unavailableInterest": "Tryck på otillgängliga objekt"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Ingen aktivitet registrerades igår",
         "noAnalyticsYet": "Ingen data ännu. Dina analyser visas när kunderna börjar titta.",
-        "noItemClicksYet": "Inga objektklick ännu"
+        "noItemClicksYet": "Inga objektklick ännu",
+        "lowActivityTitle": "Låg aktivitet",
+        "lowActivityDescription": "Det fanns inte tillräckligt med aktivitet för att dra en användbar slutsats för denna period.",
+        "noWeeklyData": "Det finns ingen avräknad menyaktivitet tillgänglig under de senaste 7 dagarna ännu.",
+        "noMonthlyData": "Det finns ingen fastställd menyaktivitet för denna månad ännu, men det kommer att finnas en ny aktivitet i slutet av månaden."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change} % jämfört med förra veckan"
+        "vsLastWeek": "{sign}{change} % jämfört med förra veckan",
+        "changeVsLastWeek": "{change} vs förra veckan"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# aktivitetsdagen registrerad} other {# dagars aktivitet registrerad}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ja",
         "no": "Nej",
-        "notAvailable": "N/A N/T",
+        "notAvailable": "N/A",
         "active": "Aktiv",
         "lowActivity": "Låg aktivitet",
         "noData": "Inga data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Väntar på första skanningen",
         "weeklyInsights": "Veckovisa insikter",
         "last4WeeksComparison": "Jämförelse de senaste 4 veckorna",
-        "historicalDataWillAppear": "Historisk data visas efter några veckor"
+        "historicalDataWillAppear": "Historisk data visas efter några veckor",
+        "statusMessages": {
+          "working": "Kunderna använder nuvarande menyn.",
+          "low_activity": "Kundernas aktivitet ökar fortfarande. Din aktuella meny kommer att finnas kvar, men du kan inte ändra den.",
+          "no_data": "Aktivitet visas när kunderna börjar öppna din meny och du kan se hur många som har öppnat menyn."
+        }
       },
       "aiSummary": {
         "daily": "Föregående dag i korthet",
         "weekly": "En överblick över den här veckan",
-        "monthly": "Denna månad i sammanfattning"
+        "monthly": "Denna månad i sammanfattning",
+        "localized": {
+          "noActivity": "Ingen avräknad kundaktivitet registrerades under denna period.",
+          "menuViews": "Kunder öppnade menyn {count} gånger.",
+          "itemTaps": "Kunderna knackade på menyalternativ {count} gånger.",
+          "customerActions": "Kunderna slutförde {count} sista åtgärder.",
+          "searches": "Kunder har sökt efter menyn {count} gånger.",
+          "unavailableInterest": "Otillgängliga objekt har fått {count} tryckningar."
+        }
       },
       "actions": {
         "call": "Ring",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} besök · {rate}%",
         "markDoneFailed": "Denna åtgärd kunde inte markeras som utförd. Försök igen.",
         "markDone": "Markera som klar",
-        "markDoneSaved": "Markerad som klar. Resultaten uppdateras när nästa analyssammanfattning är klar."
+        "markDoneSaved": "Markerad som klar. Resultaten uppdateras när nästa analyssammanfattning är klar.",
+        "bestSourceStatsFormatted": "· {visits} besök · {rate} åtgärdsfrekvens",
+        "bestSourceMobileFormatted": "Bästa källan just nu: {source} · {visits} besök · {rate} åtgärdsfrekvens.",
+        "sourceQualityTagFormatted": "{source}: {visits} Besök · {sessions} Aktionsmötet · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} besök · {rate}",
+        "priorities": {
+          "high": "Hög prioritet",
+          "medium": "Medelhög prioritet",
+          "low": "Låg prioritet"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "Den tillgängliga aktiviteten stöder en tydlig menykontroll."
+          },
+          "watch": {
+            "label": "Håll koll på",
+            "message": "Vissa aktiviteter kan behöva en ny kontroll innan menyn ändras, så se till att du har koll på vad som gäller för just dig."
+          },
+          "no_data": {
+            "label": "Mer data behövs.",
+            "message": "Vänta på mer avklarad kundaktivitet innan du drar en slutsats, men det är inte nödvändigt."
+          }
+        },
+        "localizedActions": {
+          "reason": "Baserat på den senast avräknade kundaktiviteten.",
+          "availability": {
+            "title": "Granska tillgänglighet för varor.",
+            "description": "Kontrollera om otillgängliga eller dolda objekt ska återställas eller hållas utom synhåll.",
+            "action": "Kontrollera tillgänglighet"
+          },
+          "customerActions": {
+            "title": "Granska kundåtgärder.",
+            "description": "Kontrollera menyn och länkarna som kunderna använder innan de vidtar åtgärder.",
+            "action": "Granska kundåtgärder."
+          },
+          "details": {
+            "title": "Förbättra artikelinformationen.",
+            "description": "Granska artikelnamn, alternativ, beskrivningar och bilder som kan behöva tydligare information.",
+            "action": "Granska artikelinformationen."
+          },
+          "general": {
+            "title": "Vänta tills du får en tydligare signal.",
+            "description": "Håll den aktuella menyn stabil tills mer avgjord aktivitet är tillgänglig.",
+            "action": "Granska senare."
+          },
+          "menuOrder": {
+            "title": "Granska menyrdningen.",
+            "description": "Kontrollera om viktiga objekt och kategorier är lätta för kunder att hitta.",
+            "action": "Granska menyrdningen."
+          },
+          "pricing": {
+            "title": "Granska prissättningen",
+            "description": "Kontrollera priserna kopplade till den senaste kundsignalen.",
+            "action": "Priserna granskas"
+          },
+          "search": {
+            "title": "Granska kundernas sökningar.",
+            "description": "Kontrollera sökningar som kanske inte leder kunderna till ett användbart menyresultat.",
+            "action": "Översikt sökningar"
+          },
+          "source": {
+            "title": "Granska kundens inmatningskällor.",
+            "description": "Kontrollera om offentliga länkar och QR placeringar pekar kunder till den aktuella menyn.",
+            "action": "Granska offentliga länkar."
+          },
+          "timing": {
+            "title": "Granska menytiming.",
+            "description": "Kontrollera om tidsinställda kategorier och tillgänglighet matchar när kunderna söker efter dem.",
+            "action": "Översikt Timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Markerat som klart.",
+            "message": "Resultatet kommer att kontrolleras när mer avräknad aktivitet finns tillgänglig."
+          },
+          "improved": {
+            "label": "förbättrade",
+            "message": "Nästa justerade check visar en förbättring."
+          },
+          "no_clear_change": {
+            "label": "Ingen tydlig förändring.",
+            "message": "Nästa avräknade check visade inte en tydlig förändring, utan det var bara en liten förändringsöverföring."
+          },
+          "not_enough_data": {
+            "label": "Mer data behövs.",
+            "message": "Det finns inte tillräckligt med etablerad aktivitet för att bedöma denna förändring ännu."
+          },
+          "pending": {
+            "label": "Längre check",
+            "message": "MenuList kommer att kontrollera detta när mer avräknad aktivitet är tillgänglig."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menydetaljer",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Ej tillgängligt intresse",
           "languages": "Språk",
           "filters": "Filter",
-          "smartPicks": "Smarta val",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Åtgärder efter öppettider"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menyvyer",
-          "itemTaps": "Artikeltryck",
+          "itemTaps": "Tryck på objekt",
           "menuSessions": "Menysessioner",
           "engagedSessions": "Sessioner med aktivitet",
           "actionSessions": "Handlingssessioner",
@@ -604,7 +716,7 @@
         "trafficLabel": "{label}: {value}",
         "traffic": {
           "source": "Källa",
-          "medium": "Medium Medium",
+          "medium": "Medium",
           "campaign": "Kampanj",
           "content": "Innehåll"
         },
@@ -617,6 +729,12 @@
           "open": "Åtgärder när de är öppna",
           "unknown": "Åtgärder när timmarsstatus inte var tillgänglig",
           "closedShare": "{rate}% av alla inspelade åtgärder hände när de var stängda"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} otillgängliga tapeter",
+          "strongItem": "{count} Tryck på objekt",
+          "needsWork": "{count} visningar, inga klick.",
+          "gettingAttention": "{count} vyer"
         }
       },
       "smartPicks": {
@@ -642,7 +760,7 @@
         "officialBusinessPage": "Officiell företagssida",
         "loadingCurrentActivity": "Laddar in aktuell OBP-aktivitet",
         "loadingActivity": "Laddar OBP-aktivitet",
-        "sharedInfo": "Åtgärder räknar slutliga OBP-klick på Ring, WhatsApp, vägbeskrivningar, reservera och beställ. Delningar kommer från det officiella affärslänkkortet, och länktryck räknas Googles recension, Instagram, Facebook och webbplatsbesök från det offentliga OBP.",
+        "sharedInfo": "Aktioner räkna slutliga OBP klickar på Call, WhatsApp, Adresser, Reserver, och Order. Aktier kommer från det officiella affärslänkaret, och länkar räknas Google om granskning, Instagram, Facebook, och webbplatsbesök från den offentliga OBP.",
         "noActivityToday": "Ingen OBP-aktivitet ännu idag.",
         "noComparison": "Ingen jämförelse",
         "sameAsLastWeek": "Samma som förra veckan",
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Genvägsfördelning",
         "installsByPlatform": "Installationer efter plattform",
         "appStickiness": "App-klibbighet",
-        "returningOpens30d": "Retur öppnas (30d)",
-        "avgOpensPerInstall": "Gen. öppningar per installation",
+        "avgOpensPerInstall": "Avg öppnas per install",
         "iosManualInstalls": "iOS manuella installationer",
         "shortcuts": {
           "menu": "Visa-menyn",
@@ -715,12 +832,13 @@
           "order": "Beställ online"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
-          "iosLong": "iOS (iPhone/iPad)",
-          "android": "Android Android",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "Skrivbord",
           "other": "Övrigt"
-        }
+        },
+        "tryAgainLater": "Försök igen senare."
       },
       "projectSelector": {
         "deleted": "Raderad",
@@ -761,7 +879,8 @@
         "copied": "Kopierat",
         "copy": "Kopiera",
         "openGoogle": "Öppna Google",
-        "done": "Klar"
+        "done": "Klar",
+        "couldNotOpen": "Det gick inte att öppna Google företagsprofil."
       },
       "behaviorNudge": {
         "linkCopied": "Länk kopierad",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Granska det vanligaste problemet",
         "repairMenu": "Reparationsmeny",
         "review": "Recension",
-        "repair": "Reparation"
+        "repair": "Reparation",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# objekt saknar en beskrivning.} other {# objekt saknar beskrivningar.}}",
+            "ok": "Alla objekt har beskrivningar.",
+            "help": "Beskrivningar hjälper kunderna att förstå varje erbjudande."
+          },
+          "images": {
+            "warning": "{count, plural, one {# objekt saknar en bild.} other {# Det saknas objekt Det saknar bilder}}",
+            "ok": "Alla objekt har bilder.",
+            "help": "Bilder kan hjälpa kunderna att välja snabbare."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Kategorin # saknar en ikon.} other {# kategorier saknar ikoner.}}",
+            "ok": "Alla kategorier har ikoner.",
+            "help": "Ikoner gör kategorierna lättare att söka igenom."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# artikel saknar ett pris.} other {# Det saknas artiklar priser saknas produkter saknas priser}}",
+            "ok": "Alla föremål har prissättning.",
+            "help": "Kunder jämför priser innan de bestämmer sig."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# objekt är dolt för kunder.} other {# artiklar är dolda för kunderna.}}",
+            "ok": "Inga objekt är dolda.",
+            "help": "Dolda objekt visas inte på den publika menyn, och de kan inte heller öppnas."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# pris behöver ses över.} other {# priser behöver ses över.}}",
+            "ok": "Priserna ligger inom det förväntade intervallet.",
+            "help": "MenuList jämför priser på enskilda artiklar inom samma kategori. Markera ett avsiktligt pris som granskat."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# Det saknas översättningar för denna artikel.} other {# objekt saknar översättningar.}}",
+            "ok": "Alla synliga objekt är översatta.",
+            "help": "Vissa objekt är ofullständiga på vissa menyspråk."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menyinformation saknas översättningar.} other {# menyinformation saknas översättningar saknas}}",
+            "ok": "Menyinformationen är översatt.",
+            "help": "Menynamnet, beskrivningen eller anteckningarna är ofullständiga på vissa menyspråk."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Kopierad länk",
+        "direct": "Direkt",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menypaket",
+        "nativeShare": "Enhetsdelning Enhetsandel",
+        "obp": "Företagssida",
+        "other": "Övrigt",
+        "qr": "QR kod",
+        "shortcut": "App förkortning",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Affärshälsa",
+        "open": "Öppen företags hälsa",
+        "today": "Idag",
+        "latestActivity": "Senaste aktivitet",
+        "noActionNeeded": "Ingen åtgärd behövs",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Behöver uppmärksamhet",
+          "needs_review": "Behöver ses över.",
+          "insufficient_data": "Mer data behövs.",
+          "stale": "Behöver en ny check.",
+          "not_ready": "bli redo"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# kundvänliga detalj behöver granskas.} other {# kundinformation behöver granskas.}}",
+          "stable": {
+            "headline": "Din offentliga information är stabil.",
+            "message": "Inga kundrelaterade problem krävde åtgärder i den senaste kontrollen."
+          },
+          "watch": {
+            "headline": "En detalj kan behöva uppmärksammas.",
+            "message": "Granska den föreslagna kontrollen innan du ändrar offentlig information."
+          },
+          "needs_review": {
+            "headline": "Granska informationen som riktas mot kunden.",
+            "message": "En eller flera offentliga uppgifter bör kontrolleras, och en eller flera privata uppgifter ska markeras."
+          },
+          "insufficient_data": {
+            "headline": "Det behövs mer aktivitet.",
+            "message": "Håll den aktuella informationen stabil medan MenuList samlar in en användbar signal."
+          },
+          "stale": {
+            "headline": "Företagshälsa behöver en ny kontroll.",
+            "message": "Den senaste kontrollen är gammal. Din nuvarande offentliga information förblir oförändrad."
+          },
+          "not_ready": {
+            "headline": "Business Health gör sig redo för att ta över.",
+            "message": "Den första butikskontrollen kommer att visas här när den är klar, och du kan se den här."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Kontrollera menykällan.",
+            "message": "Det gick inte att hitta någon aktiv offentlig menykälla. Kontrollera menyn innan du delar den, och om det är möjligt, ändra den.",
+            "title": "Menykällan behöver kontrolleras."
+          },
+          "low_latest_activity": {
+            "action": "Kontrollera delningslänkar.",
+            "message": "Kundaktiviteten är låg. Kontrollera att det inte finns några kunder i butiken. QR, Google, Instagram, WhatsApp, och webbplatslänkar.",
+            "title": "Kundaktiviteten är låg."
+          },
+          "unavailable_item_taps": {
+            "action": "Kontrollera otillgängliga artiklar.",
+            "message": "Kunderna visade intresse för artiklar som inte fanns tillgängliga, fyll på lager eller håll dem dolda.",
+            "title": "Otillgängliga artiklar fick uppmärksamhet."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Läs gästernas feedback.",
+            "message": "Gästrecensioner behöver en ägarkontroll innan de offentliga uppgifterna ändras.",
+            "title": "Gästernas feedback behöver kontrolleras."
+          },
+          "default": {
+            "action": "Granska detaljer",
+            "message": "En detalj som riktar sig till kunden behöver en ägarkontroll.",
+            "title": "En detalj behöver kontrolleras."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# privata feedbackobjekt behöver kontrolleras.} other {# privata feedbackobjekt behöver kontrolleras.}}",
+          "clear": "Privat feedback är tydlig."
+        },
+        "freshness": {
+          "notReady": "Business Health är inte i realtid, den första butikskontrollen kommer att visa datadatumet här. Företagshälsa är inte en realtidsfunktion.",
+          "throughDate": "Använder data genom {date}. Dagens datum kanske inte är klart ännu.",
+          "latest": "Använder den senaste tillgängliga MenuList-data. Dagens datum kanske inte är klart ännu."
+        },
+        "periods": {
+          "today": "Idag",
+          "yesterday": "Föregående dag",
+          "thisWeek": "Denna vecka",
+          "lastWeek": "Förra veckan",
+          "thisMonth": "Denna månad",
+          "lastMonth": "Förra månaden",
+          "last7Days": "Senaste 7 dagarna",
+          "last30Days": "Senaste 30 dagarna",
+          "overall": "Totalt"
+        },
+        "metrics": {
+          "menuViews": "Menyvyer",
+          "topDemand": "Högst efterfrågan",
+          "topDemandDetail": "Befordra: {count} {signal}",
+          "bestSource": "Bästa källan",
+          "bestSourceDetail": "Uppdatera länk: {count} besöker"
+        },
+        "signals": {
+          "views": "synpunkter",
+          "clicks": "Tryck",
+          "attention": "Uppmärksamhetssignaler"
+        },
+        "page": {
+          "description": "Dagliga affärsstatus och kundsyfte kontroller.",
+          "latestCheck": "AI health check",
+          "loading": "Laddning",
+          "loadingMessage": "Loading Företagshälsa...",
+          "notReady": "Business Health är inte färdigt ännu, det kan ta lite tid.",
+          "loadErrorTitle": "Det gick inte att läsa in Business Health.",
+          "loadErrorDescription": "Uppdatera den här sidan och försök igen.",
+          "refresh": "Uppdatera",
+          "needsAttention": "Behöver uppmärksamhet",
+          "desktopSettingsOnly": "Öppna detta från skrivbordsinställningar."
+        },
+        "scope": {
+          "title": "Företag Hälsa Omfattning Företagshälsa",
+          "allMenus": "Alla menyn",
+          "selectedMenu": "Välj menyn",
+          "menuCount": "{count, plural, one {#-menyn på den här platsen.} other {# menyer på den här platsen.}}",
+          "locationLevel": "Vy på platsnivå",
+          "inactiveMenu": "Inaktiv meny Inaktiva menyn",
+          "thisMenuOnly": "Menyn är bara",
+          "allMenusInLocation": "Alla menyer på den här platsen.",
+          "thisMenuHelper": "Frågor och aktiviteter använder menyn.",
+          "allMenusHelper": "Frågor och aktivitet använder alla menyer på denna plats.",
+          "dialogDescription": "Välj alla menyer eller en meny för aktivitet och kontroller, väljer du alla menyer visas endast aktiviteterna.",
+          "all": "Alla",
+          "close": "Stäng"
+        },
+        "locations": {
+          "title": "platser",
+          "loading": "Laddar platser...",
+          "empty": "Ingen platssammanfattning ännu.",
+          "storeFallback": "Plats {id}",
+          "checkedOn": "Kontrollerade {date}.",
+          "checkCount": "{count, plural, one {# kontroll} other {# kontroller}}",
+          "checksNeedReview": "{count, plural, one {# kundkontroll behöver granskas.} other {# kundkontroller behöver granskas.}}",
+          "statusReason": {
+            "stable": "Inga kundrelaterade problem behöver åtgärdas.",
+            "watch": "En detalj som är riktad mot kunden kan behöva uppmärksammas.",
+            "needs_review": "Detaljer som är riktade mot kunden behöver granskas.",
+            "insufficient_data": "Mer kundaktivitet krävs för att en kontroll ska vara användbar, och det är därför viktigt med en bra kontroll.",
+            "stale": "Denna plats behöver en färsk kontroll.",
+            "not_ready": "Den första platskontrollen är i full gång och den görs redo."
+          }
+        },
+        "assistant": {
+          "title": "Fråga företags hälsa",
+          "askShort": "Fråga.",
+          "englishOnlyTitle": "Frågorna finns för närvarande på engelska.",
+          "englishOnlyDescription": "Din status och dina kontroller är lokaliserade.Välj engelska som språk i appen när du vill ställa frågor om Business Health.",
+          "notReady": "Business Health kommer att svara när den senaste kontrollen är klar och vi kan ge dig mer information.",
+          "suggestedUnavailable": "Föreslagna frågor finns inte tillgängliga just nu.",
+          "freeTextUnavailable": "Frågor med gratis text finns inte tillgängliga just nu.",
+          "answerError": "Business Health kunde inte svara på det.",
+          "suggestedQuestions": "Föreslagna frågor",
+          "followUps": "Du kan fråga nästa gång.",
+          "you": "Du är",
+          "empty": "Välj en fråga eller ställ en frågan om ditt företag.",
+          "placeholderReady": "Fråga om dagens, veckans, menyplanen eller nästa kontroll.",
+          "placeholderMobile": "Fråga om idag eller den här veckan.",
+          "placeholderPending": "Tillgänglig efter den senaste kontrollen.",
+          "send": "Skicka fråga",
+          "cachedFacts": "Baserat på cachelagrade MenuList affärsfakta.",
+          "questions": {
+            "checks": "Vad behöver kontrolleras?",
+            "today_stats": "Hur går det idag?",
+            "this_week_stats": "Vad hände den här veckan?",
+            "top_item": "Vilken produkt får mest uppmärksamhet?",
+            "last_week_stats": "Vad hände förra veckan?",
+            "this_month_stats": "Hur är det den här månaden?",
+            "last_month_stats": "Vad hände förra månaden?",
+            "public_menu_status": "Är min offentliga meny okej?",
+            "profile_status": "Är min företagsprofil komplett?",
+            "feedback_reviews": "Någon feedback från gäster att kolla?",
+            "feedback_recent": "Vad har gäster sagt nyligen?",
+            "default": "Vad ska jag kolla nästa gång?"
+          }
+        },
+        "sources": {
+          "title": "Datakällor Datakälla",
+          "menuProjects": "Meny projekt Menyprojekt",
+          "ownerAnalytics": "Ägaraktivitet Ägarverksamhet",
+          "guestFeedback": "Gäst feedback",
+          "storeSettings": "Affärsmiljöer Företagsmiljöer",
+          "menuListData": "MenuList-data",
+          "updatedOn": "Uppdaterad {date}",
+          "latest": "Senast tillgängliga data."
+        },
+        "publicTruth": {
+          "title": "Officiell kundkälla",
+          "checking": "Kontrollerar.",
+          "checkingFacts": "Kontrollerar MenuList offentliga fakta...",
+          "checkedMenu": "Markerad meny: {name}",
+          "boundary": "Kontrollerad från aktuella MenuList affärs- och menydata. Externa plattformar förblir ägarbekräftade.",
+          "boundaryShort": "Externa plattformar förblir ägarbekräftade.",
+          "historyTitle": "Allmänhetens informationshistoria.",
+          "historyBoundary": "Använder endast MenuList affärs- och menyfakta. Inga externa webbplatser genomsöks.",
+          "historyBoundaryShort": "MenuList Endast fakta. Inga externa webbplatser genomsökta.",
+          "refreshErrorTitle": "Kundkällan kunde inte uppdateras.",
+          "refreshErrorDescription": "De senaste tillgängliga MenuList fakta visas fortfarande nedan.",
+          "historyRefreshError": "Det gick inte att uppdatera historiken för offentlig information.",
+          "historyLoadError": "Det gick inte att läsa in historiken över offentlig information.",
+          "historyErrorDescription": "Den senast sparade rapporten visas fortfarande när den är tillgänglig.",
+          "notRun": "inte springa",
+          "lastSaved": "Senast sparad {date}",
+          "noSavedReport": "Ingen sparad rapport ännu.",
+          "noSavedReportDescription": "Kör kontrollen för att spara den första rapporten för denna plats.",
+          "downloadEnglishReport": "Ladda ner den engelska rapporten",
+          "downloadEnglishShort": "Engelska rapporten",
+          "runCheck": "Kör kontrollen.",
+          "currentFix": "Aktuell fix-post.",
+          "nextFixes": "Nästa offentliga korrigeringar kommer.",
+          "none": "Ingen",
+          "attentionCount": "{count, plural, one {# objekt behöver kontrolleras.} other {# objekt behöver kontrolleras.}}",
+          "readyModuleCount": "Klar {count}/{total}.",
+          "missingCount": "saknas {count}",
+          "checkCount": "Kontrollera {count}.",
+          "savedCount": "Sparade {count}/{total}.",
+          "modulesReady": "{count}/{total} moduler är klara.",
+          "status": {
+            "ready": {
+              "label": "Förberedd",
+              "message": "Din officiella informationskälla för kunder innehåller den grundläggande information de behöver."
+            },
+            "missing_basics": {
+              "label": "Saknar grunderna saknas.",
+              "message": "Meny, öppettider, priser, kampanjer eller kundlänk behöver uppmärksammas innan de delas vidare."
+            },
+            "unclear": {
+              "label": "Behöver kontrolleras.",
+              "message": "De flesta grunderna finns, men en eller flera offentliga fakta behöver fortfarande kontrolleras."
+            }
+          },
+          "metrics": {
+            "readyModules": "Färdiga moduler.",
+            "missingFacts": "Saknade fakta",
+            "checkedMenu": "Kontrollerad meny.",
+            "savedReports": "Sparade rapporter"
+          },
+          "results": {
+            "present": "Förberedd",
+            "missing": "saknas",
+            "unclear": "Kontrollera",
+            "not_applicable": "Behövs inte.",
+            "not_checked": "inte kontrollerad"
+          },
+          "moduleStatus": {
+            "ready": "Förberedd",
+            "needs_attention": "saknas",
+            "check": "Kontrollera",
+            "not_checked": "inte kontrollerad"
+          },
+          "facts": {
+            "business_identity": "Företagsnamn Företagets namn",
+            "menu_or_service_source": "Meny- eller servicelista.",
+            "prices": "priser",
+            "hours": "timmar",
+            "location": "Plats Läge",
+            "contact": "Kontakta oss",
+            "customer_actions": "Kundåtgärder Kundåtsägelser",
+            "public_link": "Kundlänk Kund länk",
+            "photos": "Bilderna",
+            "machine_readable_source": "Sökvänliga detaljer Sök-vänliga uppgifter"
+          },
+          "evidence": {
+            "owner_entered": "ingick i denna check.",
+            "owner_selected": "Välj av ägaren.",
+            "source_text_hint": "Hittades i den angivna källan.",
+            "valid_public_url": "Den offentliga länkformatet är giltigt.",
+            "invalid_public_url": "Den offentliga länken behöver korrigering.",
+            "menulist_store": "Kontrollerade aktuella MenuList företagsinställningar.",
+            "menulist_project": "Den valda eller standardmenyn MenuList kontrollerades.",
+            "menulist_summary": "Kontrollerade den aktuella MenuList menysammanfattningen.",
+            "menulist_public_route": "Kontrollerade aktuella MenuList kundlänkinställningar.",
+            "menulist_index_gate": "Kontrollerade aktuella MenuList offentliga upptäcktsregler.",
+            "not_provided": "Detta faktum saknas i aktuella MenuList-data.",
+            "not_checked": "Detta faktum kontrollerades inte på ett säkert sätt från aktuella MenuList-data.",
+            "priceNotLoaded": "Öppna den valda menyn en gång så att MenuList kan kontrollera priserna."
+          },
+          "moduleEvidence": {
+            "ready": "Aktuella MenuList data visar att detta område är klart.",
+            "needs_attention": "Aktuella MenuList data visar att nödvändig information saknas.",
+            "check": "Kolla in det här området innan kunderna litar på att du kan hjälpa dem.",
+            "not_checked": "MenuList kunde inte kontrollera detta område helt utifrån de aktuella uppgifterna."
+          },
+          "setupReason": {
+            "needs_attention": "Obligatorisk kundinformation saknas.",
+            "check": "Kolla detta innan kunder litar på det.",
+            "not_checked": "MenuList kunde inte kontrollera detta helt utifrån de aktuella uppgifterna."
+          },
+          "targetActions": {
+            "basic_settings": "Öppna företagsinformation",
+            "domain_settings": "Öppna kundlänk.",
+            "hours_edit": "Öppettider:",
+            "menu_tab": "Öppna menyn.",
+            "official_page": "Öppna företagssida",
+            "presence_monitor": "Öppen placeringskontroll.",
+            "share_tab": "Öppna delningsverktyg."
+          },
+          "actions": {
+            "openCustomerSource": "Öppna kundkällan.",
+            "openShareTools": "Öppna delningsverktyg.",
+            "fixFact": "Fixa {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Grunderna i offentlig information",
+              "description": "Företagets namn, aktuell meny eller tjänstekälla, kontakt, åtgärder och kundlänk."
+            },
+            "business_facts_copy_pack": {
+              "title": "Återanvändbara företagsuppgifter.",
+              "description": "Aktuella fakta som personalen kan återanvända i offentliga profiler, svar och kundlänk-överlämningar."
+            },
+            "qr_link_health": {
+              "title": "QR länkberedskap",
+              "description": "En aktuell kundlänk för QR och utskrivna placeringar."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profillänkkonsistens",
+              "description": "En aktuell kundlänk för sociala profiler och andra placeringar."
+            },
+            "customer_link_preview": {
+              "title": "Förhandsgranska kundlänk",
+              "description": "De viktigaste fakta som kunderna bör se innan de agerar."
+            },
+            "print_share_assets": {
+              "title": "Skriv ut och dela resurser.",
+              "description": "Aktuell länkberedskap för QR affischer, räknekort och delade bilder."
+            },
+            "menu_service_readability": {
+              "title": "Tydlighet i meny eller service.",
+              "description": "Kategorier, artiklar eller tjänster och priser i den valda menyn."
+            },
+            "price_availability_gap": {
+              "title": "Tydlighet i pris och tillgänglighet.",
+              "description": "Priser, varianter, slutsålda status och tillgänglighet som visas för kunder."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Gammal PDF ersättning",
+              "description": "En aktuell MenuList käll- och kundlänk som kan ersätta gamla PDF:er."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp åtgärder",
+              "description": "En tydlig WhatsApp eller alternativ kundkontaktåtgärd."
+            },
+            "hours_readiness": {
+              "title": "Timmar beredskapsläge",
+              "description": "Regelbundna öppettider som kunder kan lita på."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp svarar fakta.",
+              "description": "Aktuell meny, öppettider, kontaktuppgifter och länkfakta för personalens svar."
+            },
+            "photo_visual_identity": {
+              "title": "Foton och visuell identitet",
+              "description": "En logotyp, ett omslag, ett företagsfoto eller en produkt- och tjänstegrafik."
+            },
+            "customer_question_coverage": {
+              "title": "Vanliga kundfrågor",
+              "description": "Tydliga fakta för erbjudande, öppettider, pris, plats, kontakt och nästa åtgärd."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Återanvändbara kundsvar.",
+              "description": "Aktuella fakta som personalen kan återanvända när kunderna ställer vanliga frågor."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Boknings- och förfrågningsberedskap.",
+              "description": "En tydlig väg att beställa, boka, reservera, ringa, skicka meddelande, begära offert eller besöka."
+            },
+            "google_profile_handoff": {
+              "title": "Google profillänk",
+              "description": "Den aktuella kundlänken förbereddes för Google företagsprofil."
+            },
+            "menu_freshness": {
+              "title": "Menu freshness",
+              "description": "En senaste menus uppdatering när priser, varor eller tillgänglighet ändrats."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Diagram",
+        "description": "En visuell sammanfattning från samma avräknade aktivitet som visas i instrumentpanelen.",
+        "ranges": {
+          "days7": "7 dagar",
+          "days30": "30 dagar"
+        },
+        "metrics": {
+          "menu_activity": "Menyaktivitet Aktivitetsmeny",
+          "customer_actions": "Kundåtgärder Kundåtsägelser",
+          "search_demand": "Sök efterfrågan Sökförfrågan",
+          "item_interest": "föremål intresse",
+          "unavailable_demand": "Otillgänglig efterfrågan.",
+          "missing_searches": "Saknade sökningar"
+        },
+        "trend": {
+          "summary": "Trendsammanfattning",
+          "updatedAfterClose": "Uppdateras efter att din butiks dag stänger.",
+          "status": {
+            "up": "Högre",
+            "down": "Lägre",
+            "stable": "Stabil",
+            "not_enough_data": "För lite historia."
+          },
+          "period": {
+            "week": "Veckans checklista",
+            "month": "Månadsöversikt"
+          },
+          "shortPeriod": {
+            "week": "Vecka",
+            "month": "Månad"
+          },
+          "needsMoreDays": "Behöver mer fasta dagar att vila på.",
+          "versus": "{current} mot {previous}",
+          "messages": {
+            "up": "{metric} är högre för denna kontroll av {period}.",
+            "down": "{metric} är lägre för denna kontroll av {period}.",
+            "stable": "{metric} är stabilt för denna kontroll av {period}.",
+            "not_enough_data": "Det finns inte tillräckligt med avgjord {metric}-historik för denna kontroll {period}."
+          },
+          "change": {
+            "gathering": "{period}: samla in",
+            "newActivity": "{period}: ny aktivitet.",
+            "steady": "{period}• Ständig",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Jämförelsediagram Jämsförelsediagnostik",
+          "description": "Veckans och månadsrörelse från bestämda dagar."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menyntrender",
+            "days7": "Senaste 7 avräknade dagarna.",
+            "days30": "Senaste 30 avräknade dagarna."
+          },
+          "customerActions": {
+            "title": "Kundåtgärder Kundåtsägelser",
+            "description": "Vad kunderna klickade på efter att ha öppnat menyn."
+          },
+          "sources": {
+            "title": "Var kunderna kom ifrån.",
+            "description": "Menybesök och åtgärdssessioner per källa."
+          },
+          "items": {
+            "title": "Toppobjekt av intresse:",
+            "description": "Objekt som kunderna öppnade eller knackade på oftast."
+          },
+          "search": {
+            "title": "Sök efterfrågan Sökförfrågan",
+            "description": "Vad kunderna sökte efter."
+          },
+          "officialPage": {
+            "title": "Officiell hemsida Trends",
+            "description": "Visningar och åtgärder från den officiella företagssidan."
+          }
+        },
+        "legends": {
+          "visits": "Besök",
+          "actionSessions": "Handlingssessioner",
+          "views": "Utsikt",
+          "taps": "Tryck",
+          "noResult": "Inga resultat"
+        },
+        "empty": {
+          "default": "Det finns inga grafdata för den här vyn än.",
+          "menuActivity": "Menyaktivitet visas när kunderna öppnar menyn och kan sedan användas för att skapa nya menyer.",
+          "customerActions": "Kundåtgärder visas efter att kunderna har ringt, skickat ett meddelande, beställt, bokat eller frågat efter vägbeskrivning.",
+          "customerActionsPeriod": "Inga kundaktioner under denna period ännu.",
+          "searchDemand": "Sökefterfrågan visas efter att kunderna har använt menysökningen och sökresultaten visas i en lista.",
+          "itemInterest": "Intresset för ett objekt kommer att visas efter att kunden har öppnat menyalternativen.",
+          "unavailableDemand": "Otillgänglig efterfrågan visas när kunder trycker på otillgängliga artiklar.",
+          "missingSearches": "Saknade sökningar visas när kunder söker men inte hittar någon matchning.",
+          "sources": "Källinformation visas efter att kunderna har kommit från länkar, QR eller sociala sidor.",
+          "officialPage": "Aktiviteten på den officiella sidan visas när kunderna har öppnat den offentliga företagssidan."
+        },
+        "footer": {
+          "sameData": "Samma instrumentpaneldata.",
+          "noExtraTracking": "Ingen extra spårning behövs.",
+          "settledAfterClose": "Avvecklas efter butikens dagsslut."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menyn",
+          "viewsLabel": "Menyvyer",
+          "viewsTooltip": "Antal gånger kunderna öppnade din meny.",
+          "thisMonthLabel": "Din meny den här månaden:"
+        },
+        "product": {
+          "singular": "Katalog",
+          "viewsLabel": "Katalog synpunkter",
+          "viewsTooltip": "Antal gånger kunder öppnade din katalog.",
+          "thisMonthLabel": "Din katalog denna månaden är:"
+        },
+        "service": {
+          "singular": "Tjänstelistan",
+          "viewsLabel": "Vyer över servicelistor.",
+          "viewsTooltip": "Antal gånger kunder öppnade din servicelista.",
+          "thisMonthLabel": "Din servicelista den här månaden:"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Behöver uppmärksamhet",
+          "active": "Officiell kundkälla är aktiv.",
+          "readyToPlace": "Officiell kundkälla är redo att placera ut."
+        },
+        "description": {
+          "needsAttention": "Rätta menyn, öppettiderna eller kundlänken innan du delar den med andra.",
+          "active": "Inga åtgärder krävs. Kunderna kan använda dina nuvarande offentliga uppgifter från en källa.",
+          "readyToPlace": "Din kundlänk är klar, lägg till den i din kundlista. Google, Instagram, WhatsApp, QR, eller skriva ut så att kunderna använder den aktuella källan."
+        },
+        "link": {
+          "ready": "Kundlänk redo för användning.",
+          "missing": "Kundlänk saknas."
+        },
+        "states": {
+          "set": "Angivet",
+          "missing": "saknas",
+          "ready": "Förberedd",
+          "notReady": "Inte redo ännu?",
+          "live": "Publicerad",
+          "hidden": "Inaktiv"
+        },
+        "tags": {
+          "menu": "Meny: {status}",
+          "hours": "Timmar: {status}",
+          "customerLink": "Kundlänk: {status}",
+          "link": "Länk: {status}",
+          "placed": "Placerad: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Åtgärda det som behöver uppmärksamhet.",
+          "preview": "Förhandsgranska den publika menyn.",
+          "share": "Dela menyn"
+        },
+        "updated": {
+          "notUpdated": "Inte uppdaterad ännu.",
+          "recently": "Nyligen uppdaterade nyheter.",
+          "today": "Uppdaterad idag",
+          "yesterday": "Uppdaterad igår.",
+          "daysAgo": "Uppdaterad {count, plural, one {för # dagar sedan} other {för # dagar sedan}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Nästa ägaråtgärd",
+        "open": "Öppna",
+        "placement": {
+          "notConfirmed": "Inte bekräftat ännu.",
+          "today": "Bekräftat idag.",
+          "yesterday": "Bekräftades igår.",
+          "daysAgo": "Bekräftade {count, plural, one {för # dagar sedan} other {för # dagar sedan}}"
+        },
+        "status": {
+          "ready": "Förberedd",
+          "missing": "saknas",
+          "set": "Angivet",
+          "live": "Publicerad",
+          "notLive": "Inte levande.",
+          "confirmedCount": "{count}/{total} bekräftade",
+          "on": "På",
+          "off": "Av",
+          "dailyChanges": "Dagliga ändringar.",
+          "hoursException": "Undantag från timmarna.",
+          "staffUse": "Personal användning",
+          "menuPrices": "Menu priser",
+          "openCount": "{count, plural, one {# åtgärd öppnas.} other {# action öppna åtgärder.}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Ställ in kundlänk.",
+            "description": "Skapa kundlänken innan du delar QR, personalens svar eller offentliga profiler."
+          },
+          "setHours": {
+            "label": "Set timmar",
+            "description": "Håll öppen och stängd status tydlig för allmänheten innan kunderna besöker."
+          },
+          "publishMenu": {
+            "labelPublish": "Publicera meny",
+            "labelOpen": "Öppna menyn.",
+            "descriptionVisible": "Publicera den aktuella menyn innan du delar den med andra.",
+            "descriptionHidden": "Gör menyn synlig innan kunderna klickar på länken."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Bekräfta länkplacering.",
+            "labelPlace": "Placera kundlänk.",
+            "descriptionPlaced": "Håll Google, Instagram och WhatsApp pekande på samma källa.",
+            "descriptionUnplaced": "Lägg till samma kundlänk på Google, Instagram, WhatsApp, QR och tryckt material."
+          },
+          "openPrivateFeedback": {
+            "label": "Öppna privat feedback.",
+            "description": "Använd privat feedback innan gästernas frågor blir offentliga omdömen och använd privata kommentarer för att få mer feedback."
+          },
+          "captureDailyChange": {
+            "label": "Berätta för MenuList vad som har ändrats.",
+            "description": "Berätta för MenuList vad som har ändrats idag och godkänn det färdiga menykortet."
+          },
+          "setTodayStatus": {
+            "label": "Ange dagens status.",
+            "description": "Stället stängt idag, öppnar sent, köket är stängd eller en specialmeny har meddelats."
+          },
+          "prepareStaffHandoff": {
+            "label": "Förbered överlämning av personal.",
+            "description": "Ge personalen menylänken, QR och kundsvarsrader från ett ställe."
+          },
+          "updatePrices": {
+            "label": "Uppdatera priser",
+            "description": "Använd Menu Manager för prisändringar och godkänn sedan innan du publicerar."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menyinställning",
+        "complete": "Menyinställningen är klar.",
+        "ready": "Menyinställningen är klar.",
+        "actions": {
+          "openMenu": "Öppna menyn.",
+          "createMenu": "Skapa meny",
+          "reviewDetails": "Granska detaljer",
+          "publishMenu": "Publicera meny",
+          "openSharingTools": "Öppna delningsverktyg.",
+          "prepareDescriptions": "Förbered beskrivningar.",
+          "addImages": "Lägg till bilder",
+          "reviewLanguageText": "Granska språktexten.",
+          "openMenuCheck": "Öppna menyn kontrollera.",
+          "updatePublicLinks": "Uppdatera offentliga länkar.",
+          "addPublicPhoto": "Lägg till offentligt foto"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Källa tillägg",
+            "doneDescription": "Menyn källa är ansluten.",
+            "nextDescription": "Lägg till ett menyfoto, PDF, länk eller starta manuellt."
+          },
+          "menuImported": {
+            "label": "Menyn Importerad",
+            "doneDescription": "{count, plural, one {# synligt objekt hittades.} other {# synliga objekt hittades.}}",
+            "nextDescription": "Importera eller lägg till menyalternativ."
+          },
+          "keyDetailsChecked": {
+            "label": "Viktiga detaljer kontrollerade.",
+            "doneDescription": "Priser och nyckelmeny detaljer är tydliga.",
+            "nextDescription": "Kontrollera priser och viktiga detaljer innan du publicerar."
+          },
+          "menuPublished": {
+            "label": "Menyn publicerad",
+            "doneDescription": "Den offentliga menyn har publicerats.",
+            "nextDescription": "Publicera när menyn är klar för kunderna, så att de kan beställa den."
+          },
+          "linkPlaced": {
+            "label": "Länk placerad.",
+            "readyLabel": "Länk klar.",
+            "doneDescription": "Den officiella länken är redo för kunder.",
+            "progressDescription": "{count} av {total} placeringsåtgärder utförda.",
+            "nextDescription": "Öppna delningsverktygen när menyn är publicerad och välj sedan \"Skapa meny\"."
+          },
+          "descriptionsReady": {
+            "label": "Beskrivningar redo",
+            "doneDescription": "Synliga objekt har beskrivningar.",
+            "nextDescription": "Förbered beskrivningar för tydligare menyobjekt."
+          },
+          "imagesReady": {
+            "label": "Bilderna redo",
+            "doneDescription": "synliga föremål har bilder.",
+            "nextDescription": "Lägg till eller generera objektbilder när det är användbart."
+          },
+          "translationsReady": {
+            "label": "Översättningar redo",
+            "doneDescription": "De valda språkmenyn är färdiga.",
+            "nextDescription": "Granska valda menyspråk."
+          },
+          "publicLinksAdded": {
+            "label": "Public länkar tillägg",
+            "doneDescription": "Det finns länkar till offentliga åtgärder eller sociala medier, och det går att skapa egna inlägg.",
+            "nextDescription": "Lägg till användbara offentliga länkar på företagssidan."
+          },
+          "publicPhotoAdded": {
+            "label": "Allmän bild tillagd.",
+            "doneDescription": "Ett offentligt foto finns tillgängligt.",
+            "nextDescription": "Lägg till ett omslag, en logotyp eller ett offentligt foto när du är redo."
+          }
+        }
       }
     }
   },
@@ -1580,14 +2440,14 @@
         "sugarFree": "Sockerfri",
         "contains": "Innehåller {value}",
         "spice": "Kryddnivå: {value}",
-        "spiceMild": "Mild",
-        "spiceMedium": "Medium",
+        "spiceMild": "Mild mild till måttlig",
+        "spiceMedium": "Medium Medium",
         "spiceHot": "Hett",
         "spiceVeryHot": "Mycket varmt",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} min min min.",
         "hoursShort": "{count} tim",
         "calories": "{count} kal",
-        "protein": "Protein {value}g",
+        "protein": "Proteininnehåll {value} g",
         "carbs": "Kolhydrater {value}g",
         "fat": "Fett {value}g",
         "serving": "Visar {value}",
@@ -1623,7 +2483,7 @@
         "readyInstantly": "Klar direkt",
         "expressMinutes": "Express {minutes} min",
         "quickMinutesSession": "Snabb {minutes} min session",
-        "expressMinutesSession": "{minutes}-minuters expresssession",
+        "expressMinutesSession": "Expressession på {minutes} min",
         "greatValue": "Stort värde",
         "worthEveryBite": "Värt varenda tugga",
         "worthEveryPenny": "Värt priset",
@@ -1648,7 +2508,7 @@
         "tempTemporaryNotice": "Tillfälligt varsel",
         "closesAt": "Stängs vid {time}",
         "opensAt": "Öppnar vid {time}",
-        "opensTomorrowAt": "Öppnar imorgon kl. {time}",
+        "opensTomorrowAt": "Öppna imorgon på {time}",
         "opensNextDayAt": "Öppnar nästa {day} vid {time}",
         "opensDayAt": "Öppnar {day} vid {time}",
         "days": {
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Ingen faktureringshistorik ännu.",
     "perMonth": "/månad inkl. moms",
     "contactUs": "Kontakta oss Kontakta Oss"
+  },
+  "StarterActivation": {
+    "activeTitle": "Din meny är online",
+    "endingSoonTitle": "Håll din meny online",
+    "publicMenuQrActive": "Din offentliga meny och QR-kod är aktiva.",
+    "activeRemaining": "Din menyåtkomst är aktiv.",
+    "daysRemaining": "{days, plural, one {Välj en plan inom # dag för att hålla din meny online.} other {Välj en plan inom # dagar för att hålla din meny online.}}",
+    "sharingComplete": "Din delningskonfiguration är klar.",
+    "sharingProgress": "{count, number} av {target, number} delningssteg har slutförts.",
+    "evidenceRecorded": "Spelas in automatiskt: {systemCount, number}. Bekräftad av dig: {ownerCount, number}.",
+    "evidenceEmpty": "Kopiera eller dela menylänken, ladda ner QR-koden eller bekräfta var du placerade den.",
+    "keepLiveAction": "Håll din meny online",
+    "noSubscriptionDescription": "Välj en plan för att hålla menyuppdateringar och kundsidor tillgängliga.",
+    "choosePlanDescription": "Din meny är sparad. Välj en plan för att hålla den online och uppdaterad."
   },
   "Transactions": {
     "title": "Transaktionshistorik Transaktioner Historik",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobilappen är tillgänglig för iOS och Android.",
     "subscribeTitle": "Prenumerera på Kom igång-nyhetsbrevet",
     "subscribeDescription": "Välj en plan för att börja skapa din digitala meny och hantera ditt företag.Välj en prenumeration för att komma igång med att skapa din meny.",
-    "viewPlans": "Se planer Visa planer"
+    "viewPlans": "Se planer Visa planer",
+    "returnToMobile": "Du tittar på datorversionen. Återgå till mobil."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Koder Koder",

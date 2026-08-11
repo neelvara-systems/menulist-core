@@ -7,6 +7,7 @@
  */
 
 import { Card, Space, Statistic, Tooltip, theme } from 'antd';
+import { formatNumber } from '@util/formatters';
 import React from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -35,13 +36,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
     const { token } = theme.useToken();
     const formatValue = (val: number | string): string | number => {
         if (typeof val === 'number') {
-            if (val >= 1000000) {
-                return `${(val / 1000000).toFixed(1)}M`;
-            }
-            if (val >= 10000) {
-                return `${(val / 1000).toFixed(1)}K`;
-            }
-            return val;
+            return formatNumber(val, {
+                compactDisplay: 'short',
+                maximumFractionDigits: 1,
+                notation: Math.abs(val) >= 10000 ? 'compact' : 'standard',
+            });
         }
         return val;
     };

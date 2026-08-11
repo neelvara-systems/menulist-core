@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { SKIP_CLIENT_APP_LAYOUT_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
 import useDeviceType from '@hook/useDeviceType';
+import { isRtlLocale } from '@lib/localization/config';
 import { clearForceDesktopMode, shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
 import {
     hasStarterWorkspaceAccess,
@@ -22,6 +23,7 @@ import { hasValidSubscriptionAccess } from '@util/razorpay';
 import SkipToContentLink from '@/components/shared/accessibility/SkipToContentLink';
 import { Layout, theme } from 'antd';
 import dynamic from 'next/dynamic';
+import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Fragment, useContext, useEffect, useState } from 'react';
 import styles from './layoutWrapper.module.scss';
@@ -47,6 +49,9 @@ export default function AntdLayoutWrapper(props: any) {
     const isCollapsed = useAppSelector(getSidebarState);
     const isDarkMode = useAppSelector(getDarkModeState);
     const isRTLDirection = useAppSelector(getRTLDirectionState)
+    const appLocale = useLocale();
+    const tMobileShell = useTranslations('MobileShell');
+    const isRTLLayout = isRTLDirection || isRtlLocale(appLocale);
     const { token } = theme.useToken();
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -115,7 +120,7 @@ export default function AntdLayoutWrapper(props: any) {
             return <MobileShell />;
         }
 
-        return <Layout className={`${styles.layoutWrapper}`} dir={isRTLDirection ? "rtl" : "ltr"} >
+        return <Layout className={`${styles.layoutWrapper}`} dir={isRTLLayout ? "rtl" : "ltr"} >
             <Fragment>
                 {/* "Return to Mobile" banner — shown when mobile user forced desktop mode */}
                 {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
@@ -138,7 +143,7 @@ export default function AntdLayoutWrapper(props: any) {
                             setForceDesktopRefreshKey((current) => current + 1);
                         }}
                     >
-                        You&apos;re viewing the desktop version. <strong>Tap here to return to mobile.</strong>
+                        {tMobileShell('returnToMobile')}
                     </button>
                 )}
                 <style jsx global>{`
@@ -154,8 +159,8 @@ export default function AntdLayoutWrapper(props: any) {
                 `}</style>
                 <Layout
                     style={isVerticalSidebar && !isHandheldDesktopRoute ? {
-                        paddingLeft: `${verticalSidebarOffset}px`,
-                        transition: 'padding-left 0.2s ease',
+                        paddingInlineStart: `${verticalSidebarOffset}px`,
+                        transition: 'padding-inline-start 0.2s ease',
                     } : {}}
                 >
                     {!isHandheldDesktopRoute ? <HeaderComponent /> : null}

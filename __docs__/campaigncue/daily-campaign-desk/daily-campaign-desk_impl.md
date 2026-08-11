@@ -111,11 +111,12 @@ Safe reuse calls the existing campaign-create route with `reuseCampaignId`. The 
 
 ## Mutation Behavior
 
-The desk does not add new mutation APIs. It reuses:
+The desk does not add a new route family. It reuses:
 
 - workspace PATCH for business details
-- source POST for inputs
-- asset POST for asset metadata
+- source POST for one detailed input or one reviewed Campaign Inbox batch
+- scoped Firebase token + private Storage source/preview upload + asset POST for actual photo/clip capture
+- asset POST alone for an explicitly labelled metadata-only file note
 - location POST for locations
 - campaign POST for pack creation
 - campaign action POST for download/export/schedule/request-approval/approve/reject/mark-used/result
@@ -143,7 +144,7 @@ The Home tab label is now Daily desk. The first screen shows:
 - saved facts
 - pack readiness checks and explicit no-prediction copy
 
-The Start navigation exposes `Inputs` for the Missing Input Inbox. The Operations navigation exposes `Visibility` for local search/profile readiness and manual Google-ready handoff fields.
+The Start navigation exposes `Inputs` for the Missing Input Inbox and Campaign Inbox. Campaign Inbox parses a bounded owner update in browser memory, routes protected reusable fields to Business Details, and saves selected campaign facts through one idempotent batch on the existing sources route. The Operations navigation exposes `Visibility` for local search/profile readiness and manual Google-ready handoff fields.
 
 The Creative Editor remains separate under Editor/Assets, but it no longer opens as a context-free design surface for CampaignCue. Campaign Pack Editor Mode wraps the shared editor with owner context:
 

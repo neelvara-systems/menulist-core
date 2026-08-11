@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 
+import { FEATURE_FLAGS } from "@config/features";
 import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
     parseCampaignCueJsonBody,
+    requireCampaignCueFeature,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
     withCampaignCueAuth,
@@ -21,6 +23,12 @@ export const POST = withCampaignCueAuth(async (request: NextRequest, session) =>
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
+        const featureDisabled = requireCampaignCueFeature(
+            FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS
+                && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD,
+            "CueLayers upload",
+        );
+        if (featureDisabled) return featureDisabled;
 
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;

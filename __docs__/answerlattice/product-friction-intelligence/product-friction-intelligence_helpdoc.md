@@ -26,7 +26,9 @@ a product, engineering, or knowledge review:
    behavior, known limitation, plan or permission explanation, watch, or no
    action.
 3. Read the completed windows, evidence mix, trend, and limitation statement.
-4. Select **Copy brief** or **Download Markdown**.
+4. Read the next-action explanation below the selector.
+5. Continue into the focused Knowledge Map or trusted answers, copy the brief
+   for product review, close the review, or select **Download Markdown**.
 
 The review path is included only in the copied or downloaded packet. It is not
 saved in Answerlattice, sent to an issue tracker, or treated as a confirmed
@@ -34,6 +36,27 @@ root cause. Choosing **Review known limitation** still requires the owner to
 verify that the constraint is intentional and approved. The brief does not
 include raw conversations, ticket bodies, customer identities, or unsupported
 affected-user counts.
+
+Knowledge-review actions preserve the selected product topic. Product-behavior
+review copies the packet for the product or engineering system you already use.
+**Watch the next completed window** does not schedule a reminder, and **No
+action now** does not save a decision or change product truth.
+
+## Review Support Evidence After A Change
+
+Use **Review recent changes** only when you need to inspect an activated release
+or implemented knowledge correction:
+
+1. Load the bounded recent-change list.
+2. Choose the exact completed change.
+3. Select **Compare evidence**.
+4. Read the complete before/after windows, event mix, and limitation statement.
+
+The change day is excluded. A comparison waits until 14 complete UTC days are
+available after the change. Answerlattice may instead report insufficient
+baseline evidence, expired history, or a saturated bounded source window. A
+lower event count is an observed association; it is not proof that the change
+fixed the underlying problem.
 
 Answerlattice does not automatically know that a high-evidence area is a
 product bug, confusing interface, policy problem, or missing document. Confirm

@@ -54,7 +54,7 @@ export const ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION = motionAsset(
     '/answerlattice-support-control-motion.webm',
     '/answerlattice-support-control-motion.mp4',
     '/answerlattice-support-control-motion-poster.png',
-    'Governed AnswerLattice answer layer connecting product sources to approved support surfaces'
+    'AnswerLattice turns product sources into reviewed support for users and owners'
 );
 
 export const ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION = motionAsset(
@@ -103,7 +103,7 @@ export const ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS = {
     ),
     'Key product pages': desktopScreen(
         'answerlattice-product-preview-surfaces.png',
-        'Sample AnswerLattice product surfaces'
+        'Sample AnswerLattice product-page support map'
     ),
     'Widget install': desktopScreen(
         'answerlattice-product-preview-widget.png',

@@ -14,6 +14,7 @@
 
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { formatNumber } from '@util/formatters';
+import { formatDashboardPercent } from '@lib/analytics/ownerDashboardPresentation';
 import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -93,7 +94,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                     type="warning"
                     showIcon
                     message={t('customerApp.couldNotLoad')}
-                    description="Try again later."
+                    description={t('customerApp.tryAgainLater')}
                 />
             </Card>
         );
@@ -154,7 +155,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     return (
         <Card>
             <Title level={5} style={{ marginBottom: 16 }}>
-                <LuSmartphone style={{ marginRight: 8 }} />
+                <LuSmartphone style={{ marginInlineEnd: 8 }} />
                 {t('customerApp.title')}
             </Title>
 
@@ -162,28 +163,28 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('customerApp.installedCustomers')}
-                        value={installedCustomers}
+                        value={formatNumber(installedCustomers)}
                         prefix={<LuDownload />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('customerApp.appOpens30d')}
-                        value={appOpens30d}
+                        value={formatNumber(appOpens30d)}
                         prefix={<LuEye />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('customerApp.installs30d')}
-                        value={installs30d}
+                        value={formatNumber(installs30d)}
                         prefix={<LuRocket />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('customerApp.installConversion')}
-                        value={`${conversionPct}%`}
+                        value={formatDashboardPercent(conversionPct)}
                         prefix={<LuRocket />}
                         valueStyle={{
                             color: conversionPct >= 20 ? token.colorSuccess : conversionPct >= 5 ? token.colorWarning : token.colorError,
@@ -203,10 +204,10 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 <Col xs={24} sm={12}>
                     <Statistic
                         title={t('customerApp.totalShortcutUses')}
-                        value={Object.values(summary?.shortcutClicks || {}).reduce(
+                        value={formatNumber(Object.values(summary?.shortcutClicks || {}).reduce(
                             (sum, v) => sum + (typeof v === 'number' ? v : 0),
                             0,
-                        )}
+                        ))}
                     />
                 </Col>
             </Row>
@@ -238,7 +239,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                         if (count === 0) return null;
                         return (
                             <Col key={key} xs={12} sm={6}>
-                                <Statistic title={shortcutLabel(key, t) || key} value={count} />
+                                <Statistic title={shortcutLabel(key, t) || key} value={formatNumber(count)} />
                             </Col>
                         );
                     })}
@@ -258,44 +259,34 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                         if (count === 0) return null;
                         return (
                             <Col key={key} xs={12} sm={6}>
-                                <Statistic title={platformLabel(key, t)} value={count} />
+                                <Statistic title={platformLabel(key, t)} value={formatNumber(count)} />
                             </Col>
                         );
                     })}
                 </Row>
             ) : null}
 
-            {/* Retention signal — directional read on how "sticky" the app is.
-                avg opens/install above ~3 is healthy; below 1 suggests installs
-                aren't translating into repeat use. */}
+            {/* Directional repeat-use read from the existing install/open totals. */}
             {installedCustomers > 0 ? (
                 <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
-                    <Col span={24}>
-                        <Text type="secondary" style={{ fontSize: 13 }}>
-                            {t('customerApp.appStickiness')}
-                        </Text>
-                    </Col>
-                    <Col xs={12} sm={8}>
-                        <Statistic
-                            title={t('customerApp.returningOpens30d')}
-                            value={appOpens30d}
-                        />
-                    </Col>
-                    <Col xs={12} sm={8}>
+                    <Col xs={12} sm={12}>
                         <Statistic
                             title={t('customerApp.avgOpensPerInstall')}
                             value={
                                 (summary?.lifetimeTotalAppOpens ?? 0) > 0 && installedCustomers > 0
-                                    ? ((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers).toFixed(1)
-                                    : '0.0'
+                                    ? formatNumber((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers, {
+                                        maximumFractionDigits: 1,
+                                        minimumFractionDigits: 1,
+                                    })
+                                    : formatNumber(0, { minimumFractionDigits: 1 })
                             }
                         />
                     </Col>
                     {iosManualInstalls > 0 ? (
-                        <Col xs={24} sm={8}>
+                        <Col xs={12} sm={12}>
                             <Statistic
                                 title={t('customerApp.iosManualInstalls')}
-                                value={iosManualInstalls}
+                                value={formatNumber(iosManualInstalls)}
                             />
                         </Col>
                     ) : null}

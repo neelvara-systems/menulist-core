@@ -16,6 +16,8 @@ Supporting technical and conversion documents remain authoritative for their own
 - [conversion brief template](./videos_conversion-brief-template.md);
 - [founder-review version ledger](./videos_version-ledger.md);
 - [campaign measurement ledger](./videos_campaign-measurement-ledger.md);
+- [market, format, and script system](./videos_market-format-and-script-system.md);
+- [asset intake and readiness contract](./videos_asset-intake-and-readiness.md);
 - [brand-audio package](./brand-audio/).
 
 ## 1. Product Positioning
@@ -49,21 +51,22 @@ Every launch and setup video must make starting feel small and practical for a n
 Default proof order:
 
 1. The owner already has a menu or service list.
-2. The owner uploads menu photos or a PDF already on the phone.
-3. No full-menu retyping is required to start.
-4. MenuList prepares the first private customer version.
-5. The owner checks the important information.
-6. Nothing important goes public until the owner approves.
-7. One approved customer link then supports QR, page, print, sharing, and customer actions.
+2. The current product sign-in boundary is shown accurately.
+3. The owner uploads menu photos or a PDF already on the phone.
+4. The owner does not need to retype the whole menu before beginning.
+5. MenuList prepares the first private customer version.
+6. The owner checks the important information.
+7. Nothing important goes public until the owner approves.
+8. One approved customer link then supports QR, page, print, sharing, and customer actions.
 
 Preferred owner-relief lines:
 
-- `Do not type your menu again.`
-- `Already have a menu? Start there.`
+- `No need to retype the whole menu before you begin.`
+- `Already have a menu? That is enough to start.`
 - `Upload menu photos or a PDF.`
 - `Private preview first.`
 - `Review before publishing.`
-- `Create your customer link in minutes.`
+- `MenuList prepares a private customer preview.`
 - `One approved list. Every customer link.`
 
 Do not lead with dashboards, setup forms, technical terminology, integrations, or AI capability. Lead with the smallest owner action and its visible outcome.

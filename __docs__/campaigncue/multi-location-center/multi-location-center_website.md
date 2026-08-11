@@ -1,23 +1,22 @@
 # Multi-Location Center - Website Content
 
-## Section Goal
+## Approved Section Copy
 
-Explain multi-location support as local accuracy plus group control.
+### One campaign idea. Checked for every branch.
 
-## Approved Public Copy
+Select the locations that need the campaign. CampaignCue prepares a separate pack with each branch's area and contact details, then keeps trust, approval, download, and result state separate.
 
-> Plan one campaign idea across multiple locations while keeping each branch's facts, approvals, channel status, and results separate.
+Supporting points:
 
-## Supporting Points
+- Use branch contacts when they differ from the main business.
+- Review every branch before manual use.
+- Keep local managers inside their assigned locations.
+- Download, copy, print, or hand off each pack without automatic posting.
 
-- Localizes offers, services, hours, prices, address, and CTA.
-- Tracks approval and publish status by location.
-- Supports central planning and local review.
-- Rolls results up by location group.
+## CTA
 
-## Do Not Say
+`Prepare branch packs`
 
-- Do not claim every location can be published with one click.
-- Do not imply CampaignCue overrides platform or local manager approvals.
-- Do not combine locations into one public truth.
+## Public Claim Boundary
 
+Do not claim external location sync, bulk provider publishing, automatic local optimization, guaranteed performance, or cross-branch analytics attribution. Public copy may describe implemented preparation, checking, approval, and manual-use behavior only.

@@ -5,7 +5,7 @@ import {
     type OwnerMenuAnalyticsDetailData,
 } from '@lib/analytics/ownerDashboardDetails';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { Card, Flex, Tag, Text } from '../../antd';
 
@@ -20,7 +20,8 @@ export default function MobileMenuAnalyticsDetailsCard({
 }: MobileMenuAnalyticsDetailsCardProps) {
     const { token } = theme.useToken();
     const t = useTranslations('Dashboard.owner');
-    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data, t), [data, t]);
+    const locale = useLocale();
+    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data, t, locale), [data, locale, t]);
 
     return (
         <Card size="small" title={<Text strong>{title || t('details.menuDetails')}</Text>}>
@@ -68,7 +69,7 @@ export default function MobileMenuAnalyticsDetailsCard({
                                             style={{
                                                 flexShrink: 0,
                                                 fontSize: 12,
-                                                textAlign: 'right',
+                                                textAlign: 'end',
                                             }}
                                         >
                                             {row.value}

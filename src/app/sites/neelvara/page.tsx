@@ -15,7 +15,6 @@ import {
     buildNeelvaraUrl,
 } from './siteConfig';
 import {
-    ComparisonTable,
     DirectoryCards,
     PageShell,
     StructuredData,
@@ -38,7 +37,7 @@ const LEDGER_ROWS = [
 const OPERATING_PRINCIPLES = [
     {
         icon: LuBuilding2,
-        title: 'Accountable company reference',
+        title: 'Verifiable company reference',
         body: 'Company identity, operated products, and official contact routes remain easy to verify.',
     },
     {
@@ -61,10 +60,11 @@ export default function NeelvaraHomePage() {
             <section className="nv-hero">
                 <div className="nv-wrap nv-hero-layout">
                     <div className="nv-hero-copy nv-reveal">
-                        <span className="nv-eyebrow mono">Neelvara Systems</span>
-                        <h1 className="serif">Infrastructure for information customers rely on.</h1>
-                        <p>
-                            We operate focused products that keep public business facts and approved answers clear, current, and easy to use.
+                        <span className="nv-eyebrow mono">Operating company for MenuList and Answerlattice</span>
+                        <h1 className="nv-brand-title">Neelvara Systems</h1>
+                        <p className="nv-hero-statement">Information customers can rely on.</p>
+                        <p className="nv-hero-lead">
+                            We operate focused software for public business facts and approved support answers.
                         </p>
                         <div className="nv-actions">
                             <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/products">
@@ -100,8 +100,8 @@ export default function NeelvaraHomePage() {
                 <div className="nv-wrap nv-operating-layout">
                     <div className="nv-section-intro">
                         <span className="nv-eyebrow mono">Operating approach</span>
-                        <h2 className="serif">A focused company with clear responsibilities.</h2>
-                        <p>Neelvara keeps company information, product commitments, and contact routes easy to understand.</p>
+                        <h2 className="serif">A focused company with clear product boundaries.</h2>
+                        <p>Neelvara identifies the company behind each product and routes questions to the right place.</p>
                     </div>
                     <div className="nv-principle-grid">
                         {OPERATING_PRINCIPLES.map((item) => {
@@ -163,44 +163,16 @@ export default function NeelvaraHomePage() {
                 </div>
             </section>
 
-            <section className="nv-section nv-reveal">
-                <div className="nv-wrap nv-section-intro">
-                    <span className="nv-eyebrow mono">Clear boundaries</span>
-                    <h2 className="serif">Use the right surface for the right question.</h2>
-                    <p>This company website stays narrow. Product commitments and signed-in work stay on the relevant product surface.</p>
-                </div>
-                <div className="nv-wrap">
-                    <ComparisonTable />
-                </div>
-            </section>
-
-            <section className="nv-section nv-reveal">
-                <div className="nv-wrap nv-section-intro">
-                    <span className="nv-eyebrow mono">Contact routes</span>
-                    <h2 className="serif">Reach the right company inbox.</h2>
-                    <p>Business, legal, and privacy inquiries use company inboxes. Product support starts on product websites.</p>
+            <section className="nv-section nv-contact-directory nv-reveal">
+                <div className="nv-wrap nv-section-head">
+                    <div>
+                        <span className="nv-eyebrow mono">Contact routes</span>
+                        <h2 className="serif">Reach the right company inbox.</h2>
+                    </div>
+                    <p>Business, legal, and privacy inquiries use direct Neelvara inboxes. Product support starts on product websites.</p>
                 </div>
                 <div className="nv-wrap">
                     <DirectoryCards />
-                </div>
-            </section>
-
-            <section className="nv-section nv-final-section nv-reveal">
-                <div className="nv-wrap nv-final-band glass">
-                    <div>
-                        <h2 className="serif">Company, legal, or privacy questions?</h2>
-                        <p>Email Neelvara for company questions. Product support stays on the relevant product website.</p>
-                    </div>
-                    <div className="nv-actions">
-                        <a className="nv-button nv-button-solid nv-button-large" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>
-                            Email Neelvara
-                            <LuMail aria-hidden="true" />
-                        </a>
-                        <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/products">
-                            View Products
-                            <LuArrowRight aria-hidden="true" />
-                        </NeelvaraLink>
-                    </div>
                 </div>
             </section>
         </PageShell>

@@ -19,3 +19,5 @@ Asset Library keeps notes and reusable CampaignCue files together with their sou
 - `Restricted`: the asset is blocked from use.
 
 Asset processing state is separate: a registry item can be ready, blocked, or archived. The current screen supports create/list/download and CueLayers reuse entry; archive and advanced filtering are not active owner actions.
+
+A saved Campaign Pack cloud copy appears as the current reusable export file. Replace it from the Campaign Pack surface; Asset Library does not expose older rotating slots as versions.

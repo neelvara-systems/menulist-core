@@ -8,10 +8,10 @@ import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/c
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
 export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
-export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Governed Support Layer for Founder-Led SaaS';
+export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Reviewed Support Layer for SaaS Products';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice gives founder-led SaaS approved product answers, safe fallback when coverage is missing, and a governed review loop for improving support knowledge.';
+    'AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -30,7 +30,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | AnswerLattice',
-        description: 'Turn scattered product material into approved support, then use Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests to keep it current.',
+        description: 'Turn scattered product material into reviewed support for your in-app widget, hosted help center, FAQs, changelog, ticket fallback, feedback review, and future AI agents.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -51,14 +51,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | AnswerLattice',
-        description: 'Turn scattered product knowledge into hosted help, article topic maps, FAQs, ticket fallback, feedback review, and a qualified read-only Daily Brief.',
+        description: 'Turn scattered product knowledge into hosted help, scannable articles, FAQs, widget support, ticket fallback, feedback review, and a focused read-only Daily Brief.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/knowledge-governance',
-        title: 'Knowledge Map and Approved Answer Review | AnswerLattice',
-        description: 'Use Knowledge Map, Product Friction Evidence, Answer Tests, and release impact to review approved answers and keep support truth current.',
+        title: 'Approved Answer Review | AnswerLattice',
+        description: 'Find missing, stale, or release-affected support, test critical answers, and approve what becomes official before users depend on it.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -72,7 +72,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/demo',
         title: 'Demo | AnswerLattice',
-        description: 'Follow a deterministic AnswerLattice governance event from source conflict through approval, release drift, safe fallback, correction, and audit evidence.',
+        description: 'See a support question move from approved guidance or safe fallback to founder review, testing, and a reusable improvement.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -128,14 +128,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/use-cases/support-teams',
         title: 'Support Teams | AnswerLattice',
-        description: 'Reduce repeated tickets with approved answers, ticket fallback, private Support Board follow-up, and a signal-to-knowledge queue.',
+        description: 'Reduce repeated tickets with approved answers, ticket fallback, private Support Board follow-up, and a visible support-gap review queue.',
         priority: 0.76,
         changeFrequency: 'monthly',
     },
     {
         path: '/use-cases/product-teams',
         title: 'Product Teams | AnswerLattice',
-        description: 'See which product surfaces create support friction, stale answers, and review work after releases.',
+        description: 'See which product areas create support friction, stale answers, and review work after releases.',
         priority: 0.76,
         changeFrequency: 'monthly',
     },
@@ -249,7 +249,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/updates',
         title: 'Updates | AnswerLattice',
-        description: 'Recent AnswerLattice product updates across Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, hosted help, and support safety.',
+        description: 'Recent AnswerLattice updates across knowledge intake, widget support, hosted help, tickets, feedback, approved-answer review, and support safety.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -305,14 +305,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | AnswerLattice',
-        description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
+        description: 'Answers about AnswerLattice setup, knowledge intake, widget support, hosted help, approved answers, fallback tickets, pricing, review controls, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/about',
         title: 'About | AnswerLattice',
-        description: 'AnswerLattice helps founder-led SaaS teams support users with approved answers, hosted help, ticket fallback, feedback review, and reviewable support gaps.',
+        description: 'Why AnswerLattice turns scattered founder knowledge into reviewed support for the widget, help center, FAQs, tickets, feedback, and future AI agents.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },

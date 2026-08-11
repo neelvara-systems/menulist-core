@@ -585,7 +585,7 @@ async function checkAnswerlatticeManualTriggerRateLimit(
 function getManualTriggerUrl() {
     const explicitUrl = process.env.ANSWERLATTICE_TRIGGER_NIGHTLY_URL || process.env.ANSWERLATTICE_NIGHTLY_TRIGGER_URL;
     if (explicitUrl) return explicitUrl;
-    const projectId = process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID;
+    const projectId = process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID || process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID;
     const normalizedProjectId = String(projectId || '').trim();
     return ANSWERLATTICE_ALLOWED_PROJECT_IDS.has(normalizedProjectId)
         ? `https://us-central1-${normalizedProjectId}.cloudfunctions.net${ANSWERLATTICE_MANUAL_TRIGGER_PATH}`

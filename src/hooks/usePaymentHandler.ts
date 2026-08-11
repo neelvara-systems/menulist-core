@@ -24,6 +24,7 @@ import { useCallback, useRef, useState } from 'react';
 import { getBoundedPaymentStringContext, getPaymentFlowLogContext, logPaymentFailure } from './paymentDiagnostics';
 import useRazorpayScript from './useRazorpayScript';
 import { isRazorpayCheckoutConfigurationReady } from '@lib/billing/razorpayScriptBoundary';
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
 
 declare global {
     interface Window {
@@ -211,7 +212,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         quantity: number = 1,
         replacementForSubscriptionId?: string,
     ): Promise<SubscriptionCheckoutResult> => {
-        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, menulistPublicEnv.razorpayKeyId)) {
             throw createPaymentStatusError(
                 'Razorpay checkout is not available.',
                 'payment_checkout_unavailable',
@@ -273,7 +274,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
 
         return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
             const options: RazorpayCheckoutOptions = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                key: menulistPublicEnv.razorpayKeyId,
                 subscription_id: subscriptionId,
                 name: subscriptionCheckoutName,
                 description: subscriptionQuantity > 1
@@ -509,7 +510,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
 
     const handleTopupPurchase = async (pack: AIEnhancementPack, currency: Currency): Promise<TopupCheckoutResult> => {
         const loaderLabel = "Processing Topup Payment";
-        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, menulistPublicEnv.razorpayKeyId)) {
             throw createPaymentStatusError(
                 'Razorpay checkout is not available.',
                 'payment_checkout_unavailable',
@@ -568,7 +569,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
 
         return await new Promise<TopupCheckoutResult>((resolve, reject) => {
             const options: RazorpayCheckoutOptions = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                key: menulistPublicEnv.razorpayKeyId,
                 order_id: orderId,
                 name: topupCheckoutName,
                 description: pack.name,
@@ -638,7 +639,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
     };
 
     const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {
-        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, menulistPublicEnv.razorpayKeyId)) {
             throw createPaymentStatusError(
                 'Razorpay checkout is not available.',
                 'payment_checkout_unavailable',
@@ -733,7 +734,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
 
                 // Open Razorpay payment modal
                 const options: RazorpayCheckoutOptions = {
-                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                    key: menulistPublicEnv.razorpayKeyId,
                     subscription_id: subscriptionId,
                     name: 'MenuList.ai Subscription',
                     description: plan.name,

@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
+import { FEATURE_FLAGS } from "@config/features";
 import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
+    requireCampaignCueFeature,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
     withCampaignCueAuth,
@@ -19,6 +21,11 @@ export const GET = withCampaignCueAuth(async (request: NextRequest, session) => 
     try {
         const disabled = requireCampaignCueRuntime();
         if (disabled) return disabled;
+        const analyticsDisabled = requireCampaignCueFeature(
+            FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_ANALYTICS,
+            "Campaign results",
+        );
+        if (analyticsDisabled) return analyticsDisabled;
 
         const scoped = requireCampaignCueSessionScope(request, session);
         if ("error" in scoped && scoped.error) return scoped.error;

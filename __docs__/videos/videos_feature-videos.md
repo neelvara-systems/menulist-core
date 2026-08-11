@@ -1,128 +1,129 @@
-# Videos - Feature Videos
+# Videos - Feature Launch System
 
-**Status:** Draft scripts and feature-slot plan
+**Status:** Active feature-video strategy and authority index
 **Created:** July 7, 2026
-**Primary output:** 30-60 second feature videos
+**Rebuilt from canonical feature inventory:** August 10, 2026
+**Primary output:** 14 focused feature-launch authorities released in governed waves
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
 
 ## Purpose
 
-Feature videos explain one capability at a time after the main video has established the core promise.
+Feature videos explain one MenuList capability at a time after the main launch story has established the category. They must not present MenuList as a collection of unrelated tools.
 
-Each video must still ladder back to:
+Every feature returns to the same product promise:
 
 ```text
 One approved customer link for your menu, services, and business details.
 ```
 
+Use the [Feature Launch Videos folder](./feature-launch/README.md) as the production index and the [Feature Launch Inventory](./feature-launch/feature-launch-inventory.md) as the admission, combination, tutorial, and exclusion authority.
+
+## Canonical Feature Set
+
+| Order | Feature | Production authority | Primary campaign job |
+| --- | --- | --- | --- |
+| 1 | Menu import | [Photo/PDF To Customer Link](./videos_06-photo-pdf-to-customer-link-reel.md) | Remove setup and retyping fear |
+| 2 | Menu content prep | [Menu Content Prep](./feature-launch/menu-content-prep-launch.md) | Show supported preparation with private review |
+| 3 | Menu quality validation | [Menu Quality Validation](./feature-launch/menu-quality-validation-launch.md) | Catch readiness issues before publish |
+| 4 | Featured Choices | [Featured Choices](./feature-launch/featured-choices-launch.md) | Give customers a clearer first look without sales claims |
+| 5 | Official Business Page | [Official Business Page](./videos_10-official-business-page-reel.md) | Show MenuList beyond a menu-only page |
+| 6 | QR menu and links | [QR Menu And Links](./feature-launch/qr-menu-links-launch.md) | Show stable access paths to one approved destination |
+| 7 | Print-ready kit | [Print-Ready Kit](./feature-launch/print-ready-kit-launch.md) | Carry the approved source into practical physical placement |
+| 8 | Owner phone dashboard | [Owner Phone Dashboard](./feature-launch/owner-phone-dashboard-launch.md) | Remove laptop-only operational anxiety |
+| 9 | Activity and analytics | [Activity And Analytics](./feature-launch/analytics-launch.md) | Show aggregate, read-only post-publish evidence |
+| 10 | Business Health | [Business Health](./feature-launch/business-health-launch.md) | Give owners a calm current-state answer |
+| 11 | Customer feedback loop | [Customer Feedback Loop](./feature-launch/customer-feedback-loop-launch.md) | Show private issue reporting with owner control |
+| 12 | Public discovery readiness | [Public Discovery](./feature-launch/public-discovery-launch.md) | Explain clearer source quality without ranking promises |
+| 13 | AI Menu Manager | [AI Menu Manager](./videos_09-ai-menu-manager-reel.md) | Demonstrate controlled assistance and approval |
+| 14 | Multi-location | [Multi-Location](./videos_11-multi-location-reel.md) | Show master consistency with governed local flexibility |
+
 ## Feature Video Rules
 
-1. One video, one feature, one customer-facing outcome.
-2. Use real product screens or approved fictional mockups.
-3. Do not make feature videos sound like separate products.
-4. Do not imply external-platform sync.
-5. Show owner approval wherever the feature changes public information.
-6. Keep each video usable as a standalone retargeting asset.
+1. One video, one problem, one feature, one visible outcome.
+2. Show actual product behavior or an explicitly approved fictional product state.
+3. Put first product evidence inside the opening six seconds.
+4. Use one dominant proof surface per scene.
+5. Preserve private preview and owner approval wherever public truth may change.
+6. Show external destinations only as owner-placed links unless an exact integration is currently certified.
+7. Do not use revenue, ranking, conversion, popularity, uptime, or growth claims without approved evidence.
+8. Do not make a feature video sound like a separate product.
+9. Use native 9:16 composition for feed video; never center-crop the landscape master.
+10. Close the encoded video with symbol, `MenuList`, `One approved customer link`, and `menulist.ai`; the platform supplies the clickable CTA.
 
-## Priority Feature Videos
+## Production Waves
 
-| Priority | Feature video | Duration | Purpose |
-| --- | --- | --- | --- |
-| 1 | AI Menu Manager | 20-30 seconds or 45 seconds | Explain message-in, card-prepared, approval-first updates |
-| 2 | Official Business Page | 45-60 seconds | Show menu, hours, photos, directions, contact, and actions behind one link |
-| 3 | Multi-location | 45-60 seconds | Explain master list plus outlet-level flexibility |
-| 4 | One link everywhere | 15-30 seconds | Show owner-placed link consistency across QR, WhatsApp, Instagram, print, and website |
-| 5 | QR and print kit | 30-45 seconds | Show physical surfaces tied to the approved list |
-| 6 | Business Health | 20-30 seconds | Show calm stable state and `No action needed` |
-| 7 | Customer feedback loop | 20-30 seconds | Show private wrong-price or missing-item report feeding approved-list cleanup |
+### Wave 1 - Setup And Daily Owner Use
 
-## Script - AI Menu Manager Without Losing Control
+1. Menu import.
+2. Owner phone dashboard.
+3. QR menu and links.
+4. Official Business Page.
+5. Business Health.
 
-**Duration:** 20-30 seconds
-**Format:** 9:16 and 16:9 crop
-**Goal:** Explain AI Menu Manager safely
+This wave answers: `Can I start with what I have, and will this reduce daily work?`
 
-| Time | Visual | Voiceover / text |
-| --- | --- | --- |
-| 0-3s | Owner message box | Text: Menu changed? Say it normally. |
-| 3-8s | Owner types "Cold coffee sold out today." | Tell MenuList what changed. |
-| 8-15s | Approval card: item, status, customer-facing preview | It prepares a card showing what will change. |
-| 15-22s | Owner taps approve; receipt appears | Important changes wait for your approval. |
-| 22-30s | Message, card, receipt sequence | Text: Message in. Card prepared. Approval first. |
+### Wave 2 - Distribution And Accuracy
 
-Boundary:
+1. Print-ready kit.
+2. Customer feedback loop.
+3. Activity and analytics.
+4. Menu quality validation.
+
+This wave answers: `How does the approved source stay useful after publishing?`
+
+### Wave 3 - Enrichment And Advanced Control
+
+1. Menu content prep.
+2. Featured Choices.
+3. AI Menu Manager.
+4. Public discovery readiness.
+5. Multi-location.
+
+This wave answers: `How does MenuList help at greater complexity without taking owner control away?`
+
+## Combined And Tutorial Content
+
+Do not force every inventory row into a launch ad.
+
+| Treatment | Capabilities |
+| --- | --- |
+| Covered inside another feature | Customer menu rendering, editor, mobile bulk controls, store profile, hours, temporary status, saved customer shortcut, digital screens, setup activation |
+| Tutorial/onboarding only | Authentication, detailed editor actions, staff roles, billing, help center, public API, individual media/translation tasks |
+| Excluded or blocked | Internal routing/cache/ops, disabled reviews/reputation and referral features, unverified POS sync, reseller/internal systems, sibling products |
+
+The exact rationale and runtime row mapping live in the [Feature Launch Inventory](./feature-launch/feature-launch-inventory.md).
+
+## Common Asset Gate
+
+No feature enters animation until it has:
+
+- a current feature-inventory row and active runtime path;
+- current feature-page and product-copy review;
+- real runtime capture or an approved, accurately labeled mockup;
+- fictional or permissioned demo data;
+- feature-specific claim and owner-approval review;
+- a conversion brief and campaign-ledger entry for the rendered version;
+- local, zero-cost HyperFrames audio and media provenance;
+- aspect-ratio-specific storyboard and safe-zone review.
+
+## Production Readiness
+
+Proof assets already exist for QR links, Print-Ready Kit, Owner Phone Dashboard, Analytics, Business Health, Customer Feedback, Public Discovery, and Official Business Page. They are starting references, not automatic publication clearance.
+
+Fresh runtime capture is required for Menu Content Prep, Menu Quality Validation, Featured Choices, AI Menu Manager, and Multi-location. Do not replace these with generic dashboard mockups.
+
+## Versioning
+
+Use one independent sequence per feature:
 
 ```text
-AI Menu Manager does not post directly to Zomato, Swiggy, Google, Instagram, or similar destinations.
+ml-fl-<feature-slug>-v1.0
+ml-fl-<feature-slug>-v1.1
 ```
 
-## Script - Official Business Page
+Create `v1.0` only when a review MP4 exists. Record every rendered change in the campaign ledger; scripts do not reserve version IDs.
 
-**Duration:** 45-60 seconds
-**Format:** 16:9 and 9:16
-**Use:** Feature page, retargeting, sales
+## Release Boundary
 
-| Time | Visual | Voiceover / text |
-| --- | --- | --- |
-| 0-5s | Customer asking menu, hours, location | Customers do not only need your menu. They need the correct business details around it. |
-| 5-15s | Official page: hours, contact, photos, directions, current list | MenuList gives your business one official page for menu, hours, location, photos, contact, and customer actions. |
-| 15-28s | QR, Instagram bio field, WhatsApp share message, packaging link | Use the same page in your QR, Instagram bio, packaging, WhatsApp replies, or website. |
-| 28-42s | Customer opens page, taps directions/call/WhatsApp | Customers can read the current list and act from the same page. |
-| 42-55s | Owner dashboard and approved list | Because it stays tied to the approved list, public details are easier to keep aligned. |
-| 55-60s | CTA | Put one trusted customer link online. |
-
-## Script - Multi-Location
-
-**Duration:** 45-60 seconds
-**Format:** 16:9 and 9:16
-**Use:** Premium plan, chains, multi-outlet sales
-
-| Time | Visual | Voiceover / text |
-| --- | --- | --- |
-| 0-6s | Five outlet menus with different prices/names | One menu is easy. Five outlets can become five different versions. |
-| 6-15s | Master menu screen | MenuList lets you start from one approved master menu. |
-| 15-28s | Linked outlets following master list | Linked outlets can follow the approved list while local changes stay controlled. |
-| 28-42s | Outlet-specific price override | HQ keeps names and descriptions consistent. Outlets adjust only what they are allowed to adjust. |
-| 42-55s | Locations overview | Less branch-by-branch coordination. More public consistency. |
-| 55-60s | CTA | One menu. Every location. |
-
-## Script - One Link Everywhere
-
-**Duration:** 15-20 seconds
-**Format:** 9:16
-**Goal:** Simple product value
-
-| Time | Visual | Voiceover / text |
-| --- | --- | --- |
-| 0-3s | Menu file attachments | Text: Stop sending menu files. |
-| 3-7s | WhatsApp, Instagram bio, QR, table card, website placement | Place one approved customer link where customers look. |
-| 7-13s | MenuList page with menu, hours, photos, actions | Menu, prices, hours, directions, and actions stay together. |
-| 13-20s | Link and CTA | Text: One approved customer link. |
-
-Note: "where customers look" means owner-placed links and MenuList-controlled surfaces.
-
-## Future Feature Slots
-
-Create these only after screenshots/mockups are ready:
-
-| Feature | Story |
-| --- | --- |
-| Menu import | Menu photos, PDF, or owned link become a reviewable customer version |
-| Menu quality validation | Catch prices, gaps, and readiness issues before publish |
-| QR and print kit | Table, counter, packaging, and print assets point to the approved list |
-| Customer feedback loop | Customers privately report wrong prices, missing items, or outdated details |
-| Business Health | Stable checks stay calm and say `No action needed` |
-| Owner phone dashboard | Important list work stays usable from the phone |
-| Activity view | Useful customer actions and visits are visible without turning into vanity analytics |
-
-## Production Gate
-
-Do not publish a feature video until:
-
-- the feature exists in the current product;
-- the script matches the feature's current docs or runtime behavior;
-- public claims are bounded;
-- captions fit in vertical format;
-- demo data is fictional or permissioned;
-- the CTA routes to the active customer-link funnel.
+The handoff documents make the feature campaign production-ready at the script and storyboard level. They do not prove that a public video is ready. Final release still requires current runtime capture, encoded MP4 QA, product/claim review, founder approval, destination tracking, and an active campaign-ledger row.

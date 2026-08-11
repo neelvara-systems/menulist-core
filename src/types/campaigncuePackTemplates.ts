@@ -104,6 +104,7 @@ export interface CampaignCuePackTemplatePayload {
 
 export interface CampaignCuePackTemplateListResult {
     businessCategory: CampaignCuePackTemplateBusinessCategory;
+    platformOverflowDocIds: string[];
     platformTemplates: CampaignCuePackTemplateSummary[];
     workspaceTemplates: CampaignCuePackTemplateSummary[];
 }

@@ -428,7 +428,8 @@
         "daily": "Vorheriger Tag",
         "weekly": "Letzte 7 Tage",
         "monthly": "Diesen Monat",
-        "overall": "Insgesamt"
+        "overall": "Insgesamt",
+        "graph": "Diagramme"
       },
       "today": {
         "noMenuActivityToday": "Heute noch keine Menüaktivität.",
@@ -463,7 +464,7 @@
         "totalItemClicks": "Gesamtzahl der Elementklicks",
         "activeDays": "Aktive Tage",
         "daysActive": "Aktive Tage",
-        "avgDailyScans": "Durchschn. Tägliche Scans",
+        "avgDailyScans": "Tag: tägliche Scans",
         "smartPicksActive": "Smart Picks aktiv",
         "engagementRate": "Engagementrate",
         "topItem": "Top-Artikel",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Gestern wurde keine Aktivität aufgezeichnet",
         "noAnalyticsYet": "Noch keine Daten. Ihre Analysen werden angezeigt, sobald Kunden mit der Anzeige beginnen.",
-        "noItemClicksYet": "Noch keine Elementklicks"
+        "noItemClicksYet": "Noch keine Elementklicks",
+        "lowActivityTitle": "Geringe Aktivität",
+        "lowActivityDescription": "Es gab nicht genügend Aktivität, um eine sinnvolle Schlussfolgerung für diesen Zeitraum zu ziehen.",
+        "noWeeklyData": "Es ist noch keine abgewickelte Menü-Aktivität für die letzten 7 Tage verfügbar.",
+        "noMonthlyData": "Für diesen Monat stehen noch keine abgewickelten Menüaktivitäten zur Verfügung."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change} % im Vergleich zur letzten Woche"
+        "vsLastWeek": "{sign}{change} % im Vergleich zur letzten Woche",
+        "changeVsLastWeek": "{change} vs letzte Woche"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# Tag der Aktivität aufgezeichnet} other {# Tage der Aktivität aufgezeichnet}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ja",
         "no": "Nein",
-        "notAvailable": "N/A N/B N/C N/D",
+        "notAvailable": "N/A",
         "active": "Aktiv",
         "lowActivity": "Geringe Aktivität",
         "noData": "Keine Daten"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Warten auf ersten Scan",
         "weeklyInsights": "Wöchentliche Einblicke",
         "last4WeeksComparison": "Vergleich der letzten 4 Wochen",
-        "historicalDataWillAppear": "Verlaufsdaten werden nach einigen Wochen angezeigt"
+        "historicalDataWillAppear": "Verlaufsdaten werden nach einigen Wochen angezeigt",
+        "statusMessages": {
+          "working": "Die Kunden nutzen das aktuelle Menü.",
+          "low_activity": "Die Kundenaktivitäten sind noch im Aufbau. Ihr aktuelles Menü bleibt verfügbar.",
+          "no_data": "Die Aktivität wird angezeigt, sobald Kunden Ihr Menü öffnen und die Aktivitäten werden automatisch gespeichert."
+        }
       },
       "aiSummary": {
         "daily": "Vortag auf einen Blick",
         "weekly": "Diese Woche auf einen Blick",
-        "monthly": "Dieser Monat im Überblick"
+        "monthly": "Dieser Monat im Überblick",
+        "localized": {
+          "noActivity": "Für diesen Zeitraum wurden keine abgewickelten Kundenaktivitäten erfasst, die in der Bilanz nicht enthalten sind.",
+          "menuViews": "Kunden haben das Menü {count} Mal geöffnet.",
+          "itemTaps": "Kunden haben {count} Mal auf Menüpunkte getippt.",
+          "customerActions": "Kunden haben {count} letzte Aktionen abgeschlossen.",
+          "searches": "Kunden haben {count} mal nach dem Menü gesucht.",
+          "unavailableInterest": "Nicht verfügbare Elemente erhielten {count} Taps."
+        }
       },
       "actions": {
         "call": "Anruf",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} Besuche · {rate}%",
         "markDoneSaved": "Als erledigt markiert. Die Ergebnisse werden aktualisiert, wenn die nächste Analysezusammenfassung fertig ist.",
         "markDoneFailed": "Diese Aktion konnte nicht als erledigt markiert werden. Versuchen Sie es erneut.",
-        "markDone": "Als erledigt markieren"
+        "markDone": "Als erledigt markieren",
+        "bestSourceStatsFormatted": "· {visits} Besuche · {rate} Aktionsrate",
+        "bestSourceMobileFormatted": "Beste Quelle derzeit: {source} · {visits} Besuche · {rate} Aktionsrate",
+        "sourceQualityTagFormatted": "{source}: {visits} Besuche · {sessions} Aktionssitzungen · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} Besuche · {rate} Beiträge",
+        "priorities": {
+          "high": "Hohe Priorität",
+          "medium": "Mittlere Priorität",
+          "low": "Niedrige Priorität"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "Die vorhandene Aktivität unterstützt eine übersichtliche Menüüberprüfung."
+          },
+          "watch": {
+            "label": "Bleiben Sie beobachten",
+            "message": "Einige Aktivitäten müssen möglicherweise noch einmal überprüft werden, bevor das Menü geändert wird."
+          },
+          "no_data": {
+            "label": "Mehr Daten benötigt",
+            "message": "Warten Sie auf eine stärker stabilisierte Kundenaktivität, bevor Sie ein Fazit ziehen."
+          }
+        },
+        "localizedActions": {
+          "reason": "Basierend auf der zuletzt abgerechneten Kundenaktivität.",
+          "availability": {
+            "title": "Überprüfen Sie die Verfügbarkeit der Artikel.",
+            "description": "Überprüfen Sie, ob nicht verfügbare oder ausgeblendete Elemente wiederhergestellt oder aus der Sicht gehalten werden sollen.",
+            "action": "Verfügbarkeit prüfen"
+          },
+          "customerActions": {
+            "title": "Überprüfen Sie Kundenaktionen.",
+            "description": "Überprüfen Sie die Menüdetails und Links, auf die Kunden klicken, bevor Sie etwas unternehmen.",
+            "action": "Überprüfen Sie Kundenaktionen."
+          },
+          "details": {
+            "title": "Verbessern Sie die Details des Gegenstands.",
+            "description": "Überprüfen Sie Artikelnamen, Optionen, Beschreibungen und Bilder, die möglicherweise klarer Informationen bedürfen.",
+            "action": "Artikeldetails überprüfen"
+          },
+          "general": {
+            "title": "Warten Sie auf ein klareres Signal.",
+            "description": "Das aktuelle Menü stabil halten, bis mehr Aktivitäten verfügbar sind.",
+            "action": "Später überprüfen."
+          },
+          "menuOrder": {
+            "title": "Überprüfen Sie die Menüreihenfolge.",
+            "description": "Prüfen Sie, ob wichtige Artikel und Kategorien für Kunden leicht zu finden sind: Überprüfen Sie, wie gut die Produkte für Ihre Kunden gestaltet sind.",
+            "action": "Überprüfen Sie die Menüreihenfolge."
+          },
+          "pricing": {
+            "title": "Überprüfung Preise",
+            "description": "Überprüfen Sie die Preise, die mit dem neuesten Kundeninteressensignal verbunden sind.",
+            "action": "Preise überprüfen"
+          },
+          "search": {
+            "title": "Überprüfen Sie die Suchanfragen von Kunden.",
+            "description": "Überprüfen Sie Suchen, die Kunden möglicherweise nicht zu einem nützlichen Menüergebnis führen.",
+            "action": "Suchen überprüfen"
+          },
+          "source": {
+            "title": "Überprüfen Sie die Kundeneingabequellen.",
+            "description": "Überprüfen Sie, ob öffentliche Links und QR-Placements Kunden auf das aktuelle Menü verweisen.",
+            "action": "Überprüfen Sie öffentliche Links."
+          },
+          "timing": {
+            "title": "Überprüfung Menü Timing",
+            "description": "Überprüfen Sie, ob die zeitgesteuerten Kategorien und die Verfügbarkeit übereinstimmen, wenn Kunden nach ihnen suchen.",
+            "action": "Überprüfung Timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Erledigt markiert",
+            "message": "Das Ergebnis wird überprüft, sobald mehr abgewickelte Aktivitäten verfügbar sind."
+          },
+          "improved": {
+            "label": "Verbesserung",
+            "message": "Der nächste abgerechnete Check zeigt eine Verbesserung."
+          },
+          "no_clear_change": {
+            "label": "Keine klare Veränderung.",
+            "message": "Der nächste abgerechnete Scheck zeigte keine deutliche Änderung, da der Scheck nicht mehr auf dem Konto war."
+          },
+          "not_enough_data": {
+            "label": "Mehr Daten benötigt",
+            "message": "Es gibt noch nicht genügend festgelegte Aktivitäten, um diese Änderung beurteilen zu können."
+          },
+          "pending": {
+            "label": "Überprüfung während",
+            "message": "MenuList wird dies überprüfen, sobald mehr abgewickelte Aktivitäten verfügbar sind."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menüdetails",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Nicht verfügbares Interesse",
           "languages": "Sprachen",
           "filters": "Filter",
-          "smartPicks": "Intelligente Tipps",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Aktionen nach Geschäftszeiten"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menüansichten",
-          "itemTaps": "Artikeltipps",
+          "itemTaps": "Tippen auf Artikel",
           "menuSessions": "Menüsitzungen",
           "engagedSessions": "Sitzungen mit Aktivität",
           "actionSessions": "Aktionssitzungen",
@@ -617,6 +729,12 @@
           "closed": "Aktionen im geschlossenen Zustand",
           "open": "Aktionen beim Öffnen",
           "closedShare": "{rate} % aller aufgezeichneten Aktionen fanden im geschlossenen Zustand statt"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} unverfügbare Taps werden nicht verwendet.",
+          "strongItem": "{count} Tippen auf Artikel",
+          "needsWork": "{count} Ansichten, keine Taps",
+          "gettingAttention": "{count} Ansichten"
         }
       },
       "smartPicks": {
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Aufschlüsselung der Verknüpfungen",
         "installsByPlatform": "Installationen nach Plattform",
         "appStickiness": "App-Klebrigkeit",
-        "returningOpens30d": "Rückkehr öffnet (30d)",
-        "avgOpensPerInstall": "Durchschn. Öffnungen pro Installation",
+        "avgOpensPerInstall": "Avg öffnet durch Installation",
         "iosManualInstalls": "manuelle iOS-Installationen",
         "shortcuts": {
           "menu": "Menü „Ansicht“",
@@ -715,12 +832,13 @@
           "order": "Online bestellen"
         },
         "platforms": {
-          "ios": "iOS iOS 10.3.2",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Android Android-Geräte",
+          "android": "Android",
           "desktop": "Desktop-PCs",
           "other": "Andere"
-        }
+        },
+        "tryAgainLater": "Versuchen Sie es später wieder."
       },
       "projectSelector": {
         "deleted": "Gelöscht",
@@ -761,7 +879,8 @@
         "copied": "Kopiert",
         "copy": "Kopieren",
         "openGoogle": "Öffnen Sie Google",
-        "done": "Fertig"
+        "done": "Fertig",
+        "couldNotOpen": "Google Business-Profil konnte nicht geöffnet werden."
       },
       "behaviorNudge": {
         "linkCopied": "Link kopiert",
@@ -779,14 +898,755 @@
       },
       "menuQuality": {
         "menuCheck": "Menüprüfung",
-        "checkedJustNow": "Gerade gerade überprüft",
+        "checkedJustNow": "Jetzt überprüft",
         "noActionNeeded": "Keine Aktion erforderlich",
         "publicMenuReady": "Ihr öffentliches Menü ist fertig.",
         "repairNow": "Reparieren Sie, was jetzt repariert werden kann",
         "reviewTopIssue": "Überprüfen Sie das wichtigste Problem",
         "repairMenu": "Reparaturmenü",
         "review": "Bewertung",
-        "repair": "Reparatur"
+        "repair": "Reparatur",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# Element fehlt eine Beschreibung.} other {# Elemente fehlen Beschreibungen.}}",
+            "ok": "Alle Artikel haben Beschreibungen.",
+            "help": "Beschreibungen helfen Kunden, jede Angebote zu verstehen."
+          },
+          "images": {
+            "warning": "{count, plural, one {# Element fehlt ein Bild.} other {# Elemente sind fehlende Bilder.}}",
+            "ok": "Alle Artikel haben Bilder.",
+            "help": "Bilder können Kunden dabei helfen, sich schneller zu entscheiden."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {In der Kategorie # fehlt ein Symbol.} other {In # Kategorien fehlen Symbole.}}",
+            "ok": "Alle Kategorien haben Symbole.",
+            "help": "Symbole erleichtern das Durchsuchen der Kategorien."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# Artikel fehlt ein Preis.} other {# Artikeln fehlen Preise.}}",
+            "ok": "Alle Artikel haben einen Preis.",
+            "help": "Kunden vergleichen Preise, bevor sie sich entscheiden."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# Artikel ist vor Kunden ausgeblendet.} other {# Artikel sind vor Kunden ausgeblendet.}}",
+            "ok": "Es sind keine Objekte versteckt.",
+            "help": "Ausgeblendete Elemente werden nicht im öffentlichen Menü angezeigt, da sie nicht als solche gekennzeichnet sind."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# Preis muss überprüft werden.} other {# Preise müssen überprüft werden.}}",
+            "ok": "Die Preise liegen im erwarteten Bereich.",
+            "help": "MenuList vergleicht Einzelpreise innerhalb derselben Kategorie. Markiert einen beabsichtigten Preis als überprüft."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# Element fehlt Übersetzungen.} other {# Elemente sind fehlende Übersetzungen.}}",
+            "ok": "Alle sichtbaren Elemente werden übersetzt.",
+            "help": "Einige Elemente sind in ausgewählten Menüsprachen unvollständig, einige Elemente können nicht angezeigt werden."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# Menüdetail fehlt Übersetzungen fehlen.} other {# Menüdetails fehlen Übersetzungen.}}",
+            "ok": "Menüdetails werden übersetzt.",
+            "help": "Der Menüname, die Beschreibung oder die Anmerkungen sind in ausgewählten Menüsprachen unvollständig."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Link kopiert.",
+        "direct": "Direkt",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menü-Kit",
+        "nativeShare": "Gerätefreigabe",
+        "obp": "Unternehmensseite",
+        "other": "Andere",
+        "qr": "QR Code",
+        "shortcut": "App-Verknüpfung",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Unternehmensgesundheit",
+        "open": "Open Business Gesundheit",
+        "today": "Heute",
+        "latestActivity": "Letzte Aktivität",
+        "noActionNeeded": "Keine Aktion erforderlich",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Braucht Aufmerksamkeit",
+          "needs_review": "Muss überprüft werden.",
+          "insufficient_data": "Mehr Daten benötigt",
+          "stale": "Braucht eine frische Überprüfung.",
+          "not_ready": "Vorbereitungen für die Fahrt"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# kundenorientiertes Detail muss überprüft werden.} other {# kundenbezogene Details müssen überprüft werden.}}",
+          "stable": {
+            "headline": "Ihre öffentlichen Informationen sind stabil.",
+            "message": "Bei der letzten Überprüfung wurden keine Kundenprobleme festgestellt, die Maßnahmen erforderten."
+          },
+          "watch": {
+            "headline": "Ein Detail kann Aufmerksamkeit erfordern.",
+            "message": "Überprüfen Sie die vorgeschlagene Prüfung, bevor Sie öffentliche Informationen ändern."
+          },
+          "needs_review": {
+            "headline": "Überprüfen Sie die kundenorientierten Details.",
+            "message": "Es sollten eine oder mehrere öffentliche Angaben überprüft werden, um die korrekte Antwort zu erhalten."
+          },
+          "insufficient_data": {
+            "headline": "Es bedarf mehrer Aktivitäten.",
+            "message": "Die aktuellen Informationen stabil halten, während MenuList ein nützliches Signal sammelt."
+          },
+          "stale": {
+            "headline": "Business Health braucht einen neuen Blick.",
+            "message": "Die letzte Überprüfung ist alt, Ihre aktuellen öffentlichen Informationen bleiben unverändert. Ihre aktuelle öffentliche Information bleibt unverännert."
+          },
+          "not_ready": {
+            "headline": "Business Health macht sich bereit für die Zukunft.",
+            "message": "Der erste Shop-Check wird hier erscheinen, wenn er bereit ist."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Überprüfen Sie Menu Quelle",
+            "message": "Es wurde keine aktive öffentliche Menüquelle gefunden. Überprüfen Sie das Menü, bevor Sie es freigeben.",
+            "title": "Die Menüquelle muss überprüft werden."
+          },
+          "low_latest_activity": {
+            "action": "Überprüfen Sie die Freigabelinks.",
+            "message": "Die Kundenaktivität ist gering. Prüfen Sie, ob die Aktivität gering ist. QR, Google, Instagram, WhatsApp, und Website-Links.",
+            "title": "Die Kundenaktivität ist gering."
+          },
+          "unavailable_item_taps": {
+            "action": "Überprüfen Sie nicht verfügbare Artikel.",
+            "message": "Kunden zeigten Interesse an nicht verfügbaren Artikeln, die sie nachfüllen oder verstecken sollten.",
+            "title": "Nicht verfügbare Artikel erregten Aufmerksamkeit."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Lesen Sie das Gästefeedback.",
+            "message": "Gästefeedback muss von einem Inhaber geprüft werden, bevor öffentliche Details geändert werden können.",
+            "title": "Das Gästefeedback muss überprüft werden."
+          },
+          "default": {
+            "action": "Details prüfen",
+            "message": "Ein kundenorientiertes Detail benötigt eine Besitzerprüfung.",
+            "title": "Ein Detail muss überprüft werden."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# privater Feedback-Eintrag muss überprüft werden.} other {# private Feedback-Elemente müssen überprüft werden.}}",
+          "clear": "Das private Feedback ist eindeutig."
+        },
+        "freshness": {
+          "notReady": "Business Health ist keine Echtzeit-Datenbank, die Daten werden bei der ersten Store-Überprüfung angezeigt. Das Datum wird hier angezeigt, wenn Sie den ersten Store überprüfen.",
+          "throughDate": "Verwendet Daten über {date}. Heute ist möglicherweise noch nicht abgeschlossen.",
+          "latest": "Verwendet die neuesten verfügbaren MenuList-Daten. Heute ist möglicherweise noch nicht abgeschlossen."
+        },
+        "periods": {
+          "today": "Heute",
+          "yesterday": "Vorheriger Tag",
+          "thisWeek": "Diese Woche",
+          "lastWeek": "Letzte Woche",
+          "thisMonth": "Diesen Monat",
+          "lastMonth": "Letzter Monat",
+          "last7Days": "Letzte 7 Tage",
+          "last30Days": "Letzte 30 Tage",
+          "overall": "Insgesamt"
+        },
+        "metrics": {
+          "menuViews": "Menüansichten",
+          "topDemand": "Höchste Nachfrage",
+          "topDemandDetail": "Befördern: {count} {signal}",
+          "bestSource": "Beste Quelle:",
+          "bestSourceDetail": "Link aktualisieren: {count} Besuche"
+        },
+        "signals": {
+          "views": "Aussichten",
+          "clicks": "Antippen",
+          "attention": "Aufmerksamkeitszeichen"
+        },
+        "page": {
+          "description": "Tagesgeschäftsstatus und Kundenzug-Checks.",
+          "latestCheck": "AI health check",
+          "loading": "Laden",
+          "loadingMessage": "Laden von Business Health...",
+          "notReady": "Business Health ist noch nicht fertig.",
+          "loadErrorTitle": "Business Health konnte nicht geladen werden.",
+          "loadErrorDescription": "Bitte aktualisieren Sie die Seite und versuchen Sie es erneut.",
+          "refresh": "Aktualisieren",
+          "needsAttention": "Braucht Aufmerksamkeit",
+          "desktopSettingsOnly": "Öffnen Sie dies aus Desktop-Einstellungen."
+        },
+        "scope": {
+          "title": "Gesundheitsbereich Business Health Umfang",
+          "allMenus": "Alle Menüs",
+          "selectedMenu": "Ausgewähltes Menü",
+          "menuCount": "{count, plural, one {# Menü an diesem Ort.} other {# Menüs an diesem Speicherort}}",
+          "locationLevel": "Ansicht auf Standortebene",
+          "inactiveMenu": "Inaktives Menü Inaktive Menüs",
+          "thisMenuOnly": "Nur dieses Menü.",
+          "allMenusInLocation": "Alle Menüs an diesem Standort",
+          "thisMenuHelper": "Fragen und Aktivitäten verwenden dieses Menü.",
+          "allMenusHelper": "Fragen und Aktivitäten verwenden alle Menüs an dieser Stelle.",
+          "dialogDescription": "Wählen Sie alle Menüs oder ein Menü für Aktivität und Prüfungen, um die Aktivitäten zu überwachen.",
+          "all": "Alle",
+          "close": "Schließen"
+        },
+        "locations": {
+          "title": "Standorte",
+          "loading": "Standorte werden geladen...",
+          "empty": "Noch keine Standortübersicht.",
+          "storeFallback": "Ort {id}",
+          "checkedOn": "{date} wurde überprüft.",
+          "checkCount": "{count, plural, one {# Prüfung} other {# Prüfungen}}",
+          "checksNeedReview": "{count, plural, one {# Kundenüberprüfung muss überprüft werden.} other {# Kundenbezogene Prüfungen müssen überprüft werden.}}",
+          "statusReason": {
+            "stable": "Kein Kundenproblem erfordert Maßnahmen.",
+            "watch": "Ein Kundendetail kann Aufmerksamkeit erfordern.",
+            "needs_review": "Kundenbezogene Details müssen überprüft werden.",
+            "insufficient_data": "Für eine sinnvolle Prüfung ist mehr Kundenaktivität erforderlich, da die Kundenzahlen nicht immer überprüft werden können.",
+            "stale": "Diese Lage braucht einen frischen Check.",
+            "not_ready": "Der erste Standort-Check wird vorbereitet, der erste Location-Check ist fertig."
+          }
+        },
+        "assistant": {
+          "title": "Fragen Sie Business Health",
+          "askShort": "Fragen Sie",
+          "englishOnlyTitle": "Fragen sind derzeit auf Englisch verfügbar.",
+          "englishOnlyDescription": "Ihr Status und Ihre Prüfungen werden lokalisiert.Wechseln Sie die App-Sprache auf Englisch, um Fragen zu Business Health stellen zu können. Ihre Fragen zur Geschäftsgesundheit sind lokal verfügbar.",
+          "notReady": "Business Health wird nach Abschluss der letzten Prüfung antworten, die Antwort erfolgt dann per E-Mail.",
+          "suggestedUnavailable": "Die vorgeschlagenen Fragen sind derzeit nicht verfügbar.",
+          "freeTextUnavailable": "Freie Textfragen sind derzeit nicht verfügbar.",
+          "answerError": "Business Health konnte das nicht beantworten.",
+          "suggestedQuestions": "Vorgeschlagene Fragen für die Befragung",
+          "followUps": "Sie können als nächstes fragen.",
+          "you": "Du bist",
+          "empty": "Wählen Sie eine Frage aus oder stellen Sie eine Anfrage zu Ihrem Unternehmen.",
+          "placeholderReady": "Fragen Sie nach dem heutigen Tag, dieser Woche, der Speisekarte oder den nächsten Checks.",
+          "placeholderMobile": "Fragen Sie nach heute oder diese Woche.",
+          "placeholderPending": "Verfügbar nach der letzten Überprüfung.",
+          "send": "Senden Sie Fragen",
+          "cachedFacts": "Basierend auf zwischengespeicherten MenuList Geschäftsfakten.",
+          "questions": {
+            "checks": "Was muss überprüft werden?",
+            "today_stats": "Wie geht es heute?",
+            "this_week_stats": "Was geschah in dieser Woche?",
+            "top_item": "Welches Thema zieht Aufmerksamkeit an?",
+            "last_week_stats": "Was geschah letzte Woche?",
+            "this_month_stats": "Wie ist dieser Monat?",
+            "last_month_stats": "Was geschah im letzten Monat?",
+            "public_menu_status": "Ist mein öffentliches Menü in Ordnung?",
+            "profile_status": "Ist mein Geschäftsprofil vollständig?",
+            "feedback_reviews": "Haben Sie Gästefeedback, das Sie überprüfen möchten?",
+            "feedback_recent": "Was haben die Gäste vor kurzem gesagt?",
+            "default": "Was sollte ich nachfolgend überprüfen?"
+          }
+        },
+        "sources": {
+          "title": "Datenquellen",
+          "menuProjects": "Menü Projekte Menüprojekte",
+          "ownerAnalytics": "Aktivität des Eigentümers",
+          "guestFeedback": "Gästefeedback Gäste-Feedback",
+          "storeSettings": "Geschäftsumgebungen",
+          "menuListData": "MenuList Daten",
+          "updatedOn": "Aktualisiert {date}",
+          "latest": "Die neuesten verfügbaren Daten"
+        },
+        "publicTruth": {
+          "title": "Offizielle Kundenquelle",
+          "checking": "Überprüfung",
+          "checkingFacts": "Die öffentlichen Fakten von MenuList werden überprüft...",
+          "checkedMenu": "Überprüftes Menü: {name}",
+          "boundary": "Überprüft anhand der aktuellen MenuList-Geschäfts- und Menüdaten. Externe Plattformen bleiben vom Inhaber bestätigt.",
+          "boundaryShort": "Externe Plattformen bleiben vom Inhaber bestätigt.",
+          "historyTitle": "Öffentliche Informationsgeschichte",
+          "historyBoundary": "Verwendet nur MenuList Business- und Menüinformationen. Keine externen Websites werden gescannt.",
+          "historyBoundaryShort": "MenuList Nur Fakten. Keine externen Seiten gescannt.",
+          "refreshErrorTitle": "Die Aktualisierung durch die Kundenquellenprüfung konnte nicht erfolgen.",
+          "refreshErrorDescription": "Die letzten verfügbaren MenuList Fakten werden weiterhin unten angezeigt.",
+          "historyRefreshError": "Der Verlauf der öffentlichen Informationen konnte nicht aktualisiert werden.",
+          "historyLoadError": "Die öffentliche Informationsgeschichte konnte nicht beladen werden.",
+          "historyErrorDescription": "Der zuletzt gespeicherte Bericht wird weiterhin angezeigt, wenn er verfügbar ist.",
+          "notRun": "nicht laufen",
+          "lastSaved": "Zuletzt gespeichert {date}",
+          "noSavedReport": "Noch kein gespeicherter Bericht.",
+          "noSavedReportDescription": "Führen Sie die Prüfung aus, um den ersten Bericht für diesen Standort zu speichern.",
+          "downloadEnglishReport": "Download Englischer Bericht zum Herunterladen",
+          "downloadEnglishShort": "Englischer Bericht",
+          "runCheck": "Rennencheck",
+          "currentFix": "Aktueller Fix-Eintrag",
+          "nextFixes": "Nächste Korrekturen an öffentlichen Informationen",
+          "none": "Keiner",
+          "attentionCount": "{count, plural, one {# Element muss überprüft werden.} other {# Elemente müssen überprüft werden.}}",
+          "readyModuleCount": "{count}/{total} bereit.",
+          "missingCount": "{count} fehlt.",
+          "checkCount": "Überprüfen Sie {count}.",
+          "savedCount": "{count}/{total} gespeichert.",
+          "modulesReady": "{count}/{total} Module sind bereit.",
+          "status": {
+            "ready": {
+              "label": "Bereit?",
+              "message": "Ihre offizielle Kundenquelle enthält die grundlegenden Informationen, die Kunden benötigen."
+            },
+            "missing_basics": {
+              "label": "Fehlende Grundlagen fehlen.",
+              "message": "Speisekarte, Öffnungszeiten, Preise, Aktionen oder Details zu Kundenverbindungen müssen vor einer breiteren Verbreitung geprüft werden."
+            },
+            "unclear": {
+              "label": "Überprüfung benötigt",
+              "message": "Die meisten Grundlagen sind vorhanden, aber eine oder mehrere öffentliche Fakten müssen noch überprüft werden."
+            }
+          },
+          "metrics": {
+            "readyModules": "Module bereit",
+            "missingFacts": "Fehlende Fakten:",
+            "checkedMenu": "Überprüftes Menü",
+            "savedReports": "Gespeicherte Berichte"
+          },
+          "results": {
+            "present": "Bereit?",
+            "missing": "Vermisst",
+            "unclear": "Überprüfen",
+            "not_applicable": "nicht nötig",
+            "not_checked": "nicht überprüft"
+          },
+          "moduleStatus": {
+            "ready": "Bereit?",
+            "needs_attention": "Vermisst",
+            "check": "Überprüfen",
+            "not_checked": "nicht überprüft"
+          },
+          "facts": {
+            "business_identity": "Firmenname Geschäftsname",
+            "menu_or_service_source": "Menü- oder Serviceliste",
+            "prices": "Preise",
+            "hours": "Stunden",
+            "location": "Standort",
+            "contact": "Kontaktieren Sie uns",
+            "customer_actions": "Kunden Aktionen",
+            "public_link": "Kundenlink",
+            "photos": "Fotos",
+            "machine_readable_source": "Suchfreundliche Details"
+          },
+          "evidence": {
+            "owner_entered": "In dieser Prüfung eingetragen.",
+            "owner_selected": "von dem Eigentümer ausgewählt.",
+            "source_text_hint": "in der bereitgestellten Quelle gefunden.",
+            "valid_public_url": "Das öffentliche Linkformat ist gültig.",
+            "invalid_public_url": "Der öffentliche Link braucht Korrektur.",
+            "menulist_store": "Aktuelle MenuList-Geschäftseinstellungen wurden überprüft.",
+            "menulist_project": "Das ausgewählte oder Standard-Menü MenuList wurde überprüft.",
+            "menulist_summary": "Die aktuelle MenuList-Menüübersicht wurde überprüft.",
+            "menulist_public_route": "Die aktuellen MenuList-Kundenverbindungseinstellungen wurden überprüft.",
+            "menulist_index_gate": "Aktuelle MenuList Public-Discovery-Regeln wurden überprüft.",
+            "not_provided": "Diese Tatsache fehlt in den aktuellen MenuList-Daten.",
+            "not_checked": "Diese Tatsache wurde nicht sicher anhand der aktuellen MenuList-Daten überprüft.",
+            "priceNotLoaded": "Öffne das ausgewählte Menü einmal, damit MenuList die Preise prüfen kann."
+          },
+          "moduleEvidence": {
+            "ready": "Aktuelle MenuList Daten zeigen, dass dieser Bereich fertig ist.",
+            "needs_attention": "Die aktuellen MenuList Daten zeigen, dass erforderliche Informationen fehlen.",
+            "check": "Überprüfen Sie diesen Bereich, bevor sich Kunden darauf verlassen.",
+            "not_checked": "MenuList konnte diesen Bereich nicht vollständig anhand der aktuellen Daten überprüfen."
+          },
+          "setupReason": {
+            "needs_attention": "Erforderliche kundenorientierte Informationen fehlen.",
+            "check": "Überprüfen Sie dies, bevor sich Kunden darauf verlassen.",
+            "not_checked": "MenuList konnte dies anhand der aktuellen Daten nicht vollständig überprüfen."
+          },
+          "targetActions": {
+            "basic_settings": "Offene Geschäftsdetails",
+            "domain_settings": "Öffnen Sie den Kundenlink.",
+            "hours_edit": "Öffnungszeiten:",
+            "menu_tab": "Menü öffnen",
+            "official_page": "Öffne die Unternehmensseite.",
+            "presence_monitor": "Offene Platzierungsprüfung",
+            "share_tab": "Öffnen Share Tools"
+          },
+          "actions": {
+            "openCustomerSource": "Offene Kundenquelle",
+            "openShareTools": "Open Sharing-Tools",
+            "fixFact": "Fix {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Grundlagen der öffentlichen Information",
+              "description": "Firmenname, aktuelles Menü oder Servicequelle, Kontakt, Aktionen und Kundenlink."
+            },
+            "business_facts_copy_pack": {
+              "title": "Wiederverwendbare Geschäftsdetails",
+              "description": "Aktuelle Fakten können Mitarbeiter in öffentlichen Profilen, Antworten und Kunden-Link-Handoffs wiederverwenden."
+            },
+            "qr_link_health": {
+              "title": "QR Verbindungsbereitschaft",
+              "description": "Ein aktueller Kundenlink für QR und gedruckte Platzierungen."
+            },
+            "social_bio_link_consistency": {
+              "title": "Konsistenz der Profilverknüpfung",
+              "description": "Ein aktueller Kundenlink für soziale Profile und andere Platzierungen, ein Link für Social Media-Profile und andere Placements."
+            },
+            "customer_link_preview": {
+              "title": "Kundenlink-Vorschau",
+              "description": "Die wichtigsten Fakten, die Kunden sehen sollten, bevor sie handeln:"
+            },
+            "print_share_assets": {
+              "title": "Drucken und Freigeben von Assets",
+              "description": "Aktuelle Verbindungsbereitschaft für QR Poster, Zählkarten und Bilder zum Teilen."
+            },
+            "menu_service_readability": {
+              "title": "Übersichtlichkeit von Menü oder Service",
+              "description": "Kategorien, Artikel oder Dienstleistungen und Preise im ausgewählten Menü."
+            },
+            "price_availability_gap": {
+              "title": "Preis- und Verfügbarkeitsklarheit.",
+              "description": "Preise, Varianten, Ausverkaufsstatus und Verfügbarkeit werden den Kunden angezeigt."
+            },
+            "menu_pdf_cleanup": {
+              "title": "alte PDF Ersatz",
+              "description": "Ein aktueller MenuList-Quell- und Kundenlink, der alte PDFs ersetzen kann."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp Aktion",
+              "description": "Eine eindeutige WhatsApp oder eine alternative Kundenkontaktaktion."
+            },
+            "hours_readiness": {
+              "title": "Stunden Bereitschaftszeit",
+              "description": "Regelmäßige Öffnungszeiten, auf die sich Kunden verlassen können."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp antwortet Fakten.",
+              "description": "Aktuelle Speisekarte, Öffnungszeiten, Kontaktdaten und Link-Informationen für Antworten der Mitarbeiter."
+            },
+            "photo_visual_identity": {
+              "title": "Fotos und visuelle Identität",
+              "description": "Ein Logo, ein Cover, ein Geschäftsfoto oder eine Produkt- und Servicegrafik."
+            },
+            "customer_question_coverage": {
+              "title": "Häufige Kundenfragen",
+              "description": "Klare Fakten für Angebot, Öffnungszeiten, Preis, Standort, Kontakt und nächste Aktion: Übersichtliches Angebot"
+            },
+            "customer_faq_reply_pack": {
+              "title": "Wiederverwendbare Kundenantworten",
+              "description": "Aktuelle Fakten können Mitarbeiter wiederverwenden, wenn Kunden häufig gestellte Fragen stellen."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Buchungs- und Anfragebereitschaft",
+              "description": "Ein klarer Weg zum Bestellen, Buchen, Reservieren, Anrufen, Nachrichten senden, Angebot anfordern oder besuchen."
+            },
+            "google_profile_handoff": {
+              "title": "Google Profillink",
+              "description": "Der aktuelle Kundenlink, der für Google Das Geschäftsprofil."
+            },
+            "menu_freshness": {
+              "title": "Frische der Speisekarte",
+              "description": "Eine aktuelle Speisekartenaktualisierung, wenn sich Preise, Artikel oder Verfügbarkeit geändert haben."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Diagramme",
+        "description": "Eine visuelle Zusammenfassung derselben abgewickelten Aktivität, die im Dashboard angezeigt wird.",
+        "ranges": {
+          "days7": "7 Tage",
+          "days30": "30 Tage"
+        },
+        "metrics": {
+          "menu_activity": "Menüaktivität Aktivitätsmenü",
+          "customer_actions": "Kunden Aktionen",
+          "search_demand": "Suche Nachfrage",
+          "item_interest": "Artikelinteresse:",
+          "unavailable_demand": "unerreichbarer Nachfrage",
+          "missing_searches": "Fehlende Suchen"
+        },
+        "trend": {
+          "summary": "Trendzusammenfassung",
+          "updatedAfterClose": "Aktualisiert, nachdem Ihr Shop Tag geschlossen ist.",
+          "status": {
+            "up": "Höheres Niveau:",
+            "down": "Unterer Rücken",
+            "stable": "Stabil",
+            "not_enough_data": "Nicht genug Geschichte."
+          },
+          "period": {
+            "week": "Woche Check",
+            "month": "Monatsübersicht Monatscheck"
+          },
+          "shortPeriod": {
+            "week": "Woche",
+            "month": "Monat"
+          },
+          "needsMoreDays": "Braucht mehr festgelegte Tage.",
+          "versus": "{current} gegen {previous}",
+          "messages": {
+            "up": "{metric} ist höher für diese Prüfung von {period}.",
+            "down": "{metric} ist für diese Prüfung {period} niedriger.",
+            "stable": "{metric} ist stabil für diese Prüfung von {period}.",
+            "not_enough_data": "Es gibt nicht genügend abgerechnete {metric}-Historie für diese Prüfung {period}."
+          },
+          "change": {
+            "gathering": "{period}: Sammeln von Daten",
+            "newActivity": "{period}: neue Aktivität",
+            "steady": "{period}• Steady",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Vergleiche Charts",
+          "description": "Woche und Monat von festgelegten Tagen."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menütrend",
+            "days7": "Letzte 7 abgerechnete Tage",
+            "days30": "Letzte 30 abgewickelte Tage"
+          },
+          "customerActions": {
+            "title": "Kunden Aktionen",
+            "description": "Was Kunden nach dem Öffnen des Menüs angetippt haben"
+          },
+          "sources": {
+            "title": "Woher die Kunden kamen?",
+            "description": "Menübesuche und Aktionssitzungen nach Quellen"
+          },
+          "items": {
+            "title": "Top Artikel von Interesse:",
+            "description": "Artikel, die Kunden am häufigsten geöffnet oder angetippt haben"
+          },
+          "search": {
+            "title": "Suche Nachfrage",
+            "description": "Nach was Kunden gesucht haben?"
+          },
+          "officialPage": {
+            "title": "Offizielle Seite Trend",
+            "description": "Ansichten und Aktionen von der offiziellen Business-Seite"
+          }
+        },
+        "legends": {
+          "visits": "Besuchen",
+          "actionSessions": "Aktionssitzungen",
+          "views": "Aussichten",
+          "taps": "Antippen",
+          "noResult": "Kein Ergebnis"
+        },
+        "empty": {
+          "default": "Für diese Ansicht liegen noch keine Diagrammdaten vor.",
+          "menuActivity": "Die Menüaktivität wird angezeigt, nachdem der Kunde das Menü geöffnet hat.",
+          "customerActions": "Kundenaktionen werden angezeigt, nachdem Kunden angerufen haben, eine Nachricht geschrieben haben, bestellt haben, reserviert haben oder um einen Weg gefragt haben.",
+          "customerActionsPeriod": "In diesem Zeitraum wurden noch keine Kundenaktionen durchgeführt.",
+          "searchDemand": "Die Suchnachfrage wird angezeigt, nachdem Kunden die Menüsuche verwendet haben.",
+          "itemInterest": "Das Interesse an einem Artikel wird angezeigt, nachdem der Kunde einen Menüpunkt geöffnet hat.",
+          "unavailableDemand": "Wenn Kunden auf nicht verfügbare Artikel tippen, wird die Nachfrage nach diesen Produkten angezeigt.",
+          "missingSearches": "Fehlende Suchen werden angezeigt, wenn Kunden suchen, aber keine Übereinstimmung finden.",
+          "sources": "Quellendetails werden angezeigt, nachdem Kunden über Links, QR oder soziale Seiten gekommen sind.",
+          "officialPage": "Die Aktivitäten auf der offiziellen Unternehmensseite werden angezeigt, nachdem Kunden die öffentliche Unternehmens-Seite geöffnet haben."
+        },
+        "footer": {
+          "sameData": "Dieselben Dashboard-Daten.",
+          "noExtraTracking": "Keine zusätzliche Verfolgung.",
+          "settledAfterClose": "Abgerechnet nach dem Ende des Geschäftstages."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Das Menü",
+          "viewsLabel": "Menüansichten",
+          "viewsTooltip": "Anzahl der Öffnungen Ihres Menüs durch Kunden",
+          "thisMonthLabel": "Ihr Menü in diesem Monat:"
+        },
+        "product": {
+          "singular": "Katalogkatalog",
+          "viewsLabel": "Katalogansichten",
+          "viewsTooltip": "Anzahl der Öffnungen Ihres Katalogs durch Kunden",
+          "thisMonthLabel": "Ihr Katalog in diesem Monat"
+        },
+        "service": {
+          "singular": "Serviceliste Dienstleistungsliste",
+          "viewsLabel": "Service-Listenansichten",
+          "viewsTooltip": "Anzahl der Öffnungen Ihrer Serviceliste durch Kunden",
+          "thisMonthLabel": "Ihre Serviceliste für diesen Monat:"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Braucht Aufmerksamkeit",
+          "active": "Offizielle Kundenquelle ist aktiv.",
+          "readyToPlace": "Offizielle Kundenquelle ist bereit zu platzieren."
+        },
+        "description": {
+          "needsAttention": "Korrigieren Sie das Menü, die Öffnungszeiten oder den Kundenlink, bevor Sie ihn weit verbreitet teilen.",
+          "active": "Keine Handlung erforderlich. Kunden können Ihre aktuellen öffentlichen Daten aus einer Quelle verwenden.",
+          "readyToPlace": "Ihr Kundenlink ist fertig, fügen Sie ihn in Ihrem Kundenkonto hinzu. Google, Instagram, WhatsApp, QR, oder drucken Sie es aus, damit Kunden die aktuelle Quelle verwenden können."
+        },
+        "link": {
+          "ready": "Kundenlink bereit",
+          "missing": "Kundenlink fehlt."
+        },
+        "states": {
+          "set": "Festgelegt",
+          "missing": "Vermisst",
+          "ready": "Bereit?",
+          "notReady": "Noch nicht bereit?",
+          "live": "Live",
+          "hidden": "Inaktiv"
+        },
+        "tags": {
+          "menu": "Menü: {status}",
+          "hours": "Stunden: {status}",
+          "customerLink": "Kundenlink: {status}",
+          "link": "{status}",
+          "placed": "Platziert: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Reparieren Sie, was Aufmerksamkeit benötigt.",
+          "preview": "Vorschau des öffentlichen Menüs",
+          "share": "Teilen von Menü"
+        },
+        "updated": {
+          "notUpdated": "Noch nicht aktualisiert:",
+          "recently": "Kürzlich aktualisiert.",
+          "today": "Heute aktualisiert",
+          "yesterday": "Aktualisiert gestern",
+          "daysAgo": "Aktualisiert {count, plural, one {# vor Tag} other {# vor Tagen}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Nächste Eigentümeraktion:",
+        "open": "Öffnen",
+        "placement": {
+          "notConfirmed": "Noch nicht bestätigt.",
+          "today": "Heute bestätigt.",
+          "yesterday": "Bestätigt gestern.",
+          "daysAgo": "bestätigt {count, plural, one {# vor Tag} other {# vor Tagen}}"
+        },
+        "status": {
+          "ready": "Bereit?",
+          "missing": "Vermisst",
+          "set": "Festgelegt",
+          "live": "Live",
+          "notLive": "Nicht live.",
+          "confirmedCount": "{count}/{total} hat die Anfrage bestätigt.",
+          "on": "Ein",
+          "off": "Aus",
+          "dailyChanges": "tägliche Veränderungen",
+          "hoursException": "Stunden Ausnahme",
+          "staffUse": "Mitarbeiternutzung",
+          "menuPrices": "Menüpreise Menü-Preise",
+          "openCount": "{count, plural, one {# Aktion öffnen} other {# Aktionen öffnen}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Kundenlink einrichten",
+            "description": "Erstellen Sie den Kundenlink, bevor Sie QR, Mitarbeiterantworten oder öffentliche Profile freigeben."
+          },
+          "setHours": {
+            "label": "Set Stunden",
+            "description": "Halten Sie den öffentlichen offenen und geschlossenen Status klar, bevor Kunden zu Besuch kommen."
+          },
+          "publishMenu": {
+            "labelPublish": "Menü veröffentlichen",
+            "labelOpen": "Menü öffnen",
+            "descriptionVisible": "Veröffentlichen Sie das aktuelle Menü, bevor es an alle weitergegeben wird.",
+            "descriptionHidden": "Machen Sie das Menü sichtbar, bevor Kunden den Link verwenden."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Bestätigen Sie die Linkplatzierung.",
+            "labelPlace": "Kundenlink platzieren",
+            "descriptionPlaced": "Google, Instagram und WhatsApp müssen auf dieselbe Quelle verweisen.",
+            "descriptionUnplaced": "Fügen Sie denselben Kundenlink bei Google, Instagram, WhatsApp, im QR-Code und auf Drucksachen ein."
+          },
+          "openPrivateFeedback": {
+            "label": "Privates Feedback öffnen",
+            "description": "Nutzen Sie privates Feedback, bevor sich die Probleme der Gäste in öffentliche Bewertungen verwandeln."
+          },
+          "captureDailyChange": {
+            "label": "Sagen Sie MenuList, was sich geändert hat.",
+            "description": "Sagen Sie MenuList, was sich heute geändert hat und genehmigen Sie die vorbereitete Speisekarte."
+          },
+          "setTodayStatus": {
+            "label": "Die heutige Status festlegen",
+            "description": "Heute geschlossen, späte Öffnung, Küche geschlossene Tür oder eine Mitteilung über ein Sondermenü."
+          },
+          "prepareStaffHandoff": {
+            "label": "Bereiten Sie die Übergabe der Mitarbeiter vor.",
+            "description": "Geben Sie den Mitarbeitern den Menülink, QR und die Kundenantwortzeilen von einem Ort aus."
+          },
+          "updatePrices": {
+            "label": "Preise aktualisieren",
+            "description": "Verwenden Sie den Menü-Manager für Preisänderungen und genehmigen Sie diese dann vor der Veröffentlichung."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menüeinrichtung",
+        "complete": "Die Einrichtung des Menüs ist abgeschlossen.",
+        "ready": "Das Menü-Setup ist fertig.",
+        "actions": {
+          "openMenu": "Menü öffnen",
+          "createMenu": "Menü erstellen",
+          "reviewDetails": "Details prüfen",
+          "publishMenu": "Menü veröffentlichen",
+          "openSharingTools": "Open Sharing-Tools",
+          "prepareDescriptions": "Bereiten Sie Beschreibungen vor.",
+          "addImages": "Bilder hinzufügen",
+          "reviewLanguageText": "Überprüfen Sie den Sprachtext.",
+          "openMenuCheck": "Open Menü Check",
+          "updatePublicLinks": "Öffentliche Links aktualisieren",
+          "addPublicPhoto": "Öffentliches Foto hinzufügen"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Quelle hinzugefügt",
+            "doneDescription": "Die Menüquelle ist angeschlossen.",
+            "nextDescription": "Fügen Sie ein Menüfoto, PDF, einen Link hinzu oder starten Sie manuell."
+          },
+          "menuImported": {
+            "label": "Menu eingeführt",
+            "doneDescription": "{count, plural, one {# sichtbares Element gefunden.} other {# sichtbare Elemente gefunden.}}",
+            "nextDescription": "Menüpunkte importieren oder hinzufügen."
+          },
+          "keyDetailsChecked": {
+            "label": "Wichtige Details geprüft.",
+            "doneDescription": "Die Preise und die wichtigsten Menüpunkte sind übersichtlich angegeben.",
+            "nextDescription": "Überprüfen Sie die Preise und wichtige Details vor der Veröffentlichung."
+          },
+          "menuPublished": {
+            "label": "Speisekarte veröffentlicht",
+            "doneDescription": "Das öffentliche Menü wurde veröffentlicht.",
+            "nextDescription": "Veröffentlichen Sie, wenn das Menü für die Kunden bereit ist."
+          },
+          "linkPlaced": {
+            "label": "Link platziert.",
+            "readyLabel": "Link bereit",
+            "doneDescription": "Der offizielle Link ist für Kunden bereit.",
+            "progressDescription": "{count} von {total} Platzierungsaktionen ausgeführt.",
+            "nextDescription": "Öffnen Sie die Freigabe-Tools, wenn das Menü veröffentlicht wurde."
+          },
+          "descriptionsReady": {
+            "label": "Beschreibung vorbereitet",
+            "doneDescription": "Sehbare Elemente haben Beschreibungen.",
+            "nextDescription": "Bereiten Sie Beschreibungen für übersichtlichere Menüpunkte vor."
+          },
+          "imagesReady": {
+            "label": "Bilder vorbereitet",
+            "doneDescription": "Sehbare Objekte haben Bilder.",
+            "nextDescription": "Wenn nötig, Artikelbilder hinzufügen oder generieren."
+          },
+          "translationsReady": {
+            "label": "Übersetzungen bereit",
+            "doneDescription": "Die ausgewählten Menüsprachen sind vollständig.",
+            "nextDescription": "Überprüfen Sie die ausgewählten Menüsprachen."
+          },
+          "publicLinksAdded": {
+            "label": "Öffentliche Links hinzugefügt.",
+            "doneDescription": "Öffentliche Aktionen oder Links zu sozialen Netzwerken stehen zur Verfügung.",
+            "nextDescription": "Fügen Sie nützliche öffentliche Links für die Unternehmensseite hinzu."
+          },
+          "publicPhotoAdded": {
+            "label": "Öffentliches Foto hinzugefügt.",
+            "doneDescription": "Es steht ein öffentliches Foto zur Verfügung.",
+            "nextDescription": "Fügen Sie ein Cover, Logo oder öffentliches Foto hinzu, wenn Sie fertig sind."
+          }
+        }
       }
     }
   },
@@ -1548,7 +2408,7 @@
         "offeringsPlural": "Angebote",
         "menuItemDetails": "Details zum Menüpunkt",
         "category": "Kategorie",
-        "option": "Option",
+        "option": "Option Option Option",
         "availableOptionPrices": "Verfügbare Preise für diese Option",
         "itemDetails": "Artikeldetails",
         "noItemsYet": "Noch kein {items}",
@@ -1584,10 +2444,10 @@
         "spiceMedium": "Mittel",
         "spiceHot": "Heiß",
         "spiceVeryHot": "Sehr heiß",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} min min min Mindestdauer",
         "hoursShort": "{count} Std",
         "calories": "{count} Kal",
-        "protein": "Protein {value}g",
+        "protein": "Eiweiß {value} g",
         "carbs": "Kohlenhydrate {value}g",
         "fat": "Fett {value}g",
         "serving": "Serviert {value}",
@@ -1621,7 +2481,7 @@
         "popularChoice": "Beliebte Wahl",
         "readyInMinutes": "Fertig in {minutes} Min",
         "readyInstantly": "Sofort fertig",
-        "expressMinutes": "Express {minutes} min",
+        "expressMinutes": "Express {minutes} min $1$20",
         "quickMinutesSession": "Kurze Sitzung von {minutes} Minuten",
         "expressMinutesSession": "{minutes}-minütige Express-Sitzung",
         "greatValue": "Tolles Preis-Leistungs-Verhältnis",
@@ -1714,7 +2574,7 @@
         "feedbackStaysPrivate": "Ihr Feedback bleibt privat.",
         "contactDetails": "Kontaktdaten",
         "contactDetailsHelp": "Fügen Sie unten Ihre Kontaktdaten hinzu.",
-        "name": "Name",
+        "name": "Name Name Name",
         "yourName": "Dein Name",
         "phoneNumber": "Telefonnummer",
         "phonePlaceholder": "+1 (555) 000-0000",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Noch kein Abrechnungsverlauf. Keine Rechnungshistorie.",
     "perMonth": "/Monat",
     "contactUs": "Kontaktieren Sie uns!"
+  },
+  "StarterActivation": {
+    "activeTitle": "Ihre Speisekarte ist online",
+    "endingSoonTitle": "Halten Sie Ihre Speisekarte online",
+    "publicMenuQrActive": "Ihr öffentliches Menü und Ihr QR-Code sind aktiv.",
+    "activeRemaining": "Ihr Menüzugriff ist aktiv.",
+    "daysRemaining": "{days, plural, one {Wählen Sie innerhalb von # Tag einen Plan aus, um Ihr Menü online zu halten.} other {Wählen Sie innerhalb von # Tagen einen Plan aus, um Ihr Menü online zu halten.}}",
+    "sharingComplete": "Ihre Freigabeeinrichtung ist abgeschlossen.",
+    "sharingProgress": "{count, number} von {target, number} Freigabeschritten abgeschlossen.",
+    "evidenceRecorded": "Automatisch aufgezeichnet: {systemCount, number}. Von Ihnen bestätigt: {ownerCount, number}.",
+    "evidenceEmpty": "Kopieren oder teilen Sie den Menülink, laden Sie den QR-Code herunter oder bestätigen Sie, wo Sie ihn platziert haben.",
+    "keepLiveAction": "Halten Sie Ihre Speisekarte online",
+    "noSubscriptionDescription": "Wählen Sie einen Plan, um Menüaktualisierungen und Kundenseiten verfügbar zu halten.",
+    "choosePlanDescription": "Ihr Menü ist gespeichert. Wählen Sie einen Plan, um ihn online und auf dem neuesten Stand zu halten."
   },
   "Transactions": {
     "title": "Transaktionsverlauf",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobile App für die Android- und iOS-Geräte",
     "subscribeTitle": "Abonnieren Sie Get Started.",
     "subscribeDescription": "Wählen Sie einen Plan, um mit der Erstellung Ihrer digitalen Speisekarte und der Verwaltung Ihres Unternehmens zu beginnen.",
-    "viewPlans": "Pläne anzeigen Plänen ansehen"
+    "viewPlans": "Pläne anzeigen Plänen ansehen",
+    "returnToMobile": "Sie sehen die Desktop-Version. Zurück zur mobilen Version."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Codes Codes",

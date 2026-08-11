@@ -24,6 +24,8 @@
 20. Valid URL context focuses only an entity present in the exact-scope loaded graph.
 21. Canonical-answer handoff preserves the selected entity and performs no write, listener, or per-node read.
 22. An entity-focused first-answer proposal prefills only an entity present in the loaded tenant entity list.
+23. A valid requested entity absent from the current graph remains visibly
+    unselected; no default or highest-ranked topic is substituted.
 
 ## Public Content Contract
 

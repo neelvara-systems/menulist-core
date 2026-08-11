@@ -1,9 +1,13 @@
 import Razorpay from "razorpay";
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
+
+const keyId = menulistServerEnv.razorpayKeyId;
+const keySecret = menulistServerEnv.razorpayKeySecret;
 
 // Ensure environment variables are set, this is a critical check.
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+if (!keyId || !keySecret) {
   throw new Error(
-    "RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be defined in environment variables."
+    "NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID and MENULIST_RAZORPAY_KEY_SECRET must be defined in environment variables."
   );
 }
 
@@ -12,6 +16,6 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
  * Initialized using environment variables.
  */
 export const razorpayClient = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+  key_id: keyId,
+  key_secret: keySecret,
 });

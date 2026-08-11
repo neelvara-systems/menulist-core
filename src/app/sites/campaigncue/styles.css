@@ -1567,6 +1567,122 @@ body[data-campaigncue-mobile-menu="open"] [data-product="campaigncue"][role="dia
     line-height: 1.42;
 }
 
+.campaigncue-pattern-proof {
+    display: grid;
+    gap: 28px;
+    width: var(--cc-section);
+    margin: 64px auto 0;
+    padding: 42px 0;
+    border-top: 1px solid rgb(1 27 109 / 12%);
+    border-bottom: 1px solid rgb(1 27 109 / 12%);
+}
+
+.campaigncue-pattern-proof-heading {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.6fr) minmax(0, 1.2fr);
+    gap: 14px 32px;
+    align-items: end;
+}
+
+.campaigncue-pattern-proof-heading > span {
+    grid-column: 1;
+    color: var(--cc-pink);
+    font-size: 0.76rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.campaigncue-pattern-proof-heading h2 {
+    grid-column: 1;
+    margin: 0;
+    color: var(--cc-ink);
+    font-family: var(--cc-font-display);
+    font-size: clamp(2rem, 4vw, 4rem);
+    line-height: 0.98;
+    letter-spacing: 0;
+}
+
+.campaigncue-pattern-proof-heading p {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    max-width: 680px;
+    margin: 0;
+    color: var(--cc-muted);
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.campaigncue-pattern-proof-steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.campaigncue-pattern-proof-steps li {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    min-height: 250px;
+    border-top: 3px solid var(--cc-ink);
+    padding: 18px 16px 0;
+}
+
+.campaigncue-pattern-proof-steps li:not(:last-child) {
+    border-right: 1px solid rgb(1 27 109 / 10%);
+}
+
+.campaigncue-pattern-proof-step-number {
+    color: var(--cc-pink);
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.campaigncue-pattern-proof-steps li > span {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--cc-radius);
+    background: var(--cc-surface-soft);
+    color: var(--cc-ink);
+}
+
+.campaigncue-pattern-proof-steps strong {
+    color: var(--cc-ink);
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.campaigncue-pattern-proof-steps p {
+    margin: 0;
+    color: var(--cc-muted);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.campaigncue-pattern-proof-boundary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    border-left: 4px solid var(--cc-pink);
+    padding: 12px 0 12px 16px;
+    color: var(--cc-ink);
+}
+
+.campaigncue-pattern-proof-boundary span {
+    max-width: 620px;
+    color: var(--cc-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
 .campaigncue-problem-band {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -5866,6 +5982,27 @@ body[data-campaigncue-mobile-menu="open"] [data-product="campaigncue"][role="dia
 }
 
 @media (max-width: 1160px) {
+    .campaigncue-pattern-proof-heading {
+        grid-template-columns: 1fr;
+    }
+
+    .campaigncue-pattern-proof-heading > span,
+    .campaigncue-pattern-proof-heading h2,
+    .campaigncue-pattern-proof-heading p {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .campaigncue-pattern-proof-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .campaigncue-pattern-proof-steps li {
+        min-height: 210px;
+        border-right: 0;
+        border-bottom: 1px solid rgb(1 27 109 / 10%);
+    }
+
     .campaigncue-mega-menu-panel {
         width: min(760px, calc(100vw - 36px));
     }
@@ -6044,10 +6181,27 @@ body[data-campaigncue-mobile-menu="open"] [data-product="campaigncue"][role="dia
     }
 
     .campaigncue-flow-map-steps,
+    .campaigncue-pattern-proof-steps,
     .campaigncue-switch-grid,
     .campaigncue-pack-room-columns,
     .campaigncue-problem-band-grid {
         grid-template-columns: 1fr;
+    }
+
+    .campaigncue-pattern-proof {
+        gap: 22px;
+        margin-top: 44px;
+        padding: 32px 0;
+    }
+
+    .campaigncue-pattern-proof-steps li {
+        min-height: 0;
+        padding: 16px 8px;
+    }
+
+    .campaigncue-pattern-proof-boundary {
+        align-items: start;
+        flex-direction: column;
     }
 
     .campaigncue-flow-map-steps li {

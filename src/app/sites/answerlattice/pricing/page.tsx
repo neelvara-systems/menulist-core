@@ -33,21 +33,21 @@ const PLAN_BULLETS: Record<string, string[]> = {
         'Knowledge intake from selected links, docs, and supported files',
         'Widget and help center',
         'Basic approved-answer coverage tracking',
-        'Product surfaces for in-app support',
+        'Product page mapping for in-app support',
     ],
     answerlattice_growth: [
         'Expanded team and custom role controls',
         'Higher intake, answer, and support-gap capacity',
-        'Signal-to-knowledge queue',
+        'Support-gap review queue',
         'Release-aware answer review',
         'Weekly support review digest',
-        'Higher signal and surface limits',
+        'Higher feedback, product-page, and support-content limits',
     ],
     answerlattice_studio: [
         'Up to 5 client workspaces',
         'Reusable install and setup patterns',
         'Intake-ready launch workflow for multiple products',
-        'Higher signal and content limits',
+        'Higher feedback and support-content limits',
         'Built for agencies and dev studios',
     ],
 };
@@ -70,8 +70,8 @@ const SHARED_INCLUDED = [
     'Safe page context for the widget',
     'Hosted help center',
     'Owner reset and force sign-out',
-    'Product surface mapping',
-    'Human-approved review queue',
+    'Product area mapping',
+    'Owner review before publishing',
 ];
 
 const supportCreditPack = ANSWERLATTICE_CREDIT_PACKS_LIST[0];
@@ -87,7 +87,7 @@ const CREDIT_EXAMPLES = [
     },
     {
         title: 'Media-heavy intake',
-        description: 'If your best support truth lives inside screenshots, short recordings, or messy notes, credits cover the paid extraction work that turns those sources into reviewed support knowledge.',
+        description: 'If your best product knowledge lives inside screenshots, short recordings, or messy notes, credits cover the paid extraction work that turns those sources into reviewed support knowledge.',
     },
 ];
 
@@ -108,7 +108,7 @@ export default async function AnswerlatticePricingPage() {
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
-                            { label: 'Setup path', value: 'Create the workspace and verify the first support layer' },
+                            { label: 'Setup path', value: 'Create the workspace and verify support before users depend on it' },
                             { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
                             { label: 'Credit use', value: 'Provider fallback, full-runtime tests, starter generation, OCR, and transcription' },
                             { label: 'Not charged for', value: 'Approved widget answers, draft review, selected text import, and help browsing' },
@@ -123,7 +123,7 @@ export default async function AnswerlatticePricingPage() {
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Paid setup</p>
                                 <h2 className="text-2xl font-bold text-white">Start with Starter. Upgrade when support volume is real.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                    Public onboarding creates the AnswerLattice workspace, product account bridge, pending paid subscription, product surfaces, and one-time widget key. Plans and top-ups run through the AnswerLattice Billing screen with product-scoped Razorpay requests.
+                                    Workspace setup creates your AnswerLattice account, chosen monthly subscription, selected product pages, and one-time widget key. Manage plans and top-ups from AnswerLattice Billing through Razorpay.
                                 </p>
                             </div>
                             <AnswerlatticeLink

@@ -44,7 +44,7 @@ function hasFlag(name: string): boolean {
 }
 
 function getRequiredProjectId(): string {
-    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
+    const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
     if (!projectId) {
         throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running business-type migration.');
     }

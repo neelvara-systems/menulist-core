@@ -10,6 +10,7 @@ import { AnswerlatticeAnswerTestSaveSchema, ANSWERLATTICE_ANSWER_TEST_SUMMARY_SC
 import { AnswerlatticeAnswerTestSummaryTooLargeError, compactAnswerlatticeAnswerTestSummaryForWrite, loadAnswerlatticeAnswerTestSummary, normalizeAnswerlatticeAnswerTestSummary, } from '@lib/answerlattice/answerTestServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
+import { buildAnswerlatticeScopeCoverageMatrix } from '@lib/answerlattice/scopeCoverageMatrix';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin, requireAnswerlatticeFirestoreAdmin, } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -57,28 +58,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             sId: access.scope.storeId,
         };
         const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
+        const includeScopeCoverage = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX
+            && request.nextUrl.searchParams.get('includeScopeCoverage') === '1';
         const [summary, sourceVersions] = await Promise.all([
             loadAnswerlatticeAnswerTestSummary(scope),
-            includeLaunchProof
+            includeLaunchProof || includeScopeCoverage
                 ? getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)
                 : Promise.resolve(null),
         ]);
-        if (!sourceVersions) {
-            return NextResponse.json({
-                summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
-            }, {
-                headers: PRIVATE_NO_STORE_HEADERS,
-            });
-        }
-        const launchProof = buildAnswerlatticeActivationAnswerTestSummary(
-            summary,
-            scope.tId,
-            scope.sId,
-            sourceVersions,
-        );
+        const launchProof = includeLaunchProof && sourceVersions
+            ? buildAnswerlatticeActivationAnswerTestSummary(
+                summary,
+                scope.tId,
+                scope.sId,
+                sourceVersions,
+            )
+            : undefined;
+        const scopeCoverageMatrix = includeScopeCoverage && sourceVersions
+            ? buildAnswerlatticeScopeCoverageMatrix(summary, sourceVersions)
+            : undefined;
         return NextResponse.json({
             summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
-            launchProof,
+            ...(launchProof ? { launchProof } : {}),
+            ...(scopeCoverageMatrix ? { scopeCoverageMatrix } : {}),
         }, {
             headers: PRIVATE_NO_STORE_HEADERS,
         });
@@ -212,24 +214,27 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             return next;
         });
         const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
-        if (!includeLaunchProof) {
-            return NextResponse.json({
-                summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
-            }, {
-                headers: PRIVATE_NO_STORE_HEADERS,
-            });
-        }
-        const sourceVersions = await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId);
-        const launchProof = buildAnswerlatticeActivationAnswerTestSummary(
-            summary,
-            scope.tId,
-            scope.sId,
-            sourceVersions,
-        );
+        const includeScopeCoverage = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX
+            && request.nextUrl.searchParams.get('includeScopeCoverage') === '1';
+        const sourceVersions = includeLaunchProof || includeScopeCoverage
+            ? await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)
+            : null;
+        const launchProof = includeLaunchProof && sourceVersions
+            ? buildAnswerlatticeActivationAnswerTestSummary(
+                summary,
+                scope.tId,
+                scope.sId,
+                sourceVersions,
+            )
+            : undefined;
+        const scopeCoverageMatrix = includeScopeCoverage && sourceVersions
+            ? buildAnswerlatticeScopeCoverageMatrix(summary, sourceVersions)
+            : undefined;
 
         return NextResponse.json({
             summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
-            launchProof,
+            ...(launchProof ? { launchProof } : {}),
+            ...(scopeCoverageMatrix ? { scopeCoverageMatrix } : {}),
         }, {
             headers: PRIVATE_NO_STORE_HEADERS,
         });

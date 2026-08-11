@@ -27,6 +27,7 @@ import {
 import { getAnswerlatticeAnswerTestRunRequestFingerprint } from '@lib/answerlattice/answerTestRunIdentity';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
+import { buildAnswerlatticeScopeCoverageMatrix } from '@lib/answerlattice/scopeCoverageMatrix';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -125,6 +126,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const scope = { tId: access.scope.tenantId, sId: access.scope.storeId };
         const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
+        const includeScopeCoverage = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX
+            && request.nextUrl.searchParams.get('includeScopeCoverage') === '1';
         const summary = await loadAnswerlatticeAnswerTestSummary(scope);
         const selectedIds = new Set(parsed.data.caseIds || []);
         const selectedCases = summary.cases
@@ -171,18 +174,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             String(access.user.email || access.user.name || access.user.id || 'unknown'),
         );
         if (reservation.completedRun) {
-            const launchProof = includeLaunchProof
+            const sourceVersions = includeLaunchProof || includeScopeCoverage
+                ? await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)
+                : null;
+            const launchProof = includeLaunchProof && sourceVersions
                 ? buildAnswerlatticeActivationAnswerTestSummary(
                     reservation.summary,
                     scope.tId,
                     scope.sId,
-                    await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
+                    sourceVersions,
                 )
+                : undefined;
+            const scopeCoverageMatrix = includeScopeCoverage && sourceVersions
+                ? buildAnswerlatticeScopeCoverageMatrix(reservation.summary, sourceVersions)
                 : undefined;
             return NextResponse.json({
                 run: projectAnswerlatticeAnswerTestRunForClient(reservation.completedRun),
                 summary: projectAnswerlatticeAnswerTestSummaryForClient(reservation.summary),
                 ...(launchProof ? { launchProof } : {}),
+                ...(scopeCoverageMatrix ? { scopeCoverageMatrix } : {}),
                 idempotent: true,
             }, { headers: PRIVATE_NO_STORE_HEADERS });
         }
@@ -199,19 +209,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         executionCompleted = true;
         const nextSummary = await saveAnswerlatticeAnswerTestRun(scope, run);
-        const launchProof = includeLaunchProof
+        const sourceVersions = includeLaunchProof || includeScopeCoverage
+            ? await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)
+            : null;
+        const launchProof = includeLaunchProof && sourceVersions
             ? buildAnswerlatticeActivationAnswerTestSummary(
                 nextSummary,
                 scope.tId,
                 scope.sId,
-                await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
+                sourceVersions,
             )
+            : undefined;
+        const scopeCoverageMatrix = includeScopeCoverage && sourceVersions
+            ? buildAnswerlatticeScopeCoverageMatrix(nextSummary, sourceVersions)
             : undefined;
         reservedRunId = null;
         return NextResponse.json({
             run: projectAnswerlatticeAnswerTestRunForClient(run),
             summary: projectAnswerlatticeAnswerTestSummaryForClient(nextSummary),
             ...(launchProof ? { launchProof } : {}),
+            ...(scopeCoverageMatrix ? { scopeCoverageMatrix } : {}),
         }, {
             headers: PRIVATE_NO_STORE_HEADERS,
         });

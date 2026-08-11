@@ -9,7 +9,9 @@
 5. Select **Prepare pattern**.
 6. Review the original hooks.
 7. Create a campaign pack with Reel or Scripts output.
+8. In Video Reel Studio, use the content checks and phone shot list to rebuild the format with your own business proof.
+9. After manual use, record whether the exact rendered version was useful, not useful, or not used.
 
-CampaignCue keeps only the compact format notes. It does not save the transcript, monitor the account, download private media, or copy the source script.
+CampaignCue keeps only the compact format notes. It does not save the transcript, monitor the account, import performance data, download private media, or copy the source script.
 
 Replacing the example updates the next reel/creator brief. Packs created from the previous example must be recreated before public use.

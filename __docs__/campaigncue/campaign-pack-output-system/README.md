@@ -6,7 +6,7 @@
 
 Campaign Pack Output System is the owner-facing output layer for CampaignCue. It packages the current campaign decision, missing inputs, channel copy, manual handoff fields, five-check pack readiness, trust report, Campaign Rhythm, safe-reuse notes, mini-page/QR brief, Campaign Proof Deck brief, result memory prompt, and ZIP bundle manifest into one typed `CampaignCueOutputPack`.
 
-It does not post, send, publish, connect provider accounts, start ad spend, or create a hosted offer page in the current runtime.
+It does not post or send to third-party channels, connect provider accounts, or start ad spend. When the separate Hosted Offer Page flag is enabled, an owner can explicitly publish one checked, expiring CampaignCue page; nothing is published automatically.
 
 ## Documents
 
@@ -32,7 +32,7 @@ The current output is a structured ZIP bundle with:
 - missing input checklist
 - WhatsApp, Google, creative, ads, video, UGC, calendar, staff, email/SMS, and instruction text files when data exists
 - print/offline brief
-- mini-page and QR content brief
+- mini-page and QR content brief, plus the current stage-aware public link only after explicit governed publication
 - `proof-deck/campaign-proof-deck.md` with brand snapshot, campaign/social creative set, product/service focus, UGC/reel dialogue/action and shot-plan reference, review checklist, and source trace
 - language handoff note with preferred locale and protected facts that must not change during manual translation
 - assistant work plan showing where AI can help without deciding campaigns, changing facts, or adding provider/Firebase cost
@@ -43,3 +43,5 @@ The current output is a structured ZIP bundle with:
 - result memory prompt
 
 Rendered PNG/PDF assets appear only when the editor/export pipeline produces them. The proof deck is a markdown/PDF brief for review, not a claimed final rendered PDF. The ZIP never fabricates a binary file that does not exist.
+
+The optional [Durable Cloud Export Archive](../durable-cloud-export-archive/README.md) can retain the current generated ZIP for later private download. It adds no second pack model: `CampaignCueOutputPack` remains derived state, while the campaign stores only a compact archive pointer and temporary upload lease.

@@ -112,7 +112,7 @@ if (storeIdArg && tenantIdArg) {
 }
 
 if (!getApps().length) {
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
+  const projectId = process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
   initializeApp(projectId ? { projectId } : undefined);
 }
 

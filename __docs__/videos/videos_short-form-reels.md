@@ -1,10 +1,12 @@
 # Videos - Short-Form Reels And Shorts
 
-**Status:** Draft scripts and content bank
+**Status:** Market-reviewed supporting content bank; numbered individual handoffs are script authority
 **Created:** July 7, 2026
 **Primary output:** 8-30 second vertical videos
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md).
+
+Use [the current market and script system](./videos_market-format-and-script-system.md) for feed hooks, native composition, pacing, and claim gates. The numbered reel handoffs linked from [the video index](./README.md) supersede any conflicting timing or wording in this reusable idea bank.
 
 ## Purpose
 
@@ -83,7 +85,7 @@ One approved list. Every customer link.
 | 0-3s | QR scan | Text: The QR code is not the problem. |
 | 3-7s | Old item, wrong price, unavailable dish | Text: The page behind it is stale. |
 | 7-12s | Updated MenuList customer page | MenuList keeps your QR tied to the latest approved list. |
-| 12-15s | QR and current menu side by side | Text: Same QR. Current menu. |
+| 12-15s | Owned QR and approved MenuList destination side by side | Text: One owned QR. One approved destination. |
 
 ## Reel Script - Photo/PDF To Customer Link
 
@@ -94,7 +96,7 @@ One approved list. Every customer link.
 | Time | Visual | Voiceover / text |
 | --- | --- | --- |
 | 0-3s | Existing printed menu or service list | Text: Already have a menu? Start there. |
-| 3-8s | Upload menu photos / PDF / paste owned link | Upload menu photos, a PDF, or the owned link you already use. No typing required to start. |
+| 3-8s | Upload menu photos / PDF / paste owned link | Upload menu photos, a PDF, or the owned link you already use. No need to retype the whole menu before you begin. |
 | 8-14s | MenuList prepares items and categories | MenuList prepares the customer-facing version. |
 | 14-20s | Owner review screen | You review before publishing. |
 | 20-25s | Customer link live | Text: Create your customer link. |

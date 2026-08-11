@@ -458,9 +458,9 @@ Vercel env mapping:
 
 | Product | Staging/local env keys | Production env keys |
 | --- | --- | --- |
-| MenuList | canonical `MENULIST_FIREBASE_PROJECT_ID`, `MENULIST_FIREBASE_STORAGE_BUCKET`, `MENULIST_FIREBASE_API_KEY`, `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY` plus identical current `FIREBASE_*` aliases using `menulist-qa` | same variable names with separate credentials and Web API key from `menulist` |
-| Answerlattice | `ANSWERLATTICE_FIREBASE_PROJECT_ID`, `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` using `answerlattice-qa` | same variable names with separate credentials from `answerlattice` |
-| CampaignCue | `CAMPAIGNCUE_FIREBASE_PROJECT_ID`, `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL`, `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY` using `campaigncue-qa` | same variable names with separate credentials from `campaigncue` |
+| MenuList | canonical public Web config under `NEXT_PUBLIC_MENULIST_FIREBASE_*`, plus server-only `MENULIST_FIREBASE_CLIENT_EMAIL` and `MENULIST_FIREBASE_PRIVATE_KEY`, using `menulist-qa` | same names with separate credentials and Web config from `menulist`; no duplicate generic aliases |
+| Answerlattice | canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa` plus `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL` and `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` | canonical project ID `answerlattice` plus separate production Admin credentials |
+| CampaignCue | canonical `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue-qa` plus `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL` and `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY` | canonical project ID `campaigncue` plus separate production Admin credentials |
 | SignalDesk | `SIGNALDESK_FIREBASE_PROJECT_ID`, `SIGNALDESK_FIREBASE_CLIENT_EMAIL`, `SIGNALDESK_FIREBASE_PRIVATE_KEY` using `menulist-signaldesk-qa` | same variable names with separate credentials from `menulist-signaldesk` |
 
 Expected result:

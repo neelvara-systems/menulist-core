@@ -22,7 +22,7 @@ const LOOP_STEPS = [
     },
     {
         title: 'Repeated misses become review items',
-        detail: 'Fallback, tickets, low confidence, and negative feedback become signal review, board follow-up, or proposals.',
+        detail: 'Fallback, tickets, low confidence, and negative feedback become support-gap review, board follow-up, or draft improvements.',
     },
     {
         title: 'You approve the fix',

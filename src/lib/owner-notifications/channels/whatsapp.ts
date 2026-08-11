@@ -2,6 +2,7 @@ import type { OwnerNotificationChannelResult } from '../types';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { logNotificationFailure } from '@lib/notifications/notificationDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 const GRAPH_API_VERSION = 'v21.0';
 const MAX_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
@@ -36,7 +37,7 @@ async function readOwnerNotificationWhatsAppResponseJson(response: Response): Pr
 }
 
 export function isOwnerNotificationWhatsAppConfigured(): boolean {
-    return Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN);
+    return Boolean(menulistServerEnv.whatsappPhoneNumberId && menulistServerEnv.whatsappAccessToken);
 }
 
 export async function sendOwnerNotificationWhatsApp(params: {
@@ -47,8 +48,8 @@ export async function sendOwnerNotificationWhatsApp(params: {
     templateLanguage?: string;
     templateParameters?: string[];
 }): Promise<OwnerNotificationChannelResult> {
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = menulistServerEnv.whatsappPhoneNumberId;
+    const accessToken = menulistServerEnv.whatsappAccessToken;
 
     if (!phoneNumberId || !accessToken) {
         return { ok: false, skippedReason: 'whatsapp_not_configured' };

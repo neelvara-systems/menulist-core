@@ -2,7 +2,7 @@
 
 > Status: first execution guide
 > Scope: MenuList local plus staging only
-> Last updated: August 2, 2026
+> Last updated: August 11, 2026
 > Launch boundary: this guide does not approve production deployment. Finish this MenuList QA setup, verify it end to end, then create a separate MenuList production guide.
 
 This is the dedicated setup file for **MenuList staging/QA**. Follow only this
@@ -1191,6 +1191,439 @@ Operator progress:
 - `2026-08-07` - Google Auth Platform confirmed **Branding changes saved** and
   read back the exact homepage, privacy-policy, and Terms-of-Service URLs plus
   authorized domain `menulist.digital`. `QA-D01` is complete.
+- `2026-08-09` - Google Auth Platform **Data access** initially shows no
+  non-sensitive, sensitive, or restricted scopes for exact project
+  `menulist-qa`. `QA-D03` remains pending until only `openid`, `email`, and
+  `profile` are selected and saved.
+- `2026-08-09` - Google Auth Platform **Data access** now reads back exactly
+  `openid`, `userinfo.email`, and `userinfo.profile` as non-sensitive scopes.
+  Sensitive and restricted scope tables remain empty. `QA-D03` is complete.
+- `2026-08-09` - Google Auth Platform **Clients** shows no existing OAuth
+  clients for exact project `menulist-qa`. The next action is to create the one
+  required Web application client; `QA-D04` remains pending.
+- `2026-08-09` - Google Auth Platform created the Web application client
+  `MenuList QA Web` and reads back only the exact localhost and canonical QA app
+  origins plus their two NextAuth Google callback URIs. `QA-D04`, `QA-D05`, and
+  `QA-D06` are complete. Client credentials are intentionally excluded from
+  chat and this repository; `QA-D08` remains pending secure vault capture.
+- `2026-08-09` - The Google OAuth client secret was copied directly from Google
+  Cloud into the existing secure `menulist-qa` password-vault note and saved
+  under the canonical `GOOGLE_CLIENT_SECRET` name. The value was not written to
+  chat or this repository. `QA-D08` remains pending until the matching client ID
+  is also stored securely.
+- `2026-08-09` - The matching Google OAuth client ID was saved in the same
+  secure `menulist-qa` password-vault note under the canonical
+  `GOOGLE_CLIENT_ID` name. Both QA OAuth credentials are now stored without
+  exposing either value in chat or this repository. `QA-D08` is complete.
+- `2026-08-09` - Google Auth Platform **Audience** reads back **External** user
+  type, **Testing** publishing status, and named test user
+  `admin@neelvara.com`. The app was not published and no production audience
+  was changed. `QA-D07` is complete, closing the Phase D Google OAuth setup.
+- `2026-08-09` - Google AI Studio **API Keys** is filtered to exact existing
+  project `menulist-qa` and shows no current keys in that project. No new Google
+  Cloud project was created. `QA-E01` remains pending creation, restriction,
+  and secure vault capture of the four QA-only Gemini keys.
+- `2026-08-09` - The primary Gemini QA key for exact project `menulist-qa` was
+  created and saved directly in the secure QA vault with canonical mapping
+  `MENULIST_GEMINI_AI_KEY` and current alias `GEMINI_AI_KEY`, plus its creation
+  date, purpose, and revocation owner. The key value was not written to chat or
+  this repository. `QA-E01` remains pending the three rotation keys and API
+  restrictions for all four keys.
+- `2026-08-09` - Gemini QA rotation key 2 was created in exact project
+  `menulist-qa` and saved directly in the secure QA vault with canonical mapping
+  `MENULIST_GEMINI_AI_KEY_2` and current alias `GEMINI_AI_KEY_2`, plus its
+  creation date, purpose, and revocation owner. The value was not written to
+  chat or this repository. `QA-E01` remains pending rotation keys 3 and 4 plus
+  API restrictions for all four keys.
+- `2026-08-09` - Gemini QA rotation key 3 was created in exact project
+  `menulist-qa` and saved directly in the secure QA vault with canonical mapping
+  `MENULIST_GEMINI_AI_KEY_3` and current alias `GEMINI_AI_KEY_3`, plus its
+  creation date, purpose, and revocation owner. The value was not written to
+  chat or this repository. `QA-E01` remains pending rotation key 4 plus API
+  restrictions for all four keys.
+- `2026-08-09` - Gemini QA rotation key 4 was created in exact project
+  `menulist-qa` and saved directly in the secure QA vault with canonical mapping
+  `MENULIST_GEMINI_AI_KEY_4` and current alias `GEMINI_AI_KEY_4`, plus its
+  creation date, purpose, and revocation owner. All four QA key values are now
+  securely stored without appearing in chat or this repository. `QA-E01`
+  remains pending API restriction read-back for all four keys.
+- `2026-08-09` - Google Cloud Credentials reads back the `MenuList QA primary`
+  key with exactly one selected API, **Gemini API**, no application restriction,
+  and Google's automatically bound service account. No edit was required and
+  no browser-referrer restriction was added. `QA-E01` remains pending the same
+  read-back for rotation keys 2 through 4.
+- `2026-08-09` - Google Cloud Credentials independently reads back all four
+  `MenuList QA` Gemini keys with exactly one selected API, **Gemini API**, no
+  application restriction, and a bound account. All four values and their env
+  mappings are stored only in the secure QA vault. `QA-E01` is complete.
+- `2026-08-09` - Upstash Redis opened to an empty database list with zero
+  commands, zero storage, and zero cost; no existing database can be reused or
+  accidentally duplicated. The active workspace is labeled **Personal**, so
+  account ownership must be verified before creating `menulist-qa-rate-limit`.
+  `QA-E02` remains pending.
+- `2026-08-09` - The operator verified that the active Upstash workspace is
+  signed in through the company-controlled account. No database has been
+  created yet; current region and plan choices will be inspected before
+  creation. `QA-E02` remains pending.
+- `2026-08-09` - Upstash created exactly one Redis database named
+  `menulist-qa-rate-limit` on the Free Tier in Google Cloud Iowa
+  (`us-central1`). The details page reads back REST access, TLS enabled, zero
+  usage, and zero cost; no paid plan or read region was added. The current Free
+  Tier details show 500,000 commands per month, 50 GB bandwidth, and 256 MB
+  storage. `QA-E02` remains pending secure capture of the REST URL and standard
+  REST token.
+- `2026-08-09` - The Upstash standard REST URL and token were copied directly
+  into the secure QA vault with canonical mappings
+  `MENULIST_UPSTASH_REDIS_REST_URL` and
+  `MENULIST_UPSTASH_REDIS_REST_TOKEN` plus current aliases
+  `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. No credential value
+  was written to chat or this repository. `QA-E02` is complete.
+- `2026-08-09` - The owner-controlled Razorpay dashboard opened with **Test
+  Mode** active. Live-payment onboarding/KYC is incomplete and will not be
+  started for this QA pass. No Live Mode key, payment, settlement, or webhook
+  was created or changed. `QA-E03` remains pending test-key and distinct QA
+  webhook-secret capture.
+- `2026-08-09` - One Razorpay Test Mode key pair was generated, its key ID was
+  confirmed to use the `rzp_test_` prefix, and both values were saved directly
+  in the secure QA vault under canonical MenuList names and current app aliases.
+  No credential value was written to chat or this repository. `QA-E03` remains
+  pending a separate QA webhook-signing secret; no webhook endpoint has been
+  added.
+- `2026-08-09` - A distinct 32-byte random Razorpay QA webhook-signing secret
+  was generated directly into the local clipboard and saved in the secure QA
+  vault as `MENULIST_RAZORPAY_WEBHOOK_SECRET` with current alias
+  `RAZORPAY_WEBHOOK_SECRET`. It is separate from the API key secret and was not
+  printed to chat, terminal output, or this repository. No webhook endpoint was
+  added because the canonical QA app host is not live yet. `QA-E03` is complete.
+- `2026-08-09` - Sentry sign-in with company account `admin@neelvara.com`
+  reached first-time organization creation, confirming that no existing Sentry
+  organization or project is available to reuse. The immutable data-storage
+  location will be inspected before organization creation. `QA-E04` remains
+  pending.
+- `2026-08-09` - Sentry organization `Neelvara Systems` was created under the
+  company account with immutable data-storage location **United States (US)**,
+  matching the MenuList QA US infrastructure family. No paid upgrade or payment
+  method was selected. The first-project wizard has **Next.js** selected;
+  `QA-E04` remains pending creation and secure DSN capture for `menulist-qa`.
+- `2026-08-09` - Sentry created the first Next.js project with provider-default
+  slug `javascript-nextjs` and opened SDK installation guidance. The repository
+  already contains its governed Sentry integration, so the provider wizard,
+  sample error, and AI-assisted setup will not be run. The project must be
+  renamed to `menulist-qa` before DSN capture; `QA-E04` remains pending.
+- `2026-08-09` - The Sentry Next.js project slug was changed from the provider
+  default to canonical `menulist-qa`; platform remains **Next.js** and no SDK
+  wizard or sample event was run. `QA-E04` remains pending secure DSN capture.
+- `2026-08-09` - The default `menulist-qa` client DSN was copied directly into
+  the secure QA vault once. The later root env consolidation maps it only to
+  `NEXT_PUBLIC_SENTRY_DSN`; Firebase Functions use their isolated project-local
+  `SENTRY_DSN` Secret Manager name. No additional client key, OTLP
+  configuration, provider wizard, or sample event was created.
+  `QA-E04` remains pending Sentry account-security review; an organization auth
+  token remains deferred unless source-map upload later proves it is required.
+- `2026-08-09` - Sentry Account Security shows both **Authenticator App** and
+  **Passkey / Biometric / Security Key** inactive, with recovery codes
+  unavailable until 2FA is enabled. Account MFA must be configured and recovery
+  material vaulted before `QA-E04` is complete.
+- `2026-08-09` - Sentry Authenticator App MFA was enabled and the resulting
+  recovery codes were stored in the secure password vault without entering any
+  setup secret, one-time code, or recovery code into docs or chat. The
+  phishing-resistant passkey remains pending before `QA-E04` is complete.
+- `2026-08-09` - A company-controlled passkey named for the Neelvara Sentry
+  administrator was added alongside Authenticator App MFA and independently
+  stored recovery codes. The isolated `menulist-qa` project, vaulted QA DSN,
+  and strongest available account protection now satisfy `QA-E04`; controlled
+  event delivery remains a separate later check under `QA-K15`.
+- `2026-08-09` - Meta Developers app access was opened through the founder's
+  authentic personal Facebook profile because no managed company Meta login
+  exists. No shared or synthetic company profile will be created. The QA app
+  must use the `Neelvara Systems` business portfolio when available, and a
+  second trusted administrator remains a pre-production ownership requirement;
+  `QA-E05` remains pending app and WhatsApp test-credential creation.
+- `2026-08-09` - Existing unpublished app `MenuList Dev Messaging`, its
+  `MenuList Dev` business portfolio, and Meta-provided WhatsApp test account
+  were accepted for QA-only reuse. Production will use a fresh app and business
+  ownership setup rather than promoting this personal-profile-administered QA
+  asset. The old webhook still targets a retired `ecomsai` Function and must be
+  removed before QA configuration. A temporary access token was visible in a
+  setup screenshot, so it is classified as exposed, must not be vaulted or
+  used, and must expire or be invalidated before a replacement is captured.
+  `QA-E05` remains pending isolated webhook and fresh credential setup.
+- `2026-08-09` - The existing Meta app's webhook subscription to the retired
+  `ecomsai` Cloud Function was removed. The unpublished QA app no longer routes
+  WhatsApp webhook traffic to that legacy backend; `QA-E05` remains pending
+  QA identity normalization and fresh credential capture.
+- `2026-08-09` - The reused unpublished Meta app was renamed to `MenuList QA
+  Messaging` and its provider contact was changed to the company-controlled
+  `admin@neelvara.com` mailbox. `QA-E05` remains pending rotation and secure
+  storage of the QA app secret, access token, phone-number id, and verify token.
+- `2026-08-09` - The reused Meta app secret was rotated after legacy webhook
+  removal and the replacement was stored directly in the secure QA vault under
+  canonical `MENULIST_WHATSAPP_APP_SECRET` and Function-compatible
+  `WHATSAPP_APP_SECRET` mappings. No secret value entered docs or chat;
+  `QA-E05` remains pending the other WhatsApp QA credentials.
+- `2026-08-09` - A distinct random 32-byte QA webhook verification token was
+  generated directly to the local clipboard without terminal output and stored
+  in the secure vault under `MENULIST_WHATSAPP_VERIFY_TOKEN` and
+  `WHATSAPP_VERIFY_TOKEN`. It remains unwired until the new QA webhook exists;
+  `QA-E05` remains pending phone-number id and fresh access-token capture.
+- `2026-08-09` - The Meta-provided WhatsApp test sender phone-number id was
+  copied directly into the secure QA vault under
+  `MENULIST_WHATSAPP_PHONE_NUMBER_ID` and `WHATSAPP_PHONE_NUMBER_ID`. The
+  displayed phone number, recipient number, exposed temporary token, and cURL
+  command were not captured; `QA-E05` remains pending a fresh durable token.
+- `2026-08-09` - Employee-level Meta system user `MenuList QA Runtime` was
+  created in the QA-only `MenuList Dev` business portfolio. It has no broad
+  administrator role and no assets or token yet; `QA-E05` remains pending
+  least-privilege QA app/WABA assignment and token generation.
+- `2026-08-09` - `MenuList QA Runtime` received **Manage app** access only to
+  `MenuList QA Messaging`; partial app toggles were left unused and the system
+  user remains an Employee at portfolio scope. `QA-E05` remains pending the
+  matching WhatsApp test-account assignment and durable token generation.
+- `2026-08-09` - The Meta QA system user was assigned the test WhatsApp account
+  and sender with only message delivery, message-template view, and phone-number
+  view permissions. Template/phone management, payment, user assignment, and
+  **Everything** permissions remain disabled; `QA-E05` remains pending scoped
+  system-user token generation and secure storage.
+- `2026-08-09` - A replacement system-user access token was generated for
+  `MenuList QA Runtime` with a 60-day expiry and only the
+  `whatsapp_business_messaging` permission. It was stored directly in the
+  secure QA vault under `MENULIST_WHATSAPP_ACCESS_TOKEN` and
+  `WHATSAPP_ACCESS_TOKEN`; no token value entered docs, screenshots, or chat.
+  The app remains unpublished, uses only Meta test WhatsApp assets, and has no
+  production number, billing, webhook, or provider processing enabled. Together
+  with the vaulted test phone-number id, rotated app secret, and independent
+  verify token, this completes `QA-E05`; rotation is required before the
+  provider-displayed expiry.
+- `2026-08-09` - Meta credential readiness and webhook activation were kept as
+  separate checkpoints. `QA-E05` covers the isolated QA app, test assets, and
+  four vaulted credentials only. No Meta callback is currently registered.
+  Webhook verification, the `messages` subscription, and one bounded signed
+  provider smoke remain pending under post-deploy `QA-K22` because the
+  `menulist-qa` `messagingOnboarding` Function and its Secret Manager bindings
+  must exist first.
+- `2026-08-09` - The operator explicitly confirmed the Meta QA app is paused
+  unchanged until the post-deploy `QA-K22` return. No callback, production
+  number, payment method, publish-state change, or additional webhook
+  subscription was added.
+- `2026-08-09` - The initially stored standard-Base64 NextAuth value was
+  superseded before use by a separately generated 32-byte, 43-character
+  Base64URL value. Only the corrected QA value remains in the secure vault
+  under `NEXTAUTH_SECRET`; no secret value entered docs or chat. This completes
+  `QA-E06`.
+- `2026-08-09` - A separate 32-byte, 43-character Base64URL owner-referral
+  signing secret was generated directly to the clipboard and stored in the
+  secure QA vault under `MENULIST_OWNER_REFERRAL_TOKEN_SECRET`. It does not
+  reuse the NextAuth or any provider secret, and no value entered docs or chat.
+  This completes `QA-E07`.
+- `2026-08-09` - A separate 32-byte, 43-character Base64URL cache-revalidation
+  secret was generated directly to the clipboard and stored in the secure QA
+  vault under canonical `REVALIDATION_SECRET`. It does not reuse an auth,
+  referral, payment, or provider secret, and no value entered docs or chat.
+  This completes `QA-E08`.
+- `2026-08-09` - `QA-E09` was skipped intentionally. The existing alert-only
+  and Gemini spend-cap budgets notify billing administrators, billing users,
+  and project owners through Google-managed notifications; no Pub/Sub or HTTP
+  budget webhook was configured. The maintained MenuList QA deploy target does
+  not include `gcpBudgetAlertWebhook`, so no unused
+  `GCP_BUDGET_WEBHOOK_SECRET` was generated.
+- `2026-08-09` - The Cloud Tasks API was enabled in exact Google Cloud project
+  `menulist-qa`; no production project was changed. Queue creation remains a
+  separate bounded action under `QA-E11`. This completes `QA-E10`.
+- `2026-08-09` - Cloud Shell created and read back the single running queue
+  `projects/menulist-qa/locations/us-central1/queues/batch-image-generation`.
+  Its explicit policy is 8 maximum concurrent dispatches, 4 dispatches per
+  second, 5 maximum attempts, 5-second minimum backoff, and 300-second maximum
+  backoff. Service-derived `maxBurstSize: 10` and `maxDoublings: 16` were
+  retained. No production queue was created. This completes `QA-E11`.
+- `2026-08-09` - A separate 32-byte, 43-character Base64URL batch-worker
+  authentication secret was generated directly to the clipboard and stored in
+  the secure QA vault under `BATCH_IMAGE_GENERATION_WORKER_SECRET`. It does not
+  reuse another application or provider secret, and no value entered docs or
+  chat. This completes `QA-E12` and closes the required Phase E provider-value
+  setup.
+- `2026-08-09` - The operator confirmed the first-boot optional-provider
+  defaults: App Check/reCAPTCHA enforcement, Telegram alerts, SMTP delivery,
+  and staging analytics are skipped intentionally; UptimeRobot is approved for
+  creation only after the Phase J staging deployment is live. No optional
+  account, credential, monitor, or production analytics destination was
+  created. This completes `QA-F01` through `QA-F05`.
+- `2026-08-10` - Firebase Project Settings -> Service accounts for exact project
+  `menulist-qa` reports that key creation is not allowed for the Firebase Admin
+  SDK service account because of organization policy. No key was created or
+  downloaded, and no policy was weakened. Current MenuList Vercel runtime code
+  still requires explicit service-account email/private-key env values; a
+  keyless Workload Identity path is not implemented. `QA-C10`, `QA-C11`, and
+  `QA-C13` remain pending while the effective constraint and its inheritance
+  source are inspected for the narrowest safe resolution.
+- `2026-08-10` - Google Cloud Organization Policies for exact project
+  `menulist-qa` identifies active managed constraint
+  `iam.managed.disableServiceAccountKeyCreation` with policy source **Inherit
+  parent's policy**. The legacy constraint is not the observed blocker. No
+  project or organization policy was changed; inspect the managed policy detail
+  before deciding whether a project-only override is available and justified.
+- `2026-08-10` - The managed policy detail confirms the effective project
+  status is **Enforced**, with no condition after hierarchy evaluation. It
+  denies create/update for `iam.googleapis.com/ServiceAccountKey` when the key
+  is user-managed and Google-provided. No policy edit was opened or saved;
+  `QA-C10`, `QA-C11`, and `QA-C13` remain pending while project-level override
+  permission is checked.
+- `2026-08-10` - Opening **Manage policy** was denied for
+  `admin@neelvara.com`. Google Cloud reports that the account lacks all of
+  `orgpolicy.policies.create`, `orgpolicy.policies.delete`,
+  `orgpolicy.policies.update`, and `orgpolicy.policy.get` on project
+  `menulist-qa`. No policy was changed. Resolution requires an organization
+  administrator to grant the Organization Policy Administrator role at the
+  organization level or to apply the narrow project-only exemption on behalf
+  of the operator; `QA-C10`, `QA-C11`, and `QA-C13` remain pending.
+- `2026-08-10` - **Fix access** identifies
+  `roles/orgpolicy.policyAdmin` (**Organization Policy Administrator**) as the
+  role containing the missing permissions, with target resource the entire
+  `neelvara.com` organization. Because this is broader than `menulist-qa`, any
+  grant must be temporary: use it only to apply and later remove the QA-project
+  exception, then remove the organization-level role from the operator. No
+  role has been granted yet.
+- `2026-08-10` - The **Edit policy** page for exact project `menulist-qa` is now
+  accessible after the organization-level access grant. The page still shows
+  **Inherit parent's policy** selected, so no organization policy behavior has
+  changed yet. Treat `roles/orgpolicy.policyAdmin` on `neelvara.com` as an
+  active temporary elevation and remove it after the QA exception is restored.
+- `2026-08-10` - A project-only override is staged but not saved for
+  `iam.managed.disableServiceAccountKeyCreation`: **Override parent's policy**
+  with one unconditional rule and **Enforcement Off**. This affects only
+  `menulist-qa` once applied; the parent organization policy remains enforced.
+  Do not leave this exception active after the one required QA key is created
+  and secured.
+- `2026-08-10` - The project-only override was applied successfully. Service
+  account key creation is temporarily **Not enforced** for `menulist-qa` while
+  the parent `neelvara.com` organization policy remains enforced. Create
+  exactly one Firebase Admin SDK QA key, secure its required values, delete the
+  downloaded JSON, then restore inheritance immediately.
+- `2026-08-10` - Exactly one Firebase Admin SDK QA private key was generated,
+  and its JSON credential was downloaded locally. The credential is not yet
+  considered secured or cleaned up: `QA-C10`, `QA-C11`, and `QA-C13` remain
+  pending until the required runtime fields and ownership metadata are saved
+  in the existing QA vault note, the downloaded JSON is securely removed, and
+  key-creation enforcement is restored.
+- `2026-08-10` - The Firebase Admin QA runtime fields, private-key ID, creation
+  date, and owner were saved in the existing `menulist-qa` secure vault note.
+  No credential value was shared in chat. The downloaded JSON still requires
+  removal and the temporary key-creation exception still requires reversal
+  before the credential setup is closed.
+- `2026-08-10` - The downloaded Firebase Admin SDK JSON and any duplicate of
+  that download were removed locally, and Trash was emptied. No unencrypted
+  local credential file remains. `QA-C11` is complete; restore the inherited
+  key-creation policy before completing the remaining credential metadata.
+- `2026-08-10` - The temporary `menulist-qa` exception was removed after the
+  single required key was secured. Policy source is again **Inherit parent's
+  policy**, so service-account key creation is enforced for QA. The parent
+  organization policy was never disabled. Remove the temporary
+  `roles/orgpolicy.policyAdmin` grant from the operator next.
+- `2026-08-10` - The temporary organization-level
+  `roles/orgpolicy.policyAdmin` grant was removed from `admin@neelvara.com`.
+  The operator retains the pre-existing **Billing Account Creator** and
+  **Organization Administrator** roles only. The privileged exception workflow
+  is closed: QA key creation is enforced and no temporary policy-admin access
+  remains.
+- `2026-08-10` - The secure QA vault record now includes the Firebase Admin
+  key ID, creation date, owner, and explicit immediate-revocation conditions
+  for suspected exposure, owner access removal, replacement, or unexpected
+  use. `QA-C13` is complete.
+- `2026-08-10` - The existing Firebase Web `apiKey` was mapped in the secure QA
+  vault to `MENULIST_FIREBASE_API_KEY` and, at that point, a temporary generic
+  compatibility alias. Together with the vaulted Admin SDK project ID, client
+  email, and private key, this completed `QA-C10`. The later environment
+  consolidation removed the generic alias from managed runtime configuration.
+- `2026-08-10` - A minimal gitignored `.env.local` scaffold was created from
+  the governed MenuList QA inventory. It contains fixed local/QA identifiers,
+  emulator-first defaults, no literal template markers, no sister-product
+  keys, and 52 blank values awaiting direct vault entry. `QA-G01` remains
+  pending until those required values are populated and validated.
+- `2026-08-10` - The checked-in `functions/.env.menulist-qa` independently
+  matches the required `app.menulist.digital` origins,
+  `menulist.digital` tenant base, USD 8 Gemini rolling ceiling, and disabled
+  messaging-onboarding master flag. `QA-G15` is complete.
+- `2026-08-10` - The shared Next/Vercel env contract was consolidated to one
+  product-scoped key per MenuList value. Managed local and example env files no
+  longer contain generic Firebase, Gemini, Razorpay, Upstash, SMTP, Telegram,
+  WhatsApp, revalidation, or batch-worker aliases. Runtime readers prefer
+  `MENULIST_*` / `NEXT_PUBLIC_MENULIST_*` and retain legacy names only as
+  read-only migration fallbacks for an existing deployment. Answerlattice now
+  has its own optional `ANSWERLATTICE_UPSTASH_*` namespace. Firebase Functions
+  keep project-local Secret Manager names because each Firebase project has an
+  isolated secret namespace; those names are not duplicated in Vercel/local.
+- `2026-08-10` - The consolidated contract passed its focused verifier,
+  configuration-safety and environment-target gates, root TypeScript and
+  ESLint checks, Firebase Functions TypeScript build, and the affected
+  readiness/backfill boundary suites. No Vercel or Firebase deployment was
+  performed. Vercel Preview values for exact branch `staging` remain an
+  operator step.
+- `2026-08-11` - The first local Phase G group was revalidated from the current
+  ignored `.env.local` without printing values. Authentication, owner-referral,
+  Firebase Web, and Firebase Admin canonical rows are present; NextAuth and
+  referral secrets decode to distinct 32-byte values; Firebase project,
+  domain, bucket, App ID/sender, Admin email, and `us-central1` target the QA
+  family; and the Admin private key parses after dotenv expands its quoted
+  literal `\n` escapes. Stale compatibility-alias comments were removed and no
+  generic alias key exists. Phase G remains pending while Gemini, Razorpay,
+  Upstash, revalidation, Sentry, batch-worker, and Meta values plus the
+  branch-restricted Vercel Preview environment are completed.
+- `2026-08-11` - The local Gemini group was validated without printing key
+  material. All four canonical `MENULIST_GEMINI_AI_KEY*` rows contain distinct
+  current-format Google AI Studio authorization keys, the local rolling ceiling
+  remains USD 8, no generic Gemini alias exists, and the maintained MenuList env
+  contract verifier passes. The local comment now marks these values as
+  server-only. `QA-G08` remains pending only for the exact-branch Vercel Preview
+  copy and later provider smoke; no paid Gemini request was made during this
+  validation.
+- `2026-08-11` - The local Razorpay Test Mode group was validated without
+  printing credential material. The canonical public key ID uses the
+  `rzp_test_` family, no live key ID is present, the API key secret and webhook
+  signing secret are populated and distinct, neither private value is exposed
+  through `NEXT_PUBLIC_*`, no generic Razorpay alias exists, and the maintained
+  MenuList env contract verifier passes. `QA-G09` remains pending only for the
+  exact-branch Vercel Preview copy and the post-deploy test webhook flow.
+- `2026-08-11` - The local Upstash and revalidation group was validated without
+  printing secret material. The canonical Upstash URL uses HTTPS on the
+  expected provider host without embedded credentials, its token and the
+  separately generated revalidation secret are populated and distinct, no
+  generic alias exists, and the maintained MenuList env contract verifier
+  passes. `QA-G10` remains pending only for the exact-branch Vercel Preview copy
+  and later bounded connectivity/revalidation smoke.
+- `2026-08-11` - The pending root Sentry scaffold was consolidated before any
+  DSN was entered. The single shared Vercel app now uses one environment-scoped
+  `NEXT_PUBLIC_SENTRY_DSN`; browser, server, and edge reuse it, while Firebase
+  Functions retain project-local `SENTRY_DSN` in Secret Manager. The redundant
+  root `SENTRY_DSN`, `SENTRY_DEV_DSN`, and `NEXT_PUBLIC_SENTRY_DEV_DSN` rows were
+  removed so later product setup does not create conflicting duplicate rows.
+- `2026-08-11` - The local shared-app Sentry DSN was validated without printing
+  it. It is a structurally valid HTTPS Sentry DSN with a public key component,
+  no password component, and a project path; `.env.local` contains only the
+  canonical `NEXT_PUBLIC_SENTRY_DSN` row. The older ignored `.env` was found to
+  contain a different DSN plus other stale cross-product/provider values, so it
+  was preserved as ignored `legacy.env`, which Next.js does not load. Fresh
+  MenuList QA configuration now comes only from `.env.local`; migrate or remove
+  the retired values deliberately during each later product setup. The local
+  Sentry portion of `QA-G11` is ready, while exact-branch Vercel Preview copy and
+  controlled event smoke remain pending.
+- `2026-08-11` - The local batch image worker group was validated without
+  printing its secret or dispatching a task. The canonical worker secret is
+  populated, non-placeholder, sufficiently long, whitespace-free, and distinct
+  from every other populated local secret. Its fixed endpoint is exactly the QA
+  app batch-generation route, the queue is `batch-image-generation`, and the
+  project/region remain `menulist-qa`/`us-central1`; no generic batch-worker
+  alias exists and the maintained env contract verifier passes. The local part
+  of `QA-G16` is ready, while exact-branch Vercel Preview copy and the controlled
+  post-deploy queue smoke remain pending.
+- `2026-08-11` - The four vaulted Meta QA credentials were structurally
+  validated without printing them. Codebase tracing then confirmed that the
+  app secret, verify token, and messaging-onboarding runtime flags are consumed
+  only by Firebase Functions, while the root app uses only the phone id and
+  access token for optional outbound phone/notification paths. Because no such
+  root smoke is enabled, all four real Meta values and the three Functions-only
+  flags were removed from `.env.local`; the credentials remain vaulted for
+  Phase H Secret Manager. `functions/.env.menulist-qa` remains fail-closed with
+  `ENABLE_MESSAGING_ONBOARDING=false`. No webhook, provider request, secret
+  write, Functions deploy, or Vercel deploy was performed.
 
 Status rules:
 
@@ -1321,10 +1754,10 @@ until every Phase C2 billing/spend item is complete.
 | [x] | QA-C07 | Firestore enabled in Native mode at `us-central1` | Firebase Console -> Firestore Database | Firestore asks for a location; `us-central1` is selected so the `(default)` database matches the existing Functions/Tasks contract |
 | [x] | QA-C08 | Firebase Storage enabled at `us-central1` | Firebase Console -> Storage | Project is already on Blaze; the default `menulist-qa.firebasestorage.app` bucket uses immutable location `us-central1` |
 | [x] | QA-C09 | Firebase authorized domains added | Firebase Auth -> Settings -> Authorized domains | `localhost` and `app.menulist.digital` are listed; public tenant hosts do not require owner auth |
-| [ ] | QA-C10 | Service account values stored securely | Firebase Project Settings -> Service accounts | Admin SDK project id, client email, private key, and Firebase Web API key mapping are stored in the password vault |
-| [ ] | QA-C11 | Temporary service account JSON removed | Local machine | No downloaded service account JSON remains outside the vault |
+| [x] | QA-C10 | Service account values stored securely | Firebase Project Settings -> Service accounts | Admin SDK project id, client email, private key, and Firebase Web API key mapping are stored in the password vault |
+| [x] | QA-C11 | Temporary service account JSON removed | Local machine | No downloaded service account JSON remains outside the vault |
 | [x] | QA-C12 | Immutable resource locations recorded | Password vault setup note | Firestore and Storage both record `us-central1`; no location is assumed from an env value alone |
-| [ ] | QA-C13 | Admin key creation date and revocation owner recorded | Password vault and Google Cloud IAM | The current static QA key has an owner/date and will be revoked immediately on leak, access removal, or replacement |
+| [x] | QA-C13 | Admin key creation date and revocation owner recorded | Password vault and Google Cloud IAM | The current static QA key has an owner/date and will be revoked immediately on leak, access removal, or replacement |
 
 ### Phase D - Google OAuth
 
@@ -1332,29 +1765,29 @@ until every Phase C2 billing/spend item is complete.
 | --- | --- | --- | --- | --- |
 | [x] | QA-D01 | Google Auth branding and contacts configured | Google Cloud Console -> Google Auth Platform -> Branding | MenuList QA name, support email, developer contact, homepage/privacy/terms links, and verified `menulist.digital` domain are accurate |
 | [x] | QA-D02 | OAuth audience set to External/Testing | Google Auth Platform -> Audience | QA remains in Testing and only named QA test users are admitted; no production publishing is requested |
-| [ ] | QA-D03 | Identity-only scopes confirmed | Google Auth Platform -> Data Access | Only `openid`, `email`, and `profile` are requested for sign-in |
-| [ ] | QA-D04 | Web OAuth client created for MenuList QA | Google Auth Platform -> Clients | One Web application client id and secret exist for QA usage |
-| [ ] | QA-D05 | Authorized JavaScript origins added | OAuth client settings | Exact origins are `http://localhost:3000` and `https://app.menulist.digital`; no wildcard/customer origin is present |
-| [ ] | QA-D06 | Authorized redirect URIs added | OAuth client settings | Exact callbacks are `http://localhost:3000/api/auth/callback/google` and `https://app.menulist.digital/api/auth/callback/google` |
-| [ ] | QA-D07 | OAuth test users added | Google Auth Platform -> Audience | Named company QA accounts that will run the smoke test are listed |
-| [ ] | QA-D08 | OAuth client id/secret stored securely | Password vault | Values are ready for local env and branch-restricted Vercel Preview env |
+| [x] | QA-D03 | Identity-only scopes confirmed | Google Auth Platform -> Data Access | Only `openid`, `email`, and `profile` are requested for sign-in |
+| [x] | QA-D04 | Web OAuth client created for MenuList QA | Google Auth Platform -> Clients | One Web application client id and secret exist for QA usage |
+| [x] | QA-D05 | Authorized JavaScript origins added | OAuth client settings | Exact origins are `http://localhost:3000` and `https://app.menulist.digital`; no wildcard/customer origin is present |
+| [x] | QA-D06 | Authorized redirect URIs added | OAuth client settings | Exact callbacks are `http://localhost:3000/api/auth/callback/google` and `https://app.menulist.digital/api/auth/callback/google` |
+| [x] | QA-D07 | OAuth test users added | Google Auth Platform -> Audience | Named company QA accounts that will run the smoke test are listed |
+| [x] | QA-D08 | OAuth client id/secret stored securely | Password vault | Values are ready for local env and branch-restricted Vercel Preview env |
 
 ### Phase E - Required QA Provider Values
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-E01 | MenuList staging Gemini primary and rotation keys created | Google AI Studio | QA keys exist; canonical `MENULIST_GEMINI_AI_KEY`/`_2`/`_3`/`_4`, current app aliases `GEMINI_AI_KEY`/`_2`/`_3`/`_4`, and matching Function secret names are recorded |
-| [ ] | QA-E02 | Upstash staging Redis created | Upstash Console | REST URL/token exist and are stored for QA only |
-| [ ] | QA-E03 | Razorpay Test Mode keys and webhook secret available | Razorpay Dashboard -> Test Mode | `rzp_test_` key id/key secret and a distinct QA webhook secret are stored; the endpoint is added only after `app.menulist.digital` is live |
-| [ ] | QA-E04 | Sentry QA project created | Sentry dashboard | A MenuList QA project/environment exists and its server/browser DSNs are stored because selected Functions bind `SENTRY_DSN` |
-| [ ] | QA-E05 | Meta non-production app and WhatsApp test credentials created | Meta Developers | Meta-provided test phone-number id/token, app secret, and a generated verify token are stored; provider processing remains disabled |
-| [ ] | QA-E06 | `NEXTAUTH_SECRET` generated | Local terminal and password vault | Separate 32-byte base64url secret is stored, not pasted into docs/chat |
-| [ ] | QA-E07 | `MENULIST_OWNER_REFERRAL_TOKEN_SECRET` generated | Local terminal and password vault | Separate 32-byte base64url secret is stored before owner referral is enabled |
-| [ ] | QA-E08 | Revalidation secret generated | Password vault | Separate QA value is ready for Vercel and Firebase Function Secret Manager |
-| [ ] | QA-E09 | GCP budget webhook secret generated if budget alerts are configured | Google Cloud billing and password vault | Separate QA budget webhook secret is stored or intentionally skipped |
-| [ ] | QA-E10 | Cloud Tasks API enabled in `menulist-qa` | Google Cloud APIs | Cloud Tasks is enabled only for the QA project |
-| [ ] | QA-E11 | Batch image queue created | Cloud Tasks -> Queues | `batch-image-generation` exists in `us-central1` with bounded dispatch/retry settings |
-| [ ] | QA-E12 | Batch worker secret generated | Password vault | One separate random QA-only secret is ready for `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
+| [x] | QA-E01 | MenuList staging Gemini primary and rotation keys created | Google AI Studio | QA keys exist; Vercel/local use canonical `MENULIST_GEMINI_AI_KEY`/`_2`/`_3`/`_4`, while the isolated Firebase Functions runtime records its project-local Secret Manager names |
+| [x] | QA-E02 | Upstash staging Redis created | Upstash Console | REST URL/token exist and are stored for QA only |
+| [x] | QA-E03 | Razorpay Test Mode keys and webhook secret available | Razorpay Dashboard -> Test Mode | `rzp_test_` key id/key secret and a distinct QA webhook secret are stored; the endpoint is added only after `app.menulist.digital` is live |
+| [x] | QA-E04 | Sentry QA project created | Sentry dashboard | Isolated Next.js project `menulist-qa` exists; its single QA DSN is securely mapped for server/browser use, account Authenticator MFA and a company-controlled passkey are active, and recovery codes are vaulted; source-map auth token remains deferred unless later required |
+| [x] | QA-E05 | Meta non-production app and WhatsApp test credentials created | Meta Developers | Meta-provided test phone-number id/token, app secret, and a generated verify token are stored; provider processing remains disabled |
+| [x] | QA-E06 | `NEXTAUTH_SECRET` generated | Local terminal and password vault | Separate 32-byte base64url secret is stored, not pasted into docs/chat |
+| [x] | QA-E07 | `MENULIST_OWNER_REFERRAL_TOKEN_SECRET` generated | Local terminal and password vault | Separate 32-byte base64url secret is stored before owner referral is enabled |
+| [x] | QA-E08 | Revalidation secret generated | Password vault | Separate QA value is ready for Vercel and Firebase Function Secret Manager |
+| [x] | QA-E09 | GCP budget webhook secret generated if budget alerts are configured | Google Cloud billing and password vault | Skipped intentionally because the configured budgets use Google-managed notifications and the optional budget webhook is not in the maintained QA deploy target |
+| [x] | QA-E10 | Cloud Tasks API enabled in `menulist-qa` | Google Cloud APIs | Cloud Tasks is enabled only for the QA project |
+| [x] | QA-E11 | Batch image queue created | Cloud Tasks -> Queues | `batch-image-generation` exists in `us-central1` with bounded dispatch/retry settings |
+| [x] | QA-E12 | Batch worker secret generated | Password vault | One separate random QA-only secret is ready for `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
 
 Provider console links for this phase:
 
@@ -1384,11 +1817,11 @@ is skipped, do not create fake values.
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-F01 | reCAPTCHA/App Check staging registration created if needed | reCAPTCHA Admin and Firebase App Check | `app.menulist.digital`, the website apex, and only tested customer hosts are registered as required; monitor mode only unless approved |
-| [ ] | QA-F02 | Telegram staging alert bot/chat created if needed | BotFather and Telegram | `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are stored or skipped intentionally |
-| [ ] | QA-F03 | SMTP staging sender configured if needed | Workspace or SMTP provider | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are stored or skipped intentionally |
-| [ ] | QA-F04 | UptimeRobot decision recorded | Setup note | Mark enabled or skipped now; create monitors only after the Phase J deployment is live so false setup incidents are not generated |
-| [ ] | QA-F05 | GA/Clarity/Plausible staging analytics configured if approved | Analytics provider dashboards | Staging ids are stored or skipped intentionally |
+| [x] | QA-F01 | reCAPTCHA/App Check staging registration created if needed | reCAPTCHA Admin and Firebase App Check | Skipped intentionally for first boot; no enforcement is enabled before normal Auth, Firestore, and Storage smoke |
+| [x] | QA-F02 | Telegram staging alert bot/chat created if needed | BotFather and Telegram | Skipped intentionally; no bot/chat or placeholder credential was created |
+| [x] | QA-F03 | SMTP staging sender configured if needed | Workspace or SMTP provider | Skipped intentionally; lifecycle-email delivery is outside the first QA boot |
+| [x] | QA-F04 | UptimeRobot decision recorded | Setup note | Enabled after Phase J; monitors are created only after the staging deployment is live |
+| [x] | QA-F05 | GA/Clarity/Plausible staging analytics configured if approved | Analytics provider dashboards | Skipped intentionally; QA events will not enter production reporting |
 
 Optional provider console links:
 
@@ -1402,21 +1835,21 @@ Optional provider console links:
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-G01 | Local ignored env file prepared from `.env.staging.example` | `.env.local` or approved ignored local env | Local values point to `menulist-qa`; local URL overrides use `http://localhost:3000` |
+| [x] | QA-G01 | Local ignored env file prepared from `.env.staging.example` | `.env.local` or approved ignored local env | Local values point to `menulist-qa`; local URL overrides use `http://localhost:3000` |
 | [ ] | QA-G02 | Branch-restricted Vercel Preview env created | Vercel Project -> Settings -> Environment Variables -> Preview -> Git Branch | Every MenuList QA value, especially secrets, is restricted to exact branch `staging` |
 | [ ] | QA-G03 | Runtime URL env values set | Local env and Vercel Preview env | Website/platform values use `menulist.digital`, aliases include `www` and `app`, tenant base uses `menulist.digital`, and `NEXTAUTH_URL` uses `app.menulist.digital` |
 | [ ] | QA-G04 | Firebase public canonical keys set | Local env and Vercel Preview env | `NEXT_PUBLIC_MENULIST_FIREBASE_*` values point to `menulist-qa` |
-| [ ] | QA-G05 | Firebase public compatibility aliases set | Local env and Vercel Preview env | `NEXT_PUBLIC_FIREBASE_*` values exactly match canonical MenuList values |
+| [ ] | QA-G05 | Generic Firebase public aliases absent | Local env and Vercel Preview env | No `NEXT_PUBLIC_FIREBASE_*` duplicate rows are stored; runtime uses the canonical MenuList family |
 | [ ] | QA-G06 | Firebase admin canonical keys set | Local env and Vercel Preview env | `MENULIST_FIREBASE_*` values point to `menulist-qa` |
-| [ ] | QA-G07 | Firebase admin compatibility aliases set | Local env and Vercel Preview env | `FIREBASE_*` values exactly match canonical MenuList values |
-| [ ] | QA-G08 | Gemini keys, aliases, and rolling ceiling set | Local env and Vercel Preview env | Canonical MenuList keys match current app aliases; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
+| [ ] | QA-G07 | Generic Firebase admin aliases absent | Local env and Vercel Preview env | No generic `FIREBASE_*` duplicate rows are stored; emulator host variables remain unscoped infrastructure controls |
+| [ ] | QA-G08 | Gemini keys and rolling ceiling set | Local env and Vercel Preview env | Only `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4` are stored; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
 | [ ] | QA-G09 | Razorpay Test Mode keys set | Local env and Vercel Preview env | Private and public Razorpay keys start with `rzp_test_` |
 | [ ] | QA-G10 | Upstash and revalidation values set | Local env and Vercel Preview env | QA Redis and revalidation secrets are present |
 | [ ] | QA-G11 | Provider values handled according to Phase E/F | Local env and Vercel Preview env | Required QA providers use real QA values; optional providers are real QA values or intentionally absent |
-| [ ] | QA-G12 | Private key newlines escaped for Vercel | Vercel Preview env | `MENULIST_FIREBASE_PRIVATE_KEY` and `FIREBASE_PRIVATE_KEY` are valid multiline-safe values |
+| [ ] | QA-G12 | Private key newlines escaped for Vercel | Vercel Preview env | The single `MENULIST_FIREBASE_PRIVATE_KEY` value is multiline-safe |
 | [ ] | QA-G13 | Production env not touched | Vercel Project -> Environment Variables -> Production | No production values are changed from this guide |
 | [ ] | QA-G14 | Other product env setup skipped | Vercel and local env | No real Answerlattice, CampaignCue, SignalDesk, Neelvara, or MyCodex setup is done in this pass |
-| [ ] | QA-G15 | MenuList Functions non-secret env set | `functions/.env.menulist-qa` | App/API and message-preview origins are `https://app.menulist.digital`; tenant base is `menulist.digital`; the approved QA Gemini rolling limit is explicit |
+| [x] | QA-G15 | MenuList Functions non-secret env set | `functions/.env.menulist-qa` | App/API and message-preview origins are `https://app.menulist.digital`; tenant base is `menulist.digital`; the approved QA Gemini rolling limit is explicit |
 | [ ] | QA-G16 | Cloud Tasks worker values set | Local env and Vercel Preview env | Worker URL is the QA app-host endpoint, queue id is `batch-image-generation`, and the QA-only worker secret is present |
 | [ ] | QA-G17 | Deployable env values sanitized | Local env and Vercel Preview env | No value contains `<...>` template text, and unrelated product placeholder rows are absent rather than uploaded as values |
 | [ ] | QA-G18 | Emulator-first local override documented | Ignored `.env.local` and Firebase Emulator Suite | Destructive/rule-focused local work uses emulator hosts; Vercel remains emulator-off and cloud QA is used only for deliberate integration smoke |
@@ -1509,7 +1942,8 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [ ] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | No other product or production setup was performed; retired QA hosts were not activated |
 | [ ] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | One QA batch request reaches `app.menulist.digital`, rejects a wrong secret, accepts the configured secret through the normal queue flow, and leaves no production data |
 | [ ] | QA-K21 | Razorpay Test webhook configured and verified | Razorpay Test Mode and Vercel logs | Exact QA endpoint uses the distinct webhook secret; one signed test/sandbox event is accepted without any live-mode operation |
-| [ ] | QA-K22 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marks completed items and records blockers before moving to production guide |
+| [ ] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verifies with the vaulted token, only `messages` is subscribed, and one bounded signed test event reaches the QA Function without production assets |
+| [ ] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marks completed items and records blockers before moving to production guide |
 
 ## Step-By-Step Setup Order
 
@@ -1896,11 +2330,10 @@ What to do:
    private key only when the Vercel server credentials are ready to be entered.
    Vault the `project_id`, `client_email`, and `private_key`; record the key id,
    creation date, and revocation owner.
-6. Map the Firebase Web app API key to canonical
-   `MENULIST_FIREBASE_API_KEY` and current server alias `FIREBASE_API_KEY` in the
-   vault record. It may match the browser Web API key, but both server env names
-   remain non-public env entries because current server-auth routes read the
-   alias.
+6. Map the Firebase Web app API key once as
+   `NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY`. Firebase Web API keys are public
+   identifiers, and server-auth routes read this same canonical value. Do not
+   add a second server alias.
 7. After extracting the required fields into the vault and ignored local env,
    securely remove the downloaded JSON from Downloads and every unencrypted
    local path. Never commit or upload the JSON file to Vercel.
@@ -1991,18 +2424,23 @@ What to do:
 
 1. In AI Studio, select the existing Google Cloud project `menulist-qa`. Do not
    let AI Studio silently create another project.
-2. Create four QA keys named `MenuList QA primary`, `MenuList QA rotation 2`,
-   `MenuList QA rotation 3`, and `MenuList QA rotation 4`.
-3. In Google Cloud Credentials, restrict each key to the Gemini/Generative
-   Language API shown by the current console. These are server keys, so do not
-   add browser-referrer restrictions that would prevent Vercel or Functions
-   calls.
+2. Create four QA authorization keys named `MenuList QA primary`,
+   `MenuList QA rotation 2`, `MenuList QA rotation 3`, and
+   `MenuList QA rotation 4`. Current AI Studio keys use the `AQ.` authorization
+   key format rather than the legacy `AIza` standard-key format.
+3. Confirm each key is an authorization key bound to the intended
+   `menulist-qa` service account. AI Studio restricts authorization keys to the
+   Gemini/Generative Language API by default. Do not convert them to shared
+   standard keys or add browser-referrer restrictions; these values are used
+   only by server runtimes in Vercel and Firebase Functions.
 4. Vault each key and record its Google project, creation date, purpose, and
    revocation owner. Keys in the same project share that project's Gemini quota;
    four keys do not create four quotas.
-5. Record the env mapping without placing values in this document:
+5. Record the env mapping without placing values in this document. Vercel and
+   local use only the canonical MenuList name. Firebase Functions use the
+   project-local Secret Manager name in the separate `menulist-qa` runtime:
 
-| Vault entry | Canonical Vercel/local env | Current app/Function alias |
+| Vault entry | Vercel/local env | Firebase Functions Secret Manager |
 | --- | --- | --- |
 | Primary | `MENULIST_GEMINI_AI_KEY` | `GEMINI_AI_KEY` |
 | Rotation 2 | `MENULIST_GEMINI_AI_KEY_2` | `GEMINI_AI_KEY_2` |
@@ -2011,7 +2449,8 @@ What to do:
 
 Expected result:
 
-- Four real QA keys belong to `menulist-qa`, are API-restricted, and are
+- Four real QA authorization keys belong to `menulist-qa`, retain their default
+  Gemini API restriction and intended service-account binding, and are
   recoverable from the vault.
 - No Answerlattice, CampaignCue, SignalDesk, or production key is created.
 
@@ -2032,9 +2471,10 @@ What to do:
    production database yet.
 3. Open the database REST details and copy the REST URL plus the standard REST
    token. Do not expose a Redis token to `NEXT_PUBLIC_*` variables.
-4. Vault and map the same QA values to:
-   - `MENULIST_UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_URL`
-   - `MENULIST_UPSTASH_REDIS_REST_TOKEN` and `UPSTASH_REDIS_REST_TOKEN`
+4. Vault and map the QA values once as
+   `MENULIST_UPSTASH_REDIS_REST_URL` and
+   `MENULIST_UPSTASH_REDIS_REST_TOKEN`. Do not add generic duplicate rows.
+   Future Answerlattice Redis configuration uses `ANSWERLATTICE_UPSTASH_*`.
 5. Do not run destructive flush commands. Connectivity is tested through the
    app's bounded rate-limit path after deployment.
 
@@ -2061,15 +2501,16 @@ What to do:
    the key id/secret, and record the creation date. Stop if a key starts with
    `rzp_live_`.
 4. Generate a separate random QA webhook signing secret and vault it as
-   `MENULIST_RAZORPAY_WEBHOOK_SECRET` / `RAZORPAY_WEBHOOK_SECRET`. This value is
-   not the Razorpay API key secret.
+   `MENULIST_RAZORPAY_WEBHOOK_SECRET`. This value is not the Razorpay API key
+   secret.
 5. Record the env mapping:
-   - `MENULIST_RAZORPAY_KEY_ID`, `RAZORPAY_KEY_ID`, and
-     `NEXT_PUBLIC_RAZORPAY_KEY_ID` use the same test key id.
-   - `MENULIST_RAZORPAY_KEY_SECRET` and `RAZORPAY_KEY_SECRET` use the test key
-     secret and stay server-only.
-   - `MENULIST_RAZORPAY_WEBHOOK_SECRET` and `RAZORPAY_WEBHOOK_SECRET` use the QA
-     webhook secret and stay server-only.
+   - `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID` uses the test key id. Razorpay
+     Checkout requires the key ID in the browser, and server code reads the
+     same public identifier; do not store a second server alias.
+   - `MENULIST_RAZORPAY_KEY_SECRET` uses the test key secret and stays
+     server-only.
+   - `MENULIST_RAZORPAY_WEBHOOK_SECRET` uses the distinct QA webhook secret and
+     stays server-only.
 6. Do not add the webhook endpoint yet. Step 9.5 adds it only after
    `https://app.menulist.digital` is live.
 
@@ -2093,9 +2534,12 @@ What to do:
    strongest available account MFA.
 2. Create one Next.js project named `menulist-qa`. Do not reuse a production
    project.
-3. Copy the QA DSN. Because local and staging share the QA family, map that DSN
-   to `SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, and
-   `NEXT_PUBLIC_SENTRY_DEV_DSN` in their correct server/public env locations.
+3. Copy the QA DSN once into `NEXT_PUBLIC_SENTRY_DSN`. Browser, server, and edge
+   runtimes in the shared Vercel app reuse this DSN; Vercel Preview/branch scope
+   separates it from the production value. Do not add root `SENTRY_DSN`,
+   `SENTRY_DEV_DSN`, or `NEXT_PUBLIC_SENTRY_DEV_DSN` duplicates. Firebase
+   Functions receive the same QA DSN later through their isolated project-local
+   `SENTRY_DSN` Secret Manager name.
 4. Create a least-privilege organization auth token only if the current Vercel
    source-map upload requires it. Vault `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and
    `SENTRY_PROJECT`; keep the auth token server-only.
@@ -2129,12 +2573,14 @@ What to do:
 5. From App Settings -> Basic, vault the app secret.
 6. Generate a separate random verify token and vault it. This is an owner-chosen
    challenge token, not the Meta app secret or access token.
-7. Map the values to `MENULIST_WHATSAPP_PHONE_NUMBER_ID`,
-   `MENULIST_WHATSAPP_ACCESS_TOKEN`, `MENULIST_WHATSAPP_APP_SECRET`, and
-   `MENULIST_WHATSAPP_VERIFY_TOKEN` for local/Vercel only when needed, and to
-   Function Secret Manager names without the `MENULIST_` prefix in Phase H.
-8. Keep `ENABLE_MESSAGING_ONBOARDING=false`. Do not register the production
-   webhook, send live messages, or add a live number during this QA setup.
+7. Add only `MENULIST_WHATSAPP_PHONE_NUMBER_ID` and
+   `MENULIST_WHATSAPP_ACCESS_TOKEN` to local/Vercel when an approved Next.js
+   phone OTP or owner-notification smoke requires them. Keep the app secret and
+   verify token out of root env files.
+8. Map all four credentials to Function Secret Manager names without the
+   `MENULIST_` prefix in Phase H. Keep `ENABLE_MESSAGING_ONBOARDING=false` in
+   `functions/.env.menulist-qa` until the controlled webhook smoke. Do not
+   register the production webhook, send live messages, or add a live number.
 
 Expected result:
 
@@ -2270,7 +2716,8 @@ What to do:
    product row; do not upload literal `<...>` values to make a key look present.
 3. Keep production values out of this file.
 4. Use full MenuList env names: `MENULIST_*` and `NEXT_PUBLIC_MENULIST_*`.
-5. Keep compatibility aliases only where the existing env template lists them.
+5. Do not create generic compatibility aliases. The managed templates contain
+   exactly one product-scoped row per MenuList value.
 6. Set `functions/.env.menulist-qa` from its checked-in example so app/API,
    customer-domain, and messaging-preview values remain separate.
 7. In the local ignored env, override the deployment markers and URLs below.
@@ -2303,16 +2750,14 @@ NEXTAUTH_URL=https://app.menulist.digital
 | --- | --- |
 | Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | Firebase browser canonical | `NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY`, `NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_MENULIST_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_MENULIST_FIREBASE_APP_ID` |
-| Firebase browser current aliases | Matching `NEXT_PUBLIC_FIREBASE_*` values; optional Realtime Database and Measurement ID rows stay absent unless those services are actually configured |
-| Firebase server canonical | `MENULIST_FIREBASE_PROJECT_ID`, `MENULIST_FIREBASE_STORAGE_BUCKET`, `MENULIST_FIREBASE_API_KEY`, `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1` |
-| Firebase server current aliases | Matching `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_API_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_PROJECT_LOCATION=us-central1` |
-| Gemini | `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4`, matching `GEMINI_AI_KEY` plus `_2`/`_3`/`_4`, and `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` |
-| Razorpay Test | `MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET`, matching `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, and `NEXT_PUBLIC_RAZORPAY_KEY_ID` |
-| Upstash | `MENULIST_UPSTASH_REDIS_REST_URL`, `MENULIST_UPSTASH_REDIS_REST_TOKEN`, and matching `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
-| Sentry | `SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`; add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` only when source-map upload is configured |
-| App/worker secrets | `MENULIST_OWNER_REFERRAL_TOKEN_SECRET`, `REVALIDATION_SECRET`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
-| Cloud Tasks | `BATCH_IMAGE_GENERATION_WORKER_URL=https://app.menulist.digital/api/image-generation/batch-generation`, `BATCH_IMAGE_GENERATION_QUEUE_ID=batch-image-generation` |
-| Meta/WhatsApp | Canonical `MENULIST_WHATSAPP_*` and matching `WHATSAPP_*` values only when testing the Next.js messaging/phone flow; Function Secret Manager values remain required by Phase H |
+| Firebase server-only canonical | `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1`; server code reuses the public project ID, bucket, and Web API key above |
+| Gemini | `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4`, and `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` |
+| Razorpay Test | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, and `MENULIST_RAZORPAY_WEBHOOK_SECRET` |
+| Upstash | `MENULIST_UPSTASH_REDIS_REST_URL`, `MENULIST_UPSTASH_REDIS_REST_TOKEN` |
+| Sentry | `NEXT_PUBLIC_SENTRY_DSN`; add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` only when source-map upload is configured; Firebase Functions use project-local `SENTRY_DSN` Secret Manager |
+| App/worker secrets | `MENULIST_OWNER_REFERRAL_TOKEN_SECRET`, `MENULIST_REVALIDATION_SECRET`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET` |
+| Cloud Tasks | `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL=https://app.menulist.digital/api/image-generation/batch-generation`, `MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID=batch-image-generation` |
+| Meta/WhatsApp | Root env accepts only optional `MENULIST_WHATSAPP_PHONE_NUMBER_ID` and `MENULIST_WHATSAPP_ACCESS_TOKEN` for an approved Next.js phone/notification smoke. App secret, verify token, and onboarding runtime flags remain Functions-only; Phase H uses project-local Secret Manager and `functions/.env.menulist-qa` |
 
 10. Leave every `ANSWERLATTICE_*`, `CAMPAIGNCUE_*`, `SIGNALDESK_*`,
     `MYCODEX_*`, and matching `NEXT_PUBLIC_*` sister-product key absent. The
@@ -2736,6 +3181,40 @@ Expected result:
 - Logs show `menulist-qa` runtime values.
 
 ### Step 9.5: Connect Post-Deploy Provider Endpoints
+
+#### Meta WhatsApp Test Webhook
+
+Do not perform this section until Phase H has placed the four real WhatsApp QA
+values in Firebase Secret Manager and Phase I has deployed the maintained
+`messagingOnboarding` Function to exact project `menulist-qa`. Meta's challenge
+cannot be verified against an absent Function, and the current handler returns
+a generic disabled response while `ENABLE_MESSAGING_ONBOARDING=false`.
+
+1. During a controlled QA smoke window only, set the `menulist-qa` Functions
+   runtime to `ENABLE_MESSAGING_ONBOARDING=true`, keep
+   `MESSAGING_ONBOARDING_PROVIDERS=whatsapp`, validate the Functions target, and
+   deploy the approved QA Function scope. Do not target project `menulist`.
+2. Open Meta Developers -> `MenuList QA Messaging` -> WhatsApp ->
+   Configuration and enter this exact callback URL:
+
+```text
+https://us-central1-menulist-qa.cloudfunctions.net/messagingOnboarding/whatsapp
+```
+
+3. Paste the independently vaulted `WHATSAPP_VERIFY_TOKEN` into Meta's Verify
+   token field. Do not use the app secret or access token there.
+4. Select **Verify and save**, then subscribe only to the `messages` webhook
+   field. Leave unrelated account, template, payment, calling, and management
+   fields unsubscribed.
+5. Send one bounded Meta dashboard test event and confirm the QA Function logs
+   show successful challenge/signature handling without logging payloads,
+   tokens, or full phone numbers. Keep the test app/account isolated; do not add
+   a production number, payment method, or production webhook.
+
+Record this as `QA-K22` only after the callback, subscription, and signed test
+event are all verified. If current Meta app-mode rules block the intended test
+event, record the exact non-secret blocker and review the current official Meta
+requirement before changing publish state.
 
 #### Razorpay Test Webhook
 

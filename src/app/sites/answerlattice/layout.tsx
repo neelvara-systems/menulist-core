@@ -48,7 +48,7 @@ export const metadata: Metadata = {
         'help center software',
         'support gap tracking',
         'changelog support',
-        'product surface mapping',
+        'product page mapping',
         'reviewable support answers',
     ],
     manifest: '/answerlattice.webmanifest',

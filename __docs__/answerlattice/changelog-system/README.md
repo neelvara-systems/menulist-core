@@ -1,6 +1,6 @@
 # Answerlattice Releases and Changelog
 
-**Status:** Feature 11 source-hardened on 2026-07-18; bounded Release Impact Guard implemented on 2026-07-29; manual release-evidence handoff hardened on 2026-08-05. Authenticated QA deployment and hosted browser evidence remain external.
+**Status:** Feature 11 source-hardened on 2026-07-18; bounded Release Impact Guard implemented on 2026-07-29; manual release-evidence handoff hardened on 2026-08-05; explicit post-change support-evidence review added on 2026-08-10. Authenticated QA deployment and hosted browser evidence remain external.
 
 This feature turns a versioned release note into a governed dependency event. A public versioned changelog entry is not merely text with a version label: it must point to an active Answerlattice release whose version, release time, workspace, and changed entities match exactly.
 
@@ -19,6 +19,8 @@ separate release-management product or data model.
 - Invalidate canonical cache, source versions, public cache, and compiled bundles.
 - Exclude drafts and legacy unlinked versioned notes from every delivery path.
 - Preserve owner retryability when activation fails.
+- Offer a separate explicit, correlation-only support-evidence comparison after
+  the complete post-change window closes.
 
 ## Documentation Decision
 
@@ -32,8 +34,12 @@ separate release-management product or data model.
   release or answer evidence must return the owner to review.
 - Keep the preview advisory. It does not block deployment, approve answers,
   publish replacements, or mark a release universally support-ready.
-- Validate article, procedure, product-surface, and post-release friction
-  expansion with real-client mapping before development.
+- Keep broad article/procedure dependency queues and post-release causal claims
+  rejected. The admitted product-surface extension is direct-only and reads the
+  existing compact summary; attached content remains contextual mapping rather
+  than claimed factual dependency. A separate Product Friction Evidence overlay
+  may compare complete support-event windows, but it does not become release
+  attribution or readiness proof.
 - Reject a parallel Release Guard workspace, change-unit store, impact-item
   queue, readiness score/state machine, scheduled answer activation, or
   release-monitoring collection.
@@ -50,6 +56,8 @@ Knowledge Intake may prepare this editor from a saved release-note source. That 
 
 - `src/lib/answerlattice/releaseContracts.ts`
 - `src/lib/answerlattice/releaseServer.ts`
+- `src/lib/answerlattice/supportTruthChangeControl.ts`
+- `src/lib/answerlattice/supportTruthChangeControlServer.ts`
 - `src/lib/answerlattice/changelogContracts.ts`
 - `src/lib/answerlattice/changelogServer.ts`
 - `src/lib/answerlattice/releaseEvidenceHandoff.ts`
@@ -71,6 +79,10 @@ Knowledge Intake may prepare this editor from a saved release-note source. That 
 - Preview is private/no-store, bounded to 200 directly linked active answers,
   performs no write/provider call, and reads Answer Tests proof only when
   requested and permitted.
+- When Support Truth Change Control is enabled, preview also checks at most 50
+  directly cited source metadata records and three existing compact control
+  documents. These point-in-time sections remain advisory and do not enter the
+  activation fingerprint.
 - Activation recomputes the fingerprint during lease claim and final
   transaction; stale previews leave the release pending and the note private.
 - Public projection requires exact `AL`, tenant, and store ownership.
@@ -95,3 +107,5 @@ Knowledge Intake may prepare this editor from a saved release-note source. That 
 - [Website boundary](./changelog-system_website.md)
 - [Test cases](./changelog-system_test-cases.md)
 - [Release Impact Guard proposal validation](./changelog-system_validation.md)
+- [Support Truth Change Control](../support-truth-change-control/README.md)
+- [Post-Change Support Evidence Review](../post-change-support-evidence-review/README.md)

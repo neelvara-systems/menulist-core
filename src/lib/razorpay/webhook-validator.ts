@@ -31,7 +31,7 @@ const RAZORPAY_WEBHOOK_SIGNATURE_PATTERN = /^[a-f0-9]{64}$/;
  * const isValid = await validateRazorpayWebhookSignature(
  *     requestBody,
  *     headers().get('x-razorpay-signature'),
- *     process.env.RAZORPAY_WEBHOOK_SECRET
+ *     menulistServerEnv.razorpayWebhookSecret
  * );
  * 
  * if (!isValid) {

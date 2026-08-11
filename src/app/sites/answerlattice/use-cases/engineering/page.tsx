@@ -30,7 +30,7 @@ export default async function EngineeringUseCasePage() {
             problem="Generic AI lookup is too loose for product-specific support. Engineering teams need controlled runtime context, key protection, route blocking, and a clear boundary between client hints and trusted tenant scope."
             question="What does this webhook error mean?"
             genericAnswer="Search the docs for the error code or contact support."
-            answerlatticeAnswer="The webhook error is tied to the integration setup surface. AnswerLattice returns the approved setup answer, related FAQ, and fallback ticket path if the error is not covered."
+            answerlatticeAnswer="The webhook error is tied to the integration setup page and workflow. AnswerLattice returns the approved setup answer, related FAQ, and fallback ticket path if the error is not covered."
             ownerReview="AnswerLattice can draft fixes from repeated gaps, but the owner review step keeps generated content from becoming official support automatically."
             setupSteps={[
                 'Install the widget with the generated AnswerLattice key.',

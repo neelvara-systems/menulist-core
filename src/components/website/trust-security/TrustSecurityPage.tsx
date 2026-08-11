@@ -68,7 +68,7 @@ export default function TrustSecurityPage() {
   }));
 
   return (
-    <div className="ws-page">
+    <main className="ws-page">
       <WebsitePageHero
         eyebrow={t('TrustSecurity.heroEyebrow')}
         parts={[
@@ -171,6 +171,6 @@ export default function TrustSecurityPage() {
           </div>
         </AnimateOnScroll>
       </SectionWrapper>
-    </div>
+    </main>
   );
 }

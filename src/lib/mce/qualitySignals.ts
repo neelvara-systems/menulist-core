@@ -29,6 +29,39 @@ export interface QualitySignal {
     actionRoute?: string;
 }
 
+type QualitySignalTranslationValues = Record<string, string | number>;
+export type QualitySignalTranslator = (
+    key: string,
+    values?: QualitySignalTranslationValues,
+) => string;
+
+const LOCALIZED_QUALITY_SIGNAL_IDS = new Set([
+    'categoryIcons',
+    'descriptions',
+    'hidden',
+    'images',
+    'prices',
+    'priceOutliers',
+    'projectContent',
+    'translations',
+]);
+
+/** Convert deterministic signal copy to owner-locale presentation without changing signal truth. */
+export function localizeQualitySignal(
+    signal: QualitySignal,
+    translate: QualitySignalTranslator,
+): QualitySignal {
+    if (!LOCALIZED_QUALITY_SIGNAL_IDS.has(signal.id)) return signal;
+    const state = signal.status === 'ok' ? 'ok' : 'warning';
+    return {
+        ...signal,
+        label: translate(`signals.${signal.id}.${state}`, { count: signal.count }),
+        helpText: signal.helpText
+            ? translate(`signals.${signal.id}.help`, { count: signal.count })
+            : undefined,
+    };
+}
+
 export function normalizePriceForReview(price: unknown): string {
     if (typeof price !== 'string') return '';
     return price.replace(/[^0-9.]/g, '').trim();

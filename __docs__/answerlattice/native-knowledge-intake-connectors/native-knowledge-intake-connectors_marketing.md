@@ -1,20 +1,21 @@
-# Native Knowledge Intake Connectors - Marketing Boundary
+# GitHub Change Intake - Marketing Boundary
 
-> **Publication Status:** HOLD
-> **Last Updated:** 2026-07-19
+> **Publication Status:** HOLD UNTIL HOSTED QA AND FLAG ACTIVATION
+> **Last Updated:** 2026-08-11
 
-No connector claim is approved.
+## Safe Product Description After Rollout
 
-Do not claim:
+Answerlattice can collect published GitHub Releases and selected merged pull requests as private change evidence, then route them through the existing owner review before customer answers change.
 
-- native Notion, GitHub, Google Drive, Slack, inbox, or helpdesk sync;
-- OAuth setup;
-- continuous background synchronization;
-- private workspace crawling;
-- automatic source freshness;
-- source-permission mirroring;
-- connector-backed deletion;
-- imported tickets becoming trusted answers automatically.
+## Never Claim
 
-Safe current copy may list the implemented selected-URL, file/export, pasted-note, repeated-reply, screenshot/image, and short-media intake paths with their documented limits and human-review requirement.
+- that Answerlattice reads or understands the whole codebase;
+- automatic documentation, answer, changelog, or product-truth publication;
+- source-code indexing, repository search, or commit monitoring;
+- GitHub write-back or issue synchronization from this intake feature;
+- continuous support correctness without owner review;
+- multiple native intake providers;
+- that every pull request is customer-visible or that a change definitely made an answer stale.
+
+The correct promise is reduced release-maintenance work with explicit owner control.
 

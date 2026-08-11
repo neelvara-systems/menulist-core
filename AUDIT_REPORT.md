@@ -2089,3 +2089,248 @@ attribution, claim `422` rates, Storage cleanup failures, scheduler cleanup
 errors, extraction failures by source count, and time from claim to current
 menu/OBP/screen observation. These remain operational diagnostics, not new
 owner-facing scores.
+
+## 15. Starter Success Conversion Addendum - August 10, 2026
+
+### 15.1 Decision And Owner Dry Run
+
+The seven-day starter period remains unchanged. Code truth shows that this is
+not a seven-day private preview: the verified claim publishes the permanent
+customer link immediately, while Billing determines whether that link remains
+available after the starter deadline. Reducing the underlying access window to
+24 or 72 hours would therefore add pressure to a live public-business surface
+without conversion evidence.
+
+The owner dry run exposed a clearer gap. Immediately after seeing the menu go
+live, the owner could copy, share, read QR/placement guidance, or enter the setup
+workspace, but could not go directly to Billing. The success moment now shows
+one localized **Keep this menu online** action after the permanent link. It states
+the seven-day boundary and preserves the same customer URL after plan choice.
+QR Code and Assets remain dedicated navigation modules.
+
+### 15.2 End-To-End Flow And Fixes
+
+| Flow | Verified source | Fix and invariant |
+| --- | --- | --- |
+| Claim to success | Claim response, versioned sessionStorage handoff, current NextAuth tenant/store scope | Billing action appears only for the exact new-account starter handoff; malformed, expired, or cross-session context is hidden and evicted where authoritative scope is known |
+| Success to Billing | Success client, `useSession().update()`, fixed `/billing` route | Billing and workspace actions share one ref-backed single-flight, three-second bounded refresh so a newly claimed owner is not sent to an authenticated route with stale scope |
+| Conversion measurement | Consent-gated website analytics helper | Records one fixed `create_menu_keep_live_clicked` event with a fixed source token and no owner, store, menu, URL, or payment payload |
+| Deadline presentation | Starter deadline projector and owner banner | Normal state stays informational; the final three days use warning presentation as a 72-hour decision cue without changing access or entitlement |
+| UI and copy | Website tokens and complete create-menu namespaces in all eight website languages | Uses existing brand/action tokens, one 44px-class full-width button, compact 18px panel heading, readable supporting text, direction-aware alignment, and no nested control card |
+| Help and governance | Public Menu Entry docs, website content contract, changelog, verifier | Removed the stale instruction to click a nonexistent Publish control; fixed the seven-day, Billing, same-link, QR Code, and Assets boundaries in maintained source gates |
+
+### 15.3 Verification And Remaining Evidence
+
+Passed: Public Menu Entry boundary and behavior tests, Menu Setup Progress
+boundary, the complete 52-locale boundary, TypeScript, lint, docs link check
+(zero broken links; 62 existing video filename warnings), `git diff --check`, and
+local Next 16.3 HTTP 200 smoke for `/create-menu/success` using the configured
+QA tenant-host family. The server output contained the expected metadata and
+locale keys without invalid-URL or missing-message output; existing Sass
+`@import` deprecation warnings remained.
+
+Not verified in this environment: the conditional Billing panel rendered with
+a real newly claimed session on desktop/mobile, the final-three-day banner with
+seeded deadline truth, Razorpay sandbox navigation, or deployed host behavior.
+These need signed-in QA evidence. No Firebase, schema, rule, index, Function,
+dependency, production build, Vercel deploy, or starter-duration change was
+made.
+
+Production monitoring should compare claim-to-Billing-click,
+Billing-click-to-checkout-start, and eventual payment timing while keeping the
+existing seven-day cohort as the baseline. A shorter starter window should be
+considered only after real cohort evidence shows that days four through seven
+add no qualified conversion and do not protect owner approval or payment delay.
+
+### 15.4 Label And Language Cross-Check
+
+The success-to-Billing lifecycle was re-traced across the public success page,
+desktop owner banner, desktop no-subscription recovery, and mobile subscription
+gate. Two material presentation gaps were found: the banner and Billing recovery
+assembled owner copy directly in English, and public URLs inherited RTL page
+direction without isolating the left-to-right address.
+
+The owner states now use one `StarterActivation` namespace with 12 messages in
+all 52 registered locale packs. ICU controls plural selection and localized
+number rendering for remaining days and sharing progress. The former “ends
+today” label was removed because the projector returns a rolling day count, not
+a tenant-local calendar-day assertion. Desktop and mobile expired-starter states
+now explain that the existing menu needs a plan instead of telling the owner to
+start creating a menu again. Both success URLs force LTR bidi isolation, and the
+banner action keeps a 44px minimum target while allowing translated labels to
+wrap. QR Code and Assets navigation remains unchanged.
+
+A rendered-output review caught duplicated phrases and leaked provider markers
+that structural key and ICU checks alone did not expose in the first generated
+pass. The affected namespace was regenerated from clearer owner copy with
+protected-token isolated retries, then hash-bound per locale with an explicit
+review record. Bodo and Kashmiri retain the pinned local translation path.
+
+The same cross-check found that six languages exposed by the website switcher
+had no create-menu namespaces and therefore fell back to English throughout the
+upload, preview, and success journey. All eight website packs now contain the
+exact 115/32/23-message route boundary with interpolation parity. It also found
+that the success headline stored its highlighted second half outside the full
+headline, so the UI rendered only “Your menu is”; full live and pending headings
+now render correctly. No-link states no longer show QR or placement instructions.
+
+The final rendered-path pass found that extracted menu content used the first
+language-array entry instead of the entry marked primary, directly indexed
+localized maps, and inherited the website direction. That could omit a valid
+description, expose an internal ID after a regional-code mismatch, or lay out an
+English menu as RTL inside an Arabic interface. Preview now selects explicit
+primary truth, uses the shared localized-text fallback for categories, items,
+descriptions, and attributes, sets an independent menu `lang`/`dir`, uses
+automatic direction for mixed-script values, and bidi-isolates prices. Upload
+and preview layout rules now use logical start/end alignment, and decorative
+icons are hidden from assistive labels while translated button text remains the
+accessible name.
+
+The hydrated Arabic phone render exposed one final shared-label gap: the
+analytics consent banner still fell back to English because only English and
+Hindi defined that namespace, and the Hindi pack itself retained several
+English sentences. The complete 11-label consent boundary is now localized in
+all eight website languages and source-gated against missing keys or exact
+English fallback. This closes the visible first-screen language island without
+changing consent storage or analytics admission behavior.
+
+The subsequent full-route render found that the same six website languages
+still inherited most shared Header/Footer copy from English: each had only 13
+of 61 Header labels, 16 of 56 Footer labels, no Theme-switcher namespace, and a
+hardcoded English website skip link. Those mounted labels are now complete in
+all eight packs: Header 61, Footer 56, Theme switcher 7, Language switcher 1,
+Accessibility 1, and Analytics consent 11. The website layout passes the
+localized skip-link label explicitly, while the shared component keeps its
+generic fallback for non-website callers. The maintained verifier rejects key,
+placeholder, protected-token, provider-residue, or unintended exact-English
+fallback drift across this shared route chrome.
+
+Rendered desktop review then exposed a layout defect rather than a dictionary
+defect: Spanish commands overlapped the wordmark and wrapped ordinary header
+navigation inside the 1200px content container at a 1440px viewport. The Header
+now has a wider header-only desktop container, tighter stable navigation gaps,
+non-wrapping command labels, and a 1280px desktop admission threshold; narrower
+widths use the drawer before labels collide. The drawer is positioned on the
+logical end edge and reverses its closed transform in RTL. Arabic and Spanish
+browser checks at 390x844 and 1440x1000 found no page/drawer horizontal
+overflow, no missing-message or English-command residue, no clipped Feature or
+Resources panel text, and correct `lang`/`dir` values.
+
+The global-localization command passed its source boundary, 3,468 owner strings
+across 50 namespaces and all 52 locale packs, 337 public-customer messages in
+all 52 locales, global behavior tests, and Ant Design theme tests. Its final
+repository-wide mobile-UI stage currently exits nonzero on the already modified
+CampaignCue workspace's no-opener `window.open` acknowledgement assertion at
+`scripts/verification/test-mobile-ui-locale-boundary.ts:177`; that separate
+product was not changed here. The MenuList source has no missing starter keys,
+exact non-invariant English residue, or ICU-variable drift in non-English packs.
+The maintained Public Menu Entry verifier now rejects
+the removed English literals and requires translated desktop/mobile states,
+ICU calls, RTL URL isolation, primary-menu-language resolution, localized-text
+fallback, menu direction isolation, logical CSS, the eight-language consent
+panel, complete shared route chrome, localized skip link, translated-header fit,
+logical RTL drawer edge, and the touch target.
+Native-speaker review can
+still improve tone in individual machine-assisted translations; this is a
+quality caveat, not a missing-key or runtime-fallback gap.
+
+## 16. Owner Dashboard Locale Audit - August 11, 2026
+
+### 16.1 Executive Summary
+
+Confidence is high for source-level dashboard locale correctness and moderate
+for rendered output. The complete owner message boundary is key/ICU/hash gated,
+TypeScript and focused lint pass, and all MenuList dashboard behavior verifiers
+pass. Authenticated desktop/mobile visual certification remains unavailable
+because the local browsers have no owner session.
+
+The main risks found were direct rendering of backend English prose, duplicated
+Business Health/public-truth labels, browser-default date formatting, locale and
+manual RTL disagreement, an English-only assistant inside localized chrome,
+unlabeled English report export, invented machine-translation clauses, malformed
+count labels, mixed scripts, repeated CJK alternatives, and translated protected
+terms. No database schema, API contract, cache, Firebase operation, or public
+truth source was changed.
+
+### 16.2 System And Flow Map
+
+| Flow | Source of truth | Audited output |
+| --- | --- | --- |
+| Owner analytics | Existing summary documents and owner analytics helpers | Desktop and mobile Today/history cards, detail panels, graphs, empty/error states |
+| Business Health | Existing read-only summary/check response with stable IDs | Desktop page/cards, mobile screen/card, location scope, checks and freshness |
+| Public truth monitor | Existing public-truth result/module/fact/action IDs | Desktop/mobile status, module evidence, owner checks, history and report controls |
+| Owner actions | Existing action-layer IDs and status fields | Desktop/mobile action plan labels, descriptions, status, confirmation and results |
+| Locale/formatting | `APP_LANGUAGES`, next-intl provider, locale packs | Text, dates, counts, plural messages, direction and Ant Design shell behavior |
+
+Customer-visible truth is not recomputed by localization. Presentation helpers
+map stable IDs to locale copy after the data boundary. Unknown IDs use bounded
+fallbacks; raw generated reason text is retained only in English. Business
+Health questions remain English-only and are unavailable in non-English app
+locales. Public-truth text export is explicitly labeled as an English report.
+
+### 16.3 Files And Fix Log
+
+Inspected and traced the mounted desktop dashboard, mobile dashboard sections,
+Business Health owner surfaces, public-truth monitor/cards, owner analytics and
+action presentation helpers, Ant Design/MobileShell direction handling, all 52
+locale packs, static public-customer bundle generation, semantic translation
+pipeline, and dashboard/business-health verifiers.
+
+| Change | Invariant protected |
+| --- | --- |
+| Added shared dashboard, action-plan, Business Health and public-truth presentation projectors | Backend English labels cannot become authoritative in a localized owner session |
+| Localized shell banner, Google listing failure, empty/loading/error/status/action copy and next-intl dates | Mounted owner states do not silently fall back to browser or source-language defaults |
+| Combined app-locale RTL with the persisted manual override and logical shell padding | Arabic/Persian/Hebrew/Kashmiri/Sindhi/Urdu direction is consistent without removing the manual accessibility override |
+| Disabled Business Health question submission outside English and labeled report export honestly | The UI does not imply localized AI answers or localized report content that does not exist |
+| Removed unsupported returning-opens claim and projected public-truth module/fact/result/action IDs | Dashboard claims remain backed by current analytics/public-truth contracts |
+| Added embedded protected-token, `%s`, repeated-CJK, sentence, number, script and orthography gates | Structurally valid but semantically unsafe locale output cannot pass release verification |
+| Back-translated the touched/flagged set and applied reviewed translations or explicit source fallback | Accuracy is preferred over fluent-looking but incorrect business claims |
+| Regenerated all locale hashes and the 337-message public-customer bundle | Runtime packs, semantic evidence and generated public chrome remain one version |
+
+### 16.4 Verification Log
+
+Passed on the final worktree:
+
+- `npx tsc --noEmit --incremental false --pretty false`
+- focused ESLint across localization scripts, desktop/mobile dashboard,
+  Business Health, public-truth, shell and presentation helpers
+- `npm run verify:owner-dashboard-locales` (4,025 strings, 50 namespaces, 52
+  locale files; 1,020 established dashboard/settings strings; 7,030 bounded
+  repairs)
+- `npm run verify:public-customer-localization` (337 messages, 52 locales)
+- `npm run verify:owner-dashboard-today-boundary`
+- `npm run verify:owner-action-layer`
+- `npm run test:owner-action-layer-boundary`
+- `npm run verify:menu-setup-progress-boundary`
+- `npm run test:owner-dashboard-details-boundary`
+- `npm run verify:owner-business-health-boundary`
+- semantic quality prepare: zero pending repairs
+- `git diff --check`
+
+`npm run verify:global-localization-boundary` passed the MenuList source,
+dashboard, public-customer, functional and Ant Design stages. Its final
+repository-wide mobile stage stopped on an unrelated CampaignCue no-opener
+assertion in `CampaignCueWorkspaceApp.tsx`; no CampaignCue file was changed for
+this audit. `npm run verify:public-business-truth` remains independently blocked
+by an unrelated Public Menu Entry helpdoc wording assertion recorded earlier.
+
+The Next 16.3 local server compiled `/dashboard`; unauthenticated desktop and
+mobile browser requests redirected to `/signin`, which rendered without console
+errors. A real owner session, seeded dashboard data, locale switching, and RTL
+screen capture could not be verified in this environment.
+
+### 16.5 Final Status
+
+Verified: source/key/ICU/hash parity, stable-ID projection, owner/public-truth
+claim boundaries, locale-aware formatting, shell direction, static public bundle
+freshness, desktop/mobile source parity, error/empty/loading copy, and no new
+runtime translation/Firebase cost. No known critical or high-severity dashboard
+localization correctness issue remains in inspected source.
+
+Remaining risks are native fluency, line wrapping in unusually long translated
+labels, authenticated data-dependent rendering, and low-resource values using
+reviewed English fallback. Production monitoring should prioritize missing-
+message errors, locale-specific render exceptions, RTL overflow, assistant
+submission attempts outside English, and owner reports of misleading status or
+count wording. Native-speaker review should be treated as copy-quality evidence,
+not as a substitute for the executable source gates.

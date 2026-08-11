@@ -62,6 +62,7 @@ export const DB_COLLECTIONS = {
     ANSWERLATTICE_KNOWLEDGE_SOURCES: 'answerlattice_knowledgeSources',
     ANSWERLATTICE_INTAKE_REVIEW_ITEMS: 'answerlattice_intakeReviewItems',
     ANSWERLATTICE_INTAKE_USAGE_LEDGER: 'answerlattice_intakeUsageLedger',
+    ANSWERLATTICE_GITHUB_INTAKE_BINDINGS: 'answerlattice_githubIntakeBindings',
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs

@@ -28,6 +28,30 @@ function walk(directory, predicate) {
   return results;
 }
 
+function sourceHasJsxTag(relPath, expectedTagName) {
+  const source = read(relPath);
+  const sourceFile = ts.createSourceFile(
+    relPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  let found = false;
+  const visit = (node) => {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+      && node.tagName.getText(sourceFile) === expectedTagName
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return found;
+}
+
 const appSourceFiles = walk('src/app', (relPath) => /\.(?:ts|tsx)$/.test(relPath));
 for (const relPath of appSourceFiles) {
   const content = read(relPath);
@@ -75,8 +99,21 @@ assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose
 assert(layoutWrapper.includes('id="main-content"'), 'owner shell must expose a main-content target');
 assert(layoutWrapper.includes('<button'), 'desktop-to-mobile return control must use a native button');
 
-const websiteLayout = read('src/app/(website)/layout.tsx');
-assert(websiteLayout.includes('<SkipToContentLink />'), 'website shell must expose skip navigation');
+assert(
+  sourceHasJsxTag('src/app/(website)/layout.tsx', 'SkipToContentLink'),
+  'website shell must expose skip navigation',
+);
+
+[
+  'src/components/website/features/FeaturesPage.tsx',
+  'src/components/website/trust-security/TrustSecurityPage.tsx',
+  'src/components/website/legal/PrivacyPolicyPage.tsx',
+  'src/components/website/legal/TermsOfServicePage.tsx',
+  'src/components/website/legal/RefundPolicyPage.tsx',
+].forEach((relPath) => assert(
+  sourceHasJsxTag(relPath, 'main'),
+  `${relPath} must expose a main landmark for website skip navigation`,
+));
 
 const websiteHeader = read('src/components/website/Header.tsx');
 [
@@ -86,11 +123,24 @@ const websiteHeader = read('src/components/website/Header.tsx');
   'data-open={openDesktopMenu === "resources" ? "true" : "false"}',
   'inert={openDesktopMenu !== "features" ? true : undefined}',
   'inert={openDesktopMenu !== "resources" ? true : undefined}',
-  'onClick={() => setOpenDesktopMenu("features")}',
+  'current === "features" ? null : "features"',
+  "querySelector<HTMLElement>('[aria-controls]')",
+  'window.requestAnimationFrame(() => trigger?.focus())',
+  'aria-label={isOpen ? t("Header.closeMenu") : t("Header.openMenu")}',
+  'aria-labelledby="ws-mobile-navigation-title"',
+  'id="ws-mobile-navigation-title"',
 ].forEach((token) => assert(
   websiteHeader.includes(token),
   `website dropdown accessibility boundary must include ${token}`,
 ));
+assert(
+  !websiteHeader.includes('aria-label={t("Header.featuresMenuAria")}'),
+  'website Features trigger must use its visible label in both collapsed and expanded states',
+);
+assert(
+  !websiteHeader.includes('aria-label={t("Header.resourcesMenuAria")}'),
+  'website Resources trigger must use its visible label in both collapsed and expanded states',
+);
 assert(
   !websiteHeader.includes('import { signOutSession } from "@lib/auth/client";'),
   'public website header must not statically load the authenticated Firebase sign-out chain',

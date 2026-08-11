@@ -440,9 +440,9 @@ Provider references: [Test Subscriptions](https://razorpay.com/docs/payments/sub
 **Prerequisites**
 
 - Razorpay test-mode keys are configured only in the intended staging/local environment.
-- `RAZORPAY_KEY_ID` and `NEXT_PUBLIC_RAZORPAY_KEY_ID` both start with `rzp_test_`; never use `rzp_live_` for this gate.
-- `RAZORPAY_KEY_SECRET` belongs to the same Razorpay test account as `RAZORPAY_KEY_ID`.
-- `RAZORPAY_WEBHOOK_SECRET` belongs to the same Razorpay test webhook endpoint used for this smoke.
+- `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID` starts with `rzp_test_`; never use `rzp_live_` for this gate.
+- `MENULIST_RAZORPAY_KEY_SECRET` belongs to the same Razorpay test account as `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`.
+- `MENULIST_RAZORPAY_WEBHOOK_SECRET` belongs to the same Razorpay test webhook endpoint used for this smoke.
 - Firebase Functions secrets for `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are set only on the matching non-production target if the smoke includes Functions-owned payment work.
 - No production Razorpay credentials are used.
 

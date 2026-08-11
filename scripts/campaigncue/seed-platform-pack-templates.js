@@ -12,6 +12,8 @@ const VALID_CATEGORIES = new Set(readSharedBusinessCategories(ROOT));
 const COLLECTION = "campaigncuePlatformPackTemplates";
 const SCHEMA_VERSION = 1;
 const MAX_DOC_BYTES = 750_000;
+const MAX_TEMPLATES_PER_DOC = 80;
+const MAX_OVERFLOW_DOCS = 10;
 
 function payloadFor(seed) {
   return {
@@ -116,7 +118,6 @@ function groupByCategory(artifacts, now) {
     identities.add(identity);
     const list = grouped.get(seed.businessCategory) || [];
     list.push(summaryFor(seed, now, artifact.payloadPath));
-    if (list.length > 80) throw new Error(`${seed.businessCategory} exceeds the 80-template catalog limit`);
     grouped.set(seed.businessCategory, list);
   }
   return grouped;
@@ -148,15 +149,27 @@ async function main() {
   const grouped = groupByCategory(artifacts, now);
   const updatedBy = process.env.CAMPAIGNCUE_TEMPLATE_SEED_ACTOR || "campaigncue-template-seed";
 
-  const catalogs = Array.from(grouped.entries()).map(([businessCategory, data]) => ({
-    businessCategory,
-    catalogId: businessCategory,
-    catalogStatus: "active",
-    data: data.sort((left, right) => right.priority - left.priority),
-    schemaVersion: SCHEMA_VERSION,
-    updatedAt: now,
-    updatedBy,
-  }));
+  const catalogs = Array.from(grouped.entries()).flatMap(([businessCategory, data]) => {
+    const sorted = data.sort((left, right) => right.priority - left.priority);
+    const chunks = [];
+    for (let index = 0; index < sorted.length; index += MAX_TEMPLATES_PER_DOC) {
+      chunks.push(sorted.slice(index, index + MAX_TEMPLATES_PER_DOC));
+    }
+    if (chunks.length - 1 > MAX_OVERFLOW_DOCS) {
+      throw new Error(`${businessCategory} exceeds the ${MAX_OVERFLOW_DOCS}-overflow catalog limit`);
+    }
+    const catalogIds = chunks.map((_, index) => index === 0 ? businessCategory : `${businessCategory}_${index + 1}`);
+    return chunks.map((chunk, index) => ({
+      businessCategory,
+      catalogId: catalogIds[index],
+      catalogStatus: "active",
+      data: chunk,
+      ...(index === 0 && catalogIds.length > 1 ? { overflowDocIds: catalogIds.slice(1) } : {}),
+      schemaVersion: SCHEMA_VERSION,
+      updatedAt: now,
+      updatedBy,
+    }));
+  });
 
   for (const catalog of catalogs) {
     const bytes = Buffer.byteLength(JSON.stringify(catalog), "utf8");
@@ -176,11 +189,11 @@ async function main() {
     return;
   }
 
-  const projectId = String(process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID || "").trim();
-  const storageBucket = String(process.env.CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET || "").trim();
-  const databaseId = String(process.env.CAMPAIGNCUE_FIRESTORE_DATABASE_ID || "").trim();
+  const projectId = String(process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID || process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID || "").trim();
+  const storageBucket = String(process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET || process.env.CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET || "").trim();
+  const databaseId = String(process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_DATABASE_ID || process.env.CAMPAIGNCUE_FIRESTORE_DATABASE_ID || "").trim();
   if (!projectId || !storageBucket) {
-    throw new Error("CAMPAIGNCUE_FIREBASE_PROJECT_ID and CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required for --apply");
+    throw new Error("NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID and NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required for --apply");
   }
 
   const admin = require("firebase-admin");

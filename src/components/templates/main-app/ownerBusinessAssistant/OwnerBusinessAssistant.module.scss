@@ -254,7 +254,7 @@
   width: 100%;
   min-height: 44px;
   white-space: normal;
-  text-align: left;
+  text-align: start;
   justify-content: flex-start;
 }
 
@@ -402,7 +402,7 @@
   background: var(--ant-color-bg-elevated);
   color: var(--ant-color-text);
   white-space: normal;
-  text-align: left;
+  text-align: start;
   line-height: 1.35;
   box-shadow: none;
 }

@@ -21,7 +21,7 @@ const SUPPORT_DEMO_STAGES = [
 ] as const;
 
 const CONTEXT_ROWS = [
-    ['Product surface', 'Billing settings'],
+    ['Product page', 'Billing settings'],
     ['Plan', 'Starter'],
     ['User role', 'Account owner'],
     ['Approved source', 'Billing policy'],
@@ -175,7 +175,7 @@ export default function AnswerlatticeSupportLoopDemo() {
                                         {[
                                             'Three related questions are linked to the same missing policy.',
                                             'A candidate answer stays in draft until the founder reviews the source.',
-                                            'The founder can edit, approve, or reject the proposal.',
+                                            'The founder can edit, approve, or reject the draft answer.',
                                         ].map((item) => (
                                             <div key={item} className="flex gap-3 rounded-xl border border-white/[0.07] bg-black/10 p-3 text-sm leading-6 text-[#d6d6ef]">
                                                 <LuCheck className="mt-1 shrink-0 text-teal-300" aria-hidden />

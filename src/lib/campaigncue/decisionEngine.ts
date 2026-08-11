@@ -1,4 +1,5 @@
 import { CAMPAIGNCUE_DAILY_DESK_RECIPES } from "@constant/campaigncue/dailyDesk";
+import { campaignCueVerticalPlaybookForBusinessType } from "@constant/campaigncue/verticalPlaybooks";
 import { FEATURE_FLAGS } from "@config/features";
 import {
     buildCampaignCueExperimentSuggestion,
@@ -10,6 +11,17 @@ import {
     normalizeCampaignCueOperatingPulse,
     normalizeCampaignCuePresenceProfile,
 } from "@lib/campaigncue/operatingLoop";
+import {
+    isCampaignCueDurableVisualAsset,
+    isCampaignCueReadyVisualAsset,
+    isCampaignCueRestrictedVisualAsset,
+    isCampaignCueReviewVisualAsset,
+} from "@lib/campaigncue/mediaMissions";
+import {
+    campaignCueCampaignMemoryMetricTotal,
+    findCampaignCueRecipeMemorySignal,
+    resolveCampaignCueCampaignMemorySummary,
+} from "@lib/campaigncue/campaignMemory";
 import type {
     CampaignCueAnalyticsSummary,
     CampaignCueAsset,
@@ -272,13 +284,17 @@ export function buildCampaignCueDecisions(params: {
 }): CampaignCueDecision[] {
     const now = params.now || new Date();
     const activeInputs = params.sourceInputs.filter((input) => isCampaignCueDecisionSourceInput(input, now));
-    const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
-    const reviewAssets = params.assets.filter((asset) => asset.rights.status === "needs_review");
-    const restrictedAssets = params.assets.filter((asset) => asset.status === "blocked" || asset.rights.status === "restricted");
+    const durableVisualAssets = params.assets.filter(isCampaignCueDurableVisualAsset);
+    const confirmedAssets = params.assets.filter(isCampaignCueReadyVisualAsset);
+    const reviewAssets = params.assets.filter(isCampaignCueReviewVisualAsset);
+    const restrictedAssets = params.assets.filter(isCampaignCueRestrictedVisualAsset);
     const blockedFacts = params.sourceFacts.filter((fact) => fact.risk === "blocked");
     const reviewFacts = params.sourceFacts.filter((fact) => fact.risk === "needs_review");
     const usefulCampaigns = params.campaigns.filter((campaign) => Number(campaign.resultMemory?.usefulCount || 0) > 0);
     const notUsefulCampaigns = params.campaigns.filter((campaign) => Number(campaign.resultMemory?.notUsefulCount || 0) > 0);
+    const campaignMemory = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY
+        ? resolveCampaignCueCampaignMemorySummary({ analytics: params.analytics, campaigns: params.campaigns })
+        : undefined;
     const nowMs = now.getTime();
     const weekday = weekdayForTimeZone(now, params.businessBrain.timezone);
     const isWeekend = weekday === "Sat" || weekday === "Sun";
@@ -288,8 +304,14 @@ export function buildCampaignCueDecisions(params: {
     const operatingPulse = normalizeCampaignCueOperatingPulse(params.businessBrain.operatingPulse);
     const pulseCurrent = isCampaignCueOperatingPulseCurrent(operatingPulse, now);
 
+    const playbookRecipeIds = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_VERTICAL_PLAYBOOKS
+        ? new Set(campaignCueVerticalPlaybookForBusinessType(params.businessBrain.businessType).recipeIds)
+        : null;
     const matchingRecipes = CAMPAIGNCUE_DAILY_DESK_RECIPES
-        .filter((recipe) => recipe.businessTypes.includes(params.businessBrain.businessType) || recipe.businessTypes.includes("other"));
+        .filter((recipe) => (
+            (recipe.businessTypes.includes(params.businessBrain.businessType) || recipe.businessTypes.includes("other"))
+            && (!playbookRecipeIds || playbookRecipeIds.has(recipe.id))
+        ));
     const recipes = matchingRecipes.length ? matchingRecipes : CAMPAIGNCUE_DAILY_DESK_RECIPES;
 
     return recipes
@@ -325,6 +347,12 @@ export function buildCampaignCueDecisions(params: {
             const requiredMissing = missingInputs.filter((input) => input.required);
             const matchingUseful = usefulCampaigns.filter((campaign) => campaign.pack?.recipeId === recipe.id || campaign.pack?.ownerGoal === recipe.ownerGoal);
             const matchingNotUseful = notUsefulCampaigns.filter((campaign) => campaign.pack?.recipeId === recipe.id || campaign.pack?.ownerGoal === recipe.ownerGoal);
+            const recipeMemory = findCampaignCueRecipeMemorySignal(campaignMemory, recipe.id);
+            const memoryUsefulCount = recipeMemory?.usefulCount ?? matchingUseful.length;
+            const memoryNotUsefulCount = recipeMemory?.notUsefulCount ?? matchingNotUseful.length;
+            const memoryMetricTotal = recipeMemory
+                ? campaignCueCampaignMemoryMetricTotal(recipeMemory.metrics)
+                : resultReceiptMetricTotal(matchingUseful);
             const recipeUsedRecently = params.campaigns.some((campaign) => (
                 (campaign.pack?.recipeId === recipe.id || campaign.pack?.ownerGoal === recipe.ownerGoal)
                 && nowMs - toTime(campaign.createdAt) < 1000 * 60 * 60 * 24 * 7
@@ -344,16 +372,16 @@ export function buildCampaignCueDecisions(params: {
                     - (operatingPulse.businessState === "busy" && !["review_push", "asset_reuse", "local_visibility"].includes(recipe.scenario) ? 18 : 0)
                 : 0;
             const relevance = clampScore((recipe.businessTypes.includes(params.businessBrain.businessType) ? 78 : 52)
-                + (recipe.scenario === "asset_reuse" && params.assets.length ? 18 : 0)
+                + (recipe.scenario === "asset_reuse" && durableVisualAssets.length ? 18 : 0)
                 + (recipe.scenario === "local_visibility" && (!params.businessBrain.locality || !params.campaigns.some((campaign) => campaign.outputs.some((output) => output.channel === "google_local"))) ? 15 : 0));
             const urgency = clampScore(45 + timingBoost + pulseBoost + (params.schedules.some((schedule) => schedule.status === "due") ? 14 : 0));
-            const expectedImpact = clampScore(58 + matchingUseful.length * 16 - matchingNotUseful.length * 10);
+            const expectedImpact = clampScore(58 + memoryUsefulCount * 16 - memoryNotUsefulCount * 10);
             const factReadiness = clampScore(100 - requiredMissing.length * 32 - reviewFacts.length * 8 - blockedFacts.length * 25 - commercialGate.reviewFindings.length * 8);
-            const assetReadiness = clampScore(confirmedAssets.length ? 88 : reviewAssets.length ? 58 : recipe.scenario === "asset_reuse" && params.assets.length ? 64 : 42);
+            const assetReadiness = clampScore(confirmedAssets.length ? 88 : reviewAssets.length ? 58 : recipe.scenario === "asset_reuse" && durableVisualAssets.length ? 64 : 42);
             const channelReadiness = clampScore(55 + (hasBusinessCta(params.businessBrain) ? 28 : 0) + (recipe.recommendedChannels.includes("google_local") && params.businessBrain.locality ? 8 : 0));
-            const resultMemoryBoost = clampScore(matchingUseful.length * 18 + Math.min(24, resultReceiptMetricTotal(matchingUseful) * 2));
+            const resultMemoryBoost = clampScore(memoryUsefulCount * 18 + Math.min(24, memoryMetricTotal * 2));
             const ownerEffortPenalty = clampScore(requiredMissing.length * 28 + missingInputs.filter((input) => !input.required).length * 8);
-            const repetitionPenalty = clampScore((recipeUsedRecently ? 18 : 0) + recentCampaignPenalty + matchingNotUseful.length * 12);
+            const repetitionPenalty = clampScore((recipeUsedRecently ? 18 : 0) + recentCampaignPenalty + memoryNotUsefulCount * 12);
             const trustRiskPenalty = clampScore(blockedFacts.length * 35 + restrictedAssets.length * 35 + reviewFacts.length * 8 + reviewAssets.length * 10 + commercialGate.blockedFindings.length * 40 + commercialGate.reviewFindings.length * 10);
             const finalScore = clampScore(
                 relevance * 0.20
@@ -433,7 +461,11 @@ export function buildCampaignCueDecisions(params: {
                         `${recipe.ownerOutcome}`,
                         params.businessBrain.locality ? `${params.businessBrain.locality} is available for local context.` : "Local area can be added for stronger context.",
                         hasBusinessCta(params.businessBrain) ? "A customer next step is available." : "A customer next step is still missing.",
-                        matchingUseful.length ? "Similar campaign result memory was useful before." : "No strong result memory exists yet for this recipe.",
+                        memoryUsefulCount
+                            ? "Owner-reported result memory was useful before for this recipe."
+                            : memoryNotUsefulCount
+                                ? "Owner-reported results suggest changing this recipe before repeating it."
+                                : "No strong result memory exists yet for this recipe.",
                     ],
                     whyNow: [
                         recipe.whenToUse,

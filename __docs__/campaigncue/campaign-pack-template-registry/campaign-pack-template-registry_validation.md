@@ -61,6 +61,8 @@ The default owner load reads one category doc. Shared festival/event templates d
 | Saved editor layout boundary | Implemented in `editorDocumentBoundary.ts`; old visible text, QR destinations, image layers, source refs, campaign/output ids, logo URLs, and old business identity are not persisted as reusable layout truth. |
 | Catalog/index/artifact binding | Implemented in `templateScopeBoundary.ts`; mismatched catalog, workspace, type, quality tier, payload id/schema, duplicate id, and artifact path are rejected. |
 | Bounded Storage hydration | Implemented with `getBlob(ref, maxBytes)` before JSON parsing. |
+| Purpose-scoped client access | Implemented with `template_read`, `workspace_template_write`, and separate exact-folder `media_upload` claims; Firestore/Storage rules still recheck the authoritative workspace content-manager role. |
+| Stale response protection | Catalog, overflow, and member-role changes advance a request fence so obsolete responses cannot replace or merge into the current owner catalog. |
 
 ## Review Validation Notes
 

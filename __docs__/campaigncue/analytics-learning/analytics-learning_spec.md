@@ -2,11 +2,11 @@
 
 ## Summary
 
-Analytics Learning captures campaign outcomes from exports, publish events, replies, clicks, post insights, ad metrics, manual owner entries, and channel callbacks. It turns results into practical next-campaign cues.
+Analytics Learning captures system-observed CampaignCue actions and bounded owner-reported outcome receipts. It turns those receipts into cautious next-campaign evidence. Owners may also keep one compact snapshot copied from a provider report, but that directional snapshot is not an Analytics Learning input. Provider publish events, channel callbacks, and authenticated platform imports remain future-disabled contracts.
 
 ## Current Runtime
 
-The active runtime captures observed CampaignCue actions, reads a dashboard summary, and stores the latest bounded owner-reported result receipt on the existing campaign document. A receipt can include a signal, use time, channel, optional reply/call/booking/order/walk-in/link-click counts, note, and the one variable tested. Provider publish events, imported replies/clicks, post insights, ad metrics, and channel callbacks are not active until a separate future provider layer is configured.
+The active runtime captures observed CampaignCue actions, reads a dashboard summary, and stores the latest bounded owner-reported result receipt on the existing campaign document. A receipt can include a signal, use time, channel, optional reply/call/booking/order/walk-in/link-click counts, note, and the one variable tested. The same campaign may store a separately labelled owner-copied report snapshot with source, scope, date window, and allowlisted totals. That snapshot does not update the dashboard summary or Campaign Memory. Provider publish events, authenticated report import, post insights sync, and channel callbacks are not active until a separate future provider layer is configured.
 
 ## Goals
 
@@ -19,10 +19,10 @@ The active runtime captures observed CampaignCue actions, reads a dashboard summ
 
 | Requirement | Acceptance |
 | --- | --- |
-| Outcome capture | Export, publish, click, reply, manual result, and provider metric events can be recorded. |
+| Outcome capture | Current runtime records exports/manual-use actions and recipe-approved owner results. Owner-copied report snapshots are reference evidence only; provider API import remains disabled. |
 | Attribution posture | Reports distinguish observed, imported, estimated, and manually entered outcomes. |
-| Next cue | Results can create campaign improvement cues. |
-| Confidence | Manual receipts are labeled `owner_reported`; system action events remain `observed`. |
+| Next cue | Bounded Campaign Memory evidence can adjust deterministic campaign ranking without bypassing fact, trust, effort, or fatigue gates. |
+| Confidence | Manual receipts are labelled `owner_reported`; owner-copied report snapshots are `manual` and `directional_not_campaign_attribution`; system action events remain `observed`. |
 | One-variable learning | The next deterministic suggestion changes only channel, timing, offer, photo, CTA, or format. |
 | Channel views | WhatsApp, Google, ads, organic social, and manual outputs have separate metric contracts. |
 | Agency report | Agencies can prepare client-readable reports. |
@@ -47,6 +47,7 @@ CampaignCue success is measured by trust-safe campaign usage, not raw asset gene
 | Trust | Trust checks run, blockers created/fixed, warning acknowledgements, override requests, latency, source-conflict rate. | Trust status must be version-specific. |
 | Manual export | Export/download shown, manual task completed, approval requested, and owner outcome recorded. | Manual export is the active delivery path, not a failure. |
 | Owner result receipt | Result signal plus optional bounded counts and tested variable. | `not_used` does not mark a campaign used and has no use timestamp; owner counts are not provider attribution. |
+| Copied report evidence | Provider label, campaign/location/account scope, bounded date window, and allowlisted totals. | Directional reference only; does not alter Campaign Memory or claim causation. |
 | Source/data quality | Missing WhatsApp number, Google profile mismatch, stale source, low-confidence extraction, asset gaps. | Source confidence must remain visible. |
 
 ## Non-Goals

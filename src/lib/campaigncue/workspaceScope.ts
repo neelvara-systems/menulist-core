@@ -68,6 +68,29 @@ export function resolveCampaignCueSessionIdentity(
     } : null;
 }
 
+export function resolveCampaignCueSessionStoreRole(
+    session: unknown,
+    expectedStoreId: unknown,
+): string | null {
+    if (!isRecord(session)) return null;
+    const expectedStoreScope = normalizeStorePermissionScopeDocumentId(expectedStoreId);
+    if (!expectedStoreScope) return null;
+    const user = isRecord(session.user) ? session.user : null;
+    const roleAliases: unknown[] = [session.role, user?.role];
+
+    if (Array.isArray(user?.stores)) {
+        user.stores.forEach((candidate) => {
+            if (!isRecord(candidate)) return;
+            const storeScope = normalizeStorePermissionScopeDocumentId(candidate.storeId);
+            if (storeScope?.documentId === expectedStoreScope.documentId) {
+                roleAliases.push(candidate.role);
+            }
+        });
+    }
+
+    return resolveExactStringAliases(roleAliases, 64);
+}
+
 export function assertCampaignCueStoreRecordScope(
     value: unknown,
     expected: { sId: unknown; tId: unknown },

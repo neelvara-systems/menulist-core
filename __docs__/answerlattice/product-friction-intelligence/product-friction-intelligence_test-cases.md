@@ -66,6 +66,23 @@
    Firestore, Storage, Function, provider, scheduler, or integration operation.
 11. Mobile actions and drawer controls preserve 44px touch targets and readable
     preformatted output without horizontal page overflow.
+12. Investigate routes to Knowledge Map with the validated entity; support,
+    limitation, and access review route to trusted answers with that entity.
+13. Product-behavior review remains a local copy action and invokes no workflow
+    adapter or issue tracker.
+14. Watch and no-action close locally; the owner copy states that watch creates
+    no reminder and no action creates no saved decision.
+15. Invalid entity context and unknown runtime paths fail closed to local copy
+    rather than opening an unscoped governance destination.
+16. Route resolution and navigation add no Firebase write, review-path record,
+    event, listener, provider call, or destination prefetch.
+17. The drawer freezes entity, complete window, source timestamp, and workspace
+    scope from one snapshot; a refresh cannot mix metadata into the open brief.
+18. A scope switch makes the prior brief inactive immediately and clears the
+    local selection.
+19. Disabling Knowledge Map hides every direct map control and changes
+    investigate-further to local copy. A valid but absent requested map entity
+    remains unselected with an explicit unavailable state.
 
 ## Rejected-Scope Regression
 
@@ -79,3 +96,11 @@
 6. No product or canonical-answer mutation occurs from the friction surface.
 7. No product-problem, root-cause, owner-decision, issue-delivery, or
    customer-notification lifecycle is created by the evidence brief.
+8. No reminder or watch-state lifecycle is created from the review selector.
+
+## Post-Change Overlay Regression
+
+The complete window, security, response, responsive, and Firebase cost cases
+are maintained in
+`../post-change-support-evidence-review/post-change-support-evidence-review_test-cases.md`
+and executed by `npm run verify:answerlattice-post-change-evidence`.

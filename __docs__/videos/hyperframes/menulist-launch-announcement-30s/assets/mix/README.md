@@ -13,7 +13,7 @@
 
 ## Mix Notes
 
-- Voice generated locally with HyperFrames Kokoro TTS from the setup-ease script: upload existing menu photos, no typing required to start, private preview in minutes, review before publishing.
+- Historical voice mix generated locally with HyperFrames Kokoro TTS from an earlier setup-ease script. Its absolute `no typing required` and unmeasured `in minutes` wording is retained only as render provenance and is not approved for reuse in current production scripts.
 - BGM trimmed to 30 seconds.
 - BGM fades in for 1.2 seconds and fades out from 28.4 seconds.
 - BGM is lowered and sidechain-ducked under voice.

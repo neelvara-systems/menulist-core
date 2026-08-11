@@ -511,15 +511,16 @@ export async function listKnowledgeIntakeJobs(scopeInput: IntakeScope) {
     ));
 }
 
-export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: CreateJobInput, actor?: IntakeActor) {
-    assertEnabled();
-    assertDb();
-    const scope = assertScope(scopeInput);
-    const createdAt = now();
+const buildKnowledgeIntakeJob = (
+    scope: IntakeScope,
+    id: string,
+    input: CreateJobInput,
+    actor: IntakeActor | undefined,
+    createdAt: FirebaseFirestore.Timestamp,
+): AnswerlatticeKnowledgeIntakeJob => {
     const title = cleanText(input.title, 120) || 'Knowledge intake';
-    const ref = db.collection(JOBS).doc();
-    const job: AnswerlatticeKnowledgeIntakeJob = {
-        id: ref.id,
+    return {
+        id,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
         sId: scope.sId,
@@ -548,6 +549,15 @@ export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: C
         modifiedOn: createdAt as any,
         ...actorFields(actor),
     };
+};
+
+export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: CreateJobInput, actor?: IntakeActor) {
+    assertEnabled();
+    assertDb();
+    const scope = assertScope(scopeInput);
+    const createdAt = now();
+    const ref = db.collection(JOBS).doc();
+    const job = buildKnowledgeIntakeJob(scope, ref.id, input, actor, createdAt);
 
     await db.runTransaction(async (tx) => {
         const currentSummarySnap = await tx.get(summaryRef(scope));
@@ -561,7 +571,7 @@ export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: C
         tx.create(ref, job);
         tx.set(summaryRef(scope), buildSummaryPatch(scope, {
             activeJobId: ref.id,
-            activeJobTitle: title,
+            activeJobTitle: job.title,
             activeJobs: (currentSummary?.activeJobs || 0) + 1,
             recentJobs: Math.min(
                 ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_JOBS_PER_LOAD,
@@ -579,6 +589,61 @@ export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: C
         }), { merge: true });
     });
     return job;
+}
+
+export async function ensureKnowledgeIntakeJob(
+    scopeInput: IntakeScope,
+    jobId: string,
+    input: CreateJobInput,
+    actor?: IntakeActor,
+) {
+    assertEnabled();
+    assertDb();
+    const scope = assertScope(scopeInput);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const ref = jobRef(normalizedJobId);
+    const createdAt = now();
+    const job = buildKnowledgeIntakeJob(scope, normalizedJobId, input, actor, createdAt);
+
+    return db.runTransaction(async (tx) => {
+        const currentJobSnap = await tx.get(ref);
+        if (currentJobSnap.exists) {
+            return assertIntakeDocumentScope(
+                parseAnswerlatticeKnowledgeIntakeJob(currentJobSnap.data(), currentJobSnap.id),
+                scope,
+                'Knowledge intake job is not available.',
+            );
+        }
+
+        const currentSummarySnap = await tx.get(summaryRef(scope));
+        const currentSummary = currentSummarySnap.exists
+            ? assertIntakeDocumentScope(
+                parseAnswerlatticeKnowledgeIntakeSummary(currentSummarySnap.data(), currentSummarySnap.id),
+                scope,
+                'Knowledge intake summary is not available.',
+            )
+            : null;
+        tx.create(ref, job);
+        tx.set(summaryRef(scope), buildSummaryPatch(scope, {
+            activeJobId: ref.id,
+            activeJobTitle: job.title,
+            activeJobs: (currentSummary?.activeJobs || 0) + 1,
+            recentJobs: Math.min(
+                ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_JOBS_PER_LOAD,
+                (currentSummary?.recentJobs || 0) + 1,
+            ),
+            sourceCount: currentSummary?.sourceCount || 0,
+            readySources: currentSummary?.readySources || 0,
+            reviewItems: currentSummary?.reviewItems || 0,
+            acceptedItems: currentSummary?.acceptedItems || 0,
+            publishedItems: currentSummary?.publishedItems || 0,
+            rejectedItems: currentSummary?.rejectedItems || 0,
+            usageUnitsConsumed: currentSummary?.usageUnitsConsumed || 0,
+            lastPublishedAt: currentSummary?.lastPublishedAt || null,
+            lastJobStatus: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.COLLECTING,
+        }), { merge: true });
+        return job;
+    });
 }
 
 export async function getKnowledgeIntakeBundle(scopeInput: IntakeScope, jobId: string): Promise<AnswerlatticeKnowledgeIntakeBundle> {

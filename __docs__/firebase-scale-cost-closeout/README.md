@@ -2,12 +2,12 @@
 
 **Scope:** MenuList and repository Firebase boundaries
 **Status:** Local source complete; scoped QA Functions/index deployments pending
-**Last verified:** August 1, 2026
+**Last verified:** August 11, 2026
 **Source gate:** `npm run verify:firebase-scale-cost-closeout`
 
 ## Outcome
 
-The current usage-map scanner found 516 runtime files with Firebase, Storage,
+The current usage-map scanner found 525 runtime files with Firebase, Storage,
 API, callable, query, listener, or write signals. The scanner classifies 9
 listener-risk files, 2 public-read-risk files, 2 query-scope-risk files,
 and 52 write-volume-risk files. These are review bands, not automatic defects.

@@ -22,6 +22,7 @@ import { getPhoneUserDocumentId } from '@lib/auth/phoneUserIdentity';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { sendOwnerNotificationWhatsApp } from '@lib/owner-notifications/channels/whatsapp';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
     normalizePhoneDigits,
     normalizePhoneNumberForStorage,
@@ -327,9 +328,9 @@ const sendPhoneOtpMessage = async (params: {
     code: string;
     phone: NormalizedPhoneOtpNumber;
 }) => {
-    const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME;
-    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || GRAPH_TEMPLATE_LANGUAGE;
-    const allowTextFallback = process.env.WHATSAPP_OTP_ALLOW_TEXT_FALLBACK === 'true';
+    const templateName = menulistServerEnv.whatsappOtpTemplateName;
+    const templateLanguage = menulistServerEnv.whatsappOtpTemplateLanguage || GRAPH_TEMPLATE_LANGUAGE;
+    const allowTextFallback = menulistServerEnv.whatsappOtpAllowTextFallback === 'true';
     const allowDevSkipSend = process.env.NODE_ENV !== 'production'
         && process.env.PHONE_OTP_DEV_SKIP_SEND === 'true';
 

@@ -1,33 +1,64 @@
-# Native Knowledge Intake Connectors - Firebase
+# GitHub Change Intake - Firebase and Cost
 
-> **Status:** No runtime
-> **Last Updated:** 2026-08-05
+> **Status:** Local source complete; QA rules deploy blocked by Firebase authentication
+> **Last Updated:** 2026-08-11
 
-## Current Firebase Operations
+## Storage Model
 
-Current Firebase operations: zero.
+| Data | Location | Purpose |
+| --- | --- | --- |
+| Owner-safe connection state | `platformSummary/integrationConfig_{tId}_{sId}.githubChangeIntake` | One compact workspace configuration and recent delivery ledger |
+| Repository-to-workspace binding | `answerlattice_githubIntakeBindings/{bindingId}` | Server-only webhook routing |
+| Imported change evidence | Existing `answerlattice_knowledgeSources` | Private, bounded, unreviewed source |
+| Rolling intake job | Existing `answerlattice_knowledgeIntakeJobs` | Existing owner review grouping |
+| Intake counters | Existing `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` | Existing Daily Brief and owner read model |
+| Owner lifecycle audit | Existing `answerlattice_auditLogs` | Connect, policy update, and disconnect receipts |
 
-The reserved flag adds no:
+No Storage object, vector index, new scheduler, Cloud Function, queue, or polling cursor is added.
 
-- Firestore read, write, delete, collection, rule, index, or TTL;
-- Storage object or rule;
-- Cloud Function, scheduler task, queue, webhook, or listener;
-- Secret Manager value, OAuth credential, or provider call.
+## Normal Event Cost
 
-The manual release-evidence handoff remains outside this feature boundary and adds no connector Firebase operation. It reuses an owner-triggered Knowledge Intake source write and stores only an expiring draft in same-tab browser storage before the existing Changelog flow.
+For one selected workspace and one new accepted event:
 
-## Future Requirements
+- one binding query (normally one document read);
+- the existing active-subscription lookup before a selected workspace can claim the event;
+- one compact integration-config transaction for policy, replay, and daily-cap admission;
+- existing intake job/source reads and writes;
+- one compact completion update;
+- one GitHub pull-request file-path query only for an admitted merged pull request;
+- the PR request is a byte-bounded GraphQL path-only response, not the REST files payload containing patches;
+- zero model calls until the owner explicitly chooses **Prepare drafts**.
 
-Before one connector is implemented, document:
+Duplicate, unsupported, and unselected events stop before source creation. Recent delivery ids are hashed, bounded to 50 entries, and stored in the existing config document instead of an append-only webhook-event collection.
 
-- server-only encrypted credential ownership and rotation;
-- exact workspace and provider-account binding;
-- selected external container IDs and source permissions;
-- token expiry, revocation, reconnect, and account-transfer behavior;
-- cursor/webhook identity, replay protection, bounded pagination, and retry policy;
-- normalized source records, source versions, and deletion/tombstone handling;
-- source-to-answer dependency review;
-- retention, privacy request, legal hold, backup, and restore behavior;
-- per-import and per-sync read/write/provider cost.
+The same compact connection state stores the current monthly rolling-job slot. New events start at that slot instead of rereading every full job created earlier in the month. Sixty-four possible 50-source jobs cover the theoretical 3,100-event monthly maximum implied by the 100-per-day cap, while only jobs actually used are created.
 
-Do not create speculative connector collections or indexes while the feature remains unimplemented.
+## Cost Controls
+
+- no polling;
+- no realtime listener;
+- inactive subscriptions stop before replay, source, job, or completion writes;
+- no repository clone;
+- no source-code or patch storage;
+- at most ten selected repositories per workspace;
+- at most 100 visible repositories during setup;
+- at most 100 changed file paths per pull request;
+- at most 100 accepted events per workspace per UTC day;
+- at most 50 recent delivery receipts in the compact config;
+- existing 50-source intake-job cap with deterministic rolling jobs;
+- one compact monthly active-slot pointer to avoid an increasing read scan;
+- expired first-time setup is projected as disconnected in the existing config read, avoiding a cleanup write;
+- repository-removal events use one installation-scoped binding query and one transaction per affected workspace instead of one query per removed repository;
+- exact source hashes prevent duplicate writes inside the active job;
+- owner-triggered analysis retains existing credit accounting.
+
+## Rules and Indexes
+
+- Repository bindings are explicitly server-only under Firestore rules.
+- Existing integration configuration remains server-only.
+- The binding lookup uses one equality field and the normal single-field Firestore index; no composite index is required.
+- The binding collection is added to workspace erasure using its actual `sId` field only, so disconnect and account deletion do not leave routing records or perform a redundant alias query.
+
+## Retention and Disconnect
+
+Disconnect deletes repository bindings and clears active/pending provider configuration. Historical imported sources remain as workspace evidence because they may already support owner decisions. Workspace erasure removes bindings, intake sources, jobs, review items, summaries, and audits through the existing lifecycle process.

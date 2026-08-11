@@ -15,6 +15,25 @@ function read(file) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+function readJson(file) {
+  const source = read(file);
+  if (!source) return null;
+  try {
+    return JSON.parse(source);
+  } catch (error) {
+    failures.push(`Invalid JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
+function getSimplePlaceholders(value) {
+  return (value.match(/\{[A-Za-z][A-Za-z0-9]*\}/g) || []).sort();
+}
+
+function countToken(value, token) {
+  return value.split(token).length - 1;
+}
+
 function requireToken(source, token, label) {
   if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
 }
@@ -51,11 +70,18 @@ const claimUserAuthority = read('src/lib/public-menu-entry/claimUserAuthority.ts
 const priceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const slugBoundary = read('src/lib/public-menu-entry/claimProjectSlug.ts');
 const createPage = read('src/app/(website)/create-menu/page.tsx');
+const websiteLayout = read('src/app/(website)/layout.tsx');
+const websiteHeader = read('src/components/website/Header.tsx');
 const createClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
 const publicDraftId = read('src/lib/public-menu-entry/publicDraftId.ts');
 const previewPage = read('src/app/(website)/create-menu/preview/[draftId]/page.tsx');
 const previewClient = read('src/app/(website)/create-menu/PreviewClient.tsx');
 const successClient = read('src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx');
+const starterActivationBanner = read('src/components/onboarding/StarterActivationBanner.tsx');
+const noSubscriptionView = read('src/components/templates/main-app/billing/NoSubscriptionView.tsx');
+const mobileShell = read('src/components/mobile/MobileShell.tsx');
+const websiteStyles = read('src/styles/website.css');
+const websiteLanguageConfig = read('src/config/websiteLanguages.ts');
 const successUrl = read('src/lib/publicCreateMenu/successUrl.ts');
 const previewDraftResponse = read('src/lib/publicCreateMenu/previewDraftResponse.ts');
 const lastClaimHandoff = read('src/lib/publicCreateMenu/lastClaimHandoff.ts');
@@ -65,12 +91,17 @@ const spec = read('__docs__/public-menu-entry/public-menu-entry_spec.md');
 const impl = read('__docs__/public-menu-entry/public-menu-entry_impl.md');
 const firebaseDoc = read('__docs__/public-menu-entry/public-menu-entry_firebase.md');
 const mobileDoc = read('__docs__/public-menu-entry/public-menu-entry_mobile-support.md');
+const websiteDoc = read('__docs__/public-menu-entry/public-menu-entry_website.md');
+const helpDoc = read('__docs__/public-menu-entry/public-menu-entry_helpdoc.md');
+const marketingDoc = read('__docs__/public-menu-entry/public-menu-entry_marketing.md');
 const verificationDoc = read('__docs__/public-menu-entry/public-menu-entry_verification.md');
 const tracker = read('__docs__/audits/menulist-feature-flow-audit-tracker.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/changelog.md');
+const enUsLocale = read('public/locales/menulist.ai/en-US.json');
+const hiInLocale = read('public/locales/menulist.ai/hi-IN.json');
 
 [
   'verify:public-menu-entry-boundary',
@@ -243,10 +274,12 @@ forbidToken(createPage, 'WebsitePageStructuredData', 'Public Menu Entry noindex 
   'normalizePublicMenuDraftId(payload?.draftId)',
   'public_create_menu_request_failed',
   'buildWebsiteSignInPath(createMenuPath)',
+  "textAlign: 'start'",
 ].forEach((token) => requireToken(createClient, token, 'Public Menu Entry source chooser'));
 forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source chooser');
 forbidToken(createClient, "formData.append('pdf'", 'Public Menu Entry browser-only PDF transport');
 forbidToken(createClient, 'isNonEmptyString(payload?.draftId)', 'Public Menu Entry draft response boundary');
+forbidToken(createClient, "textAlign: 'left'", 'Public Menu Entry RTL-safe source chooser');
 
 requireToken(createMenuFeatures, 'ENABLE_PUBLIC_MENU_PDF_UPLOAD: true', 'Public Menu Entry PDF feature flag');
 [
@@ -328,6 +361,15 @@ requireToken(previewPage, 'if (!draftId) notFound();', 'Public Menu Entry previe
   'controller.abort();',
   'if (refreshTimer !== null) clearTimeout(refreshTimer);',
   'normalizePublicCreateMenuPreviewDraft(payload)',
+  'extractedData?.languages?.find((language) => language.isPrimary)?.code',
+  'getLocaleDirection(menuLanguage)',
+  'getLocalizedText(cat.name, menuLanguage, menuLanguage, cat.id)',
+  'getLocalizedText(item.name, menuLanguage, menuLanguage, item.id)',
+  'getLocalizedText(item.description, menuLanguage, menuLanguage)',
+  'getLocalizedText(attr.name, menuLanguage, menuLanguage, attr.id)',
+  'dir={menuDirection}',
+  'lang={menuLanguage}',
+  '<bdi>{item.price}</bdi>',
 ].forEach((token) => requireToken(previewClient, token, 'Public Menu Entry preview/claim client'));
 requireOrder(previewClient, [
   'if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS)',
@@ -337,6 +379,15 @@ requireOrder(previewClient, [
 ], 'Public Menu Entry poll cap before each status read');
 forbidToken(previewClient, '[fetchDraft, pollCount', 'Public Menu Entry preview polling');
 forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry preview response contract');
+forbidToken(previewClient, 'const lang = extractedData?.languages?.[0]?.code', 'Public Menu Entry primary menu language boundary');
+forbidToken(previewClient, 'item.name?.[lang]', 'Public Menu Entry localized menu preview read path');
+forbidToken(previewClient, 'item.description?.[lang]', 'Public Menu Entry localized menu preview read path');
+
+[
+  'text-align: start;',
+  'padding-inline-end: var(--ws-space-3);',
+  'inset-inline-end: 0.375rem;',
+].forEach((token) => requireToken(websiteStyles, token, 'Public Menu Entry direction-aware website styles'));
 
 [
   'export function normalizePublicCreateMenuPreviewDraft',
@@ -349,7 +400,6 @@ forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry 
   'CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS = 3_000',
   'await Promise.race([',
   'public_create_menu_success_session_refresh_failed',
-  "router.push('/use-menulist')",
   'parsePublicCreateMenuLastClaimHandoff(rawClaim)',
   'resolveStorePermissionSessionScope(session)',
   'claim.tenantId !== sessionScope.tenantScope.numericId',
@@ -362,9 +412,239 @@ forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry 
   'window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);',
   'const copiedTimerRef = useRef<number | null>(null);',
   'window.clearTimeout(copiedTimerRef.current);',
-  'const dashboardHandoffInFlightRef = useRef(false);',
+  'const authenticatedHandoffInFlightRef = useRef(false);',
+  "handleAuthenticatedHandoff('/billing')",
+  "handleAuthenticatedHandoff('/use-menulist')",
+  "trackWebsiteMarketingEvent('create_menu_keep_live_clicked'",
+  "t('CreateMenuSuccess.keepLiveCta')",
+  "? t('CreateMenuSuccess.title')",
+  ": t('CreateMenuSuccess.pendingTitle')",
+  "? t('CreateMenuSuccess.titleHighlight')",
+  ": t('CreateMenuSuccess.pendingTitleHighlight')",
+  "{hasMenuUrl && <AnimateOnScroll delay={0.22}>",
+  "{hasMenuUrl && <AnimateOnScroll delay={0.28}>",
+  'dir="ltr"',
+  "unicodeBidi: 'isolate'",
   'if (refreshTimer !== null) clearTimeout(refreshTimer);',
 ].forEach((token) => requireToken(successClient, token, 'Public Menu Entry success handoff'));
+if ((successClient.match(/dir="ltr"/g) || []).length < 2) {
+  failures.push('Public Menu Entry success URLs must both force LTR direction');
+}
+if ((successClient.match(/unicodeBidi: 'isolate'/g) || []).length < 2) {
+  failures.push('Public Menu Entry success URLs must both isolate bidi rendering');
+}
+if ((successClient.match(/textAlign: 'start'/g) || []).length < 3) {
+  failures.push('Public Menu Entry success content blocks must use direction-aware start alignment');
+}
+forbidToken(successClient, "textAlign: 'left'", 'Public Menu Entry RTL-safe success presentation');
+[
+  'const isEndingSoon = remainingDays !== null && remainingDays <= 3;',
+  "useTranslations('StarterActivation')",
+  "t('daysRemaining', { days: remainingDays })",
+  "t('sharingComplete')",
+  "t('sharingProgress', {",
+  "t('evidenceRecorded', {",
+  "t('evidenceEmpty')",
+  "t('publicMenuQrActive')",
+  "message={isEndingSoon ? t('endingSoonTitle') : t('activeTitle')}",
+  "minHeight: 44",
+  "type={isEndingSoon ? 'warning' : 'info'}",
+].forEach((token) => requireToken(starterActivationBanner, token, 'Public Menu Entry starter deadline presentation'));
+[
+  'Starter setup is active.',
+  'Starter setup ends today.',
+  'days left in starter setup.',
+  'Sharing steps are set.',
+  'How we know: MenuList recorded',
+  'Keep live',
+].forEach((token) => forbidToken(starterActivationBanner, token, 'Public Menu Entry localized starter banner'));
+[
+  "useTranslations('Billing')",
+  "useTranslations('StarterActivation')",
+  "starterT('noSubscriptionDescription')",
+  "starterT('choosePlanDescription')",
+  "billingT('viewPlans')",
+].forEach((token) => requireToken(noSubscriptionView, token, 'Public Menu Entry localized Billing state'));
+[
+  'Keep Your Menu Live',
+  'customer-facing surfaces available',
+  'Choose a plan to keep your official menu live and updated.',
+  'View Plans',
+].forEach((token) => forbidToken(noSubscriptionView, token, 'Public Menu Entry localized Billing state'));
+[
+  "useTranslations('StarterActivation')",
+  'isStarterActivationStore(storeDetails)',
+  "isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle')",
+  "isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription')",
+].forEach((token) => requireToken(mobileShell, token, 'Public Menu Entry starter-aware mobile subscription state'));
+[
+  '"keepLiveTitle"',
+  '"keepLiveBody"',
+  '"keepLiveCta"',
+  '"pendingTitle"',
+  '"pendingTitleHighlight"',
+].forEach((token) => {
+  requireToken(enUsLocale, token, 'Public Menu Entry English success copy');
+  requireToken(hiInLocale, token, 'Public Menu Entry Hindi success copy');
+});
+
+const websiteLocaleCodes = [...websiteLanguageConfig.matchAll(/code:\s*'([^']+)'/g)]
+  .map((match) => match[1]);
+if (websiteLocaleCodes.length !== 8 || new Set(websiteLocaleCodes).size !== websiteLocaleCodes.length) {
+  failures.push(`Public Menu Entry expected 8 unique configured website locales, found ${websiteLocaleCodes.length}`);
+}
+const websiteSourcePack = readJson('public/locales/menulist.ai/en-US.json');
+const createMenuNamespaceCounts = {
+  Header: 61,
+  Footer: 56,
+  ThemeSwitcher: 7,
+  LanguageSwitcher: 1,
+  Accessibility: 1,
+  AnalyticsConsent: 11,
+  CreateMenu: 115,
+  CreateMenuPreview: 32,
+  CreateMenuSuccess: 23,
+};
+const createMenuHeadlinePairs = {
+  CreateMenu: [
+    ['title', 'titleHighlight'],
+    ['disabledTitle', 'disabledHighlight'],
+    ['previewDisabledTitle', 'previewDisabledHighlight'],
+  ],
+  CreateMenuPreview: [['title', 'highlight']],
+  CreateMenuSuccess: [
+    ['title', 'titleHighlight'],
+    ['pendingTitle', 'pendingTitleHighlight'],
+  ],
+};
+const createMenuExactLocaleValues = {
+  CreateMenu: ['phonePlaceholder', 'linkPlaceholder'],
+  CreateMenuPreview: ['previewUrl'],
+};
+const createMenuProtectedTokens = [
+  'MenuList',
+  'WhatsApp',
+  'Google',
+  'Instagram',
+  'QR',
+  'PDF',
+  'JPEG',
+  'JPG',
+  'PNG',
+  'WebP',
+  'AI',
+  'FAQ',
+];
+const sharedChromeNamespaces = new Set([
+  'Header',
+  'Footer',
+  'ThemeSwitcher',
+  'LanguageSwitcher',
+  'Accessibility',
+  'AnalyticsConsent',
+]);
+const sharedChromeEnglishAllowlist = new Set([
+  'Header.aiMenuManager',
+  'Header.featureAiMenuManager',
+  'Footer.aiMenuManager',
+  'Footer.faq',
+  'Footer.legalHeading:es-ES',
+]);
+for (const locale of websiteLocaleCodes) {
+  const pack = readJson(`public/locales/menulist.ai/${locale}.json`);
+  for (const [namespace, expectedCount] of Object.entries(createMenuNamespaceCounts)) {
+    const sourceMessages = websiteSourcePack?.Website?.[namespace];
+    const localeMessages = pack?.Website?.[namespace];
+    if (!sourceMessages || !localeMessages) {
+      failures.push(`Public Menu Entry ${locale} missing Website.${namespace}`);
+      continue;
+    }
+    const sourceKeys = Object.keys(sourceMessages).sort();
+    const localeKeys = Object.keys(localeMessages).sort();
+    if (sourceKeys.length !== expectedCount) {
+      failures.push(`Public Menu Entry en-US Website.${namespace} expected ${expectedCount} keys, found ${sourceKeys.length}`);
+    }
+    if (JSON.stringify(sourceKeys) !== JSON.stringify(localeKeys)) {
+      failures.push(`Public Menu Entry ${locale} Website.${namespace} must exactly match en-US keys`);
+      continue;
+    }
+    for (const key of sourceKeys) {
+      const sourceValue = sourceMessages[key];
+      const localeValue = localeMessages[key];
+      if (typeof localeValue !== 'string' || localeValue.trim().length === 0) {
+        failures.push(`Public Menu Entry ${locale} Website.${namespace}.${key} must be a non-empty string`);
+        continue;
+      }
+      if (JSON.stringify(getSimplePlaceholders(sourceValue)) !== JSON.stringify(getSimplePlaceholders(localeValue))) {
+        failures.push(`Public Menu Entry ${locale} Website.${namespace}.${key} changed interpolation placeholders`);
+      }
+      const sharedChromeKey = `${namespace}.${key}`;
+      if (
+        locale !== 'en-US'
+        && sharedChromeNamespaces.has(namespace)
+        && localeValue === sourceValue
+        && !sharedChromeEnglishAllowlist.has(sharedChromeKey)
+        && !sharedChromeEnglishAllowlist.has(`${sharedChromeKey}:${locale}`)
+      ) {
+        failures.push(`Public Menu Entry ${locale} Website.${sharedChromeKey} must not fall back to English`);
+      }
+      for (const token of createMenuProtectedTokens) {
+        if (countToken(sourceValue, token) !== countToken(localeValue, token)) {
+          failures.push(`Public Menu Entry ${locale} Website.${namespace}.${key} changed protected token ${token}`);
+        }
+      }
+      if (/[\r\n]|%\d+\$s|__ML_|GOOGTRANS|TRANSLATE_TOKEN/i.test(localeValue)) {
+        failures.push(`Public Menu Entry ${locale} Website.${namespace}.${key} contains translation-workflow residue`);
+      }
+    }
+    for (const key of createMenuExactLocaleValues[namespace] || []) {
+      if (localeMessages[key] !== sourceMessages[key]) {
+        failures.push(`Public Menu Entry ${locale} Website.${namespace}.${key} must preserve the exact source sample`);
+      }
+    }
+  }
+  for (const [namespace, pairs] of Object.entries(createMenuHeadlinePairs)) {
+    const localeMessages = pack?.Website?.[namespace];
+    if (!localeMessages) continue;
+    for (const [titleKey, highlightKey] of pairs) {
+      const title = localeMessages[titleKey];
+      const highlight = localeMessages[highlightKey];
+      if (
+        typeof title !== 'string'
+        || typeof highlight !== 'string'
+        || !title.toLocaleLowerCase(locale).includes(highlight.toLocaleLowerCase(locale))
+      ) {
+        failures.push(`Public Menu Entry ${locale} Website.${namespace}.${highlightKey} must occur in ${titleKey}`);
+      }
+    }
+  }
+}
+[
+  "getTranslations('Website')",
+  "<SkipToContentLink>{t('Accessibility.skipToContent')}</SkipToContentLink>",
+].forEach((token) => requireToken(websiteLayout, token, 'Public Menu Entry localized website accessibility'));
+forbidToken(websiteLayout, '<SkipToContentLink />', 'Public Menu Entry localized website accessibility');
+[
+  'ws-desktop-nav ws-desktop-nav--primary',
+  'ws-desktop-nav ws-desktop-nav--actions',
+].forEach((token) => requireToken(websiteHeader, token, 'Public Menu Entry localized header fit'));
+[
+  '.ws-desktop-nav--primary',
+  '.ws-desktop-nav--actions',
+  '@media (max-width: 1279px)',
+  'inset-inline-end: 0;',
+  '[dir="rtl"] .ws-drawer-panel',
+  '[dir="rtl"] .ws-drawer-panel--open',
+  'transform: translateX(-100%);',
+].forEach((token) => requireToken(websiteStyles, token, 'Public Menu Entry localized header and RTL drawer layout'));
+[
+  '"StarterActivation"',
+  '"daysRemaining"',
+  '"sharingProgress"',
+  '"evidenceRecorded"',
+  '"noSubscriptionDescription"',
+  '"choosePlanDescription"',
+].forEach((token) => requireToken(enUsLocale, token, 'Public Menu Entry owner starter copy'));
 [
   'MENULIST_TENANT_BASE_DOMAINS',
   'PLATFORM_DOMAIN_ALIASES',
@@ -418,6 +698,24 @@ for (const [source, label] of [
   ].forEach((token) => requireToken(source, token, label));
   requireToken(source, 'PDF', label);
 }
+
+[
+  [readme, 'Public Menu Entry README'],
+  [spec, 'Public Menu Entry spec'],
+  [impl, 'Public Menu Entry implementation doc'],
+  [websiteDoc, 'Public Menu Entry website doc'],
+  [helpDoc, 'Public Menu Entry help doc'],
+  [marketingDoc, 'Public Menu Entry marketing doc'],
+  [changelog, 'changelog'],
+].forEach(([source, label]) => requireToken(source, 'Keep this menu online', label));
+[
+  [readme, 'Public Menu Entry README'],
+  [spec, 'Public Menu Entry spec'],
+  [impl, 'Public Menu Entry implementation doc'],
+  [websiteDoc, 'Public Menu Entry website doc'],
+  [helpDoc, 'Public Menu Entry help doc'],
+  [mobileDoc, 'Public Menu Entry mobile doc'],
+].forEach(([source, label]) => requireToken(source, 'QR Code', label));
 
 [
   '| 23 | Public Menu Entry and create-menu claim flow | Large | Local source complete |',

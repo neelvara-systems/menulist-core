@@ -410,7 +410,7 @@
     "errorLoadingAnalytics": "Fejl under indlæsning af Analytics",
     "owner": {
       "viewing": "Viser:",
-      "menu": "Menu Menu Menu",
+      "menu": "Menu",
       "unableToLoad": "Kan ikke indlæse kontrolpanelet",
       "refreshOrContactSupport": "Prøv venligst at opdatere siden. Kontakt support, hvis problemet fortsætter.",
       "settledTabHelper": "Fuldfør kun analyseindlæsning, når du åbner denne fane. Efter den første indlæsning bruger denne enhed de gemte resultater, indtil placeringen fuldfører sin næste opdatering ved slutningen af ​​dagen.",
@@ -428,7 +428,8 @@
         "daily": "Forrige dag",
         "weekly": "Sidste 7 dage",
         "monthly": "Denne måned",
-        "overall": "Samlet"
+        "overall": "Samlet",
+        "graph": "Grafer"
       },
       "today": {
         "noMenuActivityToday": "Ingen menuaktivitet endnu i dag.",
@@ -448,22 +449,22 @@
       "metrics": {
         "itemClicks": "Vareklik",
         "engagedSessions": "Sessioner med aktivitet",
-        "actionRate": "Action Rate er en indikator for, hvor hurtigt der tages handling.",
+        "actionRate": "Aktionsrate",
         "customerActions": "Kundehandlinger",
         "searches": "Søgninger",
         "noResultSearches": "Søgninger uden resultat",
         "unavailableInterest": "Utilgængelig interesse",
         "topLanguage": "Topsprog",
-        "smartPicksShown": "Smart picks vist",
+        "smartPicksShown": "Smart Picks Udstillet",
         "smartPicksClicks": "Smart Picks-klik",
         "smartPicksTaps": "Smart Picks-tryk",
-        "smartPicksUsed": "Smart picks brugt",
-        "smartPicksEngagement": "Smart Picks Engagement Engagering med smarte valg",
+        "smartPicksUsed": "Smart Picks Brugte",
+        "smartPicksEngagement": "Smart Picks Forpligtelse",
         "totalMenuScans": "Samlet menuscanninger",
         "totalItemClicks": "Samlet vareklik",
         "activeDays": "Aktive dage",
         "daysActive": "Dage aktive",
-        "avgDailyScans": "Gns. Daglige scanninger",
+        "avgDailyScans": "Daglige skanninger",
         "smartPicksActive": "Smart Picks er aktive",
         "engagementRate": "Engagementrate",
         "topItem": "Topelement",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Ingen aktivitet registreret i går",
         "noAnalyticsYet": "Ingen data endnu. Dine analyser vises, når kunderne begynder at se.",
-        "noItemClicksYet": "Ingen elementklik endnu"
+        "noItemClicksYet": "Ingen elementklik endnu",
+        "lowActivityTitle": "Lav aktivitet",
+        "lowActivityDescription": "Der var ikke nok aktivitet til at drage en nyttig konklusion for denne periode, men der er dog sket en del.",
+        "noWeeklyData": "Der er endnu ikke nogen afviklet menuaktivitet tilgængelig i de sidste 7 dage.",
+        "noMonthlyData": "Der er endnu ingen afgjort menuaktivitet tilgængelig for denne måned."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change} % i forhold til sidste uge"
+        "vsLastWeek": "{sign}{change} % i forhold til sidste uge",
+        "changeVsLastWeek": "{change} vs sidste uge"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# dag for aktivitet registreret} other {# dages aktivitet registreret}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ja",
         "no": "Nej",
-        "notAvailable": "Ikke relevant",
+        "notAvailable": "N/A",
         "active": "Aktiv",
         "lowActivity": "Lav aktivitet",
         "noData": "Ingen data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Venter på første scanning",
         "weeklyInsights": "Ugentlig indsigt",
         "last4WeeksComparison": "Sidste 4 ugers sammenligning",
-        "historicalDataWillAppear": "Historiske data vises efter et par uger"
+        "historicalDataWillAppear": "Historiske data vises efter et par uger",
+        "statusMessages": {
+          "working": "Kunderne bruger dit nuværende menu.",
+          "low_activity": "Kundeaktiviteten er stadig under opbygning, men din nuværende menu vil fortsat være tilgængelig. Din aktuelle menu vil stadig være til rådighed, men den vil ikke blive ændret.",
+          "no_data": "Aktivitet vil blive vist, når kunderne begynder at åbne din menu."
+        }
       },
       "aiSummary": {
         "daily": "Et overblik over den foregående dag",
         "weekly": "Kort overblik over denne uge",
-        "monthly": "Opsummering af denne måned"
+        "monthly": "Opsummering af denne måned",
+        "localized": {
+          "noActivity": "Der blev ikke registreret nogen afregnet kundeaktivitet i denne periode, og der er derfor ingen oplysninger om afregninger.",
+          "menuViews": "Kunderne åbnede menuen {count} gange.",
+          "itemTaps": "Kunderne har trykket på menupunkter {count} gange.",
+          "customerActions": "Kunderne har gennemført {count} endelige handlinger.",
+          "searches": "Kunder har søgt på menuen {count} gange.",
+          "unavailableInterest": "Ikke-tilgængelige elementer har modtaget {count} tryk."
+        }
       },
       "actions": {
         "call": "Ring",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} besøg · {rate} %",
         "markDone": "Markér som udført",
         "markDoneFailed": "Denne handling kunne ikke markeres som udført. Prøv igen.",
-        "markDoneSaved": "Markeret som udført. Resultaterne opdateres, når den næste analyseoversigt er klar."
+        "markDoneSaved": "Markeret som udført. Resultaterne opdateres, når den næste analyseoversigt er klar.",
+        "bestSourceStatsFormatted": "· {visits} besøg · {rate} handlingshastighed",
+        "bestSourceMobileFormatted": "Bedste kilde lige nu: {source} · {visits} besøg · {rate} handlingsprocent",
+        "sourceQualityTagFormatted": "{source}: {visits} besøg · {sessions} handlingssessioner · {rate} sessioner.",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} besøg · {rate}",
+        "priorities": {
+          "high": "Høj prioritet",
+          "medium": "Mellem prioritet",
+          "low": "Lav prioritet"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "Den tilgængelige aktivitet understøtter en tydelig menukontrol."
+          },
+          "watch": {
+            "label": "Hold øje",
+            "message": "Nogle aktiviteter kan have brug for endnu en kontrol, før menuen ændres."
+          },
+          "no_data": {
+            "label": "Flere data er nødvendige",
+            "message": "Vent på mere afklaret kundeaktivitet, før du drager en konklusion."
+          }
+        },
+        "localizedActions": {
+          "reason": "På baggrund af den seneste kundeaktivitet.",
+          "availability": {
+            "title": "Gennemgå varens tilgængelighed.",
+            "description": "Kontroller, om utilgængelige eller skjulte elementer skal gendannes eller holdes ude af syne.",
+            "action": "Gennemgå tilgængelighed"
+          },
+          "customerActions": {
+            "title": "Gennemgå kundehandlinger.",
+            "description": "Kontroller menuoplysningerne og de links, som kunderne bruger, før de foretager sig noget.",
+            "action": "Gennemgå kundehandlinger."
+          },
+          "details": {
+            "title": "Forbedre varens detaljer.",
+            "description": "Gennemgå varenavne, valgmuligheder, beskrivelser og billeder, der kan have brug for tydeligere oplysninger.",
+            "action": "Gennemgå varens detaljer."
+          },
+          "general": {
+            "title": "Vent på et klarere signal.",
+            "description": "Hold den aktuelle menu stabil, indtil der er mere afgjort aktivitet til rådighed.",
+            "action": "Gennemgå senere."
+          },
+          "menuOrder": {
+            "title": "Gennemgå menurækkefølgen.",
+            "description": "Kontroller, om vigtige varer og kategorier er nemme for kunderne at finde, og om de er placeret på en måde, der gør det nemt for dem at finde dem.",
+            "action": "Gennemgå menurækkefølgen."
+          },
+          "pricing": {
+            "title": "Gennemgå prissætningen",
+            "description": "Tjek priserne forbundet med det seneste kundeinteressesignal.",
+            "action": "Gennemgå priserne Gennemse priser"
+          },
+          "search": {
+            "title": "Gennemgå kundesøgninger.",
+            "description": "Kontroller søgninger, der måske ikke fører kunderne til et nyttigt menuresultat.",
+            "action": "Oversigt søgninger"
+          },
+          "source": {
+            "title": "Gennemgå kundeindgangskilder.",
+            "description": "Kontroller, om offentlige links og QR placeringer peger kunderne til den aktuelle menu.",
+            "action": "Gennemgå offentlige links."
+          },
+          "timing": {
+            "title": "Gennemgå menuens timing.",
+            "description": "Kontroller, om tidsindstillede kategorier og tilgængelighed stemmer overens, når kunderne søger efter dem.",
+            "action": "Anmeldelse Timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Markeret som udført.",
+            "message": "Resultatet vil blive kontrolleret, når der er mere afregnet aktivitet tilgængelig."
+          },
+          "improved": {
+            "label": "Forbedret",
+            "message": "Den næste indstillede check viser en forbedring."
+          },
+          "no_clear_change": {
+            "label": "Ingen klar ændring.",
+            "message": "Den næste check viste ikke en klar ændring, og der blev derfor ikke foretaget nogen betaling."
+          },
+          "not_enough_data": {
+            "label": "Flere data er nødvendige",
+            "message": "Der er ikke nok etableret aktivitet til at bedømme denne ændring endnu."
+          },
+          "pending": {
+            "label": "Vedligeholdelse check",
+            "message": "MenuList vil tjekke dette, når der er mere afviklet aktivitet tilgængelig."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menudetaljer",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Utilgængelig interesse",
           "languages": "Sprog",
           "filters": "Filtre",
-          "smartPicks": "Smarte valg",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Handlinger efter åbningstid"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menuvisninger",
-          "itemTaps": "Tryk på elementer",
+          "itemTaps": "Tryk på varer",
           "menuSessions": "Menu sessioner",
           "engagedSessions": "Sessioner med aktivitet",
           "actionSessions": "Handlingssessioner",
@@ -617,6 +729,12 @@
           "closed": "Handlinger når lukket",
           "unknown": "Handlinger, når timestatus ikke var tilgængelig",
           "closedShare": "{rate}% af alle registrerede handlinger skete, mens de var lukket"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} Utilgængelige tæpper",
+          "strongItem": "{count} Tryk på varer",
+          "needsWork": "{count} visninger, ingen tryk.",
+          "gettingAttention": "{count} visninger"
         }
       },
       "smartPicks": {
@@ -654,9 +772,9 @@
         "facebook": "Facebook",
         "website": "Websted",
         "sourceViews": "{count} visninger",
-        "sourceMenu": "Menuen {count} er åben.",
+        "sourceMenu": "{count} menu",
         "sourceActions": "{count} handlinger",
-        "sourceLinks": "{count} links links links Links",
+        "sourceLinks": "{count} Venstre",
         "languages": "OBP-sprog",
         "pageOpens": "{count}-siden åbnes",
         "stayedAfterSwitch": "{count} forblev efter skiftet",
@@ -706,21 +824,21 @@
         "shortcutBreakdown": "Genvejsoversigt",
         "installsByPlatform": "Installationer efter platform",
         "appStickiness": "App klæbrighed",
-        "returningOpens30d": "Returnering åbner (30d)",
-        "avgOpensPerInstall": "Gns. åbninger pr. installation",
+        "avgOpensPerInstall": "Avg åbner per install",
         "iosManualInstalls": "manuelle iOS-installationer",
         "shortcuts": {
           "menu": "Vis menu",
-          "reservation": "Reservation er påkrævet.",
+          "reservation": "Reservation",
           "order": "Bestil online"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Android Android-enheder",
+          "android": "Android",
           "desktop": "Skrivebord",
           "other": "Andet"
-        }
+        },
+        "tryAgainLater": "Prøv igen senere."
       },
       "projectSelector": {
         "deleted": "Slettet",
@@ -739,7 +857,7 @@
         "visitorTrends": "Baseret på besøgstendenser",
         "customerLoyalty": "Kundeloyalitet",
         "returnPatterns": "Baseret på returmønstre",
-        "businessHealth": "Erhvervsliv Sundhed Business Health",
+        "businessHealth": "Bedrifts sundhed",
         "overallTrends": "Baseret på overordnede tendenser",
         "states": {
           "strong": "Stærk",
@@ -761,7 +879,8 @@
         "copied": "Kopieret",
         "copy": "Kopiér",
         "openGoogle": "Åbn Google",
-        "done": "Udført"
+        "done": "Udført",
+        "couldNotOpen": "Kunne ikke åbne Google virksomhedsprofil."
       },
       "behaviorNudge": {
         "linkCopied": "Link kopieret",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Gennemgå det vigtigste problem",
         "repairMenu": "Reparationsmenu",
         "review": "Anmeldelse",
-        "repair": "Reparation"
+        "repair": "Reparation",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# element mangler en beskrivelse.} other {# elementer mangler beskrivelser.}}",
+            "ok": "Alle genstande har beskrivelser.",
+            "help": "Beskrivelser hjælper kunderne med at forstå hvert tilbud."
+          },
+          "images": {
+            "warning": "{count, plural, one {# element mangler et billede.} other {# elementer er manglende billeder.}}",
+            "ok": "Alle emner har billeder.",
+            "help": "Billeder kan hjælpe kunderne med at vælge hurtigere."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Kategori # mangler et ikon.} other {# kategorier mangler ikoner.}}",
+            "ok": "Alle kategorier har ikoner.",
+            "help": "Ikoner gør kategorier nemmere at gennemse."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# Et produkt mangler en pris} other {# Billeder mangler priser}}",
+            "ok": "Alle varer har en pris.",
+            "help": "Kunderne sammenligner priser, før de tager et valg."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# varen er skjult for kunderne.} other {# varer er skjult for kunderne.}}",
+            "ok": "Ingen elementer er skjult.",
+            "help": "Skjulte elementer vises ikke i den offentlige menu, men kan ses af brugeren."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# prisen skal gennemgås.} other {# priserne skal gennemgås.}}",
+            "ok": "Priserne ligger inden for det forventede interval.",
+            "help": "MenuList sammenligner priser på enkeltvarer inden for samme kategori. Markér en tilsigtet pris som anmeldt."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# element mangler oversættelser.} other {# elementer mangler oversættelser.}}",
+            "ok": "Alle synlige elementer er oversat.",
+            "help": "Nogle elementer er ufuldstændige på udvalgte menusprog."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menudetaljer mangler oversættelser.} other {# menuoplysninger mangler oversættelser.}}",
+            "ok": "Menuoplysninger er oversat.",
+            "help": "Menunavnet, beskrivelsen eller bemærkningerne er ufuldstændige på udvalgte menusprog."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Kopieret link",
+        "direct": "Direkte:",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Kits af menu",
+        "nativeShare": "Enhedshåndtering",
+        "obp": "Forretningsside",
+        "other": "Andet",
+        "qr": "QR Kode",
+        "shortcut": "App forkortelse",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Bedrifts sundhed",
+        "open": "Åben forretning sundhed",
+        "today": "I dag",
+        "latestActivity": "Seneste aktivitet",
+        "noActionNeeded": "Ingen handling nødvendig",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Har brug for opmærksomhed",
+          "needs_review": "Behov for anmeldelse",
+          "insufficient_data": "Flere data er nødvendige",
+          "stale": "Vi har brug for en frisk check",
+          "not_ready": "At være klar"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# kundeorienterede detaljer skal gennemgås.} other {# kundeoplysninger skal gennemgås.}}",
+          "stable": {
+            "headline": "Dine offentlige oplysninger er stabile.",
+            "message": "Der er ikke noget kunderelateret problem, der kræver handling i det seneste tjek."
+          },
+          "watch": {
+            "headline": "En detalje kan have brug for opmærksomhed.",
+            "message": "Gennemgå den foreslåede kontrol, før du ændrer offentlige oplysninger."
+          },
+          "needs_review": {
+            "headline": "Gennemgå kundeorienterede oplysninger.",
+            "message": "En eller flere offentligt tilgængelige oplysninger bør tjekkes, og de skal være korrekte."
+          },
+          "insufficient_data": {
+            "headline": "Der er brug for mere aktivitet.",
+            "message": "Hold den aktuelle information stabil, mens MenuList indsamler et nyttigt signal."
+          },
+          "stale": {
+            "headline": "Erhvervssundhed har brug for et friskt tjek.",
+            "message": "Det sidste tjek er gammelt, men dine nuværende offentlige oplysninger forbliver uændrede. Dine nuværende oplysningers gyldighed er ikke længere gældende."
+          },
+          "not_ready": {
+            "headline": "Business Health gør sig klar til at tage fat på det nye år.",
+            "message": "Den første butikskontrol vil blive vist her, når den er klar."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Tjek menu kildekode.",
+            "message": "Der blev ikke fundet nogen aktiv offentlig menukilde. Kontroller menuen, før du deler den.",
+            "title": "Menukilden skal kontrolleres."
+          },
+          "low_latest_activity": {
+            "action": "Tjek delingslinks.",
+            "message": "Kundeaktiviteten er lav. Tjek, om der er kunder i butikken. QR, Google, Instagram, WhatsApp, og links til websteder.",
+            "title": "Kundeaktiviteten er lav."
+          },
+          "unavailable_item_taps": {
+            "action": "Tjek ikke-tilgængelige varer.",
+            "message": "Kunderne viste interesse for ikke-tilgængelige varer, så genopfyld dem eller hold dem skjult.",
+            "title": "Ikke-tilgængelige varer fik opmærksomhed."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Gennemgå gæsteanmeldelser.",
+            "message": "Gæstefeedback skal godkendes af ejeren, før de offentlige oplysninger kan ændres.",
+            "title": "Gæstefeedback skal tjekkes."
+          },
+          "default": {
+            "action": "Gennemgå detaljer",
+            "message": "En kundeorienteret detalje har brug for et ejerkontrol.",
+            "title": "En detalje skal kontrolleres."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# private feedback-element skal kontrolleres.} other {# private feedback-emner skal kontrolleres.}}",
+          "clear": "Den private feedback er klar."
+        },
+        "freshness": {
+          "notReady": "Virksomhedens sundhed er ikke i realtid.Det første butikstjek vil vise datadatoen her. Forretningens sundhed viser ikke realtid, men den første virksomhedskontrol vil vise datoen her",
+          "throughDate": "Bruger data gennem {date}. I dag er muligvis ikke færdig endnu.",
+          "latest": "Bruger de senest tilgængelige MenuList-data. Dagens er muligvis ikke færdig endnu."
+        },
+        "periods": {
+          "today": "I dag",
+          "yesterday": "Forrige dag",
+          "thisWeek": "Denne uge",
+          "lastWeek": "Sidste uge",
+          "thisMonth": "Denne måned",
+          "lastMonth": "Sidste måned",
+          "last7Days": "Seneste 7 dage",
+          "last30Days": "Seneste 30 dage",
+          "overall": "Samlet"
+        },
+        "metrics": {
+          "menuViews": "Menuvisninger",
+          "topDemand": "Størst efterspørgsel",
+          "topDemandDetail": "Forfremmelse: {count} {signal}",
+          "bestSource": "Bedste kilde:",
+          "bestSourceDetail": "Opdater link: {count} besøgte"
+        },
+        "signals": {
+          "views": "Udsigten",
+          "clicks": "Tryk",
+          "attention": "opmærksomhed signaler opmærksamhed."
+        },
+        "page": {
+          "description": "Daglig forretningsstatus og kundekonsultationskontrol.",
+          "latestCheck": "AI health check",
+          "loading": "Ladning",
+          "loadingMessage": "Sikkerhed i erhvervslivet...",
+          "notReady": "Business Health er ikke klar endnu, men vi arbejder på det.",
+          "loadErrorTitle": "Business Health kunne ikke indlæse.",
+          "loadErrorDescription": "Opdater siden, og prøv igen.",
+          "refresh": "Opdater",
+          "needsAttention": "Har brug for opmærksomhed",
+          "desktopSettingsOnly": "Åbn dette fra desktopindstillingerne."
+        },
+        "scope": {
+          "title": "Erhverv Sundhed Omfang Virksomhedssundhed",
+          "allMenus": "Alle menuer",
+          "selectedMenu": "Valgt menu",
+          "menuCount": "{count, plural, one {# menuen på denne placering.} other {# menuer på denne placering.}}",
+          "locationLevel": "Location-niveau udsigt",
+          "inactiveMenu": "Inaktiv menu Inaktivt menukort",
+          "thisMenuOnly": "Menuen er kun",
+          "allMenusInLocation": "Alle menuer på denne placering er åbne.",
+          "thisMenuHelper": "Spørgsmål og aktiviteter bruger dette menu.",
+          "allMenusHelper": "Spørgsmål og aktivitet bruger alle menuer på denne placering.",
+          "dialogDescription": "Vælg alle menuer eller én menu for aktivitet og kontrol, og vælg derefter en af dem.",
+          "all": "Alle",
+          "close": "Luk"
+        },
+        "locations": {
+          "title": "Steder Placeringer",
+          "loading": "Indlæser steder...",
+          "empty": "Der er endnu ingen placeringsoversigt.",
+          "storeFallback": "Placering {id}",
+          "checkedOn": "Kontrollerede {date}.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# kundeorienteret kontrol skal gennemgås.} other {# kundeorienterede kontroller skal gennemgås.}}",
+          "statusReason": {
+            "stable": "Intet kundeproblem kræver handling.",
+            "watch": "En kundeorienteret detalje kan have brug for opmærksomhed.",
+            "needs_review": "Detaljer, der er rettet mod kunden, skal gennemgås.",
+            "insufficient_data": "Der er brug for mere kundeaktivitet for at få et nyttigt tjek, og det kræver en højere grad af kundeinddragelse.",
+            "stale": "Denne placering har brug for en frisk check.",
+            "not_ready": "Det første tjek af placeringen er ved at blive klargjort."
+          }
+        },
+        "assistant": {
+          "title": "Spørg sundhed i erhvervslivet",
+          "askShort": "Spørg",
+          "englishOnlyTitle": "Spørgsmålene er i øjeblikket tilgængelige på engelsk.",
+          "englishOnlyDescription": "Din status og dine kontroller er lokaliseret.Skift app-sproget til engelsk, når du stiller spørgsmål om Business Health.Skriv et svar på spørgsmålet, og klik på \"Send\".",
+          "notReady": "Business Health vil svare, når det seneste tjek er afsluttet og de har fået svar på deres spørgsmål.",
+          "suggestedUnavailable": "De foreslåede spørgsmål er ikke tilgængelige i øjeblikket.",
+          "freeTextUnavailable": "Frie spørgsmål er ikke tilgængelige i øjeblikket.",
+          "answerError": "Bedriftssundheden kunne ikke svare på det.",
+          "suggestedQuestions": "Foreslåede spørgsmål til spørgeskemaundersøgelsen",
+          "followUps": "Du kan spørge næste gang.",
+          "you": "Du er",
+          "empty": "Vælg et spørgsmål eller stil et spørgsmål om din virksomhed.",
+          "placeholderReady": "Spørg om i dag, denne uge, menu opmærksomhed eller næste checks.",
+          "placeholderMobile": "Spørg om i dag eller denne uge.",
+          "placeholderPending": "Tilgængelig efter den seneste kontrol.",
+          "send": "Send spørgsmål Indsend spørgsmål",
+          "cachedFacts": "Baseret på cachelagrede MenuList forretningsfakta.",
+          "questions": {
+            "checks": "Hvad skal kontrolleres?",
+            "today_stats": "Hvordan går det i dag?",
+            "this_week_stats": "Hvad skete der i denne uge?",
+            "top_item": "Hvilket produkt får mest opmærksomhed?",
+            "last_week_stats": "Hvad skete der i sidste uge?",
+            "this_month_stats": "Hvordan er det i denne måned?",
+            "last_month_stats": "Hvad skete der i sidste måned?",
+            "public_menu_status": "Er min offentlige menu i orden?",
+            "profile_status": "Er min virksomhedsprofil komplet?",
+            "feedback_reviews": "Har du nogen gæstefeedback, du vil tjekke?",
+            "feedback_recent": "Hvad har gæsterne sagt for nylig?",
+            "default": "Hvad skal jeg tjekke næste gang?"
+          }
+        },
+        "sources": {
+          "title": "Datakilder Datakilders navn:",
+          "menuProjects": "Menu projekter",
+          "ownerAnalytics": "Ejeraktivitet Ejer aktivitet",
+          "guestFeedback": "Gæst feedback Gæstefeedback",
+          "storeSettings": "Forretningsmæssige indstillinger.",
+          "menuListData": "MenuList-data",
+          "updatedOn": "Opdateret {date}",
+          "latest": "Seneste tilgængelige data"
+        },
+        "publicTruth": {
+          "title": "Officiel kunde kilde.",
+          "checking": "Kontrollerer.",
+          "checkingFacts": "Kontrollerer MenuList offentlige fakta...",
+          "checkedMenu": "Menuen er markeret: {name}",
+          "boundary": "Kontrolleret ud fra aktuelle MenuList forretnings- og menudata. Eksterne platforme forbliver ejerbekræftede.",
+          "boundaryShort": "Eksterne platforme forbliver ejer-bekræftet.",
+          "historyTitle": "Offentlig information historie.",
+          "historyBoundary": "Bruger kun MenuList forretnings- og menufakta. Ingen eksterne websteder scannes.",
+          "historyBoundaryShort": "MenuList Kun fakta. Ingen eksterne websteder blev scannet.",
+          "refreshErrorTitle": "Kundekildekontrol kunne ikke opdatere.",
+          "refreshErrorDescription": "De sidste tilgængelige MenuList fakta vises stadig nedenfor.",
+          "historyRefreshError": "Historien om offentlig information kunne ikke fornyes.",
+          "historyLoadError": "Den offentlige informationshistorie kunne ikke lastes.",
+          "historyErrorDescription": "Den sidst gemte rapport vises stadig, når den er tilgængelig.",
+          "notRun": "Ikke løb",
+          "lastSaved": "Sidst gemt {date}",
+          "noSavedReport": "Ingen gemt rapport endnu.",
+          "noSavedReportDescription": "Kør kontrollen for at gemme den første rapport for denne placering.",
+          "downloadEnglishReport": "Download engelsk rapport",
+          "downloadEnglishShort": "Engelsk rapport",
+          "runCheck": "Kør check Kør kontrol",
+          "currentFix": "Nuværende fix-emne",
+          "nextFixes": "Næste Public Fix",
+          "none": "Ingen",
+          "attentionCount": "{count, plural, one {# element skal kontrolleres.} other {# elementer skal kontrolleres.}}",
+          "readyModuleCount": "Klar {count}/{total}",
+          "missingCount": "Mangler {count}",
+          "checkCount": "Tjek {count}",
+          "savedCount": "Gemte {count}/{total}",
+          "modulesReady": "{count}/{total} moduler klar til brug.",
+          "status": {
+            "ready": {
+              "label": "Klar til",
+              "message": "Din officielle kundekilde har det grundlæggende, som kunderne har brug for."
+            },
+            "missing_basics": {
+              "label": "Manglende grundlæggende ting",
+              "message": "Menu, åbningstider, priser, kampagner eller kundelink detaljer skal være opmærksomme før deling med andre."
+            },
+            "unclear": {
+              "label": "Skal tjekkes.",
+              "message": "De fleste grundlæggende ting er til stede, men en eller flere offentlige fakta skal stadig kontrolleres."
+            }
+          },
+          "metrics": {
+            "readyModules": "Klare moduler.",
+            "missingFacts": "Manglende fakta",
+            "checkedMenu": "Afkrydset menu afkrydses.",
+            "savedReports": "Beskyttede rapporter"
+          },
+          "results": {
+            "present": "Klar til",
+            "missing": "Manglende",
+            "unclear": "Tjek",
+            "not_applicable": "Ikke nødvendigt.",
+            "not_checked": "Ikke kontrolleret"
+          },
+          "moduleStatus": {
+            "ready": "Klar til",
+            "needs_attention": "Manglende",
+            "check": "Tjek",
+            "not_checked": "Ikke kontrolleret"
+          },
+          "facts": {
+            "business_identity": "Virksomhedsnavn Forretningsnavn",
+            "menu_or_service_source": "Menu eller service liste.",
+            "prices": "Priserne",
+            "hours": "Klokker",
+            "location": "Beliggenhed Placering",
+            "contact": "Kontakt",
+            "customer_actions": "Kundehandlinger Kundeaktiviteter",
+            "public_link": "Kundelink Kunde-link",
+            "photos": "Billeder",
+            "machine_readable_source": "Søgevenlige detaljer"
+          },
+          "evidence": {
+            "owner_entered": "Indtastet i denne check.",
+            "owner_selected": "Udvalgt af ejeren.",
+            "source_text_hint": "Findes i den leverede kilde.",
+            "valid_public_url": "Det offentlige link er gyldigt.",
+            "invalid_public_url": "Kommunen har brug for korrigering.",
+            "menulist_store": "Kontrollerede aktuelle MenuList forretningsindstillinger.",
+            "menulist_project": "Den valgte eller standardmenuen MenuList blev kontrolleret.",
+            "menulist_summary": "Den aktuelle MenuList menuoversigt er blevet kontrolleret.",
+            "menulist_public_route": "Kontrollerede aktuelle MenuList kunde-link indstillinger.",
+            "menulist_index_gate": "Kontrollerede de aktuelle MenuList offentlige opdagelsesregler.",
+            "not_provided": "Denne kendsgerning mangler i de aktuelle MenuList-data.",
+            "not_checked": "Dette faktum blev ikke sikkert kontrolleret fra de aktuelle MenuList-data.",
+            "priceNotLoaded": "Åbn den valgte menu én gang, så MenuList kan tjekke priserne."
+          },
+          "moduleEvidence": {
+            "ready": "Aktuelle MenuList data viser, at dette område er klar.",
+            "needs_attention": "De aktuelle MenuList-data viser, at der mangler nødvendige oplysninger.",
+            "check": "Tjek dette område, før kunderne stoler på det.",
+            "not_checked": "MenuList kunne ikke fuldt ud kontrollere dette område fra de aktuelle data."
+          },
+          "setupReason": {
+            "needs_attention": "Påkrævede kundeorienterede oplysninger mangler.",
+            "check": "Tjek dette, før kunder stoler på det.",
+            "not_checked": "MenuList kunne ikke kontrollere dette fuldt ud fra de aktuelle data."
+          },
+          "targetActions": {
+            "basic_settings": "Åbn virksomhedsoplysninger.",
+            "domain_settings": "Åbn kundelinket.",
+            "hours_edit": "Åbningstider:",
+            "menu_tab": "Åbn menuen Åbn.",
+            "official_page": "Åbn virksomhedsside",
+            "presence_monitor": "Åben placeringskontrol.",
+            "share_tab": "Åbn delingsværktøjer."
+          },
+          "actions": {
+            "openCustomerSource": "Åben kundekilde.",
+            "openShareTools": "Åbne delingsværktøjer.",
+            "fixFact": "Gør {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Grundlæggende om offentlig information",
+              "description": "Virksomhedsnavn, aktuel menu eller servicekilde, kontaktperson, handlinger og kundelink."
+            },
+            "business_facts_copy_pack": {
+              "title": "Genanvendelige forretningsoplysninger.",
+              "description": "Aktuelle fakta kan medarbejdere genbruge i offentlige profiler, svar og kunde-link overdragelser."
+            },
+            "qr_link_health": {
+              "title": "QR link klarhed",
+              "description": "Et aktuelt kundelink til QR og udskrevne placeringer."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profillink konsistens profil link konsistens",
+              "description": "Et aktuelt kundelink til sociale profiler og andre placeringer."
+            },
+            "customer_link_preview": {
+              "title": "Eksempel på kundelink forhåndsvisning",
+              "description": "De vigtigste fakta, som kunderne bør se, før de handler."
+            },
+            "print_share_assets": {
+              "title": "Udskriv og del aktiver.",
+              "description": "Aktuel link-klarhed for QR plakater, tællekort og delbilleder."
+            },
+            "menu_service_readability": {
+              "title": "Menu eller service klarhed.",
+              "description": "Kategorier, varer eller tjenester og priser i den valgte menu."
+            },
+            "price_availability_gap": {
+              "title": "Klarhed omkring pris og tilgængelighed.",
+              "description": "Priser, varianter, udsolgt status og tilgængelighed vist for kunderne."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Gamle PDF erstatning.",
+              "description": "Et aktuelt MenuList kilde- og kundelink, der kan erstatte gamle PDF'er."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp Aktion",
+              "description": "En klar WhatsApp eller alternativ kundekontakthandling."
+            },
+            "hours_readiness": {
+              "title": "Timers beredskab",
+              "description": "Regelmæssige åbningstider, som kunderne kan regne med."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp svarer fakta.",
+              "description": "Aktuel menu, åbningstider, kontakt og link fakta for personale svar."
+            },
+            "photo_visual_identity": {
+              "title": "Billeder og visuel identitet",
+              "description": "Et logo, cover, firmafoto eller visuelle elementer til produkter og tjenester."
+            },
+            "customer_question_coverage": {
+              "title": "Almindelige kundespørgsmål",
+              "description": "Klare fakta for tilbud, åbningstider, pris, placering, kontakt og næste handling."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Genanvendelige kundesvar.",
+              "description": "Aktuelle fakta kan personalet genbruge, når kunder stiller almindelige spørgsmål."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Booking og forespørgsel beredskab.",
+              "description": "En tydelig vej til at bestille, booke, reservere, ringe, sende en besked, anmode om et tilbud eller besøge."
+            },
+            "google_profile_handoff": {
+              "title": "Google profillink er tilknyttet.",
+              "description": "Det aktuelle kundelink er forberedt til Google virksomhedsprofil."
+            },
+            "menu_freshness": {
+              "title": "Menuer friske",
+              "description": "En nylig menuopdatering, når priser, varer eller tilgængelighed er blevet ændret."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafer",
+        "description": "Et visuelt resumé fra den samme afregnede aktivitet, der vises i dashboardet.",
+        "ranges": {
+          "days7": "7 dage",
+          "days30": "30 dage"
+        },
+        "metrics": {
+          "menu_activity": "Menuaktivitet",
+          "customer_actions": "Kundehandlinger Kundeaktiviteter",
+          "search_demand": "Søge efterspørgsel",
+          "item_interest": "Emne af interesse:",
+          "unavailable_demand": "Ikke-tilgængelig efterspørgsel",
+          "missing_searches": "Manglende søgninger"
+        },
+        "trend": {
+          "summary": "Trendoversigt over tendenser",
+          "updatedAfterClose": "Opdateret efter din butik er lukket.",
+          "status": {
+            "up": "Højere",
+            "down": "lavere",
+            "stable": "Stabil",
+            "not_enough_data": "For lidt historie."
+          },
+          "period": {
+            "week": "Uge check-up:",
+            "month": "Månedskontrol"
+          },
+          "shortPeriod": {
+            "week": "Ugen",
+            "month": "Måned"
+          },
+          "needsMoreDays": "Har brug for mere faste dage.",
+          "versus": "{current} mod {previous}",
+          "messages": {
+            "up": "{metric} er højere for denne {period} check.",
+            "down": "{metric} er lavere for denne {period} check.",
+            "stable": "{metric} er stabil for denne {period}-kontrol.",
+            "not_enough_data": "Der er ikke nok afgjort {metric}-historik til denne {period} check."
+          },
+          "change": {
+            "gathering": "{period}: indsamler.",
+            "newActivity": "{period}: ny aktivitet.",
+            "steady": "{period}: stabilt.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Sammenligning af charts",
+          "description": "uge og måned bevægelse fra bestemte dage."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menutrend",
+            "days7": "Sidste 7 afregnede dage.",
+            "days30": "Seneste 30 afregnede dage."
+          },
+          "customerActions": {
+            "title": "Kundehandlinger Kundeaktiviteter",
+            "description": "Hvad kunderne trykkede på efter at have åbnet menuen."
+          },
+          "sources": {
+            "title": "Hvor kunderne kom fra.",
+            "description": "Menubesøg og handlingssessioner efter kilde."
+          },
+          "items": {
+            "title": "Mest populære emne af interesse",
+            "description": "Emner, som kunderne åbnede eller trykkede på oftest."
+          },
+          "search": {
+            "title": "Søge efterspørgsel",
+            "description": "Hvad kunderne søgte efter."
+          },
+          "officialPage": {
+            "title": "Officiel hjemmeside trend",
+            "description": "Visninger og handlinger fra den officielle virksomhedsside."
+          }
+        },
+        "legends": {
+          "visits": "Besøg",
+          "actionSessions": "Handlingssessioner",
+          "views": "Udsigter Visninger",
+          "taps": "Tryk",
+          "noResult": "Intet resultat fundet."
+        },
+        "empty": {
+          "default": "Der er endnu ingen grafdata for denne visning.",
+          "menuActivity": "Menuaktivitet vises, når kunderne har åbnet menuen og vil blive vist i menuen, når de er logget ind.",
+          "customerActions": "Kundehandlinger vises, når kunderne har ringet, sendt en besked, bestilt, reserveret eller bedt om vejvisning.",
+          "customerActionsPeriod": "Der er endnu ingen kundehandlinger i denne periode.",
+          "searchDemand": "Søgeefterspørgslen vil blive vist, når kunderne har brugt menusøgning.",
+          "itemInterest": "Vareinteressen vil blive vist, når kunderne har åbnet menupunkter.",
+          "unavailableDemand": "Ikke-tilgængelig efterspørgsel vil blive vist, når kunder trykker på ikke-til gængelige varer.",
+          "missingSearches": "Manglende søgninger vises, når kunder søger efter et produkt eller en tjeneste, men ikke finder noget match.",
+          "sources": "Kildeoplysninger vises, når kunderne kommer fra links, QR eller sociale sider.",
+          "officialPage": "Aktiviteten på den officielle side vises, når kunderne har åbnet den offentlige virksomhedsside."
+        },
+        "footer": {
+          "sameData": "Samme dashboarddata.",
+          "noExtraTracking": "Ingen ekstra sporing.",
+          "settledAfterClose": "Afvikles efter butiksdagens afslutning."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menuen",
+          "viewsLabel": "Menuvisninger",
+          "viewsTooltip": "Antal gange kunder har åbnet din menu.",
+          "thisMonthLabel": "Din menu i denne måned er:"
+        },
+        "product": {
+          "singular": "Katalog",
+          "viewsLabel": "Katalog synspunkter",
+          "viewsTooltip": "Antal gange kunder har åbnet dit katalog.",
+          "thisMonthLabel": "Dit katalog denne måned er:"
+        },
+        "service": {
+          "singular": "serviceliste over tjenester",
+          "viewsLabel": "Visninger af servicelister",
+          "viewsTooltip": "Antal gange kunder har åbnet din serviceliste.",
+          "thisMonthLabel": "Din serviceliste i denne måned er klar."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Har brug for opmærksomhed",
+          "active": "Officielle kunde kilde er aktiv kunde kilden.",
+          "readyToPlace": "Officielle kunde kilde er klar til at placere."
+        },
+        "description": {
+          "needsAttention": "Ret menuen, åbningstiderne eller kundelinket, før du deler det med andre.",
+          "active": "Ingen handling er nødvendig.Kunder kan bruge dine nuværende offentlige oplysninger fra én kilde. Ingen handling kræves.",
+          "readyToPlace": "Dit kundelink er klar, tilføj det til din konto og klik på \"Send link\". Google, Instagram, WhatsApp, QR, eller udskrive så kunderne bruger den aktuelle kilde."
+        },
+        "link": {
+          "ready": "Kundelink klar til brug.",
+          "missing": "Kundelink mangler."
+        },
+        "states": {
+          "set": "Angivet",
+          "missing": "Manglende",
+          "ready": "Klar til",
+          "notReady": "Ikke klar endnu.",
+          "live": "Aktiv",
+          "hidden": "Inaktiv"
+        },
+        "tags": {
+          "menu": "{status}",
+          "hours": "Timer: {status}",
+          "customerLink": "Kundelink: {status}",
+          "link": "{status}",
+          "placed": "Placeret: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Løs det, der kræver opmærksomhed.",
+          "preview": "Forhåndsvisning af det offentlige menu",
+          "share": "Del menuen"
+        },
+        "updated": {
+          "notUpdated": "Ikke opdateret endnu.",
+          "recently": "Nyligt opdateret.",
+          "today": "Opdateret i dag",
+          "yesterday": "Opdateret i går",
+          "daysAgo": "Opdateret {count, plural, one {# For dagen siden} other {# For dage siden}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Næste ejerskab",
+        "open": "Åben",
+        "placement": {
+          "notConfirmed": "Ikke bekræftet endnu.",
+          "today": "Bekræftet i dag.",
+          "yesterday": "Bekræftet i går.",
+          "daysAgo": "Bekræftet {count, plural, one {# For dagen siden} other {# For dage siden}}"
+        },
+        "status": {
+          "ready": "Klar til",
+          "missing": "Manglende",
+          "set": "Angivet",
+          "live": "Aktiv",
+          "notLive": "Ikke levende",
+          "confirmedCount": "{count}/{total} bekræftede",
+          "on": "Til",
+          "off": "Fra",
+          "dailyChanges": "Daglige ændringer.",
+          "hoursException": "Undtagelsestimer",
+          "staffUse": "Personalet bruger det.",
+          "menuPrices": "Menu priser",
+          "openCount": "{count, plural, one {# action åben handling Åbn handling} other {# handlinger åbne handlinger lukkede}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Sæt kundelinks",
+            "description": "Opret kundelinket, før du deler QR, medarbejdersvar eller offentlige profiler."
+          },
+          "setHours": {
+            "label": "Indstil timer.",
+            "description": "Hold offentlig åben og lukket status klar, før kunderne besøger."
+          },
+          "publishMenu": {
+            "labelPublish": "Udgiv menu",
+            "labelOpen": "Åbn menuen Åbn.",
+            "descriptionVisible": "Udgiv den aktuelle menu, før du deler den med andre.",
+            "descriptionHidden": "Gør menuen synlig, før kunderne klikker på linket."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Bekræft linkplacering.",
+            "labelPlace": "Placer kundelinket.",
+            "descriptionPlaced": "Hold Google, Instagram og WhatsApp pegende på den samme kilde.",
+            "descriptionUnplaced": "Føj det samme kundelink til Google, Instagram, WhatsApp, QR og trykte materialer."
+          },
+          "openPrivateFeedback": {
+            "label": "Offent privat feedback",
+            "description": "Brug privat feedback, før gæsternes problemer bliver til offentlige anmeldelser."
+          },
+          "captureDailyChange": {
+            "label": "Fortæl MenuList, hvad der er ændret.",
+            "description": "Fortæl MenuList, hvad der er ændret i dag og godkend det forberedte menukort."
+          },
+          "setTodayStatus": {
+            "label": "Angiv dagens status.",
+            "description": "Sættet lukket i dag, åbner sent, køkkenet lukket eller en meddelelse om specialmenu."
+          },
+          "prepareStaffHandoff": {
+            "label": "Forbered personaleaflevering.",
+            "description": "Giv personalet menulinket, QR og kundesvarlinjerne fra ét sted."
+          },
+          "updatePrices": {
+            "label": "Opdater priser",
+            "description": "Brug Menu Manager til prisændringer, og godkend derefter før offentliggørelse."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menuopsætning",
+        "complete": "Menu setup er fuldstændig.",
+        "ready": "Menuopsætningen er færdig.",
+        "actions": {
+          "openMenu": "Åbn menuen Åbn.",
+          "createMenu": "Opret menu",
+          "reviewDetails": "Gennemgå detaljer",
+          "publishMenu": "Udgiv menu",
+          "openSharingTools": "Åbne delingsværktøjer.",
+          "prepareDescriptions": "Forbered beskrivelser.",
+          "addImages": "Tilføj billeder",
+          "reviewLanguageText": "Gennemgå sprogtekst.",
+          "openMenuCheck": "Åbent menu check",
+          "updatePublicLinks": "Opdater offentlige links.",
+          "addPublicPhoto": "Tilføj offentligt billede"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Kilde tilføjes",
+            "doneDescription": "Menu kilde er tilsluttet.",
+            "nextDescription": "Tilføj et menubillede, PDF, link eller start manuelt."
+          },
+          "menuImported": {
+            "label": "Indførte menu",
+            "doneDescription": "{count, plural, one {# Intet synligt emne fundet.} other {# synlige elementer fundet.}}",
+            "nextDescription": "Importér eller tilføj menupunkter."
+          },
+          "keyDetailsChecked": {
+            "label": "Nøgleoplysninger kontrolleret.",
+            "doneDescription": "Priser og nøglemenu detaljer er klare.",
+            "nextDescription": "Tjek priser og vigtige oplysninger, før du offentliggør."
+          },
+          "menuPublished": {
+            "label": "Menuen er offentliggjort.",
+            "doneDescription": "Det offentlige menu er blevet offentliggjort.",
+            "nextDescription": "Offentliggør, når menuen er klar til kunderne.."
+          },
+          "linkPlaced": {
+            "label": "Link placeret.",
+            "readyLabel": "Link klar",
+            "doneDescription": "Den officielle link er klar for kunderne.",
+            "progressDescription": "{count} af {total} placeringshandlinger udført.",
+            "nextDescription": "Når menuen er publiceret, skal du åbne delingsværktøjerne og vælge \"Opret en ny menu\"."
+          },
+          "descriptionsReady": {
+            "label": "Beskrivelse klar",
+            "doneDescription": "Visible elementer har beskrivelser.",
+            "nextDescription": "Forbered beskrivelser for klarere menu elementer."
+          },
+          "imagesReady": {
+            "label": "Billeder klar",
+            "doneDescription": "Visible elementer har billeder.",
+            "nextDescription": "Tilføj eller generer billeder af emner, når det er nyttigt."
+          },
+          "translationsReady": {
+            "label": "Oversættelser klar",
+            "doneDescription": "De udvalgte menu sprog er fuldstændige.",
+            "nextDescription": "Gennemgå valgte menusprog."
+          },
+          "publicLinksAdded": {
+            "label": "Offentlige links tilføjes",
+            "doneDescription": "Offentlige handlinger eller sociale links er tilgængelige, og der kan oprettes forbindelser til andre sider.",
+            "nextDescription": "Tilføj nyttige offentlige links til virksomhedssiden."
+          },
+          "publicPhotoAdded": {
+            "label": "Et offentligt billede tilføjet",
+            "doneDescription": "Et offentligt billede er tilgængeligt.",
+            "nextDescription": "Tilføj et cover, logo eller offentligt billede, når du er klar."
+          }
+        }
       }
     }
   },
@@ -1397,7 +2257,7 @@
       "common": {
         "business": "Forretning",
         "team": "holdet",
-        "feedback": "Feedback",
+        "feedback": "Feedback Feedback er altid velkommen.",
         "rating": "Bedømmelse",
         "switchToDarkTheme": "Skift til mørkt skærmtema",
         "switchToLightTheme": "Skift til lysdisplay-tema",
@@ -1463,7 +2323,7 @@
         "itemInCategoryAt": "{itemName} i {categoryName}, tilgængelig på {businessName}.",
         "itemAt": "{itemName}, tilgængelig på {businessName}.",
         "metadataObpTitle": "{businessName} — Menu, Timer, Kontakt",
-        "metadataMenuTitle": "{businessName} | Menu",
+        "metadataMenuTitle": "{businessName} Menu | Menu |",
         "metadataObpDescription": "{businessName} — Se menuen, tjek åbningstider, få rutevejledning og find kontaktoplysninger. Officiel virksomhedsside.",
         "metadataMenuDescription": "Se den digitale menu for {businessName}.",
         "metadataUnavailableTitle": "Menu ikke tilgængelig | {businessName}",
@@ -1521,7 +2381,7 @@
         "updatedJustNow": "opdateret lige nu",
         "updatedMinuteAgo": "opdateret for 1 minut siden",
         "updatedMinutesAgo": "opdateret for {count} minutter siden",
-        "updatedTodayAt": "opdateret i dag kl. {time}",
+        "updatedTodayAt": "Opdateret i dag til {time}",
         "updatedDayAgo": "opdateret for 1 dag siden",
         "updatedDaysAgo": "opdateret for {count} dage siden",
         "updatedToday": "Opdateret i dag",
@@ -1580,14 +2440,14 @@
         "sugarFree": "Sukkerfri",
         "contains": "Indeholder {value}",
         "spice": "Krydderiniveau: {value}",
-        "spiceMild": "Mild",
+        "spiceMild": "Mild mild til moderat",
         "spiceMedium": "Mellemstærk",
         "spiceHot": "Varmt",
         "spiceVeryHot": "Meget varmt",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 15 min min min.",
         "hoursShort": "{count} t",
         "calories": "{count} kal",
-        "protein": "Protein {value}g",
+        "protein": "Proteinindhold {value} g",
         "carbs": "Kulhydrater {value}g",
         "fat": "Fedt {value}g",
         "serving": "Viser {value}",
@@ -1631,7 +2491,7 @@
         "goodChoice": "Godt valg",
         "worthTheInvestment": "Investeringen værd",
         "ownerChoice": "Ejers valg",
-        "menuOffering": "Menu",
+        "menuOffering": "Menu Menu Menu",
         "servicesOffering": "Tjenester",
         "catalogOffering": "Katalog",
         "offeringsOffering": "Tilbud",
@@ -1646,9 +2506,9 @@
         "tempKitchenClosed": "Køkkenet er lukket",
         "tempSpecialMenu": "Særlig menu tilgængelig i dag",
         "tempTemporaryNotice": "Midlertidig varsel",
-        "closesAt": "Lukker kl. {time}",
-        "opensAt": "Åbner kl. {time}",
-        "opensTomorrowAt": "Åbner i morgen kl. {time}",
+        "closesAt": "lukker på {time}",
+        "opensAt": "Åbner på {time}",
+        "opensTomorrowAt": "Åbner i morgen {time}",
         "opensNextDayAt": "Åbner næste {day} ved {time}",
         "opensDayAt": "Åbner {day} ved {time}",
         "days": {
@@ -1662,7 +2522,7 @@
         }
       },
       "feedback": {
-        "pageTitle": "Feedback",
+        "pageTitle": "Feedback Feedback er altid velkommen.",
         "metadataTitle": "Del feedback | {businessName}",
         "metadataDescription": "Del kun feedback med virksomheden.",
         "shareFeedback": "Del feedback",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Ingen faktureringshistorik endnu.",
     "perMonth": "/måned inkl. moms",
     "contactUs": "Kontakt os Kontakt os"
+  },
+  "StarterActivation": {
+    "activeTitle": "Din menu er online",
+    "endingSoonTitle": "Hold din menu online",
+    "publicMenuQrActive": "Din offentlige menu og QR-kode er aktive.",
+    "activeRemaining": "Din menuadgang er aktiv.",
+    "daysRemaining": "{days, plural, one {Vælg en plan inden for # dag for at holde din menu online.} other {Vælg en plan inden for # dage for at holde din menu online.}}",
+    "sharingComplete": "Din delingsopsætning er fuldført.",
+    "sharingProgress": "{count, number} af {target, number} delingstrin fuldført.",
+    "evidenceRecorded": "Optaget automatisk: {systemCount, number}. Bekræftet af dig: {ownerCount, number}.",
+    "evidenceEmpty": "Kopier eller del menulinket, download dets QR-kode, eller bekræft, hvor du har placeret det.",
+    "keepLiveAction": "Hold din menu online",
+    "noSubscriptionDescription": "Vælg en plan for at holde menuopdateringer og kundesider tilgængelige.",
+    "choosePlanDescription": "Din menu er gemt. Vælg en plan for at holde den online og opdateret."
   },
   "Transactions": {
     "title": "Transaktionshistorik Transaktioner Historik",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobil App Mobile App",
     "subscribeTitle": "Abonner på Kom godt i gang.",
     "subscribeDescription": "Vælg en plan for at komme i gang med at oprette din digitale menu og administrere din virksomhed.",
-    "viewPlans": "Se planerne Vis planer"
+    "viewPlans": "Se planerne Vis planer",
+    "returnToMobile": "Du ser desktop versionen. Gå tilbage til mobilversionen."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Koder Koder",

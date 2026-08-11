@@ -54,6 +54,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // GitHub repository bindings route signed provider webhooks to one exact
+    // workspace. They contain private repository metadata and are server-only.
+    match /answerlattice_githubIntakeBindings/{docId} {
+      allow read, write: if false;
+    }
+
     match /answerlattice_entityRelations/{docId} {
       allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
       allow write: if false;

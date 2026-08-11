@@ -19,17 +19,28 @@ import {
     renderCampaignCueVideo,
 } from "@lib/campaigncue/videoCompositor";
 import type { CampaignCueVideoMediaMap } from "@lib/campaigncue/videoCompositor";
-import { uploadCampaignCueMediaAsset } from "@lib/campaigncue/assetUploadClient";
 import {
+    getCampaignCueMediaUploadFailureNotice,
+    uploadCampaignCueMediaAsset,
+} from "@lib/campaigncue/assetUploadClient";
+import { isCampaignCueDurableMediaAsset, isCampaignCueDurableVisualAsset } from "@lib/campaigncue/mediaMissions";
+import {
+    buildCampaignCueVideoCaptureChecklist,
+    buildCampaignCueVideoFormatLearning,
+    evaluateCampaignCueVideoContentCoach,
     getCampaignCueVideoAssetIds,
     getCampaignCueVideoDuration,
     parseCampaignCueVideoProjectRecord,
     regenerateCampaignCueVideoScene,
 } from "@lib/campaigncue/videoReel";
 import { parseCampaignCueAssetRecord } from "@lib/campaigncue/assetBoundary";
+import {
+    campaignCueCanManageWorkspaceContent,
+    campaignCueCanMutateVideoProject,
+} from "@lib/campaigncue/permissions";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
-import type { CampaignCueAsset, CampaignCueCampaign } from "@type/campaigncue";
+import type { CampaignCueAsset, CampaignCueCampaign, CampaignCueWorkspace } from "@type/campaigncue";
 import type {
     CampaignCueVideoAspectRatio,
     CampaignCueVideoProject,
@@ -88,6 +99,18 @@ const cloneProject = (project: CampaignCueVideoProject): CampaignCueVideoProject
         rightsEvidence: { ...receipt.rightsEvidence, assetIds: [...receipt.rightsEvidence.assetIds] },
         credit: { ...receipt.credit },
     })),
+    resultMemory: project.resultMemory?.versionBinding === "exact" ? {
+        ...project.resultMemory,
+        formatSnapshot: {
+            ...project.resultMemory.formatSnapshot,
+            scenePurposes: [...project.resultMemory.formatSnapshot.scenePurposes],
+        },
+    } : project.resultMemory ? { ...project.resultMemory } : undefined,
+    reusableBlueprint: project.reusableBlueprint ? {
+        ...project.reusableBlueprint,
+        captions: { ...project.reusableBlueprint.captions },
+        scenes: project.reusableBlueprint.scenes.map((scene) => ({ ...scene })),
+    } : undefined,
 });
 
 const readPayload = async (response: Response) => {
@@ -159,12 +182,14 @@ export default function CampaignCueVideoStudio({
     campaigns,
     onAssetRegistered,
     onNotice,
+    workspaceMember,
     workspaceId,
 }: {
     assets: CampaignCueAsset[];
     campaigns: CampaignCueCampaign[];
     onAssetRegistered: (asset: CampaignCueAsset) => void;
     onNotice: (notice: string) => void;
+    workspaceMember?: CampaignCueWorkspace["members"][string];
     workspaceId: string;
 }) {
     const { token } = theme.useToken();
@@ -206,20 +231,64 @@ export default function CampaignCueVideoStudio({
             .map((output) => ({ campaign, output }))
     )), [campaigns]);
     const reusableVisuals = useMemo(() => assets.filter((asset) => (
-        (asset.assetType === "image" || asset.assetType === "logo" || asset.assetType === "video")
-        && asset.status === "ready"
+        isCampaignCueDurableVisualAsset(asset) && asset.status === "ready"
     )), [assets]);
     const reusableAudio = useMemo(() => assets.filter((asset) => (
-        asset.assetType === "audio" && asset.status === "ready"
+        asset.assetType === "audio" && isCampaignCueDurableMediaAsset(asset) && asset.status === "ready"
     )), [assets]);
     const reusableBlueprints = useMemo(() => projects.filter((project) => Boolean(project.reusableBlueprint)), [projects]);
     const capability = getCampaignCueVideoRecordingCapability();
     const activeSceneIds = useMemo(() => new Set(
         (draft?.scenes || []).filter((scene) => scene.enabled).map((scene) => scene.id),
     ), [draft]);
+    const sessionMediaSceneIds = useMemo(() => Object.entries(mediaBySceneId)
+        .filter(([sceneId, source]) => activeSceneIds.has(sceneId) && Boolean(source))
+        .map(([sceneId]) => sceneId), [activeSceneIds, mediaBySceneId]);
     const hasSessionMedia = Boolean(voiceoverFile || backgroundMusicFile) || Object.entries(mediaBySceneId).some(([sceneId, source]) => (
         activeSceneIds.has(sceneId) && Boolean(source)
     ));
+    const contentCoach = useMemo(() => draft ? evaluateCampaignCueVideoContentCoach({
+        project: draft,
+        assets,
+        sessionMediaSceneIds,
+        sessionMediaUsed: hasSessionMedia,
+        sessionMediaRightsConfirmed,
+    }) : null, [assets, draft, hasSessionMedia, sessionMediaRightsConfirmed, sessionMediaSceneIds]);
+    const captureChecklist = useMemo(() => draft
+        ? buildCampaignCueVideoCaptureChecklist(draft, sessionMediaSceneIds)
+        : [], [draft, sessionMediaSceneIds]);
+    const formatLearning = useMemo(() => buildCampaignCueVideoFormatLearning(projects), [projects]);
+    const latestCompletedReceipt = useMemo(() => [...(draft?.renderReceipts || [])].reverse().find((receipt) => (
+        receipt.status === "completed"
+        && receipt.versionBinding === "exact"
+        && Boolean(receipt.projectVersion)
+        && draft?.versions.some((version) => version.version === receipt.projectVersion)
+    )), [draft]);
+    const activeCampaign = draft
+        ? campaigns.find((campaign) => campaign.id === draft.campaignId)
+        : undefined;
+    const activeLocationId = activeCampaign?.locationId;
+    const canEditDraft = campaignCueCanMutateVideoProject({
+        action: "save",
+        locationId: activeLocationId,
+        member: workspaceMember,
+    });
+    const canAddReviewNote = campaignCueCanMutateVideoProject({
+        action: "add_review_note",
+        locationId: activeLocationId,
+        member: workspaceMember,
+    });
+    const canResolveReview = campaignCueCanMutateVideoProject({
+        action: "resolve_review_note",
+        locationId: activeLocationId,
+        member: workspaceMember,
+    });
+    const canApproveDraft = campaignCueCanMutateVideoProject({
+        action: "approve",
+        locationId: activeLocationId,
+        member: workspaceMember,
+    });
+    const canUploadLibraryMedia = campaignCueCanManageWorkspaceContent(workspaceMember?.role);
 
     const clearSessionMedia = () => {
         if (narrationRecorder.current?.state === "recording") {
@@ -255,6 +324,19 @@ export default function CampaignCueVideoStudio({
     };
 
     const mutate = async (payload: CampaignCueVideoMutationPayload) => {
+        const projectId = "projectId" in payload ? payload.projectId : undefined;
+        const project = projectId
+            ? (draft?.id === projectId ? draft : projects.find((candidate) => candidate.id === projectId))
+            : undefined;
+        const campaignId = payload.action === "create" ? payload.campaignId : project?.campaignId;
+        const campaign = campaigns.find((candidate) => candidate.id === campaignId);
+        if (!campaignCueCanMutateVideoProject({
+            action: payload.action,
+            locationId: campaign?.locationId,
+            member: workspaceMember,
+        })) {
+            throw { message: "This workspace role cannot perform that video action.", status: 403 } satisfies ApiFailure;
+        }
         const requestWorkspaceId = workspaceId;
         const identity = mutationKey(payload);
         const response = await fetch(CAMPAIGNCUE_API_ROUTES.VIDEO_PROJECTS, {
@@ -539,6 +621,7 @@ export default function CampaignCueVideoStudio({
             narrationChunks.current = [];
             narrationStream.current = stream;
             narrationRecorder.current = recorder;
+            setSessionMediaRightsConfirmed(false);
             recorder.ondataavailable = (event) => { if (event.data.size) narrationChunks.current.push(event.data); };
             recorder.onstop = () => {
                 const blob = new Blob(narrationChunks.current, { type: recorder.mimeType || "audio/webm" });
@@ -564,6 +647,10 @@ export default function CampaignCueVideoStudio({
         const file = event.target.files?.[0];
         event.target.value = "";
         if (!file) return;
+        if (!canUploadLibraryMedia) {
+            setError("This workspace role cannot add private Asset Library media.");
+            return;
+        }
         if (!uploadRightsConfirmed) {
             setError("Confirm that you can use this media before uploading it to the private Asset Library.");
             return;
@@ -572,11 +659,17 @@ export default function CampaignCueVideoStudio({
         setUploadProgress(0);
         setError("");
         try {
-            const asset = await uploadCampaignCueMediaAsset({ file, workspaceId, onProgress: setUploadProgress });
+            const asset = await uploadCampaignCueMediaAsset({
+                consentType: "owner_confirmed",
+                file,
+                onProgress: setUploadProgress,
+                tags: ["video-studio"],
+                workspaceId,
+            });
             registerAsset(asset);
             notify("Private media uploaded with a generated preview.");
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "Private media upload failed.");
+            setError(getCampaignCueMediaUploadFailureNotice(caught));
         } finally {
             setBusy("");
         }
@@ -657,13 +750,18 @@ export default function CampaignCueVideoStudio({
 
     const recoverInterruptedRender = async (receiptId: string, attempt: number, progressPercent: number) => {
         if (!draft) return;
+        const interrupted = draft.renderReceipts.find((item) => item.id === receiptId && item.status === "started");
+        if (
+            !interrupted
+            || interrupted.versionBinding !== "exact"
+            || interrupted.projectVersion !== draft.version
+        ) {
+            setError("This older render is not bound to the current version. Start a new render instead.");
+            return;
+        }
         setBusy(`recover:${receiptId}`);
         try {
-            const evidence = draft.renderReceipts.find((item) => item.id === receiptId)?.rightsEvidence || {
-                assetIds: getCampaignCueVideoAssetIds(draft.scenes, draft.audio),
-                sessionMediaUsed: false,
-                sessionMediaRightsConfirmed: false,
-            };
+            const evidence = interrupted.rightsEvidence;
             await mutate({
                 action: "render_receipt",
                 projectId: draft.id,
@@ -672,6 +770,8 @@ export default function CampaignCueVideoStudio({
                     id: receiptId,
                     attempt,
                     status: "failed",
+                    projectVersion: interrupted.projectVersion,
+                    versionBinding: "exact",
                     progressPercent,
                     aspectRatio: draft.aspectRatio,
                     durationSeconds: getCampaignCueVideoDuration(draft.scenes),
@@ -689,16 +789,14 @@ export default function CampaignCueVideoStudio({
     };
 
     const recordResult = async (signalId: "useful" | "not_useful" | "not_used") => {
-        if (!draft) return;
-        const completed = [...draft.renderReceipts].reverse().find((receipt) => receipt.status === "completed");
-        if (!completed) return;
+        if (!draft || !latestCompletedReceipt) return;
         setBusy("record-result");
         try {
             await mutate({
                 action: "record_result",
                 projectId: draft.id,
                 expectedVersion: draft.version,
-                renderReceiptId: completed.id,
+                renderReceiptId: latestCompletedReceipt.id,
                 signalId,
             });
             notify(signalId === "useful" ? "Useful result saved with a reusable structure." : "Video result saved.");
@@ -794,6 +892,8 @@ export default function CampaignCueVideoStudio({
                     id: receiptId,
                     attempt,
                     status: "started",
+                    projectVersion: current.version,
+                    versionBinding: "exact",
                     progressPercent: 0,
                     aspectRatio: current.aspectRatio,
                     durationSeconds: getCampaignCueVideoDuration(current.scenes),
@@ -846,6 +946,8 @@ export default function CampaignCueVideoStudio({
                     id: receiptId,
                     attempt,
                     status: "completed",
+                    projectVersion: current.version,
+                    versionBinding: "exact",
                     progressPercent: 100,
                     aspectRatio: current.aspectRatio,
                     durationSeconds: result.durationSeconds,
@@ -879,6 +981,8 @@ export default function CampaignCueVideoStudio({
                             id: receiptId,
                             attempt,
                             status: code === "render_cancelled" ? "cancelled" : "failed",
+                            projectVersion: current.version,
+                            versionBinding: "exact",
                             progressPercent: Math.min(99, lastProgressPercent),
                             aspectRatio: current.aspectRatio,
                             durationSeconds: getCampaignCueVideoDuration(current.scenes),
@@ -920,6 +1024,13 @@ export default function CampaignCueVideoStudio({
                 {busy === "render" ? <span>Rendering on this device · {Math.round(progress * 100)}%</span> : null}
             </div>
 
+            {draft && !canEditDraft ? (
+                <div className={styles.noteBox}>
+                    <strong>Review mode</strong>
+                    <p>You can review this assigned video, add comments, and use the approval actions available to your role. Editing, rendering, and result changes stay with the campaign owner or assigned operator.</p>
+                </div>
+            ) : null}
+
             {!draft ? (
                 <div className={styles.videoProjectPicker}>
                     <div className={styles.noteBox}>
@@ -938,7 +1049,9 @@ export default function CampaignCueVideoStudio({
                                 </div>
                                 <button
                                     className={styles.primaryButton}
-                                    disabled={Boolean(busy) || output.trustGate === "blocked"}
+                                    disabled={Boolean(busy)
+                                        || output.trustGate === "blocked"
+                                        || !campaignCueCanMutateVideoProject({ action: "create", locationId: campaign.locationId, member: workspaceMember })}
                                     onClick={() => void createProject(campaign.id, output.id)}
                                     type="button"
                                 >
@@ -982,13 +1095,25 @@ export default function CampaignCueVideoStudio({
                             <strong>Version history</strong>
                             <p>{draft.versions.slice(-5).map((version) => `v${version.version} · ${version.aspectRatio} · ${version.reviewedAssetIds.length} media · ${version.trustGate.replace(/_/g, " ")}`).join(" · ")}</p>
                         </div>
+                        {formatLearning.length ? (
+                            <div className={styles.noteBox}>
+                                <strong>What this business learned</strong>
+                                {formatLearning.slice(0, 3).map((learning) => (
+                                    <div className={styles.videoLearningItem} data-status={learning.status} key={learning.formatSignature}>
+                                        <span>{learning.label}</span>
+                                        <p>{learning.summary}</p>
+                                    </div>
+                                ))}
+                                <small>Based only on results recorded by this workspace.</small>
+                            </div>
+                        ) : null}
                         <div className={styles.noteBox}>
                             <strong>Render attempts</strong>
                             {draft.renderReceipts.length ? draft.renderReceipts.slice(-3).map((receipt) => (
                                 <div className={styles.row} key={receipt.id}>
-                                    <span>#{receipt.attempt} {receipt.status} · {receipt.progressPercent}% · 0 credits</span>
-                                    {receipt.status === "started" ? (
-                                        <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void recoverInterruptedRender(receipt.id, receipt.attempt, receipt.progressPercent)} type="button">Close interrupted</button>
+                                    <span>#{receipt.attempt} {receipt.status} · {receipt.progressPercent}% · {receipt.projectVersion ? `v${receipt.projectVersion}` : "older unverified version"} · 0 credits</span>
+                                    {receipt.status === "started" && receipt.versionBinding === "exact" && receipt.projectVersion === draft.version ? (
+                                        <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={() => void recoverInterruptedRender(receipt.id, receipt.attempt, receipt.progressPercent)} type="button">Close interrupted</button>
                                     ) : null}
                                 </div>
                             )) : <p>No render attempts yet.</p>}
@@ -1000,27 +1125,28 @@ export default function CampaignCueVideoStudio({
                             <div className={styles.noteBox}>
                                 <strong>Private Asset Library upload</strong>
                                 <label className={styles.videoRightsConfirmation}>
-                                    <input checked={uploadRightsConfirmed} onChange={(event) => setUploadRightsConfirmed(event.target.checked)} type="checkbox" />
+                                    <input checked={uploadRightsConfirmed} disabled={!canUploadLibraryMedia} onChange={(event) => setUploadRightsConfirmed(event.target.checked)} type="checkbox" />
                                     <span>I confirm I can use this media.</span>
                                 </label>
                                 <label className={styles.videoFileControl}>
                                     <LuPlus size={16} /> Upload image, video, or audio{busy === "media-upload" ? ` · ${uploadProgress}%` : ""}
-                                    <input accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm" disabled={Boolean(busy)} onChange={(event) => void uploadReusableMedia(event)} type="file" />
+                                    <input accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm" disabled={Boolean(busy) || !canUploadLibraryMedia} onChange={(event) => void uploadReusableMedia(event)} type="file" />
                                 </label>
                             </div>
                             <label>
                                 Project name
-                                <input maxLength={120} onChange={(event) => setDraft({ ...draft, title: event.target.value, status: "draft" })} value={draft.title} />
+                                <input disabled={!canEditDraft} maxLength={120} onChange={(event) => setDraft({ ...draft, title: event.target.value, status: "draft" })} value={draft.title} />
                             </label>
                             <label>
                                 Direction
-                                <select onChange={(event) => chooseVariant(event.target.value)} value={draft.selectedVariantId}>
+                                <select disabled={!canEditDraft} onChange={(event) => chooseVariant(event.target.value)} value={draft.selectedVariantId}>
                                     {draft.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.label} · {variant.hook}</option>)}
                                 </select>
                             </label>
                             <label>
                                 Format
                                 <select
+                                    disabled={!canEditDraft}
                                     onChange={(event) => setDraft({ ...draft, aspectRatio: event.target.value as CampaignCueVideoAspectRatio, status: "draft" })}
                                     value={draft.aspectRatio}
                                 >
@@ -1032,6 +1158,7 @@ export default function CampaignCueVideoStudio({
                             <label>
                                 Captions
                                 <select
+                                    disabled={!canEditDraft}
                                     onChange={(event) => setDraft({
                                         ...draft,
                                         captions: { ...draft.captions, enabled: event.target.value !== "off" },
@@ -1045,29 +1172,82 @@ export default function CampaignCueVideoStudio({
                             </label>
                             <label>
                                 Narration
-                                <select onChange={(event) => chooseLibraryAudio("voiceover", event.target.value)} value={draft.audio.voiceover.mode === "asset" ? draft.audio.voiceover.assetId : ""}>
+                                <select disabled={!canEditDraft} onChange={(event) => chooseLibraryAudio("voiceover", event.target.value)} value={draft.audio.voiceover.mode === "asset" ? draft.audio.voiceover.assetId : ""}>
                                     <option value="">No saved narration</option>
                                     {reusableAudio.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
                                 </select>
-                                <input accept="audio/*" onChange={(event) => chooseAudio("voiceover", event)} type="file" />
+                                <input accept="audio/*" disabled={!canEditDraft} onChange={(event) => chooseAudio("voiceover", event)} type="file" />
                             </label>
-                            <button className={styles.ghostButton} onClick={() => recordingNarration ? stopNarration() : void startNarration()} type="button">
+                            <button className={styles.ghostButton} disabled={!canEditDraft} onClick={() => recordingNarration ? stopNarration() : void startNarration()} type="button">
                                 <LuMic size={16} /> {recordingNarration ? "Stop narration" : "Record narration"}
                             </button>
-                            <label>Narration volume<input aria-label="Narration volume" max="1" min="0" onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, voiceover: { ...draft.audio.voiceover, volume: Number(event.target.value) } } })} step="0.05" type="range" value={draft.audio.voiceover.volume} /></label>
-                            {draft.audio.voiceover.mode !== "none" ? <button className={styles.ghostButton} onClick={() => clearAudio("voiceover")} type="button"><LuX size={16} /> Remove narration</button> : null}
+                            <label>Narration volume<input aria-label="Narration volume" disabled={!canEditDraft} max="1" min="0" onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, voiceover: { ...draft.audio.voiceover, volume: Number(event.target.value) } } })} step="0.05" type="range" value={draft.audio.voiceover.volume} /></label>
+                            {draft.audio.voiceover.mode !== "none" ? <button className={styles.ghostButton} disabled={!canEditDraft} onClick={() => clearAudio("voiceover")} type="button"><LuX size={16} /> Remove narration</button> : null}
                             <label>
                                 Background music
-                                <select onChange={(event) => chooseLibraryAudio("backgroundMusic", event.target.value)} value={draft.audio.backgroundMusic.mode === "asset" ? draft.audio.backgroundMusic.assetId : ""}>
+                                <select disabled={!canEditDraft} onChange={(event) => chooseLibraryAudio("backgroundMusic", event.target.value)} value={draft.audio.backgroundMusic.mode === "asset" ? draft.audio.backgroundMusic.assetId : ""}>
                                     <option value="">No saved music</option>
                                     {reusableAudio.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
                                 </select>
-                                <input accept="audio/*" onChange={(event) => chooseAudio("backgroundMusic", event)} type="file" />
+                                <input accept="audio/*" disabled={!canEditDraft} onChange={(event) => chooseAudio("backgroundMusic", event)} type="file" />
                             </label>
-                            {draft.audio.backgroundMusic.mode !== "none" ? <button className={styles.ghostButton} onClick={() => clearAudio("backgroundMusic")} type="button"><LuMusic size={16} /> Remove music</button> : null}
-                            <label>Music volume<input aria-label="Music volume" max="1" min="0" onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, backgroundMusic: { ...draft.audio.backgroundMusic, volume: Number(event.target.value) } } })} step="0.05" type="range" value={draft.audio.backgroundMusic.volume} /></label>
-                            <label>Music ducking<select onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, ducking: event.target.value === "on" } })} value={draft.audio.ducking ? "on" : "off"}><option value="on">Lower music under narration</option><option value="off">Keep selected volume</option></select></label>
+                            {draft.audio.backgroundMusic.mode !== "none" ? <button className={styles.ghostButton} disabled={!canEditDraft} onClick={() => clearAudio("backgroundMusic")} type="button"><LuMusic size={16} /> Remove music</button> : null}
+                            <label>Music volume<input aria-label="Music volume" disabled={!canEditDraft} max="1" min="0" onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, backgroundMusic: { ...draft.audio.backgroundMusic, volume: Number(event.target.value) } } })} step="0.05" type="range" value={draft.audio.backgroundMusic.volume} /></label>
+                            <label>Music ducking<select disabled={!canEditDraft} onChange={(event) => setDraft({ ...draft, status: "draft", audio: { ...draft.audio, ducking: event.target.value === "on" } })} value={draft.audio.ducking ? "on" : "off"}><option value="on">Lower music under narration</option><option value="off">Keep selected volume</option></select></label>
                         </div>
+
+                        {contentCoach ? (
+                            <section className={styles.videoCoach} aria-label="Video content coach">
+                                <div className={styles.videoCoachHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Video content coach</span>
+                                        <strong>{contentCoach.status === "ready" ? "Ready for owner review" : contentCoach.status === "needs_fix" ? "Fix the highlighted items" : "Review the highlighted items"}</strong>
+                                    </div>
+                                    <span className={styles.chip} data-tone={contentCoach.fixCount ? "red" : contentCoach.reviewCount ? "amber" : "green"}>
+                                        {contentCoach.readyCount}/{contentCoach.checks.length} ready
+                                    </span>
+                                </div>
+                                <div className={styles.videoCoachGrid}>
+                                    {contentCoach.checks.map((check) => (
+                                        <article data-status={check.status} key={check.id}>
+                                            <div>
+                                                {check.status === "ready" ? <LuCheck size={16} /> : check.status === "fix" ? <LuX size={16} /> : <LuRefreshCw size={16} />}
+                                                <strong>{check.label}</strong>
+                                            </div>
+                                            <p>{check.summary}</p>
+                                            <small>{check.recommendation}</small>
+                                            {check.sceneId ? (
+                                                <button className={styles.ghostButton} onClick={() => document.getElementById(`campaigncue-video-scene-${check.sceneId}`)?.scrollIntoView({ behavior: "smooth", block: "start" })} type="button">
+                                                    Open scene
+                                                </button>
+                                            ) : null}
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
+                        ) : null}
+
+                        <section className={styles.videoCaptureGuide} aria-label="Phone shot list">
+                            <div>
+                                <span className={styles.eyebrow}>Phone shot list</span>
+                                <strong>Record only what this campaign needs.</strong>
+                                <p>Use real business footage, keep each shot steady, and confirm permission before including people, logos, narration, or music.</p>
+                            </div>
+                            <ol>
+                                {captureChecklist.map((task) => (
+                                    <li data-status={task.status} key={task.id}>
+                                        <span>{task.status === "ready" ? <LuCheck size={16} /> : <LuVideo size={16} />}</span>
+                                        <div>
+                                            <strong>{task.title} · {task.durationSeconds}s</strong>
+                                            <p>{task.direction}</p>
+                                        </div>
+                                        <button className={styles.iconButton} aria-label={`Open ${task.title.toLowerCase()} scene`} onClick={() => document.getElementById(`campaigncue-video-scene-${task.sceneId}`)?.scrollIntoView({ behavior: "smooth", block: "start" })} type="button">
+                                            <LuArrowDown size={16} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ol>
+                        </section>
 
                         <div className={styles.videoTimelineHeader}>
                             <div>
@@ -1076,7 +1256,7 @@ export default function CampaignCueVideoStudio({
                             </div>
                             <button
                                 className={styles.ghostButton}
-                                disabled={draft.scenes.length >= CAMPAIGNCUE_VIDEO_STUDIO.MAX_SCENES}
+                                disabled={!canEditDraft || draft.scenes.length >= CAMPAIGNCUE_VIDEO_STUDIO.MAX_SCENES}
                                 onClick={() => setDraft({ ...draft, scenes: [...draft.scenes, newScene(draft)], status: "draft" })}
                                 type="button"
                             >
@@ -1086,30 +1266,30 @@ export default function CampaignCueVideoStudio({
 
                         <div className={styles.videoSceneList}>
                             {draft.scenes.map((scene, index) => (
-                                <article className={styles.videoSceneCard} key={scene.id}>
+                                <article className={styles.videoSceneCard} id={`campaigncue-video-scene-${scene.id}`} key={scene.id}>
                                     <div className={styles.row}>
                                         <div className={styles.titleBlock}>
                                             <strong>Scene {index + 1} · {scene.enabled ? scene.purpose : "skipped"}</strong>
                                             <span>{scene.durationSeconds}s · {scene.motion.replace(/_/g, " ")}</span>
                                         </div>
                                         <div className={styles.chips}>
-                                            <button aria-label={`Regenerate checked scene ${index + 1}`} className={styles.iconButton} onClick={() => tryAnotherSceneLine(scene.id)} title="Regenerate checked scene" type="button"><LuRefreshCw size={16} /></button>
-                                            <button aria-label={`Move scene ${index + 1} up`} className={styles.iconButton} disabled={index === 0} onClick={() => moveScene(index, -1)} type="button"><LuArrowUp size={16} /></button>
-                                            <button aria-label={`Move scene ${index + 1} down`} className={styles.iconButton} disabled={index === draft.scenes.length - 1} onClick={() => moveScene(index, 1)} type="button"><LuArrowDown size={16} /></button>
-                                            <button aria-label={`Remove scene ${index + 1}`} className={styles.iconButton} disabled={draft.scenes.length <= 1} onClick={() => removeScene(scene.id)} type="button"><LuTrash2 size={16} /></button>
+                                            <button aria-label={`Regenerate checked scene ${index + 1}`} className={styles.iconButton} disabled={!canEditDraft} onClick={() => tryAnotherSceneLine(scene.id)} title="Regenerate checked scene" type="button"><LuRefreshCw size={16} /></button>
+                                            <button aria-label={`Move scene ${index + 1} up`} className={styles.iconButton} disabled={!canEditDraft || index === 0} onClick={() => moveScene(index, -1)} type="button"><LuArrowUp size={16} /></button>
+                                            <button aria-label={`Move scene ${index + 1} down`} className={styles.iconButton} disabled={!canEditDraft || index === draft.scenes.length - 1} onClick={() => moveScene(index, 1)} type="button"><LuArrowDown size={16} /></button>
+                                            <button aria-label={`Remove scene ${index + 1}`} className={styles.iconButton} disabled={!canEditDraft || draft.scenes.length <= 1} onClick={() => removeScene(scene.id)} type="button"><LuTrash2 size={16} /></button>
                                         </div>
                                     </div>
                                     <div className={styles.videoSceneFields}>
-                                        <label>Overlay<input maxLength={240} onChange={(event) => patchScene(scene.id, { overlay: event.target.value })} value={scene.overlay} /></label>
-                                        <label>Voice/script<textarea maxLength={1200} onChange={(event) => patchScene(scene.id, { script: event.target.value })} rows={2} value={scene.script} /></label>
-                                        <label>Caption<textarea maxLength={500} onChange={(event) => patchScene(scene.id, { caption: event.target.value })} rows={2} value={scene.caption} /></label>
-                                        <label>Include<select onChange={(event) => patchScene(scene.id, { enabled: event.target.value === "yes" })} value={scene.enabled ? "yes" : "no"}><option value="yes">Include in video</option><option value="no">Skip this scene</option></select></label>
-                                        <label>Seconds<input max={CAMPAIGNCUE_VIDEO_STUDIO.MAX_SCENE_SECONDS} min={CAMPAIGNCUE_VIDEO_STUDIO.MIN_SCENE_SECONDS} onChange={(event) => patchScene(scene.id, { durationSeconds: Number(event.target.value) })} step="0.5" type="number" value={scene.durationSeconds} /></label>
-                                        <label>Motion<select onChange={(event) => patchScene(scene.id, { motion: event.target.value as CampaignCueVideoScene["motion"] })} value={scene.motion}><option value="none">None</option><option value="zoom_in">Zoom in</option><option value="zoom_out">Zoom out</option><option value="pan_left">Pan left</option><option value="pan_right">Pan right</option></select></label>
-                                        <label>Transition<select onChange={(event) => patchScene(scene.id, { transition: event.target.value as CampaignCueVideoScene["transition"] })} value={scene.transition}><option value="cut">Cut</option><option value="fade">Fade</option><option value="slide">Slide</option></select></label>
+                                        <label>Overlay<input disabled={!canEditDraft} maxLength={240} onChange={(event) => patchScene(scene.id, { overlay: event.target.value })} value={scene.overlay} /></label>
+                                        <label>Voice/script<textarea disabled={!canEditDraft} maxLength={1200} onChange={(event) => patchScene(scene.id, { script: event.target.value })} rows={2} value={scene.script} /></label>
+                                        <label>Caption<textarea disabled={!canEditDraft} maxLength={500} onChange={(event) => patchScene(scene.id, { caption: event.target.value })} rows={2} value={scene.caption} /></label>
+                                        <label>Include<select disabled={!canEditDraft} onChange={(event) => patchScene(scene.id, { enabled: event.target.value === "yes" })} value={scene.enabled ? "yes" : "no"}><option value="yes">Include in video</option><option value="no">Skip this scene</option></select></label>
+                                        <label>Seconds<input disabled={!canEditDraft} max={CAMPAIGNCUE_VIDEO_STUDIO.MAX_SCENE_SECONDS} min={CAMPAIGNCUE_VIDEO_STUDIO.MIN_SCENE_SECONDS} onChange={(event) => patchScene(scene.id, { durationSeconds: Number(event.target.value) })} step="0.5" type="number" value={scene.durationSeconds} /></label>
+                                        <label>Motion<select disabled={!canEditDraft} onChange={(event) => patchScene(scene.id, { motion: event.target.value as CampaignCueVideoScene["motion"] })} value={scene.motion}><option value="none">None</option><option value="zoom_in">Zoom in</option><option value="zoom_out">Zoom out</option><option value="pan_left">Pan left</option><option value="pan_right">Pan right</option></select></label>
+                                        <label>Transition<select disabled={!canEditDraft} onChange={(event) => patchScene(scene.id, { transition: event.target.value as CampaignCueVideoScene["transition"] })} value={scene.transition}><option value="cut">Cut</option><option value="fade">Fade</option><option value="slide">Slide</option></select></label>
                                         <label>
                                             Asset Library media
-                                            <select onChange={(event) => chooseLibraryImage(scene.id, event.target.value)} value={scene.assetId || ""}>
+                                            <select disabled={!canEditDraft} onChange={(event) => chooseLibraryImage(scene.id, event.target.value)} value={scene.assetId || ""}>
                                                 <option value="">Brand motion only</option>
                                                 {reusableVisuals.map((asset) => <option key={asset.id} value={asset.id}>{asset.name} · {asset.assetType}{asset.rights.status !== "confirmed" ? " · rights review" : ""}</option>)}
                                             </select>
@@ -1117,7 +1297,7 @@ export default function CampaignCueVideoStudio({
                                         <CampaignCueAssetPreview asset={assets.find((asset) => asset.id === scene.assetId)} />
                                         <label className={styles.videoFileControl}>
                                             <LuImage size={16} /> Image or video for this render only{mediaBySceneId[scene.id] ? " · selected" : ""}
-                                            <input accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" onChange={(event) => chooseLocalMedia(scene.id, event)} type="file" />
+                                            <input accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" disabled={!canEditDraft} onChange={(event) => chooseLocalMedia(scene.id, event)} type="file" />
                                         </label>
                                     </div>
                                 </article>
@@ -1125,19 +1305,25 @@ export default function CampaignCueVideoStudio({
                         </div>
 
                         <div className={styles.noteBox}>
-                            <strong>Review notes</strong>
+                            <strong>Optional human review</strong>
+                            <p>Ask a staff member, adviser, or client to check the opening, real proof, and final action. CampaignCue remains usable without a review service.</p>
+                            <div className={styles.chips}>
+                                <button className={styles.ghostButton} disabled={!canAddReviewNote} onClick={() => { setReviewSceneId(draft.scenes.find((scene) => scene.enabled)?.id || ""); setReviewMessage("Can someone understand the opening in the first few seconds?"); }} type="button">Check opening</button>
+                                <button className={styles.ghostButton} disabled={!canAddReviewNote} onClick={() => { setReviewSceneId(draft.scenes.find((scene) => scene.enabled && scene.purpose === "proof")?.id || ""); setReviewMessage("Does the real product or service proof feel clear and honest?"); }} type="button">Check proof</button>
+                                <button className={styles.ghostButton} disabled={!canAddReviewNote} onClick={() => { setReviewSceneId(draft.scenes.find((scene) => scene.enabled && scene.purpose === "cta")?.id || ""); setReviewMessage("Is the final action clear and linked to the checked campaign destination?"); }} type="button">Check action</button>
+                            </div>
                             <div className={styles.row}>
-                                <select aria-label="Review note scene" onChange={(event) => setReviewSceneId(event.target.value)} value={reviewSceneId}>
+                                <select aria-label="Review note scene" disabled={!canAddReviewNote} onChange={(event) => setReviewSceneId(event.target.value)} value={reviewSceneId}>
                                     <option value="">Whole video</option>
                                     {draft.scenes.map((scene, index) => <option key={scene.id} value={scene.id}>Scene {index + 1}</option>)}
                                 </select>
-                                <input maxLength={500} onChange={(event) => setReviewMessage(event.target.value)} placeholder="Add a bounded review note" value={reviewMessage} />
-                                <button className={styles.ghostButton} disabled={Boolean(busy) || reviewMessage.trim().length < 2} onClick={() => void addReviewNote()} type="button">Add note</button>
+                                <input disabled={!canAddReviewNote} maxLength={500} onChange={(event) => setReviewMessage(event.target.value)} placeholder="Add a bounded review note" value={reviewMessage} />
+                                <button className={styles.ghostButton} disabled={Boolean(busy) || !canAddReviewNote || reviewMessage.trim().length < 2} onClick={() => void addReviewNote()} type="button">Add note</button>
                             </div>
                             {draft.reviewNotes.length ? draft.reviewNotes.map((note) => (
                                 <div className={styles.row} key={note.id}>
                                     <span>{note.status === "open" ? "Open" : "Resolved"}{note.sceneId ? ` · scene ${draft.scenes.findIndex((scene) => scene.id === note.sceneId) + 1}` : " · whole video"} · {note.message}</span>
-                                    {note.status === "open" ? <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void resolveReviewNote(note.id)} type="button">Resolve</button> : null}
+                                    {note.status === "open" ? <button className={styles.ghostButton} disabled={Boolean(busy) || !canResolveReview} onClick={() => void resolveReviewNote(note.id)} type="button">Resolve</button> : null}
                                 </div>
                             )) : <p>No review notes.</p>}
                         </div>
@@ -1145,7 +1331,7 @@ export default function CampaignCueVideoStudio({
                         {reusableBlueprints.length ? (
                             <label>
                                 Reuse a proven structure
-                                <select defaultValue="" onChange={(event) => { if (event.target.value) applyReusableBlueprint(event.target.value); event.target.value = ""; }}>
+                                <select defaultValue="" disabled={!canEditDraft} onChange={(event) => { if (event.target.value) applyReusableBlueprint(event.target.value); event.target.value = ""; }}>
                                     <option value="">Choose structure</option>
                                     {reusableBlueprints.map((project) => <option key={project.id} value={project.id}>{project.reusableBlueprint?.label}</option>)}
                                 </select>
@@ -1156,6 +1342,7 @@ export default function CampaignCueVideoStudio({
                             <label className={styles.videoRightsConfirmation}>
                                 <input
                                     checked={sessionMediaRightsConfirmed}
+                                    disabled={!canEditDraft}
                                     onChange={(event) => setSessionMediaRightsConfirmed(event.target.checked)}
                                     type="checkbox"
                                 />
@@ -1164,16 +1351,16 @@ export default function CampaignCueVideoStudio({
                         ) : null}
 
                         <div className={styles.videoStudioActions}>
-                            <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={downloadStoryboard} type="button"><LuDownload size={16} /> Download storyboard</button>
-                            <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void save()} type="button"><LuSave size={16} /> Save new version</button>
-                            <button className={styles.ghostButton} disabled={Boolean(busy) || draft.status === "approved" || draft.trustGate === "blocked" || draft.trustGate === "needs_fix" || draft.reviewNotes.some((note) => note.status === "open")} onClick={() => void decide("approve")} type="button"><LuCheck size={16} /> Approve current version</button>
-                            <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void decide("reject")} type="button"><LuX size={16} /> Request changes</button>
+                            <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={downloadStoryboard} type="button"><LuDownload size={16} /> Download storyboard</button>
+                            <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={() => void save()} type="button"><LuSave size={16} /> Save new version</button>
+                            <button className={styles.ghostButton} disabled={Boolean(busy) || !canApproveDraft || draft.status === "approved" || draft.trustGate === "blocked" || draft.trustGate === "needs_fix" || draft.reviewNotes.some((note) => note.status === "open")} onClick={() => void decide("approve")} type="button"><LuCheck size={16} /> Approve current version</button>
+                            <button className={styles.ghostButton} disabled={Boolean(busy) || !canApproveDraft} onClick={() => void decide("reject")} type="button"><LuX size={16} /> Request changes</button>
                             {busy === "render" ? (
                                 <button className={styles.primaryButton} onClick={() => renderController.current?.abort()} type="button"><LuX size={16} /> Cancel render</button>
                             ) : (
                                 <button
                                     className={styles.primaryButton}
-                                    disabled={Boolean(busy) || draft.status !== "approved" || draft.reviewNotes.some((note) => note.status === "open") || !capability || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_IN_HOUSE_VIDEO_RENDER}
+                                    disabled={Boolean(busy) || !canEditDraft || draft.status !== "approved" || draft.reviewNotes.some((note) => note.status === "open") || !capability || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_IN_HOUSE_VIDEO_RENDER}
                                     onClick={() => void render()}
                                     type="button"
                                 >
@@ -1181,15 +1368,21 @@ export default function CampaignCueVideoStudio({
                                 </button>
                             )}
                         </div>
-                        {draft.renderReceipts.some((receipt) => receipt.status === "completed") ? (
+                        {latestCompletedReceipt ? (
                             <div className={styles.noteBox}>
-                                <strong>How did the latest video work?</strong>
+                                <strong>How did rendered version {latestCompletedReceipt.projectVersion} work?</strong>
+                                <p>Record the owner&apos;s real outcome. CampaignCue will learn the format, not copy the old wording or media.</p>
                                 <div className={styles.chips}>
-                                    <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void recordResult("useful")} type="button">Useful</button>
-                                    <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void recordResult("not_useful")} type="button">Not useful</button>
-                                    <button className={styles.ghostButton} disabled={Boolean(busy)} onClick={() => void recordResult("not_used")} type="button">Not used</button>
+                                    <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={() => void recordResult("useful")} type="button">Useful</button>
+                                    <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={() => void recordResult("not_useful")} type="button">Not useful</button>
+                                    <button className={styles.ghostButton} disabled={Boolean(busy) || !canEditDraft} onClick={() => void recordResult("not_used")} type="button">Not used</button>
                                 </div>
                                 {draft.resultMemory ? <p>Saved: {draft.resultMemory.signalId.replace(/_/g, " ")}{draft.reusableBlueprint ? " · structure reusable" : ""}</p> : null}
+                            </div>
+                        ) : draft.renderReceipts.some((receipt) => receipt.status === "completed") ? (
+                            <div className={styles.noteBox}>
+                                <strong>Render again to record reliable learning</strong>
+                                <p>The completed file does not have retained exact-version evidence, so CampaignCue will not guess which structure produced it.</p>
                             </div>
                         ) : null}
                         {!capability ? <p className={styles.muted}>This browser cannot record the canvas. Download the storyboard for manual use; the saved project remains available here.</p> : null}

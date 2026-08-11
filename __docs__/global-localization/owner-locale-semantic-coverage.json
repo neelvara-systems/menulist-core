@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedOn": "2026-08-06",
+  "generatedOn": "2026-08-11",
   "sourceLocale": "en-US",
-  "sourceOwnerSha256": "85886cbbce09e6207b8a9e9c8c7908a6eb1631414293e19bd563a276ed8f2f8d",
-  "sourceOwnerValueCount": 3456,
+  "sourceOwnerSha256": "70332975af74dfc547578f48b393ababd0eec63cedd1cc60b02e883627db58ed",
+  "sourceOwnerValueCount": 4025,
   "policy": "Existing non-source values were preserved. Only values equal to en-US were generated.",
   "qualityGates": [
     "Pinned provider revision and license",
@@ -19,7 +19,13 @@
     "Public-customer static messages preserve source placeholders, product terms, email examples, and phone examples",
     "Public-customer single-sentence messages cannot gain unrelated extra sentences",
     "Santali, Bodo, and Kashmiri public packs reject cross-script provider leakage",
-    "Public-customer runtime performs zero translation-provider and zero Firebase operations"
+    "Public-customer runtime performs zero translation-provider and zero Firebase operations",
+    "Compact dashboard labels cannot contain duplicated or sentence-expanded machine output",
+    "Dashboard translations cannot invent numeric values absent from the source message",
+    "Protected dashboard product and platform terms remain byte-for-byte invariant",
+    "Locale-specific orthography normalization cannot change ICU structure",
+    "Meitei and Santali dashboard messages cannot contain characters from another native script",
+    "Protected product and platform tokens remain byte-for-byte invariant inside complete owner messages"
   ],
   "providers": {
     "indictrans2": {
@@ -38,6 +44,14 @@
       "tokenizerSha256": "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c",
       "license": "Apache-2.0",
       "generation": "greedy; no_repeat_ngram_size=3; repetition_penalty=1.1; max_decoding_length=256; token-preserving segment fallback"
+    },
+    "m2m100": {
+      "model": "facebook/m2m100_418M",
+      "revision": "55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636",
+      "weightSha256": "d907ea45e4e4b9db163382a6674f6218b3c59566fe06d77f4055c208b4e87ed1",
+      "license": "MIT",
+      "usage": "local semantic quality repair for MADLAD-400 owner-label anomalies",
+      "generation": "beam search 5; no_repeat_ngram_size=3; repetition_penalty=1.1; max_new_tokens=256; token-preserving segment fallback"
     }
   },
   "locales": {
@@ -46,429 +60,432 @@
       "target": "en-US",
       "generatedValues": 0,
       "identicalValues": 0,
-      "ownerValueCount": 3456,
-      "ownerSha256": "85886cbbce09e6207b8a9e9c8c7908a6eb1631414293e19bd563a276ed8f2f8d"
+      "ownerValueCount": 4025,
+      "ownerSha256": "70332975af74dfc547578f48b393ababd0eec63cedd1cc60b02e883627db58ed"
     },
     "en-GB": {
       "provider": "regional-source",
       "target": "en-GB",
       "generatedValues": 0,
       "identicalValues": 0,
-      "ownerValueCount": 3456,
-      "ownerSha256": "a8fa43eb2b00f68736b61804cef4a8f724d2102afdf0f3995b66739d8ac2247e"
+      "ownerValueCount": 4025,
+      "ownerSha256": "e1f48f2d546803f900f27b580b88356b18bb26e243313810dc60ed19e291aeef"
     },
     "hi-IN": {
       "provider": "indictrans2",
       "target": "hin_Deva",
-      "generatedValues": 318,
-      "identicalValues": 37,
-      "ownerValueCount": 3456,
-      "ownerSha256": "269a78616c28437161a57530215312105d4bb058c332b22145e61355ec552fea"
+      "generatedValues": 230,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "45396690c511b25093f9d89f089359b00cfa7d64a4d07c85aedf94802e590bd3"
     },
     "ar-SA": {
       "provider": "madlad400",
       "target": "ar",
-      "generatedValues": 305,
-      "identicalValues": 22,
-      "ownerValueCount": 3456,
-      "ownerSha256": "d35b7637bf7b06468c5b9d4449a50a857371774f555a3e503025f2425752c10b"
+      "generatedValues": 214,
+      "identicalValues": 39,
+      "ownerValueCount": 4025,
+      "ownerSha256": "5ccd719e74dcde65b37ed5264f614eee1e3d89e9f328882e2944d0b18ff6613d"
     },
     "es-ES": {
       "provider": "madlad400",
       "target": "es",
-      "generatedValues": 327,
-      "identicalValues": 43,
-      "ownerValueCount": 3456,
-      "ownerSha256": "dc379bff0d432108a2e8ce442a9a2dfe2352005c80d9ec43a88af8732e2e9067"
+      "generatedValues": 241,
+      "identicalValues": 53,
+      "ownerValueCount": 4025,
+      "ownerSha256": "8f90dafd2d5d86ff65a96eeed47b9f6c6183c82adad9fc37dba59e5644e689c0"
     },
     "ta-IN": {
       "provider": "indictrans2",
       "target": "tam_Taml",
-      "generatedValues": 312,
-      "identicalValues": 30,
-      "ownerValueCount": 3456,
-      "ownerSha256": "7d44a2c13b46bc6a01c2c7c9d67533c94bb4ff27edb48645df5e28c828a17bad"
+      "generatedValues": 223,
+      "identicalValues": 41,
+      "ownerValueCount": 4025,
+      "ownerSha256": "1f0d3741afc6dce997ee1f94f26c4ee39b7463a421e9effe007cbe5855549288"
     },
     "te-IN": {
       "provider": "indictrans2",
       "target": "tel_Telu",
-      "generatedValues": 325,
-      "identicalValues": 42,
-      "ownerValueCount": 3456,
-      "ownerSha256": "bfacfcd777cc0d313f8df6a9a0784e4527d61dd49055600156bbfe3637a12fd5"
+      "generatedValues": 237,
+      "identicalValues": 52,
+      "ownerValueCount": 4025,
+      "ownerSha256": "c28d28ae0e447e7d108f38318a2df15b79389899818075a13d6b5c0b5ec2553e"
     },
     "mr-IN": {
       "provider": "indictrans2",
       "target": "mar_Deva",
-      "generatedValues": 316,
-      "identicalValues": 33,
-      "ownerValueCount": 3456,
-      "ownerSha256": "7c7e7a3d6fa77941326e150ef3ea4f83fe7c44c57a2679b324c370babedbb785"
+      "generatedValues": 226,
+      "identicalValues": 45,
+      "ownerValueCount": 4025,
+      "ownerSha256": "c23c6a4f9760ee5e414e39101e8d26192f7aab8df6145379696944a5c9e29aa6"
     },
     "bn-IN": {
       "provider": "indictrans2",
       "target": "ben_Beng",
-      "generatedValues": 305,
-      "identicalValues": 23,
-      "ownerValueCount": 3456,
-      "ownerSha256": "da05a37b67bc8a24438129e8151a3f40c0be400a1eef6a368c8feafc498a92bf"
+      "generatedValues": 214,
+      "identicalValues": 36,
+      "ownerValueCount": 4025,
+      "ownerSha256": "e2e5239d2806fd46a69b1e14f9965114980dc06c0d2d7e36bdf899879e1471cf"
     },
     "gu-IN": {
       "provider": "indictrans2",
       "target": "guj_Gujr",
-      "generatedValues": 309,
-      "identicalValues": 26,
-      "ownerValueCount": 3456,
-      "ownerSha256": "5079bdc858b5d1302a96067bac64ade307cda171d5b7f0ed4a6b227ed9ea5b31"
+      "generatedValues": 217,
+      "identicalValues": 39,
+      "ownerValueCount": 4025,
+      "ownerSha256": "19ce22f24ba71a7789e604ca4383a4b0018ca19ae93392d008605db2dcfe42e7"
     },
     "kn-IN": {
       "provider": "indictrans2",
       "target": "kan_Knda",
-      "generatedValues": 321,
-      "identicalValues": 38,
-      "ownerValueCount": 3456,
-      "ownerSha256": "f790440ca606d64be19981390a051a25a6ddb05dbf3097c50349390c6f4e5d41"
+      "generatedValues": 233,
+      "identicalValues": 49,
+      "ownerValueCount": 4025,
+      "ownerSha256": "49bb4c4d022a89b70b58091b69d9a0f1f562b24713f8d6005de5cb78bbd43c88"
     },
     "ml-IN": {
       "provider": "indictrans2",
       "target": "mal_Mlym",
-      "generatedValues": 317,
-      "identicalValues": 34,
-      "ownerValueCount": 3456,
-      "ownerSha256": "242a4fae0389efa38463ec4692c256e60d2e9f3188c84dab69624dab1a9e6534"
+      "generatedValues": 227,
+      "identicalValues": 46,
+      "ownerValueCount": 4025,
+      "ownerSha256": "9a98949fc00fd8853ab106779666217a03e6c484253efd2aa8ab08c46f839f79"
     },
     "pa-IN": {
       "provider": "indictrans2",
       "target": "pan_Guru",
-      "generatedValues": 322,
-      "identicalValues": 39,
-      "ownerValueCount": 3456,
-      "ownerSha256": "63708ebcc4637987868ce8a50eb47419077b4324752243879f87aac981762a5e"
+      "generatedValues": 233,
+      "identicalValues": 50,
+      "ownerValueCount": 4025,
+      "ownerSha256": "457041c8e07bff17d8b134d9cbf89775ad48ce366c483f0e1377eee79da369ad"
     },
     "ur-IN": {
       "provider": "indictrans2",
       "target": "urd_Arab",
-      "generatedValues": 318,
-      "identicalValues": 35,
-      "ownerValueCount": 3456,
-      "ownerSha256": "d9a8a35eddb3ec402970513f98d8f512d092d8905d39f5045b4a15a79971fc0c"
+      "generatedValues": 228,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "6144841420e405334f35605d2fa6a0a7a2bf541f84b4f9e6fee557bc0f9b2759"
     },
     "or-IN": {
       "provider": "indictrans2",
       "target": "ory_Orya",
-      "generatedValues": 318,
-      "identicalValues": 35,
-      "ownerValueCount": 3456,
-      "ownerSha256": "122d2f89e9bc9c378999da2959dcd41bef5ce135ce1de9553f1060d3ce3ddfa7"
+      "generatedValues": 229,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "a9872f3bdc356640ea9e268f4a2e5178de7a31e010f9eb8c97d8551f548ef0ce"
     },
     "as-IN": {
       "provider": "indictrans2",
       "target": "asm_Beng",
-      "generatedValues": 305,
-      "identicalValues": 24,
-      "ownerValueCount": 3456,
-      "ownerSha256": "49f028c16d4eb2c278a127c09adcb600b33de48619dbb3f4a23a437d0ca7bb99"
+      "generatedValues": 214,
+      "identicalValues": 36,
+      "ownerValueCount": 4025,
+      "ownerSha256": "75fc820686c32ab6d48f87498281e290794abe51bdf96c4586e3221e076a3ef2"
     },
     "ne-NP": {
       "provider": "indictrans2",
       "target": "npi_Deva",
-      "generatedValues": 316,
-      "identicalValues": 33,
-      "ownerValueCount": 3456,
-      "ownerSha256": "befc55faf163000d4e38afab5d772d45baea0cdf460a0d1269b3785a82aed548"
+      "generatedValues": 226,
+      "identicalValues": 45,
+      "ownerValueCount": 4025,
+      "ownerSha256": "b9b020477ef53524480e18e5baf6f2bd65d1eaa7af6f0971bc30b561363f1eba"
     },
     "mai-IN": {
       "provider": "indictrans2",
       "target": "mai_Deva",
-      "generatedValues": 305,
-      "identicalValues": 26,
-      "ownerValueCount": 3456,
-      "ownerSha256": "9bf422737a50079ee3a3aa9317ef4d77c6231212803da8dffb7c316afc88a5ac"
+      "generatedValues": 214,
+      "identicalValues": 36,
+      "ownerValueCount": 4025,
+      "ownerSha256": "ce8c3ace2e0707776760bfd8e2162880381c542991978de241bd79574a1ee94a"
     },
     "kok-IN": {
       "provider": "indictrans2",
       "target": "gom_Deva",
-      "generatedValues": 305,
-      "identicalValues": 22,
-      "ownerValueCount": 3456,
-      "ownerSha256": "38c3c1c056433c7d9f3cb767711716142cbe0962475823522cb9f1ca7ac52df2"
+      "generatedValues": 216,
+      "identicalValues": 35,
+      "ownerValueCount": 4025,
+      "ownerSha256": "b264631d241fa994042a7033cf28513b52060546ad635032e9512cd6053d3b02"
     },
     "sd-IN": {
       "provider": "indictrans2",
       "target": "snd_Arab",
-      "generatedValues": 329,
-      "identicalValues": 46,
-      "ownerValueCount": 3456,
-      "ownerSha256": "ffa7bc34ad87189c67c8ced0c58b00155b13760f81d8f348d63635709a3936c4"
+      "generatedValues": 240,
+      "identicalValues": 56,
+      "ownerValueCount": 4025,
+      "ownerSha256": "f94a21063106baf4074f2b77b30ec1278a68a8071cdbe2e5ffc3c8e77388ef7c"
     },
     "ks-IN": {
       "provider": "indictrans2",
       "target": "kas_Arab",
-      "generatedValues": 326,
-      "identicalValues": 43,
-      "ownerValueCount": 3456,
-      "ownerSha256": "5ab8cd787e8b68d0a07b1e6785b6c343d61002550af06d6e7fb0a3053a88d7ce"
+      "generatedValues": 239,
+      "identicalValues": 53,
+      "ownerValueCount": 4025,
+      "ownerSha256": "60343bb36268d890e9888f7fda875d0f06ed39aed445c6f3b0e0146263ed317e"
     },
     "doi-IN": {
       "provider": "indictrans2",
       "target": "doi_Deva",
-      "generatedValues": 307,
-      "identicalValues": 22,
-      "ownerValueCount": 3456,
-      "ownerSha256": "dd9240d6c37f9f06924b7c576e4b59b7b057460fbf847b21747578522ad838d5"
+      "generatedValues": 219,
+      "identicalValues": 37,
+      "ownerValueCount": 4025,
+      "ownerSha256": "9356c79d5883cc4e0fa695c86fdc6a960926f564ad295d4803ea23abb7abd19f"
     },
     "mni-IN": {
       "provider": "indictrans2",
       "target": "mni_Mtei",
-      "generatedValues": 312,
-      "identicalValues": 28,
-      "ownerValueCount": 3456,
-      "ownerSha256": "d98b1c3798e7c7f607fa99614dbc6e0d6c9bf21608888441649feb14e6f10739"
+      "generatedValues": 228,
+      "identicalValues": 55,
+      "ownerValueCount": 4025,
+      "ownerSha256": "349d8e08912f9b9570502872c42e64dbf89246756eabcd0913a8a72a868410d0"
     },
     "sat-IN": {
       "provider": "indictrans2",
       "target": "sat_Olck",
-      "generatedValues": 305,
-      "identicalValues": 23,
-      "ownerValueCount": 3456,
-      "ownerSha256": "d5265053008cbd7a592de68a6100d7ae2589afe2b81bcccd8d54a02aff1b9b54"
+      "generatedValues": 262,
+      "identicalValues": 124,
+      "ownerValueCount": 4025,
+      "ownerSha256": "885894ef99b2aac8fecaccdcfeadf6a89f4fd7a71b2537db36611fc06c45036d"
     },
     "brx-IN": {
       "provider": "indictrans2",
       "target": "brx_Deva",
-      "generatedValues": 323,
-      "identicalValues": 40,
-      "ownerValueCount": 3456,
-      "ownerSha256": "f9522687289aae24488612137c3d668b3e95fc4a791d776a22939d6d812895da"
+      "generatedValues": 235,
+      "identicalValues": 50,
+      "ownerValueCount": 4025,
+      "ownerSha256": "1a7e330669363bdd505bc75f9f131481d76d2178abc7ca7f77c9564e5337a13b"
     },
     "fr-FR": {
       "provider": "madlad400",
       "target": "fr",
-      "generatedValues": 332,
-      "identicalValues": 52,
-      "ownerValueCount": 3456,
-      "ownerSha256": "2647a4e15e5eb116db84b159713d2c3dcfa9f88cc797e7469179c749029a4a42"
+      "generatedValues": 250,
+      "identicalValues": 64,
+      "ownerValueCount": 4025,
+      "ownerSha256": "b2946e51cef8d2f304cf89583b12c1927c969210746267612caa7b680ec652d9"
     },
     "pt-BR": {
       "provider": "madlad400",
       "target": "pt",
-      "generatedValues": 326,
-      "identicalValues": 377,
-      "ownerValueCount": 3456,
-      "ownerSha256": "23fc1e102dbc8f96e9d770000eeb90fab8d3bf8e913f90fa7891085407d877de"
+      "generatedValues": 242,
+      "identicalValues": 54,
+      "ownerValueCount": 4025,
+      "ownerSha256": "e39294aa61986e2a690ff780db1f703e11a3fd50142241b31ecf195d136e260e"
     },
     "de-DE": {
       "provider": "madlad400",
       "target": "de",
-      "generatedValues": 326,
-      "identicalValues": 49,
-      "ownerValueCount": 3456,
-      "ownerSha256": "dd50ab5ccbc3b3f4712ef8e6ed6a39e4466c364262cffae11203f35ff79bd39e"
+      "generatedValues": 240,
+      "identicalValues": 56,
+      "ownerValueCount": 4025,
+      "ownerSha256": "f034beb8ad326fc6c3e4aed98c06049b2867ac21270aa73313a7c50d9ea67a6b"
     },
     "it-IT": {
       "provider": "madlad400",
       "target": "it",
-      "generatedValues": 329,
-      "identicalValues": 51,
-      "ownerValueCount": 3456,
-      "ownerSha256": "4b8952eb62487a0a005b243513413884d25795fdd7e383ae2e7145947eaff1a3"
+      "generatedValues": 242,
+      "identicalValues": 58,
+      "ownerValueCount": 4025,
+      "ownerSha256": "0eee608b9b99360569756d8f15554f563a1b94d323eaa7591ea68211c742b134"
     },
     "ja-JP": {
       "provider": "madlad400",
       "target": "ja",
-      "generatedValues": 315,
-      "identicalValues": 43,
-      "ownerValueCount": 3456,
-      "ownerSha256": "78498a2f8bf17697a72925121b1d7f88a49fcd7985f03f188c05cc347f131d09"
+      "generatedValues": 228,
+      "identicalValues": 45,
+      "ownerValueCount": 4025,
+      "ownerSha256": "76914af878349c1bd5b965600fb8896dd2658f1bb894674650f716b682205351"
     },
     "zh-CN": {
       "provider": "madlad400",
       "target": "zh",
-      "generatedValues": 323,
-      "identicalValues": 39,
-      "ownerValueCount": 3456,
-      "ownerSha256": "1a362ef56d03fe714925fd81340b81f07638e143ce2d94f6ec12d1762a73e35c"
+      "generatedValues": 237,
+      "identicalValues": 51,
+      "ownerValueCount": 4025,
+      "ownerSha256": "c680e7c493015f66aacc8d0ef093e1a472c3db9bfba24e632aa3d876ba8d0b4d"
     },
     "id-ID": {
       "provider": "madlad400",
       "target": "id",
-      "generatedValues": 325,
-      "identicalValues": 44,
-      "ownerValueCount": 3456,
-      "ownerSha256": "daea9c9d51713d78315af13e9a9ddbb3b257e9be5fd26551e590aba83d94faa8"
+      "generatedValues": 241,
+      "identicalValues": 55,
+      "ownerValueCount": 4025,
+      "ownerSha256": "0a5aa7652fa3aec46e7c028217172b4761a6af5d57dc77e4bb0d550037a25774"
     },
     "vi-VN": {
       "provider": "madlad400",
       "target": "vi",
-      "generatedValues": 325,
-      "identicalValues": 42,
-      "ownerValueCount": 3456,
-      "ownerSha256": "7f8d5c0f1142985dd52a72a45c4bc4c00eb897e0ce6fa9b4f88dcdb5947955d2"
+      "generatedValues": 236,
+      "identicalValues": 52,
+      "ownerValueCount": 4025,
+      "ownerSha256": "28bb655e64534126fe4aaa07b3dfc6189b3985d4e17fb9403466799e646a9323"
     },
     "th-TH": {
       "provider": "madlad400",
       "target": "th",
-      "generatedValues": 306,
-      "identicalValues": 24,
-      "ownerValueCount": 3456,
-      "ownerSha256": "f5d37e47db32a6802d7d554ec74ea1ecaac18814f8b18d325a002715382c46bc"
+      "generatedValues": 215,
+      "identicalValues": 39,
+      "ownerValueCount": 4025,
+      "ownerSha256": "919ec17ab36f8714dc5ee6e0674e8a61909a58130feec9362fd6962fa1564797"
     },
     "ko-KR": {
       "provider": "madlad400",
       "target": "ko",
-      "generatedValues": 304,
-      "identicalValues": 22,
-      "ownerValueCount": 3456,
-      "ownerSha256": "36ef2a9fedd4149ea673f06cc31313388ba2f500f83b882c2c3ca1906f140ebf"
+      "generatedValues": 213,
+      "identicalValues": 36,
+      "ownerValueCount": 4025,
+      "ownerSha256": "65a9faf51ece7ca359387c7bf01009c60ee6e99f4ceea6e29800f8496414715f"
     },
     "tr-TR": {
       "provider": "madlad400",
       "target": "tr",
-      "generatedValues": 319,
-      "identicalValues": 38,
-      "ownerValueCount": 3456,
-      "ownerSha256": "3c6ff5b104a7b3041c35af6c350fda4d9619f483f22b3e775a340926a8eff2db"
+      "generatedValues": 233,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "b45a98f13ee5b5f0737d63ed2b7ff90761df1ca13889fa101819e56de1af98b0"
     },
     "ms-MY": {
       "provider": "madlad400",
       "target": "ms",
-      "generatedValues": 326,
-      "identicalValues": 51,
-      "ownerValueCount": 3456,
-      "ownerSha256": "4c7f0f56e14e600ba4e2db113bb6a96d5906c70e6d167620053712f7f69fceb4"
+      "generatedValues": 237,
+      "identicalValues": 54,
+      "ownerValueCount": 4025,
+      "ownerSha256": "b35bd94c512a6b72f78274fd30db9d48fc9b857f2f6f2eb9293cad5acfb1d694"
     },
     "nl-NL": {
       "provider": "madlad400",
       "target": "nl",
-      "generatedValues": 323,
-      "identicalValues": 47,
-      "ownerValueCount": 3456,
-      "ownerSha256": "874adf916b0b01ae5f533e31bcdf3783f18645c34f05a74cd4c3300904a4e076"
+      "generatedValues": 241,
+      "identicalValues": 58,
+      "ownerValueCount": 4025,
+      "ownerSha256": "248404b2ea64acbaeb9aea7c220c007a86b0944ccfd4a620ee5f034f5356165f"
     },
     "pl-PL": {
       "provider": "madlad400",
       "target": "pl",
-      "generatedValues": 316,
-      "identicalValues": 35,
-      "ownerValueCount": 3456,
-      "ownerSha256": "035946f17b0e86301e5e24a935a54b1a7086b48e5082ab9c1bde90a873cca59a"
+      "generatedValues": 226,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "4184281d7aa9936277cf9582435c7f8f61aac8758c0c8ff962572b3b5a13057f"
     },
     "uk-UA": {
       "provider": "madlad400",
       "target": "uk",
-      "generatedValues": 323,
-      "identicalValues": 40,
-      "ownerValueCount": 3456,
-      "ownerSha256": "a446ecd5da74023f3a4d241a8fbf81b105e64aa0ba0e1951fd6c3fb731feb1c4"
+      "generatedValues": 234,
+      "identicalValues": 51,
+      "ownerValueCount": 4025,
+      "ownerSha256": "e38f6c2eaf1f19b156d63bc77a9d069023915ea686814269d3831d2b7b6aae30"
     },
     "cs-CZ": {
       "provider": "madlad400",
       "target": "cs",
-      "generatedValues": 327,
-      "identicalValues": 47,
-      "ownerValueCount": 3456,
-      "ownerSha256": "f2bf0b4af51bd8187cc1bbce729aec349cf0bb7f59040ea19aedb02eec359e63"
+      "generatedValues": 239,
+      "identicalValues": 54,
+      "ownerValueCount": 4025,
+      "ownerSha256": "e85c6e4346f946a0823ec8353e42d0624f599cf1dff6e6b876e2a02a407fe6ae"
     },
     "ro-RO": {
       "provider": "madlad400",
       "target": "ro",
-      "generatedValues": 324,
-      "identicalValues": 49,
-      "ownerValueCount": 3456,
-      "ownerSha256": "4558fb639b215bef0d427630e9695368ae29e012da50aac1fe45fa7577325379"
+      "generatedValues": 239,
+      "identicalValues": 54,
+      "ownerValueCount": 4025,
+      "ownerSha256": "aba83ba9c29964d6607fc158c6c8efd9a3018d488e2eb45890b374894dbdf20a"
     },
     "el-GR": {
       "provider": "madlad400",
       "target": "el",
-      "generatedValues": 323,
-      "identicalValues": 42,
-      "ownerValueCount": 3456,
-      "ownerSha256": "00176fbc72a57bde606f6b43cdd2367a59a4ffa61ef2284d2925b0e434d9eed4"
+      "generatedValues": 238,
+      "identicalValues": 51,
+      "ownerValueCount": 4025,
+      "ownerSha256": "892de3cc4ec70b55ceee48403832930714669ebb0653c7bd64e0700897a2c176"
     },
     "hu-HU": {
       "provider": "madlad400",
       "target": "hu",
-      "generatedValues": 323,
-      "identicalValues": 42,
-      "ownerValueCount": 3456,
-      "ownerSha256": "fdad29ee8c8edbffc5d65d2f3b96cbcced91a1964ae69709a65272fdafd901ff"
+      "generatedValues": 235,
+      "identicalValues": 52,
+      "ownerValueCount": 4025,
+      "ownerSha256": "7a0124cd0e5e1a422c40044377b6f4bcfd24b80dcccf5ed7a13b1b2b25c6206e"
     },
     "sv-SE": {
       "provider": "madlad400",
       "target": "sv",
-      "generatedValues": 325,
-      "identicalValues": 52,
-      "ownerValueCount": 3456,
-      "ownerSha256": "520e96e940cadbe3828b9bac10bd026aaa3a93f391022f44d1611652611592a2"
+      "generatedValues": 243,
+      "identicalValues": 59,
+      "ownerValueCount": 4025,
+      "ownerSha256": "2348f3c4bf7c67185ebbb799c2b31aee5509ad85e674e8c131ca56e84aa2c1b3"
     },
     "da-DK": {
       "provider": "madlad400",
       "target": "da",
-      "generatedValues": 326,
-      "identicalValues": 54,
-      "ownerValueCount": 3456,
-      "ownerSha256": "7140b7500b2ea94b2408fed653dc7d1496863c5533ba0e873267de5a71cd4a7c"
+      "generatedValues": 243,
+      "identicalValues": 57,
+      "ownerValueCount": 4025,
+      "ownerSha256": "733c8b1c86e06317e43cc3d1b803d54dca408a328fd3971ca17c810aa398ea76"
     },
     "fi-FI": {
       "provider": "madlad400",
       "target": "fi",
-      "generatedValues": 324,
-      "identicalValues": 44,
-      "ownerValueCount": 3456,
-      "ownerSha256": "d0f2345a6f0908de8911ecc4061b8500f8a41ccc2c4733031059e45157154b85"
+      "generatedValues": 239,
+      "identicalValues": 53,
+      "ownerValueCount": 4025,
+      "ownerSha256": "eec4625f1221466044a45f2e6db9f1adf042bdc55e70c87792b5633ff03ccccf"
     },
     "fil-PH": {
       "provider": "madlad400",
       "target": "fil",
-      "generatedValues": 324,
-      "identicalValues": 59,
-      "ownerValueCount": 3456,
-      "ownerSha256": "6aaf546635bcd7e9017e5c57f3bb0a46791a6c05ada9b7a93ffab8c3677ca4f1"
+      "generatedValues": 240,
+      "identicalValues": 56,
+      "ownerValueCount": 4025,
+      "ownerSha256": "6446a50bebd295c52c4f7bbdd36d472fd98bc7efbca198099950936dcc685af7"
     },
     "zh-TW": {
       "provider": "madlad400",
       "target": "zh",
-      "generatedValues": 318,
-      "identicalValues": 35,
-      "ownerValueCount": 3456,
-      "ownerSha256": "47eb354c4a66677a59a0d945dac7c3a899ec442f5cf58be0da99209072d2c3ce"
+      "generatedValues": 233,
+      "identicalValues": 48,
+      "ownerValueCount": 4025,
+      "ownerSha256": "79d05ee9e6b3caa3d8443a395e37b37662b35d0cbdedeaea67eafffc69c67c70"
     },
     "he-IL": {
       "provider": "madlad400",
       "target": "he",
-      "generatedValues": 315,
-      "identicalValues": 33,
-      "ownerValueCount": 3456,
-      "ownerSha256": "3d500feda3409f23473d0e8c57e293cf1d8df1b81a875c75b02fc2bf456f4ecd"
+      "generatedValues": 225,
+      "identicalValues": 46,
+      "ownerValueCount": 4025,
+      "ownerSha256": "cef9c3aff9cbca351dd86f12f27ba2568bbfd77c08504780814d7d829fa62c1e"
     },
     "fa-IR": {
       "provider": "madlad400",
       "target": "fa",
-      "generatedValues": 315,
-      "identicalValues": 32,
-      "ownerValueCount": 3456,
-      "ownerSha256": "46978d8232dfb57e093a82b2bc87c65b040627ce871a246121d49e51c1361865"
+      "generatedValues": 225,
+      "identicalValues": 47,
+      "ownerValueCount": 4025,
+      "ownerSha256": "8a9727c227d9765ccf8334b0888e937b1c6d083e8a350203b44268c3bd33eb9c"
     },
     "sw-KE": {
       "provider": "madlad400",
       "target": "sw",
-      "generatedValues": 323,
-      "identicalValues": 42,
-      "ownerValueCount": 3456,
-      "ownerSha256": "a7f9db4a34dc6cad319aa18ffcaf9af6c2e661f9db7a7476024c3429ce033964"
+      "generatedValues": 234,
+      "identicalValues": 52,
+      "ownerValueCount": 4025,
+      "ownerSha256": "bd07266a50659f37dbf3138ff3d44cc4fd7bb6d5f4cb5128f755ba3df9a66661"
     }
   },
   "qualityRepair": {
-    "repairedOn": "2026-07-18",
-    "repairedValues": 696,
-    "manualOverridesApplied": 31,
-    "lastPassRepairedValues": 561,
-    "trigger": "translated/source Unicode length ratio outside 0.18-2.5, exact non-invariant English residue, unexpected extra sentence, or leaked provider placeholder",
+    "repairedOn": "2026-08-11",
+    "repairedValues": 7030,
+    "manualOverridesApplied": 1292,
+    "orthographicNormalizationsApplied": 211,
+    "establishedTranslationsReused": 951,
+    "lastPassRepairedValues": 0,
+    "lastPassEstablishedTranslationsReused": 0,
+    "trigger": "translated/source Unicode length ratio outside 0.18-2.5, exact non-invariant English residue, duplicated or sentence-expanded dashboard label, changed protected dashboard term or embedded token, invented dashboard number, mixed native-script output, invalid locale orthography, unexpected extra sentence, or leaked provider placeholder",
     "generation": "provider beam search with token-preserving segment fallback; bounded first-complete-message fallback"
   },
   "publicCustomerSemanticAudit": {
     "version": 1,
-    "auditedOn": "2026-07-19",
+    "auditedOn": "2026-08-11",
     "sourceLocale": "en-US",
     "sourceMessageCount": 337,
     "localeCount": 52,
@@ -511,8 +528,8 @@
       "en-GB": {
         "provider": "regional-source",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 337,
-        "publicCustomerSha256": "12557d9cff8497e186dd3605800569c0c2f7c5557852e718a27cf2ae71a96ab0"
+        "sourceEqualValues": 334,
+        "publicCustomerSha256": "cfbdde1c2cf0c18c9ea6c16e1db4a22aaf772cb190337185895918d33c64f589"
       },
       "hi-IN": {
         "provider": "google-static-round-trip",
@@ -524,7 +541,7 @@
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "b46c26e3deecf7d0462cc0721594f0bba3eaad9246652720e9d3a174fb87a8e3"
+        "publicCustomerSha256": "7ca1ba352ac5ac328c6802083d639787fe22f9565bef1ce60645743c59f78a28"
       },
       "es-ES": {
         "provider": "google-static-round-trip",
@@ -548,7 +565,7 @@
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "e426a70795d6a287f8fabaa1bc432c06b68b9a9ad5e7d1ad94cd047c37a2f39f"
+        "publicCustomerSha256": "a7fe1fc820a43c1a98d7a89eaabb47eba0dd5cb026847cfd47c25d55d1819709"
       },
       "bn-IN": {
         "provider": "google-static-round-trip",
@@ -655,26 +672,26 @@
       "fr-FR": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 5,
-        "publicCustomerSha256": "c90ad0ee22702838db8ae29ba4b638fcfa1239f8e2f9f5e03b0994e2b5a56f3d"
+        "sourceEqualValues": 4,
+        "publicCustomerSha256": "fc6125f34e9d8a95b825a4bd8eb4c9cb1e7c6777f8d728ef3f78a166ad1908cd"
       },
       "pt-BR": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 8,
-        "publicCustomerSha256": "c50825555e8bb5a05d62eaad95033484070e8ca65b1e419f352926b69efda42b"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "12dc286aeb911ebcd1996b8a990382b042a3afe9603f6b3a7ca069260cddc4ac"
       },
       "de-DE": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 9,
-        "publicCustomerSha256": "de9a3468afe2ba1c7a1983a3bcdea4a70153e0d1f818a11464c32a3ce33376d2"
+        "sourceEqualValues": 4,
+        "publicCustomerSha256": "dcebcda219873c72f94ad2fc8c4c56ebbfed6e89924d909429c8a13129c93b40"
       },
       "it-IT": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 8,
-        "publicCustomerSha256": "c95931e792ad7e08d39ed6ba15ec5344da9840cd2ea1d9edbc47a4acd41a1b77"
+        "sourceEqualValues": 4,
+        "publicCustomerSha256": "57b15d8cfac97b1198552908697ddf1cdd87f33e5cd0f6dd3f95860d612e1eba"
       },
       "ja-JP": {
         "provider": "google-static-round-trip",
@@ -691,14 +708,14 @@
       "id-ID": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 4,
-        "publicCustomerSha256": "ab7ac9553fce15c20115578abc7ba1a050703b103598775c1821bc708191df43"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "229a173343452d6bd069f8f4f0537907b0eb822decc36be3941c720d8f16ae7d"
       },
       "vi-VN": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "ce8f918f1293d7e402835be9f3c1b437d2dfb57a52b59354a5ea94413035b262"
+        "publicCustomerSha256": "8f379b1ffbd2d034c88aa7988f5c7031953ec043078c8644a16cde088fa6ad6b"
       },
       "th-TH": {
         "provider": "google-static-round-trip",
@@ -710,31 +727,31 @@
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "f0335f4867a966b5833cacd4f655b313e449da2a6fbc0704176fe07fe3ffe82e"
+        "publicCustomerSha256": "0067499417fcd14ff53dfe61b40fb69a08419d9ce6f721a342a57a031200c9df"
       },
       "tr-TR": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 5,
-        "publicCustomerSha256": "f0100c0a5d71392fa00e7c2e653088a56fc7477718603f352485b454b0ac6dff"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "0bf6cafc3a14eba5a97df7fbaf41e38d08c45ac3c2c3e94a91b9133c7ca02464"
       },
       "ms-MY": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 10,
-        "publicCustomerSha256": "147c63abf9b943330a57e360016fff49f1e6e42cd291244f2675c2ab6460ccff"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "276ae14b79dfc404a5319b906908ea8f3510e6c0edb90dabe925e8936c742ce7"
       },
       "nl-NL": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 10,
-        "publicCustomerSha256": "cf9d6786589bc222e9ca09817d8b99a5dbfdfa580b1cb290fdfa1953b3443e96"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "0f30c72e7830aa33130d44a1176b60c29fc1478ce88149539c016341701e170b"
       },
       "pl-PL": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 5,
-        "publicCustomerSha256": "735a3e735f50271a98bd23ea781f3812dfada091e764949b572f12619ab7aa88"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "fb7ee39a3cf5b43eefdefab287620e3e72e8d1aae174ef0aa27e64dfc0d60c4b"
       },
       "uk-UA": {
         "provider": "google-static-round-trip",
@@ -745,50 +762,50 @@
       "cs-CZ": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 6,
-        "publicCustomerSha256": "1946fcb540d383d8cccbb9c9785d7ce45dd2f3111ec9ccf69fc3a9b8af50ff7c"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "9234add04a11c5ced3b452b709f759fd824c2b8e33cc4ef40c09fb800c14cb2c"
       },
       "ro-RO": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 11,
-        "publicCustomerSha256": "6976e984c2f57f3d5f8d7b822a9442d9babac61641710bc10d015623233c0062"
+        "sourceEqualValues": 5,
+        "publicCustomerSha256": "b9fff1e0793c5ad748fe6b5ce0df6e3071262c3e6c7cce2ec7286a2ff34dfdf3"
       },
       "el-GR": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "243fd6e3192aab3e2f16cf604044ba90534c20e09e07f375408588e10d30d922"
+        "publicCustomerSha256": "704989c88c303997318555344742727e780f8188d8144269e22002e3437821b7"
       },
       "hu-HU": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 4,
-        "publicCustomerSha256": "1571dbc5c7cd7e54d6291fd43f7236ad52bccd89e88189a1a9dc0e0a1706d43d"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "693dcb41d79df8a7c256a1d2e97c3d81b6cffed453f3c4662b87db61a84f9906"
       },
       "sv-SE": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 12,
-        "publicCustomerSha256": "8df750e6eb31ae3d16b7b089fea3bef30b36059e3b393a98936d810b58447064"
+        "sourceEqualValues": 8,
+        "publicCustomerSha256": "d0192471d77012c0c9414e6f0d6dd50263358e036dd01b6bb99d95887b945e58"
       },
       "da-DK": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 11,
-        "publicCustomerSha256": "294f1276e79b32d7ce8ceaebcafdb1d072c7bf583daa1bdde4e53c504194aa24"
+        "sourceEqualValues": 4,
+        "publicCustomerSha256": "ee4402b8fb0945fcd1a1fabd3d7f58dd21b6f2260ec3a850c36e485f5c9fd94a"
       },
       "fi-FI": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 4,
-        "publicCustomerSha256": "39995ce5298aa8ee43e17fa36e7d048e1e8d8f0ed6ea4ed2b085a8d263bb00c7"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "ed32f995c669559f17fee259bb03afaa12e8f4d778e3d4b4d620fd16934adc9f"
       },
       "fil-PH": {
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
-        "sourceEqualValues": 14,
-        "publicCustomerSha256": "abcf85cbe22e0cb7c1625a3801a7711f07b3e58fb6a6b9714b619ebf9ef5fcc3"
+        "sourceEqualValues": 3,
+        "publicCustomerSha256": "d87e7ed8a099e2dd07f996ad573a8b78c0b0a98bf6068f4491d36ff7ccf381d1"
       },
       "zh-TW": {
         "provider": "google-static-round-trip",
@@ -812,7 +829,7 @@
         "provider": "google-static-round-trip",
         "publicCustomerValueCount": 337,
         "sourceEqualValues": 3,
-        "publicCustomerSha256": "1b53952e40914ef020be2026e773f3f691e561d2edceeba1d6d85f2661ddf6e8"
+        "publicCustomerSha256": "4c7b7202642e836a52414f4cbb798d79bd51b9623aa01d4d9ab36aee60748d6d"
       }
     },
     "keySpecificManualOverrideCount": 75,

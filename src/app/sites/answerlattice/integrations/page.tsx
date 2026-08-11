@@ -62,7 +62,7 @@ const DELIVERY_CARDS = [
     {
         icon: LuZap,
         title: 'Critical alerts',
-        description: 'Coverage drops and repeated AI workflow failures can receive a separate higher-priority notification after the nightly run.',
+        description: 'Coverage drops and repeated review-workflow failures can receive a separate higher-priority notification after the nightly run.',
     },
     {
         icon: LuCheckCircle,
@@ -79,7 +79,7 @@ const DELIVERY_CARDS = [
 const EVENT_ROWS = [
     ['Nightly digest', 'A compact summary of coverage, stale answers, gaps, and review movement.'],
     ['Coverage drop', 'A higher-priority alert when approved support coverage materially falls.'],
-    ['Repeated AI workflow failure', 'A higher-priority alert when the nightly run records repeated failures in governed AI operations such as draft generation.'],
+    ['Repeated workflow failure', 'A higher-priority alert when the nightly run records repeated failures in review or draft-generation work.'],
     ['Test delivery', 'A controlled message for validating Slack or email setup before relying on it.'],
 ];
 
@@ -96,7 +96,7 @@ export default async function AnswerlatticeIntegrationsPage() {
                         <div>
                             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">Integrations</p>
                             <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-                                Notify owners when support truth needs attention.
+                                Notify owners when support needs review.
                             </h1>
                                 <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
                                     AnswerLattice routes support-review work to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
@@ -150,7 +150,7 @@ export default async function AnswerlatticeIntegrationsPage() {
                                             Nightly support digest
                                         </div>
                                         <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                            Coverage changed, review proposals were created, and the configured Slack delivery succeeded.
+                                            Coverage changed, review items were created, and the configured Slack delivery succeeded.
                                         </p>
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">

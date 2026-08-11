@@ -132,11 +132,8 @@ const notFoundHtml = `<!doctype html>
     section {
       position: relative;
       z-index: 1;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);
-      gap: 28px;
-      width: min(100%, 1060px);
-      padding: clamp(28px, 6vw, 52px);
+      width: min(100%, 920px);
+      padding: 52px;
       border: 1px solid var(--line);
       border-radius: 24px;
       background: var(--glass);
@@ -165,7 +162,7 @@ const notFoundHtml = `<!doctype html>
     h1 {
       margin: 22px 0 18px;
       font-weight: 700;
-      font-size: clamp(2.7rem, 10vw, 5.4rem);
+      font-size: 5.4rem;
       line-height: 1.12;
       letter-spacing: 0;
     }
@@ -204,7 +201,6 @@ const notFoundHtml = `<!doctype html>
       color: var(--on-accent);
     }
     .product-shortcuts {
-      grid-column: 1 / -1;
       margin-top: 34px;
       padding-top: 24px;
       border-top: 1px solid var(--line);
@@ -227,54 +223,17 @@ const notFoundHtml = `<!doctype html>
       margin-left: 8px;
       color: var(--blue);
     }
-    .prism-panel {
-      position: relative;
-      min-height: 360px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: rgba(255, 255, 255, 0.5);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-    }
-    .prism-visual {
-      min-height: 190px;
-      margin: 20px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background:
-        radial-gradient(72% 70% at 18% 20%, rgba(35, 132, 255, 0.12), transparent 68%),
-        radial-gradient(64% 62% at 80% 78%, rgba(101, 66, 232, 0.12), transparent 68%),
-        rgba(255, 255, 255, 0.46);
-      display: grid;
-      place-items: center;
-    }
-    .prism-visual img {
-      display: block;
-      width: min(72%, 280px);
-      height: auto;
-    }
-    .route-list {
-      display: grid;
-      gap: 10px;
-      padding: 0 20px 20px;
-    }
-    .route-list div {
-      min-height: 40px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      color: var(--muted);
-      background: rgba(255, 255, 255, 0.5);
-    }
     @media (max-width: 760px) {
       section {
-        grid-template-columns: 1fr;
+        padding: 32px 24px;
       }
-      .prism-panel {
-        min-height: 0;
+      h1 {
+        font-size: 3.2rem;
       }
-      .prism-visual {
-        min-height: 118px;
+    }
+    @media (max-width: 420px) {
+      h1 {
+        font-size: 2.5rem;
       }
     }
   </style>
@@ -294,16 +253,6 @@ const notFoundHtml = `<!doctype html>
           <a id="nv-contact-link" href="/contact">Contact</a>
         </nav>
       </div>
-      <aside class="prism-panel glass" aria-label="Recovery routes">
-        <div class="prism-visual" aria-hidden="true">
-          <img src="/neelvara-logo.svg" alt="" />
-        </div>
-        <div class="route-list">
-          <div>Home</div>
-          <div>Products</div>
-          <div>Contact</div>
-        </div>
-      </aside>
       <div class="product-shortcuts">
         <h2>Product sites</h2>
         <p>Product support, onboarding, billing, documentation, and account questions start from the relevant product site.</p>

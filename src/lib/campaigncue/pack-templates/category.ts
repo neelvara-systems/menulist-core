@@ -40,3 +40,12 @@ export function buildCampaignCuePackTemplateOverflowDocId(
     if (index <= 1) return businessCategory;
     return `${businessCategory}_${index}`;
 }
+
+export function isCampaignCuePackTemplateCatalogIdForCategory(
+    catalogId: string,
+    businessCategory: CampaignCuePackTemplateBusinessCategory,
+): boolean {
+    if (catalogId === businessCategory) return true;
+    const escapedCategory = businessCategory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`^${escapedCategory}_[2-9][0-9]*$`).test(catalogId);
+}

@@ -29,7 +29,7 @@ const STEPS = [
     {
         step: '5',
         title: 'Improve from support gaps',
-        description: 'Repeated fallback, tickets, negative feedback, and private board notes become signal-to-knowledge tasks you can review each week.',
+        description: 'Repeated fallback, tickets, negative feedback, and private board notes become support-gap review work you can improve each week.',
         visual: '↻',
     },
 ];

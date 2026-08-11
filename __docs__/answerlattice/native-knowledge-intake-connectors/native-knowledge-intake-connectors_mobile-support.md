@@ -1,10 +1,19 @@
-# Native Knowledge Intake Connectors - Mobile Support
+# GitHub Change Intake - Mobile Support
 
-> **Status:** No mobile runtime
-> **Last Updated:** 2026-08-05
+> **Status:** Local source complete; authenticated hosted QA pending
+> **Last Updated:** 2026-08-11
 
-There is no connector setup or management screen on desktop or mobile.
+GitHub Change Intake uses the existing responsive Teach Answerlattice route. No separate mobile route, provider picker, or mobile data loader is added.
 
-Do not add a mobile OAuth shortcut, provider picker, token field, or sync status while the feature is reserved. The existing responsive Knowledge Intake workflow remains the supported path. If one connector is approved later, mobile must show selected source scope, permission state, last sync, reconnect, disconnect, and deletion consequences without hiding security or cost information.
+## Required Mobile Behavior
 
-The responsive release-evidence form is part of manual Knowledge Intake. Its same-tab Changelog draft handoff is not connector setup and must not display connected, synced, monitored, or last-sync language.
+- Connection status, selected repositories, last event, and disconnect remain readable without horizontal scrolling.
+- Repository selection wraps into a single-column list.
+- Connect, save, reconnect, and disconnect targets are at least 44px high.
+- OAuth returns to the same responsive Knowledge Intake screen.
+- Long repository names wrap or truncate without moving controls.
+- Existing source review, governance, analysis, and publication behavior remains unchanged.
+
+## Boundary
+
+The mobile surface does not expose tokens, webhook secrets, callback URLs, raw GitHub payloads, patches, or source code. It does not create a second installation workflow or bypass `canManageIntegrations`.

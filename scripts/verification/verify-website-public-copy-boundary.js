@@ -474,6 +474,7 @@ function verifyAssetOsPublicMediaBoundary() {
     'menulist.industry.local-service-businesses.demo-placeholder',
   ];
   const governedSlotIds = [
+    'menulist.industry.service-businesses.hero-source',
     'menulist.marketing.launch-video.poster-placeholder',
     'menulist.feature.customer-feedback-loop.public-form',
     'menulist.feature.menu-import.source-link',
@@ -617,6 +618,7 @@ function verifyPricingPublicCopyBoundary() {
   const onboardingModal = read('src/components/website/pricing-pages/OnboardingModal.tsx');
   const pricingPage = read('src/components/website/pricing-pages/index.tsx');
   const createMenuPreview = read('src/components/website/home/CreateMenuPreviewSection.tsx');
+  const interactiveWorkflow = read('src/components/website/home/InteractiveWorkflowSection.tsx');
   const industries = read('src/content/websiteIndustries.ts');
   const footer = read('src/components/website/Footer.tsx');
   const englishLocale = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
@@ -702,6 +704,8 @@ function verifyPricingPublicCopyBoundary() {
   assert(!('typedTitle' in englishCreateMenuPreview), 'English create-menu preview locale must not advertise unsupported typed intake');
   assert(!('typedTitle' in (hindiLocale.Website?.CreateMenuPreview || {})), 'Hindi create-menu preview locale must not advertise unsupported typed intake');
   assertNotIncludes(createMenuPreview, "{ key: 'typed'", 'Homepage create-menu preview source boundary');
+  assertIncludes(interactiveWorkflow, "{ key: 'pipelineServiceListLink'", 'Homepage workflow supported link intake boundary');
+  assertNotIncludes(interactiveWorkflow, "{ key: 'pipelineText'", 'Homepage workflow unsupported typed intake boundary');
   assertNotIncludes(industries, 'Placeholder proof asset', 'Industry public proof boundary');
   assertNotIncludes(industries, 'Replace this placeholder', 'Industry public proof boundary');
   assertNotIncludes(onboardingModal, '[Animation Here]', 'Pricing onboarding owner-copy boundary');

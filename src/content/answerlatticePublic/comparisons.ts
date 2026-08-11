@@ -22,7 +22,7 @@ export const ANSWERLATTICE_COMPARISONS: AnswerlatticeComparison[] = [
         ],
         tableRows: [
             { label: 'Main job', conventional: 'Respond to user prompts.', answerlattice: 'Serve approved answers tied to safe product context and capture missing coverage.' },
-            { label: 'Authority', conventional: 'Often generated at response time.', answerlattice: 'Approved answers and owner FAQ answers are served before fallback.' },
+            { label: 'Official answer source', conventional: 'Often generated at response time.', answerlattice: 'Approved answers and owner FAQ answers are served before fallback.' },
             { label: 'Page context', conventional: 'Usually generic unless deeply customized.', answerlattice: 'Safe page hints are part of the widget contract.' },
             { label: 'Missed answers', conventional: 'May stay as chat transcript noise.', answerlattice: 'Recurring misses become support-gap review work.' },
         ],
@@ -79,9 +79,9 @@ export const ANSWERLATTICE_COMPARISONS: AnswerlatticeComparison[] = [
         title: 'AnswerLattice vs Knowledge Bases',
         metaDescription: 'Compare AnswerLattice with knowledge bases for hosted help, in-app widget answers, approved owner answers, stale-answer review, and support gaps.',
         eyebrow: 'Comparison',
-        heroTitle: 'Knowledge bases publish docs. AnswerLattice connects docs to support answers.',
+        heroTitle: 'Knowledge bases publish docs. AnswerLattice turns product material into reviewed support.',
         heroDescription:
-            'Use this comparison when the problem is not having pages, but keeping answers useful when product screens, plans, roles, or releases change.',
+            'Use this comparison when the problem is not simply publishing pages, but turning scattered material into reviewed help for the widget, help center, FAQs, and fallback as the product changes.',
         answerlatticeFit: [
             'You want help docs to power in-app widget answers.',
             'Short owner answers and articles need source links and review status.',

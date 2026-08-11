@@ -1,11 +1,15 @@
 # Videos - 2-3 Minute Product Demo Walkthrough
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; continuous verified demo capture pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 2.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -32,6 +36,15 @@ Required boundaries:
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
 
+## Market Role And Asset Gate
+
+- **Market role:** Evaluation and onboarding proof for an owner who wants to see the complete workflow.
+- **Opening contract:** Show the approved customer result first, then explain exactly how the owner gets there.
+- **First payoff:** The intake choices and the private state are visible in the first `0:20`.
+- **Asset gate:** One continuous QA/demo tenant must support every recorded step; do not stitch incompatible mock states into a fake workflow.
+- **Claim gate:** Activity, feedback, language, booking, ordering, and AI steps appear only when configured and currently demonstrable.
+- **Native adaptations:** The full demo is `16:9`; shorter vertical explainers are native recompositions, not crops of the desktop recording.
+
 ## Video 2 - 2-3 Minute Product Demo Walkthrough
 
 ### A. Purpose
@@ -55,7 +68,8 @@ SMB owners, sales prospects, onboarding users, setup partners, founder-led sales
 
 ### D. Recommended Duration
 
-- Master: 2-3 minutes.
+- Master target: 2 minutes 15 seconds to 2 minutes 45 seconds.
+- Maximum: 3 minutes only when an additional verified workflow needs the time.
 - Sales cut: 90 seconds.
 - Onboarding cut: 60-90 seconds.
 - Social proof cut: 45 seconds.
@@ -70,9 +84,9 @@ The viewer should feel: "This is practical, I can start from what I already have
 
 ### G. Narrative Arc
 
-1. Hook: Most businesses already have a menu or list.
+1. Hook: Show the approved customer result.
 2. Problem: Customers keep finding different versions.
-3. Product entry: Upload photo/PDF, paste owned link, or type list.
+3. Product entry: Sign in, then upload photo/PDF, paste an owned link, or use typed fallback.
 4. Proof: Preview, review, approval, customer link, QR, page, customer browsing.
 5. Outcome: Updates stay tied to approval and public surfaces.
 6. CTA: Start menu preview.
@@ -81,54 +95,54 @@ The viewer should feel: "This is practical, I can start from what I already have
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:15 | 15s | Old PDF, WhatsApp screenshot, QR page, printed menu | Quick problem montage, then freeze on scattered versions | Most businesses already have a menu or service list. The problem is that customers keep finding different versions. | Old files keep circulating. | Direct cuts | Show recognizable owner reality | PDF, WhatsApp, QR, print mockups |
-| 0:15-0:35 | 20s | Source intake screen | Screen recording, cursor/tap through menu-photo/PDF/link/service-list options | MenuList starts from what you already have: menu photos, a PDF, an existing public link you own, or a service list. | Upload photos. No typing required. | Smooth UI pan | Keep UI labels readable; make setup feel easy | Upload UI, image upload, PDF upload, link input |
-| 0:35-1:00 | 25s | Prepared structure: categories, items, prices, details | Highlight item name, price, category, business details | MenuList prepares the customer-facing version for owner review. You check items, prices, categories, and business details before anything goes live. | Private preview first. | Cursor highlight | Show not-public state | Private preview UI |
-| 1:00-1:30 | 30s | Approval and publish flow; customer link generated | Click approve, show live link, QR, Official Business Page, print files | After approval, the public customer link goes live. The same approved list can support your QR menu, official page, print files, and sharing links. | Owner approval. Customer link live. | Approval click to link reveal | Keep approval central | Approval UI, link, QR, OBP, print |
-| 1:30-2:00 | 30s | Customer browsing mobile page | Phone frame; search, sections, language, call, WhatsApp, directions | Customers can search, jump sections, switch language when available, and use actions like call, WhatsApp, directions, booking, or ordering links. | Customers find the current version. | Tap indicators | Product clarity over speed | Customer page |
-| 2:00-2:30 | 30s | Owner changes price/status in dashboard or AI Menu Manager | Show message, approval card, approve, receipt | When prices, availability, or notes change, MenuList prepares the update and waits for approval before important work goes live. | AI prepares. Owner approves. | Message bubble to approval card | No autonomous AI visual | AI card, dashboard update, receipt |
-| 2:30-3:00 | 30s | Updated public page, activity/feedback only if accurate, Business Health stable state | Show before/after approved public page and stable check | After publishing, owners can keep the approved list current and see useful activity or private customer reports where available. Start with your current list and put one trusted customer link online. | Put one trusted customer link online. | Calm final montage | Do not overstate analytics | Updated page, Business Health, optional feedback/activity |
+| 0:00-0:15 | 15s | Finished customer link opens with current menu/service list and business details; then show the old versions it replaces | Begin on the product result, pull back to the problem | Here is the result: one approved customer link with the current list and business details. Most businesses already have the information. The problem is that customers keep finding different versions. | One approved customer link. | Product hold -> controlled old-file montage | Prove the destination before explaining setup | Current customer page, fictional PDF, screenshot, QR page, print mock |
+| 0:15-0:35 | 20s | Sign-in boundary and current source-intake screen | Continuous real capture through photo, PDF, owned-link, and typed-fallback choices | Start by signing in, then use the menu photos or PDF you already have. You can also use an owned public link or enter the list manually when needed. No need to retype the whole menu before you begin. | Start with what you already have. | One cursor path; no decorative chapter cut | Match current create-menu behavior | Sign-in state, intake UI, source files |
+| 0:35-1:00 | 25s | Prepared categories, items, prices, and business details under a private state | Reveal rows, inspect two items, correct one value | MenuList prepares a private customer-facing version. Review the categories, item names, prices, descriptions, and business details. Make any correction here, while the version is still private. | Private preview first. | Cursor settles before each focus; one correction is shown | This is the core trust proof | Current private preview and correction UI |
+| 1:00-1:30 | 30s | Owner approval and publish flow; customer link, QR, Official Business Page, and print assets become available | Approval press causes the public-state change; outputs appear sequentially | Nothing goes public until the owner approves. After approval, the customer link goes live. That approved source can support the MenuList QR, official business page, print files, and owner-shared placements. | Owner approves. Customer link goes live. | Approval -> confirmation -> verified outputs | Keep owner action visually causal | Approval UI, receipt, link, QR, page, print |
+| 1:30-2:00 | 30s | Customer uses search, section jumps, configured language, hours, and actions | Native mobile capture with readable close-ups | Now look at the customer experience. Customers can search the list, jump to a section, switch language when configured, see current prices and hours, and use supported actions such as call, WhatsApp, or directions. | Customers see the current version. | One real interaction per proof | Show only configured controls | Current customer page and configured actions |
+| 2:00-2:30 | 30s | Owner changes availability or price through the current dashboard or certified AI Menu Manager path | Message or direct edit -> approval card -> owner approval -> receipt | When a price, availability state, or note changes, use the current owner workflow. If AI Menu Manager is certified for this release, it can prepare the update card. The owner reviews and approves before the customer page changes. | Prepare. Review. Approve. | Continuous action; no autonomous effect | AI path is optional and certification-gated | Current dashboard or certified AI path and receipt |
+| 2:30-2:45 | 15s | Updated customer page and `No action needed` state; final identity | Hold the approved result, then settle into brand close | The approved customer page now reflects the change. Start with your current list, review what customers will see, and put one trusted customer link online. | Start from your current list. | Updated result -> brand lockup hold | Do not add unverified analytics | Updated page, Business Health, approved lockup |
 
 ### I. Full Voiceover Script
 
 ```text
-Most businesses already have a menu or service list.
+Here is the result: one approved customer link with the current list and business details.
 
-The problem is that customers keep finding different versions: old PDFs, screenshots, QR pages, social links, and printed copies.
+Most businesses already have the information. The problem is that customers keep finding different versions.
 
-MenuList starts from what you already have: menu photos, a PDF, an existing public link you own, or a service list.
+Start by signing in, then use the menu photos or PDF you already have. You can also use an owned public link or enter the list manually when needed.
 
-No typing is required to start. MenuList prepares the customer-facing version for owner review.
+No need to retype the whole menu before you begin.
 
-MenuList prepares the customer-facing version for owner review.
+MenuList prepares a private customer-facing version.
 
-You check items, prices, categories, and business details before anything goes live.
+Review the categories, item names, prices, descriptions, and business details. Make any correction here, while the version is still private.
 
-After approval, the public customer link goes live.
+Nothing goes public until the owner approves. After approval, the customer link goes live.
 
-The same approved list can support your QR menu, official business page, print files, and sharing links.
+That approved source can support the MenuList QR, official business page, print files, and owner-shared placements.
 
-Customers can search, jump sections, switch language when available, and use actions like call, WhatsApp, directions, booking, or ordering links.
+Now look at the customer experience. Customers can search the list, jump to a section, switch language when configured, see current prices and hours, and use supported actions such as call, WhatsApp, or directions.
 
-When prices, availability, or notes change, MenuList prepares the update and waits for approval before important work goes live.
+When a price, availability state, or note changes, use the current owner workflow. If AI Menu Manager is certified for this release, it can prepare the update card. The owner reviews and approves before the customer page changes.
 
-After publishing, owners can keep the approved list current and see useful activity or private customer reports where available.
+The approved customer page now reflects the change.
 
-Start with your current list. Review the customer version. Put one trusted customer link online.
+Start with your current list, review what customers will see, and put one trusted customer link online.
 ```
 
 ### J. On-Screen Text List
 
-1. Old files keep circulating.
-2. Upload photos. No typing required.
-3. Menu photos. PDF. Existing link.
+1. One approved customer link.
+2. Start with what you already have.
+3. Menu photos. PDF. Owned link. Typed fallback.
 4. Private preview first.
 5. Owner approval.
 6. Customer link live.
 7. QR, page, print, sharing links.
 8. Customers find the current version.
-9. AI prepares. Owner approves.
-10. Put one trusted customer link online.
+9. Prepare. Review. Approve.
+10. Start from your current list.
 
 ### K. UI Screens Required
 
@@ -158,21 +172,23 @@ Music should stay underneath the voiceover. Use light UI click sounds for approv
 - Demo data is clean and fictional or permissioned.
 - External platform references are owner-placement only.
 - Activity and feedback are shown only if accurate.
-- The final CTA matches the active funnel.
+- The current sign-in boundary is shown accurately.
+- The final identity includes a readable `menulist.ai`; the clickable CTA remains beside the player or in the sales message.
 
 ### O. Versioning Requirements
 
 - 16:9 master with VO and captions.
 - 16:9 clean no-caption version.
 - 9:16 short demo cut.
-- 1:1 social crop.
+- Native 1:1 social composition when required.
 - 60-90 second onboarding cut.
 - 45-second sales follow-up cut.
 - Thumbnail frame.
 
 ### P. CTA
 
-Start menu preview.
+- Encoded close: `menulist.ai`.
+- Companion website/sales CTA: `Start menu preview`.
 
 ### Q. Conversion Contract
 

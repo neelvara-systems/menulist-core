@@ -218,7 +218,7 @@ $spacing-xl: 32px;
 }
 
 .tooltipIcon {
-  margin-left: $spacing-xs;
+  margin-inline-start: $spacing-xs;
   font-size: 12px;
   cursor: help;
   color: $text-tertiary;
@@ -235,7 +235,7 @@ $spacing-xl: 32px;
   font-size: 28px;
   color: $text-primary;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 
   @media (max-width: 576px) {
     font-size: 24px;
@@ -249,7 +249,7 @@ $spacing-xl: 32px;
 }
 
 .changeTag {
-  margin-left: $spacing-sm;
+  margin-inline-start: $spacing-sm;
   font-size: 11px;
   font-weight: 500;
   border: none;
@@ -261,7 +261,7 @@ $spacing-xl: 32px;
   background: linear-gradient(135deg, $background-light 0%, $background-card 100%);
   border-radius: $radius-md;
   border: 1px solid $border-color;
-  border-left: 4px solid $primary-color;
+  border-inline-start: 4px solid $primary-color;
   box-shadow: $shadow-sm;
   margin-bottom: $spacing-md;
 
@@ -307,7 +307,7 @@ $spacing-xl: 32px;
 
 .aiBulletItem {
   position: relative;
-  padding-left: $spacing-lg;
+  padding-inline-start: $spacing-lg;
   font-size: 14px;
   line-height: 1.6;
   color: $text-primary;
@@ -315,7 +315,7 @@ $spacing-xl: 32px;
   &::before {
     content: "";
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 10px;
     width: 6px;
     height: 6px;
@@ -681,7 +681,7 @@ $spacing-xl: 32px;
   text-align: center;
 
   @media (max-width: 576px) {
-    text-align: left;
+    text-align: start;
   }
 
   :global(.ant-statistic-title) {
@@ -703,7 +703,7 @@ $spacing-xl: 32px;
 
 .lastUpdated {
   display: block;
-  text-align: right;
+  text-align: end;
   font-size: 11px;
   color: $text-tertiary;
   margin-top: $spacing-md;
@@ -890,7 +890,7 @@ $spacing-xl: 32px;
 }
 
 .weekLabel {
-  text-align: left;
+  text-align: start;
 }
 
 .barContainer {
@@ -898,14 +898,14 @@ $spacing-xl: 32px;
 }
 
 .weekValue {
-  text-align: right;
+  text-align: end;
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 
 .bulletList {
-  padding-left: $spacing-lg;
+  padding-inline-start: $spacing-lg;
   margin: 0;
 
   li {
@@ -968,7 +968,7 @@ $spacing-xl: 32px;
 
 .analyticsDetailValue {
   flex-shrink: 0;
-  text-align: right;
+  text-align: end;
   white-space: nowrap;
 }
 

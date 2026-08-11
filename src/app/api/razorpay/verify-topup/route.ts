@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { DB_COLLECTIONS } from "@constant/database";
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
@@ -45,7 +46,7 @@ const verifyRazorpayOrderSignature = (
     paymentId: string,
     signature: string,
 ) => {
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keySecret = menulistServerEnv.razorpayKeySecret;
     if (!keySecret) return false;
 
     const expectedSignature = createHmac('sha256', keySecret)

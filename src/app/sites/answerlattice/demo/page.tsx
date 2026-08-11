@@ -38,7 +38,7 @@ export default async function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-10 max-w-3xl text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Interactive demo</p>
                             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                                See a repeated support question become a trusted answer.
+                                See one support question become a reusable improvement.
                             </h1>
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                                 Follow one user question from approved guidance or safe fallback to founder review and a tested improvement.
@@ -56,14 +56,14 @@ export default async function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                Known questions use approved support truth. Missing evidence opens fallback and creates founder review work. Nothing becomes official until it is approved and tested. This simulation uses sample content and makes no Firebase or AI provider call.
+                                Known questions use approved support knowledge. Missing evidence opens fallback and creates founder review work. Nothing becomes official until it is approved and tested. This simulation uses sample content and makes no Firebase or AI provider call.
                             </p>
                         </div>
 
                         <AnswerlatticeSupportLoopDemo />
 
                         <div className="mx-auto mb-8 mt-20 max-w-3xl text-center">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-300">Governance proof</p>
+                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-300">Answer review proof</p>
                             <h2 className="mt-3 text-3xl font-bold text-white">See an approved answer stay correct through change.</h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
                                 This second simulation shows how conflicting sources, human approval, release drift, safe fallback, and correction affect the same answer.
@@ -77,7 +77,7 @@ export default async function AnswerlatticeDemoPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold">Ready to add this to your app?</h2>
                     <p className="mx-auto mt-4 max-w-xl text-[#a0a0c0]">
-                        Start with product details, import knowledge, create product surfaces, and verify the widget from the activation dashboard.
+                        Start with product details, import what you already know, map the pages where users need help, and verify the widget from the setup dashboard.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
                         <AnswerlatticeLink

@@ -1,7 +1,7 @@
 # Global Localization Verification
 
 **Status:** Local source and semantic-evidence verification passed
-**Last updated:** July 19, 2026
+**Last updated:** August 11, 2026
 
 ## Findings and Fixes
 
@@ -27,7 +27,7 @@
 | Medium | Automated translation produced isolated high-confidence errors in Assamese reservation, Finnish action rate, Filipino lifetime range, and Hindi action breakdown. | Applied direct native-script corrections for those exact mounted keys. |
 | Medium | The Odia provider output split English fragments into Odia words, including “no data,” “dark mode,” and “invalid.” | Repaired the affected mounted strings and added a regression guard for the known mixed-script patterns. |
 | Medium | Desktop and mobile settings entry points still displayed the stale “App Appearance” wording even after the settings panel was broadened. | Both entry points now reuse the canonical localized `AppSettings` title/summary; the theme action also changes between localized dark/light labels. |
-| High | The earlier completeness gate covered only five namespaces while mounted desktop/mobile owner code uses 49 MenuList namespaces. | Expanded the structural and ICU boundary to all current 3,456 owner keys, excluding only separately governed `Website` and `CampaignCue`. |
+| High | The earlier completeness gate covered only five namespaces while mounted desktop/mobile owner code uses 50 MenuList namespaces. | Expanded the structural and ICU boundary to all current 4,025 owner keys, excluding only separately governed `Website` and `CampaignCue`. |
 | High | Bottom navigation, loader names, and the MobileShell subscription gate bypassed next-intl. | Added `MobileNavigation` and `MobileShell` source contracts, wired the rendered labels, and added hardcode regression checks. |
 | High | The structural expansion still contained 125,159 exact `en-US` fallback values, including Bodo and Kashmiri. | Preserved existing translations and populated 122,117 source-equal owner values with pinned local AI4Bharat IndicTrans2 and Google MADLAD-400 revisions. Remaining exact values are approved invariants or reviewed same-spelling cognates. |
 | High | Ordinary URL, alphanumeric, and XML-style sentinels could be dropped, transliterated, renumbered, or duplicated by one or both model families. | Switched to provider-native numbered-brace/printf placeholders and an exact token multiset gate. A failed token switches only that message to segment translation around the protected values. |
@@ -43,6 +43,8 @@
 | High | The maintainer-time provider silently treated `pt-BR` as unsupported and returned the English source for the Portuguese public pack. | Regenerated the complete pack with the supported static provider target `pt`, recorded the alias in evidence, and added exact-source rejection through the full owner gate. |
 | Medium | Fixed spice-level values rendered raw English even when the surrounding menu/item-detail chrome was localized. | Added four localized enum messages and one shared bounded resolver used by both public surfaces; unknown owner values remain readable and unguessed. |
 | Medium | Kashmiri was registered as LTR and the language registry used stale Kashmiri/Manipuri native names. | Kashmiri now uses RTL with `کٲشُر`; Manipuri uses the Meitei-script native name aligned with the checked-in pack. |
+| High | Dashboard Business Health/public-truth components rendered backend English labels and prose directly in localized sessions. | Stable IDs now project through shared locale presentation helpers; non-English assistant submission is disabled and English report export is labeled honestly. |
+| High | Existing machine translations could preserve ICU shape while inventing clauses, duplicating CJK alternatives, changing count meaning, or translating protected terms such as `Smart Picks`. | Added reviewed back-translation, embedded protected-token parity, repeated-CJK, leaked `%s`, script, number, sentence, and reviewed-override gates; repaired the checked-in packs and finished with an empty quality queue. |
 
 ## Parity Map
 
@@ -58,17 +60,18 @@
 
 - `en-US`: canonical source.
 - `en-GB`: English source-synced for this mounted boundary, retaining existing regional copy elsewhere.
-- All 52 packs: exactly 3,456 owner keys across 49 namespaces are structurally complete and ICU-safe; no locale-only owner keys remain.
-- All 50 non-English packs: the established 464-string dashboard/settings subset and expanded owner boundary are semantic-evidence gated.
+- All 52 packs: exactly 4,025 owner keys across 50 namespaces are structurally complete and ICU-safe; no locale-only owner keys remain.
+- All 50 non-English packs: the established 1,020-string dashboard/settings subset and expanded owner boundary are semantic-evidence gated.
 - Earlier semantic migration: 122,117 actual owner values populated from 106,662 deduplicated protected translation units.
-- Current owner-quality evidence: 696 bounded repairs remain hash-bound to the 52 locale packs.
+- Current owner-quality evidence: 7,030 bounded repairs remain hash-bound to the 52 locale packs.
+- Starter activation review: all 12 messages in all 52 packs passed exact ICU signature, protected-token, provider-placeholder, newline, non-invariant English residue, and RTL-output checks; the reviewed values and workflow are hash-bound in semantic evidence.
 - Public customer bundle: exactly 337 keys generated from every one of the 52 registered locale packs.
 - Public static generation: 48 non-English packs generated and English-round-trip audited through the maintainer-time static workflow; Bodo and Kashmiri use pinned local IndicTrans2.
 - Public contextual review: 75 key-specific corrections and 71 exact values admitted only as reviewed same-spelling cognates or unit formats.
 - Exact-source residue: limited to protected brands, URLs, identifiers, ICU-only values, file/format terms, or reviewed same-spelling cognates.
 - `brx-IN` and `ks-IN`: use the pinned AI4Bharat model and the same token, ICU, length, residue, and evidence-hash gates as every other non-English pack.
 
-Google Cloud Translation was not enabled: the active legacy project had the API disabled, the configured project boundary did not match current MenuList environment governance, and the workload exceeded the documented free monthly character tier. The local workflow instead uses [AI4Bharat IndicTrans2](https://github.com/AI4Bharat/IndicTrans2) for the 21 supported Indic packs and [Google MADLAD-400](https://huggingface.co/google/madlad400-3b-mt) for 29 global packs. The AI4Bharat mirror is pinned to a revision whose model weight SHA-256 matches the gated upstream weight; MADLAD uses a pinned CTranslate2 conversion with recorded model and tokenizer hashes. Both model families run only in the maintainer workflow.
+Google Cloud Translation was not enabled: the active legacy project had the API disabled, the configured project boundary did not match current MenuList environment governance, and the workload exceeded the documented free monthly character tier. The general local workflow instead uses [AI4Bharat IndicTrans2](https://github.com/AI4Bharat/IndicTrans2) for the 21 supported Indic packs and [Google MADLAD-400](https://huggingface.co/google/madlad400-3b-mt) for 29 global packs. The AI4Bharat mirror is pinned to a revision whose model weight SHA-256 matches the gated upstream weight; MADLAD uses a pinned CTranslate2 conversion with recorded model and tokenizer hashes. The bounded `StarterActivation` review used the same maintainer-time static Google mobile-web path already governed for public-customer copy, with protected-token isolated retries; Bodo and Kashmiri remained on the pinned local path. No provider is called by the application runtime.
 
 Meta M2M-100 and Helsinki bilingual candidates were rejected after real-message samples changed protected tokens, mistranslated common owner actions, or produced weaker low-resource output. The semantic workflow records the accepted model revisions, licenses, generation settings, source hash, and per-locale owner-subtree hashes in `owner-locale-semantic-coverage.json`.
 
@@ -84,6 +87,9 @@ Meta M2M-100 and Helsinki bilingual candidates were rejected after real-message 
 - Regenerated the compact public-customer bundle and checked exact source/bundle parity, placeholder and protected-term parity, provider-marker and unrelated-sentence rejection, canonical examples, selected script boundaries, per-locale hashes, surface wiring, language-query preservation, RTL behavior, and zero runtime provider/Firebase imports.
 - Added functional assertions for regional public codes, store-policy fallback, locale selection, URL propagation, localized hours/day labels, interpolation, and shared spice labels.
 - Re-ran the owner semantic gate after the public pass; it caught and closed the silent Portuguese source return and a remaining Odia mixed-script artifact.
+- Back-translated 62 touched or objectively flagged dashboard messages across 29 M2M-supported locales, reviewed prominent output manually, and closed invented clauses, false availability claims, malformed count labels, protected-term drift, and duplicated CJK alternatives.
+- Used explicit per-key source fallback where the available local provider mixed scripts or could not produce a defensible localized result, including dense analytics definitions. Accurate English is preferred over a misleading localized business claim.
+- Authenticated dashboard visual certification remains pending because the local browser had no owner session; `/dashboard` correctly redirected to a clean `/signin` render with no console errors.
 - This is strong executable semantic evidence. It does not certify native fluency, tone, or regional dialect, so future native-speaker feedback remains a valid copy improvement rather than a hidden code-completion blocker.
 
 ## Commands
@@ -99,4 +105,4 @@ npx eslint --no-cache <touched localization and owner display files>
 npx tsc --noEmit --incremental false --pretty false
 ```
 
-Hosted browser/PWA checks remain release-operator evidence and must stay pending until the app is released.
+The aggregate localization command passed all MenuList locale, public bundle, behavior, and Ant Design checks, then stopped on an unrelated CampaignCue no-opener assertion in `CampaignCueWorkspaceApp.tsx`. Authenticated hosted dashboard/PWA checks remain release-operator evidence.

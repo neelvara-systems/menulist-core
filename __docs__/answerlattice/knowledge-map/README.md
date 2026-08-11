@@ -29,6 +29,9 @@ and must not imply that visual placement itself is product truth.
 - Product Friction Evidence and other owner review surfaces may open the map
   with one validated entity focus. The map may open Canonical Answers filtered
   to that same entity.
+- When a validated requested entity is absent from the current exact-scope
+  graph, the map keeps selection empty and shows an explicit warning rather
+  than substituting another topic.
 - A separate `/product-map` route, map manifest, Storage snapshot, layout
   document, presentation configuration, and action-count feed are rejected.
 

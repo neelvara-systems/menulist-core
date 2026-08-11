@@ -9,7 +9,8 @@ import type { CampaignCueAsset, CampaignCueBusinessBrain } from "@type/campaignc
 import type { CampaignCueCreativeEditorDocumentSnapshot, CampaignCueCreativeSourcePackage, CampaignCueCueLayerAssetRef, CampaignCueCueLayerBootPackage, CampaignCueCueLayerDesign, CampaignCueCueLayerIndex, CampaignCueCueLayerJob, CampaignCueCueLayerUploadResult, } from "@type/campaigncueCueLayers";
 import type { CreativeEditorDocument } from "@/modules/creative-editor/types";
 import { buildCampaignCueApiError, buildCampaignCueWorkspaceId, ensureCampaignCueWorkspaceServer, logCampaignCueServerError, type CampaignCueSessionScope, } from "../server";
-import { assertCampaignCueWorkspaceRecordScope } from "../workspaceScope";
+import { campaignCueCanManageWorkspaceContent } from "../permissions";
+import { assertCampaignCueWorkspaceRecordScope, CampaignCueWorkspaceScopeError } from "../workspaceScope";
 import { buildCampaignCueCueLayerProjection } from "./editorProjection";
 import { assertCampaignCueCueLayerDocumentScope, collectCampaignCueCueLayerDocumentAssetIds, dehydrateCampaignCueCueLayerDocumentAssets, getCampaignCueCueLayerExportBindingError, hydrateCampaignCueCueLayerDocumentAssets, } from "./documentBoundary";
 import { assertCampaignCueCueLayersClaimOwnership, CampaignCueCueLayersIdempotencyConflictError, getCampaignCueCueLayersClaimDecision, type CampaignCueCueLayersIdempotencyRecord, } from "./idempotency";
@@ -20,6 +21,11 @@ import { buildCampaignCueCueAssetUri, buildCampaignCueCueLayerId, buildCueLayerA
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
 const CUE_LAYERS_IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000;
+const assertCueLayersRuntimeEnabled = () => {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) {
+        throw new Error("CueLayers is disabled.");
+    }
+};
 const sanitizeForAdminFirestore = <T>(value: T): T extends undefined ? null : T => sanitizeFirestoreValue(value, {
     dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
     undefinedObjectValue: "omit",
@@ -44,6 +50,16 @@ async function assertCurrentCueLayersWorkspaceAccess(
         { ...scope, workspaceId },
     );
 }
+
+const assertCueLayersMutationAccess = (
+    workspace: ReturnType<typeof assertCampaignCueWorkspaceRecordScope>,
+    userId: string,
+) => {
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
+    return workspace;
+};
 
 const jsonBuffer = (value: unknown) => Buffer.from(JSON.stringify(value, null, 2), "utf8");
 
@@ -314,10 +330,11 @@ async function claimCueLayersIdempotency(params: {
         claimId: string | null;
         replay: CampaignCueCueLayersIdempotencyRecord | null;
     }>(async (transaction) => {
-        const [snap] = await Promise.all([
+        const [snap, currentWorkspace] = await Promise.all([
             transaction.get(ref),
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, params.workspaceId),
         ]);
+        assertCueLayersMutationAccess(currentWorkspace, params.scope.userId);
         const expected = {
             action: params.action,
             actorId: params.scope.userId,
@@ -457,7 +474,9 @@ function brandSnapshot(businessBrain: CampaignCueBusinessBrain) {
 }
 
 export async function listCampaignCueCueLayerDesignsServer(scope: CampaignCueSessionScope): Promise<CampaignCueCueLayerDesign[]> {
+    assertCueLayersRuntimeEnabled();
     const { workspace } = await ensureCampaignCueWorkspaceServer(scope);
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[scope.userId]?.role)) return [];
     const snap = await workspaceSubcollection(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS)
         .orderBy("updatedAt", "desc")
         .limit(CAMPAIGNCUE_PAGE_SIZE)
@@ -469,7 +488,8 @@ export async function createCampaignCueCueLayerUploadServer(params: {
     input: CampaignCueCueLayerUploadInput;
     scope: CampaignCueSessionScope;
 }): Promise<CampaignCueCueLayerUploadResult> {
-    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD) {
+    assertCueLayersRuntimeEnabled();
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD) {
         throw new Error("CueLayers upload is disabled.");
     }
     if (params.input.sourceKind !== "user_upload" && !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_GENERATED_SOURCE) {
@@ -478,6 +498,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
     const parsed = parseImageDataUrl(params.input.dataUrl, params.input.mimeType);
     const sha256 = sha256Hex(parsed.buffer);
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(params.scope);
+    assertCueLayersMutationAccess(workspace, params.scope.userId);
     const workspaceId = workspace.workspaceId || buildCampaignCueWorkspaceId(params.scope);
     const idempotencyAction = "cue_layers_upload";
     const requestHash = stableJsonHash({
@@ -694,10 +715,11 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         workspaceId,
     };
     await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [, idempotencySnap] = await Promise.all([
+        const [currentWorkspace, idempotencySnap] = await Promise.all([
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
             idempotency.ref && idempotency.claimId ? transaction.get(idempotency.ref) : Promise.resolve(null),
         ]);
+        assertCueLayersMutationAccess(currentWorkspace, params.scope.userId);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
                 action: idempotencyAction,
@@ -745,20 +767,28 @@ export async function createCampaignCueCueLayerUploadServer(params: {
 }
 
 async function getCueLayerDesign(params: { designId: string; scope: CampaignCueSessionScope }) {
+    assertCueLayersRuntimeEnabled();
     const { workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const workspaceId = workspace.workspaceId;
     const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS)
         .doc(params.designId)
         .get();
     if (!snap.exists) throw new Error("CueLayers design not found.");
-    return { design: parseCampaignCueCueLayerDesignRecord(snap.data(), snap.id, workspaceId), workspaceId };
+    return { design: parseCampaignCueCueLayerDesignRecord(snap.data(), snap.id, workspaceId), workspace, workspaceId };
 }
 
 export async function readCampaignCueCueLayerJobServer(params: {
     jobId: string;
     scope: CampaignCueSessionScope;
 }) {
+    assertCueLayersRuntimeEnabled();
     const { workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const snap = await workspaceSubcollection(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOBS)
         .doc(params.jobId)
         .get();
@@ -794,7 +824,8 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
     input: CampaignCueCueLayerAutosaveInput;
     scope: CampaignCueSessionScope;
 }) {
-    const { design, workspaceId } = await getCueLayerDesign(params);
+    const { design, workspace, workspaceId } = await getCueLayerDesign(params);
+    assertCueLayersMutationAccess(workspace, params.scope.userId);
     const expectedRevision = params.input.expectedRevision ?? design.current.revision;
     assertCampaignCueCueLayerDocumentScope(params.input.document as unknown as CreativeEditorDocument, design.id, workspaceId);
     const layerIndexVersionId = (design.current as CampaignCueCueLayerDesign["current"] & { layerIndexVersionId?: string; versionId?: string }).layerIndexVersionId
@@ -881,11 +912,12 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
     let committedDesign: CampaignCueCueLayerDesign | null;
     try {
         committedDesign = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [currentSnap, idempotencySnap] = await Promise.all([
+        const [currentSnap, idempotencySnap, currentWorkspace] = await Promise.all([
             transaction.get(designRef),
             idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        assertCueLayersMutationAccess(currentWorkspace, params.scope.userId);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,
@@ -972,7 +1004,8 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
     input: CampaignCueCueLayerRepairInput;
     scope: CampaignCueSessionScope;
 }) {
-    const { design, workspaceId } = await getCueLayerDesign(params);
+    const { design, workspace, workspaceId } = await getCueLayerDesign(params);
+    assertCueLayersMutationAccess(workspace, params.scope.userId);
     if (params.input.layerId) {
         const layerIndexVersionId = design.current.layerIndexVersionId || design.current.versionId;
         if (!layerIndexVersionId) {
@@ -1035,11 +1068,12 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
     const repairId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.REPAIR);
     const designRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id);
     const committed = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [currentSnap, idempotencySnap] = await Promise.all([
+        const [currentSnap, idempotencySnap, currentWorkspace] = await Promise.all([
             transaction.get(designRef),
             idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        assertCueLayersMutationAccess(currentWorkspace, params.scope.userId);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,
@@ -1103,7 +1137,8 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
     input: CampaignCueCueLayerExportInput;
     scope: CampaignCueSessionScope;
 }) {
-    const { design, workspaceId } = await getCueLayerDesign(params);
+    const { design, workspace, workspaceId } = await getCueLayerDesign(params);
+    assertCueLayersMutationAccess(workspace, params.scope.userId);
     assertCampaignCueCueLayerDocumentScope(params.input.document as unknown as CreativeEditorDocument, design.id, workspaceId);
     const renderedExport = parseRenderedExportDataUrl(params.input.renderedDataUrl, params.input.format);
     const renderedSha256 = sha256Hex(renderedExport.buffer);
@@ -1251,11 +1286,12 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
     let committed: boolean;
     try {
         committed = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [currentSnap, idempotencySnap] = await Promise.all([
+        const [currentSnap, idempotencySnap, currentWorkspace] = await Promise.all([
             transaction.get(designRef),
             idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        assertCueLayersMutationAccess(currentWorkspace, params.scope.userId);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,

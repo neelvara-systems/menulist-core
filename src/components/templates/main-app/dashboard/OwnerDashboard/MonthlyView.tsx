@@ -13,11 +13,12 @@
  */
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { EMPTY_STATE_MESSAGES, MonthlyViewData } from '@template/main-app/projects/types';
-import { formatDateKey } from '@util/dateTime';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import { formatDashboardMonth, formatDashboardPercent } from '@lib/analytics/ownerDashboardPresentation';
+import { MonthlyViewData } from '@template/main-app/projects/types';
+import { formatNumber } from '@util/formatters';
 import { Card, Col, Empty, Row, Statistic, Typography, theme } from 'antd';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
@@ -32,8 +33,7 @@ interface MonthlyViewProps {
 }
 
 const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
-    const labels = useOfferingLabels();
-    const formatter = useFormatter();
+    const labels = useDashboardOfferingLabels();
     const t = useTranslations('Dashboard.owner');
     const { token } = theme.useToken();
 
@@ -52,7 +52,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                     imageStyle={{ height: 112 }}
                     description={
                         <Text type="secondary">
-                            {EMPTY_STATE_MESSAGES.noMonthlyData.description}
+                            {t('empty.noMonthlyData')}
                         </Text>
                     }
                 />
@@ -60,10 +60,10 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
         );
     }
 
-    const { metrics, aiSummary, daysWithData, monthStart, monthEnd } = data;
+    const { metrics, aiSummary, daysWithData, monthStart } = data;
 
     // Format month for display
-    const monthName = formatDateKey(monthStart, formatter);
+    const monthName = formatDashboardMonth(monthStart, t('periods.thisMonth'));
 
     const smartPicksEngagementRate = metrics.smartPicksRendered > 0
         ? Math.round((metrics.smartPicksClicks / metrics.smartPicksRendered) * 100)
@@ -88,7 +88,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
 
             {/* AI Summary - Calm, reassuring */}
             {aiSummary && (
-                <AISummaryCard summary={aiSummary} period="monthly" />
+                <AISummaryCard summary={aiSummary} metrics={metrics} period="monthly" />
             )}
 
             {/* Key Metrics - Neutral presentation */}
@@ -110,14 +110,14 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.engagedSessions')}
-                        value={`${metrics.engagedSessionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.engagedSessionRate)}
                         subtitle={t('subtitles.menuInterest')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.actionRate')}
-                        value={`${metrics.actionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.actionRate)}
                         subtitle={t('subtitles.finalActions')}
                     />
                 </Col>
@@ -131,7 +131,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
                         title={t('metrics.smartPicksEngagement')}
-                        value={`${smartPicksEngagementRate}%`}
+                        value={formatDashboardPercent(smartPicksEngagementRate)}
                         subtitle={t('units.totalClicks', { count: metrics.smartPicksClicks })}
                     />
                 </Col>
@@ -172,14 +172,14 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                     <Col xs={12} sm={6}>
                         <Statistic
                             title={t('metrics.activeDays')}
-                            value={daysWithData}
+                            value={formatNumber(daysWithData)}
                             suffix={t('units.days')}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
                             title={t('metrics.avgDailyScans')}
-                            value={daysWithData > 0 ? Math.round(metrics.menuVisits / daysWithData) : 0}
+                            value={formatNumber(daysWithData > 0 ? Math.round(metrics.menuVisits / daysWithData) : 0)}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
@@ -191,8 +191,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                     <Col xs={12} sm={6}>
                         <Statistic
                             title={t('metrics.engagementRate')}
-                            value={smartPicksEngagementRate}
-                            suffix="%"
+                            value={formatDashboardPercent(smartPicksEngagementRate)}
                         />
                     </Col>
                 </Row>

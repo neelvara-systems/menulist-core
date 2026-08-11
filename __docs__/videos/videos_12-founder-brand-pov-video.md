@@ -1,11 +1,15 @@
 # Videos - Founder / Brand POV Video
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; founder footage/voice and current product cutaways pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 12.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -32,6 +36,15 @@ Required boundaries:
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
 
+## Market Role And Asset Gate
+
+- **Market role:** Human trust and category-creation asset for founder distribution, LinkedIn, partners, and skeptical owners.
+- **Opening contract:** Founder says `Owners do not need another dashboard` directly and conversationally.
+- **First payoff:** Current product evidence appears within the first `0:10`; the founder is not left unsupported on screen.
+- **Asset gate:** Founder-approved voice/footage, usage consent, clean audio, and current source-to-approval product cutaways.
+- **Claim gate:** No memorized growth claim, unsupported future promise, or unpermissioned customer story.
+- **Native adaptations:** Capture or compose native landscape and vertical framing; do not crop the founder's landscape shot for Reels.
+
 ## Video 12 - Founder / Brand POV Video
 
 ### A. Purpose
@@ -54,7 +67,7 @@ LinkedIn viewers, founder network, early customers, partners, investors, skeptic
 
 ### D. Recommended Duration
 
-- Master: 60-90 seconds.
+- Master: 60-75 seconds.
 - LinkedIn cut: 60-75 seconds.
 - Reel cut: 30-45 seconds.
 - Quote cut: 15 seconds.
@@ -69,56 +82,56 @@ The viewer should feel: "This product understands real owner friction and is bui
 
 ### G. Narrative Arc
 
-1. Hook: Owners do not need another dashboard.
+1. Hook: Owners do not need another dashboard; show the product result with the founder.
 2. Problem: Customers need correct menu, prices, hours, and contact details.
 3. Product entry: Owners should not have to type the whole menu into another tool.
 4. Proof: Upload menu photos, review a prepared customer version, then create one approved customer link.
 5. Outcome: Less repeated cleanup, more public consistency.
-6. CTA: Start from your current list.
+6. Close: MenuList identity, tagline, and `menulist.ai`; companion CTA is `Start from your current list`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:08 | 8s | Founder talking head | Medium shot, calm background | Most business owners do not wake up thinking about menu software. | Owners do not need another dashboard. | Clean cut in | Founder sincere tone | Founder footage |
-| 0:08-0:18 | 10s | Product/real-world cutaways: menu, phone, counter | Founder VO continues over B-roll | They just want customers to see the correct menu, correct prices, correct hours, and the right way to contact them. | Correct menu. Prices. Hours. Contact. | Soft B-roll cuts | Owner-first language | Menu, customer phone, counter |
-| 0:18-0:34 | 16s | WhatsApp, Instagram, QR, PDF, print, staff phone montage | Cutaway montage | But in real life, the menu spreads everywhere: WhatsApp, Instagram, QR codes, old PDFs, Google, printed cards, and staff phones. | Public information spreads. | Controlled montage | Avoid visual clutter | Channel mockups |
-| 0:34-0:48 | 14s | Founder plus product UI cutaway | Talking head with UI overlay | That is why MenuList is built around one approved customer link. | One approved customer link. | UI overlay beside founder | Brand line moment | Founder, customer link UI |
-| 0:48-1:06 | 18s | Menu photo upload -> preview -> approval -> customer link | Product sequence | Start by uploading photos of the menu or service list you already have. MenuList prepares the customer version for review. | Upload photos. Review. Publish. Keep aligned. | Product flow sequence | Show setup is easy | Upload UI, preview, approval, outputs |
-| 1:06-1:20 | 14s | Founder returns, Business Health stable state cutaway | Calm closer | When something changes, MenuList should reduce repeated work, not create another dashboard to manage. | Less repeated cleanup. | Slow fade | Important doctrine line | Founder, Business Health |
-| 1:20-1:30 | 10s | Logo, founder looking at product, CTA | End card | MenuList is for owners who want their public menu and business details to stay correct, even when no one is watching. | Start from your current list. | Fade to CTA | Low-hype finish | Logo, CTA |
+| 0:00-0:08 | 8s | Founder speaks to camera while a current customer link and source menu appear as clean cutaways within the first five seconds | Credible, real setting; direct eye line; product never becomes decorative overlay clutter | Owners do not need another dashboard. They need customers to see the correct menu, prices, hours, and contact details. | Owners do not need another dashboard. | Founder -> current customer page -> founder | Establish the POV and prove the subject immediately | Founder footage/voice, current customer page |
+| 0:08-0:18 | 10s | Same business information appears across an old PDF, screenshot, QR page, print, chat, and staff phone | One source per beat, all using the same fictional/permissioned business | In real life, that information spreads across QR codes, WhatsApp replies, social profiles, PDFs, printed cards, and staff phones. | Public information spreads. | Controlled match cuts | Do not show external services as managed integrations | Accurate owner-placement and file mockups |
+| 0:18-0:30 | 12s | Founder returns beside the approved-link result | Current customer page remains large enough to inspect | When those versions disagree, the owner has to keep correcting the same public truth. That is why MenuList is built around one approved customer link. | One approved customer link. | Scattered versions consolidate into the customer link | Category-creation moment | Founder and current customer link |
+| 0:30-0:45 | 15s | Menu photos/PDF enter current intake and become a private preview | Product sequence replaces founder while voice continues | Start from the menu or service list you already have. Upload the photos or PDF. No need to retype the whole menu before you begin. MenuList prepares a private customer version. | Start with what you already have. | Source -> progress -> private preview | Show current sign-in and intake boundary accurately | Current intake, source, private preview |
+| 0:45-0:57 | 12s | Owner checks items, prices, and business details, then approves | Approval causes customer-link state change | Review what customers will see. Nothing goes public until the owner approves. | Review first. Then publish. | Review focus -> approval -> customer result | Owner control is the trust proof | Current review, approval, receipt, customer page |
+| 0:57-1:09 | 12s | Approved source supports QR, Official Business Page, print, and customer actions; stable state follows | Verified outputs appear one at a time | The goal is less repeated cleanup: keep MenuList QR, page, print, and customer actions tied to the approved source. | Less repeated cleanup. More public consistency. | Approved source -> verified outputs -> calm hold | No growth or external-sync claim | Current outputs and stable state |
+| 1:09-1:15 | 6s | Founder delivers final sentence, then MenuList lockup, tagline, and URL settle | Founder close cuts into founder-approved brand lockup | MenuList helps the customer version stay correct, even when no one is watching. | MenuList / One approved customer link / menulist.ai | Natural pause -> logo cycle -> final hold | No second CTA slide | Founder close, approved lockup and URL |
 
 ### I. Full Voiceover Script
 
 ```text
-Most business owners do not wake up thinking about menu software.
+Owners do not need another dashboard.
 
-They just want customers to see the correct menu, correct prices, correct hours, and the right way to contact them.
+They need customers to see the correct menu, prices, hours, and contact details.
 
-But in real life, the menu spreads everywhere: WhatsApp, Instagram, QR codes, old PDFs, Google, printed cards, and staff phones.
+In real life, that information spreads across QR codes, WhatsApp replies, social profiles, PDFs, printed cards, and staff phones.
+
+When those versions disagree, the owner has to keep correcting the same public truth.
 
 That is why MenuList is built around one approved customer link.
 
-Owners also should not have to type the whole menu into another tool.
+Start from the menu or service list you already have. Upload the photos or PDF. No need to retype the whole menu before you begin. MenuList prepares a private customer version.
 
-With MenuList, start by uploading photos of the menu or service list you already have. MenuList prepares the customer version for review.
+Review what customers will see. Nothing goes public until the owner approves.
 
-Review the version customers will see. Publish it after approval. Then keep QR, page, print, and customer actions tied to that approved version.
+The goal is less repeated cleanup: keep MenuList QR, page, print, and customer actions tied to the approved source.
 
-When something changes, MenuList should reduce repeated work, not create another dashboard to manage.
-
-MenuList is for owners who want their public menu and business details to stay correct, even when no one is watching.
+MenuList helps the customer version stay correct, even when no one is watching.
 ```
 
 ### J. On-Screen Text List
 
 1. Owners do not need another dashboard.
-2. Correct menu. Prices. Hours. Contact.
-3. Public information spreads.
-4. One approved customer link.
-5. Upload photos. Review. Publish. Keep aligned.
-6. Less repeated cleanup.
-7. Start from your current list.
+2. Public information spreads.
+3. One approved customer link.
+4. Start with what you already have.
+5. Review first. Then publish.
+6. Less repeated cleanup. More public consistency.
+7. menulist.ai
 
 ### K. UI Screens Required
 
@@ -145,15 +158,16 @@ Music should be sincere, quiet, and grounded. Voiceover should sound like a foun
 - Product cutaways support every claim.
 - No hype language.
 - No fake outcome claims.
-- CTA is simple.
+- Product proof appears inside the first ten seconds.
+- Final identity and URL are simple and readable; the companion CTA stays outside the MP4.
 - B-roll does not distract from the message.
 
 ### O. Versioning Requirements
 
 - 16:9 master with captions.
 - 16:9 clean.
-- 9:16 vertical cut.
-- 1:1 social cut.
+- Native 9:16 vertical composition.
+- Native 1:1 social composition when required.
 - With founder audio.
 - Captions burned in.
 - Quote cut 15 seconds.
@@ -161,7 +175,8 @@ Music should be sincere, quiet, and grounded. Voiceover should sound like a foun
 
 ### P. CTA
 
-Start from your current list.
+- Encoded close: `menulist.ai`.
+- Companion post/website CTA: `Start from your current list`.
 
 ### Q. Conversion Contract
 

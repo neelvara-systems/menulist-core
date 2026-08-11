@@ -211,6 +211,7 @@ function verifyRetiredRuntimeDependencies() {
 
 function verifyRootRuntimeEnvironment() {
   const rootPackage = readJson('package.json');
+  const rootLock = readJson('package-lock.json');
   assert(
     rootPackage.engines?.node === '22',
     `Root Node engine must stay pinned to major 22, found ${rootPackage.engines?.node || 'missing'}`,
@@ -236,6 +237,21 @@ function verifyRootRuntimeEnvironment() {
     rootPackage.overrides?.next?.sharp === '0.35.3',
     'Next optional Sharp security override must stay pinned to 0.35.3',
   );
+  const patchedTransitiveVersions = {
+    dompurify: '3.4.13',
+    'js-yaml': '4.3.1',
+    nanoid: '3.3.17',
+  };
+  for (const [dependency, expectedVersion] of Object.entries(patchedTransitiveVersions)) {
+    assert(
+      rootPackage.overrides?.[dependency] === expectedVersion,
+      `Root ${dependency} security override must stay pinned to ${expectedVersion}`,
+    );
+    assert(
+      rootLock.packages?.[`node_modules/${dependency}`]?.version === expectedVersion,
+      `Root lockfile must resolve ${dependency} to ${expectedVersion}`,
+    );
+  }
   assert(
     !rootPackage.devDependencies?.['@types/fabric'],
     '@types/fabric must remain removed because Fabric 7 ships its own types',
@@ -245,9 +261,18 @@ function verifyRootRuntimeEnvironment() {
 
 function verifyFunctionsSecurityOverrides() {
   const menulistFunctionsPackage = readJson('functions/package.json');
+  const menulistFunctionsLock = readJson('functions/package-lock.json');
   assert(
     menulistFunctionsPackage.overrides?.['brace-expansion'] === '1.1.18',
     'MenuList Functions lint chain must stay on patched brace-expansion 1.1.18',
+  );
+  assert(
+    menulistFunctionsPackage.overrides?.['js-yaml'] === '4.3.1',
+    'MenuList Functions lint chain must stay on patched js-yaml 4.3.1',
+  );
+  assert(
+    menulistFunctionsLock.packages?.['node_modules/js-yaml']?.version === '4.3.1',
+    'MenuList Functions lockfile must resolve js-yaml to 4.3.1',
   );
 }
 

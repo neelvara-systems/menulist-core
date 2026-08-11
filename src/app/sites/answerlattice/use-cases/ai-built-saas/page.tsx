@@ -31,7 +31,7 @@ export default async function AiBuiltSaasUseCasePage() {
             question="Users are stuck in onboarding. What should they do next?"
             genericAnswer="Read the setup guide or contact support."
             answerlatticeAnswer="You are on Onboarding Import. AnswerLattice serves the approved import checklist, links the setup FAQ, and opens ticket fallback only if the user's import state is not covered."
-            ownerReview="Generic chat can answer without knowing the page, plan, state, or approved truth. AnswerLattice serves reviewed answers first and turns missing coverage into review work."
+            ownerReview="Generic chat can answer without knowing the page, plan, state, or approved support. AnswerLattice serves reviewed answers first and turns missing coverage into review work."
             setupSteps={[
                 'Create your AnswerLattice workspace.',
                 'Pick the first product pages where users will need help.',

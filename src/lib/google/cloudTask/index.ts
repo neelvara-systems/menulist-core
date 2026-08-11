@@ -3,14 +3,15 @@ import { logger } from '@lib/monitoring/logger';
 import { getImageBatchCloudTaskId } from '@lib/ai/imageBatchServerBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { GenerateImageViaApiPayloadBatchType } from '@template/main-app/projects/types';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 let client: CloudTasksClient | null = null;
 
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
-const QUEUE_LOCATION = process.env.FIREBASE_PROJECT_LOCATION;
-const QUEUE_ID = process.env.BATCH_IMAGE_GENERATION_QUEUE_ID;
-const IMAGE_GENERATION_WORKER_URL = process.env.BATCH_IMAGE_GENERATION_WORKER_URL;
-const IMAGE_GENERATION_WORKER_SECRET = process.env.BATCH_IMAGE_GENERATION_WORKER_SECRET;
+const PROJECT_ID = menulistServerEnv.firebaseProjectId;
+const QUEUE_LOCATION = menulistServerEnv.firebaseProjectLocation;
+const QUEUE_ID = menulistServerEnv.batchImageGenerationQueueId;
+const IMAGE_GENERATION_WORKER_URL = menulistServerEnv.batchImageGenerationWorkerUrl;
+const IMAGE_GENERATION_WORKER_SECRET = menulistServerEnv.batchImageGenerationWorkerSecret;
 const CLOUD_TASKS_BATCH_IMAGE_CONFIG_MISSING = 'cloud_tasks_batch_image_config_missing';
 
 export const getImageGenerationTaskConfigStatus = () => ({

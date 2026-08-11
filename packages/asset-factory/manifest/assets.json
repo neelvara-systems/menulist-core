@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-01",
+  "updatedAt": "2026-08-10",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -19,13 +19,13 @@
       "brief": "packages/asset-factory/briefs/menulist.home.hero.official-source.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec",
-          "src/styles/website.css": "8e6ff4561812623d4cf40643299e8dde08b9e77da3a90327c17b197ac7935a7d"
+          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -36,6 +36,37 @@
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
         "notes": "Existing generated homepage hero asset from the approved MenuList asset pack."
+      }
+    },
+    "menulist.industry.service-businesses.hero-source": {
+      "status": "approved",
+      "brand": "menulist",
+      "version": 1,
+      "slot": "menulist.industry.service-businesses.hero-source",
+      "files": {
+        "primary": "public/images/website/menulist-hero-service-source.webp"
+      },
+      "brief": "packages/asset-factory/briefs/menulist.industry.service-businesses.hero-source.md",
+      "sourceFingerprint": {
+        "files": {
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
+          "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
+          "src/content/websiteIndustries.ts": "3725fa80496b7b8751db6e8e61e350a1be8afb7ea8053062c5e64c0426f534f6",
+          "src/components/website/industries/IndustryLandingPage.tsx": "e4afbf709d91f325e27f0e8eef13e440b4de61f88b3ee8a1b371ed0fed5b7768",
+          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
+        },
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
+      },
+      "review": {
+        "decision": "approved",
+        "strategicFit": 9,
+        "brandFit": 9,
+        "narrativeClarity": 9,
+        "performance": "pass",
+        "reviewer": "asset-factory-v1",
+        "reviewedAt": "2026-08-11",
+        "notes": "Founder-directed fictional service-business hero proof, aligned with the existing MenuList official-source visual family and bounded to service-business industry pages."
       }
     },
     "menulist.home.og.official-source": {
@@ -50,14 +81,14 @@
       "brief": "packages/asset-factory/briefs/menulist.home.og.official-source.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec",
           "public/images/website/menulist-hero-official-source.webp": "141a1cdbfe99ee340cfe142a99c73eb92b8d31d16c82d8fd8f8eaac17df60935"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -81,14 +112,14 @@
       "brief": "packages/asset-factory/briefs/menulist.home.customer-browse.mobile-menu.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/CustomerBrowseSection.tsx": "be921c2160ee457a900de7eb5af89926bb6690be7277c2dd07de86f405876133",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/app/client/[[...slug]]/page.tsx": "e507789b2b080871705f2d8295d3e00bbc825d89b72c7889bbc30c8fe83fadf6"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -112,13 +143,13 @@
       "brief": "packages/asset-factory/briefs/menulist.home.public-presence.obp-browser.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/BusinessSection.tsx": "774610c9373c5bd239f89e310e5f2e01621faaee981e16d78b33faea8d542ff4",
           "src/app/client/obp/OBPContent.tsx": "c8b8dc8de45dd1423412b8222e4e8c909493817ae125d12df4ea94ea9900ecb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -142,13 +173,13 @@
       "brief": "packages/asset-factory/briefs/menulist.home.setup-relief.workflow.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/SetupReliefSection.tsx": "78d32d10f3c5c78f047181663b28d3b1f9a108b89b279d902b16d6a7e41a7af3",
-          "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "07330a3dc70ea8d36dc1979d1d88874d59c234ae99e50018b6409dce0007b506"
+          "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "f068037e9e0feff0edb3d4672cbf7c93b37a4fdf363fc233ccff640506d9c41f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -172,14 +203,14 @@
       "brief": "packages/asset-factory/briefs/menulist.home.public-surfaces.matrix.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
           "src/components/mobile/screens/MobileShareScreen.tsx": "5b38065139b69ce9bbd75f280f31954c2fd6cf6c33127be6904497eaee4d02b7",
           "src/app/client/obp/OBPContent.tsx": "c8b8dc8de45dd1423412b8222e4e8c909493817ae125d12df4ea94ea9900ecb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -203,13 +234,13 @@
       "brief": "packages/asset-factory/briefs/menulist.home.analytics.status-proof.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/AnalyticsInsightsSection.tsx": "8ad7d8b55138eb96e5cbbf05aab02b79d046ce1dcb920c8f7d2acc6240717549",
-          "src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx": "ceadb057d722b2a81584690d016bc2cdc767ec9bb5d4850282322752dcb84b94"
+          "src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx": "b61e1517d8da81007a3078ddccc831e17549a997c5db7531461947fa4f75f874"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -233,13 +264,13 @@
       "brief": "packages/asset-factory/briefs/menulist.launch.social.square.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -263,13 +294,13 @@
       "brief": "packages/asset-factory/briefs/menulist.launch.social.linkedin.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -295,9 +326,9 @@
       "brief": "packages/asset-factory/briefs/menulist.home.hero.business-truth-loop.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/index.html": "ab0a1b7d92d8df39ef038a4f346fd883d09665f5541f077aed987a9cc9fc9946",
@@ -305,9 +336,9 @@
           "public/icons/icon-512x512.png": "2ef92365aadbc02eeaf609c077a17523eba7f2815eecca24f3d6c8d6a04dd380",
           "src/components/website/home/HeroSection.tsx": "d27ef4fe1b2615481be892a08d111cdda0d5cbaede08ad144706b51fbb36670b",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/styles/website.css": "8e6ff4561812623d4cf40643299e8dde08b9e77da3a90327c17b197ac7935a7d"
+          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -341,16 +372,16 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "22afeb69c23734fd71fa799dacc52f7a3c9ed35262f67c70feb2db7af1201ac2",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-product-proof-assets.mjs": "bee351c7c17bf9966776095f24cde73b3f9ca118336ae3233c280e4071e08b15",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
-          "src/components/mobile/MobileShell.tsx": "e435118128b2edcdd7596c1241a155ebc8a2608f5d439aca2a7b56226e2fb433"
+          "src/components/mobile/MobileShell.tsx": "0f2dbf3dfce51adc8061b9940c7e9a2b27f05c9fcdf32b0c22c3780607e85044"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       }
     },
     "menulist.launch.video.frame.approved-source": {
@@ -374,15 +405,15 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       }
     },
     "menulist.launch.video.frame.public-surfaces": {
@@ -406,15 +437,15 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       }
     },
     "menulist.launch.video.frame.stable-loop": {
@@ -438,15 +469,15 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       }
     },
     "menulist.launch.video.frame.final-proof": {
@@ -470,15 +501,15 @@
       },
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/extract-menulist-launch-frames.mjs": "804f072f7169d8030ca661100350394fd05a77711455a59341e0667216ed8370",
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       }
     },
     "menulist.industry.salons-spas.demo-placeholder": {
@@ -521,11 +552,11 @@
       "brief": "packages/asset-factory/briefs/menulist.marketing.launch-video.poster-placeholder.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "d601d4b4fcb26e364655effb8bd8f220a300cfe899ff309f92e06b0c0c1b9b49"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -607,12 +638,12 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.customer-feedback-loop.public-form.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -636,12 +667,12 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.menu-import.source-link.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -665,12 +696,12 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.public-discovery.presence-checklist.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -694,13 +725,13 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.qr-menu-links.share-kit.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/components/mobile/screens/MobileShareScreen.tsx": "5b38065139b69ce9bbd75f280f31954c2fd6cf6c33127be6904497eaee4d02b7"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -724,13 +755,13 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.print-ready-kit.dashboard.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
           "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "ad7af1abc2b52b1dc3def6566a005ea750edfe04ec9cae7ad3c70100cd4e4b50"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -754,14 +785,14 @@
       "brief": "packages/asset-factory/briefs/menulist.feature.print-ready-kit.editor.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "scripts/website-assets/generate-product-proof-assets.mjs": "bee351c7c17bf9966776095f24cde73b3f9ca118336ae3233c280e4071e08b15",
           "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
           "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "ad7af1abc2b52b1dc3def6566a005ea750edfe04ec9cae7ad3c70100cd4e4b50"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -785,15 +816,15 @@
       "brief": "packages/asset-factory/briefs/menulist.home.owner-proof.ai-menu-manager.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "22afeb69c23734fd71fa799dacc52f7a3c9ed35262f67c70feb2db7af1201ac2",
           "scripts/website-assets/generate-product-proof-assets.mjs": "bee351c7c17bf9966776095f24cde73b3f9ca118336ae3233c280e4071e08b15",
           "src/components/website/home/OwnerProofSection.tsx": "7e13d1e8913510c57ca1cbec51e181a4f987542f34f7e65ca601faa76b5b3f43",
           "src/components/website/ai-menu-manager/AiMenuManagerPage.tsx": "7c20fc3f8e13ca61578afc532bfc077526b236f3b7f1384a26a4b1e8389e9fca"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",
@@ -817,15 +848,15 @@
       "brief": "packages/asset-factory/briefs/menulist.home.owner-proof.business-health.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/menulist.asset-slots.ts": "d901b4ae36f8d157e2c1e0aa4ff36e763d0dba36199fdfae2197f3e1ac83de87",
+          "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
-          "__docs__/main-website/main-website_image-assets.md": "a0e47c723f9317273ad614946efec5435723287d2f8b249ef40070b9202ed2bf",
+          "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md": "22afeb69c23734fd71fa799dacc52f7a3c9ed35262f67c70feb2db7af1201ac2",
           "scripts/website-assets/generate-product-proof-assets.mjs": "bee351c7c17bf9966776095f24cde73b3f9ca118336ae3233c280e4071e08b15",
           "src/components/website/home/OwnerProofSection.tsx": "7e13d1e8913510c57ca1cbec51e181a4f987542f34f7e65ca601faa76b5b3f43",
           "src/components/website/features/BusinessHealthFeaturePage.tsx": "1a7662ecead75fae796e49bb0d0f23125d7ae4b3218cac8eb42fdcf077271657"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-10."
       },
       "review": {
         "decision": "approved",

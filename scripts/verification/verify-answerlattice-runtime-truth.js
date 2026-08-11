@@ -5998,6 +5998,7 @@ function verifyKnowledgeIntakeSafeErrorResponses() {
   const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
   const routeFiles = listRouteFiles('src/app/api/answerlattice/knowledge-intake');
+  const sharedJsonRouteFiles = routeFiles.filter(relPath => !relPath.includes('/knowledge-intake/github/'));
 
   assertIncludes(intakeIdBoundary, 'ANSWERLATTICE_KNOWLEDGE_INTAKE_JOB_ID_PATTERN = /^[A-Za-z0-9]{20}$/', 'Answerlattice Knowledge Intake job ID pattern');
   assertIncludes(intakeIdBoundary, 'ANSWERLATTICE_KNOWLEDGE_INTAKE_SOURCE_ID_PATTERN = /^kis_[a-f0-9]{28}$/', 'Answerlattice Knowledge Intake source ID pattern');
@@ -6065,7 +6066,7 @@ function verifyKnowledgeIntakeSafeErrorResponses() {
     assertIncludes(intakeDiagnostics, token, `Answerlattice intake diagnostics helper keeps bounded token ${token}`);
   });
 
-  routeFiles.forEach((relPath) => {
+  sharedJsonRouteFiles.forEach((relPath) => {
     const route = read(relPath);
     assertIncludes(route, 'answerlatticeKnowledgeIntakeJson', `${relPath} shared private JSON response boundary`);
     assertNotIncludes(route, 'NextResponse.json(', `${relPath} direct JSON response bypass`);
@@ -8724,11 +8725,12 @@ function verifyAnswerlatticeReleaseActivationDiagnostics() {
   assertIncludes(releases, 'const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);', 'Answerlattice release actions normalize release ID');
   assertIncludes(releases, 'const snapshot = await getDoc(getDocRef(normalizedReleaseId));', 'Answerlattice release read uses normalized release ID');
   assertIncludes(releases, 'releaseId: normalizedReleaseId,', 'Answerlattice server release action uses normalized release ID');
-  assertIncludes(releases, 'const RELEASE_ACTION_RESPONSE_MAX_BYTES = 256 * 1024;', 'Answerlattice release browser response cap');
+  assertIncludes(releaseContracts, 'export const ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES = 256 * 1024;', 'Answerlattice shared release response cap');
+  assertIncludes(releases, 'ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES,', 'Answerlattice release browser response cap import');
   assertIncludes(releases, "cache: 'no-store'", 'Answerlattice release browser no-store request');
   assertIncludes(releases, "credentials: 'same-origin'", 'Answerlattice release browser same-origin credentials');
   assertIncludes(releases, "redirect: 'manual'", 'Answerlattice release browser redirect boundary');
-  assertIncludes(releases, 'readJsonResponseWithLimit<unknown>(response, RELEASE_ACTION_RESPONSE_MAX_BYTES)', 'Answerlattice release browser bounded response parser');
+  assertIncludes(releases, 'readJsonResponseWithLimit<unknown>(', 'Answerlattice release browser bounded response parser');
   assertNotIncludes(releases, 'doc(answerlatticeFirebaseClient, COLLECTION, docId)', 'Answerlattice releases DAL must not build raw release document refs');
   assertNotIncludes(releases, 'getDocRef(releaseId)', 'Answerlattice release actions must not use raw release document refs');
   assertNotIncludes(releases, 'response.json()', 'Answerlattice release browser raw JSON parser');
@@ -9520,9 +9522,11 @@ function verifyAnswerlatticeAnswerTestsRuntime() {
   assertIncludes(server, 'throw new AnswerlatticeAnswerTestSummaryTooLargeError();', 'Answer Tests oversized summary rejection');
   assertIncludes(managementRoute, 'prepareAnswerlatticeAnswerTestCasesForWrite(', 'Answer Tests save uses server-owned case timestamps');
   assertIncludes(managementRoute, "const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';", 'Answer Tests current proof exact opt-in');
+  assertIncludes(managementRoute, "request.nextUrl.searchParams.get('includeScopeCoverage') === '1';", 'Answer Tests scope coverage exact opt-in');
   assertIncludes(managementRoute, 'const [summary, sourceVersions] = await Promise.all([', 'Answer Tests screen loads current proof inputs in parallel');
-  assertIncludes(managementRoute, 'includeLaunchProof\n                ? getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)\n                : Promise.resolve(null)', 'Answer Tests standard screen skips source-version read');
-  assertIncludes(managementRoute, 'summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),\n            launchProof,', 'Answer Tests screen receives projected authoritative current proof');
+  assertIncludes(managementRoute, 'includeLaunchProof || includeScopeCoverage\n                ? getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)\n                : Promise.resolve(null)', 'Answer Tests requested proofs share one compact source-version read');
+  assertIncludes(managementRoute, '...(launchProof ? { launchProof } : {}),', 'Answer Tests screen conditionally receives authoritative launch proof');
+  assertIncludes(managementRoute, '...(scopeCoverageMatrix ? { scopeCoverageMatrix } : {}),', 'Answer Tests screen conditionally receives authoritative scope coverage');
   assertIncludes(runRoute, '...(launchProof ? { launchProof } : {}),', 'Answer Tests run conditionally returns authoritative current proof');
   assertIncludes(releaseRoute, '...(launchProof ? { launchProof } : {}),', 'Answer Tests release check conditionally returns authoritative current proof');
   [managementRoute, runRoute, releaseRoute].forEach((routeSource, index) => {
@@ -9706,7 +9710,8 @@ function verifyAnswerlatticeAnswerTestsRuntime() {
   assertNotIncludes(client, 'Release proof: {PROOF_STATUS_LABELS[latestRun.proofStatus]}', 'Answer Tests must not present retained run proof as current');
   assertIncludes(client, 'Proof status is advisory and never publishes content or changes a deployment.', 'Answer Tests non-mutating proof boundary');
   assertIncludes(productPage, 'deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release.', 'Answer Tests product-page proof boundary');
-  assertIncludes(productAreas, 'evidence-backed answer tests before support becomes official', 'Answer Tests product-area evidence wording');
+  assertIncludes(productAreas, 'See missing, stale, or release-affected support', 'Answer Tests product-area evidence scope wording');
+  assertIncludes(productAreas, 'approve what becomes official', 'Answer Tests product-area governed approval wording');
   assertIncludes(updatesPage, 'Answer Tests now retain evidence and release-proof outcomes', 'Answer Tests public update');
   assertIncludes(updatesPage, 'AnswerLattice does not publish content, change a release, or control deployment automatically.', 'Answer Tests public non-mutating proof boundary');
   assertIncludes(updatesPage, 'regression evidence rather than an independent factual-correctness guarantee', 'Answer Tests public deterministic-proof limitation');
@@ -10077,15 +10082,22 @@ function verifyAnswerlatticeNativeIntakeConnectorBoundary() {
   const features = read('src/config/features.ts');
   const functionsFeatures = read('functions-answerlattice/src/constants/features.ts');
   const boundaryVerifier = read('scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js');
+  const server = read('src/lib/answerlattice/githubChangeIntakeServer.ts');
+  const webhook = read('src/app/api/answerlattice/webhooks/github/route.ts');
+  const connect = read('src/app/api/answerlattice/knowledge-intake/github/connect/route.ts');
+  const setup = read('src/app/api/answerlattice/knowledge-intake/github/setup/route.ts');
+  const callback = read('src/app/api/answerlattice/knowledge-intake/github/callback/route.ts');
+  const connection = read('src/app/api/answerlattice/knowledge-intake/github/connection/route.ts');
+  const card = read('src/components/templates/answerlattice/knowledgeIntake/GitHubChangeIntakeCard.tsx');
   const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
   const readme = read('__docs__/answerlattice/native-knowledge-intake-connectors/README.md');
 
-  assertIncludes(features, 'ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false', 'Native intake connector placeholder remains disabled');
-  assertIncludes(features, 'RESERVED ONLY: no app, API, OAuth, credential, provider, sync worker, or', 'Native intake connector no-runtime source comment');
+  assertIncludes(features, 'ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false', 'GitHub change intake remains rollout-disabled');
+  assertIncludes(features, 'Rollout remains false until GitHub App credentials and hosted QA evidence', 'GitHub change intake hosted-QA rollout boundary');
   assertNotIncludes(functionsFeatures, 'ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS', 'Native intake connector phantom Functions flag');
   assert(
     packageJson.scripts?.['verify:answerlattice-native-intake-connectors']
-      === 'node scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js',
+      === 'node scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js && npm run test:answerlattice-github-change-intake',
     'Native intake connector boundary package script',
   );
   assertIncludes(
@@ -10093,14 +10105,25 @@ function verifyAnswerlatticeNativeIntakeConnectorBoundary() {
     'npm run verify:answerlattice-native-intake-connectors',
     'Founder support controls aggregate native connector boundary',
   );
-  assertIncludes(boundaryVerifier, 'runtimeFlagReferences.length === 0', 'Native intake connector no-consumer source gate');
-  assertIncludes(boundaryVerifier, 'Current Firebase operations: zero', 'Native intake connector zero-cost source gate');
+  assertIncludes(boundaryVerifier, 'webhook must verify X-Hub-Signature-256', 'GitHub intake signed webhook source gate');
+  assertIncludes(boundaryVerifier, 'GitHub change intake must not fetch repository contents', 'GitHub intake source-code exclusion gate');
+  assertIncludes(server, 'ensureKnowledgeIntakeJob', 'GitHub intake existing job wiring');
+  assertIncludes(server, 'addKnowledgeSource', 'GitHub intake existing source wiring');
+  assertIncludes(webhook, 'readBoundedTextBody', 'GitHub intake bounded webhook body');
+  [connect, setup, callback, connection].forEach((route, index) => {
+    assertIncludes(route, 'ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS', `GitHub intake owner route ${index + 1} private response boundary`);
+    assertNotIncludes(route, 'error instanceof Error ? error.message', `GitHub intake owner route ${index + 1} raw exception response`);
+  });
+  assertIncludes(callback, 'NextResponse.redirect', 'GitHub intake callback redirect-only response boundary');
+  assertIncludes(callback, "getProductDeploymentTarget('answerlattice')", 'GitHub intake canonical callback origin');
+  assertIncludes(card, 'Source code and patches are not stored.', 'GitHub intake owner-visible security boundary');
   assertIncludes(
     featureTracker,
     '### Feature 41 — Native Knowledge Intake Connectors\n\n**Status:** Local source complete',
     'Native intake connector feature completion state',
   );
-  assertIncludes(readme, 'DO NOT BUILD NOW - RESERVED PLACEHOLDER ONLY', 'Native intake connector product decision');
+  assertIncludes(readme, 'GitHub Change Intake', 'GitHub intake provider decision');
+  assertIncludes(readme, 'The false flag is a rollout gate, not a partial implementation.', 'GitHub intake rollout state');
 }
 
 function verifyAnswerlatticeSignalQualityBoundary() {

@@ -36,7 +36,8 @@ Current runtime creates a default source snapshot from signed-in store profile c
 - No OAuth tokens, provider sync jobs, webhook events, or background source polling are active.
 - Business Brain/profile saves read `sourceSnapshots/current`, rebuild source facts from the updated profile plus saved snapshot facts, and batch workspace/business/snapshot writes without listing source input rows.
 - `GET /api/campaigncue/sources` uses a workspace-only guard read plus a bounded source input query instead of loading the full CampaignCue overview.
-- `POST /api/campaigncue/sources` reads `sourceSnapshots/current` and merges the new owner input into that compact read model before one batched write; it does not list existing source input documents on every save.
+- `POST /api/campaigncue/sources` reads `sourceSnapshots/current` and merges one detailed input or one reviewed Campaign Inbox batch into that compact read model before a bounded write; it does not list existing source input documents on every save.
+- A Campaign Inbox batch writes one source document per selected candidate but only one snapshot, one event, and one idempotency completion. It avoids repeating those overhead writes for every line.
 - Provider posture is returned as static manual-only metadata, so no provider read or quota cost is incurred.
 - Meta Ads MCP remains posture-only. No MCP session, provider connection, provider metric summary, activity row, signal-health result, or provider token is stored.
 - No MenuList source write-back is performed.

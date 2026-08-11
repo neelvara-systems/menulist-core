@@ -15,7 +15,7 @@ export const ANSWERLATTICE_ENGINE_PILLARS = [
         number: '03',
         title: 'Stale answer review',
         description: 'Version mismatch, signal anomaly, scope conflict, and deprecated product behavior can flag stale answers through nightly audits and release review. Advisory, never blocking.',
-        highlight: 'Control plane',
+        highlight: 'Review controls',
     },
     {
         number: '04',

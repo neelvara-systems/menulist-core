@@ -5,6 +5,7 @@ import { buildMenuSetupProgress } from '@lib/menuSetupProgress/buildMenuSetupPro
 import type { Project } from '@template/main-app/projects/types';
 import type { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, Skeleton, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import React, { useMemo } from 'react';
 import { LuExternalLink, LuListChecks } from 'react-icons/lu';
@@ -21,9 +22,10 @@ interface MenuSetupProgressProps {
 export default function MenuSetupProgress({ loading = false, project, storeDetails }: MenuSetupProgressProps) {
     const router = useRouter();
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner.menuSetup');
     const summary = useMemo(
-        () => buildMenuSetupProgress({ project, storeDetails }),
-        [project, storeDetails],
+        () => buildMenuSetupProgress({ project, storeDetails, translate: t }),
+        [project, storeDetails, t],
     );
 
     if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS) return null;
@@ -45,7 +47,7 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
             title={(
                 <Flex align="center" gap={8}>
                     <LuListChecks size={16} color={token.colorPrimary} />
-                    <Text strong style={{ fontSize: 14 }}>Menu setup</Text>
+                    <Text strong style={{ fontSize: 14 }}>{t('title')}</Text>
                 </Flex>
             )}
         >
@@ -53,7 +55,7 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
                 <Flex align="center" justify="space-between" gap={12} wrap="wrap">
                     <Flex vertical gap={2} style={{ flex: '1 1 260px', minWidth: 0 }}>
                         <Text strong style={{ fontSize: 13 }}>
-                            {summary.nextStep?.label || 'Menu setup'}
+                            {summary.nextStep?.label || t('title')}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             {summary.compactCopy}

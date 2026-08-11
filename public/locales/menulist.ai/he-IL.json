@@ -428,7 +428,8 @@
         "daily": "היום הקודם",
         "weekly": "7 הימים האחרונים",
         "monthly": "החודש",
-        "overall": "בסך הכל"
+        "overall": "בסך הכל",
+        "graph": "גרפים"
       },
       "today": {
         "noMenuActivityToday": "עדיין אין פעילות בתפריט היום.",
@@ -454,17 +455,17 @@
         "noResultSearches": "חיפושים ללא תוצאות",
         "unavailableInterest": "ריבית לא זמינה",
         "topLanguage": "שפה מובילה",
-        "smartPicksShown": "הוצגו בחירות חכמות",
-        "smartPicksClicks": "קליקים של בחירה חכמה",
+        "smartPicksShown": "Smart Picks מופע",
+        "smartPicksClicks": "Smart Picks קליקים",
         "smartPicksTaps": "הקשות של Smart Picks",
-        "smartPicksUsed": "השתמשו בבחירות חכמות",
-        "smartPicksEngagement": "אירוסין בחירות חכמות",
+        "smartPicksUsed": "Smart Picks משתמשים",
+        "smartPicksEngagement": "Smart Picks מחויבות",
         "totalMenuScans": "סה\"כ סריקות תפריט",
         "totalItemClicks": "סה\"כ קליקים על פריט",
         "activeDays": "ימים פעילים",
         "daysActive": "ימים פעילים",
         "avgDailyScans": "ממוצע סריקות יומיות",
-        "smartPicksActive": "בחירות חכמות פעילות",
+        "smartPicksActive": "Smart Picks פעיל",
         "engagementRate": "שיעור מעורבות",
         "topItem": "פריט עליון",
         "topCategory": "קטגוריה עליונה"
@@ -473,7 +474,7 @@
         "itemClicks": "מספר הפעמים שלקוחות הקישו על פריטים",
         "engagedSessions": "מפגשים שבהם הלקוחות הראו עניין אמיתי בתפריט",
         "actionRate": "ביקורים שהובילו לפעולה סופית של הלקוח",
-        "smartPicksShown": "כמה פעמים הופיעו בחירות חכמות בדף שלך",
+        "smartPicksShown": "כמה פעמים Smart Picks הופיע בדף שלך",
         "smartPicksUsed": "אחוז הלקוחות שהשתמשו ב-Smart Picks",
         "customerActions": "פעולות אחרונות כמו שיחה, WhatsApp, הוראות הגעה, הזמנה והזמנה",
         "searches": "ביטול כפילויות של דרישת חיפוש מהתפריט",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "לא נרשמה פעילות אתמול",
         "noAnalyticsYet": "עדיין אין נתונים. הניתוח שלך יופיע ברגע שהלקוחות יתחילו לצפות.",
-        "noItemClicksYet": "עדיין אין קליקים על פריט"
+        "noItemClicksYet": "עדיין אין קליקים על פריט",
+        "lowActivityTitle": "פעילות נמוכה",
+        "lowActivityDescription": "לא הייתה מספיק פעילות כדי להסיק מסקנה שימושית לגבי התקופה הזו.",
+        "noWeeklyData": "אין פעילות של תפריט מתוקן זמין בשבעת הימים האחרונים עדיין.",
+        "noMonthlyData": "עדיין אין פעילות תפריט מוגדרת עבור החודש הזה."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% לעומת השבוע שעבר"
+        "vsLastWeek": "{sign}{change}% לעומת השבוע שעבר",
+        "changeVsLastWeek": "{change} לעומת השבוע שעבר"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# יום הפעילות שנרשם} other {# ימי פעילות מתועדים}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "כן",
         "no": "לא",
-        "notAvailable": "לא רלוונטי",
+        "notAvailable": "N/A",
         "active": "פעיל",
         "lowActivity": "פעילות נמוכה",
         "noData": "ללא נתונים"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "ממתין לסריקה ראשונה",
         "weeklyInsights": "תובנות שבועיות",
         "last4WeeksComparison": "השוואה של 4 השבועות האחרונים",
-        "historicalDataWillAppear": "נתונים היסטוריים יופיעו לאחר מספר שבועות"
+        "historicalDataWillAppear": "נתונים היסטוריים יופיעו לאחר מספר שבועות",
+        "statusMessages": {
+          "working": "הלקוחות משתמשים בתפריט הנוכחי שלך.",
+          "low_activity": "פעילות הלקוח עדיין מתפתחת. התפריט הנוכחי שלך נשאר זמין. האתר שלך עדיין נמצא בבנייה.",
+          "no_data": "הפעילות תופיע לאחר שהלקוחות יתחילו לפתוח את התפריט שלך."
+        }
       },
       "aiSummary": {
         "daily": "היום הקודם במבט חטוף",
         "weekly": "השבוע במבט חטוף",
-        "monthly": "החודש בסיכום"
+        "monthly": "החודש בסיכום",
+        "localized": {
+          "noActivity": "לא נרשמה פעילות של לקוחות מתוקנים בתקופה זו.",
+          "menuViews": "הלקוחות פתחו את התפריט {count} הזמנים",
+          "itemTaps": "הלקוחות לחצו על רכיבי המנה {count} פעמים.",
+          "customerActions": "לקוחות הושלמו {count} הפעולה הסופית",
+          "searches": "הלקוחות חיפשו את התפריט פעמים {count}.",
+          "unavailableInterest": "פריטים לא זמינים קיבלו {count} לחיצות."
+        }
       },
       "actions": {
         "call": "התקשר",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} ביקורים · {rate}%",
         "markDone": "סמן כבוצע",
         "markDoneFailed": "לא ניתן היה לסמן את הפעולה הזו כבוצעה. נסה שוב.",
-        "markDoneSaved": "סומן כבוצע. התוצאות יתעדכנו כאשר סיכום הניתוח הבא יהיה מוכן."
+        "markDoneSaved": "סומן כבוצע. התוצאות יתעדכנו כאשר סיכום הניתוח הבא יהיה מוכן.",
+        "bestSourceStatsFormatted": " · {visits} ביקור · {rate} קצב פעולה",
+        "bestSourceMobileFormatted": "המקור הטוב ביותר כרגע: {source} · {visits} ביקורים · {rate} קצב פעולה.",
+        "sourceQualityTagFormatted": "{source}: {visits} ביקורים · {sessions} פעולה של מפגשים · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} ביקורים · {rate}",
+        "priorities": {
+          "high": "עדיפות גבוהה",
+          "medium": "עדיפות בינונית",
+          "low": "עדיפות נמוכה"
+        },
+        "confidence": {
+          "stable": {
+            "label": "יציב",
+            "message": "הפעילות הזמינה תומכת בקרת תפריט ברורה."
+          },
+          "watch": {
+            "label": "תמשיכו לצפות.",
+            "message": "פעילות מסוימת עלולה להזדקק לבדיקה נוספת לפני שינוי התפריט."
+          },
+          "no_data": {
+            "label": "דרושים יותר נתונים.",
+            "message": "חכו לפעילות לקוח יותר מתוקנת לפני שתסיקו מסקנה."
+          }
+        },
+        "localizedActions": {
+          "reason": "בהתבסס על פעילות הלקוחות האחרונה שהתבררה.",
+          "availability": {
+            "title": "ראו את זמינות הרכיב.",
+            "description": "בדוק אם פריטים לא זמינים או חבויים צריכים להיות משוחזרים או נשמרים מחוץ למבט.",
+            "action": "בדיקת זמינות"
+          },
+          "customerActions": {
+            "title": "ראו פעולות הלקוחות באתר.",
+            "description": "בדוק את פרטים המזון והקישורים שלקוחות משתמשים לפני שאתה עושה פעולה.",
+            "action": "ראו פעולות הלקוחות באתר."
+          },
+          "details": {
+            "title": "לשפר את פרטים של פריט.",
+            "description": "ראו שמות פריטים, אפשרויות, תיאור והתמונות שעשויות להזדקק למידע ברור יותר.",
+            "action": "ראו את פרטים הרכיב."
+          },
+          "general": {
+            "title": "חכו לאות ברור יותר.",
+            "description": "שמור על התפריט הנוכחי יציב עד שיהיה זמינה פעילות יותר מתוקנת.",
+            "action": "ביקורת מאוחר יותר"
+          },
+          "menuOrder": {
+            "title": "סדר הביקורת של המזון",
+            "description": "בדוק אם פריטים חשובים וקטגוריות קל ללקוחות למצוא.",
+            "action": "סדר הביקורת של המזון"
+          },
+          "pricing": {
+            "title": "ביקורת על המחירון",
+            "description": "בדוק את המחירים המחוברים לאות העניין האחרון של הלקוח.",
+            "action": "ביקורת מחירים ביקורות על מחירים"
+          },
+          "search": {
+            "title": "סקירה של חיפושי הלקוחות",
+            "description": "בדוק חיפושים שאינם עשויים להוביל את הלקוחות לתוצאות תפריט שימושיות.",
+            "action": "סקירה של חיפושים בגוגל"
+          },
+          "source": {
+            "title": "ראו מקורות כניסת הלקוחות לאתר.",
+            "description": "בדוק אם קישורים ציבוריים ומיקומי QR מצביעים על לקוחות לתפריט הנוכחי.",
+            "action": "ראו קישורים ציבוריים."
+          },
+          "timing": {
+            "title": "ביקורת תזמון התפריט בתפריט.",
+            "description": "בדוק אם קטגוריות מתוכננות וזמינות מתואמות כשלקוחות מחפשים אותן.",
+            "action": "ביקורת תזמון הניתוח"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "סמן כסיים סיים",
+            "message": "התוצאה תבדוק לאחר שיותר פעילות מתוקנת תהיה זמינה."
+          },
+          "improved": {
+            "label": "שיפור",
+            "message": "הצ'ק הבא מראה שיפור."
+          },
+          "no_clear_change": {
+            "label": "אין שינוי ברור.",
+            "message": "הצ'ק הבא שהתנהל לא הראה שינוי ברור."
+          },
+          "not_enough_data": {
+            "label": "דרושים יותר נתונים.",
+            "message": "אין עדיין מספיק פעילות מתיישבת כדי לשפוט את השינוי הזה."
+          },
+          "pending": {
+            "label": "בדיקת זמן",
+            "message": "MenuList יבדוק זאת לאחר שיותר פעילות מתוקנת תהיה זמינה."
+          }
+        }
       },
       "details": {
         "menuDetails": "פרטי תפריט",
@@ -574,7 +686,7 @@
           "unavailableInterest": "עניין לא זמין",
           "languages": "שפות",
           "filters": "מסננים",
-          "smartPicks": "בחירות חכמות",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "פעולות לפי שעות עבודה"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "תצוגות תפריט",
-          "itemTaps": "הקשות על פריט",
+          "itemTaps": "הקשות על פריטים",
           "menuSessions": "הפעלות תפריט",
           "engagedSessions": "מפגשים עם פעילות",
           "actionSessions": "הפעלות פעולה",
@@ -617,6 +729,12 @@
           "open": "פעולות כשפתוח",
           "closed": "פעולות כשהן סגורות",
           "closedShare": "{rate}% מכל הפעולות שתועדו התרחשו בזמן סגירה"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} זרמים לא זמינים אינם זמינות.",
+          "strongItem": "{count} הקשות על פריטים",
+          "needsWork": "{count} צפיות, אין לחיצות.",
+          "gettingAttention": "צפיות {count}"
         }
       },
       "smartPicks": {
@@ -642,7 +760,7 @@
         "officialBusinessPage": "דף עסקי רשמי",
         "loadingCurrentActivity": "טעינת פעילות OBP נוכחית",
         "loadingActivity": "טעינת פעילות OBP",
-        "sharedInfo": "פעולות סופרות קליקים סופיים של OBP על שיחה, WhatsApp, הוראות הגעה, הזמנה והזמנה. שיתופים מגיעים מכרטיס הקישור העסקי הרשמי, והקישורים סופרים את סקירת Google, אינסטגרם, פייסבוק וביקורים באתר מה-OBP הציבורי.",
+        "sharedInfo": "פעולות לספור את הקליקים הסופיים של OBP על שיחה, WhatsAppמניות מגיעות מן כרטיס הקישור העסקי הרשמי, וקישורים טפסים לספור Google ביקורת , Instagram, Facebook, וביקורים באתר מהציבור OBP.",
         "noActivityToday": "עדיין אין פעילות OBP היום.",
         "noComparison": "אין השוואה",
         "sameAsLastWeek": "זהה לשבוע שעבר",
@@ -650,8 +768,8 @@
         "copyLink": "העתק קישור",
         "copyMessage": "העתק הודעה",
         "googleReviews": "ביקורות של Google",
-        "instagram": "אינסטגרם",
-        "facebook": "פייסבוק",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "אתר",
         "sourceViews": "צפיות {count}",
         "sourceMenu": "תפריט {count}",
@@ -681,7 +799,7 @@
         "shareBreakdown": "פירוט שיתוף",
         "mobileInfoIntro": "כרטיס זה מראה כיצד לקוחות מקיימים אינטראקציה עם הדף העסקי הרשמי שלך לפני או סביב פתיחת התפריט.",
         "mobileInfoActions": "פעולות סופרות קליקים סופיים על שיחה, WhatsApp, מסלול, הזמנה והזמנה.",
-        "mobileInfoLinks": "שיתופים מגיעים מכרטיס הקישור העסקי הרשמי, והקישורים סופרים את סקירת Google, אינסטגרם, פייסבוק וביקורים באתר מה-OBP הציבורי.",
+        "mobileInfoLinks": "מניות מגיעות מן כרטיס הקישור העסקי הרשמי, וקישורים טפסים לספור Google ביקורת , Instagram, Facebook, וביקורים באתר מהציבור OBP.",
         "todayPartialInfo": "כיום עד כה פעילות חיה חלקית בלבד. זה עדיין לא נכלל בסיכומי היום הקודם, 7 הימים האחרונים, החודש הזה או כל החיים."
       },
       "customerApp": {
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "פירוט קיצורי דרך",
         "installsByPlatform": "התקנות לפי פלטפורמה",
         "appStickiness": "דביקות האפליקציה",
-        "returningOpens30d": "החזרה נפתחת (30ד)",
         "avgOpensPerInstall": "פתיחה ממוצעת לכל התקנה",
         "iosManualInstalls": "התקנות ידניות של iOS",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "הזמן באינטרנט"
         },
         "platforms": {
-          "ios": "iOS - מערכת ההפעלה של אפל.",
-          "iosLong": "iOS (אייפון / אייפד)",
-          "android": "אנדרואיד",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "שולחן עבודה",
           "other": "אחר"
-        }
+        },
+        "tryAgainLater": "נסה שוב מאוחר יותר."
       },
       "projectSelector": {
         "deleted": "נמחק",
@@ -761,7 +879,8 @@
         "copied": "הועתק",
         "copy": "העתק",
         "openGoogle": "פתח את Google",
-        "done": "בוצע"
+        "done": "בוצע",
+        "couldNotOpen": "לא ניתן היה לפתוח את פרופיל העסק Google."
       },
       "behaviorNudge": {
         "linkCopied": "הקישור הועתק",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "סקור את הנושא המוביל",
         "repairMenu": "תפריט תיקון",
         "review": "בדיקה",
-        "repair": "תיקון"
+        "repair": "תיקון",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {ל# חסר תיאור.} other {# פריטים חסרים תיאור.}}",
+            "ok": "לכל פריט יש תיאור.",
+            "help": "תיאור עוזר ללקוחות להבין את כל ההצעה."
+          },
+          "images": {
+            "warning": "{count, plural, one {ל# חסר כרטיס תמונה.} other {# פריטים הם תמונות חסרנות.}}",
+            "ok": "לכל הדברים יש תמונות.",
+            "help": "תמונות יכולות לעזור ללקוחות לבחור מהר יותר."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {לקטגוריה # חסרה אייקון.} other {# קטגוריות יש חסר אייקונים סמלים.}}",
+            "ok": "לכל הקטגוריות יש סמלים.",
+            "help": "סמלים מאפשרים לסרוק את הקטגוריות בקלות."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# מוצר חסר מחיר} other {# חפצים חסרים מחירים}}",
+            "ok": "לכל פריט יש מחיר.",
+            "help": "הלקוחות משווים מחירים לפני שהם מחליטים."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# הרכיב הזה חבוי מפני לקוחות.} other {# פריטים נסתרים מפני הלקוחות.}}",
+            "ok": "אין פריטים חבויים.",
+            "help": "פריטים מוסתרים אינם מופיעים בתפריט הציבורי."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {המחיר של # זקוק לסקירה.} other {# מחירי צריכים ביקורת.}}",
+            "ok": "המחירים נמצאים בטווח הצפוי.",
+            "help": "MenuList משווה מחירים של פריט יחיד באותו קטגוריה. סימן מחיר בכוונה כמחיר שעבר בדיקה."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# הרכיב חסר תרגומים.} other {# פריטים חסרים תרגומים.}}",
+            "ok": "כל הדברים הנראים מתורגמים.",
+            "help": "חלק מהפרמטרים אינם שלמים בשפות תפריט הנבחרות."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# הפרטים בתפריט חסרים בתרגומים.} other {# הפרטים בתפריט חסרים בתרגומים.}}",
+            "ok": "פרטים על המזון מתורגמים.",
+            "help": "שם המנה, תיאור או הערות אינם שלמים בשפות המנה הנבחרות."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "העתקת קישור מוקצה.",
+        "direct": "ישירות",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "תפריט Kit",
+        "nativeShare": "מכשיר שיתוף",
+        "obp": "עמוד עסקי",
+        "other": "אחר",
+        "qr": "QR קוד",
+        "shortcut": "אפליקציית Shortcut",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "בריאות עסקית",
+        "open": "בריאות עסקית פתוחה",
+        "today": "היום",
+        "latestActivity": "פעילות אחרונה",
+        "noActionNeeded": "אין צורך בפעולה",
+        "status": {
+          "stable": "יציב",
+          "watch": "זקוק לתשומת לב",
+          "needs_review": "צריך סקירה.",
+          "insufficient_data": "דרושים יותר נתונים.",
+          "stale": "צריך חשבון חדש.",
+          "not_ready": "מתכוננים להתארגנות."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# הפרטים המופנים ללקוח זקוקים לסקירה.} other {# הפרטים הקשורים ללקוח זקוקים לסקירה.}}",
+          "stable": {
+            "headline": "המידע הציבורי שלך הוא יציב.",
+            "message": "אין שום בעיה הנוגעת ללקוחות שצריכה פעולה בביצוע הבדיקה האחרונה."
+          },
+          "watch": {
+            "headline": "פרטים מסוימים עשויים להזדקק לתשומת לב.",
+            "message": "ראו את הבדיקה המוצעת לפני שינוי מידע ציבורי."
+          },
+          "needs_review": {
+            "headline": "ראו את הפרטים המופנים אל הלקוחות.",
+            "message": "יש לבדוק אחד או יותר פרטים ציבוריים."
+          },
+          "insufficient_data": {
+            "headline": "דרושה פעילות נוספת.",
+            "message": "שמור על המידע הנוכחי יציב בעוד MenuList אוסף אות מועיל."
+          },
+          "stale": {
+            "headline": "בריאות העסקים זקוקה לבדיקת מצב חדשה.",
+            "message": "הבדיקה האחרונה היא ישנה המידע הציבורי הנוכחי שלך נשאר ללא שינוי המידע האחרון שלך הוא ישן"
+          },
+          "not_ready": {
+            "headline": "בריאות עסקים מתכוננת להתכונן.",
+            "message": "הביקורת הראשונה של החנות תראה כאן כאשר היא תהיה מוכנה."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "בדוק את מקור המנה.",
+            "message": "לא נמצא מקור תפריט ציבורי אקטיבי. בדוק את התפריט לפני ששתף אותו. לא נמצאו תכנים מקודדים.",
+            "title": "מקור המזון צריך לעבור בדיקה."
+          },
+          "low_latest_activity": {
+            "action": "בדוק קישורי שיתוף.",
+            "message": "פעילות הלקוחות נמוכה. בדוק את QR, Google ,Instagram WhatsApp וקישוריות האתרים.",
+            "title": "פעילות הלקוחות נמוכה."
+          },
+          "unavailable_item_taps": {
+            "action": "בדוק פריטים שאינם זמינים.",
+            "message": "לקוחות הראו עניין בדברים שלא היו זמינים, הוסיפו אותם לאריזה או החביאו אותם.",
+            "title": "פריטים לא זמינים זכו לתשומת לב."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "ראו משוב האורחים.",
+            "message": "משוב האורחים צריך להיות נבדק על ידי בעל האתר לפני שפרטי הציבור ישתנו.",
+            "title": "משוב האורחים צריך לבדוק את בדיקת המשוב של האורח."
+          },
+          "default": {
+            "action": "בדיקת פרטים",
+            "message": "פרטים המופנים אל הלקוח זקוקים לבדיקת בעלי מניות.",
+            "title": "פרטים צריכים לעבור בדיקה."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# פריט החזרה הפרטית צריך לבדוק.} other {# פריטי התגובות הפרטיות צריכים להיבדק.}}",
+          "clear": "משוב פרטי הוא ברור, המשוב הפרטי הוא בר-השגה."
+        },
+        "freshness": {
+          "notReady": "בריאות העסקים אינה בזמן אמת. בדיקת החנות הראשונה תראה את תאריך הנתונים כאן. תאום הנתון נמצא כאן.",
+          "throughDate": "משתמש בנתונים דרך{date}. היום עשוי לא להיות מלא עדיין.",
+          "latest": "משתמש בנתוני MenuList האחרונים הזמינים. היום עשוי לא להיות שלם עדיין. משתמש במידע העדכני ביותר."
+        },
+        "periods": {
+          "today": "היום",
+          "yesterday": "היום הקודם",
+          "thisWeek": "השבוע",
+          "lastWeek": "בשבוע שעבר",
+          "thisMonth": "החודש",
+          "lastMonth": "בחודש שעבר",
+          "last7Days": "7 הימים האחרונים",
+          "last30Days": "30 הימים האחרונים",
+          "overall": "בסך הכל"
+        },
+        "metrics": {
+          "menuViews": "תצוגות תפריט",
+          "topDemand": "הביקוש הגבוה ביותר",
+          "topDemandDetail": "קידום: {count} {signal}",
+          "bestSource": "מקור הטוב ביותר",
+          "bestSourceDetail": "עדכון קישור: {count} מבקרים באתר."
+        },
+        "signals": {
+          "views": "צפיות צפייה בתצוגות",
+          "clicks": "הקשות",
+          "attention": "סימני תשומת לב"
+        },
+        "page": {
+          "description": "מצב עסקי יומיומי ובדיקות מול הלקוח.",
+          "latestCheck": "AI health check",
+          "loading": "טעינה",
+          "loadingMessage": "בריאות עסקים...",
+          "notReady": "משרד הבריאות עדיין לא מוכן.",
+          "loadErrorTitle": "לא ניתן היה להעלות את הנתונים של Business Health.",
+          "loadErrorDescription": "בבקשה לחדש את הדף הזה ולנסות שוב.",
+          "refresh": "רענן",
+          "needsAttention": "זקוק לתשומת לב",
+          "desktopSettingsOnly": "פתח את זה מתוך הגדרות שולחן העבודה."
+        },
+        "scope": {
+          "title": "עסקים בריאות היקף עסקית בריאות",
+          "allMenus": "כל התפריטים",
+          "selectedMenu": "תפריט הנבחר.",
+          "menuCount": "{count, plural, one {# תפריט במיקום זה.} other {# תפריט במיקום זה.}}",
+          "locationLevel": "תצוגה ברמת המיקום",
+          "inactiveMenu": "תפריט לא אקטיבי.",
+          "thisMenuOnly": "תפריט זה בלבד",
+          "allMenusInLocation": "כל התפריטים באתר זה נמצאים במקום זה.",
+          "thisMenuHelper": "שאלות ופעילויות משתמשים בתפריט זה.",
+          "allMenusHelper": "שאלות ופעילויות משתמשים בכל התפריט באתר זה.",
+          "dialogDescription": "בחר את כל התפריט או תפריט אחד לפעילות ולבדיקות.",
+          "all": "כל",
+          "close": "סגור"
+        },
+        "locations": {
+          "title": "מקומות מיקום אתר",
+          "loading": "נושאים את המיקום...",
+          "empty": "עדיין אין סיכום של המיקום.",
+          "storeFallback": "מיקום {id}",
+          "checkedOn": "בדקתי את {date}.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# ביקורת הלקוחות צריכה סקירה.} other {# ביקורות הלקוחות צריכות להיות נבדקות.}}",
+          "statusReason": {
+            "stable": "אף בעיה הנוגעת ללקוחות אינה זקוקה לפעולה.",
+            "watch": "פרטים המופנים אל הלקוח עשויים להזדקק לתשומת לב.",
+            "needs_review": "פרטים הנוגעים ללקוחות זקוקים לסקירה.",
+            "insufficient_data": "דרושה פעילות רבה יותר של הלקוח כדי לקבל בדיקה מועילה.",
+            "stale": "המקום הזה זקוק לבדיקה חדשה.",
+            "not_ready": "בדיקת המיקום הראשונה מוכנה."
+          }
+        },
+        "assistant": {
+          "title": "שאלו עסקים בריאות שאל עסקים",
+          "askShort": "לשאול",
+          "englishOnlyTitle": "השאלות זמינות כרגע באנגלית.",
+          "englishOnlyDescription": "המצב שלך והבדיקות שלך מקובלים. העבר את שפת היישום לאנגלית כדי לשאול שאלות בנושא בריאות עסקים. השאלות בנושא Business Health מועברות בשפה המקומית.",
+          "notReady": "בריאות עסקים יענה לאחר סיום הבדיקה האחרונה.",
+          "suggestedUnavailable": "השאלות המוצעות אינן זמינות כרגע.",
+          "freeTextUnavailable": "שאלות טקסט חינם אינן זמינות כרגע.",
+          "answerError": "בריאות עסקים לא יכולה לענות על זה, אבל אני יודעת שזה בסדר.",
+          "suggestedQuestions": "שאלות מוצעות לשאלת ה-CBT",
+          "followUps": "אתה יכול לשאול את הבא",
+          "you": "אתה",
+          "empty": "בחר שאלה או שאלו על העסק שלכם, ותוכלו לקבל תשובה מהירה.",
+          "placeholderReady": "שאל על היום, השבוע, תשומת לב למנה או בדיקות הבאות.",
+          "placeholderMobile": "שאל על היום או השבוע הזה.",
+          "placeholderPending": "זמינה לאחר הבדיקה האחרונה.",
+          "send": "לשלוח שאלה לשאלתך.",
+          "cachedFacts": "בהתבסס על MenuList עובדות עסקים במטמון.",
+          "questions": {
+            "checks": "מה צריך לבדוק?",
+            "today_stats": "איך הולך היום?",
+            "this_week_stats": "מה קרה השבוע?",
+            "top_item": "איזה פריט זוכה לתשומת לב?",
+            "last_week_stats": "מה קרה בשבוע שעבר?",
+            "this_month_stats": "איך החודש?",
+            "last_month_stats": "מה קרה בחודש שעבר?",
+            "public_menu_status": "האם התפריט הציבורי שלי בסדר?",
+            "profile_status": "האם הפרופיל העסקי שלי מלא?",
+            "feedback_reviews": "יש משוב אורחים שצריך לבדוק?",
+            "feedback_recent": "מה אמרו האורחים לאחרונה?",
+            "default": "מה עלי לבדוק עכשיו?"
+          }
+        },
+        "sources": {
+          "title": "מקורות הנתונים",
+          "menuProjects": "פרויקטים של תפריט המנוי",
+          "ownerAnalytics": "פעילות בעלי",
+          "guestFeedback": "אורח Feedback",
+          "storeSettings": "הגדרות עסקיות",
+          "menuListData": "נתוני MenuList",
+          "updatedOn": "עודכן {date}",
+          "latest": "הנתונים האחרונים הזמינים הם נתוני המידע האחרונים."
+        },
+        "publicTruth": {
+          "title": "מקור המידע הרשמי ללקוחות",
+          "checking": "בדיקת",
+          "checkingFacts": "בדקתי את העובדות הציבוריות של MenuList...",
+          "checkedMenu": "תפריט בודק: {name}",
+          "boundary": "בדקנו מנתוני העסק והתפריט של MenuList הנוכחיים. פלטפורמות חיצוניות נשארות מאושרות על ידי הבעל.",
+          "boundaryShort": "פלטפורמות חיצוניות נשארות מאושרות על ידי הבעלים.",
+          "historyTitle": "היסטוריה של מידע ציבורי",
+          "historyBoundary": "משתמש רק בעובדות עסקים ותפריט של MenuList. לא סרוקים אתרים חיצוניים.",
+          "historyBoundaryShort": "MenuList עובדות בלבד. לא נסרקו אתרים חיצוניים.",
+          "refreshErrorTitle": "בדיקת מקור הלקוח לא יכלה לחדש את המידע.",
+          "refreshErrorDescription": "האחרון זמין MenuList העובדות עדיין מופיעות למטה.",
+          "historyRefreshError": "לא ניתן היה לרענן את ההיסטוריה של המידע הציבורי.",
+          "historyLoadError": "לא ניתן היה להעלות את ההיסטוריה של המידע הציבורי.",
+          "historyErrorDescription": "הדו\"ח האחרון שנשמר עדיין מופיע כאשר זמין.",
+          "notRun": "לא לרוץ",
+          "lastSaved": "שמור לאחרונה {date}",
+          "noSavedReport": "עדיין אין דוח שמור.",
+          "noSavedReportDescription": "בצע את הבדיקה כדי לשמור את הדו\"ח הראשון עבור המיקום הזה.",
+          "downloadEnglishReport": "להוריד את הדו\"ח באנגלית.",
+          "downloadEnglishShort": "דו\"ח אנגלי דו\"חות אנגלים",
+          "runCheck": "הפעל בדיקת דיווח.",
+          "currentFix": "פריט קבוע הנוכחי",
+          "nextFixes": "התיקונים הבאים למידע הציבורי",
+          "none": "אף אחד",
+          "attentionCount": "{count, plural, one {הרכיב # צריך להיות בודק.} other {# פריטים צריכים בדיקה.}}",
+          "readyModuleCount": "מוכן {count}/{total}",
+          "missingCount": "{count} חסר.",
+          "checkCount": "בדוק את {count}.",
+          "savedCount": "שומר {count}/{total}",
+          "modulesReady": "{count}/{total} מודולים מוכנים",
+          "status": {
+            "ready": {
+              "label": "מוכן, מוכנה.",
+              "message": "מקור המידע הרשמי שלך ללקוחות כולל את הפרטים הבסיסיים שהם צריכים."
+            },
+            "missing_basics": {
+              "label": "חוסר ביסודות.",
+              "message": "תפריט, שעות פתיחה, מחירים, פעולות או פרטים של קישור לקוחות זקוקים לתשומת לב לפני שיתוף רחב יותר."
+            },
+            "unclear": {
+              "label": "צריך לבדוק.",
+              "message": "רוב היסודות קיימים, אך עדיין יש לבדוק עובדה אחת או יותר שפורסמו."
+            }
+          },
+          "metrics": {
+            "readyModules": "מודולים מוכנים מראש.",
+            "missingFacts": "עובדות חסרנות",
+            "checkedMenu": "תפריט בודק נבחר.",
+            "savedReports": "דוחות נשמרים."
+          },
+          "results": {
+            "present": "מוכן, מוכנה.",
+            "missing": "חסרים חסר.",
+            "unclear": "צפו",
+            "not_applicable": "לא דרוש.",
+            "not_checked": "לא בודק לא בוחר"
+          },
+          "moduleStatus": {
+            "ready": "מוכן, מוכנה.",
+            "needs_attention": "חסרים חסר.",
+            "check": "צפו",
+            "not_checked": "לא בודק לא בוחר"
+          },
+          "facts": {
+            "business_identity": "שם העסק: חברה בשם מסחרי",
+            "menu_or_service_source": "תפריט או רשימת שירותים.",
+            "prices": "מחירים",
+            "hours": "שעות עבודה",
+            "location": "מיקום המיקום של האתר",
+            "contact": "קשר",
+            "customer_actions": "פעולות הלקוח",
+            "public_link": "קשר לקוחות קשור ללקוח",
+            "photos": "תמונות של צילום אמנותי",
+            "machine_readable_source": "פרטים ידידותיים לחיפוש פרטי חיפוש ידידותי לחיפושים"
+          },
+          "evidence": {
+            "owner_entered": "נכנס בצ'ק זה.",
+            "owner_selected": "נבחר על ידי הבעלים.",
+            "source_text_hint": "נמצא במקור שהוענק.",
+            "valid_public_url": "פורמט הקשר הציבורי הוא בתוקף.",
+            "invalid_public_url": "הקישור הציבורי צריך להיות מותקן, יש לעדכן את הקיצור.",
+            "menulist_store": "הוגדרות העסק הנוכחיות של MenuList בוצעו.",
+            "menulist_project": "בדוק את הנבחר או הלא נכון MenuList תפריט",
+            "menulist_summary": "בדקו את הנוכחי MenuList תפריט סיכום",
+            "menulist_public_route": "בדקתי את ההגדרות הנוכחיות של MenuList לקישורי הלקוח.",
+            "menulist_index_gate": "בדקנו את כללי הגילוי הציבורי הנוכחיים של MenuList.",
+            "not_provided": "עובדה זו חסרה מן הנוכחי MenuList נתונים",
+            "not_checked": "עובדה זו לא בוצעה בבטחה מנתוני MenuList הנוכחיים.",
+            "priceNotLoaded": "פתח את התפריט הנבחר פעם אחת כדי שMenuList יוכל לבדוק את מחירו."
+          },
+          "moduleEvidence": {
+            "ready": "הנוכחי MenuList נתונים מראים כי אזור זה מוכן.",
+            "needs_attention": "הנוכחי MenuList הנתונים מראים שהמידע הנדרש חסר.",
+            "check": "בדוק את האזור הזה לפני שהלקוחות יסמכו עליו.",
+            "not_checked": "MenuList לא יכול לבדוק באופן מלא את האזור הזה מהנתונים הנוכחיים."
+          },
+          "setupReason": {
+            "needs_attention": "מידע חיוני המיועד ללקוחות חסר.",
+            "check": "בדוק את זה לפני שהלקוחות יסמכו על זה, בדוק זאת לפני שלקוחות יסתמכו על זה.",
+            "not_checked": "MenuList לא יכול לבדוק זאת באופן מלא מהנתונים הנוכחיים."
+          },
+          "targetActions": {
+            "basic_settings": "Open business details",
+            "domain_settings": "פתח קישור לקוחות.",
+            "hours_edit": "שעות פתיחה:",
+            "menu_tab": "פתח את התפריט.",
+            "official_page": "דף עסקי פתוח",
+            "presence_monitor": "פתיחת בדיקת מיקום פתוחה.",
+            "share_tab": "כלי שיתוף פתוח"
+          },
+          "actions": {
+            "openCustomerSource": "קוד הלקוחות הפתוח הוא קוד פתוח.",
+            "openShareTools": "כלי שיתוף פתוח",
+            "fixFact": "תיקון {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "יסודות המידע הציבורי בסיס מידע ציבורי",
+              "description": "שם העסק, תפריט או מקור שירותים קיים, איש קשר, פעולות וקישור ללקוח."
+            },
+            "business_facts_copy_pack": {
+              "title": "פרטים עסקיים בשימוש חוזר ניתנים לשימוש מחדש.",
+              "description": "עובדי השירות יכולים להשתמש מחדש בעובדות זמניות בפרופיליהם הציבוריים, בתשובות ובמעבר קישורים ללקוחות."
+            },
+            "qr_link_health": {
+              "title": "QR מוכנות קישור",
+              "description": "קישור הלקוח הנוכחי עבור QR והשקעות הדפסה."
+            },
+            "social_bio_link_consistency": {
+              "title": "עקביות קישורי פרופיל בעקביות.",
+              "description": "קישור לקוחות קיים אחד לפרופיל חברתי ולמיקומים אחרים."
+            },
+            "customer_link_preview": {
+              "title": "תצוגת קישור לקוחות קודמת",
+              "description": "העובדות העיקריות שלקוחות צריכים לראות לפני שהם פועלים."
+            },
+            "print_share_assets": {
+              "title": "הדפסה ושיתוף של נכסים",
+              "description": "מוכנות קישורים זמינים עבור QR פוסטרים, קלפי ספירה ותמונות משותפות."
+            },
+            "menu_service_readability": {
+              "title": "בהירות המנה או השירות.",
+              "description": "קטגוריות, פריטים או שירותים ומחירים בתפריט הנבחר."
+            },
+            "price_availability_gap": {
+              "title": "בהירות במחיר ובזמינות.",
+              "description": "מחיר, גרסאות, מצב של מכירה מוגבלת וזמינות מופיעים ללקוחות."
+            },
+            "menu_pdf_cleanup": {
+              "title": "זקן PDF תחליף",
+              "description": "מקור קיים של MenuList וקישור ללקוח שיכול להחליף PDFים ישנים."
+            },
+            "whatsapp_action_link": {
+              "title": "הפעולה WhatsApp",
+              "description": "A ברור WhatsApp או שינוי פעולות הקשר עם הלקוח."
+            },
+            "hours_readiness": {
+              "title": "שעות מוכנות",
+              "description": "שעות עבודה קבועות עליהם הלקוחות יכולים לסמוך."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp עונה על עובדות האמת.",
+              "description": "תפריט, שעות פתיחה, פרטים לקשר וקישור לעובדות עבור תשובות הצוות."
+            },
+            "photo_visual_identity": {
+              "title": "תמונות וזהות ויזואלית.",
+              "description": "לוגו, עטיפה, תמונה עסקיים או חפצים ושירותים ויזואליים."
+            },
+            "customer_question_coverage": {
+              "title": "שאלות נפוצות של לקוחות",
+              "description": "עובדות ברורות לגבי ההצעה, שעות פתיחה, מחיר, מיקום, קשר והפעולה הבאה."
+            },
+            "customer_faq_reply_pack": {
+              "title": "תשובות ללקוחות בשימוש חוזר.",
+              "description": "עובדות עכשוויות הצוות יכול להשתמש מחדש כשלקוחות שואלים שאלות נפוצות."
+            },
+            "booking_inquiry_readiness": {
+              "title": "מוכנות להזמנות ולבקשות.",
+              "description": "דרך ברורה להזמין, לערוך הזמנה, לשמור, להתקשר, לשלוח הודעה, לבקש הצעת מחיר או לבקר."
+            },
+            "google_profile_handoff": {
+              "title": "Google קישורי פרופיל",
+              "description": "קישור הלקוח הנוכחי מוכן Google פרופיל עסקי"
+            },
+            "menu_freshness": {
+              "title": "תפריט טרי",
+              "description": "עדכון תפריט לאחרונה כאשר מחירים, פריטים, או זמינות השתנו."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "גרפים",
+        "description": "סיכום חזותי מאותה פעילות שהתגבשה והוצגה בלוח המחוונים.",
+        "ranges": {
+          "days7": "7 ימים",
+          "days30": "30 ימים"
+        },
+        "metrics": {
+          "menu_activity": "פעילות בתפריט הפעילויות",
+          "customer_actions": "פעולות הלקוח",
+          "search_demand": "ביקוש חיפוש - דרישת החיפוש",
+          "item_interest": "פריט אינטרס",
+          "unavailable_demand": "ביקוש לא זמין בזמינות",
+          "missing_searches": "חיפושים חסרים"
+        },
+        "trend": {
+          "summary": "סיכום המגמה",
+          "updatedAfterClose": "עדכונים לאחר יום סגירת החנות.",
+          "status": {
+            "up": "גבוה יותר",
+            "down": "למטה",
+            "stable": "יציב",
+            "not_enough_data": "אין מספיק היסטוריה."
+          },
+          "period": {
+            "week": "בדיקת שבועית - week check",
+            "month": "חודש צ'ק"
+          },
+          "shortPeriod": {
+            "week": "שבוע",
+            "month": "חודש"
+          },
+          "needsMoreDays": "צריך ימים יותר קבועים.",
+          "versus": "{current} נגד {previous}",
+          "messages": {
+            "up": "{metric} גבוה יותר עבור הבדיקה הזו של {period}.",
+            "down": "{metric} הוא נמוך יותר עבור הבדיקה הזו של {period}.",
+            "stable": "{metric} הוא יציב עבור זה {period} צ'ק.",
+            "not_enough_data": "אין מספיק היסטוריית {metric} מוכנה לביצוע הבדיקה הזו של {period}."
+          },
+          "change": {
+            "gathering": "{period}: איסוף נתונים.",
+            "newActivity": "{period}: פעילות חדשה",
+            "steady": "{period}: יציב.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "טבלאות השוואת טבלות השוואה",
+          "description": "תנועת השבוע והחודש מימים קבועים."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "מגמה של תפריט.",
+            "days7": "7 הימים האחרונים שהתיישבו בהם.",
+            "days30": "30 הימים האחרונים שהתקיימו בהם עסקאות."
+          },
+          "customerActions": {
+            "title": "פעולות הלקוח",
+            "description": "מה הלקוחות לחצו אחרי פתיחת התפריט?"
+          },
+          "sources": {
+            "title": "מאיפה הגיעו הלקוחות?",
+            "description": "ביקור במנות ובשיעורי פעולה לפי מקור."
+          },
+          "items": {
+            "title": "הנושאים הבולטים ביותר שעורכים עניין הם:",
+            "description": "פריטים שלקוחות פתחו או לחצו עליהם בעיקר"
+          },
+          "search": {
+            "title": "ביקוש חיפוש - דרישת החיפוש",
+            "description": "מה הלקוחות חיפשו?"
+          },
+          "officialPage": {
+            "title": "דף האינטרנט הרשמי של רשת \"טראנד\"",
+            "description": "נקודות מבט ומעשיות מהדף העסקים הרשמי של האתר."
+          }
+        },
+        "legends": {
+          "visits": "ביקורים",
+          "actionSessions": "הפעלות פעולה",
+          "views": "צפיות חזרות",
+          "taps": "הקשות",
+          "noResult": "אין תוצאות."
+        },
+        "empty": {
+          "default": "עדיין אין נתונים גרפיים עבור תצוגה זו.",
+          "menuActivity": "פעילות תפריט תופיע לאחר שהלקוחות יפתחו את התפריט.",
+          "customerActions": "פעולות הלקוחות יהיו זמינות לאחר שלקוחות התקשרו, שלחו הודעה, הזמנו, השאירו מקום או שאלו את המנהלים על הנתיב.",
+          "customerActionsPeriod": "עדיין אין פעולות לקוח בתקופה זו.",
+          "searchDemand": "ביקוש לחיפוש יופיע לאחר שלקוחות ישתמשו בחיפוש בתפריט.",
+          "itemInterest": "עניין ברכיב יופיע לאחר שלקוחות יפתחו את פריטי המנה.",
+          "unavailableDemand": "ביקוש לא זמין יופיע כאשר הלקוחות ילחצו על פריטים לא זמינים.",
+          "missingSearches": "חיפושים חסרים יופיעו כאשר הלקוחות מחפשים אבל לא מוצאים תוצאה.",
+          "sources": "פרטים על המקור יופיעו לאחר שהלקוחות מגיעים מקישורים, QR או דפי רשתות חברתיות.",
+          "officialPage": "פעילות הדף הרשמי תראה לאחר שלקוחות יפתחו את דף העסק הציבורי."
+        },
+        "footer": {
+          "sameData": "אותם נתוני לוח המחוונים.",
+          "noExtraTracking": "אין מעקב נוסף.",
+          "settledAfterClose": "נקבע לאחר סוף יום החנות."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "תפריט",
+          "viewsLabel": "תצוגות תפריט",
+          "viewsTooltip": "מספר הפעמים שלקוחות פתחו את התפריט שלך.",
+          "thisMonthLabel": "תפריט החודש שלך הוא התפריט שלך לחודש זה."
+        },
+        "product": {
+          "singular": "קטלוג",
+          "viewsLabel": "קטלוג תצוגות קטגוריות",
+          "viewsTooltip": "מספר הפעמים שלקוחות פתחו את הקטלוג שלך.",
+          "thisMonthLabel": "הקטלוג שלך בחודש זה הוא קטלוג של חברות."
+        },
+        "service": {
+          "singular": "רשימת שירותים",
+          "viewsLabel": "תצוגות רשימת שירותים",
+          "viewsTooltip": "מספר הפעמים שלקוחות פתחו את רשימת השירותים שלך.",
+          "thisMonthLabel": "רשימת השירותים שלך לחודש זה היא זו של משרד התחבורה."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "זקוק לתשומת לב",
+          "active": "מקור הלקוח הרשמי הוא פעיל.",
+          "readyToPlace": "מקור הלקוח הרשמי מוכן לשים את המוצר."
+        },
+        "description": {
+          "needsAttention": "תיקנו את התפריט, שעות העבודה או קישור הלקוח לפני שתשתפו אותו באופן נרחב.",
+          "active": "אין צורך בשום פעולה. הלקוחות יכולים להשתמש בפרטיך הציבוריים הנוכחיים ממקור אחד. אין צורכי פעולה נוספת.",
+          "readyToPlace": "קישור הלקוח שלך מוכן. הוסף אותו לGoogle, Instagram ,WhatsApp או QR. או הדפיס כך שהלקוחות ישתמשו במקור הנוכחי."
+        },
+        "link": {
+          "ready": "קישור לקוח מוכן",
+          "missing": "קישור הלקוח חסר."
+        },
+        "states": {
+          "set": "הוגדר",
+          "missing": "חסרים חסר.",
+          "ready": "מוכן, מוכנה.",
+          "notReady": "לא מוכן.",
+          "live": "פעיל",
+          "hidden": "לא פעיל"
+        },
+        "tags": {
+          "menu": "תפריט: {status}",
+          "hours": "שעות: {status}",
+          "customerLink": "קישור הלקוח: {status}",
+          "link": "קישור: {status}",
+          "placed": "הוצבו: {count}/{total}"
+        },
+        "actions": {
+          "fix": "לתקן מה שצריך תשומת לב.",
+          "preview": "תפריט ציבורי תצוגה מקדימה של תפקידים",
+          "share": "תפריט שיתוף מועדון השותפים"
+        },
+        "updated": {
+          "notUpdated": "עדיין לא מעודכנת",
+          "recently": "עדכנו לאחרונה.",
+          "today": "עודכן היום",
+          "yesterday": "עדכון אחרון אתמול.",
+          "daysAgo": "עדכן {count, plural, one {# לפני יום אחד} other {לפני # ימים}}"
+        }
+      },
+      "ownerActions": {
+        "title": "הפעולה הבאה של בעל",
+        "open": "פתח",
+        "placement": {
+          "notConfirmed": "עדיין לא אושר.",
+          "today": "מאושר היום.",
+          "yesterday": "אושר אתמול.",
+          "daysAgo": "אישרנו את {count, plural, one {# לפני יום אחד} other {לפני # ימים}}."
+        },
+        "status": {
+          "ready": "מוכן, מוכנה.",
+          "missing": "חסרים חסר.",
+          "set": "הוגדר",
+          "live": "פעיל",
+          "notLive": "לא לחיות.",
+          "confirmedCount": "{count}/{total} אישר את ההזמנה.",
+          "on": "מופעל",
+          "off": "כבוי",
+          "dailyChanges": "שינויים יומיומיים",
+          "hoursException": "שעות יוצא מן הכלל",
+          "staffUse": "שימוש צוות",
+          "menuPrices": "מחירי המנה בתפריט",
+          "openCount": "{count, plural, one {פעולה # פתוחה.} other {# פעולות פתיחה פתוחות.}}",
+          "stable": "יציב"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "הגדרת קישור לקוחות",
+            "description": "יצור את קישור הלקוח לפני שתשתף QR, תשובות של צוות או פרופילים ציבוריים."
+          },
+          "setHours": {
+            "label": "שעות קבועות",
+            "description": "שמור על המצב הפתוח והסגור של הציבור ברור לפני ביקור הלקוחות."
+          },
+          "publishMenu": {
+            "labelPublish": "פרסום התפריט",
+            "labelOpen": "פתח את התפריט.",
+            "descriptionVisible": "לפרסם את התפריט הנוכחי לפני שיתוף רחב.",
+            "descriptionHidden": "להפוך את התפריט גלוי לפני שהלקוחות משתמשים בקישור."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "אישור הנחיית קישור",
+            "labelPlace": "קישור לקוח",
+            "descriptionPlaced": "שמור על Google, Instagram ו-WhatsApp מצביעים לאותו מקור.",
+            "descriptionUnplaced": "הוסף את אותו קישור לקוח ל-Google, Instagram ,WhatsApp ו-QR והדפיס."
+          },
+          "openPrivateFeedback": {
+            "label": "פתיחת משוב פרטי",
+            "description": "השתמשו במשוב פרטי לפני שבעיות של אורחים הופכות לביקורות ציבוריות."
+          },
+          "captureDailyChange": {
+            "label": "ספרי לMenuList מה השתנה.",
+            "description": "ספר לMenuList מה השתנה היום ואשר את כרטיס המנה המוגש."
+          },
+          "setTodayStatus": {
+            "label": "הגדרת המצב של היום.",
+            "description": "הציוד נסגר היום, פתיחה מאוחר יותר, מטבח סגור או הודעת תפריט מיוחד."
+          },
+          "prepareStaffHandoff": {
+            "label": "להכין את העברת הצוות",
+            "description": "תן לצוות את קישור המנה, QR ושורות התשובה של הלקוח ממקום אחד."
+          },
+          "updatePrices": {
+            "label": "עדכון מחירים",
+            "description": "השתמשו במנהל תפריט לשינויי מחירים, ואז אישרתם לפני פרסום."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "הגדרת תפריט",
+        "complete": "הגדרת התפריט מושלמת.",
+        "ready": "הגדרת התפריט מוכנה.",
+        "actions": {
+          "openMenu": "פתח את התפריט.",
+          "createMenu": "יצירת תפריט",
+          "reviewDetails": "בדיקת פרטים",
+          "publishMenu": "פרסום התפריט",
+          "openSharingTools": "כלי שיתוף פתוח",
+          "prepareDescriptions": "להכין תיאוריות להכנת תיאורים.",
+          "addImages": "הוספת תמונות נוספות.",
+          "reviewLanguageText": "ראו את הטקסט בשפה העברית.",
+          "openMenuCheck": "פתיחת menu check",
+          "updatePublicLinks": "עדכן קישורים ציבוריים.",
+          "addPublicPhoto": "הוסף תמונה ציבורית."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "המקור הוסיף:",
+            "doneDescription": "מקור התפריט מחובר.",
+            "nextDescription": "הוסף תמונה של תפריט, PDF, קישור או הפעל בידנית."
+          },
+          "menuImported": {
+            "label": "תפריט ייבוא מיובא.",
+            "doneDescription": "{count, plural, one {# פריט גלוי נמצא.} other {# פריטים גלויים נמצאו.}}",
+            "nextDescription": "להוסיף או"
+          },
+          "keyDetailsChecked": {
+            "label": "פרטים מרכזיים שנבדקו",
+            "doneDescription": "המחירים ופרטים חשובים בתפריט ברורים, וכל השירותים זמינים.",
+            "nextDescription": "בדוק מחירים ופרטים חשובים לפני פרסום."
+          },
+          "menuPublished": {
+            "label": "תפריט פורסם באתר.",
+            "doneDescription": "התפריט הציבורי פורסם.",
+            "nextDescription": "לפרסם כאשר התפריט מוכן ללקוחות."
+          },
+          "linkPlaced": {
+            "label": "הקישור הוצב.",
+            "readyLabel": "הקישור מוכן.",
+            "doneDescription": "הקישור הרשמי מוכן ללקוחות.",
+            "progressDescription": "{count} מתוך {total} פעולות הצבעה בוצעו.",
+            "nextDescription": "פתח את כלי שיתוף כאשר התפריט פורסם."
+          },
+          "descriptionsReady": {
+            "label": "תיאור מוכן מראש.",
+            "doneDescription": "פריטים נראים יש תיאורים.",
+            "nextDescription": "להכין תיאורים עבור פריטי תפריט ברורים יותר."
+          },
+          "imagesReady": {
+            "label": "תמונות מוכנות מראש.",
+            "doneDescription": "לפרטים נראים יש תמונות.",
+            "nextDescription": "הוסיפו או יצרנו תמונות של פריטים כאשר זה מועיל."
+          },
+          "translationsReady": {
+            "label": "תרגומים מוכנים.",
+            "doneDescription": "שפות התפריט שנבחרו הושלמו.",
+            "nextDescription": "ראו שפות המזון הנבחרות."
+          },
+          "publicLinksAdded": {
+            "label": "קישורים ציבוריים נוספו.",
+            "doneDescription": "קישורים לפעולה ציבורית או חברתית זמינים, ואפשרות לעקוב אחר הפעילות ברשתות החברתיות.",
+            "nextDescription": "הוסף קישורים ציבוריים שימושיים לדף העסק."
+          },
+          "publicPhotoAdded": {
+            "label": "תמונה ציבורית נוספת",
+            "doneDescription": "ניתן לראות תמונה ציבורית.",
+            "nextDescription": "להוסיף כיסוי, לוגו, או תמונה ציבורית כאשר מוכן."
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "עדיין אין היסטוריה של חשבונות.",
     "perMonth": "/חודש",
     "contactUs": "צור איתנו קשר."
+  },
+  "StarterActivation": {
+    "activeTitle": "התפריט שלך מקוון",
+    "endingSoonTitle": "שמור את התפריט שלך באינטרנט",
+    "publicMenuQrActive": "התפריט הציבורי וקוד QR שלך פעילים.",
+    "activeRemaining": "הגישה לתפריט שלך פעילה.",
+    "daysRemaining": "{days, plural, one {בחר תוכנית תוך # יום כדי לשמור על התפריט שלך מקוון.} other {בחר תוכנית תוך # ימים כדי לשמור על התפריט שלך מקוון.}}",
+    "sharingComplete": "הגדרת השיתוף שלך הושלמה.",
+    "sharingProgress": "{count, number} מתוך {target, number} שלבי השיתוף הושלמו.",
+    "evidenceRecorded": "הוקלט אוטומטית: {systemCount, number}. אושר על ידך: {ownerCount, number}.",
+    "evidenceEmpty": "העתק או שתף את קישור התפריט, הורד את קוד ה-QR שלו, או אשר היכן מיקמת אותו.",
+    "keepLiveAction": "שמור את התפריט שלך באינטרנט",
+    "noSubscriptionDescription": "בחר תוכנית לשמירה על עדכוני תפריטים ודפי לקוחות זמינים.",
+    "choosePlanDescription": "התפריט שלך נשמר. בחר תוכנית כדי לשמור אותה מקוונת ומעודכנת."
   },
   "Transactions": {
     "title": "היסטוריית העסקאות היסטוריה של העסקה",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "אפליקציית ניידת.",
     "subscribeTitle": "רשמו ל Get Started (התחל)",
     "subscribeDescription": "בחר תוכנית כדי להתחיל ליצור את התפריט הדיגיטלי שלך ולנהל את העסק שלך.",
-    "viewPlans": "צפו בתוכניות הצגת תוכניות"
+    "viewPlans": "צפו בתוכניות הצגת תוכניות",
+    "returnToMobile": "אתה צופה בגרסת שולחן העבודה. חזור לגרסה הניידת."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR קודדים",

@@ -29,7 +29,7 @@ Header:
 
 - Brand: `Neelvara`
 - Primary nav: `Products`, `About`, `Contact`
-- Header action: `Products`
+- Header action: `Email us`
 
 Footer:
 
@@ -68,10 +68,10 @@ Layout language:
 
 - fixed restrained mesh plus subtle grain behind the page
 - glass panels with consistent stroke, blur, and inset highlight
-- current-color prism panels on major page heroes and not-found recovery
 - Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
-- home page uses a split company hero with an unframed source logo visual, compact company ledger, editorial operating rows, relationship statement, high-contrast product lineup, boundary table, contact routing, CTA, and footer
-- secondary pages use a two-column page hero with a factual reference panel and consistent horizontal content rows
+- home page uses a brand-first split hero with an unframed source logo visual, compact company ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact routing, and footer
+- secondary pages use one clear editorial hero; repeated right-side reference-summary cards are not used
+- legal, privacy, and terms sections use unframed document rows that collapse to one readable column on mobile
 - decorative browser mocks, fake charts, marquees, numbered section labels, and duplicate summary-card grids are not part of the current public layout
 
 Logo rule:
@@ -103,7 +103,7 @@ Avoid:
 Category sentence:
 
 ```text
-Neelvara Systems operates software infrastructure for customer-facing business information.
+Neelvara Systems operates MenuList and Answerlattice, focused software for public business facts and approved support answers.
 ```
 
 Relationship sentence:
@@ -115,7 +115,7 @@ MenuList and Answerlattice are operated by Neelvara Systems.
 Homepage support copy:
 
 ```text
-We operate focused products that keep public business facts and approved answers clear, current, and easy to use.
+We operate focused software for public business facts and approved support answers.
 ```
 
 Do not use the old relationship phrasing in runtime copy. Use `operated by`.
@@ -128,16 +128,14 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 
 Required flow:
 
-1. Split hero: infrastructure headline, concise operating description, `View Products`, `Email Neelvara`, and an unframed source-logo visual. The company facts belong in the ledger immediately below rather than a duplicate hero card.
+1. Brand-first split hero: `Neelvara Systems` is the H1, followed by `Information customers can rely on.`, concise operating copy, `View Products`, `Email Neelvara`, and an unframed source-logo visual.
 2. Entity ledger: company, operated products, and country.
 3. Operating approach: an asymmetric editorial layout with three unframed rows for company reference, independent product surfaces, and direct inquiry routing.
 4. Company relationship statement using the canonical relationship sentence.
 5. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
-6. Comparison/reference table separating company reference, product websites, and product apps.
-7. Contact routes: business, legal, and privacy inbox cards.
-8. Final company-contact band.
+6. Contact routes: business, legal, and privacy inbox rows.
 
-Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, fake dashboards, decorative activity charts, or numeric product proof. The hero reference panel must contain only factual company, product, contact, and country information.
+Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, fake dashboards, decorative activity charts, numeric product proof, a company/product/app comparison matrix, or a repeated closing CTA.
 
 ---
 
@@ -153,14 +151,9 @@ Products operated by Neelvara Systems.
 
 Required sections:
 
-- Product map: a full-width section header, one company-information root strip, and two equal compact product nodes under `Each product has a distinct role.`
-- Product architecture nodes:
-  - MenuList: `Public business information`
-  - Answerlattice: `Approved business answers`
-- Product map nodes show category and product identity only; product summaries are not repeated there.
-- Two equal product detail cards carry the summaries, focus chips, and direct product-site CTAs.
-- Product boundaries: product pricing, onboarding, support, documentation, privacy, and terms remain on individual product websites.
-- Looking for something specific: product questions go to product sites; company questions go to Neelvara.
+- One clear lineup section under `Two products. Two information jobs.`
+- Two equal product detail cards carry the actual logos, category, summary, focus labels, and direct product-site CTA.
+- One closing boundary band states that product pricing, onboarding, support, documentation, privacy, terms, and account questions remain on the relevant product website.
 
 Product summaries:
 
@@ -178,7 +171,7 @@ Purpose: explain the company focus and the boundaries of what it does not build.
 Opening:
 
 ```text
-Neelvara Systems operates infrastructure for customer-facing business information that should stay accurate without constant maintenance.
+Neelvara Systems operates MenuList and Answerlattice, focused software for public business facts and approved support answers.
 ```
 
 Required themes:
@@ -204,16 +197,15 @@ Purpose: route company inquiries without collecting form submissions.
 Required H1:
 
 ```text
-Choose the right contact route.
+Start with the right contact route.
 ```
 
 Required sections:
 
-- Company inboxes: business, legal, and privacy cards.
+- Company inboxes: compact business, legal, and privacy rows.
 - Product support: direct links to MenuList and Answerlattice websites.
 - Before you contact us: keep first message focused; do not include private records, secrets, customer datasets, or sensitive documents unless requested.
 - Country of operation: India.
-- Final email CTA to the business inbox.
 
 No contact form, newsletter signup, gated download, lead database, or account workflow.
 
@@ -308,4 +300,29 @@ Required secondary content:
 
 - Product shortcuts to MenuList and Answerlattice.
 - Plain explanation that product support, onboarding, billing, documentation, and account questions should start from the relevant product site.
-- Current-color Prism recovery panel with Home, Products, and Contact routes.
+- A single branded recovery surface using the supplied logo and the same Home, Products, and Contact routes; no duplicate side summary panel.
+
+---
+
+## 13. August 10, 2026 Benchmark Audit
+
+Primary references reviewed:
+
+- Automattic: plain company idea followed by direct product proof.
+- 37signals: a distinct company identity with clear product-site boundaries.
+- Tiny: the current company portfolio is the primary evidence for the parent company.
+- Mailmodo: useful CTA and hierarchy discipline, but its product-conversion density is not appropriate for this parent-company website.
+
+Adopted:
+
+- brand name as the homepage H1
+- real operated products as the central proof
+- one primary navigation instance per destination
+- shorter pages with fewer repeated summaries
+- visible, direct company inboxes
+
+Rejected:
+
+- lead-generation forms, demo funnels, testimonial walls, pricing content, and growth-site conversion density
+- generic SaaS feature grids, fake dashboard scenes, and unsupported scale claims
+- copying another company website's visual identity or content structure literally

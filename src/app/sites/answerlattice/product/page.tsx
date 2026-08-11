@@ -77,8 +77,8 @@ const SUPPORT_LAYER_OUTPUTS = [
     },
     {
         title: 'What becomes reusable',
-        detail: 'Hosted help, FAQs, changelog support, product-surface guidance, and approved answers come from the same standard support knowledge.',
-        meta: 'Published truth',
+        detail: 'Hosted help, FAQs, changelog support, product-page guidance, and approved answers come from the same reviewed support knowledge.',
+        meta: 'Reusable support',
     },
 ];
 
@@ -92,7 +92,7 @@ const OPERATING_MODES: Array<{
         title: 'Launch Setup',
         description: 'Prepare support before users rely on it.',
         icon: LuRocket,
-        items: ['Workspace activation', 'Product details', 'Starter knowledge', 'Product surfaces', 'Widget install'],
+        items: ['Workspace activation', 'Product details', 'Starter knowledge', 'Product pages', 'Widget install'],
     },
     {
         title: 'Support Control',
@@ -127,11 +127,11 @@ const FEATURE_SECTIONS: Array<{
     },
     {
         eyebrow: 'Hosted help',
-        title: 'Publish a help center without separating support truth.',
+        title: 'Publish a help center without separating support knowledge.',
         description: 'Give users a support home for docs, FAQs, owner answers, changelog, and common product questions. The help center and widget should work from the same reviewed knowledge.',
         image: 'Help center and tickets',
         icon: LuBookOpen,
-        bullets: ['Docs and article topic maps', 'FAQ and owner answers', 'Release notes', 'Custom help domains', 'Ticket fallback'],
+        bullets: ['Scannable docs and article navigation', 'FAQ and owner answers', 'Release notes', 'Custom help domains', 'Ticket fallback'],
         reverse: true,
     },
 ];
@@ -152,7 +152,7 @@ const TRUST_ITEMS = [
     {
         title: 'Approved answers first',
         detail: 'Reviewed answers are served before fallback so users get the same official guidance.',
-        meta: 'Authority',
+        meta: 'Official answers',
     },
     {
         title: 'Stale answer review',
@@ -170,16 +170,16 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Every day',
         title: 'Start with a daily support brief',
-        description: 'See up to four qualified current decisions, or a clear quiet state when complete evidence needs no action. The brief reads compact summaries, stays read-only, and routes you to the governed review screen.',
+        description: 'See up to four focused current decisions, or a clear quiet state when the available evidence needs no action. The brief reads support summaries, stays read-only, and routes you to the right review screen.',
         href: '/product/support-control',
         cta: 'See daily support control',
     },
     {
-        eyebrow: 'Product truth',
+        eyebrow: 'Support coverage',
         title: 'Inspect the Knowledge Map',
         href: '/product/knowledge-governance',
-        description: 'Review product relationships, approved-answer coverage, drift, and review state from the existing bounded graph summary. It is a governed decision view, not a raw graph or diagram editor.',
-        cta: 'Explore knowledge governance',
+        description: 'Review product relationships, approved-answer coverage, stale guidance, and review state from the existing bounded graph summary. It is a focused decision view, not a raw graph or diagram editor.',
+        cta: 'Explore answer review',
     },
     {
         eyebrow: 'Customer pressure',
@@ -193,12 +193,12 @@ const FOUNDER_CONTROL_CARDS = [
         title: 'Review release impact',
         description: 'See directly linked approved answers and current linked Answer Tests before activating a versioned release. Owner confirmation remains required, and stale impact previews are rejected.',
         href: '/product/changelog',
-        cta: 'See release governance',
+        cta: 'See release review',
     },
     {
         eyebrow: 'Answer assurance',
         title: 'Run saved Answer Tests',
-        description: 'Check priority questions, expected sources, required or forbidden claims, evidence, fallback, escalation, and no-answer behavior. These deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release. A rollback request creates a proposal for owner review. It never overwrites the live answer or applies a rollback automatically. Provider-backed fallback cannot certify critical proof.',
+        description: 'Check priority questions, expected sources, required or forbidden claims, evidence, fallback, escalation, and no-answer behavior. These deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release. A rollback request creates a draft for owner review. It never overwrites the live answer or applies a rollback automatically. Provider-backed fallback cannot certify critical proof.',
         href: '/product/knowledge-governance',
         cta: 'Review answer controls',
     },
@@ -218,15 +218,15 @@ const FOUNDER_CONTROL_CARDS = [
     },
     {
         eyebrow: 'Data portability',
-        title: 'Use Support Truth Export',
-        description: 'Authorized owners can download a complete bounded JSON package of approved knowledge and product structure. Tickets, conversations, secrets, and raw audit logs stay out.',
+        title: 'Export reviewed support knowledge',
+        description: 'Authorized owners can use Support Truth Export to download a complete bounded JSON package of approved knowledge and product structure. Tickets, conversations, secrets, and raw audit logs stay out.',
         href: '/security',
         cta: 'Review data boundaries',
     },
 ];
 
 const DIFFERENCE_CARDS = [
-    ['Not a generic chatbot', 'Official answers require review before they become support truth.'],
+    ['Not a generic chatbot', 'Answers require owner review before they become official support.'],
     ['Not static docs', 'Tickets, feedback, and releases show what support knowledge is missing or stale.'],
     ['Not only a help center', 'Users get support inside the product, not only on a separate docs site.'],
     ['Not just ticketing', 'Fallback becomes support improvement work instead of only a queue.'],
@@ -432,7 +432,7 @@ function ApprovedAnswersSection() {
                 <SectionHeader
                     eyebrow="Approved answers"
                     title="Official answers should be approved, not guessed."
-                    description="AI can help draft, but owner review decides what becomes support truth."
+                    description="AI can help draft, but owner review decides what becomes official support."
                 />
                 <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
                     <article className="rounded-[2rem] border border-white/[0.08] bg-[#101028] p-6">
@@ -569,8 +569,8 @@ function ReviewAndGovernanceSections() {
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Trust mechanism"
-                        title="Built around support truth, not AI confidence."
-                        description="The deeper product layer turns page context, approved answers, stale-answer review, and repeated gaps into governed support truth."
+                        title="Built around reviewed support, not AI confidence."
+                        description="Page context, approved answers, stale-answer review, and repeated gaps work together so official support stays reviewable."
                     />
                     <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6">
                         <AnswerlatticeCrossDiagram idPrefix="al-product-governance" items={TRUST_ITEMS} />
@@ -586,9 +586,9 @@ function FounderControlSection({ basePath }: { basePath: string }) {
         <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Owner decision system"
-                    title="Move from today&apos;s priority to reviewed support truth."
-                    description="Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests share the same governed product model. Each view keeps the owner in control and routes to the next exact review step."
+                    eyebrow="Founder review"
+                    title="Move from today&apos;s priority to a reviewed support decision."
+                    description="Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests use the same product and support context. Each view keeps the owner in control and routes to the next exact review step."
                 />
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {FOUNDER_CONTROL_CARDS.map((item) => (
@@ -710,8 +710,8 @@ export default async function AnswerlatticeProductPage() {
             <main className="al-page-flow">
                 <PageHero
                     eyebrow="Product overview"
-                    title="One governed support layer for the questions your users ask most."
-                    description="AnswerLattice turns scattered product knowledge into approved answers for your in-app widget and hosted help, keeps missing coverage visible, and gives founders a review path before guidance becomes official."
+                    title="Turn scattered product knowledge into the support system users expect."
+                    description="AnswerLattice shapes docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support for your in-app widget, hosted help center, FAQs, changelog, fallback tickets, and future AI agents."
                     basePath={basePath}
                     align="left"
                     actions={[
@@ -731,7 +731,7 @@ export default async function AnswerlatticeProductPage() {
                         },
                     ]}
                     proofItems={[
-                        { label: 'What it is', value: 'Governed support layer for founder-led SaaS' },
+                        { label: 'What it is', value: 'Reviewed support layer for founder-led SaaS' },
                         { label: 'What it turns into', value: 'Widget help, hosted help, FAQs, fallback, feedback, releases, and review' },
                         { label: 'What stays safe', value: 'Safe context, owner approval, and scoped workspace access' },
                     ]}

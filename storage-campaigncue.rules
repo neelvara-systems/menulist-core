@@ -6,28 +6,43 @@ service firebase.storage {
       allow read, write: if false;
     }
 
-    match /campaigncue/assets/{workspaceId}/{allPaths=**} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow create: if isCampaignCueWorkspaceMember(workspaceId)
+    match /campaigncue/assets/{workspaceId}/{uploadId}/{fileName} {
+      // Upload sessions are bound to one immutable folder. Reading is served by
+      // the bounded preview/download APIs, never by a reusable Firebase token.
+      allow read: if false;
+      allow create: if isCampaignCueWorkspaceContentManager(workspaceId)
+        && hasCampaignCueMediaUploadScope(uploadId)
         && resource == null
-        && isCampaignCueAssetType()
-        && request.resource.size <= 250 * 1024 * 1024;
+        && request.resource.metadata is map
+        && request.resource.metadata.keys().hasAll(['uploadedBy'])
+        && request.resource.metadata.keys().hasOnly(['uploadedBy'])
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && isCampaignCueMediaUploadArtifact(fileName);
       allow update: if false;
-      allow delete: if isCampaignCueWorkspaceMember(workspaceId);
+      allow delete: if isCampaignCueWorkspaceContentManager(workspaceId)
+        && hasCampaignCueMediaUploadScope(uploadId)
+        && resource.metadata is map
+        && resource.metadata.keys().hasAll(['uploadedBy'])
+        && resource.metadata.uploadedBy == request.auth.uid
+        && isCampaignCueMediaUploadFileName(fileName);
     }
 
     match /campaigncue/renders/{workspaceId}/{allPaths=**} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
 
     match /campaigncue/reports/{workspaceId}/{allPaths=**} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow write, delete: if false;
+      // Report exports are uploaded and downloaded only through short-lived,
+      // server-issued signed URLs. No Firebase client receives direct access.
+      allow read, write, delete: if false;
     }
 
     match /campaigncue/templates/platform/shared/{templateId}/{fileName} {
-      allow read: if isPlatformAdmin() || isCurrentCampaignCueWorkspaceMember();
+      allow read: if isPlatformAdmin()
+        || (
+          hasCampaignCueFirebasePurpose('template_read')
+          && isCurrentCampaignCueWorkspaceContentManager()
+        );
       allow create: if isPlatformAdmin()
         && resource == null
         && isCampaignCueTemplateArtifactName(fileName)
@@ -37,7 +52,13 @@ service firebase.storage {
     }
 
     match /campaigncue/templates/platform/{categoryId}/{templateId}/{fileName} {
-      allow read: if (isPlatformAdmin() || isCurrentCampaignCueWorkspaceMember())
+      allow read: if (
+          isPlatformAdmin()
+          || (
+            hasCampaignCueFirebasePurpose('template_read')
+            && isCurrentCampaignCueWorkspaceContentManager()
+          )
+        )
         && isCampaignCuePackTemplateCategoryId(categoryId);
       allow create: if isPlatformAdmin()
         && resource == null
@@ -49,31 +70,40 @@ service firebase.storage {
     }
 
     match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/{fileName} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+      allow read: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('template_read'))
+        && isCampaignCueWorkspaceContentManager(workspaceId);
+      allow create: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('workspace_template_write'))
+        && isCampaignCueWorkspaceContentManager(workspaceId)
+        && resource == null
         && isCampaignCueWorkspaceTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isCampaignCueWorkspaceMember(workspaceId)
+      allow update: if false;
+      allow delete: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('workspace_template_write'))
+        && isCampaignCueWorkspaceContentManager(workspaceId)
         && isCampaignCueWorkspaceTemplateArtifactName(fileName);
     }
 
     match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{versionId}/{fileName} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId)
+      allow read: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('template_read'))
+        && isCampaignCueWorkspaceContentManager(workspaceId)
         && isCampaignCueWorkspaceTemplateVersionId(versionId);
-      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+      allow create: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('workspace_template_write'))
+        && isCampaignCueWorkspaceContentManager(workspaceId)
+        && resource == null
         && isCampaignCueWorkspaceTemplateVersionId(versionId)
         && isCampaignCueWorkspaceTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isCampaignCueWorkspaceMember(workspaceId)
+      allow update: if false;
+      allow delete: if (isPlatformAdmin() || hasCampaignCueFirebasePurpose('workspace_template_write'))
+        && isCampaignCueWorkspaceContentManager(workspaceId)
         && isCampaignCueWorkspaceTemplateVersionId(versionId)
         && isCampaignCueWorkspaceTemplateArtifactName(fileName);
     }
 
     match /campaigncue/cue-layers/{workspaceId}/{designId}/{allPaths=**} {
-      allow read: if isCampaignCueWorkspaceMember(workspaceId);
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
 
     function isAuthenticated() {
@@ -84,6 +114,18 @@ service firebase.storage {
       return isAuthenticated()
         && request.auth.token.keys().hasAny(['platformRole'])
         && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function hasCampaignCueFirebasePurpose(purpose) {
+      return isAuthenticated()
+        && request.auth.token.keys().hasAll(['firebasePurpose'])
+        && request.auth.token.firebasePurpose == purpose;
+    }
+
+    function hasCampaignCueMediaUploadScope(uploadId) {
+      return hasCampaignCueFirebasePurpose('media_upload')
+        && request.auth.token.keys().hasAll(['mediaSourceFileName', 'mediaUploadId'])
+        && request.auth.token.mediaUploadId == uploadId;
     }
 
     function currentCampaignCueWorkspaceId() {
@@ -119,8 +161,43 @@ service firebase.storage {
         && isCampaignCueWorkspaceMember(currentCampaignCueWorkspaceId());
     }
 
+    function isCurrentCampaignCueWorkspaceContentManager() {
+      return hasCampaignCueWorkspaceClaims()
+        && isCampaignCueWorkspaceContentManager(currentCampaignCueWorkspaceId());
+    }
+
+    function isCampaignCueWorkspaceContentManager(workspaceId) {
+      let workspace = firestore.get(
+        /databases/(default)/documents/campaigncueWorkspaces/$(workspaceId)
+      ).data;
+      return isAuthenticated()
+        && (
+          (
+            request.auth.token.keys().hasAny(['platformRole'])
+            && request.auth.token.platformRole == 'PLATFORM'
+          )
+          || (
+          request.auth.token.keys().hasAll(['tenantId', 'storeId'])
+          && request.auth.token.tenantId != null
+          && request.auth.token.storeId != null
+          && workspaceId == currentCampaignCueWorkspaceId()
+          && workspace.id == workspaceId
+          && workspace.workspaceId == workspaceId
+          && workspace.productId == 'CC'
+          && string(workspace.tId) == string(request.auth.token.tenantId)
+          && string(workspace.sId) == string(request.auth.token.storeId)
+          && workspace.status == 'active'
+          && workspace.members is map
+          && workspace.members.keys().hasAny([request.auth.uid])
+          && workspace.members.get(request.auth.uid, {})
+            .get('role', '') in ['owner', 'admin', 'marketer', 'agency_member']
+          )
+        );
+    }
+
     function isCampaignCueWorkspaceMemberData(workspaceId, data) {
-      return data.id == workspaceId
+      return hasCampaignCueWorkspaceClaims()
+        && data.id == workspaceId
         && data.workspaceId == workspaceId
         && data.productId == 'CC'
         && string(data.tId) == string(request.auth.token.tenantId)
@@ -128,8 +205,7 @@ service firebase.storage {
         && data.status == 'active'
         && data.members is map
         && data.members.keys().hasAny([request.auth.uid])
-        && data.members[request.auth.uid] is map
-        && data.members[request.auth.uid].role in [
+        && campaignCueWorkspaceMemberRole(data) in [
           'owner',
           'admin',
           'marketer',
@@ -140,16 +216,47 @@ service firebase.storage {
         ];
     }
 
+    function campaignCueWorkspaceMemberRole(data) {
+      return data.get('members', {})
+        .get(request.auth.uid, {})
+        .get('role', '');
+    }
+
     function isCampaignCuePackTemplateCategoryId(categoryId) {
       return categoryId.matches('^(service|retail|food|professional|creative|health|specialty)$');
     }
 
-    function isCampaignCueAssetType() {
-      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
-        || request.resource.contentType.matches('video/(mp4|quicktime|webm)')
-        || request.resource.contentType.matches('audio/(mpeg|mp4|wav|ogg|webm)')
-        || request.resource.contentType.matches('application/(pdf|json|zip)')
-        || request.resource.contentType == 'text/plain';
+    function isCampaignCueMediaUploadFileName(fileName) {
+      return fileName == 'preview.webp'
+        || fileName == request.auth.token.mediaSourceFileName;
+    }
+
+    function isCampaignCueMediaUploadArtifact(fileName) {
+      return isCampaignCueMediaUploadFileName(fileName)
+        && (
+          (
+            fileName == 'preview.webp'
+            && request.resource.contentType == 'image/webp'
+            && request.resource.size <= 1024 * 1024
+          ) || (
+            fileName == request.auth.token.mediaSourceFileName
+            && fileName.matches('^source\\.[a-z0-9]{1,8}$')
+            && isCampaignCueSourceMediaTypeAndSizeAllowed()
+          )
+        );
+    }
+
+    function isCampaignCueSourceMediaTypeAndSizeAllowed() {
+      return (
+          request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
+          && request.resource.size <= 12 * 1024 * 1024
+        ) || (
+          request.resource.contentType.matches('video/(mp4|quicktime|webm)')
+          && request.resource.size <= 250 * 1024 * 1024
+        ) || (
+          request.resource.contentType.matches('audio/(mpeg|mp4|wav|ogg|webm)')
+          && request.resource.size <= 50 * 1024 * 1024
+        );
     }
 
     function isCampaignCueTemplateArtifactType() {

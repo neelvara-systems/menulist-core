@@ -37,11 +37,11 @@ export default async function HostedHelpCenterForSaasPage() {
                 question="Where can users read support without logging in?"
                 genericAnswer="Create a public docs site and link it from your app."
                 answerlatticeAnswer="Publish reviewed articles, owner FAQs, and changelog entries on help.yourapp.com while tickets, conversations, and workspace internals stay private."
-                    ownerReview="Hosted help content comes from the same reviewed support knowledge. Owners can turn articles, custom owner answers, surfaces, changelogs, and approved answers into one support site instead of maintaining a separate docs island."
+                    ownerReview="Hosted help content comes from the same reviewed support knowledge. Owners can turn articles, custom answers, product pages, changelogs, and approved answers into one support site instead of maintaining a separate docs island."
                     setupSteps={[
                         'Create your AnswerLattice workspace.',
                         'Import docs, FAQs, tickets, custom answers, release notes, screenshots, recordings, and notes.',
-                    'Map content to product surfaces.',
+                    'Map content to the product pages where users need help.',
                     'Configure hosted help domain settings.',
                     'Publish reviewed help content and keep answer gaps visible.',
                 ]}

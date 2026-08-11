@@ -126,7 +126,7 @@ export default async function AnswerlatticeProofPage() {
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
                         <AnswerlatticeLink basePath={basePath} href="/demo" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
-                            Try the demo
+                            See 60-sec demo
                         </AnswerlatticeLink>
                         <AnswerlatticeLink basePath={basePath} href="/quickstarts" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
                             View quickstarts

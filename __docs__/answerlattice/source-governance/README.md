@@ -1,7 +1,7 @@
 # Answerlattice Source Governance
 
 > Status: Implemented behind a controlled rollout flag
-> Last updated: 2026-07-26
+> Last updated: 2026-08-10
 
 Source Governance extends the existing Knowledge Intake source record with owner-reviewed authority, approval, access, citation, applicability, freshness, and conflict metadata.
 
@@ -16,6 +16,10 @@ The feature does not make imported material authoritative. It helps a reviewer d
 - Source authority is selected by a human and never inferred from model confidence.
 - Conflict links are reciprocal and hold either source out of canonical evidence until a reviewer resolves the disagreement; Answerlattice does not silently select a winner.
 - No crawler, connector, scheduler, AI call, retention change, or runtime retrieval branch is added.
+- When Source Governance is enabled, the release review may inspect only the
+  governed Knowledge Intake source IDs directly cited by affected canonical
+  answers. This metadata-only watch is capped at 50 reads, remains advisory,
+  and neither resolves conflicts nor blocks release activation.
 
 ## Documents
 
@@ -34,4 +38,5 @@ The feature does not make imported material authoritative. It helps a reviewer d
 - [Knowledge Intake Command Center](../knowledge-intake-command-center/README.md)
 - [Canonical Answer Governance](../canonical-answer-governance/README.md)
 - [Drift Governance](../drift-governance/README.md)
+- [Support Truth Change Control](../support-truth-change-control/README.md)
 - [Core Doctrine](../doctrine/01-core-doctrine.md)

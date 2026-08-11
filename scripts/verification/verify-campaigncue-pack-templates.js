@@ -29,6 +29,7 @@ const requiredFiles = [
   "src/lib/campaigncue/pack-templates/workspaceTemplates.ts",
   "src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts",
   "src/lib/campaigncue/pack-templates/applyTemplate.ts",
+  "src/lib/campaigncue/firebaseSessionClient.ts",
   "src/components/templates/campaigncue/PackTemplatePicker.tsx",
   "scripts/campaigncue/read-shared-business-categories.js",
   "scripts/campaigncue/seed-platform-pack-templates.js",
@@ -88,11 +89,14 @@ assertIncludes("src/constants/campaigncue/database.ts", "PLATFORM_PACK_TEMPLATES
 assertIncludes("src/constants/campaigncue/database.ts", "PACK_TEMPLATE_INDEXES");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "PackTemplatePicker");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "listCampaignCuePackTemplates");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "loadCampaignCuePackTemplateOverflow");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "platformOverflowDocIds");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "getCampaignCuePackTemplate");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "Campaign pack created from reusable base.");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "createCampaignFromOutputIntent");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "showOutputPicker={FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_OUTPUT_PICKER}");
 assertIncludes("src/components/templates/campaigncue/PackTemplatePicker.tsx", "Campaign outputs");
+assertIncludes("src/components/templates/campaigncue/PackTemplatePicker.tsx", "Show more options");
 assertIncludes("src/components/templates/campaigncue/PackTemplatePicker.tsx", "not a generic design-format library");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "buildPackTemplateEditorContext");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "intent?: CampaignCueOutputPickerItem");
@@ -103,9 +107,11 @@ assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "editorDoc
 assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "input.outputPack?.proofDeck");
 assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "input.businessBrain.brandKit.playbook");
 assertIncludes("src/lib/campaigncue/pack-templates/category.ts", "resolveBusinessCategory");
-assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTemplates");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformCatalog");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");
-assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "getBlob(ref(firebaseStorage, path), maxBytes)");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "getBlob(ref(storage, path), maxBytes)");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "withCampaignCueFirebaseSession");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", 'purpose: "template_read"');
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "assertCampaignCuePackTemplatePayloadIdentity");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "CampaignCuePackTemplateEditorDocumentSchema.parse(value)");
 assertIncludes("src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts", "prepareCampaignCuePackTemplateEditorDocument");
@@ -133,9 +139,11 @@ assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "isMi
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "path?.endsWith(\"/pack-template.json\")");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "path?.endsWith(\"/editor-document.json\")");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "const versionRoot = `${root}/versions/${safeSegment(createRuntimeId(\"save\"))}`");
-assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "const summary = await runTransaction(firebaseClient");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "const summary = await runTransaction(firestore");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "withCampaignCueFirebaseSession");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", 'purpose: "workspace_template_write"');
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "transaction.set(indexRef, index)");
-assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupWorkspaceTemplateSummaries(obsoleteRecords");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupWorkspaceTemplateSummaries(storage, obsoleteRecords");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_persistence_probe_failed");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_delete_probe_failed");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "upsertWorkspaceTemplateIndex");
@@ -148,10 +156,12 @@ assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundar
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts", "pack-template\\.json|editor-document\\.json|preview");
 assertIncludes("package.json", "test:campaigncue-workspace-template-index-boundary");
 assertIncludes("package.json", "test:campaigncue-pack-template-boundaries");
-assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "CAMPAIGNCUE_FIREBASE_PROJECT_ID and CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID and NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required");
 assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "pack-template-${contentHash}.json");
 assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "preconditionOpts: { ifGenerationMatch: 0 }");
 assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "const batch = db.batch()");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "overflowDocIds: catalogIds.slice(1)");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadCampaignCuePackTemplateOverflow");
 assertIncludes("src/lib/campaigncue/server.ts", "Creator fit check");
 assertIncludes("src/lib/campaigncue/server.ts", "baseline views, real comment quality, local audience fit");
 assertIncludes("src/lib/campaigncue/server.ts", "3-test plan");
@@ -168,7 +178,9 @@ assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pa
 assertIncludes("firestore-campaigncue.rules", "campaigncuePlatformPackTemplates");
 assertIncludes("firestore-campaigncue.rules", "match /packTemplateIndexes/{docId}");
 assertIncludes("firestore-campaigncue.rules", "isCampaignCueWorkspaceMemberData");
-assertIncludes("firestore-campaigncue.rules", "data.members[request.auth.uid].role");
+assertIncludes("firestore-campaigncue.rules", "campaignCueWorkspaceMemberRole(data)");
+assertIncludes("firestore-campaigncue.rules", "hasCampaignCueFirebasePurpose('template_read')");
+assertIncludes("firestore-campaigncue.rules", "hasCampaignCueFirebasePurpose('workspace_template_write')");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/platform");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/workspaces");
 assertIncludes("storage-campaigncue.rules", "match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{versionId}/{fileName}");
@@ -183,10 +195,15 @@ assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", 
 assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "do not broker, price-guarantee, contract, or pay creators");
 
 const implementation = [
+  read("src/lib/campaigncue/firebaseSessionClient.ts"),
   read("src/lib/campaigncue/pack-templates/catalog.ts"),
   read("src/lib/campaigncue/pack-templates/workspaceTemplates.ts"),
   read("src/components/templates/campaigncue/PackTemplatePicker.tsx"),
 ].join("\n");
+if (read("src/lib/campaigncue/pack-templates/catalog.ts").includes("@lib/firebase/firebaseClient")
+  || read("src/lib/campaigncue/pack-templates/workspaceTemplates.ts").includes("@lib/firebase/firebaseClient")) {
+  fail("CampaignCue template DALs must use the dedicated CampaignCue Firebase client");
+}
 if (implementation.includes("storeAssetTemplates")) {
   fail("CampaignCue pack template implementation must not use MenuList storeAssetTemplates");
 }
@@ -200,7 +217,7 @@ if (read("src/lib/campaigncue/pack-templates/applyTemplate.ts").includes("input.
   || read("src/lib/campaigncue/pack-templates/applyTemplate.ts").includes("input.businessBrain.name")) {
   fail("Workspace template metadata must not persist stale campaign copy or business identity");
 }
-if (implementation.includes("]).catch(() => undefined);") || implementation.includes("deleteObject(ref(firebaseStorage, path)).catch(() => undefined)")) {
+if (implementation.includes("]).catch(() => undefined);") || implementation.includes("deleteObject(ref(storage, path)).catch(() => undefined)")) {
   fail("CampaignCue workspace template Storage cleanup failures must be logged instead of silently swallowed");
 }
 

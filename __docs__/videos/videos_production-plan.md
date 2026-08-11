@@ -60,6 +60,7 @@ Create:
 - demo script;
 - 10 short-form scripts;
 - feature video scripts;
+- canonical feature-inventory crosswalk and one detailed handoff per admitted feature;
 - shot list;
 - demo account with fictional menu/service-list data;
 - final claim-boundary checklist.
@@ -85,6 +86,15 @@ Capture:
 - Business Health stable state;
 - QR and print mockups;
 - optional founder/talking-head footage.
+- current Menu Content Prep, Menu Quality Validation, and Featured Choices states;
+- current QR/share/saved-shortcut flow and scan result;
+- current Print-Ready Kit templates and rendered outputs;
+- one continuous Owner Phone Dashboard task path;
+- current Analytics definitions and aggregate demo fixture;
+- Business Health stable state and one verified attention handoff;
+- Customer Feedback customer-to-owner review flow;
+- current Official Page, structured facts, and discovery-file evidence;
+- current AI Menu Manager and Multi-location certification captures.
 
 Recording requirements:
 
@@ -105,6 +115,8 @@ Deliver:
 - 6-second bumper;
 - 2-3 minute demo;
 - 8-12 reels;
+- Feature Wave 1 masters and native vertical cuts after their capture gates pass;
+- Feature Wave 2 and Wave 3 masters only after the preceding wave's claim, capture, and distribution review;
 - captioned versions.
 
 Editing requirements:
@@ -157,7 +169,7 @@ Launch testing requirements:
 | Old PDF/menu screenshot | Hero, reels, paid ads | Use fictional menu only |
 | Stale QR page | Hero, QR reel | Show problem without blaming owner |
 | WhatsApp/Instagram/print price drift | Hero, reels | Avoid implying automatic platform sync |
-| Source upload | Hero, demo, setup reel | Show menu photos, PDF, owned link, and no typing required to start |
+| Source upload | Hero, demo, setup reel | Show menu photos, PDF, or an owned link and make the reduced retyping burden visible without an absolute no-typing claim |
 | Private preview | Hero, demo, approval reel | Must clearly show not-public-yet state |
 | Approval step | Hero, demo, trust videos | Owner approval first |
 | Customer link live | All | Core product proof |
@@ -166,6 +178,13 @@ Launch testing requirements:
 | AI Menu Manager card | Hero, feature | Message in, card prepared, approval first |
 | Business Health stable state | Hero, feature | Use `No action needed` |
 | Multi-location master/outlet | Feature | Master list plus local flexibility |
+| Menu content prep | Feature | Incomplete approved item -> private prepared content -> owner approval |
+| Menu quality validation | Feature | One real readiness issue -> exact owner action -> resolved review state |
+| Featured Choices | Feature | Eligible choices above the same approved full menu |
+| Owner phone workflow | Feature | One continuous update -> approve -> share task, not a feature montage |
+| Activity and analytics | Feature | Current aggregate definitions with coherent fictional demo values |
+| Customer feedback loop | Feature | Private report context -> owner review -> no public change before decision |
+| Public discovery | Feature | Current public page, verified structured facts/files, explicit no-ranking boundary |
 
 ## Asset Naming
 
@@ -181,6 +200,9 @@ menulist-reel-owner-approval-20s-v1.mp4
 menulist-ad-bumper-6s-v1.mp4
 menulist-ad-cut-15s-v1.mp4
 menulist-ad-cut-30s-v1.mp4
+ml-fl-owner-phone-dashboard-v1.0.mp4
+ml-fl-business-health-v1.0.mp4
+ml-fl-public-discovery-v1.0.mp4
 ```
 
 ## Production Gates

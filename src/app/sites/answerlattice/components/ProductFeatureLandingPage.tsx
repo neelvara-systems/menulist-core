@@ -31,7 +31,7 @@ const CARD_ICONS: IconType[] = [
 
 const FEATURE_PAGE_PROOF_ITEMS = [
     {
-        title: 'A familiar support surface',
+        title: 'A familiar place for users to get help',
         description: 'Each feature is explained as something buyers already recognize: docs, FAQs, releases, tickets, feedback, notifications, or review work.',
     },
     {
@@ -111,9 +111,9 @@ export default function ProductFeatureLandingPage({
                         <PageProofStrip
                             className="mt-5 max-w-2xl"
                             items={[
-                                { label: 'Feeds', value: 'Widget, hosted help, tickets, and review' },
-                                { label: 'Authority rule', value: 'Drafts stay review work until approved' },
-                                { label: 'Buyer proof', value: 'Shows what the feature changes in the support loop' },
+                                { label: 'Used in', value: 'Widget, hosted help, tickets, and review' },
+                                { label: 'Publish rule', value: 'Drafts stay review work until approved' },
+                                { label: 'Owner outcome', value: 'See what this feature changes in the support loop' },
                             ]}
                         />
                         <div className="al-page-hero__actions">
@@ -133,7 +133,7 @@ export default function ProductFeatureLandingPage({
                                 data-answerlattice-label={`${feature.slug}_demo`}
                                 className="al-page-hero__button al-page-hero__button--secondary"
                             >
-                                Try the demo
+                                See 60-sec demo
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
@@ -216,7 +216,7 @@ export default function ProductFeatureLandingPage({
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
-                        eyebrow="Generated support truth"
+                        eyebrow="Connected support outputs"
                         title={feature.connectedTitle}
                         description={feature.connectedDescription}
                     />
@@ -231,7 +231,7 @@ export default function ProductFeatureLandingPage({
                             },
                             {
                                 title: 'Scattered knowledge',
-                                detail: 'Docs, tickets, releases, screenshots, recordings, and notes become widget help, hosted help, tickets, and answer review from one controlled workspace.',
+                                detail: 'Docs, tickets, releases, screenshots, recordings, and notes become widget help, hosted help, fallback, and answer review from one workspace.',
                             },
                             {
                                 title: 'Page context',
@@ -337,7 +337,7 @@ export default function ProductFeatureLandingPage({
                     Launch {featureName} as part of the full support loop.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                    AnswerLattice works best when {featureName} feeds widget answers, hosted help, tickets, and answer review from the same approved support truth.
+                    AnswerLattice works best when {featureName} feeds widget answers, hosted help, tickets, and answer review from the same reviewed support knowledge.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink

@@ -1,6 +1,6 @@
 # Global Localization Test Cases
 
-**Last updated:** July 19, 2026
+**Last updated:** August 11, 2026
 
 | ID | Case | Expected |
 | --- | --- | --- |
@@ -22,7 +22,7 @@
 | GL-16 | UI preference change | Zero Firestore operations. |
 | GL-17 | Store locale change | Existing store DAL acknowledgement and public-cache behavior remain unchanged. |
 | GL-18 | Registered locale files | Exact one-to-one parity with `APP_LANGUAGES`; every JSON file parses. |
-| GL-19 | Full MenuList owner namespace boundary | All 3,456 strings in 49 namespaces exist and are non-empty in all 52 files; obsolete locale-only owner keys are rejected, while `Website` and `CampaignCue` remain excluded. |
+| GL-19 | Full MenuList owner namespace boundary | All 4,025 strings in 50 namespaces exist and are non-empty in all 52 files; obsolete locale-only owner keys are rejected, while `Website` and `CampaignCue` remain excluded. |
 | GL-20 | ICU variables in owner copy | Variables match `en-US` exactly and each owner message parses as ICU. |
 | GL-21 | Non-English owner value equals `en-US` | Passes only for a protected invariant, ICU-only value, or locale-specific reviewed cognate. |
 | GL-22 | Open-hours analytics fallback copy | Desktop, mobile, and shared detail-builder fallbacks match the translation source. |
@@ -49,5 +49,10 @@
 | GL-43 | Fixed spice level | Mild, medium, hot, and very hot use localized enum labels on menu and item detail; an unknown owner value is rendered readably without invented translation. |
 | GL-44 | Public hours fallback | Known fixed hours/day patterns localize through the public bundle; an unrecognized owner-authored note remains verbatim. |
 | GL-45 | Public semantic evidence | Every locale public-subtree hash, placeholder set, protected term, canonical example, selected script boundary, and zero-runtime-operation assertion matches checked-in evidence. |
+| GL-46 | Dashboard stable-ID projection | Business Health checks, sources, public-truth modules/facts/results/actions, and owner actions resolve localized labels from stable IDs; raw backend prose is not authoritative in non-English sessions. |
+| GL-47 | Protected term inside a sentence | Changing or translating `MenuList`, `Smart Picks`, `Google`, `WhatsApp`, `QR`, or another protected token queues the message for bounded repair. |
+| GL-48 | Corrupt generated dashboard copy | Repeated CJK alternatives, leaked `%s`, invented numbers, unrelated extra sentences, and configured mixed-script output fail or enter reviewed repair. |
+| GL-49 | Business Health assistant in a non-English locale | Localized checks remain available, but English-only free-text/suggested question submission is unavailable with an explicit language boundary. |
+| GL-50 | Public-truth report export | The localized UI labels the downloaded text report as English; it does not imply localized report content. |
 
 Automated coverage: `scripts/verification/test-global-localization-boundary.ts`, `scripts/verification/verify-global-localization-boundary.js`, `scripts/verification/verify-owner-dashboard-locales.js`, and `scripts/verification/verify-public-customer-localization.js`.

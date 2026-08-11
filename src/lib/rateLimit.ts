@@ -24,12 +24,13 @@ import { FEATURE_FLAGS } from '@config/features';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { secureError } from '@lib/security/secureLogger';
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 function createUpstashClient(): Redis | null {
     if (!FEATURE_FLAGS.ENABLE_RATE_LIMITING) return null;
 
-    const url = (process.env.UPSTASH_REDIS_REST_URL || '').trim();
-    const token = (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
+    const url = (menulistServerEnv.upstashRedisRestUrl || '').trim();
+    const token = (menulistServerEnv.upstashRedisRestToken || '').trim();
     if (!url || !token) return null;
 
     try {

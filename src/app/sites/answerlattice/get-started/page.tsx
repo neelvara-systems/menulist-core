@@ -38,10 +38,10 @@ const FIRST_SESSION = [
     'Create your AnswerLattice workspace',
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
-    'Seed starter surfaces for key product pages',
+    'Add the first product pages where users need help',
     'Turn scattered links, docs, FAQs, screenshots, recordings, support macros, or repeated replies into structured support knowledge',
     'Verify widget install and page context',
-    'Review the first approved answers',
+    'Review and approve the first answers',
 ];
 
 type AnswerlatticeGetStartedPageProps = {

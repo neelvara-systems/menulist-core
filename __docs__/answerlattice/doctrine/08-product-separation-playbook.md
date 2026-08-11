@@ -30,7 +30,7 @@ Until external-client CCT auth becomes the primary cross-product contract, the s
 - The default NextAuth user document may contain `productAccounts.AL`.
 - `productAccounts.AL` stores Answerlattice `pId`, `tenantId`, `storeId`, `platformRole`, `role`, `active`, and `isVerified` for that Answerlattice account.
 - Answerlattice routes and APIs scope the session through this Answerlattice product account instead of using the MenuList root `tenantId`/`storeId`.
-- `/api/auth/set-claims` issues Answerlattice Firebase custom claims from the Answerlattice user/account when `ANSWERLATTICE_FIREBASE_MODE=separate`.
+- `/api/auth/set-claims` issues Answerlattice Firebase custom claims from the Answerlattice user/account when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate`.
 - Answerlattice onboarding writes product data to the Answerlattice Firebase project and only writes the bridge object back to the default auth user document.
 
 This bridge does not make MenuList the owner of Answerlattice data. It only lets one Google login access both products while Firebase data, rules, functions, and widget credentials stay separated.
@@ -125,15 +125,11 @@ NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=...
 NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=
-ANSWERLATTICE_FIREBASE_MODE=separate
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa               # local/preview
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice                  # production
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=...
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=...
-ANSWERLATTICE_FIRESTORE_DATABASE_ID=
 ```
 
-Use `shared` mode only for explicit legacy/emulator recovery. The active local path is separate mode against `answerlattice-qa`, and production stays separate against `answerlattice`.
+The server reuses the canonical public mode, project ID, bucket, and optional database ID. Use `shared` mode only for explicit legacy/emulator recovery. The active local path is separate mode against `answerlattice-qa`, and production stays separate against `answerlattice`.
 
 ---
 

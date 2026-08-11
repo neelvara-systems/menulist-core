@@ -1,4 +1,4 @@
-import { Card, message } from 'antd';
+import { Alert, Card, message } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerBusinessHealthCurrentDoc, OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
@@ -7,6 +7,8 @@ import { BusinessHealthSuggestedQuestions } from './BusinessHealthSuggestedQuest
 import { OwnerAssistantInput } from './OwnerAssistantInput';
 import { OwnerAssistantMessageList } from './OwnerAssistantMessageList';
 import styles from './OwnerBusinessAssistant.module.scss';
+import { isEnglishDashboardLocale } from '@lib/analytics/ownerDashboardPresentation';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function OwnerAssistantPanel({ current, projectId, questions, storeScopeKey }: {
   current?: OwnerBusinessHealthCurrentDoc | null;
@@ -14,6 +16,8 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
   questions?: OwnerBusinessHealthQuestion[];
   storeScopeKey?: string | number;
 }) {
+  const locale = useLocale();
+  const t = useTranslations('Dashboard.owner');
   const { answer, ask, threadId, lastQuestion, isLoading } = useOwnerBusinessAssistantAnswer(projectId, {
     currentRoute: typeof window !== 'undefined' ? window.location.pathname : undefined,
     selectedProjectId: projectId,
@@ -26,22 +30,22 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
 
   const handleAsk = async (question: string, suggestedQuestionId?: string) => {
     if (!isHealthReady) {
-      message.info('Business Health will answer after the latest check finishes.');
+      message.info(t('businessHealth.assistant.notReady'));
       return;
     }
     if (suggestedQuestionId && !canAskSuggested) {
-      message.info('Suggested questions are not available right now.');
+      message.info(t('businessHealth.assistant.suggestedUnavailable'));
       return;
     }
     if (!suggestedQuestionId && !canAskFreeText) {
-      message.info('Free-text questions are not available right now.');
+      message.info(t('businessHealth.assistant.freeTextUnavailable'));
       return;
     }
     try {
       const result = await ask(question, suggestedQuestionId);
       if (threadId || result?.threadId) void refreshThread();
     } catch (error) {
-      message.error('Business Health could not answer that.');
+      message.error(t('businessHealth.assistant.answerError'));
     }
   };
 
@@ -53,8 +57,21 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
     return null;
   }
 
+  if (!isEnglishDashboardLocale(locale)) {
+    return (
+      <Card title={t('businessHealth.assistant.title')} className={styles.dashboardCard}>
+        <Alert
+          message={t('businessHealth.assistant.englishOnlyTitle')}
+          description={t('businessHealth.assistant.englishOnlyDescription')}
+          showIcon
+          type="info"
+        />
+      </Card>
+    );
+  }
+
   return (
-    <Card title="Ask Business Health" className={styles.dashboardCard}>
+    <Card title={t('businessHealth.assistant.title')} className={styles.dashboardCard}>
       <div className={styles.assistantPanel}>
         <OwnerAssistantMessageList
           answer={answer}

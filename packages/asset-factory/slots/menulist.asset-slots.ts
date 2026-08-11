@@ -93,6 +93,30 @@ type MenuListPublicMediaSlotConfig = {
 
 const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
   {
+    id: 'menulist.industry.service-businesses.hero-source',
+    page: 'MenuList service-business industry pages',
+    route: '/industries/salons-spas',
+    placement: 'service-business industry hero proof',
+    intent:
+      'Show an owner-approved service list becoming a believable public customer page without reusing restaurant menu proof.',
+    destination: 'public/images/website/menulist-hero-service-source.webp',
+    component: 'src/components/website/industries/IndustryLandingPage.tsx',
+    format: 'webp',
+    ratio: '16:9',
+    maxKb: 350,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      'src/content/websiteIndustries.ts',
+      'src/components/website/industries/IndustryLandingPage.tsx',
+      'src/styles/website.css',
+    ],
+    mobileNotes:
+      'Keep the service-list hierarchy, owner-approved source, and customer-facing page recognizable behind mobile hero copy.',
+    extraRejectionRules: [
+      'Do not show restaurant dishes, menu-only language, unsupported appointments, or invented service-business activity metrics.',
+    ],
+  },
+  {
     id: 'menulist.industry.salons-spas.demo-placeholder',
     page: 'Salons and spas industry page',
     route: '/industries/salons-spas',

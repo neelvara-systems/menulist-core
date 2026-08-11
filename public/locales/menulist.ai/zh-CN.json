@@ -1170,7 +1170,8 @@
         "daily": "前一天",
         "weekly": "过去 7 天",
         "monthly": "本月",
-        "overall": "全面的"
+        "overall": "全面的",
+        "graph": "图表"
       },
       "today": {
         "noMenuActivityToday": "今天还没有菜单活动。",
@@ -1196,17 +1197,17 @@
         "noResultSearches": "无结果搜索",
         "unavailableInterest": "无法使用的利息",
         "topLanguage": "热门语言",
-        "smartPicksShown": "显示智能选择",
-        "smartPicksClicks": "智能选择点击次数",
-        "smartPicksTaps": "智能选择水龙头",
-        "smartPicksUsed": "使用的智能拨片",
-        "smartPicksEngagement": "智能选择参与度",
+        "smartPicksShown": "Smart Picks 展示",
+        "smartPicksClicks": "Smart Picks 点击",
+        "smartPicksTaps": "Smart Picks 塔普斯",
+        "smartPicksUsed": "Smart Picks 使用",
+        "smartPicksEngagement": "Smart Picks 承诺",
         "totalMenuScans": "菜单扫描总数",
         "totalItemClicks": "项目总点击次数",
         "activeDays": "活跃天数",
         "daysActive": "活跃天数",
         "avgDailyScans": "平均。每日扫描",
-        "smartPicksActive": "智能精选活跃",
+        "smartPicksActive": "Smart Picks 活跃",
         "engagementRate": "参与率",
         "topItem": "热门商品",
         "topCategory": "顶级类别"
@@ -1215,8 +1216,8 @@
         "itemClicks": "顾客点击商品的次数",
         "engagedSessions": "顾客对菜单表现出真正兴趣的会议",
         "actionRate": "导致客户最终采取行动的会话",
-        "smartPicksShown": "智能精选在您的页面上出现了多少次",
-        "smartPicksUsed": "使用智能精选的客户百分比",
+        "smartPicksShown": "多少次 Smart Picks 在您的页面上出现",
+        "smartPicksUsed": "使用的客户的比例 Smart Picks",
         "customerActions": "最终操作，例如致电、WhatsApp、路线、预订和订购",
         "searches": "从菜单中删除重复的搜索需求",
         "unavailableInterest": "点击不可用的项目"
@@ -1224,10 +1225,15 @@
       "empty": {
         "noActivityYesterday": "昨天没有记录任何活动",
         "noAnalyticsYet": "还没有数据。一旦客户开始查看，您的分析就会出现。",
-        "noItemClicksYet": "尚未点击任何项目"
+        "noItemClicksYet": "尚未点击任何项目",
+        "lowActivityTitle": "活性低",
+        "lowActivityDescription": "没有足够的活动来得出有关这一时期的有用结论。",
+        "noWeeklyData": "过去7天内尚无可用的已解决菜单活动。",
+        "noMonthlyData": "此月尚未设定菜单活动。"
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% 与上周相比"
+        "vsLastWeek": "{sign}{change}% 与上周相比",
+        "changeVsLastWeek": "{change} vs 上周"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# 天活动已记录} other {# 天活动已记录}}"
@@ -1257,7 +1263,7 @@
       "states": {
         "yes": "是的",
         "no": "不",
-        "notAvailable": "不适用",
+        "notAvailable": "N/A",
         "active": "积极的",
         "lowActivity": "低活性",
         "noData": "无数据"
@@ -1269,12 +1275,25 @@
         "waitingForFirstScan": "等待第一次扫描",
         "weeklyInsights": "每周见解",
         "last4WeeksComparison": "过去 4 周比较",
-        "historicalDataWillAppear": "历史数据将在几周后出现"
+        "historicalDataWillAppear": "历史数据将在几周后出现",
+        "statusMessages": {
+          "working": "客户正在使用您的当前菜单。",
+          "low_activity": "客户活动仍在积累中。您当前的菜单仍可正常使用。",
+          "no_data": "活动将在客户开始打开您的菜单后出现。"
+        }
       },
       "aiSummary": {
         "daily": "前一天一览",
         "weekly": "本周一览",
-        "monthly": "本月总结"
+        "monthly": "本月总结",
+        "localized": {
+          "noActivity": "在此期间没有记录到已结算的客户活动。",
+          "menuViews": "客户打开菜单 {count} 次。",
+          "itemTaps": "客户点击菜单项 {count} 次。",
+          "customerActions": "客户完成了 {count} 最后操作。",
+          "searches": "客户搜索了菜单 {count} 次。",
+          "unavailableInterest": "不可用项目已收到 {count} 次点击。"
+        }
       },
       "actions": {
         "call": "电话",
@@ -1298,7 +1317,100 @@
         "sourceQualityTagCompact": "{source}：{visits} 访问·{rate}%",
         "markDoneFailed": "此操作无法标记为已完成。再试一次。",
         "markDone": "标记为已完成",
-        "markDoneSaved": "标记为已完成。当下一个分析摘要准备好时，结果将更新。"
+        "markDoneSaved": "标记为已完成。当下一个分析摘要准备好时，结果将更新。",
+        "bestSourceStatsFormatted": "· {visits} 次访问 · {rate} 手动操作率",
+        "bestSourceMobileFormatted": "目前最好的资源: {source} · {visits} 访问量 · {rate} action rate",
+        "sourceQualityTagFormatted": "{source}: {visits} 次访问 · {sessions}个操作会话 · {rate}次访客",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} 次访问 · {rate}",
+        "priorities": {
+          "high": "高优先级",
+          "medium": "中优先级",
+          "low": "低优先级"
+        },
+        "confidence": {
+          "stable": {
+            "label": "稳定的",
+            "message": "可用的活动支持清晰的菜单检查。"
+          },
+          "watch": {
+            "label": "继续观看",
+            "message": "某些活动可能需要在更改菜单之前进行另一个检查。"
+          },
+          "no_data": {
+            "label": "需要更多数据",
+            "message": "等待客户活动更加稳定后再作出结论。"
+          }
+        },
+        "localizedActions": {
+          "reason": "基于最近安排的客户活动。",
+          "availability": {
+            "title": "查看物品的可用性。",
+            "description": "检查不可用或隐藏的项目是否应该恢复或保持不显示。",
+            "action": "检查供应情况"
+          },
+          "customerActions": {
+            "title": "查看客户行为。",
+            "description": "在采取行动之前,请检查客户使用的菜单详细信息和链接。",
+            "action": "查看客户行为。"
+          },
+          "details": {
+            "title": "改进物品详细信息。",
+            "description": "审查可能需要更清晰信息的项目名称、选项、说明和图片。",
+            "action": "评论项目详细信息"
+          },
+          "general": {
+            "title": "等待更清晰的信号。",
+            "description": "保持当前菜单稳定，直到有更多的活动可用。",
+            "action": "评论后"
+          },
+          "menuOrder": {
+            "title": "查看菜单顺序",
+            "description": "检查重要物品和类别是否易于客户找到。",
+            "action": "查看菜单顺序"
+          },
+          "pricing": {
+            "title": "评论价格",
+            "description": "检查与最新客户兴趣信号相关的价格。",
+            "action": "评估价格"
+          },
+          "search": {
+            "title": "查看客户搜索情况。",
+            "description": "检查可能无法引导客户到有用菜单结果的搜索。",
+            "action": "查看搜索结果"
+          },
+          "source": {
+            "title": "查看客户输入来源。",
+            "description": "检查公共链接和 QR 放置是否将客户指向当前菜单。",
+            "action": "查看公共链接"
+          },
+          "timing": {
+            "title": "评论菜单时间",
+            "description": "检查客户搜索时,定时类别和可用性是否匹配。",
+            "action": "审查时间安排"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "标记为完成",
+            "message": "结果将在有更多结算活动后进行检查。"
+          },
+          "improved": {
+            "label": "改进",
+            "message": "下一次结算的支票显示有所改善。"
+          },
+          "no_clear_change": {
+            "label": "没有明显的变化",
+            "message": "下一张结算支票没有显示明显的变化。"
+          },
+          "not_enough_data": {
+            "label": "需要更多数据",
+            "message": "目前还没有足够的稳定活动来判断这一变化。"
+          },
+          "pending": {
+            "label": "待处理支票",
+            "message": "MenuList 将在有更多结算活动可用后检查此项。"
+          }
+        }
       },
       "details": {
         "menuDetails": "菜单详情",
@@ -1316,7 +1428,7 @@
           "unavailableInterest": "无法使用的利息",
           "languages": "语言",
           "filters": "过滤器",
-          "smartPicks": "智能精选",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "按营业时间进行的操作"
         },
         "descriptions": {
@@ -1326,7 +1438,7 @@
         },
         "metrics": {
           "menuViews": "菜单视图",
-          "itemTaps": "物品水龙头",
+          "itemTaps": "商品点击",
           "menuSessions": "菜单会话",
           "engagedSessions": "有活动的会话",
           "actionSessions": "行动会议",
@@ -1359,6 +1471,12 @@
           "unknown": "时间状态不可用时的操作",
           "open": "打开时的操作",
           "closed": "关闭时的操作"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} 不可用的 taps。",
+          "strongItem": "{count} 商品点击",
+          "needsWork": "{count} 次浏览,无点击。",
+          "gettingAttention": "{count} 浏览次数"
         }
       },
       "smartPicks": {
@@ -1384,14 +1502,14 @@
         "officialBusinessPage": "官方商业页面",
         "loadingCurrentActivity": "加载当前 OBP 活动",
         "loadingActivity": "正在加载 OBP 活动",
-        "sharedInfo": "操作会计算“呼叫”、“WhatsApp”、“路线”、“预订”和“订单”上的最终 OBP 点击次数。分享来自官方商业链接卡，链接点击次数包括 Google 评论、Instagram、Facebook 以及公共 OBP 的网站访问量。",
+        "sharedInfo": "“操作”统计电话、WhatsApp、路线、预订和订单的最终 OBP 点击。“分享”统计官方商家链接卡的分享次数。“链接点击”统计来自 Google 评论、Instagram、Facebook 和公开 OBP 的网站访问。",
         "noActivityToday": "今天还没有 OBP 活动。",
         "noComparison": "没有比较",
         "sameAsLastWeek": "与上周相同",
         "whatsappShares": "WhatsApp 分享",
         "copyLink": "复制链接",
         "copyMessage": "复制留言",
-        "googleReviews": "谷歌评论",
+        "googleReviews": "Google 评论",
         "instagram": "Instagram",
         "facebook": "Facebook",
         "website": "网站",
@@ -1423,7 +1541,7 @@
         "shareBreakdown": "分享细目",
         "mobileInfoIntro": "这张卡片显示了客户在打开菜单之前或打开菜单前后如何与您的官方业务页面进行互动。",
         "mobileInfoActions": "操作会统计呼叫、WhatsApp、路线、预订和订单的最终点击次数。",
-        "mobileInfoLinks": "分享来自官方商业链接卡，链接点击次数包括 Google 评论、Instagram、Facebook 以及公共 OBP 的网站访问量。",
+        "mobileInfoLinks": "“分享”统计官方商家链接卡的分享次数。“链接点击”统计来自 Google 评论、Instagram、Facebook 和公开 OBP 的网站访问。",
         "todayPartialInfo": "今天到目前为止还只是部分现场活动。它尚未包含在前一天、过去 7 天、本月或终生总计中。"
       },
       "customerApp": {
@@ -1434,8 +1552,8 @@
         "mobileNoInstallsDescription": "尚未安装。一旦客户开始安装您的菜单应用程序，数字就会出现在此处。",
         "installedCustomers": "已安装客户",
         "installed": "已安装",
-        "appOpens30d": "应用程序打开（30 天）",
-        "installs30d": "安装（30 天）",
+        "appOpens30d": "應用程式開啟(30d)",
+        "installs30d": "安装(30d)",
         "installConversion": "安装转换",
         "conversion": "转换",
         "topShortcut": "顶部快捷方式",
@@ -1448,7 +1566,6 @@
         "shortcutBreakdown": "快捷方式细分",
         "installsByPlatform": "按平台安装",
         "appStickiness": "应用粘性",
-        "returningOpens30d": "返程开放（30天）",
         "avgOpensPerInstall": "每次安装的平均打开次数",
         "iosManualInstalls": "iOS 手动安装",
         "shortcuts": {
@@ -1457,12 +1574,13 @@
           "order": "在线订购"
         },
         "platforms": {
-          "ios": "iOS系统",
-          "iosLong": "iOS（iPhone/iPad）",
-          "android": "安卓",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "桌面",
           "other": "其他"
-        }
+        },
+        "tryAgainLater": "请稍后再试,或直接联系我们。"
       },
       "projectSelector": {
         "deleted": "已删除",
@@ -1496,14 +1614,15 @@
         "couldNotCopy": "无法复制链接",
         "markedUpdated": "Google 列表标记为已更新",
         "couldNotSave": "无法保存",
-        "title": "谷歌列表",
+        "title": "Google 列表",
         "updatedDescription": "网站链接设置为您的官方页面",
         "setOfficialLink": "在 Google 上设置您的官方链接",
         "updateProfileWebsite": "将您的 Google 商家资料网站更新为 {url}",
         "copied": "已复制",
         "copy": "复制",
-        "openGoogle": "打开谷歌",
-        "done": "完毕"
+        "openGoogle": "开放 Google",
+        "done": "完毕",
+        "couldNotOpen": "无法打开 Google Business Profile。"
       },
       "behaviorNudge": {
         "linkCopied": "链接已复制",
@@ -1528,7 +1647,748 @@
         "reviewTopIssue": "查看热门问题",
         "repairMenu": "维修菜单",
         "review": "审查",
-        "repair": "维修"
+        "repair": "维修",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# 项缺少描述。} other {# 项缺少描述。}}",
+            "ok": "所有物品都有说明。",
+            "help": "说明有助于客户了解每种产品。"
+          },
+          "images": {
+            "warning": "{count, plural, one {# 项缺少一个图像。} other {# 项是缺少的图像。}}",
+            "ok": "所有物品都有图片。",
+            "help": "图片可以帮助客户更快地做出选择。"
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# 类别缺少一个图标。} other {# 类别缺少图标。}}",
+            "ok": "所有类别都有图标。",
+            "help": "图标使类别更容易扫描。"
+          },
+          "prices": {
+            "warning": "{count, plural, one {# 项目缺少价格。} other {# 项缺少价格}}",
+            "ok": "所有物品都有价格。",
+            "help": "客户在做出决定之前比较价格。"
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# 项目已对客户隐藏。} other {# 项已对客户隐藏。}}",
+            "ok": "没有物品隐藏",
+            "help": "隐藏的物品不会在公共菜单上出现。"
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# 的价格需要审查。} other {# 价格需要审查。}}",
+            "ok": "价格在预期范围内。",
+            "help": "MenuList 会比较同一类别中的单品价格。如果价格是有意设置的，请将其标记为已检查。"
+          },
+          "translations": {
+            "warning": "{count, plural, one {# 项缺少翻译} other {# 项缺少翻译}}",
+            "ok": "所有可见项目都被翻译。",
+            "help": "某些菜单语言的一些项目不完整。"
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# 菜单详细信息缺少翻译} other {# 菜单详细信息缺少翻译}}",
+            "ok": "菜单细节翻译成中文。",
+            "help": "菜单名称、说明或注释在选定的菜单语言中不完整。"
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "复制链接",
+        "direct": "直接",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "菜单套餐包",
+        "nativeShare": "设备共享",
+        "obp": "企业页面",
+        "other": "其他",
+        "qr": "QR 代码",
+        "shortcut": "应用程序快捷方式",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "商业健康",
+        "open": "打开业务状态",
+        "today": "今天",
+        "latestActivity": "最新活动",
+        "noActionNeeded": "无需采取任何行动",
+        "status": {
+          "stable": "稳定的",
+          "watch": "需要注意",
+          "needs_review": "需求审查",
+          "insufficient_data": "需要更多数据",
+          "stale": "需要新鲜检查",
+          "not_ready": "准备好了"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# 面向客户的细节需要审查。} other {# 面向客户的详细信息需要审查。}}",
+          "stable": {
+            "headline": "您的公共信息是稳定的。",
+            "message": "在最新的检查中没有任何面向客户的问题需要采取行动。"
+          },
+          "watch": {
+            "headline": "一个细节可能需要注意。",
+            "message": "在更改公共信息之前,请先查看建议的检查。"
+          },
+          "needs_review": {
+            "headline": "查看面向客户的详细信息。",
+            "message": "需要检查一个或多个公共细节。"
+          },
+          "insufficient_data": {
+            "headline": "需要开展更多的活动。",
+            "message": "在 MenuList 收集有用信号时保持当前信息稳定。"
+          },
+          "stale": {
+            "headline": "企业健康需要重新检查。",
+            "message": "上次检查的数据已过期。您当前的公开信息保持不变。"
+          },
+          "not_ready": {
+            "headline": "商业健康正在准备好。",
+            "message": "第一个存储检查准备就绪后将出现在这里。"
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "查看菜单来源",
+            "message": "No active public menu source was found. Check the menu before sharing it.",
+            "title": "Menu source needs checking"
+          },
+          "low_latest_activity": {
+            "action": "查看共享链接",
+            "message": "客户活动较少。请检查 QR、Google、Instagram、WhatsApp 和网站链接。",
+            "title": "客户活动较低。"
+          },
+          "unavailable_item_taps": {
+            "action": "检查不可用的项目。",
+            "message": "客户对无货物表示兴趣，补充库存或隐藏。",
+            "title": "无法获得的物品引起了人们的注意。"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "查看客人反馈。",
+            "message": "客户反馈需要所有者检查,然后才能更改公共详细信息。",
+            "title": "客人反馈需要检查的检查。"
+          },
+          "default": {
+            "action": "检查详情",
+            "message": "面向客户的细节需要一个所有者检查。",
+            "title": "一个细节需要检查。"
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# 私人反馈项目需要检查。} other {# 私人反馈项目需要检查。}}",
+          "clear": "个人反馈很清楚。"
+        },
+        "freshness": {
+          "notReady": "业务状态不是实时数据。首次门店检查后，这里会显示数据日期。",
+          "throughDate": "使用通过 {date} 的数据。 今天可能还没有完成。",
+          "latest": "使用最新可用的 MenuList 数据。今天的数据可能尚未完整。"
+        },
+        "periods": {
+          "today": "今天",
+          "yesterday": "前一天",
+          "thisWeek": "本周",
+          "lastWeek": "上周",
+          "thisMonth": "本月",
+          "lastMonth": "上月",
+          "last7Days": "过去 7 天",
+          "last30Days": "过去 30 天",
+          "overall": "全面的"
+        },
+        "metrics": {
+          "menuViews": "菜单视图",
+          "topDemand": "最高需求",
+          "topDemandDetail": "升级: {count} {signal}",
+          "bestSource": "最佳来源",
+          "bestSourceDetail": "更新链接: {count} 访问了"
+        },
+        "signals": {
+          "views": "观点",
+          "clicks": "点击",
+          "attention": "注意信号"
+        },
+        "page": {
+          "description": "日常业务状况和面对面的客户检查。",
+          "latestCheck": "AI health check",
+          "loading": "充电",
+          "loadingMessage": "企业健康负载...",
+          "notReady": "商业健康尚未准备就绪，还需要更新。",
+          "loadErrorTitle": "无法加载商业健康数据。",
+          "loadErrorDescription": "请更新此页面,再试一次。",
+          "refresh": "刷新",
+          "needsAttention": "需要注意",
+          "desktopSettingsOnly": "从桌面设置中打开这个。"
+        },
+        "scope": {
+          "title": "业务状态范围",
+          "allMenus": "所有菜单",
+          "selectedMenu": "选定的菜单",
+          "menuCount": "{count, plural, one {# 菜单在此位置。} other {# 菜单在此位置。}}",
+          "locationLevel": "位置级视图",
+          "inactiveMenu": "非活动菜单",
+          "thisMenuOnly": "仅此菜单",
+          "allMenusInLocation": "此位置的所有菜单都在此位点。",
+          "thisMenuHelper": "提问和活动使用此菜单。",
+          "allMenusHelper": "问题和活动使用此位置的所有菜单。",
+          "dialogDescription": "选择所有菜单或一个活动和检查菜单。",
+          "all": "所有",
+          "close": "关闭"
+        },
+        "locations": {
+          "title": "地点",
+          "loading": "充电地点...",
+          "empty": "尚无位置摘要。",
+          "storeFallback": "位置 {id}",
+          "checkedOn": "检查 {date}",
+          "checkCount": "{count, plural, one {# 项检查} other {# 项检查}}",
+          "checksNeedReview": "{count, plural, one {# 面向客户的检查需要审核。} other {# 面向客户的检查需要审核。}}",
+          "statusReason": {
+            "stable": "没有任何面对客户的问题需要采取行动。",
+            "watch": "面向客户的细节可能需要注意。",
+            "needs_review": "面向客户的细节需要审查。",
+            "insufficient_data": "要进行有用的检查，需要更多客户活动。",
+            "stale": "这个地方需要新鲜的检查。",
+            "not_ready": "第一次地点检查正在准备。"
+          }
+        },
+        "assistant": {
+          "title": "问商业健康",
+          "askShort": "问答",
+          "englishOnlyTitle": "目前的问题有英文版。",
+          "englishOnlyDescription": "您的状态和检查已本地化。如需提出业务状态问题，请将应用语言切换为英语。",
+          "notReady": "商业健康部将在最新检查完成后回复。",
+          "suggestedUnavailable": "提出的问题目前尚未提供。",
+          "freeTextUnavailable": "此时此刻,免费文本问题尚未提供。",
+          "answerError": "商业健康不能回答这个问题。",
+          "suggestedQuestions": "提出问题",
+          "followUps": "你可以问下一个",
+          "you": "你",
+          "empty": "选择一个问题或询问你的业务。",
+          "placeholderReady": "询问今天、本周、菜单注意事项或下次检查的情况。",
+          "placeholderMobile": "询问今天或本周的情况。",
+          "placeholderPending": "最新检查后可用。",
+          "send": "问答",
+          "cachedFacts": "基于缓存的 MenuList 业务事实。",
+          "questions": {
+            "checks": "需要检查哪些方面?",
+            "today_stats": "今天怎么样了?",
+            "this_week_stats": "这个星期发生了什么事?",
+            "top_item": "哪个项目引起了人们的注意?",
+            "last_week_stats": "上周发生了什么事？",
+            "this_month_stats": "这个月怎么样?",
+            "last_month_stats": "上个月发生了什么事？",
+            "public_menu_status": "我的公共菜单是否可以?",
+            "profile_status": "我的企业资料是否完整?",
+            "feedback_reviews": "是否有客人反馈要查看?",
+            "feedback_recent": "客人最近说了什么?",
+            "default": "下一步我应该检查什么?"
+          }
+        },
+        "sources": {
+          "title": "数据来源",
+          "menuProjects": "菜单项目",
+          "ownerAnalytics": "业主活动",
+          "guestFeedback": "客人反馈",
+          "storeSettings": "商业设置",
+          "menuListData": "MenuList 数据",
+          "updatedOn": "更新了{date}",
+          "latest": "最新可用数据"
+        },
+        "publicTruth": {
+          "title": "官方客户信息源",
+          "checking": "检查",
+          "checkingFacts": "检查 MenuList 公共事实...",
+          "checkedMenu": "已选中菜单: {name}",
+          "boundary": "根据当前 MenuList 商家和菜单数据进行检查。外部平台的信息仍由商家确认。",
+          "boundaryShort": "外部平台仍然由所有者确认。",
+          "historyTitle": "公开信息历史记录",
+          "historyBoundary": "仅使用 MenuList 商家和菜单信息。不扫描外部网站。",
+          "historyBoundaryShort": "仅使用 MenuList 信息。不扫描外部网站。",
+          "refreshErrorTitle": "客户源检查无法刷新。",
+          "refreshErrorDescription": "下面仍然显示了最近可用的 MenuList 事实。",
+          "historyRefreshError": "公共信息史不能更新。",
+          "historyLoadError": "公共信息历史不能负载。",
+          "historyErrorDescription": "最后保存的报告仍然显示在可用时。",
+          "notRun": "不要跑",
+          "lastSaved": "最后保存的 {date}",
+          "noSavedReport": "尚未保存报告",
+          "noSavedReportDescription": "进行检查,以保存该位置的第一个报告。",
+          "downloadEnglishReport": "下载英文报告",
+          "downloadEnglishShort": "英语报告",
+          "runCheck": "跑检查",
+          "currentFix": "当前修复项目",
+          "nextFixes": "接下来要修正的公开信息",
+          "none": "没有一个",
+          "attentionCount": "{count, plural, one {# 项需要检查。} other {# 项需要检查。}}",
+          "readyModuleCount": "准备好 {count}/{total}",
+          "missingCount": "失踪 {count}",
+          "checkCount": "检查 {count}",
+          "savedCount": "已保存 {count}/{total}。",
+          "modulesReady": "{count}/{total} 模块已准备就绪。",
+          "status": {
+            "ready": {
+              "label": "准备好",
+              "message": "您的官方客户来源提供了客户所需的基本信息。"
+            },
+            "missing_basics": {
+              "label": "缺失的基本",
+              "message": "菜单、营业时间、价格、活动或客户链接详情需要在更广泛分享之前予以注意。"
+            },
+            "unclear": {
+              "label": "需要检查",
+              "message": "大多数基本内容都存在，但仍有一个或多个公开事实需要核对。"
+            }
+          },
+          "metrics": {
+            "readyModules": "现成模块",
+            "missingFacts": "缺失的事实",
+            "checkedMenu": "检查菜单",
+            "savedReports": "已保存的报告"
+          },
+          "results": {
+            "present": "准备好",
+            "missing": "失踪",
+            "unclear": "检查",
+            "not_applicable": "不需要",
+            "not_checked": "未检查"
+          },
+          "moduleStatus": {
+            "ready": "准备好",
+            "needs_attention": "失踪",
+            "check": "检查",
+            "not_checked": "未检查"
+          },
+          "facts": {
+            "business_identity": "商业名称",
+            "menu_or_service_source": "菜单或服务列表。",
+            "prices": "价格",
+            "hours": "时间",
+            "location": "位置",
+            "contact": "联系人",
+            "customer_actions": "客户行动",
+            "public_link": "客户链接",
+            "photos": "照片",
+            "machine_readable_source": "搜索友好的详细信息"
+          },
+          "evidence": {
+            "owner_entered": "输入此支票。",
+            "owner_selected": "由主人选择。",
+            "source_text_hint": "在提供的来源中发现。",
+            "valid_public_url": "公共链接格式有效。",
+            "invalid_public_url": "公共链接需要纠正。",
+            "menulist_store": "已检查当前 MenuList 业务设置。",
+            "menulist_project": "已检查所选或默认的 MenuList 菜单。",
+            "menulist_summary": "检查了当前的 MenuList 菜单摘要。",
+            "menulist_public_route": "检查了当前 MenuList 客户链接设置。",
+            "menulist_index_gate": "检查了当前 MenuList 公共发现规则。",
+            "not_provided": "当前 MenuList 数据中缺少这个事实。",
+            "not_checked": "当前 MenuList 数据未能安全检查此事实。",
+            "priceNotLoaded": "打开选定的菜单一次,以便 MenuList 可以查看其价格。"
+          },
+          "moduleEvidence": {
+            "ready": "当前 MenuList 数据显示该区域已准备就绪。",
+            "needs_attention": "当前 MenuList 数据显示所需信息缺失。",
+            "check": "在客户依靠它之前,请检查这个区域。",
+            "not_checked": "MenuList 无法从当前数据中完全检查此区域。"
+          },
+          "setupReason": {
+            "needs_attention": "缺少必要的面向客户的信息。",
+            "check": "在客户依靠它之前,请检查一下。",
+            "not_checked": "MenuList 无法从当前数据中完全检查此信息。"
+          },
+          "targetActions": {
+            "basic_settings": "打开企业详细信息",
+            "domain_settings": "开放客户链接",
+            "hours_edit": "开放时间",
+            "menu_tab": "开放菜单",
+            "official_page": "打开企业页面",
+            "presence_monitor": "开放式位置检查",
+            "share_tab": "开放共享工具"
+          },
+          "actions": {
+            "openCustomerSource": "开放客户源码。",
+            "openShareTools": "开放共享工具",
+            "fixFact": "修复 {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "新闻基础知识",
+              "description": "企业名称、当前菜单或服务来源、联系人、操作和客户链接。"
+            },
+            "business_facts_copy_pack": {
+              "title": "可重复使用的业务详情。",
+              "description": "当前事实工作人员可以在公共个人资料、回复和客户链接传递中重用。"
+            },
+            "qr_link_health": {
+              "title": "QR 链路准备状态",
+              "description": "当前客户链接的 QR 和打印放置。"
+            },
+            "social_bio_link_consistency": {
+              "title": "配置文件链接一致性",
+              "description": "一个用于社交资料和其他展示位置的当前客户链接。"
+            },
+            "customer_link_preview": {
+              "title": "客户链接预览",
+              "description": "客户在采取行动之前应该了解的主要事实。"
+            },
+            "print_share_assets": {
+              "title": "打印和共享资源。",
+              "description": "目前已准备好 QR 海报、计数卡和共享图片的链接。"
+            },
+            "menu_service_readability": {
+              "title": "菜单或服务清晰度",
+              "description": "选定菜单中的类别、项目或服务和价格。"
+            },
+            "price_availability_gap": {
+              "title": "价格和可用性清晰度",
+              "description": "向客户显示价格、变体、售罄状态和供货情况。"
+            },
+            "menu_pdf_cleanup": {
+              "title": "旧的 PDF 替换",
+              "description": "当前 MenuList 源和客户链接,可替换旧的 PDF。"
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp 操作",
+              "description": "一个明确的 WhatsApp 或备用客户联系行动。"
+            },
+            "hours_readiness": {
+              "title": "准备时间小时",
+              "description": "客户可以依靠的正常营业时间。"
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp 回复事实",
+              "description": "当前菜单、营业时间、联系方式和工作人员回复的链接事实。"
+            },
+            "photo_visual_identity": {
+              "title": "照片和视觉形象",
+              "description": "一个徽标、封面、商业照片或项目和服务视觉效果。"
+            },
+            "customer_question_coverage": {
+              "title": "常见客户问题",
+              "description": "清楚地说明报价、营业时间、价格、位置、联系方式和下一步行动。"
+            },
+            "customer_faq_reply_pack": {
+              "title": "可重复使用的客户回答。",
+              "description": "当客户提出常见问题时,工作人员可以重复使用当前事实。"
+            },
+            "booking_inquiry_readiness": {
+              "title": "预订和询价准备就绪。",
+              "description": "一个清晰的路径,以订购、预订、保留、打电话、发消息、索取报价或访问。"
+            },
+            "google_profile_handoff": {
+              "title": "Google 配置文件链接",
+              "description": "为 Google 业务简介准备的当前客户链接。"
+            },
+            "menu_freshness": {
+              "title": "菜单新鲜度",
+              "description": "价格、菜单或供应情况发生变化时的最近菜单更新。"
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "图表",
+        "description": "仪表板中显示的相同结算活动的可视化摘要。",
+        "ranges": {
+          "days7": "7 天",
+          "days30": "30 天"
+        },
+        "metrics": {
+          "menu_activity": "菜单活动",
+          "customer_actions": "客户行动",
+          "search_demand": "搜索需求",
+          "item_interest": "物品兴趣",
+          "unavailable_demand": "无法满足的需求",
+          "missing_searches": "缺失的搜索"
+        },
+        "trend": {
+          "summary": "趋势总结",
+          "updatedAfterClose": "在您的商店日关闭后更新。",
+          "status": {
+            "up": "更高",
+            "down": "下部：",
+            "stable": "稳定",
+            "not_enough_data": "历史不够"
+          },
+          "period": {
+            "week": "周检查",
+            "month": "月度检查"
+          },
+          "shortPeriod": {
+            "week": "周",
+            "month": "月亮"
+          },
+          "needsMoreDays": "需要更多的稳定日子。",
+          "versus": "{current} vs {previous} 比赛时间:",
+          "messages": {
+            "up": "{metric} 对于此次 {period}检查而言较高。",
+            "down": "{metric} 对于此次检查而言低于 {period}。",
+            "stable": "{metric} 对于此次 {period}检查是稳定的。",
+            "not_enough_data": "对于此 {period} 检查,没有足够的已结算 {metric}历史记录。"
+          },
+          "change": {
+            "gathering": "{period}: 收集",
+            "newActivity": "{period}:新的Activity。",
+            "steady": "{period}: 稳定",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "比较图表",
+          "description": "周和月的变化从固定日期。"
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "菜单趋势",
+            "days7": "最后7个安排日",
+            "days30": "过去30天结算日期。"
+          },
+          "customerActions": {
+            "title": "客户行动",
+            "description": "客户打开菜单后点击了哪些内容?"
+          },
+          "sources": {
+            "title": "客户来自哪里?",
+            "description": "按来源分列的菜单访问和行动会议"
+          },
+          "items": {
+            "title": "关注的顶级项目",
+            "description": "客户打开或点击最多的项目"
+          },
+          "search": {
+            "title": "搜索需求",
+            "description": "客户搜索了什么?"
+          },
+          "officialPage": {
+            "title": "官方页面趋势",
+            "description": "来自官方商务页面的观点和行动。"
+          }
+        },
+        "legends": {
+          "visits": "访问次数",
+          "actionSessions": "行动会议",
+          "views": "观点",
+          "taps": "点击",
+          "noResult": "没有结果"
+        },
+        "empty": {
+          "default": "目前尚未为此视图提供图表数据。",
+          "menuActivity": "菜单活动将在客户打开菜单后出现。",
+          "customerActions": "客户行动将在客户打电话、发短信、下单、预订或询问路线后出现。",
+          "customerActionsPeriod": "此期间尚无任何客户操作。",
+          "searchDemand": "搜索需求将在客户使用菜单搜索后出现。",
+          "itemInterest": "客户打开菜单项后,将会显示对该项目的兴趣。",
+          "unavailableDemand": "当客户点击无法获取的商品时,将会出现无法提供的需求。",
+          "missingSearches": "当客户搜索但找不到匹配项时,将显示缺失的搜索。",
+          "sources": "客户通过链接、QR 或社交页面访问后，这里会显示来源详情。",
+          "officialPage": "客户打开公共企业页面后,将会显示官方页面活动。"
+        },
+        "footer": {
+          "sameData": "相同的Dashboard数据",
+          "noExtraTracking": "没有额外的跟踪",
+          "settledAfterClose": "结算在商店日终后进行。"
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "菜单 menu 菜單",
+          "viewsLabel": "菜单视图",
+          "viewsTooltip": "顾客打开您菜单的次数。",
+          "thisMonthLabel": "您本月的菜单"
+        },
+        "product": {
+          "singular": "目录目录",
+          "viewsLabel": "目录视图",
+          "viewsTooltip": "客户打开您的目录的次数。",
+          "thisMonthLabel": "您本月的目录"
+        },
+        "service": {
+          "singular": "服务列表",
+          "viewsLabel": "服务列表视图",
+          "viewsTooltip": "客户打开您的服务列表的次数。",
+          "thisMonthLabel": "您本月的服务清单"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "需要注意",
+          "active": "官方客户源是活跃的。",
+          "readyToPlace": "官方客户源准备好放置。"
+        },
+        "description": {
+          "needsAttention": "修改菜单、营业时间或客户链接,然后再广泛分享。",
+          "active": "无需操作。客户可以从一个来源查看您当前的公开信息。",
+          "readyToPlace": "您的客户链接已就绪。请将其添加到 Google、Instagram、WhatsApp、QR 或印刷品，让客户始终使用当前信息源。"
+        },
+        "link": {
+          "ready": "客户链接准备好",
+          "missing": "客户链接丢失。"
+        },
+        "states": {
+          "set": "已设置",
+          "missing": "失踪",
+          "ready": "准备好",
+          "notReady": "不准备",
+          "live": "已上线",
+          "hidden": "不活跃"
+        },
+        "tags": {
+          "menu": "菜单: {status}",
+          "hours": "时间: {status}",
+          "customerLink": "客户链接: {status}",
+          "link": "链接: {status}",
+          "placed": "放置: {count}/{total}"
+        },
+        "actions": {
+          "fix": "修复需要注意的问题。",
+          "preview": "预览公共菜单",
+          "share": "分享菜单"
+        },
+        "updated": {
+          "notUpdated": "尚未更新",
+          "recently": "最近更新的内容",
+          "today": "今天更新",
+          "yesterday": "昨天更新",
+          "daysAgo": "更新了 {count, plural, one {# 天前 发表} other {# 天前 发表}}。"
+        }
+      },
+      "ownerActions": {
+        "title": "下一个所有者行动",
+        "open": "打开",
+        "placement": {
+          "notConfirmed": "尚未确认",
+          "today": "今天确认",
+          "yesterday": "昨天确认",
+          "daysAgo": "已确认 {count, plural, one {# 天前 发表} other {# 天前 发表}}。"
+        },
+        "status": {
+          "ready": "准备好",
+          "missing": "失踪",
+          "set": "已设置",
+          "live": "已上线",
+          "notLive": "不活",
+          "confirmedCount": "{count}/{total} 已确认。",
+          "on": "在",
+          "off": "离开",
+          "dailyChanges": "每日变化",
+          "hoursException": "例外时间",
+          "staffUse": "员工使用",
+          "menuPrices": "菜单价格",
+          "openCount": "{count, plural, one {# 行动开放} other {# 开放行动}}",
+          "stable": "稳定的"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "设置客户链接",
+            "description": "在共享 QR、员工回复或公开资料之前创建客户链接。"
+          },
+          "setHours": {
+            "label": "设置时间",
+            "description": "在客户来访之前,让公众清楚地了解开放和关闭状态。"
+          },
+          "publishMenu": {
+            "labelPublish": "发布菜单",
+            "labelOpen": "开放菜单",
+            "descriptionVisible": "在广泛共享之前发布当前菜单。",
+            "descriptionHidden": "让菜单在客户使用链接之前可见。"
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "确认链接放置位置。",
+            "labelPlace": "点击客户链接",
+            "descriptionPlaced": "保持 Google、Instagram 和 WhatsApp 指向同一源。",
+            "descriptionUnplaced": "将相同的客户链接添加到 Google、Instagram 、 WhatsApp 和 QR,然后打印。"
+          },
+          "openPrivateFeedback": {
+            "label": "打开私人反馈,提供私人意见。",
+            "description": "在客人问题转变为公开点评之前,使用私人反馈。"
+          },
+          "captureDailyChange": {
+            "label": "告诉 MenuList 什么变化了。",
+            "description": "告诉 MenuList 今天有什么变化,并批准已准备好的菜单。"
+          },
+          "setTodayStatus": {
+            "label": "设置今天的状态",
+            "description": "今天关门、营业时间延迟、厨房关闭或特别菜单通知。"
+          },
+          "prepareStaffHandoff": {
+            "label": "准备工作人员移交。",
+            "description": "在一个位置向员工提供菜单链接、QR 和客户回复用语。"
+          },
+          "updatePrices": {
+            "label": "更新价格",
+            "description": "使用菜单管理器进行价格变更,然后在发布前批准。"
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "菜单设置",
+        "complete": "菜单设置已完成。",
+        "ready": "菜单设置已准备好。",
+        "actions": {
+          "openMenu": "开放菜单",
+          "createMenu": "创建菜单",
+          "reviewDetails": "检查详情",
+          "publishMenu": "发布菜单",
+          "openSharingTools": "开放共享工具",
+          "prepareDescriptions": "准备说明材料。",
+          "addImages": "添加图像",
+          "reviewLanguageText": "审阅语言文本。",
+          "openMenuCheck": "打开菜单检查",
+          "updatePublicLinks": "更新公共链接",
+          "addPublicPhoto": "添加公共照片"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "来源添加",
+            "doneDescription": "菜单源已连接。",
+            "nextDescription": "添加菜单照片、 PDF、链接或手动启动。"
+          },
+          "menuImported": {
+            "label": "菜单导入",
+            "doneDescription": "{count, plural, one {找到 # 可见项目。} other {找到 # 可见项目。}}",
+            "nextDescription": "输入或添加菜单项目。"
+          },
+          "keyDetailsChecked": {
+            "label": "关键细节检查",
+            "doneDescription": "价格和关键菜单细节清晰明了。",
+            "nextDescription": "在发布之前查看价格和关键细节。"
+          },
+          "menuPublished": {
+            "label": "发表的菜单",
+            "doneDescription": "公共菜单已经公布，请点击查看。",
+            "nextDescription": "菜单准备好供客人享用时发布。"
+          },
+          "linkPlaced": {
+            "label": "链接放置",
+            "readyLabel": "链接准备好",
+            "doneDescription": "官方链接已准备好供客户使用。",
+            "progressDescription": "{total} 的 {count} 安置操作完成。",
+            "nextDescription": "当菜单发布时,打开共享工具。"
+          },
+          "descriptionsReady": {
+            "label": "描述准备",
+            "doneDescription": "可见的物品有描述。",
+            "nextDescription": "为更清晰的菜单项准备描述。"
+          },
+          "imagesReady": {
+            "label": "图片准备好",
+            "doneDescription": "可见的物品有图像。",
+            "nextDescription": "添加或生成有用的物品图片。"
+          },
+          "translationsReady": {
+            "label": "翻译准备好",
+            "doneDescription": "选择的菜单语言是完整的。",
+            "nextDescription": "查看所选菜单语言。"
+          },
+          "publicLinksAdded": {
+            "label": "公共链接添加",
+            "doneDescription": "公共活动或社交链接可用。",
+            "nextDescription": "为企业页面添加有用的公共链接。"
+          },
+          "publicPhotoAdded": {
+            "label": "已添加公共照片",
+            "doneDescription": "公共照片可用。",
+            "nextDescription": "准备好后,添加封面、徽标或公共照片。"
+          }
+        }
       }
     },
     "title": "仪表板",
@@ -2486,6 +3346,20 @@
     "noBillingHistoryYet": "尚无结算历史记录。",
     "perMonth": "/月 租金",
     "contactUs": "联系我们 联络我们"
+  },
+  "StarterActivation": {
+    "activeTitle": "您的菜单已上线",
+    "endingSoonTitle": "保持菜单在线",
+    "publicMenuQrActive": "您的公共菜单和 QR 代码已激活。",
+    "activeRemaining": "您的菜单访问已激活。",
+    "daysRemaining": "{days, plural, one {在 # 天内选择订阅方案，让您的菜单保持在线。} other {在 # 天内选择订阅方案，让您的菜单保持在线。}}",
+    "sharingComplete": "您的共享设置已完成。",
+    "sharingProgress": "已完成 {count, number} 个共享步骤，共 {target, number} 个共享步骤。",
+    "evidenceRecorded": "自动记录：{systemCount, number}。您已确认：{ownerCount, number}。",
+    "evidenceEmpty": "复制或共享菜单链接，下载其 QR 代码，或确认您放置它的位置。",
+    "keepLiveAction": "保持菜单在线",
+    "noSubscriptionDescription": "选择一个计划来保持菜单更新和客户页面可用。",
+    "choosePlanDescription": "您的菜单已保存。选择一个计划以使其保持在线且最新。"
   },
   "Transactions": {
     "title": "交易历史记录 交易记录",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "移动应用程序",
     "subscribeTitle": "订阅 Get Started 开始使用",
     "subscribeDescription": "选择一个计划开始创建您的数字菜单和管理您的业务。 选取一个计划,开始创造您的电子菜单并管理您的事业。",
-    "viewPlans": "查看计划 查找计划"
+    "viewPlans": "查看计划 查找计划",
+    "returnToMobile": "您正在查看桌面版。返回移动版。"
   },
   "UseMenuList": {
     "qrSectionTitle": "QR 代码 代号",

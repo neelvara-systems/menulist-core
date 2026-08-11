@@ -10,7 +10,10 @@ import {
     getBoundedSecurityStringContext,
 } from "@lib/security/securityDiagnostics";
 import { type AuthenticatedHandler, verifyTenantAccess, withAuth } from "@/middleware/auth";
-import { resolveCampaignCueSessionIdentity } from "@lib/campaigncue/workspaceScope";
+import {
+    resolveCampaignCueSessionIdentity,
+    resolveCampaignCueSessionStoreRole,
+} from "@lib/campaigncue/workspaceScope";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -74,6 +77,9 @@ export const getCampaignCueSessionScope = (session: unknown) => {
         email: email ? String(email) : undefined,
         name: name ? String(name) : undefined,
         sId: identity?.sId || "",
+        sourceStoreRole: identity
+            ? resolveCampaignCueSessionStoreRole(session, identity.sId) || undefined
+            : undefined,
         tId: identity?.tId || "",
         userId: identity?.userId || "",
     };
@@ -100,6 +106,13 @@ export const requireCampaignCueRuntime = () => {
         );
     }
     return null;
+};
+
+export const requireCampaignCueFeature = (enabled: boolean, ownerLabel: string) => {
+    if (enabled) return null;
+    return withCampaignCuePrivateResponseHeaders(
+        NextResponse.json({ error: `${ownerLabel} is unavailable` }, { status: 404 }),
+    );
 };
 
 export const requireCampaignCueSessionScope = (

@@ -31,10 +31,28 @@ One optional server-owned advisory summary linked to a strictly normalized deter
   zero Firebase reads, writes, deletes, listeners, Storage objects, Functions,
   scheduler tasks, provider calls, or integration calls. The browser reuses the
   already-loaded compact snapshot.
+- Review-path resolution, helper text, close actions, and client navigation:
+  zero Firebase operations. The Knowledge Map or trusted-answer page performs
+  only its existing bounded reads after explicit owner navigation.
+- Post-change review: zero operations on mount; explicit candidate loading
+  reads at most 8 active releases plus 8 implemented corrections; an eligible
+  exact review reads one change plus at most 201 retained signal rows per
+  complete window. It writes nothing and creates no summary document.
 
 The component-breakdown hardening changes neither owner read count nor nightly
 query count. It adds bounded numeric fields to the existing compact snapshot
 payload and remains within the existing ten-entity cap.
+
+The post-change route reuses maintained release, mutation-proposal, and
+signal-event indexes. It does not change the nightly aggregation, deployable
+Functions, Firestore rules, index manifests, or retention jobs.
+
+The path-aware next action is resolved entirely in memory. Internal
+continuation carries only the validated entity ID into an existing route.
+Product review remains a local clipboard/download handoff. Watch and no-action
+create no reminder, decision, event, summary, audit row, or delivery state.
+Freezing the brief input by workspace scope and failing closed when Knowledge
+Map is disabled or lacks the requested topic also add zero Firebase operations.
 
 Actual cost must be measured from Firebase and AI-operation accounting. Static cost promises are not maintained.
 
@@ -84,6 +102,7 @@ Do not add:
 - per-classification or per-root-cause documents;
 - evidence-brief, owner-review-path, product-problem, or delivery-state
   documents for this local handoff;
+- reminders or watch-state documents implied only by selecting a review path;
 - raw product-event, abandonment, session-replay, or mouse-event collections;
 - owner-page collection scans or listeners;
 - one document per displayed evidence item.

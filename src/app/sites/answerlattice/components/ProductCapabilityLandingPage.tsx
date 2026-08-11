@@ -48,19 +48,19 @@ export type ProductCapabilityLandingPageProps = {
 
 const CAPABILITY_SUITE_ITEMS = [
     {
-        label: 'Source',
+        label: 'Inputs',
         value: 'Docs, product pages, FAQs, release notes, screenshots, tickets, and repeated replies become setup material.',
     },
     {
-        label: 'Surface',
+        label: 'User help',
         value: 'The widget, hosted help center, FAQ, changelog, and ticket fallback share the same support layer.',
     },
     {
-        label: 'Control',
+        label: 'Owner review',
         value: 'Drafts and generated guidance stay review work until the owner approves what becomes official.',
     },
     {
-        label: 'Loop',
+        label: 'Improvement loop',
         value: 'Fallback, ratings, feedback, and stale support turn into the next review pass.',
     },
 ];
@@ -74,7 +74,7 @@ const CAPABILITY_EVALUATION_ITEMS = [
     },
     {
         title: 'Trust boundary',
-        description: 'Review what the widget can see, what stays blocked, and how owner-approved answers remain authoritative.',
+        description: 'Review what the widget can see, what stays blocked, and how owner-approved answers become official support.',
         href: '/security',
         cta: 'Review security',
     },
@@ -108,10 +108,10 @@ export default function ProductCapabilityLandingPage({
     basePath = '',
     canonicalPath,
     proofItems = [
-        { label: 'Context', value: 'Safe page context for relevant help' },
-        { label: 'Authority', value: 'Approved answers before fallback' },
-        { label: 'Review', value: 'Owner approval before official guidance' },
-        { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals share reviewed truth' },
+        { label: 'Page context', value: 'Safe page hints make support relevant' },
+        { label: 'Official answers', value: 'Approved answers come before fallback' },
+        { label: 'Owner review', value: 'A person approves customer-facing guidance' },
+        { label: 'Support loop', value: 'Widget, hosted help, tickets, and feedback share reviewed knowledge' },
     ],
     heroAsset,
     heroAssetSlotId,
@@ -304,7 +304,7 @@ export default function ProductCapabilityLandingPage({
                             href="/demo"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                         >
-                            See the demo
+                            See 60-sec demo
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}

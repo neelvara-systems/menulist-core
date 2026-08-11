@@ -113,14 +113,14 @@ The first serious marketing system should be:
 
 ## Current Next Step
 
-The WhatsApp-first moat plan, public `/whatsapp` route, test-number CTA, and campaign intake playbook are now documented. The remaining blocker is production campaign activation, not the core messaging-onboarding product flow:
+Current signal-led market research confirms that no additional marketing runtime is needed. The immediate field blocker is one real permissioned business or approved partner introduction for the existing current-list consistency audit -> private preview -> owner approval -> Google/Profile plus one additional surface -> outcome receipt loop. The WhatsApp route, demo assets, and broader traffic gates remain separate scale work:
 
 1. replace the supplied test number `+1 555 657 1424` with the final public WhatsApp destination number/account;
 2. confirm response ownership, operating hours, consent copy, and tracking before broad traffic;
 3. replace the temporary placeholder demo assets with fictional routed screenshots or permissioned screenshot/video assets from the WhatsApp conversation demo and demo universe;
 4. use the manual market-pod lead board after founder chooses first city, vertical, contact path, and sender identity;
 5. treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch;
-6. fill and run the permissioned Bengaluru ten-business pilot board without scraped or invented businesses;
+6. start the Bengaluru ten-business pilot with at least one real permissioned business or approved photographer/restaurant-consultant introduction; do not use scraped or invented businesses, and measure the first result before adding volume;
 7. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
 8. use `menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md` for the first real proof packet, owner interviews, clinic, and review-readiness decision;
 9. keep provider applications and integrations gated by `menulist-marketing-distribution_publisher-ai-distribution-readiness.md`.

@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 /**
  * Menu Cache Revalidation API (Customer Infra Hardening - TASK 6 + GPT FIX 2)
  *
@@ -293,7 +294,8 @@ const authenticatedRevalidateMenuCache = withAuth(async (request: NextRequest, s
 
 export async function POST(request: NextRequest) {
     const secret = request.headers.get("x-revalidate-secret");
-    const hasValidSecret = Boolean(process.env.REVALIDATION_SECRET) && secret === process.env.REVALIDATION_SECRET;
+    const revalidationSecret = menulistServerEnv.revalidationSecret;
+    const hasValidSecret = Boolean(revalidationSecret) && secret === revalidationSecret;
 
     if (hasValidSecret) {
         return handleRevalidateMenuCache(request, null, 'secret');

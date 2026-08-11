@@ -6,18 +6,20 @@ import { useEffect } from 'react';
 const REVEAL_SELECTOR = '.nv-reveal';
 const REVEAL_DELAY_STEP = 0.035;
 const REVEAL_MAX_DELAY = 0.14;
-const ROOT_MARGIN = '0px 0px -8% 0px';
-const INTERSECTION_THRESHOLD = 0.08;
+const ROOT_MARGIN = '0px 0px 10% 0px';
+const INTERSECTION_THRESHOLD = 0.01;
 
 function markVisible(element: HTMLElement) {
     element.classList.remove('nv-reveal--pending');
     element.classList.add('nv-reveal--visible');
 }
 
-function isInViewport(element: HTMLElement) {
+function hasReachedViewport(element: HTMLElement) {
+    if (element.getClientRects().length === 0) return true;
+
     const bounds = element.getBoundingClientRect();
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    return bounds.top < viewportHeight && bounds.bottom > 0;
+    return bounds.top < viewportHeight;
 }
 
 function getSiblingRevealIndex(element: HTMLElement, targets: HTMLElement[]) {
@@ -61,9 +63,25 @@ export default function ScrollRevealController(): null {
             { threshold: INTERSECTION_THRESHOLD, rootMargin: ROOT_MARGIN },
         );
 
+        let recoveryFrame: number | null = null;
+
+        const revealReachedTargets = () => {
+            recoveryFrame = null;
+            targets.forEach((target) => {
+                if (!target.classList.contains('nv-reveal--pending') || !hasReachedViewport(target)) return;
+                markVisible(target);
+                observer.unobserve(target);
+            });
+        };
+
+        const scheduleRevealRecovery = () => {
+            if (recoveryFrame !== null) return;
+            recoveryFrame = window.requestAnimationFrame(revealReachedTargets);
+        };
+
         const frame = window.requestAnimationFrame(() => {
             targets.forEach((target) => {
-                if (isInViewport(target)) {
+                if (hasReachedViewport(target)) {
                     markVisible(target);
                 } else {
                     observer.observe(target);
@@ -71,9 +89,15 @@ export default function ScrollRevealController(): null {
             });
         });
 
+        window.addEventListener('scroll', scheduleRevealRecovery, { passive: true });
+        window.addEventListener('resize', scheduleRevealRecovery);
+
         return () => {
             observer.disconnect();
             window.cancelAnimationFrame(frame);
+            if (recoveryFrame !== null) window.cancelAnimationFrame(recoveryFrame);
+            window.removeEventListener('scroll', scheduleRevealRecovery);
+            window.removeEventListener('resize', scheduleRevealRecovery);
         };
     }, [pathname]);
 

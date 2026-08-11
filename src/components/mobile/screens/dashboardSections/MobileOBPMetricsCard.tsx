@@ -11,9 +11,15 @@ import type {
     OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
+import {
+    formatDashboardPercent,
+    getDashboardLanguageLabel,
+    getOwnerDashboardSourceLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
+import { formatDateKey } from '@util/dateTime';
 import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { LuClock, LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
@@ -32,19 +38,6 @@ const getSectionDividerStyle = (token: AntThemeToken) => ({
     marginTop: 12,
     paddingTop: 12,
 });
-
-function dashboardLabel(
-    t: DashboardTranslator,
-    key: string,
-    fallback: string,
-    values?: Record<string, string | number>,
-) {
-    try {
-        return t(key, values);
-    } catch {
-        return fallback;
-    }
-}
 
 interface MobileOBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -76,7 +69,7 @@ function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken, t: 
                             {row.icon}
                             <Text type="secondary" style={{ fontSize: 12 }}>{row.label}</Text>
                         </Flex>
-                        <Text style={{ fontSize: 12 }}>{row.value}</Text>
+                        <Text style={{ fontSize: 12 }}>{formatNumber(row.value)}</Text>
                     </Flex>
                 ))}
             </Flex>
@@ -105,7 +98,7 @@ function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken, t: Das
                             {row.icon}
                             <Text type="secondary" style={{ fontSize: 12 }}>{row.label}</Text>
                         </Flex>
-                        <Text style={{ fontSize: 12 }}>{row.value}</Text>
+                        <Text style={{ fontSize: 12 }}>{formatNumber(row.value)}</Text>
                     </Flex>
                 ))}
             </Flex>
@@ -135,7 +128,7 @@ function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken, t: Dashbo
                             {row.icon}
                             <Text type="secondary" style={{ fontSize: 12 }}>{row.label}</Text>
                         </Flex>
-                        <Text style={{ fontSize: 12 }}>{row.value}</Text>
+                        <Text style={{ fontSize: 12 }}>{formatNumber(row.value)}</Text>
                     </Flex>
                 ))}
             </Flex>
@@ -157,8 +150,8 @@ function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntT
             <Flex gap={8} vertical>
                 {rows.slice(0, 6).map((source) => (
                     <Flex key={source.source} align="center" justify="space-between" gap={10}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{source.label}</Text>
-                        <Text style={{ fontSize: 12, textAlign: 'right' }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{getOwnerDashboardSourceLabel(source.source, source.label, t)}</Text>
+                        <Text style={{ fontSize: 12, textAlign: 'end' }}>
                             {t('obp.sourceViews', { count: formatNumber(source.views) })}
                             {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: formatNumber(source.menuClicks) })}` : ''}
                             {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: formatNumber(source.actionClicks) })}` : ''}
@@ -175,20 +168,20 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
     const rows = [
         {
             key: 'open',
-            label: dashboardLabel(t, 'details.openHours.open', 'Actions when open'),
+            label: t('details.openHours.open'),
             value: Number(breakdown?.open || 0),
             icon: <LuClock color={token.colorSuccess} size={14} />,
         },
         {
             key: 'closed',
-            label: dashboardLabel(t, 'details.openHours.closed', 'Actions when closed'),
+            label: t('details.openHours.closed'),
             value: Number(breakdown?.closed || 0),
-            detail: `${Number(breakdown?.closedShare || 0)}%`,
+            detail: formatDashboardPercent(breakdown?.closedShare),
             icon: <LuClock color={token.colorWarning} size={14} />,
         },
         {
             key: 'unknown',
-            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable'),
+            label: t('details.openHours.unknown'),
             value: Number(breakdown?.unknown || 0),
             icon: <LuClock color={token.colorTextSecondary} size={14} />,
         },
@@ -199,7 +192,7 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                {dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours')}
+                {t('details.sections.openHoursActions')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.map((row) => (
@@ -209,7 +202,7 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
                             <Text type="secondary" style={{ fontSize: 12 }}>{row.label}</Text>
                         </Flex>
                         <Text style={{ fontSize: 12 }}>
-                            {row.value}
+                            {formatNumber(row.value)}
                             {row.detail ? ` · ${row.detail}` : ''}
                         </Text>
                     </Flex>
@@ -219,7 +212,12 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
     );
 }
 
-function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: AntThemeToken, t: DashboardTranslator) {
+function renderLanguageRows(
+    languages: OBPLanguageUsage[] | undefined,
+    locale: string,
+    token: AntThemeToken,
+    t: DashboardTranslator,
+) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
     ));
@@ -233,8 +231,8 @@ function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: An
             <Flex gap={6} vertical>
                 {rows.slice(0, 5).map((language) => (
                     <Flex key={language.language} align="center" justify="space-between" gap={10}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{language.label}</Text>
-                        <Text style={{ fontSize: 12, textAlign: 'right' }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{getDashboardLanguageLabel(language.language, language.label, locale)}</Text>
+                        <Text style={{ fontSize: 12, textAlign: 'end' }}>
                             {t('obp.pageOpens', { count: formatNumber(Math.max(language.sessions, language.views)) })}
                             {language.adoptions > 0 ? ` · ${t('obp.stayed', { count: formatNumber(language.adoptions) })}` : ''}
                         </Text>
@@ -245,7 +243,7 @@ function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: An
     );
 }
 
-function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken, t: DashboardTranslator) {
+function renderMetricCards(metrics: OBPPeriodMetrics, locale: string, token: AntThemeToken, t: DashboardTranslator) {
     return (
         <>
             <Flex gap={12} wrap>
@@ -288,13 +286,15 @@ function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken, t: D
             {renderShareRows(metrics.shareMethods, token, t)}
             {renderSourceRows(metrics.sources, token, t)}
             {renderOpenHoursRows(metrics.openHoursActionBreakdown, token, t)}
-            {renderLanguageRows(metrics.topLanguages, token, t)}
+            {renderLanguageRows(metrics.topLanguages, locale, token, t)}
         </>
     );
 }
 
 export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode }: MobileOBPMetricsCardProps) {
     const t = useTranslations('Dashboard.owner');
+    const formatter = useFormatter();
+    const locale = useLocale();
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
     const { token } = theme.useToken();
@@ -362,7 +362,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     </Flex>
                 )}
             >
-                {today ? renderMetricCards(today, token, t) : (
+                {today ? renderMetricCards(today, locale, token, t) : (
                     <Text type="secondary">{t('obp.noActivityToday')}</Text>
                 )}
             </Card>
@@ -445,7 +445,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
                                 {t('views.last7Days')}
                             </Text>
-                            {renderMetricCards(overview.wtd, token, t)}
+                            {renderMetricCards(overview.wtd, locale, token, t)}
                         </>
                     ) : (
                         <Text type="secondary">{t('obp.noSettledActivity')}</Text>
@@ -454,14 +454,14 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     {overview?.mtd ? (
                         <div style={getSectionDividerStyle(token)}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                                {overview.mtd.monthName}
+                                {t('periods.thisMonth')}
                             </Text>
-                            {renderMetricCards(overview.mtd, token, t)}
+                            {renderMetricCards(overview.mtd, locale, token, t)}
                         </div>
                     ) : null}
                 </>
             ) : selectedMetrics ? (
-                renderMetricCards(selectedMetrics, token, t)
+                renderMetricCards(selectedMetrics, locale, token, t)
             ) : (
                 <Text type="secondary">{t('obp.noSettledActivityPeriod')}</Text>
             )}
@@ -479,7 +479,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     </Text>
                     {overall.firstDataDate ? (
                         <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
-                            {t('overall.since', { date: overall.firstDataDate })}
+                            {t('overall.since', { date: formatDateKey(overall.firstDataDate, formatter) })}
                         </Text>
                     ) : null}
                     {renderActionRows(overall.lifetimeActions, token, t)}
@@ -487,7 +487,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     {renderShareRows(overall.lifetimeShareMethods, token, t)}
                     {renderSourceRows(overall.lifetimeSources, token, t)}
                     {renderOpenHoursRows(overall.lifetimeOpenHoursActionBreakdown, token, t)}
-                    {renderLanguageRows(overall.lifetimeLanguages, token, t)}
+                    {renderLanguageRows(overall.lifetimeLanguages, locale, token, t)}
                 </div>
             ) : null}
         </Card>

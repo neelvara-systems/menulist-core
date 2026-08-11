@@ -135,7 +135,7 @@ export default function SupportSurfaceStoryNav({ items }: SupportSurfaceStoryNav
     };
 
     return (
-        <nav className="al-surface-story__nav" aria-label="Support surface cards">
+        <nav className="al-surface-story__nav" aria-label="Support workflow cards">
             {items.map((item) => {
                 const active = activeId === item.id;
 

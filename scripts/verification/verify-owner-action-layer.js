@@ -84,8 +84,8 @@ requireToken(
 [
   'buildOwnerActionLayer',
   'FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !dashboardProjectLoading',
-  "ownerActionLayer.statusLabel !== 'Stable'",
-  'Next owner action',
+  'ownerActionLayer && ownerActionLayer.openCount > 0',
+  "title={t('ownerActions.title')}",
   'ownerActionLayer.primaryAction',
   'router.push(ownerActionLayer.primaryAction.desktopHref)',
 ].forEach((token) => requireToken(desktopDashboard, token, 'desktop dashboard owner action layer'));
@@ -95,8 +95,8 @@ forbidToken(desktopDashboard, 'title="Update what customers see"', 'desktop dash
 [
   'buildOwnerActionLayer',
   'FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !loadingProjects && selectedProjectId',
-  "ownerActionLayer.statusLabel !== 'Stable'",
-  'Next owner action',
+  'ownerActionLayer && ownerActionLayer.openCount > 0',
+  "tOwner('ownerActions.title')",
   'handleOwnerAction',
   "target.type === 'menuTab'",
   "target.type === 'shareTab'",

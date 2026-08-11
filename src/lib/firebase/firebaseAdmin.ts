@@ -1,21 +1,25 @@
 import { admin } from './firebaseAdminCompat';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 const DEFAULT_APP_NAME = '[DEFAULT]';
 const existingDefaultApp = admin.getApps().find(app => app?.name === DEFAULT_APP_NAME);
 const firebaseAdminApp = existingDefaultApp || (() => {
-    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    const storageBucket = menulistServerEnv.firebaseStorageBucket;
+    const projectId = menulistServerEnv.firebaseProjectId;
+    const privateKey = menulistServerEnv.firebasePrivateKey;
+    const clientEmail = menulistServerEnv.firebaseClientEmail;
 
     // For Vercel deployment: Use explicit environment variables
     // For local development: Uses GOOGLE_APPLICATION_CREDENTIALS automatically
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+    if (projectId && privateKey && clientEmail) {
         const app = admin.initializeApp({
             credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                projectId,
+                privateKey: privateKey.replace(/\\n/g, '\n'),
+                clientEmail,
             }),
             ...(storageBucket ? { storageBucket } : {}),
         });

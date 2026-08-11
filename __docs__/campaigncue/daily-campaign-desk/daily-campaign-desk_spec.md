@@ -39,7 +39,7 @@ The screen must answer:
 | Missing input inbox | Business detail, current source input, price/date/availability, asset rights, result, approval, and location prompts. |
 | Owner Pulse | Business state, capacity, stock, local moment, note, and validity window are stored in the existing Business Brain and shown on the first screen. Expired pulse is a required refresh before a new pack can be prepared. |
 | Commercial safety | Promotions, discounts, approval, maximum discount, minimum promoted price, and do-not-promote terms are deterministic gates. |
-| Vertical/action recipes | Fourteen recipes are implemented: restaurant, salon, retail, local-service, fitness, clinic, generic local business, slow lunch, weekend slots, new arrival, honest review request, return-customer reminder, old-poster reuse, and Google/local visibility refresh. |
+| Vertical/action recipes | Twenty recipes are implemented. The existing restaurant, salon, retail, local-service, fitness, clinic, generic, shared-review, retention, reuse, and visibility actions now include catering inquiries, membership reminders, back-in-stock updates, seasonal maintenance, trial sessions, and clinic service availability. |
 | Campaign pack review | The latest pack exposes source facts, missing inputs, trust summary, delivery cards, result question, result options, and local visibility cues. |
 | Pack readiness | Five deterministic 20-point checks cover facts, trust, freshness, approval, and manual handoff. The score is not an engagement, reach, ROI, or best-time prediction. |
 | Campaign Rhythm | Derived from already-loaded campaigns/schedules and selects one next manual action with zero incremental Firebase/provider operations. |

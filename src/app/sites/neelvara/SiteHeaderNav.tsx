@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ComponentProps, useEffect, useState } from 'react';
+import { type ComponentProps, useEffect, useState, useSyncExternalStore } from 'react';
 import { LuMenu, LuX } from 'react-icons/lu';
 
 type NeelvaraNavItem = {
@@ -25,6 +25,16 @@ function getNeelvaraBasePath(pathname: string): string {
     }
 
     return '';
+}
+
+const subscribeToRouteSnapshot = () => () => undefined;
+
+function useNeelvaraBasePath(pathname: string | null): string {
+    return useSyncExternalStore(
+        subscribeToRouteSnapshot,
+        () => getNeelvaraBasePath(pathname || '/'),
+        () => '',
+    );
 }
 
 function normalizeNeelvaraPath(pathname: string): string {
@@ -59,7 +69,7 @@ export function SiteHeaderNav({
 }) {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
-    const basePath = getNeelvaraBasePath(pathname || '/');
+    const basePath = useNeelvaraBasePath(pathname);
     const currentPath = normalizeNeelvaraPath(pathname || '/');
 
     useEffect(() => {
@@ -123,7 +133,7 @@ type NeelvaraLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
 
 export function NeelvaraLink({ href, ...props }: NeelvaraLinkProps) {
     const pathname = usePathname();
-    const basePath = getNeelvaraBasePath(pathname || '/');
+    const basePath = useNeelvaraBasePath(pathname);
 
     return (
         <Link

@@ -136,7 +136,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
             logStoreDataFailure('owner_dashboard_google_listing_open_failed', error, buildGoogleListingCardLogContext('open_google_profile', {
                 target: 'google_business_profile',
             }));
-            message.error('Could not open Google Business Profile');
+            message.error(t('googleListing.couldNotOpen'));
         }
     };
 

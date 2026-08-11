@@ -14,8 +14,9 @@
  */
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
-import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { DailyViewData, EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import { formatDashboardPercent } from '@lib/analytics/ownerDashboardPresentation';
+import { DailyViewData } from '@template/main-app/projects/types';
 import { formatDateKey } from '@util/dateTime';
 import { Alert, Card, Col, Empty, Row, Typography, theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
@@ -33,7 +34,7 @@ interface DailyViewProps {
 }
 
 const DailyView: React.FC<DailyViewProps> = ({ data }) => {
-    const labels = useOfferingLabels();
+    const labels = useDashboardOfferingLabels();
     const formatter = useFormatter();
     const t = useTranslations('Dashboard.owner');
     const { token } = theme.useToken();
@@ -73,8 +74,8 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 <Alert
                     type="info"
                     icon={<LuInfo />}
-                    message={EMPTY_STATE_MESSAGES.lowActivity.title}
-                    description={EMPTY_STATE_MESSAGES.lowActivity.description}
+                    message={t('empty.lowActivityTitle')}
+                    description={t('empty.lowActivityDescription')}
                     className={styles.lowActivityAlert}
                     showIcon
                 />
@@ -82,7 +83,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
 
             {/* AI Summary - Descriptive only */}
             {aiSummary && !isLowActivity && (
-                <AISummaryCard summary={aiSummary} period="daily" />
+                <AISummaryCard summary={aiSummary} metrics={metrics} period="daily" />
             )}
 
             {/* Key Metrics - Max 4, no comparisons */}
@@ -105,14 +106,14 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 <Col xs={24} sm={12}>
                     <MetricCard
                         title={t('metrics.engagedSessions')}
-                        value={`${metrics.engagedSessionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.engagedSessionRate)}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
                         title={t('metrics.actionRate')}
-                        value={`${metrics.actionRate || 0}%`}
+                        value={formatDashboardPercent(metrics.actionRate)}
                         size="small"
                     />
                 </Col>

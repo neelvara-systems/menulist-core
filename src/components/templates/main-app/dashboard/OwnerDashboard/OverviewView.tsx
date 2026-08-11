@@ -15,18 +15,22 @@
 
 import {
     HistoricalWeek,
-    OVERVIEW_GUARDRAILS,
     OverviewData,
 } from '@template/main-app/projects/types';
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { formatNumber } from '@util/formatters';
+import {
+    formatDashboardWeekRange,
+    getDashboardOverviewStatusMessage,
+} from '@lib/analytics/ownerDashboardPresentation';
 import { Card, Col, Empty, Progress, Row, Tag, Typography, theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
-import { LuAlertTriangle, LuCheckCircle, LuClock, LuHistory, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuCheckCircle, LuClock, LuHistory } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import OwnerActionPlanCard from './OwnerActionPlanCard';
+import AISummaryCard from './AISummaryCard';
 
 const { Text, Title, Paragraph } = Typography;
 const { useToken } = theme;
@@ -40,6 +44,7 @@ interface OverviewViewProps {
 const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, projectId }) => {
     const { token } = useToken();
     const t = useTranslations('Dashboard.owner');
+    const formatter = useFormatter();
     const primaryTagStyle = {
         backgroundColor: token.colorPrimaryBg,
         borderColor: token.colorPrimaryBorder,
@@ -72,7 +77,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
         );
     }
 
-    const { status, statusMessage, wtd, mtd, historicalWeeks, aiSummary, ownerActionPlan, ownerConfidence, sourceQuality, analyticsAiEntitlement } = data;
+    const { status, wtd, mtd, historicalWeeks, aiSummary, ownerActionPlan, ownerConfidence, sourceQuality, analyticsAiEntitlement } = data;
 
     const getStatusIcon = () => {
         switch (status) {
@@ -111,7 +116,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                         <div key={index} className={styles.weekBar}>
                             <div className={styles.weekLabel}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {week.weekLabel}
+                                    {formatDashboardWeekRange(week.weekStart, week.weekEnd, formatter, t('views.last7Days'))}
                                 </Text>
                             </div>
                             <div className={styles.barContainer}>
@@ -128,7 +133,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                                     {formatNumber(week.metrics.menuVisits)}
                                 </Text>
                                 {week.isCurrentWeek && (
-                                    <Tag style={{ ...primaryTagStyle, marginLeft: 4, fontSize: 10 }}>
+                                    <Tag style={{ ...primaryTagStyle, marginInlineStart: 4, fontSize: 10 }}>
                                         {t('overview.current')}
                                     </Tag>
                                 )}
@@ -159,7 +164,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                             {status === 'no_data' && t('overview.waitingForFirstScan')}
                         </Title>
                         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                            {statusMessage}
+                            {getDashboardOverviewStatusMessage(status, t)}
                         </Paragraph>
                     </div>
                 </div>
@@ -223,38 +228,23 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
             />
 
             {/* AI Summary (if available) */}
-            {aiSummary && aiSummary.bulletPoints && aiSummary.bulletPoints.length > 0 && (
-                <Card
-                    className={styles.aiSummaryCard}
-                    title={
-                        <span>
-                            <LuZap style={{ marginRight: 8 }} />
-                            {t('overview.weeklyInsights')}
-                        </span>
-                    }
-                    variant="borderless"
-                >
-                    <ul className={styles.bulletList}>
-                        {aiSummary.bulletPoints.slice(0, OVERVIEW_GUARDRAILS.MAX_AI_BULLETS).map((point, index) => (
-                            <li key={index}>
-                                <Text>{point}</Text>
-                            </li>
-                        ))}
-                    </ul>
-                </Card>
-            )}
+            {aiSummary?.bulletPoints?.length ? (
+                <AISummaryCard summary={aiSummary} metrics={wtd?.metrics} period="weekly" />
+            ) : null}
 
             <MenuAnalyticsDetailsCard data={wtd} title={t('details.last7DaysMenuDetails')} />
             <MenuAnalyticsDetailsCard
                 data={mtd}
-                title={t('details.monthMenuDetails', { month: mtd?.monthName || t('periods.thisMonth') })}
+                title={t('details.monthMenuDetails', {
+                    month: t('periods.thisMonth'),
+                })}
             />
 
             <Card
                 className={styles.detailCard}
                 title={(
                     <span>
-                        <LuHistory style={{ marginRight: 8 }} />
+                        <LuHistory style={{ marginInlineEnd: 8 }} />
                         {t('overview.last4WeeksComparison')}
                     </span>
                 )}

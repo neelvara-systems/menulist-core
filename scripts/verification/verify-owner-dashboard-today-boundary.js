@@ -252,9 +252,9 @@ forbidToken(ownerActionMarkDoneRoute, 'await dashboardRef.update(updates);', 'ow
   'availableStartDate',
   'const trendSummary = data?.trendSummary || fallbackTrendSummary;',
   "source: 'daily30d_fallback'",
-  'Trend summary',
-  'Updated after your store day closes.',
-  'Comparison charts',
+  "t('graph.trend.summary')",
+  "t('graph.trend.updatedAfterClose')",
+  "t('graph.comparison.title')",
   'comparisonChartGrid',
   'TREND_SIGNAL_METRICS',
   'missingSearches: metricValue(day,',
@@ -375,7 +375,7 @@ forbidToken(mobileHours, 'console.error(', 'mobile Today raw error logging');
 requireOrder(
   mobileDashboard,
   [
-    'const businessHealthFreshnessNote = getOwnerBusinessHealthFreshnessNote(businessHealthCurrent);',
+    'const businessHealthMetrics = useMemo(',
     'const ownerActionLayer = useMemo(() => (',
     'const handleOwnerAction = useCallback((item: OwnerActionItem) => {',
     'if (loadingProjects || (!selectedProjectId && loadingProjects)) {',

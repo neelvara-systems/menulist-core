@@ -6,6 +6,7 @@ import { useOwnerBusinessContextPacket } from '@hook/ownerBusinessAssistant/useO
 import { useOwnerPublicTruthReadiness } from '@hook/publicTruthTools/useOwnerPublicTruthReadiness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { BusinessHealthAnalyticsStrip } from './BusinessHealthAnalyticsStrip';
 import { BusinessHealthHeader } from './BusinessHealthHeader';
@@ -19,6 +20,7 @@ import { PublicTruthOwnerCheckCard } from './PublicTruthOwnerCheckCard';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 export function BusinessHealthPage({ projectId }: { projectId?: string }) {
+  const t = useTranslations('Dashboard.owner');
   const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
   const pathname = usePathname();
   const router = useRouter();
@@ -61,8 +63,8 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
           <Alert
             type="warning"
             showIcon
-            message="Business Health could not load"
-            description="Please try refreshing this page."
+            message={t('businessHealth.page.loadErrorTitle')}
+            description={t('businessHealth.page.loadErrorDescription')}
           />
         ) : null}
         {isLoading && !current ? (

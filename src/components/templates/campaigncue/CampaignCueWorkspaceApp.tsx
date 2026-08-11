@@ -3,12 +3,16 @@
 import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import { SIGNIN_URL } from "@constant/urls";
 import { CAMPAIGNCUE_PAGE_SIZE } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_CHANNEL_LABELS } from "@constant/campaigncue/channels";
 import { CAMPAIGNCUE_DAILY_DESK_RECIPES } from "@constant/campaigncue/dailyDesk";
 import { CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS } from "@constant/campaigncue/creativeEditorAiTools";
 import { CAMPAIGNCUE_DESIGN_CUE_COMMANDS } from "@constant/campaigncue/designCue";
 import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
+import { buildCampaignCueExportArchiveFilename } from "@constant/campaigncue/exportArchive";
 import { CAMPAIGNCUE_CUE_LAYERS } from "@constant/campaigncue/cueLayers";
+import { CAMPAIGNCUE_OFFER_PAGE_COPY } from "@constant/campaigncue/offerPage";
+import { campaignCueCanRecordResultEvidence } from "@constant/campaigncue/resultEvidence";
 import { CAMPAIGNCUE_WORKSPACE_TABS, type CampaignCueWorkspaceTabKey } from "@constant/campaigncue/navigations";
 import {
     CAMPAIGNCUE_API_ROUTES,
@@ -19,6 +23,8 @@ import {
     getCampaignCueCueLayersExportApiPath,
     getCampaignCueCueLayersRepairApiPath,
     getCampaignCueCampaignActionApiPath,
+    getCampaignCueOfferPageApiPath,
+    getCampaignCuePublicOfferPath,
 } from "@constant/campaigncue/routes";
 import DashboardHeaderShell from "@/components/shared/dashboardShell/DashboardHeaderShell";
 import DashboardSidebarShell, {
@@ -44,8 +50,37 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
+import {
+    getCampaignCueMediaUploadFailureNotice,
+    uploadCampaignCueMediaAsset,
+} from "@lib/campaigncue/assetUploadClient";
+import { uploadCampaignCueExportArchive } from "@lib/campaigncue/exportArchiveClient";
+import type { CampaignCueMediaConsentType } from "@lib/campaigncue/mediaMissions";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
+import {
+    buildCampaignCueCampaignMemoryView,
+    resolveCampaignCueCampaignMemorySummary,
+} from "@lib/campaigncue/campaignMemory";
+import {
+    CAMPAIGNCUE_INBOX_MAX_DRAFT_LENGTH,
+    campaignCueInboxCandidateToBusinessPatch,
+    campaignCueInboxCandidateToSourceInput,
+    parseCampaignCueInboxText,
+} from "@lib/campaigncue/campaignInbox";
+import {
+    campaignCueCanCommentOnApproval,
+    campaignCueCanRequestApproval,
+    campaignCueCanResolveApproval,
+} from "@lib/campaigncue/approvalInbox";
+import {
+    campaignCueCanManageCampaignLocation,
+    campaignCueCanManageSomeCampaignOutput,
+    campaignCueCanManageWorkspaceContent,
+    campaignCueCanPerformCampaignOutputAction,
+    campaignCueCanRegisterAsset,
+} from "@lib/campaigncue/permissions";
 import { evaluateCampaignCuePackFreshness, isCampaignCueSourceInputCurrent } from "@lib/campaigncue/operatingLoop";
+import { getStoreLocalDateKey } from "@lib/hours/hoursBoundary";
 import { applyCampaignCueDesignCuePatchSet } from "@lib/campaigncue/design-cue/apply";
 import { runCampaignCueDesignCue } from "@lib/campaigncue/design-cue/intent";
 import {
@@ -55,6 +90,7 @@ import {
 import {
     getCampaignCuePackTemplate,
     listCampaignCuePackTemplates,
+    loadCampaignCuePackTemplateOverflow,
 } from "@lib/campaigncue/pack-templates/catalog";
 import { saveCampaignCueWorkspacePackTemplate } from "@lib/campaigncue/pack-templates/workspaceTemplates";
 import { hydrateCampaignCuePackTemplateEditorDocument } from "@lib/campaigncue/pack-templates/editorDocumentBoundary";
@@ -83,13 +119,18 @@ import type {
     CampaignCueChannel,
     CampaignCueDailyDeskTask,
     CampaignCueDecision,
+    CampaignCueInboxCandidate,
+    CampaignCueInboxConfirmResult,
+    CampaignCueInboxParseResult,
     CampaignCueLocation,
+    CampaignCueLocalVisibilityCue,
     CampaignCueManualDeliveryCard,
     CampaignCueOutput,
     CampaignCueOutputPack,
     CampaignCueSourceFact,
     CampaignCueOverview,
     CampaignCueProviderStatus,
+    CampaignCuePublicOfferPage,
     CampaignCueSourceInput,
     CampaignCueTrustSummaryItem,
     CampaignCueWorkspaceRole,
@@ -131,6 +172,7 @@ import {
     LuChevronRight,
     LuAlertCircle,
     LuClipboardCheck,
+    LuCopy,
     LuDownload,
     LuExternalLink,
     LuFileText,
@@ -159,6 +201,39 @@ import PackTemplatePicker from "./PackTemplatePicker";
 import CampaignCueVideoStudio from "./CampaignCueVideoStudio";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
 
+const CAMPAIGNCUE_TAB_TRANSLATION_KEYS = {
+    home: "tabs.home",
+    details: "tabs.details",
+    sources: "tabs.sources",
+    delivery: "tabs.delivery",
+    settings: "tabs.settings",
+    cues: "tabs.cues",
+    inspiration: "tabs.inspiration",
+    campaigns: "tabs.campaigns",
+    editor: "tabs.editor",
+    creative: "tabs.creative",
+    video: "tabs.video",
+    ugc: "tabs.ugc",
+    whatsapp: "tabs.whatsapp",
+    google: "tabs.google",
+    ads: "tabs.ads",
+    trust: "tabs.trust",
+    visibility: "tabs.visibility",
+    calendar: "tabs.calendar",
+    assets: "tabs.assets",
+    analytics: "tabs.analytics",
+    agency: "tabs.agency",
+    locations: "tabs.locations",
+    billing: "tabs.billing",
+} as const satisfies Record<CampaignCueWorkspaceTabKey, `tabs.${CampaignCueWorkspaceTabKey}`>;
+
+const CAMPAIGNCUE_GROUP_TRANSLATION_KEYS = {
+    Start: "groups.Start",
+    Campaigns: "groups.Campaigns",
+    Channels: "groups.Channels",
+    Operations: "groups.Operations",
+} as const;
+
 const CreativeEditor = dynamic(() => import("@/modules/creative-editor/CreativeEditor"), {
     ssr: false,
     loading: () => (
@@ -180,7 +255,24 @@ interface PackTemplateState {
     catalog?: CampaignCuePackTemplateListResult;
     error?: string;
     loading: boolean;
+    loadingMore?: boolean;
 }
+
+const isCampaignCueWorkspaceTabEnabled = (key: CampaignCueWorkspaceTabKey) => {
+    if (key === "sources") return FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS;
+    if (key === "inspiration") {
+        return FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS
+            && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE;
+    }
+    if (key === "analytics") return FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_ANALYTICS;
+    return true;
+};
+
+const getCampaignCueFallbackTab = (key: CampaignCueWorkspaceTabKey): CampaignCueWorkspaceTabKey => {
+    if (key === "sources") return "details";
+    if (key === "inspiration") return "cues";
+    return "home";
+};
 
 type CampaignCueEditorContextKind = "blank" | "campaign_output" | "cue_layers" | "pack_template";
 
@@ -224,6 +316,12 @@ const trustTone = (gate?: string) => {
 };
 
 const displayLabel = (value?: string) => (value || "").replace(/_/g, " ");
+
+const campaignMemoryConfidenceLabel = (confidence: CampaignCueOverview["campaignMemory"]["confidence"]) => {
+    if (confidence === "repeated_signal") return "Repeated signal";
+    if (confidence === "early_signal") return "Early signal";
+    return "Not enough results";
+};
 
 const formatCampaignCueDate = (value: unknown, formatter: IntlFormatter) => {
     if (!value) return "";
@@ -280,6 +378,7 @@ const isCampaignCueOverviewData = (value: unknown): value is CampaignCueOverview
     && isRecord(value.workspace)
     && isRecord(value.businessBrain)
     && isRecord(value.dailyDesk)
+    && isRecord(value.campaignMemory)
     && Array.isArray(value.campaigns)
     && Array.isArray(value.assets)
     && Array.isArray(value.sourceInputs)
@@ -309,7 +408,48 @@ const isCueLayerUploadResultData = (value: unknown): value is CampaignCueCueLaye
 const isAssetDownloadData = (value: unknown): value is { url: string } => (
     isRecord(value)
     && typeof value.url === "string"
-    && value.url.length > 0
+    && (() => {
+        try {
+            const url = new URL(value.url);
+            return url.protocol === "https:"
+                && (
+                    url.hostname === "storage.googleapis.com"
+                    || url.hostname.endsWith(".storage.googleapis.com")
+                )
+                && url.searchParams.has("X-Goog-Signature");
+        } catch {
+            return false;
+        }
+    })()
+);
+
+const isCampaignCueInboxConfirmResultData = (value: unknown): value is CampaignCueInboxConfirmResult => (
+    isRecord(value)
+    && typeof value.batchId === "string"
+    && Array.isArray(value.sourceInputs)
+    && value.sourceInputs.every((sourceInput) => isRecord(sourceInput) && typeof sourceInput.id === "string")
+    && isRecord(value.sourceSnapshot)
+    && typeof value.sourceSnapshot.sourceHash === "string"
+    && Array.isArray(value.sourceSnapshot.facts)
+);
+
+const isCampaignCueOfferPageMutationResultData = (
+    value: unknown,
+): value is { campaign: CampaignCueCampaign; offerPage: CampaignCuePublicOfferPage | null; replayed: boolean } => (
+    isRecord(value)
+    && isRecord(value.campaign)
+    && (value.offerPage === null || isRecord(value.offerPage))
+    && typeof value.replayed === "boolean"
+);
+
+const isCampaignCueLocationVariantBatchResultData = (
+    value: unknown,
+): value is { campaigns: CampaignCueCampaign[]; replayed: boolean; variantGroupId: string } => (
+    isRecord(value)
+    && Array.isArray(value.campaigns)
+    && value.campaigns.every((campaign) => isRecord(campaign) && typeof campaign.id === "string")
+    && typeof value.replayed === "boolean"
+    && typeof value.variantGroupId === "string"
 );
 
 const isCampaignCueWorkspaceResponseCode = (payload: unknown): string | undefined => (
@@ -454,10 +594,16 @@ const campaignBlocksPublicUse = (
     || (approvalRequired && campaign?.ownerApprovalState !== "approved")
 );
 
-const publicUseBlockedLabel = "Resolve blocked checks, freshness, or required approval before downloading, scheduling, or marking this pack used.";
+const publicUseBlockedLabel = "Resolve blocked checks, freshness, or required approval before downloading, saving a cloud copy, scheduling, or marking this pack used.";
 
-const canRequestCampaignApproval = (campaign?: CampaignCueCampaign | null) => Boolean(
+const canRequestCampaignApproval = (
+    campaign?: CampaignCueCampaign | null,
+    role?: CampaignCueWorkspaceRole,
+) => Boolean(
+    FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_APPROVAL_COMMENT_INBOX
+    &&
     campaign
+    && campaignCueCanRequestApproval(role)
     && campaign.status !== "used"
     && campaign.status !== "archived"
     && campaign.ownerApprovalState !== "requested"
@@ -471,10 +617,18 @@ const campaignApprovalActionLabel = (campaign: CampaignCueCampaign) => {
     return "Request approval";
 };
 
-const campaignCueCanResolveApproval = (role?: CampaignCueWorkspaceRole) => (
+const CAMPAIGNCUE_APPROVAL_INBOX_ACTIONS = new Set<CampaignCueActionType>([
+    "request_approval",
+    "approve",
+    "reject",
+    "add_approval_comment",
+    "resolve_approval_comment",
+]);
+
+const campaignCueCanAcceptExperiment = (role?: CampaignCueWorkspaceRole) => (
     role === "owner"
     || role === "admin"
-    || role === "reviewer"
+    || role === "marketer"
     || role === "local_manager"
 );
 
@@ -534,6 +688,12 @@ const getLocalSignInUrl = () => {
         isLocal ? "/signin" : SIGNIN_URL,
         window.location.href,
     );
+};
+
+const getCampaignCueHostedOfferUrl = (slug: string) => {
+    if (typeof window === "undefined") return "";
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    return new URL(getCampaignCuePublicOfferPath(slug, isLocal), window.location.origin).toString();
 };
 
 const getUserInitials = (name?: string | null, email?: string | null) => {
@@ -606,7 +766,7 @@ const outputFilename = (campaign: CampaignCueCampaign, output: CampaignCueOutput
 );
 
 const campaignPackZipFilename = (campaign: CampaignCueCampaign) => (
-    `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-campaigncue-pack.zip`
+    buildCampaignCueExportArchiveFilename(campaign.title)
 );
 
 const buildCampaignPackExport = (
@@ -1180,11 +1340,12 @@ const buildCampaignPackZipBlob = async (
         || campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
         || "campaigncue-pack";
     const writtenPaths = new Set<string>();
+    const stableEntryDate = new Date(Date.UTC(1980, 0, 1, 0, 0, 0));
     const writeFile = (path: string, content: string) => {
         const safePath = path.replace(/^\/+/, "");
         if (writtenPaths.has(safePath)) return;
         writtenPaths.add(safePath);
-        zip.file(`${rootFolder}/${safePath}`, content);
+        zip.file(`${rootFolder}/${safePath}`, content, { date: stableEntryDate });
     };
 
     writeFile("campaign-pack-summary.md", buildCampaignPackExport(campaign, dailyDesk));
@@ -1199,11 +1360,14 @@ const buildCampaignPackZipBlob = async (
         });
     }
 
-    const blob = await zip.generateAsync({
+    const generatedBlob = await zip.generateAsync({
         type: "blob",
         compression: "DEFLATE",
         compressionOptions: { level: 6 },
     });
+    const blob = generatedBlob.type === "application/zip"
+        ? generatedBlob
+        : generatedBlob.slice(0, generatedBlob.size, "application/zip");
     return {
         blob,
         filename: campaignPackZipFilename(campaign),
@@ -1219,7 +1383,7 @@ const bumpAnalytics = (
         ...analytics,
         campaignCount: action === "campaign_created" ? analytics.campaignCount + 1 : analytics.campaignCount,
         usedCount: action === "mark_used" ? analytics.usedCount + 1 : analytics.usedCount,
-        exportCount: action === "download" || action === "export"
+        exportCount: action === "download" || action === "export" || action === "archive_export"
             ? analytics.exportCount + 1
             : analytics.exportCount,
         approvalRequestCount: action === "request_approval"
@@ -1244,6 +1408,19 @@ const prependCampaignCueSourceInput = (
     const next = [item, ...items.filter((existing) => existing.id !== item.id)];
     const pattern = next.find((source) => source.sourceType === "inspiration_pattern");
     const businessInputs = next.filter((source) => source.sourceType !== "inspiration_pattern").slice(0, CAMPAIGNCUE_PAGE_SIZE);
+    return pattern ? [pattern, ...businessInputs] : businessInputs;
+};
+
+const prependCampaignCueSourceInputs = (
+    items: CampaignCueSourceInput[],
+    incoming: CampaignCueSourceInput[],
+) => {
+    const incomingIds = new Set(incoming.map((sourceInput) => sourceInput.id));
+    const next = [...incoming, ...items.filter((sourceInput) => !incomingIds.has(sourceInput.id))];
+    const pattern = next.find((source) => source.sourceType === "inspiration_pattern");
+    const businessInputs = next
+        .filter((source) => source.sourceType !== "inspiration_pattern")
+        .slice(0, CAMPAIGNCUE_PAGE_SIZE);
     return pattern ? [pattern, ...businessInputs] : businessInputs;
 };
 
@@ -1287,8 +1464,13 @@ const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview 
         };
     });
     const current = { ...overview, campaigns };
+    const campaignMemory = buildCampaignCueCampaignMemoryView(resolveCampaignCueCampaignMemorySummary({
+        analytics: overview.analytics,
+        campaigns,
+    }));
     return {
         ...current,
+        campaignMemory,
         dailyDesk: buildCampaignCueDailyDesk({
         analytics: overview.analytics,
         assets: overview.assets,
@@ -1593,15 +1775,23 @@ function ManualDeliveryCard({
 }
 
 function OutputPackSummary({
+    archiveBusy,
     busy,
+    campaign,
     disabled,
     disabledReason,
+    onArchive,
+    onDownloadArchive,
     onDownload,
     outputPack,
 }: {
+    archiveBusy?: boolean;
     busy: boolean;
+    campaign?: CampaignCueCampaign;
     disabled?: boolean;
     disabledReason?: string;
+    onArchive?: () => void;
+    onDownloadArchive?: () => void;
     onDownload: () => void;
     outputPack?: CampaignCueOutputPack;
 }) {
@@ -1693,10 +1883,100 @@ function OutputPackSummary({
             {disabled && disabledReason ? (
                 <p className={styles.muted}>{disabledReason}</p>
             ) : null}
-            <button className={styles.button} disabled={busy || disabled} onClick={onDownload} type="button">
-                <LuDownload size={16} />
-                Download campaign pack ZIP
-            </button>
+            <div className={styles.topActions}>
+                <button className={styles.button} disabled={busy || disabled} onClick={onDownload} type="button">
+                    <LuDownload size={16} />
+                    Download campaign pack ZIP
+                </button>
+                {onArchive ? (
+                    <button className={styles.ghostButton} disabled={archiveBusy || disabled} onClick={onArchive} type="button">
+                        <LuUploadCloud size={16} />
+                        {campaign?.exportArchive ? "Replace cloud copy" : "Save cloud copy"}
+                    </button>
+                ) : null}
+                {campaign?.exportArchive && onDownloadArchive ? (
+                    <button className={styles.ghostButton} disabled={archiveBusy} onClick={onDownloadArchive} type="button">
+                        <LuDownload size={16} />
+                        Download saved copy
+                    </button>
+                ) : null}
+            </div>
+            {onArchive ? (
+                <p className={styles.muted}>
+                    CampaignCue exposes one current cloud copy and uses two rotating storage slots. Access uses a short-lived download link.
+                </p>
+            ) : null}
+        </article>
+    );
+}
+
+function HostedOfferPageCard({
+    busy,
+    campaign,
+    disabled,
+    disabledReason,
+    expiresAtLabel,
+    onCopy,
+    onDownloadQr,
+    onMutate,
+    onOpen,
+}: {
+    busy: boolean;
+    campaign: CampaignCueCampaign;
+    disabled?: boolean;
+    disabledReason?: string;
+    expiresAtLabel: string;
+    onCopy: () => void;
+    onDownloadQr: () => void;
+    onMutate: (action: "publish" | "unpublish") => void;
+    onOpen: () => void;
+}) {
+    const offerPage = campaign.pack?.offerPage;
+    const expiryTime = offerPage?.expiresAt ? Date.parse(String(offerPage.expiresAt)) : Number.NaN;
+    const isLive = offerPage?.status === "published" && Number.isFinite(expiryTime) && expiryTime > Date.now();
+    return (
+        <article className={styles.provider}>
+            <div className={styles.row}>
+                <div className={styles.titleBlock}>
+                    <h3>Hosted offer page and QR</h3>
+                    <p>One short, checked destination for printed QR cards and manual channel handoff.</p>
+                </div>
+                <span className={styles.chip} data-tone={isLive ? "green" : offerPage ? "amber" : undefined}>
+                    {isLive ? "Live" : offerPage ? "Not live" : "Not published"}
+                </span>
+            </div>
+            <div className={styles.noteBox}>
+                <strong>{isLive ? `Available until ${expiresAtLabel || "the pack expires"}` : "Owner-controlled publishing"}</strong>
+                <p>{CAMPAIGNCUE_OFFER_PAGE_COPY.noTracking}</p>
+            </div>
+            {disabled && disabledReason ? <p className={styles.muted}>{disabledReason}</p> : null}
+            <div className={styles.topActions}>
+                {isLive ? (
+                    <>
+                        <button className={styles.ghostButton} disabled={busy} onClick={onOpen} type="button">
+                            <LuExternalLink size={16} />
+                            {CAMPAIGNCUE_OFFER_PAGE_COPY.open}
+                        </button>
+                        <button className={styles.ghostButton} disabled={busy} onClick={onCopy} type="button">
+                            <LuClipboardCheck size={16} />
+                            {CAMPAIGNCUE_OFFER_PAGE_COPY.copy}
+                        </button>
+                        <button className={styles.ghostButton} disabled={busy} onClick={onDownloadQr} type="button">
+                            <LuDownload size={16} />
+                            {CAMPAIGNCUE_OFFER_PAGE_COPY.downloadQr}
+                        </button>
+                        <button className={styles.dangerButton} disabled={busy} onClick={() => onMutate("unpublish")} type="button">
+                            <LuX size={16} />
+                            {CAMPAIGNCUE_OFFER_PAGE_COPY.unpublish}
+                        </button>
+                    </>
+                ) : (
+                    <button className={styles.button} disabled={busy || disabled} onClick={() => onMutate("publish")} type="button">
+                        <LuExternalLink size={16} />
+                        {CAMPAIGNCUE_OFFER_PAGE_COPY.publish}
+                    </button>
+                )}
+            </div>
         </article>
     );
 }
@@ -1843,6 +2123,9 @@ export default function CampaignCueWorkspaceApp() {
         status: "needs_review",
         value: "",
     });
+    const [campaignInboxDraft, setCampaignInboxDraft] = useState("");
+    const [campaignInboxReview, setCampaignInboxReview] = useState<CampaignCueInboxParseResult | null>(null);
+    const [campaignInboxSelectedIds, setCampaignInboxSelectedIds] = useState<string[]>([]);
     const [inspirationDraft, setInspirationDraft] = useState({
         durationSeconds: "",
         label: "",
@@ -1853,10 +2136,18 @@ export default function CampaignCueWorkspaceApp() {
         transcriptOrNotes: "",
     });
     const [locationDraft, setLocationDraft] = useState({
+        contacts: {
+            bookingUrl: "",
+            phone: "",
+            publicMenuUrl: "",
+            website: "",
+            whatsapp: "",
+        },
         locality: "",
         name: "",
         status: "draft",
     });
+    const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
     const [assetDraft, setAssetDraft] = useState({
         name: "",
         assetType: "image",
@@ -1865,9 +2156,21 @@ export default function CampaignCueWorkspaceApp() {
         rightsStatus: "needs_review",
         tags: "",
     });
+    const [mediaCaptureConsentType, setMediaCaptureConsentType] = useState<CampaignCueMediaConsentType | "">("");
+    const [mediaCaptureMission, setMediaCaptureMission] = useState<{ recipeId: string; task: string } | null>(null);
+    const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
+    const assetCapturePanelRef = useRef<HTMLDivElement | null>(null);
+    const mediaCameraInputRef = useRef<HTMLInputElement | null>(null);
+    const mediaLibraryInputRef = useRef<HTMLInputElement | null>(null);
     const cueLayerUploadInputRef = useRef<HTMLInputElement | null>(null);
     const cueLayerAutosaveTimeoutRef = useRef<number | null>(null);
     const cueLayerLastSavedFingerprintRef = useRef("");
+    const cueLayerListRequestRef = useRef(0);
+    const cueLayerSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+    const cueLayerSessionRef = useRef(0);
+    const activeCueLayerDesignRef = useRef<CampaignCueCueLayerDesign | null>(null);
+    const activeCueLayerRevisionRef = useRef<number | null>(null);
+    const packTemplateRequestRef = useRef(0);
     const mutationIdempotencyKeysRef = useRef(new Map<string, string>());
     const getMutationIdempotencyKey = (prefix: string, requestFingerprint: string) => {
         const existing = mutationIdempotencyKeysRef.current.get(requestFingerprint);
@@ -1893,6 +2196,7 @@ export default function CampaignCueWorkspaceApp() {
     const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
     const [outcomeDraft, setOutcomeDraft] = useState("");
     const [approvalDecisionNote, setApprovalDecisionNote] = useState("");
+    const [approvalCommentDrafts, setApprovalCommentDrafts] = useState<Record<string, string>>({});
     const [selectedOutcomeSignalId, setSelectedOutcomeSignalId] = useState<string | undefined>();
     const [resultReceiptDraft, setResultReceiptDraft] = useState({
         bookings: "",
@@ -1904,6 +2208,21 @@ export default function CampaignCueWorkspaceApp() {
         usedAt: "",
         walkIns: "",
     });
+    const [resultEvidenceDraft, setResultEvidenceDraft] = useState({
+        callClicks: "",
+        directionRequests: "",
+        impressions: "",
+        linkClicks: "",
+        messages: "",
+        note: "",
+        periodEnd: "",
+        periodStart: "",
+        profileViews: "",
+        provider: "google_business_profile",
+        reach: "",
+        scope: "location_window",
+        websiteClicks: "",
+    });
     const [staffTaskDraft, setStaffTaskDraft] = useState({
         assigneeLabel: "",
         scheduledAt: "",
@@ -1914,36 +2233,41 @@ export default function CampaignCueWorkspaceApp() {
     const [packTemplateState, setPackTemplateState] = useState<PackTemplateState>({ loading: false });
     const data = state.data;
     const campaignCueThemeVars = useMemo(() => getCampaignCueThemeVars(token), [token]);
-    const visibleWorkspaceTabs = useMemo(() => CAMPAIGNCUE_WORKSPACE_TABS.filter((item) => (
-        item.key !== "inspiration" || FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE
-    )), []);
+    const visibleWorkspaceTabs = useMemo(() => (
+        CAMPAIGNCUE_WORKSPACE_TABS.filter((item) => isCampaignCueWorkspaceTabEnabled(item.key))
+    ), []);
+    const openWorkspaceTab = (target: CampaignCueWorkspaceTabKey) => {
+        setTab(isCampaignCueWorkspaceTabEnabled(target) ? target : getCampaignCueFallbackTab(target));
+    };
     const activeTabDefinition = useMemo(() => (
         visibleWorkspaceTabs.find((item) => item.key === tab) || visibleWorkspaceTabs[0]
     ), [tab, visibleWorkspaceTabs]);
-    const activeTabLabel = tChrome(`tabs.${activeTabDefinition.key}` as any);
+    const activeTabLabel = tChrome(CAMPAIGNCUE_TAB_TRANSLATION_KEYS[activeTabDefinition.key]);
     const sidebarOffset = isCollapsed && !sidebarShellExpanded
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
         : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
-    const sessionUser = session?.user || {};
-    const sessionUserId = String((session as any)?.uId || (sessionUser as any)?.id || "");
-    const userLoginLabel = (sessionUser as any)?.displayEmail
-        || (sessionUser as any)?.phone
-        || (sessionUser as any)?.phoneUsername
-        || (sessionUser as any)?.email
+    const sessionUser = session?.user;
+    const sessionUserId = String(session?.uId || sessionUser?.id || "");
+    const userLoginLabel = sessionUser?.displayEmail
+        || sessionUser?.phone
+        || sessionUser?.phoneUsername
+        || sessionUser?.email
         || "CampaignCue account";
     const userData = {
-        email: String((sessionUser as any)?.email || userLoginLabel || ""),
-        image: String((sessionUser as any)?.image || ""),
-        name: String((sessionUser as any)?.name || "CampaignCue owner"),
+        email: String(sessionUser?.email || userLoginLabel || ""),
+        image: String(sessionUser?.image || ""),
+        name: String(sessionUser?.name || "CampaignCue owner"),
     };
     const userInitials = getUserInitials(userData.name, userLoginLabel);
+    const currentWorkspaceMember = data?.workspace.members?.[sessionUserId];
+    const currentWorkspaceRole = currentWorkspaceMember?.role;
     const campaignCueNavItems = useMemo<DashboardSidebarShellItem[]>(() => {
         const groups = visibleWorkspaceTabs.reduce((groupMap, item) => {
             const items = groupMap.get(item.group) || [];
             items.push(item);
             groupMap.set(item.group, items);
             return groupMap;
-        }, new Map<string, typeof CAMPAIGNCUE_WORKSPACE_TABS[number][]>());
+        }, new Map<typeof CAMPAIGNCUE_WORKSPACE_TABS[number]["group"], typeof CAMPAIGNCUE_WORKSPACE_TABS[number][]>());
 
         return Array.from(groups.entries()).map(([group, items]) => {
             const firstItem = items[0];
@@ -1953,14 +2277,14 @@ export default function CampaignCueWorkspaceApp() {
                 expanded: Boolean(activeItem),
                 icon: firstItem.icon,
                 key: group,
-                label: tChrome(`groups.${group}` as any),
+                label: tChrome(CAMPAIGNCUE_GROUP_TRANSLATION_KEYS[group]),
                 onClick: () => setTab((activeItem || firstItem).key),
                 subNavActive: Boolean(activeItem),
                 subNav: items.map((item) => ({
                     active: item.key === tab,
                     icon: item.icon,
                     key: item.key,
-                    label: tChrome(`tabs.${item.key}` as any),
+                    label: tChrome(CAMPAIGNCUE_TAB_TRANSLATION_KEYS[item.key]),
                     onClick: () => setTab(item.key),
                 })),
             };
@@ -2021,7 +2345,12 @@ export default function CampaignCueWorkspaceApp() {
     }, []);
 
     const loadPackTemplates = async (overview: CampaignCueOverview | undefined = data) => {
+        const requestId = ++packTemplateRequestRef.current;
         if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY || !overview) return;
+        if (!campaignCueCanManageWorkspaceContent(overview.workspace.members?.[sessionUserId]?.role)) {
+            if (requestId === packTemplateRequestRef.current) setPackTemplateState({ loading: false });
+            return;
+        }
         setPackTemplateState((current) => ({ ...current, error: undefined, loading: true }));
         try {
             const catalog = await listCampaignCuePackTemplates({
@@ -2030,12 +2359,57 @@ export default function CampaignCueWorkspaceApp() {
                 includeWorkspaceTemplates: true,
                 workspaceId: overview.workspace.workspaceId,
             });
-            setPackTemplateState({ catalog, loading: false });
+            if (requestId === packTemplateRequestRef.current) {
+                setPackTemplateState({ catalog, loading: false });
+            }
         } catch (error) {
+            if (requestId !== packTemplateRequestRef.current) return;
             setPackTemplateState((current) => ({
                 ...current,
                 error: getCampaignCueWorkspaceFailureNotice(error, "Templates could not be loaded."),
                 loading: false,
+            }));
+        }
+    };
+
+    const loadMorePackTemplates = async () => {
+        const catalog = packTemplateState.catalog;
+        const catalogId = catalog?.platformOverflowDocIds[0];
+        if (!catalog || !catalogId || !data || packTemplateState.loadingMore) return;
+        const requestId = packTemplateRequestRef.current;
+        setPackTemplateState((current) => ({ ...current, error: undefined, loadingMore: true }));
+        try {
+            const platformTemplates = await loadCampaignCuePackTemplateOverflow({
+                businessCategory: catalog.businessCategory,
+                catalogId,
+                workspaceId: data.workspace.workspaceId,
+            });
+            setPackTemplateState((current) => {
+                if (
+                    requestId !== packTemplateRequestRef.current
+                    || !current.catalog
+                    || current.catalog.businessCategory !== catalog.businessCategory
+                ) {
+                    return { ...current, loadingMore: false };
+                }
+                const templatesById = new Map(current.catalog.platformTemplates.map((template) => [template.templateId, template]));
+                platformTemplates.forEach((template) => templatesById.set(template.templateId, template));
+                return {
+                    ...current,
+                    catalog: {
+                        ...current.catalog,
+                        platformOverflowDocIds: current.catalog.platformOverflowDocIds.filter((id) => id !== catalogId),
+                        platformTemplates: Array.from(templatesById.values()),
+                    },
+                    loadingMore: false,
+                };
+            });
+        } catch (error) {
+            if (requestId !== packTemplateRequestRef.current) return;
+            setPackTemplateState((current) => ({
+                ...current,
+                error: getCampaignCueWorkspaceFailureNotice(error, "More templates could not be loaded."),
+                loadingMore: false,
             }));
         }
     };
@@ -2048,13 +2422,15 @@ export default function CampaignCueWorkspaceApp() {
         data?.workspace.workspaceId,
         data?.businessBrain.businessType,
         (data?.businessBrain as (CampaignCueOverview["businessBrain"] & { businessCategory?: string }) | undefined)?.businessCategory,
+        currentWorkspaceRole,
+        sessionUserId,
     ]);
 
     useEffect(() => {
         if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) return;
         void loadCueLayerDesigns();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data?.workspace.workspaceId]);
+    }, [currentWorkspaceRole, data?.workspace.workspaceId]);
 
     useEffect(() => {
         if (!activeCueLayerDesign || !editorDraftDocument || activeCueLayerRevision == null) return;
@@ -2076,9 +2452,19 @@ export default function CampaignCueWorkspaceApp() {
     }, [activeCueLayerDesign?.id, activeCueLayerRevision, editorDraftDocument]);
 
     useEffect(() => {
-        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-        setPublicSiteHref(isLocal ? CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX : "/");
+        const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+        const isLocalCampaignCuePath = currentPath === CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX
+            || currentPath.startsWith(`${CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX}/`);
+        setPublicSiteHref(isLocalCampaignCuePath ? CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX : "/");
     }, []);
+
+    useEffect(() => {
+        if (tab !== "assets" || !mediaCaptureMission) return;
+        const frame = window.requestAnimationFrame(() => {
+            assetCapturePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [mediaCaptureMission, tab]);
 
     const updateOverview = (updater: (current: CampaignCueOverview) => CampaignCueOverview) => {
         setState((current) => (
@@ -2089,7 +2475,12 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     const loadCueLayerDesigns = async () => {
+        const requestId = ++cueLayerListRequestRef.current;
         if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) return;
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspaceRole)) {
+            if (requestId === cueLayerListRequestRef.current) setCueLayerDesigns([]);
+            return;
+        }
         try {
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.CUE_LAYERS_DESIGNS, {
                 cache: "no-store",
@@ -2100,13 +2491,18 @@ export default function CampaignCueWorkspaceApp() {
                 "cue_layers_designs_load",
                 (value): value is CampaignCueCueLayerDesign[] => Array.isArray(value),
             );
-            if (payload.ok) setCueLayerDesigns(payload.data);
+            if (requestId === cueLayerListRequestRef.current && payload.ok) {
+                setCueLayerDesigns(payload.data);
+            }
         } catch {
-            setCueLayerDesigns([]);
+            if (requestId === cueLayerListRequestRef.current) setCueLayerDesigns([]);
         }
     };
 
     const openCueLayerBootPackage = (boot: CampaignCueCueLayerBootPackage) => {
+        cueLayerSessionRef.current += 1;
+        activeCueLayerDesignRef.current = boot.design;
+        activeCueLayerRevisionRef.current = boot.design.current.revision;
         setActiveCueLayerDesign(boot.design);
         setActiveCueLayerRevision(boot.design.current.revision);
         setEditorDocument(boot.document);
@@ -2117,7 +2513,19 @@ export default function CampaignCueWorkspaceApp() {
         setTab("editor");
     };
 
+    const clearActiveCueLayerSession = () => {
+        cueLayerSessionRef.current += 1;
+        activeCueLayerDesignRef.current = null;
+        activeCueLayerRevisionRef.current = null;
+        setActiveCueLayerDesign(null);
+        setActiveCueLayerRevision(null);
+    };
+
     const openCueLayerDesign = async (designId: string) => {
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspaceRole)) {
+            setNotice("Your workspace role cannot edit reusable images.");
+            return;
+        }
         setBusyKey(`cue-layer-open:${designId}`);
         setNotice("");
         try {
@@ -2140,48 +2548,78 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
-    const saveCueLayerDocumentNow = async (documentValue: CreativeEditorDocument) => {
-        if (!activeCueLayerDesign || activeCueLayerRevision == null) return activeCueLayerRevision;
+    const saveCueLayerDocumentNow = (documentValue: CreativeEditorDocument): Promise<number | null> => {
+        const designAtRequest = activeCueLayerDesignRef.current;
+        const sessionAtRequest = cueLayerSessionRef.current;
+        if (!designAtRequest || activeCueLayerRevisionRef.current == null) {
+            return Promise.resolve(activeCueLayerRevisionRef.current);
+        }
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspaceRole)) {
+            return Promise.reject(new Error("This workspace role cannot edit reusable images."));
+        }
         if (cueLayerAutosaveTimeoutRef.current) {
             window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
             cueLayerAutosaveTimeoutRef.current = null;
         }
-        const fingerprint = fingerprintDocument(documentValue);
-        if (fingerprint === cueLayerLastSavedFingerprintRef.current) return activeCueLayerRevision;
-        const requestFingerprint = `cue_layers_save:${activeCueLayerDesign.id}:${activeCueLayerRevision}:${fingerprint}`;
-        const idempotencyKey = getMutationIdempotencyKey("cue_layers_save", requestFingerprint);
-        const res = await fetch(getCampaignCueCueLayersAutosaveApiPath(activeCueLayerDesign.id), {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                document: documentValue,
-                expectedRevision: activeCueLayerRevision,
-                idempotencyKey,
-            }),
-        });
-        const payload = await readCampaignCueWorkspaceData(
-            res,
-            "cue_layers_autosave",
-            isCueLayerAutosaveData,
-        );
-        settleMutationIdempotencyKey(requestFingerprint, payload);
-        if (!payload.ok) {
-            throw new Error("Reusable image could not be saved.");
-        }
-        const revision = Number(payload.data.revision || activeCueLayerRevision);
-        const design = payload.data.design;
-        if (design?.id) {
-            setActiveCueLayerDesign(design);
-            setCueLayerDesigns((current) => replaceBounded(current, design, CAMPAIGNCUE_PAGE_SIZE));
-        }
-        setActiveCueLayerRevision(revision);
-        cueLayerLastSavedFingerprintRef.current = fingerprint;
-        return revision;
+        const saveOperation = async (): Promise<number | null> => {
+            if (
+                cueLayerSessionRef.current !== sessionAtRequest
+                || activeCueLayerDesignRef.current?.id !== designAtRequest.id
+            ) {
+                return activeCueLayerRevisionRef.current;
+            }
+            const expectedRevision = activeCueLayerRevisionRef.current;
+            if (expectedRevision == null) return null;
+            const fingerprint = fingerprintDocument(documentValue);
+            if (fingerprint === cueLayerLastSavedFingerprintRef.current) return expectedRevision;
+            const requestFingerprint = `cue_layers_save:${designAtRequest.id}:${expectedRevision}:${fingerprint}`;
+            const idempotencyKey = getMutationIdempotencyKey("cue_layers_save", requestFingerprint);
+            const res = await fetch(getCampaignCueCueLayersAutosaveApiPath(designAtRequest.id), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    document: documentValue,
+                    expectedRevision,
+                    idempotencyKey,
+                }),
+            });
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "cue_layers_autosave",
+                isCueLayerAutosaveData,
+            );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
+            if (!payload.ok) throw new Error("Reusable image could not be saved.");
+            const revision = Number(payload.data.revision || expectedRevision);
+            if (
+                cueLayerSessionRef.current !== sessionAtRequest
+                || activeCueLayerDesignRef.current?.id !== designAtRequest.id
+            ) {
+                return revision;
+            }
+            const design = payload.data.design;
+            if (design?.id) {
+                activeCueLayerDesignRef.current = design;
+                setActiveCueLayerDesign(design);
+                setCueLayerDesigns((current) => replaceBounded(current, design, CAMPAIGNCUE_PAGE_SIZE));
+            }
+            activeCueLayerRevisionRef.current = revision;
+            setActiveCueLayerRevision(revision);
+            cueLayerLastSavedFingerprintRef.current = fingerprint;
+            return revision;
+        };
+        const queuedSave = cueLayerSaveQueueRef.current.then(saveOperation, saveOperation);
+        cueLayerSaveQueueRef.current = queuedSave.then(() => undefined, () => undefined);
+        return queuedSave;
     };
 
     const uploadCueLayerFile = async (file: File) => {
         if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD) return;
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspaceRole)) {
+            setNotice("Your workspace role can review campaigns but cannot add reusable images.");
+            return;
+        }
         if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
             setNotice("Use a PNG, JPEG, or WebP image.");
             return;
@@ -2232,6 +2670,10 @@ export default function CampaignCueWorkspaceApp() {
 
     const repairCueLayerFallback = async () => {
         if (!activeCueLayerDesign || activeCueLayerRevision == null) return;
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspaceRole)) {
+            setNotice("Your workspace role cannot change reusable images.");
+            return;
+        }
         setBusyKey("cue-layer-repair");
         setNotice("");
         try {
@@ -2316,6 +2758,11 @@ export default function CampaignCueWorkspaceApp() {
     }, [data]);
 
     const latestCampaign = data?.campaigns?.[0];
+    const latestGlobalCampaign = data?.campaigns.find((campaign) => (
+        !campaign.locationId
+        && !campaign.variantRootCampaignId
+        && campaign.status !== "archived"
+    ));
     const scheduleCampaign = data?.campaigns.find((campaign) => campaign.id === scheduleCampaignId) || latestCampaign;
     const resultCampaign = data?.campaigns.find((campaign) => campaign.id === resultCampaignId) || latestCampaign;
     const resultCampaignRecipe = CAMPAIGNCUE_DAILY_DESK_RECIPES.find((recipe) => (
@@ -2326,8 +2773,32 @@ export default function CampaignCueWorkspaceApp() {
         || data?.dailyDesk.resultPrompt?.resultOptions
         || data?.dailyDesk.recipe.resultOptions
         || [];
-    const currentWorkspaceRole = data?.workspace.members?.[sessionUserId]?.role || data?.workspace.defaultRole;
-    const canResolveCampaignApproval = campaignCueCanResolveApproval(currentWorkspaceRole);
+    const hasResultEvidenceMetrics = ([
+        "impressions",
+        "reach",
+        "profileViews",
+        "websiteClicks",
+        "callClicks",
+        "directionRequests",
+        "messages",
+        "linkClicks",
+    ] as const).some((key) => resultEvidenceDraft[key].trim() !== "");
+    const campaignMemoryRecipe = CAMPAIGNCUE_DAILY_DESK_RECIPES.find((recipe) => (
+        recipe.id === data?.campaignMemory.topRecipe?.key
+    ));
+    const campaignMemoryChannel = data?.campaignMemory.topChannel
+        ? CAMPAIGNCUE_CHANNEL_LABELS[data.campaignMemory.topChannel.key as CampaignCueChannel]
+        : undefined;
+    const approvalInboxEnabled = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_APPROVAL_COMMENT_INBOX;
+    const canManageWorkspaceContent = campaignCueCanManageWorkspaceContent(currentWorkspaceRole);
+    const canManageSomeCampaignOutput = campaignCueCanManageSomeCampaignOutput(currentWorkspaceRole);
+    const canResolveCampaignApproval = approvalInboxEnabled && campaignCueCanResolveApproval(currentWorkspaceRole);
+    const canCommentOnCampaignApproval = approvalInboxEnabled && campaignCueCanCommentOnApproval(currentWorkspaceRole);
+    const canAcceptCampaignExperiment = campaignCueCanAcceptExperiment(currentWorkspaceRole);
+    const canRecordResultEvidence = campaignCueCanRecordResultEvidence(currentWorkspaceRole);
+    const resultEvidenceTodayKey = getStoreLocalDateKey(
+        data?.workspace.settings.timezone || data?.businessBrain.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE,
+    );
     const isCampaignActionBusy = (
         campaignId: string,
         action: CampaignCueActionType,
@@ -2337,6 +2808,8 @@ export default function CampaignCueWorkspaceApp() {
         Boolean(busyKey?.startsWith(`${campaignId}:request_approval:`))
         || Boolean(busyKey?.startsWith(`${campaignId}:approve:`))
         || Boolean(busyKey?.startsWith(`${campaignId}:reject:`))
+        || Boolean(busyKey?.startsWith(`${campaignId}:add_approval_comment:`))
+        || Boolean(busyKey?.startsWith(`${campaignId}:resolve_approval_comment:`))
     );
     const trustFindings = useMemo(() => (
         data?.campaigns.flatMap((campaign) => campaign.outputs.map((output) => ({
@@ -2352,6 +2825,12 @@ export default function CampaignCueWorkspaceApp() {
     );
 
     const campaignCreationBlockedReason = (opportunityId?: string, recipeId?: string) => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_GENERATION) {
+            return "Campaign pack creation is unavailable right now.";
+        }
+        if (!canManageWorkspaceContent) {
+            return "Your workspace role can review campaign packs but cannot create or change them.";
+        }
         const decisions = data?.dailyDesk.candidateDecisions || [];
         const decision = recipeId
             ? decisions.find((item) => item.recipeId === recipeId)
@@ -2387,13 +2866,17 @@ export default function CampaignCueWorkspaceApp() {
         },
         reuseCampaignId?: string,
     ) => {
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role can review campaign packs but cannot create or change them.");
+            return;
+        }
         const reuseSource = reuseCampaignId
             ? data?.campaigns.find((campaign) => campaign.id === reuseCampaignId)
             : undefined;
         const blockedReason = campaignCreationBlockedReason(opportunityId, reuseSource?.pack?.recipeId);
         if (blockedReason) {
             setNotice(blockedReason);
-            setTab((data?.dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey | undefined) || "sources");
+            openWorkspaceTab((data?.dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey | undefined) || "sources");
             return;
         }
         setBusyKey(
@@ -2455,6 +2938,10 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     const saveBusinessDetails = async () => {
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot change Business Brain facts.");
+            return;
+        }
         setBusyKey("business");
         setNotice("");
         try {
@@ -2546,6 +3033,10 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     const createSourceInput = async () => {
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot add campaign source facts.");
+            return;
+        }
         setBusyKey("source");
         setNotice("");
         try {
@@ -2590,8 +3081,101 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
+    const reviewCampaignInbox = () => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_INBOX) return;
+        const review = parseCampaignCueInboxText(campaignInboxDraft);
+        setCampaignInboxReview(review);
+        setCampaignInboxSelectedIds(
+            review.candidates
+                .filter((candidate) => candidate.destination === "source_input")
+                .map((candidate) => candidate.id),
+        );
+        if (review.blocked) {
+            setNotice(review.notices[0] || "Review this update before saving.");
+            return;
+        }
+        const sourceCount = review.candidates.filter((candidate) => candidate.destination === "source_input").length;
+        const businessCount = review.candidates.length - sourceCount;
+        setNotice(
+            `${review.candidates.length} detail${review.candidates.length === 1 ? "" : "s"} ready to review${businessCount ? `; ${businessCount} belongs in Business details` : ""}.`,
+        );
+    };
+
+    const toggleCampaignInboxCandidate = (candidateId: string) => {
+        setCampaignInboxSelectedIds((selectedIds) => (
+            selectedIds.includes(candidateId)
+                ? selectedIds.filter((selectedId) => selectedId !== candidateId)
+                : [...selectedIds, candidateId]
+        ));
+    };
+
+    const routeCampaignInboxBusinessCandidate = (candidate: CampaignCueInboxCandidate) => {
+        const patch = campaignCueInboxCandidateToBusinessPatch(candidate);
+        if (!patch) return;
+        setBusinessDraft((draft) => ({ ...draft, ...patch }));
+        setTab("details");
+        setNotice(`${candidate.label} added to Business details. Review and save it there.`);
+    };
+
+    const saveCampaignInbox = async () => {
+        if (!campaignInboxReview || campaignInboxReview.blocked) return;
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot confirm Campaign Inbox facts.");
+            return;
+        }
+        const candidates = campaignInboxReview.candidates
+            .filter((candidate) => campaignInboxSelectedIds.includes(candidate.id))
+            .map(campaignCueInboxCandidateToSourceInput)
+            .filter((candidate): candidate is NonNullable<ReturnType<typeof campaignCueInboxCandidateToSourceInput>> => Boolean(candidate));
+        if (!candidates.length) {
+            setNotice("Select at least one campaign detail to save.");
+            return;
+        }
+        setBusyKey("campaign-inbox");
+        setNotice("");
+        try {
+            const requestPayload = { action: "confirm_inbox" as const, candidates };
+            const requestFingerprint = `campaign_inbox_confirm:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("campaign_inbox_confirm", requestFingerprint);
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.SOURCES, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
+            });
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "campaign_inbox_confirm",
+                isCampaignCueInboxConfirmResultData,
+            );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
+            if (!payload.ok) {
+                setNotice(("message" in payload && payload.message) || "Campaign details could not be saved.");
+                return;
+            }
+            updateOverview((current) => ({
+                ...current,
+                sourceFacts: payload.data.sourceSnapshot.facts,
+                sourceHash: payload.data.sourceSnapshot.sourceHash,
+                sourceInputs: prependCampaignCueSourceInputs(current.sourceInputs, payload.data.sourceInputs),
+            }));
+            setCampaignInboxDraft("");
+            setCampaignInboxReview(null);
+            setCampaignInboxSelectedIds([]);
+            setNotice(`${payload.data.sourceInputs.length} campaign detail${payload.data.sourceInputs.length === 1 ? "" : "s"} saved.`);
+        } catch (error) {
+            setNotice(getCampaignCueWorkspaceFailureNotice(error, "Campaign details could not be saved."));
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
     const createInspirationPattern = async () => {
         if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE) return;
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot add example patterns.");
+            return;
+        }
         setBusyKey("inspiration-pattern");
         setNotice("");
         try {
@@ -2651,6 +3235,10 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     const createLocation = async () => {
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot add locations.");
+            return;
+        }
         setBusyKey("location");
         setNotice("");
         try {
@@ -2672,7 +3260,18 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice("Location could not be saved.");
                 return;
             }
-            setLocationDraft({ locality: "", name: "", status: "draft" });
+            setLocationDraft({
+                contacts: {
+                    bookingUrl: "",
+                    phone: "",
+                    publicMenuUrl: "",
+                    website: "",
+                    whatsapp: "",
+                },
+                locality: "",
+                name: "",
+                status: "draft",
+            });
             setNotice("Location saved.");
             const location = payload.data;
             if (location.id) {
@@ -2686,24 +3285,132 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
+    const createLocationVariants = async () => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_GENERATION) {
+            setNotice("Branch pack creation is unavailable right now.");
+            return;
+        }
+        if (!canManageSomeCampaignOutput) {
+            setNotice("Your workspace role cannot prepare location campaign packs.");
+            return;
+        }
+        if (!latestGlobalCampaign || !selectedLocationIds.length) {
+            setNotice("Choose an original campaign pack and at least one active location.");
+            return;
+        }
+        const locationIds = [...selectedLocationIds].sort((left, right) => left.localeCompare(right));
+        setBusyKey("location-variants");
+        setNotice("");
+        try {
+            const requestPayload = {
+                baseCampaignId: latestGlobalCampaign.id,
+                locationIds,
+            };
+            const requestFingerprint = `location_variants:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("location_variants", requestFingerprint);
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.CAMPAIGN_VARIANTS, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
+            });
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "location_variants",
+                isCampaignCueLocationVariantBatchResultData,
+            );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
+            if (!payload.ok) {
+                setNotice(("message" in payload && payload.message) || "Branch packs could not be created.");
+                return;
+            }
+            updateOverview((current) => {
+                const createdIds = new Set(payload.data.campaigns.map((campaign) => campaign.id));
+                return {
+                    ...current,
+                    campaigns: [
+                        ...payload.data.campaigns,
+                        ...current.campaigns.filter((campaign) => !createdIds.has(campaign.id)),
+                    ].slice(0, CAMPAIGNCUE_PAGE_SIZE),
+                };
+            });
+            setSelectedLocationIds([]);
+            setNotice(`${payload.data.campaigns.length} branch pack${payload.data.campaigns.length === 1 ? "" : "s"} ready for independent review.`);
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
     const recordAction = async (
         campaign: CampaignCueCampaign,
         action: CampaignCueActionType,
         output?: CampaignCueOutput,
         noteOverride?: string,
         resultSignalId?: string,
+        commentId?: string,
     ) => {
+        if (CAMPAIGNCUE_APPROVAL_INBOX_ACTIONS.has(action) && !approvalInboxEnabled) {
+            setNotice("Campaign approval and comments are unavailable right now.");
+            return;
+        }
+        if (
+            !CAMPAIGNCUE_APPROVAL_INBOX_ACTIONS.has(action)
+            && !campaignCueCanPerformCampaignOutputAction({
+                action,
+                locationId: campaign.locationId,
+                member: currentWorkspaceMember,
+            })
+        ) {
+            setNotice("Your workspace role cannot complete this campaign action.");
+            return;
+        }
         const key = `${campaign.id}:${action}:${output?.id || "campaign"}`;
         setBusyKey(key);
         setNotice("");
         try {
-            const exportZip = action === "export"
+            const exportZip = action === "export" || action === "archive_export"
                 ? await buildCampaignPackZipBlob(campaign, data?.dailyDesk)
                 : null;
+            const archiveUpload = action === "archive_export" && exportZip
+                ? await uploadCampaignCueExportArchive({
+                    blob: exportZip.blob,
+                    campaignId: campaign.id,
+                    filename: exportZip.filename,
+                    workspaceId: campaign.workspaceId,
+                })
+                : null;
+            if (archiveUpload?.status === "already_stored") {
+                updateOverview((current) => ({
+                    ...current,
+                    campaigns: replaceBounded(current.campaigns, {
+                        ...campaign,
+                        exportArchive: archiveUpload.archive,
+                    }, CAMPAIGNCUE_PAGE_SIZE),
+                }));
+                setNotice("The current Campaign Pack ZIP is already saved in CampaignCue.");
+                return;
+            }
             const resultMetrics = Object.fromEntries(
                 (["replies", "calls", "bookings", "orders", "walkIns", "linkClicks"] as const)
                     .map((key) => [key, resultReceiptDraft[key].trim() ? Number(resultReceiptDraft[key]) : undefined] as const)
                     .filter(([, value]) => typeof value === "number" && Number.isFinite(value)),
+            );
+            const resultEvidenceMetrics = Object.fromEntries(
+                ([
+                    "impressions",
+                    "reach",
+                    "profileViews",
+                    "websiteClicks",
+                    "callClicks",
+                    "directionRequests",
+                    "messages",
+                    "linkClicks",
+                ] as const)
+                    .map((metric) => [
+                        metric,
+                        resultEvidenceDraft[metric].trim() ? Number(resultEvidenceDraft[metric]) : undefined,
+                    ] as const)
+                    .filter(([, value]) => typeof value === "number" && Number.isSafeInteger(value)),
             );
             const scheduledAt = action === "schedule"
                 ? parseDateTimeLocal(staffTaskDraft.scheduledAt, businessDraft.timezone) || undefined
@@ -2711,6 +3418,8 @@ export default function CampaignCueWorkspaceApp() {
             const requestIdentity = {
                 action,
                 channel: output?.channel || campaign.channels[0],
+                commentId: action === "resolve_approval_comment" ? commentId : undefined,
+                locationId: CAMPAIGNCUE_APPROVAL_INBOX_ACTIONS.has(action) ? campaign.locationId : undefined,
                 outputId: output?.id,
                 scheduledAt,
                 note: action === "schedule"
@@ -2721,6 +3430,8 @@ export default function CampaignCueWorkspaceApp() {
                         ? noteOverride ?? outcomeDraft
                         : action === "approve" || action === "reject"
                             ? (noteOverride ?? approvalDecisionNote.trim()) || undefined
+                            : action === "add_approval_comment"
+                                ? noteOverride?.trim() || undefined
                             : undefined,
                 resultSignalId: action === "record_outcome"
                     ? resultSignalId || selectedOutcomeSignalId
@@ -2731,6 +3442,15 @@ export default function CampaignCueWorkspaceApp() {
                     metrics: resultMetrics,
                     usedAt: parseDateTimeLocal(resultReceiptDraft.usedAt, businessDraft.timezone) || undefined,
                 } : undefined,
+                resultEvidence: action === "record_result_evidence" ? {
+                    metrics: resultEvidenceMetrics,
+                    note: resultEvidenceDraft.note.trim() || undefined,
+                    periodEnd: resultEvidenceDraft.periodEnd,
+                    periodStart: resultEvidenceDraft.periodStart,
+                    provider: resultEvidenceDraft.provider,
+                    scope: resultEvidenceDraft.scope,
+                } : undefined,
+                exportArchive: archiveUpload?.status === "uploaded" ? archiveUpload.finalize : undefined,
                 staffAssignee: action === "schedule" ? staffTaskDraft.assigneeLabel : undefined,
                 taskType: action === "schedule" ? staffTaskDraft.taskType : undefined,
             };
@@ -2746,6 +3466,8 @@ export default function CampaignCueWorkspaceApp() {
                 }),
             });
             const payload = await readCampaignCueWorkspaceData<{
+                analytics?: CampaignCueOverview["analytics"];
+                asset?: CampaignCueAsset;
                 campaign?: CampaignCueCampaign | null;
                 replayed?: boolean;
                 schedule?: CampaignCueOverview["schedules"][number] | null;
@@ -2767,6 +3489,10 @@ export default function CampaignCueWorkspaceApp() {
                     downloadBlob(exportZip.filename, exportZip.blob);
                 }
                 setNotice("Campaign pack ZIP downloaded and recorded.");
+            } else if (action === "archive_export") {
+                setNotice(campaign.exportArchive
+                    ? "Cloud copy replaced. CampaignCue keeps at most two rotating archive objects for this campaign."
+                    : "Cloud copy saved. You can download it again from CampaignCue.");
             } else if (action === "record_outcome") {
                 setNotice("Result recorded.");
                 setResultCampaignId(campaign.id);
@@ -2783,6 +3509,22 @@ export default function CampaignCueWorkspaceApp() {
                     usedAt: "",
                     walkIns: "",
                 }));
+            } else if (action === "record_result_evidence") {
+                setNotice("Report numbers saved as directional evidence.");
+                setResultEvidenceDraft((current) => ({
+                    ...current,
+                    callClicks: "",
+                    directionRequests: "",
+                    impressions: "",
+                    linkClicks: "",
+                    messages: "",
+                    note: "",
+                    periodEnd: "",
+                    periodStart: "",
+                    profileViews: "",
+                    reach: "",
+                    websiteClicks: "",
+                }));
             } else if (action === "approve") {
                 setNotice("Campaign pack approved.");
                 setApprovalDecisionNote("");
@@ -2791,22 +3533,51 @@ export default function CampaignCueWorkspaceApp() {
                 setApprovalDecisionNote("");
             } else if (action === "request_approval") {
                 setNotice(payload.data.replayed ? "Approval is already waiting." : "Approval requested.");
+            } else if (action === "add_approval_comment") {
+                setApprovalCommentDrafts((current) => ({ ...current, [campaign.id]: "" }));
+                setNotice("Review comment added.");
+            } else if (action === "resolve_approval_comment") {
+                setNotice("Review comment resolved.");
             } else if (action === "schedule") {
                 setNotice("Manual campaign reminder scheduled.");
                 setStaffTaskDraft((current) => ({ ...current, scheduledAt: "" }));
                 setScheduleCampaignId(undefined);
+            } else if (action === "accept_experiment") {
+                setNotice(payload.data.replayed ? "This one-change test is already in use." : "One-change test accepted.");
             } else {
                 setNotice("Action recorded.");
             }
             if (payload.data.campaign) {
-                updateOverview((current) => ({
-                    ...current,
-                    analytics: payload.data.replayed ? current.analytics : bumpAnalytics(current, action),
-                    campaigns: replaceBounded(current.campaigns, payload.data.campaign as CampaignCueCampaign, CAMPAIGNCUE_PAGE_SIZE),
-                    schedules: payload.data.schedule
-                        ? prependBounded(current.schedules, payload.data.schedule, CAMPAIGNCUE_PAGE_SIZE)
-                        : current.schedules,
-                }));
+                updateOverview((current) => {
+                    const campaigns = replaceBounded(
+                        current.campaigns,
+                        payload.data.campaign as CampaignCueCampaign,
+                        CAMPAIGNCUE_PAGE_SIZE,
+                    );
+                    const analytics = payload.data.analytics
+                        || (
+                            payload.data.replayed
+                            || action === "accept_experiment"
+                            || action === "record_result_evidence"
+                                ? current.analytics
+                                : bumpAnalytics(current, action)
+                        );
+                    return {
+                        ...current,
+                        analytics,
+                        campaignMemory: buildCampaignCueCampaignMemoryView(resolveCampaignCueCampaignMemorySummary({
+                            analytics,
+                            campaigns,
+                        })),
+                        campaigns,
+                        schedules: payload.data.schedule
+                            ? prependBounded(current.schedules, payload.data.schedule, CAMPAIGNCUE_PAGE_SIZE)
+                            : current.schedules,
+                        assets: payload.data.asset
+                            ? prependBounded(current.assets, payload.data.asset, CAMPAIGNCUE_PAGE_SIZE)
+                            : current.assets,
+                    };
+                });
             }
         } catch (error) {
             setNotice(getCampaignCueWorkspaceFailureNotice(error, "Action could not be completed."));
@@ -2816,6 +3587,10 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     const registerAsset = async () => {
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot add Asset Library records.");
+            return;
+        }
         setBusyKey("asset");
         setNotice("");
         try {
@@ -2866,15 +3641,61 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
-    const downloadAsset = async (asset: CampaignCueAsset) => {
-        if (!asset.file?.downloadUrl && !asset.file?.storagePath) {
-            setNotice("This asset does not have a downloadable file yet.");
+    const uploadMissionMedia = async (file: File) => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SECURE_MEDIA_CAPTURE) return;
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot upload photos or clips.");
             return;
         }
-        setBusyKey(`asset-download:${asset.id}`);
+        if (!data) {
+            setNotice("CampaignCue workspace is unavailable. Refresh before uploading.");
+            return;
+        }
+        if (!mediaCaptureConsentType) {
+            setNotice("Choose the permission status before adding a photo or clip.");
+            return;
+        }
+        setBusyKey("media-capture-upload");
+        setMediaUploadProgress(0);
         setNotice("");
         try {
-            const res = await fetch(getCampaignCueAssetDownloadApiPath(asset.id), {
+            const asset = await uploadCampaignCueMediaAsset({
+                allowedAssetTypes: ["image", "video"],
+                consentType: mediaCaptureConsentType,
+                file,
+                missionTask: mediaCaptureMission?.task,
+                onProgress: setMediaUploadProgress,
+                recipeId: mediaCaptureMission?.recipeId,
+                tags: ["asset-library"],
+                workspaceId: data.workspace.workspaceId,
+            });
+            updateOverview((current) => ({
+                ...current,
+                assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
+            }));
+            setMediaCaptureConsentType("");
+            setMediaCaptureMission(null);
+            setNotice(asset.rights.status === "confirmed"
+                ? "Photo or clip uploaded privately and ready to review."
+                : "Photo or clip uploaded privately. Confirm permission before public use.");
+        } catch (error) {
+            setNotice(getCampaignCueMediaUploadFailureNotice(error));
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const onMissionMediaChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file) await uploadMissionMedia(file);
+    };
+
+    const downloadAssetById = async (assetId: string, name: string) => {
+        setBusyKey(`asset-download:${assetId}`);
+        setNotice("");
+        try {
+            const res = await fetch(getCampaignCueAssetDownloadApiPath(assetId), {
                 cache: "no-store",
                 credentials: "include",
             });
@@ -2888,11 +3709,28 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice("Asset download is unavailable.");
                 return;
             }
-            openDownloadUrl(url, `${asset.name || "campaigncue-asset"}`);
+            openDownloadUrl(url, name || "campaigncue-asset");
             setNotice("Asset download opened.");
         } finally {
             setBusyKey(null);
         }
+    };
+
+    const downloadAsset = async (asset: CampaignCueAsset) => {
+        if (!asset.file?.downloadUrl && !asset.file?.storagePath) {
+            setNotice("This asset does not have a downloadable file yet.");
+            return;
+        }
+        await downloadAssetById(asset.id, asset.name);
+    };
+
+    const downloadCampaignArchive = async (campaign: CampaignCueCampaign) => {
+        const archive = campaign.exportArchive;
+        if (!archive) {
+            setNotice("Save a cloud copy before downloading it again.");
+            return;
+        }
+        await downloadAssetById(archive.assetId, archive.filename);
     };
 
     const creativeEditorEnabled = FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR
@@ -2904,11 +3742,18 @@ export default function CampaignCueWorkspaceApp() {
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_DESIGN_CUE;
     const cueLayersUploadEnabled = creativeEditorEnabled
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS
-        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD;
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD
+        && canManageWorkspaceContent;
+    const secureMediaCaptureEnabled = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SECURE_MEDIA_CAPTURE
+        && canManageWorkspaceContent;
 
     const saveCurrentCampaignPackTemplate = async () => {
         if (!data || !latestCampaign) {
             setNotice("Create or open a campaign pack before saving it as a reusable base.");
+            return;
+        }
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot save reusable campaign pack bases.");
             return;
         }
         setBusyKey("pack-template-save");
@@ -2972,13 +3817,13 @@ export default function CampaignCueWorkspaceApp() {
         });
         if (unresolvedRequirements.length) {
             setNotice(unresolvedRequirements[0].ownerQuestion);
-            setTab("sources");
+            openWorkspaceTab("sources");
             return;
         }
         const intentDecision = decisionForOutputIntent(intent);
         if (intent.ownerGoals.length && !intentDecision) {
             setNotice("This output does not match a current campaign opportunity for this business.");
-            setTab("cues");
+            openWorkspaceTab("cues");
             return;
         }
         void createCampaign(intentDecision?.opportunityId, {
@@ -2995,10 +3840,14 @@ export default function CampaignCueWorkspaceApp() {
         intent?: CampaignCueOutputPickerItem,
     ) => {
         if (!data) return;
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role can review campaign packs but cannot create one from a reusable base.");
+            return;
+        }
         const intentDecision = decisionForOutputIntent(intent);
         if (intent?.ownerGoals.length && !intentDecision) {
             setNotice("This output does not match a current campaign opportunity for this business.");
-            setTab("cues");
+            openWorkspaceTab("cues");
             return;
         }
         const intentBlockedReason = intent && intent.id !== "recommended_pack" && intentDecision
@@ -3006,7 +3855,7 @@ export default function CampaignCueWorkspaceApp() {
             : "";
         if (intentBlockedReason) {
             setNotice(intentBlockedReason);
-            setTab("sources");
+            openWorkspaceTab("sources");
             return;
         }
         setBusyKey(`pack-template-open:${template.templateId}`);
@@ -3037,7 +3886,7 @@ export default function CampaignCueWorkspaceApp() {
                 if (unresolvedIntentRequirements.length) {
                     setNotice(unresolvedIntentRequirements[0].ownerQuestion);
                 }
-                setTab("sources");
+                openWorkspaceTab("sources");
                 return;
             }
             if (hydrated.editorDocument && creativeEditorEnabled) {
@@ -3056,8 +3905,7 @@ export default function CampaignCueWorkspaceApp() {
                     template,
                     workspaceId: data.workspace.workspaceId,
                 });
-                setActiveCueLayerDesign(null);
-                setActiveCueLayerRevision(null);
+                clearActiveCueLayerSession();
                 setEditorDraftDocument(null);
                 cueLayerLastSavedFingerprintRef.current = "";
                 setEditorDocument(hydratedEditorDocument);
@@ -3113,8 +3961,11 @@ export default function CampaignCueWorkspaceApp() {
 
     const openBlankCreativeEditor = () => {
         if (!data || !creativeEditorEnabled) return;
-        setActiveCueLayerDesign(null);
-        setActiveCueLayerRevision(null);
+        if (!canManageWorkspaceContent) {
+            setNotice("Your workspace role cannot create a new design.");
+            return;
+        }
+        clearActiveCueLayerSession();
         setEditorDraftDocument(null);
         cueLayerLastSavedFingerprintRef.current = "";
         setEditorDocument(buildCampaignCueBlankCreativeDocument({
@@ -3128,8 +3979,14 @@ export default function CampaignCueWorkspaceApp() {
 
     const openOutputCreativeEditor = (campaign: CampaignCueCampaign, output: CampaignCueOutput) => {
         if (!data || !creativeEditorEnabled) return;
-        setActiveCueLayerDesign(null);
-        setActiveCueLayerRevision(null);
+        if (!campaignCueCanManageCampaignLocation({
+            locationId: campaign.locationId,
+            member: currentWorkspaceMember,
+        })) {
+            setNotice("Your workspace role cannot edit this campaign output.");
+            return;
+        }
+        clearActiveCueLayerSession();
         setEditorDraftDocument(null);
         cueLayerLastSavedFingerprintRef.current = "";
         setEditorDocument(buildCampaignCueOutputCreativeDocument({
@@ -3145,6 +4002,16 @@ export default function CampaignCueWorkspaceApp() {
 
     const registerEditorExport = async (result: CreativeEditorExportResult) => {
         if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS) return;
+        const linkedCampaign = result.document.metadata?.campaignId
+            ? data.campaigns.find((campaign) => campaign.id === result.document.metadata?.campaignId)
+            : undefined;
+        if (!campaignCueCanRegisterAsset({
+            locationId: linkedCampaign?.locationId,
+            member: currentWorkspaceMember,
+        })) {
+            setNotice("Your workspace role cannot save this editor export.");
+            return;
+        }
         setBusyKey("editor-export");
         setNotice("");
         try {
@@ -3256,7 +4123,7 @@ export default function CampaignCueWorkspaceApp() {
                         <h2>{copy?.title || "Outputs"}</h2>
                         <p>{rows.length ? `${rows.length} output${rows.length === 1 ? "" : "s"} ready to download.` : copy?.empty}</p>
                     </div>
-                    <button className={styles.ghostButton} disabled={busyKey === "cue:default"} onClick={() => createCampaign()} type="button">
+                    <button className={styles.ghostButton} disabled={busyKey === "cue:default" || !canManageWorkspaceContent} onClick={() => createCampaign()} type="button">
                         <LuPackageCheck size={16} />
                         Create pack
                     </button>
@@ -3278,7 +4145,11 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.chips}>
                                 <button
                                     className={styles.ghostButton}
-                                    disabled={isCampaignActionBusy(campaign.id, "download", output.id) || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                    disabled={
+                                        isCampaignActionBusy(campaign.id, "download", output.id)
+                                        || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)
+                                        || !campaignCueCanPerformCampaignOutputAction({ action: "download", locationId: campaign.locationId, member: currentWorkspaceMember })
+                                    }
                                     onClick={() => recordAction(campaign, "download", output)}
                                     title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                     type="button"
@@ -3286,7 +4157,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <LuDownload size={16} />
                                     Download
                                 </button>
-                                {creativeEditorEnabled ? (
+                                {creativeEditorEnabled && campaignCueCanManageCampaignLocation({ locationId: campaign.locationId, member: currentWorkspaceMember }) ? (
                                     <button className={styles.ghostButton} onClick={() => openOutputCreativeEditor(campaign, output)} type="button">
                                         <LuImage size={16} />
                                         Open editor
@@ -3294,7 +4165,10 @@ export default function CampaignCueWorkspaceApp() {
                                 ) : null}
                                 <button
                                     className={styles.ghostButton}
-                                    disabled={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                    disabled={
+                                        campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)
+                                        || !campaignCueCanPerformCampaignOutputAction({ action: "schedule", locationId: campaign.locationId, member: currentWorkspaceMember })
+                                    }
                                     onClick={() => openScheduleCampaign(campaign)}
                                     title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                     type="button"
@@ -3304,7 +4178,7 @@ export default function CampaignCueWorkspaceApp() {
                                 </button>
                                 <button
                                     className={styles.ghostButton}
-                                    disabled={!canRequestCampaignApproval(campaign) || isCampaignApprovalBusy(campaign.id)}
+                                    disabled={!canRequestCampaignApproval(campaign, currentWorkspaceRole) || isCampaignApprovalBusy(campaign.id)}
                                     onClick={() => recordAction(campaign, "request_approval", output)}
                                     type="button"
                                 >
@@ -3342,7 +4216,14 @@ export default function CampaignCueWorkspaceApp() {
     ].filter(Boolean) as NonNullable<typeof dailyDesk.resultPrompt>[];
     const primaryCreateOpportunityId = dailyDesk.primaryOpportunity?.id || firstOpportunity?.id;
     const primaryCreateBlockedReason = campaignCreationBlockedReason(primaryCreateOpportunityId);
-    const openDeskTarget = (target: CampaignCueWorkspaceTabKey) => setTab(target);
+    const openDeskTarget = (target: CampaignCueWorkspaceTabKey) => openWorkspaceTab(target);
+    const runLocalVisibilityAction = (cue: CampaignCueLocalVisibilityCue) => {
+        if (cue.actionKind === "create_visibility_pack") {
+            void createCampaign("cue_local_visibility_refresh");
+            return;
+        }
+        openDeskTarget(cue.targetTab as CampaignCueWorkspaceTabKey);
+    };
     const openScheduleCampaign = (campaign: CampaignCueCampaign) => {
         setScheduleCampaignId(campaign.id);
         setTab("calendar");
@@ -3361,7 +4242,7 @@ export default function CampaignCueWorkspaceApp() {
             usedAt: "",
             walkIns: "",
         });
-        setTab("analytics");
+        openWorkspaceTab("analytics");
     };
     const copyHandoffValue = async (value: string) => {
         try {
@@ -3375,6 +4256,87 @@ export default function CampaignCueWorkspaceApp() {
                 valueLength: value.length,
             });
             setNotice(hasCampaignCueHandoffClipboardWrite() ? "Copy failed." : "Copy is unavailable in this browser.");
+        }
+    };
+    const mutateHostedOfferPage = async (campaign: CampaignCueCampaign, action: "publish" | "unpublish") => {
+        const key = `${campaign.id}:offer-page:${action}`;
+        setBusyKey(key);
+        setNotice("");
+        const requestFingerprint = [
+            "offer_page",
+            campaign.id,
+            action,
+            campaign.pack?.offerPage?.slug || "new",
+            campaign.pack?.offerPage?.status || "none",
+        ].join(":");
+        try {
+            const idempotencyKey = getMutationIdempotencyKey(`offer_page_${action}`, requestFingerprint);
+            const response = await fetch(getCampaignCueOfferPageApiPath(campaign.id), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, idempotencyKey }),
+            });
+            const payload = await readCampaignCueWorkspaceData(
+                response,
+                `offer_page_${action}`,
+                isCampaignCueOfferPageMutationResultData,
+            );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
+            if (!payload.ok) {
+                setNotice(("message" in payload && payload.message) || "Campaign page could not be updated.");
+                return;
+            }
+            updateOverview((current) => ({
+                ...current,
+                campaigns: replaceBounded(current.campaigns, payload.data.campaign, CAMPAIGNCUE_PAGE_SIZE),
+            }));
+            setNotice(action === "publish"
+                ? payload.data.replayed ? "Campaign page is already published." : "Campaign page published."
+                : payload.data.replayed ? "Campaign page is already unpublished." : "Campaign page unpublished.");
+        } catch (error) {
+            setNotice(getCampaignCueWorkspaceFailureNotice(error, "Campaign page could not be updated."));
+        } finally {
+            setBusyKey(null);
+        }
+    };
+    const openHostedOfferPage = (campaign: CampaignCueCampaign) => {
+        const slug = campaign.pack?.offerPage?.slug;
+        if (!slug) return;
+        const url = getCampaignCueHostedOfferUrl(slug);
+        const opened = window.open(url, "_blank", "noopener,noreferrer");
+        if (opened) opened.opener = null;
+    };
+    const copyHostedOfferPage = async (campaign: CampaignCueCampaign) => {
+        const slug = campaign.pack?.offerPage?.slug;
+        if (!slug) return;
+        await copyHandoffValue(getCampaignCueHostedOfferUrl(slug));
+    };
+    const downloadHostedOfferQr = async (campaign: CampaignCueCampaign) => {
+        const slug = campaign.pack?.offerPage?.slug;
+        if (!slug || !data) return;
+        setBusyKey(`${campaign.id}:offer-page:qr`);
+        setNotice("");
+        try {
+            const { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } = await import("@lib/utils/qrCode");
+            const url = getCampaignCueHostedOfferUrl(slug);
+            const dataUrl = await generateBrandedQrCodeDataUrl(url, {
+                brandColor: data.businessBrain.brandKit.primaryColor,
+                footer: url.replace(/^https?:\/\//, ""),
+                storeName: data.businessBrain.name,
+                subtitle: "Scan to open this campaign",
+                title: campaign.title,
+            });
+            downloadQrCode(dataUrl, buildQrCodeFilename(`${data.businessBrain.name}-${campaign.title}`, "campaign-qr"));
+            setNotice("Campaign QR downloaded.");
+        } catch (error) {
+            logRuntimeFailure("campaigncue_offer_qr_download_failed", error, {
+                campaignId: campaign.id,
+                surface: "campaigncue_workspace",
+            });
+            setNotice("Campaign QR could not be downloaded.");
+        } finally {
+            setBusyKey(null);
         }
     };
     const runDailyDeskPrimaryAction = () => {
@@ -3635,6 +4597,25 @@ export default function CampaignCueWorkspaceApp() {
 
     return (
         <main className={styles.shell} style={campaignCueThemeVars}>
+            {secureMediaCaptureEnabled ? (
+                <>
+                    <input
+                        ref={mediaCameraInputRef}
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        capture="environment"
+                        hidden
+                        onChange={onMissionMediaChange}
+                        type="file"
+                    />
+                    <input
+                        ref={mediaLibraryInputRef}
+                        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+                        hidden
+                        onChange={onMissionMediaChange}
+                        type="file"
+                    />
+                </>
+            ) : null}
             {cueLayersUploadEnabled ? (
                 <input
                     ref={cueLayerUploadInputRef}
@@ -3735,7 +4716,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <Divider type="vertical" style={{ height: 32, margin: 0 }} />
                                 <ProfileActionsModal userData={userData}>
                                     <Badge dot status="success" offset={[-3, 29]}>
-                                        <Avatar size={32} src={(userData as any)?.image}>
+                                        <Avatar size={32} src={userData.image}>
                                             {userInitials}
                                         </Avatar>
                                     </Badge>
@@ -3777,9 +4758,11 @@ export default function CampaignCueWorkspaceApp() {
                                                 <LuPackageCheck size={16} />
                                                 {dailyDesk.summary.actionLabel}
                                             </button>
-                                            <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                            <button className={styles.ghostButton} onClick={() => openWorkspaceTab("sources")} type="button">
                                                 <LuFileText size={16} />
-                                                Add input
+                                                {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS
+                                                    ? "Tell us what changed"
+                                                    : "Review business details"}
                                             </button>
                                         </div>
                                     </div>
@@ -3800,7 +4783,7 @@ export default function CampaignCueWorkspaceApp() {
                                         <h2>What can the business handle right now?</h2>
                                         <p>One quick update keeps recommendations aligned with current stock, slots, capacity, and local context.</p>
                                     </div>
-                                    <button className={styles.button} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
+                                    <button className={styles.button} disabled={busyKey === "business" || !canManageWorkspaceContent} onClick={saveBusinessDetails} type="button">
                                         <LuCheck size={16} />
                                         Save pulse
                                     </button>
@@ -3923,6 +4906,19 @@ export default function CampaignCueWorkspaceApp() {
                                                 {dailyDesk.rhythm.reuseCandidate.positiveEvidence.map((item) => <li key={item}>{item}</li>)}
                                             </ul>
                                         ) : null}
+                                        {dailyDesk.rhythm.reuseCandidate ? (
+                                            <div className={styles.chips}>
+                                                <span className={styles.chip}>
+                                                    {dailyDesk.rhythm.reuseCandidate.currentFit === "recommended_now" ? "Recommended now" : "Review timing"}
+                                                </span>
+                                                <span className={styles.chip}>
+                                                    {campaignMemoryConfidenceLabel(dailyDesk.rhythm.reuseCandidate.confidence)}
+                                                </span>
+                                                {dailyDesk.rhythm.reuseCandidate.seasonalContext ? (
+                                                    <span className={styles.chip}>Current moment: {dailyDesk.rhythm.reuseCandidate.seasonalContext}</span>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
                             </section>
@@ -3951,7 +4947,7 @@ export default function CampaignCueWorkspaceApp() {
                                         <h2>Answer only what the pack needs</h2>
                                         <p>CampaignCue keeps this short: current offer, date, price, photo rights, destination, or result detail when needed.</p>
                                     </div>
-                                    <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                    <button className={styles.ghostButton} onClick={() => openWorkspaceTab("sources")} type="button">
                                         <LuFileText size={16} />
                                         Open inputs
                                     </button>
@@ -4142,12 +5138,33 @@ export default function CampaignCueWorkspaceApp() {
                                             </div>
                                         </article>
                                         <OutputPackSummary
+                                            archiveBusy={Boolean(dailyDeskCampaign && busyKey === `${dailyDeskCampaign.id}:archive_export:campaign`)}
                                             busy={Boolean(dailyDeskCampaign && busyKey === `${dailyDeskCampaign.id}:export:campaign`)}
+                                            campaign={dailyDeskCampaign}
                                             disabled={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
                                             disabledReason={publicUseBlockedLabel}
+                                            onArchive={FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE && dailyDeskCampaign
+                                                ? () => recordAction(dailyDeskCampaign, "archive_export")
+                                                : undefined}
+                                            onDownloadArchive={dailyDeskCampaign?.exportArchive
+                                                ? () => downloadCampaignArchive(dailyDeskCampaign)
+                                                : undefined}
                                             onDownload={() => dailyDeskCampaign && recordAction(dailyDeskCampaign, "export")}
                                             outputPack={dailyDesk.packReview.outputPack}
                                         />
+                                        {dailyDeskCampaign && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_HOSTED_OFFER_PAGES ? (
+                                            <HostedOfferPageCard
+                                                busy={Boolean(busyKey?.startsWith(`${dailyDeskCampaign.id}:offer-page:`))}
+                                                campaign={dailyDeskCampaign}
+                                                disabled={campaignBlocksPublicUse(dailyDeskCampaign, data.workspace.agencyMode)}
+                                                disabledReason={publicUseBlockedLabel}
+                                                expiresAtLabel={formatCampaignCueDate(dailyDeskCampaign.pack?.offerPage?.expiresAt, formatter)}
+                                                onCopy={() => void copyHostedOfferPage(dailyDeskCampaign)}
+                                                onDownloadQr={() => void downloadHostedOfferQr(dailyDeskCampaign)}
+                                                onMutate={(action) => void mutateHostedOfferPage(dailyDeskCampaign, action)}
+                                                onOpen={() => openHostedOfferPage(dailyDeskCampaign)}
+                                            />
+                                        ) : null}
                                         {dailyDesk.packReview.deliveryCards[0] ? (
                                             <ManualDeliveryCard card={dailyDesk.packReview.deliveryCards[0]} onCopy={copyHandoffValue} />
                                         ) : (
@@ -4181,10 +5198,13 @@ export default function CampaignCueWorkspaceApp() {
                                         busyKey?.startsWith("cue-template:")
                                         || busyKey?.startsWith("pack-template-open:"),
                                     )}
-                                    canSaveCurrent={Boolean(latestCampaign)}
+                                    canSaveCurrent={Boolean(latestCampaign) && canManageWorkspaceContent}
                                     error={packTemplateState.error}
+                                    hasMoreTemplates={Boolean(packTemplateState.catalog?.platformOverflowDocIds.length)}
                                     loading={packTemplateState.loading}
+                                    loadingMore={Boolean(packTemplateState.loadingMore)}
                                     onCreateFromOutputIntent={createCampaignFromOutputIntent}
+                                    onLoadMore={loadMorePackTemplates}
                                     onOpenTemplate={openCampaignCuePackTemplate}
                                     onRefresh={() => void loadPackTemplates(data)}
                                     onSaveCurrent={() => void saveCurrentCampaignPackTemplate()}
@@ -4240,7 +5260,12 @@ export default function CampaignCueWorkspaceApp() {
                                             done={task.severity === "ready"}
                                             icon={LuCamera}
                                             key={task.id}
-                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            onAction={() => {
+                                                setMediaCaptureMission(task.severity === "ready"
+                                                    ? null
+                                                    : { recipeId: dailyDesk.recipe.id, task: task.detail });
+                                                openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey);
+                                            }}
                                             text={task.detail}
                                             title={task.label}
                                         />
@@ -4267,7 +5292,7 @@ export default function CampaignCueWorkspaceApp() {
                                             done={cue.status === "ready"}
                                             icon={LuSearch}
                                             key={cue.id}
-                                            onAction={() => openDeskTarget(cue.targetTab as CampaignCueWorkspaceTabKey)}
+                                            onAction={() => runLocalVisibilityAction(cue)}
                                             text={cue.detail}
                                             title={cue.label}
                                         />
@@ -4282,7 +5307,7 @@ export default function CampaignCueWorkspaceApp() {
                                         <h2>What CampaignCue can safely use</h2>
                                         <p>These facts come from business details and owner inputs. Review anything marked needs review before using a pack.</p>
                                     </div>
-                                    <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                    <button className={styles.ghostButton} onClick={() => openWorkspaceTab("sources")} type="button">
                                         <LuFileText size={16} />
                                         Add input
                                     </button>
@@ -4326,7 +5351,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Business details</h2>
                                     <p>CampaignCue uses these details for names, links, calls to action, and basic checks.</p>
                                 </div>
-                                <button className={styles.button} disabled={busyKey === "business" || !businessDraft.name.trim()} onClick={saveBusinessDetails} type="button">
+                                <button className={styles.button} disabled={busyKey === "business" || !businessDraft.name.trim() || !canManageWorkspaceContent} onClick={saveBusinessDetails} type="button">
                                     <LuCheck size={16} />
                                     Save details
                                 </button>
@@ -4492,10 +5517,6 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Missing Input Inbox</h2>
                                     <p>Add only the current details CampaignCue needs: price, date, availability, destination, photo rights, terms, or result notes.</p>
                                 </div>
-                                <button className={styles.button} disabled={busyKey === "source" || !sourceDraft.label.trim() || !sourceDraft.value.trim()} onClick={createSourceInput} type="button">
-                                    <LuUpload size={16} />
-                                    Save input
-                                </button>
                             </div>
                             <div className={styles.stepGrid}>
                                 {dailyDesk.missingInputs.map((task) => (
@@ -4515,7 +5536,134 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                 ) : null}
                             </div>
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_INBOX ? (
+                                <div className={`${styles.panel} ${styles.campaignInboxPanel}`}>
+                                    <div className={styles.sectionHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>Campaign Inbox</span>
+                                            <h3>Tell CampaignCue what changed</h3>
+                                            <p>Use one line per detail. Nothing is saved until you review and confirm it.</p>
+                                        </div>
+                                        <button
+                                            className={styles.button}
+                                            disabled={!campaignInboxDraft.trim() || Boolean(busyKey)}
+                                            onClick={reviewCampaignInbox}
+                                            type="button"
+                                        >
+                                            <LuClipboardCheck size={16} />
+                                            Review update
+                                        </button>
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="campaign-inbox-draft">What changed?</label>
+                                        <textarea
+                                            aria-describedby="campaign-inbox-hint campaign-inbox-count"
+                                            className={styles.textarea}
+                                            id="campaign-inbox-draft"
+                                            maxLength={CAMPAIGNCUE_INBOX_MAX_DRAFT_LENGTH}
+                                            onChange={(event) => {
+                                                setCampaignInboxDraft(event.target.value);
+                                                setCampaignInboxReview(null);
+                                                setCampaignInboxSelectedIds([]);
+                                            }}
+                                            placeholder={"Offer: Weekend haircut package\nPrice: INR 799\nAvailability: Four Saturday slots\nEnds: Sunday at 6 PM"}
+                                            rows={5}
+                                            value={campaignInboxDraft}
+                                        />
+                                        <div className={styles.campaignInboxHintRow}>
+                                            <p id="campaign-inbox-hint">Unlabelled text stays as a note. Contact and location details go to Business details.</p>
+                                            <span id="campaign-inbox-count">{campaignInboxDraft.length} / {CAMPAIGNCUE_INBOX_MAX_DRAFT_LENGTH}</span>
+                                        </div>
+                                    </div>
+                                    {campaignInboxReview ? (
+                                        <div aria-live="polite" className={styles.campaignInboxReview}>
+                                            {campaignInboxReview.notices.map((item) => (
+                                                <p className={styles.campaignInboxNotice} data-blocked={campaignInboxReview.blocked} key={item}>{item}</p>
+                                            ))}
+                                            {campaignInboxReview.candidates.map((candidate) => {
+                                                const sourceCandidate = candidate.destination === "source_input";
+                                                const selected = campaignInboxSelectedIds.includes(candidate.id);
+                                                const candidateDetails = (
+                                                    <div className={styles.titleBlock}>
+                                                        <h3>{candidate.label}</h3>
+                                                        <p>{candidate.value}</p>
+                                                        <span>{candidate.reason}</span>
+                                                    </div>
+                                                );
+                                                return (
+                                                    <div className={styles.campaignInboxCandidate} data-destination={candidate.destination} key={candidate.id}>
+                                                        {sourceCandidate ? (
+                                                            <label className={styles.campaignInboxCandidateMain}>
+                                                                <input
+                                                                    aria-label={`Save ${candidate.label}`}
+                                                                    checked={selected}
+                                                                    onChange={() => toggleCampaignInboxCandidate(candidate.id)}
+                                                                    type="checkbox"
+                                                                />
+                                                                {candidateDetails}
+                                                            </label>
+                                                        ) : (
+                                                            <div className={styles.campaignInboxCandidateMain}>
+                                                                <LuShieldCheck aria-hidden="true" size={18} />
+                                                                {candidateDetails}
+                                                            </div>
+                                                        )}
+                                                        {sourceCandidate ? (
+                                                            <span className={styles.chip} data-tone={candidate.recommendedStatus === "active" ? "green" : "amber"}>
+                                                                {candidate.recommendedStatus === "active" ? "Ready to use" : "Needs review"}
+                                                            </span>
+                                                        ) : (
+                                                            <button className={styles.ghostButton} onClick={() => routeCampaignInboxBusinessCandidate(candidate)} type="button">
+                                                                Use in Business details
+                                                                <LuArrowRight size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            <div className={styles.campaignInboxActions}>
+                                                <button
+                                                    className={styles.button}
+                                                    disabled={
+                                                        campaignInboxReview.blocked
+                                                        || !campaignInboxSelectedIds.length
+                                                        || Boolean(busyKey)
+                                                        || !canManageWorkspaceContent
+                                                    }
+                                                    onClick={saveCampaignInbox}
+                                                    type="button"
+                                                >
+                                                    <LuCheck size={16} />
+                                                    Save selected details
+                                                </button>
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={Boolean(busyKey)}
+                                                    onClick={() => {
+                                                        setCampaignInboxReview(null);
+                                                        setCampaignInboxSelectedIds([]);
+                                                    }}
+                                                    type="button"
+                                                >
+                                                    <LuRotateCcw size={16} />
+                                                    Edit update
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : null}
                             <div className={styles.panel}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <h3>Add one detailed input</h3>
+                                        <p>Use this form when you need a specific type, readiness state, or expiry time.</p>
+                                    </div>
+                                    <button className={styles.button} disabled={busyKey === "source" || !sourceDraft.label.trim() || !sourceDraft.value.trim() || !canManageWorkspaceContent} onClick={createSourceInput} type="button">
+                                        <LuUpload size={16} />
+                                        Save input
+                                    </button>
+                                </div>
                                 <div className={styles.formGrid}>
                                     <div className={styles.field}>
                                         <label htmlFor="source-type">Type</label>
@@ -4619,13 +5767,36 @@ export default function CampaignCueWorkspaceApp() {
                                         </div>
                                     </div>
                                     {dailyDeskCampaign ? (
-                                        <OutputPackSummary
-                                            busy={busyKey === `${dailyDeskCampaign.id}:export:campaign`}
-                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
-                                            disabledReason={publicUseBlockedLabel}
-                                            onDownload={() => recordAction(dailyDeskCampaign, "export")}
-                                            outputPack={dailyDesk.packReview.outputPack}
-                                        />
+                                        <>
+                                            <OutputPackSummary
+                                                archiveBusy={busyKey === `${dailyDeskCampaign.id}:archive_export:campaign`}
+                                                busy={busyKey === `${dailyDeskCampaign.id}:export:campaign`}
+                                                campaign={dailyDeskCampaign}
+                                                disabled={campaignBlocksPublicUse(dailyDeskCampaign, data?.workspace.agencyMode)}
+                                                disabledReason={publicUseBlockedLabel}
+                                                onArchive={FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE
+                                                    ? () => recordAction(dailyDeskCampaign, "archive_export")
+                                                    : undefined}
+                                                onDownloadArchive={dailyDeskCampaign.exportArchive
+                                                    ? () => downloadCampaignArchive(dailyDeskCampaign)
+                                                    : undefined}
+                                                onDownload={() => recordAction(dailyDeskCampaign, "export")}
+                                                outputPack={dailyDesk.packReview.outputPack}
+                                            />
+                                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_HOSTED_OFFER_PAGES ? (
+                                                <HostedOfferPageCard
+                                                    busy={Boolean(busyKey?.startsWith(`${dailyDeskCampaign.id}:offer-page:`))}
+                                                    campaign={dailyDeskCampaign}
+                                                    disabled={campaignBlocksPublicUse(dailyDeskCampaign, data.workspace.agencyMode)}
+                                                    disabledReason={publicUseBlockedLabel}
+                                                    expiresAtLabel={formatCampaignCueDate(dailyDeskCampaign.pack?.offerPage?.expiresAt, formatter)}
+                                                    onCopy={() => void copyHostedOfferPage(dailyDeskCampaign)}
+                                                    onDownloadQr={() => void downloadHostedOfferQr(dailyDeskCampaign)}
+                                                    onMutate={(action) => void mutateHostedOfferPage(dailyDeskCampaign, action)}
+                                                    onOpen={() => openHostedOfferPage(dailyDeskCampaign)}
+                                                />
+                                            ) : null}
+                                        </>
                                     ) : null}
                                     <div className={styles.grid}>
                                         {dailyDesk.packReview.deliveryCards.map((card) => (
@@ -4664,7 +5835,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Owner settings</h2>
                                     <p>Choose the workspace shape. Export/download stays on; direct social posting is not an owner setting.</p>
                                 </div>
-                                <button className={styles.button} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
+                                <button className={styles.button} disabled={busyKey === "business" || !canManageWorkspaceContent} onClick={saveBusinessDetails} type="button">
                                     <LuCheck size={16} />
                                     Save settings
                                 </button>
@@ -4783,6 +5954,7 @@ export default function CampaignCueWorkspaceApp() {
                                         || !inspirationDraft.label.trim()
                                         || !inspirationDraft.sourceUrl.trim()
                                         || inspirationDraft.transcriptOrNotes.trim().length < 20
+                                        || !canManageWorkspaceContent
                                     }
                                     onClick={createInspirationPattern}
                                     type="button"
@@ -4983,6 +6155,62 @@ export default function CampaignCueWorkspaceApp() {
                                                     </div>
                                                 </div>
                                             ) : null}
+                                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EXPERIMENT_COACH && campaign.pack?.experiment ? (
+                                                <div className={styles.noteBox}>
+                                                    <div className={styles.row}>
+                                                        <div className={styles.titleBlock}>
+                                                            <strong>Try one controlled change: {displayLabel(campaign.pack.experiment.variable)}</strong>
+                                                            <p>{campaign.pack.experiment.instruction}</p>
+                                                        </div>
+                                                        <span
+                                                            className={styles.chip}
+                                                            data-tone={campaign.pack.experiment.status === "completed" ? "green" : campaign.pack.experiment.status === "accepted" ? "amber" : undefined}
+                                                        >
+                                                            {campaign.pack.experiment.status === "completed"
+                                                                ? "Result recorded"
+                                                                : campaign.pack.experiment.status === "accepted"
+                                                                    ? "In use"
+                                                                    : "Suggested"}
+                                                        </span>
+                                                    </div>
+                                                    <p>{campaign.pack.experiment.reason}</p>
+                                                    {campaign.pack.experiment.evidence?.length ? (
+                                                        <ul>
+                                                            {campaign.pack.experiment.evidence.slice(0, 2).map((item) => <li key={item}>{item}</li>)}
+                                                        </ul>
+                                                    ) : null}
+                                                    {campaign.pack.experiment.keepConstant?.length ? (
+                                                        <p className={styles.muted}>
+                                                            Keep unchanged: {campaign.pack.experiment.keepConstant.map(displayLabel).join(", ")}.
+                                                        </p>
+                                                    ) : null}
+                                                    <div className={styles.chips}>
+                                                        <span className={styles.chip}>
+                                                            {campaign.pack.experiment.confidence === "owner_history" ? "Based on owner-reported history" : "Guidance only"}
+                                                        </span>
+                                                        {(campaign.pack.experiment.status || "suggested") === "suggested" ? (
+                                                            <button
+                                                                className={styles.ghostButton}
+                                                                disabled={
+                                                                    !canAcceptCampaignExperiment
+                                                                    || isCampaignActionBusy(campaign.id, "accept_experiment")
+                                                                    || Boolean(data.workspace.agencyMode && campaign.ownerApprovalState !== "approved")
+                                                                }
+                                                                onClick={() => recordAction(campaign, "accept_experiment")}
+                                                                title={!canAcceptCampaignExperiment
+                                                                    ? "Your workspace role cannot choose this test."
+                                                                    : data.workspace.agencyMode && campaign.ownerApprovalState !== "approved"
+                                                                        ? "Approve this pack before using its test."
+                                                                        : undefined}
+                                                                type="button"
+                                                            >
+                                                                <LuClipboardCheck size={16} />
+                                                                Use this test
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                             <div className={styles.grid}>
                                                 {campaign.outputs.map((output) => (
                                                     <article className={styles.output} key={output.id}>
@@ -4998,7 +6226,11 @@ export default function CampaignCueWorkspaceApp() {
                                                         <div className={styles.chips}>
                                                             <button
                                                                 className={styles.ghostButton}
-                                                                disabled={busyKey === `${campaign.id}:download:${output.id}` || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                                                disabled={
+                                                                    busyKey === `${campaign.id}:download:${output.id}`
+                                                                    || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)
+                                                                    || !campaignCueCanPerformCampaignOutputAction({ action: "download", locationId: campaign.locationId, member: currentWorkspaceMember })
+                                                                }
                                                                 onClick={() => recordAction(campaign, "download", output)}
                                                                 title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                                 type="button"
@@ -5006,7 +6238,7 @@ export default function CampaignCueWorkspaceApp() {
                                                                 <LuDownload size={16} />
                                                                 Download text
                                                             </button>
-                                                            {creativeEditorEnabled ? (
+                                                            {creativeEditorEnabled && campaignCueCanManageCampaignLocation({ locationId: campaign.locationId, member: currentWorkspaceMember }) ? (
                                                                 <button
                                                                     className={styles.ghostButton}
                                                                     onClick={() => openOutputCreativeEditor(campaign, output)}
@@ -5023,7 +6255,10 @@ export default function CampaignCueWorkspaceApp() {
                                             <div className={styles.chips}>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                                    disabled={
+                                                        campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)
+                                                        || !campaignCueCanPerformCampaignOutputAction({ action: "schedule", locationId: campaign.locationId, member: currentWorkspaceMember })
+                                                    }
                                                     onClick={() => openScheduleCampaign(campaign)}
                                                     title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
                                                     type="button"
@@ -5033,7 +6268,7 @@ export default function CampaignCueWorkspaceApp() {
                                                 </button>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={!canRequestCampaignApproval(campaign) || isCampaignApprovalBusy(campaign.id)}
+                                                    disabled={!canRequestCampaignApproval(campaign, currentWorkspaceRole) || isCampaignApprovalBusy(campaign.id)}
                                                     onClick={() => recordAction(campaign, "request_approval")}
                                                     type="button"
                                                 >
@@ -5061,6 +6296,29 @@ export default function CampaignCueWorkspaceApp() {
                                                     <LuDownload size={16} />
                                                     Download campaign pack ZIP
                                                 </button>
+                                                {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE ? (
+                                                    <button
+                                                        className={styles.ghostButton}
+                                                        disabled={busyKey === `${campaign.id}:archive_export:campaign` || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
+                                                        onClick={() => recordAction(campaign, "archive_export")}
+                                                        title={campaignBlocksPublicUse(campaign, data?.workspace.agencyMode) ? publicUseBlockedLabel : undefined}
+                                                        type="button"
+                                                    >
+                                                        <LuUploadCloud size={16} />
+                                                        {campaign.exportArchive ? "Replace cloud copy" : "Save cloud copy"}
+                                                    </button>
+                                                ) : null}
+                                                {campaign.exportArchive ? (
+                                                    <button
+                                                        className={styles.ghostButton}
+                                                        disabled={busyKey === `asset-download:${campaign.exportArchive.assetId}`}
+                                                        onClick={() => downloadCampaignArchive(campaign)}
+                                                        type="button"
+                                                    >
+                                                        <LuDownload size={16} />
+                                                        Download saved copy
+                                                    </button>
+                                                ) : null}
                                                 <button
                                                     className={styles.ghostButton}
                                                     disabled={isCampaignActionBusy(campaign.id, "mark_used") || campaignBlocksPublicUse(campaign, data?.workspace.agencyMode)}
@@ -5109,7 +6367,7 @@ export default function CampaignCueWorkspaceApp() {
                                             Reuse old image
                                         </button>
                                     ) : null}
-                                    {creativeEditorEnabled ? (
+                                    {creativeEditorEnabled && canManageWorkspaceContent ? (
                                         <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
                                             <LuImage size={16} />
                                             Create from scratch
@@ -5183,7 +6441,7 @@ export default function CampaignCueWorkspaceApp() {
                                                             </span>
                                                             <button
                                                                 className={styles.ghostButton}
-                                                                disabled={busyKey === `cue-layer-open:${design.id}`}
+                                                                disabled={busyKey === `cue-layer-open:${design.id}` || !canManageWorkspaceContent}
                                                                 onClick={() => openCueLayerDesign(design.id)}
                                                                 type="button"
                                                             >
@@ -5247,6 +6505,7 @@ export default function CampaignCueWorkspaceApp() {
                                     assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
                                 }))}
                                 onNotice={setNotice}
+                                workspaceMember={currentWorkspaceMember}
                                 workspaceId={data.workspace.workspaceId}
                             />
                             {renderChannelStudio("video")}
@@ -5317,7 +6576,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <p>Keep customer-facing updates current with saved facts, area, destination, approved images, and manual Google handoff.</p>
                                 </div>
                                 <div className={styles.topActions}>
-                                    <button className={styles.ghostButton} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
+                                    <button className={styles.ghostButton} disabled={busyKey === "business" || !canManageWorkspaceContent} onClick={saveBusinessDetails} type="button">
                                         <LuCheck size={16} />
                                         Save destinations
                                     </button>
@@ -5327,6 +6586,27 @@ export default function CampaignCueWorkspaceApp() {
                                     </button>
                                 </div>
                             </div>
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_LOCAL_VISIBILITY_ACTION_CENTER ? (
+                                <div className={styles.panel}>
+                                    <div className={styles.row}>
+                                        <div className={styles.titleBlock}>
+                                            <h3>What needs attention</h3>
+                                            <p>Actions are derived from saved business truth, current inputs, approved assets, and existing Campaign Packs. CampaignCue does not inspect or update external profiles.</p>
+                                        </div>
+                                        <div className={styles.chips}>
+                                            <span className={styles.chip} data-tone="red">
+                                                {dailyDesk.localVisibilityCues.filter((cue) => cue.priority === "do_now").length} do now
+                                            </span>
+                                            <span className={styles.chip} data-tone="amber">
+                                                {dailyDesk.localVisibilityCues.filter((cue) => cue.priority === "review").length} review
+                                            </span>
+                                            <span className={styles.chip} data-tone="green">
+                                                {dailyDesk.localVisibilityCues.filter((cue) => cue.priority === "ready").length} ready
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
                             <div className={styles.panel}>
                                 <div className={styles.formGrid}>
                                     <div className={styles.field}>
@@ -5371,17 +6651,57 @@ export default function CampaignCueWorkspaceApp() {
                                     Prepare return-customer pack
                                 </button>
                             </div>
-                            <div className={styles.stepGrid}>
+                            <div className={styles.list}>
                                 {dailyDesk.localVisibilityCues.map((cue) => (
-                                    <OwnerStepCard
-                                        actionLabel={cue.actionLabel}
-                                        done={cue.status === "ready"}
-                                        icon={LuSearch}
-                                        key={cue.id}
-                                        onAction={() => openDeskTarget(cue.targetTab as CampaignCueWorkspaceTabKey)}
-                                        text={cue.detail}
-                                        title={cue.label}
-                                    />
+                                    <article className={styles.campaign} key={cue.id}>
+                                        <div className={styles.row}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}><LuSearch size={18} /></div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{cue.label}</h3>
+                                                    <p>{cue.detail}</p>
+                                                </div>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                <span className={styles.chip}>{displayLabel(cue.category)}</span>
+                                                <span className={styles.chip} data-tone={ownerStatusTone(cue.status)}>
+                                                    {cue.priority === "do_now" ? "Do now" : cue.priority === "review" ? "Review" : "Ready"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className={styles.grid}>
+                                            <div className={styles.noteBox}>
+                                                <strong>Evidence</strong>
+                                                <ul>
+                                                    {(cue.evidence.length ? cue.evidence : ["No supporting item is saved yet."]).slice(0, 3).map((item) => <li key={item}>{item}</li>)}
+                                                </ul>
+                                                <p className={styles.muted}>{cue.evidenceLevel === "business_truth" ? "From saved business truth" : "Derived readiness check"}</p>
+                                            </div>
+                                            <div className={styles.noteBox}>
+                                                <strong>Manual next step</strong>
+                                                <ul>
+                                                    {cue.manualSteps.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
+                                                </ul>
+                                            </div>
+                                            <div className={styles.noteBox}>
+                                                <strong>What this unlocks</strong>
+                                                <div className={styles.chips}>
+                                                    {cue.unlocks.slice(0, 4).map((item) => <span className={styles.chip} key={item}>{item}</span>)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className={styles.topActions}>
+                                            <button
+                                                className={styles.ghostButton}
+                                                disabled={cue.actionKind === "create_visibility_pack" && busyKey === "cue:cue_local_visibility_refresh"}
+                                                onClick={() => runLocalVisibilityAction(cue)}
+                                                type="button"
+                                            >
+                                                <LuArrowRight size={16} />
+                                                {cue.actionLabel}
+                                            </button>
+                                        </div>
+                                    </article>
                                 ))}
                             </div>
                             {dailyDesk.packReview?.deliveryCards.some((card) => card.channel === "google_local") ? (
@@ -5540,7 +6860,7 @@ export default function CampaignCueWorkspaceApp() {
                                             Reuse old image
                                         </button>
                                     ) : null}
-                                    {creativeEditorEnabled ? (
+                                    {creativeEditorEnabled && canManageWorkspaceContent ? (
                                         <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
                                             <LuImage size={16} />
                                             Create from scratch
@@ -5548,7 +6868,76 @@ export default function CampaignCueWorkspaceApp() {
                                     ) : null}
                                 </div>
                             </div>
+                            {secureMediaCaptureEnabled ? (
+                                <div className={styles.panel} ref={assetCapturePanelRef}>
+                                    <div className={styles.captureHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>{mediaCaptureMission ? "Photo task" : "Private media"}</span>
+                                            <h3>{mediaCaptureMission ? mediaCaptureMission.task : "Add a real photo or clip"}</h3>
+                                            <p>Confirm permission first. CampaignCue stores the original and one preview privately; it does not post the file.</p>
+                                        </div>
+                                        {mediaCaptureMission ? (
+                                            <button className={styles.ghostButton} onClick={() => setMediaCaptureMission(null)} type="button">
+                                                <LuX size={16} />
+                                                Clear task
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    <div className={styles.formGrid}>
+                                        <div className={styles.fieldWide}>
+                                            <label htmlFor="media-capture-consent">Permission for this photo or clip</label>
+                                            <select
+                                                className={styles.select}
+                                                id="media-capture-consent"
+                                                onChange={(event) => setMediaCaptureConsentType(event.target.value as CampaignCueMediaConsentType | "")}
+                                                value={mediaCaptureConsentType}
+                                            >
+                                                <option value="">Choose permission status</option>
+                                                <option value="not_applicable">No person is shown</option>
+                                                <option value="owner_confirmed">People are shown and permission is confirmed</option>
+                                                <option value="creator_release">Creator release is available</option>
+                                                <option value="customer_release">Customer release is available</option>
+                                                <option value="unknown">I still need to check</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.mediaCaptureActions}>
+                                            <button
+                                                className={styles.button}
+                                                disabled={!mediaCaptureConsentType || busyKey === "media-capture-upload"}
+                                                onClick={() => mediaCameraInputRef.current?.click()}
+                                                type="button"
+                                            >
+                                                <LuCamera size={16} />
+                                                Take photo
+                                            </button>
+                                            <button
+                                                className={styles.ghostButton}
+                                                disabled={!mediaCaptureConsentType || busyKey === "media-capture-upload"}
+                                                onClick={() => mediaLibraryInputRef.current?.click()}
+                                                type="button"
+                                            >
+                                                <LuUploadCloud size={16} />
+                                                Choose photo or clip
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {busyKey === "media-capture-upload" ? (
+                                        <div className={styles.mediaUploadProgress} aria-live="polite">
+                                            <progress max={100} value={mediaUploadProgress} />
+                                            <span>Uploading privately · {mediaUploadProgress}%</span>
+                                        </div>
+                                    ) : null}
+                                    <p className={styles.muted}>Images: up to 12 MB. Video clips: up to 250 MB. Files with unconfirmed permission stay in review.</p>
+                                </div>
+                            ) : null}
                             <div className={styles.panel}>
+                                <div className={styles.captureHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>File note</span>
+                                        <h3>Add a file note without upload</h3>
+                                        <p>Use this only to record that an asset exists elsewhere. A note does not fulfill a photo task.</p>
+                                    </div>
+                                </div>
                                 <div className={styles.formGrid}>
                                     <div className={styles.field}>
                                         <label htmlFor="asset-name">Asset name</label>
@@ -5627,12 +7016,12 @@ export default function CampaignCueWorkspaceApp() {
                                         <label>&nbsp;</label>
                                         <button
                                             className={styles.button}
-                                            disabled={!assetDraft.name.trim() || busyKey === "asset"}
+                                            disabled={!assetDraft.name.trim() || busyKey === "asset" || !canManageWorkspaceContent}
                                             onClick={registerAsset}
                                             type="button"
                                         >
                                             <LuUpload size={16} />
-                                            Save asset
+                                            Save file note
                                         </button>
                                     </div>
                                 </div>
@@ -5701,6 +7090,57 @@ export default function CampaignCueWorkspaceApp() {
                                 <StatCard label="Manual use" value={data.analytics.usedCount} />
                                 <StatCard label="Reported results" value={data.analytics.ownerReportedOutcomeCount || 0} />
                             </div>
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY ? (
+                                <div className={styles.panel}>
+                                    <div className={styles.findingRow}>
+                                        <div className={styles.rowStart}>
+                                            <div className={styles.iconBox}>
+                                                <LuClipboardCheck size={18} />
+                                            </div>
+                                            <div className={styles.titleBlock}>
+                                                <h3>Campaign memory</h3>
+                                                <p>{data.campaignMemory.ownerSummary}</p>
+                                                <p>{data.campaignMemory.sourceLabel}</p>
+                                            </div>
+                                        </div>
+                                        <span
+                                            className={styles.chip}
+                                            data-tone={data.campaignMemory.status === "usable" ? "green" : "amber"}
+                                        >
+                                            {campaignMemoryConfidenceLabel(data.campaignMemory.confidence)}
+                                        </span>
+                                    </div>
+                                    <div className={styles.list}>
+                                        {data.campaignMemory.topRecipe ? (
+                                            <div className={styles.findingRow}>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>Recipe evidence</h3>
+                                                    <p>{campaignMemoryRecipe?.title || "Recent campaign recipe"}</p>
+                                                </div>
+                                                <span className={styles.chip}>
+                                                    {data.campaignMemory.topRecipe.usefulCount} useful / {data.campaignMemory.topRecipe.notUsefulCount} not useful
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                        {data.campaignMemory.topChannel ? (
+                                            <div className={styles.findingRow}>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>Channel evidence</h3>
+                                                    <p>{campaignMemoryChannel || "Recent manual channel"}</p>
+                                                </div>
+                                                <span className={styles.chip}>
+                                                    {data.campaignMemory.topChannel.sampleCount} result{data.campaignMemory.topChannel.sampleCount === 1 ? "" : "s"}
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                    <div className={styles.noteBox}>
+                                        <strong>Next useful step</strong>
+                                        <p>{data.campaignMemory.nextAction}</p>
+                                        <p>{data.campaignMemory.cautions[0]}</p>
+                                    </div>
+                                </div>
+                            ) : null}
                             <div className={styles.panel}>
                                 <div className={styles.formGrid}>
                                     <div className={styles.fieldWide}>
@@ -5772,9 +7212,18 @@ export default function CampaignCueWorkspaceApp() {
                                     {resultCampaign?.pack?.experiment ? (
                                         <div className={styles.fieldWide}>
                                             <div className={styles.noteBox}>
-                                                <strong>Change one thing next</strong>
+                                                <strong>
+                                                    {resultCampaign.pack.experiment.status === "completed"
+                                                        ? "Recorded one-change test"
+                                                        : resultCampaign.pack.experiment.status === "accepted"
+                                                            ? "Test currently in use"
+                                                            : "Suggested next change"}
+                                                </strong>
                                                 <p>{resultCampaign.pack.experiment.instruction}</p>
                                                 <span className={styles.chip}>{displayLabel(resultCampaign.pack.experiment.variable)}</span>
+                                                <p className={styles.muted}>
+                                                    Select this variable above only if it was the one thing you actually changed.
+                                                </p>
                                             </div>
                                         </div>
                                     ) : null}
@@ -5802,10 +7251,121 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                 </div>
                             </div>
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_READ_ONLY_RESULT_EVIDENCE && canRecordResultEvidence ? (
+                                <div className={styles.panel}>
+                                    <div className={styles.sectionHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>Numbers from a provider report</span>
+                                            <h3>Keep a small evidence snapshot</h3>
+                                            <p>Copy totals from a report you can see. This is not a live account connection and is not treated as proof that this campaign caused the result.</p>
+                                        </div>
+                                    </div>
+                                    {resultCampaign?.resultMemory?.latestExternalEvidence ? (
+                                        <div className={styles.noteBox}>
+                                            <strong>Latest saved snapshot</strong>
+                                            <p>
+                                                {displayLabel(resultCampaign.resultMemory.latestExternalEvidence.provider)} · {resultCampaign.resultMemory.latestExternalEvidence.periodStart} to {resultCampaign.resultMemory.latestExternalEvidence.periodEnd}
+                                            </p>
+                                            <div className={styles.chips}>
+                                                {Object.entries(resultCampaign.resultMemory.latestExternalEvidence.metrics).map(([metric, value]) => (
+                                                    <span className={styles.chip} key={metric}>{displayLabel(metric)}: {value}</span>
+                                                ))}
+                                            </div>
+                                            <p className={styles.muted}>Directional evidence only. It does not change Campaign Memory recommendations.</p>
+                                        </div>
+                                    ) : null}
+                                    <div className={styles.formGrid}>
+                                        <div className={styles.field}>
+                                            <label htmlFor="result-evidence-provider">Report source</label>
+                                            <select className={styles.select} id="result-evidence-provider" onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, provider: event.target.value }))} value={resultEvidenceDraft.provider}>
+                                                <option value="google_business_profile">Google Business Profile</option>
+                                                <option value="google_ads">Google Ads</option>
+                                                <option value="meta_ads">Meta Ads</option>
+                                                <option value="instagram_insights">Instagram insights</option>
+                                                <option value="facebook_insights">Facebook insights</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="result-evidence-scope">What the report covers</label>
+                                            <select className={styles.select} id="result-evidence-scope" onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, scope: event.target.value }))} value={resultEvidenceDraft.scope}>
+                                                <option value="campaign_specific">This exact campaign</option>
+                                                <option value="location_window">This location during the date window</option>
+                                                <option value="account_window">The whole account during the date window</option>
+                                            </select>
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="result-evidence-start">Report starts</label>
+                                            <input className={styles.input} id="result-evidence-start" max={resultEvidenceTodayKey} onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, periodStart: event.target.value }))} type="date" value={resultEvidenceDraft.periodStart} />
+                                        </div>
+                                        <div className={styles.field}>
+                                            <label htmlFor="result-evidence-end">Report ends</label>
+                                            <input className={styles.input} id="result-evidence-end" max={resultEvidenceTodayKey} onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, periodEnd: event.target.value }))} type="date" value={resultEvidenceDraft.periodEnd} />
+                                        </div>
+                                        {([
+                                            ["impressions", "Impressions"],
+                                            ["reach", "Reach"],
+                                            ["profileViews", "Profile views"],
+                                            ["websiteClicks", "Website clicks"],
+                                            ["callClicks", "Call clicks"],
+                                            ["directionRequests", "Direction requests"],
+                                            ["messages", "Messages"],
+                                            ["linkClicks", "Link clicks"],
+                                        ] as const).map(([metric, label]) => (
+                                            <div className={styles.field} key={metric}>
+                                                <label htmlFor={`result-evidence-${metric}`}>{label}</label>
+                                                <input
+                                                    className={styles.input}
+                                                    id={`result-evidence-${metric}`}
+                                                    max="1000000000"
+                                                    min="0"
+                                                    onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, [metric]: event.target.value }))}
+                                                    placeholder="Optional"
+                                                    step="1"
+                                                    type="number"
+                                                    value={resultEvidenceDraft[metric]}
+                                                />
+                                            </div>
+                                        ))}
+                                        <div className={styles.fieldWide}>
+                                            <label htmlFor="result-evidence-note">Short source note</label>
+                                            <input className={styles.input} id="result-evidence-note" maxLength={200} onChange={(event) => setResultEvidenceDraft((draft) => ({ ...draft, note: event.target.value }))} placeholder="Example: copied from the Google performance report" value={resultEvidenceDraft.note} />
+                                        </div>
+                                        <div className={styles.field}>
+                                            <button
+                                                className={styles.button}
+                                                disabled={
+                                                    !resultCampaign
+                                                    || !resultEvidenceDraft.periodStart
+                                                    || !resultEvidenceDraft.periodEnd
+                                                    || !hasResultEvidenceMetrics
+                                                    || isCampaignActionBusy(resultCampaign.id, "record_result_evidence")
+                                                }
+                                                onClick={() => resultCampaign && recordAction(resultCampaign, "record_result_evidence")}
+                                                type="button"
+                                            >
+                                                <LuCheckCircle2 size={16} />
+                                                Save report snapshot
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
                         </section>
                     ) : null}
 
-                    {tab === "agency" ? (
+                    {tab === "agency" && !approvalInboxEnabled ? (
+                        <section className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <div>
+                                    <span className={styles.eyebrow}>Agency Workspace</span>
+                                    <h2>Approvals are unavailable</h2>
+                                    <p>Campaign approval and review comments are currently turned off for this workspace.</p>
+                                </div>
+                            </div>
+                        </section>
+                    ) : null}
+
+                    {tab === "agency" && approvalInboxEnabled ? (
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div>
@@ -5815,7 +7375,7 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                                 <button
                                     className={styles.button}
-                                    disabled={!canRequestCampaignApproval(latestCampaign) || Boolean(latestCampaign && isCampaignApprovalBusy(latestCampaign.id))}
+                                    disabled={!canRequestCampaignApproval(latestCampaign, currentWorkspaceRole) || Boolean(latestCampaign && isCampaignApprovalBusy(latestCampaign.id))}
                                     onClick={() => latestCampaign && recordAction(latestCampaign, "request_approval")}
                                     type="button"
                                 >
@@ -5844,46 +7404,112 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                             </div>
                             <div className={styles.list}>
-                                {data.campaigns.map((campaign) => (
-                                    <div className={styles.findingRow} key={campaign.id}>
-                                        <div className={styles.rowStart}>
-                                            <div className={styles.iconBox}><LuUsers size={18} /></div>
-                                            <div className={styles.titleBlock}>
-                                                <h3>{campaign.title}</h3>
-                                                <p>{displayLabel(campaign.ownerApprovalState)}</p>
+                                {data.campaigns.map((campaign) => {
+                                    const comments = campaign.approvalInbox?.comments || [];
+                                    const openComments = comments.filter((comment) => comment.status === "open");
+                                    const commentDraft = approvalCommentDrafts[campaign.id] || "";
+                                    return (
+                                        <div className={styles.panel} key={campaign.id}>
+                                            <div className={styles.findingRow}>
+                                                <div className={styles.rowStart}>
+                                                    <div className={styles.iconBox}><LuUsers size={18} /></div>
+                                                    <div className={styles.titleBlock}>
+                                                        <h3>{campaign.title}</h3>
+                                                        <p>{displayLabel(campaign.ownerApprovalState)}{campaign.approvalInbox ? ` · review ${campaign.approvalInbox.requestRevision}` : ""}</p>
+                                                    </div>
+                                                </div>
+                                                <div className={styles.chips}>
+                                                    {openComments.length ? <span className={styles.chip} data-tone="amber">{openComments.length} open</span> : null}
+                                                    {campaign.ownerApprovalState === "requested" && canResolveCampaignApproval ? (
+                                                        <>
+                                                            <button
+                                                                className={styles.button}
+                                                                disabled={Boolean(openComments.length) || isCampaignApprovalBusy(campaign.id)}
+                                                                onClick={() => recordAction(campaign, "approve")}
+                                                                title={openComments.length ? "Resolve open review comments before approval." : undefined}
+                                                                type="button"
+                                                            >
+                                                                <LuCheck size={16} />
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                className={styles.ghostButton}
+                                                                disabled={!approvalDecisionNote.trim() || isCampaignApprovalBusy(campaign.id)}
+                                                                onClick={() => recordAction(campaign, "reject")}
+                                                                type="button"
+                                                            >
+                                                                <LuX size={16} />
+                                                                Reject
+                                                            </button>
+                                                        </>
+                                                    ) : campaign.ownerApprovalState === "requested" ? (
+                                                        <span className={styles.chip} data-tone="amber">Reviewer access required</span>
+                                                    ) : campaign.ownerApprovalState === "approved" ? (
+                                                        <span className={styles.chip} data-tone="green">Approved</span>
+                                                    ) : canRequestCampaignApproval(campaign, currentWorkspaceRole) ? (
+                                                        <button className={styles.ghostButton} disabled={isCampaignApprovalBusy(campaign.id)} onClick={() => recordAction(campaign, "request_approval")} type="button">
+                                                            Request approval
+                                                        </button>
+                                                    ) : (
+                                                        <span className={styles.chip}>{campaignApprovalActionLabel(campaign)}</span>
+                                                    )}
+                                                </div>
                                             </div>
+                                            {campaign.ownerApprovalState === "requested" ? (
+                                                <div className={styles.stack}>
+                                                    {comments.length ? comments.map((comment) => (
+                                                        <div className={styles.noteBox} key={comment.id}>
+                                                            <div className={styles.findingRow}>
+                                                                <div className={styles.titleBlock}>
+                                                                    <strong>{displayLabel(comment.authorRole)} · {formatCampaignCueDate(comment.createdAt, formatter)}</strong>
+                                                                    <p>{comment.note}</p>
+                                                                    <div className={styles.chips}>
+                                                                        <span className={styles.chip} data-tone={comment.status === "open" ? "amber" : "green"}>{displayLabel(comment.status)}</span>
+                                                                        {comment.outputId ? <span className={styles.chip}>Specific output</span> : <span className={styles.chip}>Whole pack</span>}
+                                                                        {comment.locationId ? <span className={styles.chip}>Location scoped</span> : null}
+                                                                    </div>
+                                                                </div>
+                                                                {comment.status === "open" && canResolveCampaignApproval ? (
+                                                                    <button
+                                                                        className={styles.ghostButton}
+                                                                        disabled={isCampaignApprovalBusy(campaign.id)}
+                                                                        onClick={() => recordAction(campaign, "resolve_approval_comment", undefined, undefined, undefined, comment.id)}
+                                                                        type="button"
+                                                                    >
+                                                                        <LuCheck size={16} />
+                                                                        Resolve
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+                                                        </div>
+                                                    )) : <p className={styles.muted}>No review comments yet.</p>}
+                                                    {canCommentOnCampaignApproval ? (
+                                                        <div className={styles.fieldWide}>
+                                                            <label htmlFor={`approval-comment-${campaign.id}`}>Add review comment</label>
+                                                            <textarea
+                                                                className={styles.textarea}
+                                                                id={`approval-comment-${campaign.id}`}
+                                                                maxLength={400}
+                                                                onChange={(event) => setApprovalCommentDrafts((current) => ({ ...current, [campaign.id]: event.target.value }))}
+                                                                placeholder="Describe one specific change or question."
+                                                                value={commentDraft}
+                                                            />
+                                                            <button
+                                                                className={styles.ghostButton}
+                                                                disabled={!commentDraft.trim() || comments.length >= 20 || isCampaignApprovalBusy(campaign.id)}
+                                                                onClick={() => recordAction(campaign, "add_approval_comment", undefined, commentDraft)}
+                                                                type="button"
+                                                            >
+                                                                Add comment
+                                                            </button>
+                                                            <p>Comments stay inside this review request. CampaignCue stores at most 20 comments per request.</p>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
                                         </div>
-                                        <div className={styles.chips}>
-                                            {campaign.ownerApprovalState === "requested" && canResolveCampaignApproval ? (
-                                                <>
-                                                    <button className={styles.button} disabled={isCampaignApprovalBusy(campaign.id)} onClick={() => recordAction(campaign, "approve")} type="button">
-                                                        <LuCheck size={16} />
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        className={styles.ghostButton}
-                                                        disabled={!approvalDecisionNote.trim() || isCampaignApprovalBusy(campaign.id)}
-                                                        onClick={() => recordAction(campaign, "reject")}
-                                                        type="button"
-                                                    >
-                                                        <LuX size={16} />
-                                                        Reject
-                                                    </button>
-                                                </>
-                                            ) : campaign.ownerApprovalState === "requested" ? (
-                                                <span className={styles.chip} data-tone="amber">Reviewer access required</span>
-                                            ) : campaign.ownerApprovalState === "approved" ? (
-                                                <span className={styles.chip} data-tone="green">Approved</span>
-                                            ) : canRequestCampaignApproval(campaign) ? (
-                                                <button className={styles.ghostButton} disabled={isCampaignApprovalBusy(campaign.id)} onClick={() => recordAction(campaign, "request_approval")} type="button">
-                                                    Request approval
-                                                </button>
-                                            ) : (
-                                                <span className={styles.chip}>{campaignApprovalActionLabel(campaign)}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {!data.campaigns.length ? <div className={styles.empty}><p>No campaign packs ready for approval.</p></div> : null}
                             </div>
                         </section>
@@ -5897,7 +7523,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Locations</h2>
                                     <p>Add each branch once so packs can be prepared for the right place.</p>
                                 </div>
-                                <button className={styles.button} disabled={busyKey === "location" || !locationDraft.name.trim()} onClick={createLocation} type="button">
+                                <button className={styles.button} disabled={busyKey === "location" || !locationDraft.name.trim() || !canManageWorkspaceContent} onClick={createLocation} type="button">
                                     <LuBuilding2 size={16} />
                                     Add location
                                 </button>
@@ -5919,21 +7545,155 @@ export default function CampaignCueWorkspaceApp() {
                                             <option value="active">Active</option>
                                         </select>
                                     </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="location-phone">Branch phone</label>
+                                        <input
+                                            className={styles.input}
+                                            id="location-phone"
+                                            onChange={(event) => setLocationDraft((draft) => ({
+                                                ...draft,
+                                                contacts: { ...draft.contacts, phone: event.target.value },
+                                            }))}
+                                            placeholder="Uses business phone when blank"
+                                            value={locationDraft.contacts.phone}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="location-whatsapp">Branch WhatsApp</label>
+                                        <input
+                                            className={styles.input}
+                                            id="location-whatsapp"
+                                            onChange={(event) => setLocationDraft((draft) => ({
+                                                ...draft,
+                                                contacts: { ...draft.contacts, whatsapp: event.target.value },
+                                            }))}
+                                            placeholder="Uses business WhatsApp when blank"
+                                            value={locationDraft.contacts.whatsapp}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="location-booking">Branch booking link</label>
+                                        <input
+                                            className={styles.input}
+                                            id="location-booking"
+                                            onChange={(event) => setLocationDraft((draft) => ({
+                                                ...draft,
+                                                contacts: { ...draft.contacts, bookingUrl: event.target.value },
+                                            }))}
+                                            placeholder="https://"
+                                            type="url"
+                                            value={locationDraft.contacts.bookingUrl}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="location-menu">Branch menu or service link</label>
+                                        <input
+                                            className={styles.input}
+                                            id="location-menu"
+                                            onChange={(event) => setLocationDraft((draft) => ({
+                                                ...draft,
+                                                contacts: { ...draft.contacts, publicMenuUrl: event.target.value },
+                                            }))}
+                                            placeholder="https://"
+                                            type="url"
+                                            value={locationDraft.contacts.publicMenuUrl}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="location-website">Branch website</label>
+                                        <input
+                                            className={styles.input}
+                                            id="location-website"
+                                            onChange={(event) => setLocationDraft((draft) => ({
+                                                ...draft,
+                                                contacts: { ...draft.contacts, website: event.target.value },
+                                            }))}
+                                            placeholder="https://"
+                                            type="url"
+                                            value={locationDraft.contacts.website}
+                                        />
+                                    </div>
                                 </div>
+                                <p className={styles.muted}>Leave a branch contact blank to use the confirmed business-wide contact.</p>
                             </div>
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_MULTI_LOCATION_VARIANTS ? (
+                                <div className={styles.panel}>
+                                    <div className={styles.sectionHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>Branch packs</span>
+                                            <h3>Create one checked pack per location</h3>
+                                            <p>
+                                                {latestGlobalCampaign
+                                                    ? `Using ${latestGlobalCampaign.title} as the source. Each branch gets its own contacts, trust report, approval, export, and result.`
+                                                    : "Create one workspace campaign pack first, then choose up to eight active locations."}
+                                            </p>
+                                        </div>
+                                        <button
+                                            className={styles.button}
+                                            disabled={
+                                                !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_GENERATION
+                                                || busyKey === "location-variants"
+                                                || !latestGlobalCampaign
+                                                || !selectedLocationIds.length
+                                                || !canManageSomeCampaignOutput
+                                            }
+                                            onClick={createLocationVariants}
+                                            type="button"
+                                        >
+                                            <LuCopy size={16} />
+                                            Create {selectedLocationIds.length || "branch"} pack{selectedLocationIds.length === 1 ? "" : "s"}
+                                        </button>
+                                    </div>
+                                    <p className={styles.muted}>Only active locations with an area or city can be selected. A batch is limited to eight branches.</p>
+                                </div>
+                            ) : null}
                             <div className={styles.list}>
-                                {data.locations.map((location: CampaignCueLocation) => (
+                                {data.locations.map((location: CampaignCueLocation) => {
+                                    const selectable = location.status === "active" && Boolean(location.locality?.trim());
+                                    const selected = selectedLocationIds.includes(location.id);
+                                    return (
                                     <div className={styles.assetRow} key={location.id}>
                                         <div className={styles.rowStart}>
+                                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_MULTI_LOCATION_VARIANTS ? (
+                                                <input
+                                                    aria-label={`Select ${location.name} for a branch pack`}
+                                                    checked={selected}
+                                                    disabled={!selectable}
+                                                    onChange={(event) => {
+                                                        if (event.target.checked) {
+                                                            setSelectedLocationIds((current) => {
+                                                                if (current.includes(location.id)) return current;
+                                                                if (current.length >= 8) {
+                                                                    setNotice("Choose up to eight locations in one branch-pack batch.");
+                                                                    return current;
+                                                                }
+                                                                return [...current, location.id];
+                                                            });
+                                                        } else {
+                                                            setSelectedLocationIds((current) => current.filter((locationId) => locationId !== location.id));
+                                                        }
+                                                    }}
+                                                    type="checkbox"
+                                                />
+                                            ) : null}
                                             <div className={styles.iconBox}><LuBuilding2 size={18} /></div>
                                             <div className={styles.titleBlock}>
                                                 <h3>{location.name}</h3>
-                                                <p>{location.locality || "No locality set"}</p>
+                                                <p>
+                                                    {location.locality || "Add an area or city before creating a branch pack"}
+                                                    {location.contacts?.whatsapp ? ` · Branch WhatsApp ${location.contacts.whatsapp}` : ""}
+                                                </p>
                                             </div>
                                         </div>
-                                        <span className={styles.chip} data-tone={location.status === "active" ? "green" : "amber"}>{displayLabel(location.status)}</span>
+                                        <div className={styles.chips}>
+                                            {data.campaigns.some((campaign) => campaign.locationId === location.id) ? (
+                                                <span className={styles.chip} data-tone="green">Pack ready</span>
+                                            ) : null}
+                                            <span className={styles.chip} data-tone={location.status === "active" ? "green" : "amber"}>{displayLabel(location.status)}</span>
+                                        </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                                 {!data.locations.length ? <div className={styles.empty}><p>No locations yet. Add a branch name and area when you manage more than one location.</p></div> : null}
                             </div>
                         </section>

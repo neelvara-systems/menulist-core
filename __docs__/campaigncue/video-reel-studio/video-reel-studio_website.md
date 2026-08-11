@@ -12,7 +12,8 @@ Show that CampaignCue can turn a checked campaign into a real, downloadable shor
 
 - Create motion from campaign text, a private image, or a video clip you control.
 - Review three bounded hook directions and a simple scene timeline.
-- Regenerate one checked scene, add separate narration/music, leave review notes, and reuse the structure of a useful result.
+- Check opening clarity, real business proof, pacing, readable text, the final action, and rights without a model call.
+- Follow a phone shot list, regenerate one checked scene, add separate narration/music, leave optional review notes, and reuse the structure of a useful result.
 - Export portrait, square, or landscape video using the browser's supported file type.
 - Rendering uses CampaignCue's in-house browser compositor and zero provider credits.
 - Download the result and post it manually.
@@ -24,3 +25,4 @@ Show that CampaignCue can turn a checked campaign into a real, downloadable shor
 - Do not promise viral videos, platform publishing, or guaranteed results.
 - Do not claim third-party music, footage, or likeness rights are included.
 - Do not promote avatars, synthetic customers, face/body swap, watermark removal, or viral cloning.
+- Do not imply account monitoring, trend scraping, guaranteed format performance, or a required consulting service.

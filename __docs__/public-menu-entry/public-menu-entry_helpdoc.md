@@ -1,7 +1,7 @@
 # Create Your Menu - Help
 
 **Status:** Local source complete; approved release evidence pending
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -22,9 +22,9 @@ MenuList checks every 5 seconds and stops after 36 checks. Select **Try Again** 
 
 ## After creation
 
-The success screen shows the official page and menu link. You can copy or share them, then continue to the dashboard. If the screen shows **Publish**, click **Publish**. Customer menus can take up to 60 seconds to refresh after later edits.
+The success screen shows the business page and menu link. You can copy or share them, then continue to MenuList. For a new starter business, **Keep this menu online** opens Billing directly; the starter menu remains public for seven days, and choosing a plan keeps the same customer link online after setup. For later edits, save the change. If the screen shows **Publish**, click **Publish**. Customer menus can take up to 60 seconds to refresh.
 
-The free setup does not start a Razorpay payment. Plans and subscription choices remain in Billing.
+The free setup does not start a Razorpay payment. Plans and subscription choices remain in Billing. QR Code and Assets remain separate setup modules.
 
 ## Common problems
 

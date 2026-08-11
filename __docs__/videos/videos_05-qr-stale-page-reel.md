@@ -1,11 +1,15 @@
 # Videos - QR Stale Page Reel
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; owned QR behavior and current product capture pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 5.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -31,6 +35,15 @@ Required boundaries:
 - Keep external surfaces framed as owner-placed links, not automatic external-platform updates.
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
+
+## Market Role And Asset Gate
+
+- **Market role:** Sharp pain-point reel that separates the QR object from the quality of its destination.
+- **Opening contract:** Show the QR and state the problem immediately.
+- **First payoff:** The same owned QR opens the approved current MenuList page before `0:11`.
+- **Asset gate:** Owned test QR, fictional stale state, and current MenuList destination with matching data.
+- **Claim gate:** Do not imply MenuList repairs arbitrary QR codes or external destinations automatically.
+- **Native adaptation:** `9:16` is the master composition; keep the QR scan and current page inside platform safe zones.
 
 ## Video 5 - QR Stale Page Reel
 
@@ -71,19 +84,19 @@ The viewer should understand: "My QR can still scan but show the wrong thing."
 1. Hook: The QR code is not the problem.
 2. Problem: The page behind it is stale.
 3. Product entry: MenuList customer link.
-4. Proof: Same QR opens current approved list.
-5. Outcome: Same QR. Current menu.
-6. CTA: Start menu preview.
+4. Proof: An owned QR points to the MenuList customer link.
+5. Outcome: Same owned QR. Current approved menu.
+6. Close: MenuList identity and `menulist.ai`; companion CTA is `Start menu preview`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:03 | 3s | Customer scans table QR | Camera close-up, phone enters frame | The QR code is not the problem. | The QR code is not the problem. | QR scan line | Use real-world table context | QR table card |
-| 0:03-0:07 | 4s | Old page opens with stale item/wrong price | Phone screen fills frame | The page behind it is stale. | The page behind it is stale. | Quick zoom to wrong price | Make stale state obvious | Stale page mock |
-| 0:07-0:11 | 4s | MenuList approved customer page opens | Same phone, refreshed page | MenuList keeps your QR tied to the latest approved list. | Current approved list. | Page refresh transition | Same QR, better destination | MenuList customer page |
-| 0:11-0:14 | 3s | QR and current page side by side | Split screen | Same QR. Current menu. | Same QR. Current menu. | Split-screen lock | Memorable line | QR and current page |
-| 0:14-0:15 | 1s | CTA | End card |  | Start menu preview. | Cut | Short CTA | Logo, CTA |
+| 0:00-0:03 | 3s | Customer scans an owned table QR | Real scan in a native-vertical composition | The QR code is not the problem. | The QR code is not the problem. | One restrained scan line | Use the exact QR demonstrated later | Owned QR card |
+| 0:03-0:06 | 3s | Fictional stale page opens with one wrong price | Customer screen fills the frame | The page behind it is stale. | The page behind it is stale. | Focus moves to the one mismatch | Keep the stale state simple | Fictional stale page |
+| 0:06-0:10 | 4s | Owner placement shows the same QR targeting the MenuList customer link | QR and destination are visibly connected | Point your owned QR to the MenuList customer link. | Owned QR. Approved customer link. | Connection line draws once | Make manual owner placement explicit | QR placement and current customer link |
+| 0:10-0:13 | 3s | Same owned QR opens the current approved menu | Split view resolves into customer page | Update the approved list. The destination stays current. | Same owned QR. Current approved menu. | Match cut on the item and price | Do not imply arbitrary QR repair | Current MenuList page |
+| 0:13-0:15 | 2s | MenuList lockup, tagline, and URL | Clean identity close |  | MenuList / One approved customer link / menulist.ai | Settle and hold to encoded end | CTA remains outside the MP4 | Approved lockup and URL |
 
 ### I. Full Voiceover Script
 
@@ -92,18 +105,18 @@ The QR code is not the problem.
 
 The page behind it is stale.
 
-MenuList keeps your QR tied to the latest approved list.
+Point your owned QR to the MenuList customer link.
 
-Same QR. Current menu.
+Update the approved list. The destination stays current.
 ```
 
 ### J. On-Screen Text List
 
 1. The QR code is not the problem.
 2. The page behind it is stale.
-3. Current approved list.
-4. Same QR. Current menu.
-5. Start menu preview.
+3. Owned QR. Approved customer link.
+4. Same owned QR. Current approved menu.
+5. menulist.ai
 
 ### K. UI Screens Required
 
@@ -140,7 +153,8 @@ Use one scan beep, one soft page-load sound, and steady music. Keep the voiceove
 
 ### P. CTA
 
-Start menu preview.
+- Encoded close: `menulist.ai`.
+- Companion post/ad CTA: `Start menu preview`.
 
 ### Q. Conversion Contract
 

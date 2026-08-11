@@ -57,7 +57,7 @@ The model is not the decision authority. Rules, approved facts, owner-entered op
 11. The next suggestion changes one variable only: channel, timing, offer, photo, CTA, or format.
 12. A positive owner-reported result can nominate a previous pack for safe reuse, but the old output is never treated as current truth.
 13. Safe reuse rebuilds the previous recipe against the current source snapshot, commercial policy, Owner Pulse, assets, and trust gates.
-14. A pending or rejected owner/client approval blocks download, export, mark-used, and manual scheduling.
+14. A pending or rejected owner/client approval blocks download, export, cloud archive, mark-used, and manual scheduling.
 15. Agency workspaces require an approved pack before public-use actions.
 
 ## Campaign Rhythm
@@ -127,7 +127,7 @@ Every newly created pack stores:
 - current/unknown/stale/expired state
 - validated time
 - expiry time bounded by recipe validity, current Owner Pulse validity, and current dated source inputs
-- actions requiring recheck: download, export, mark used, and schedule
+- actions requiring recheck: download, export, cloud archive, mark used, and schedule
 
 The server re-reads the current campaign and workspace inside the final action transaction, and reads `sourceSnapshots/current` only when the current pack has a freshness hash. A different hash or expired window returns a safe conflict and records the blocked action in that transaction. Legacy packs without a freshness receipt stay `unknown` and require visible review rather than being silently treated as current.
 

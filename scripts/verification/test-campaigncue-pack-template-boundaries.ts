@@ -26,6 +26,10 @@ import {
     getUnresolvedCampaignCueOutputIntentRequirements,
     getUnresolvedCampaignCuePackTemplateFactSlots,
 } from "../../src/lib/campaigncue/pack-templates/factSlotReadiness";
+import {
+    buildCampaignCuePackTemplateOverflowDocId,
+    isCampaignCuePackTemplateCatalogIdForCategory,
+} from "../../src/lib/campaigncue/pack-templates/category";
 import type { CreativeEditorDocument } from "../../src/modules/creative-editor/types";
 import { CREATIVE_EDITOR_SCHEMA_VERSION } from "../../src/modules/creative-editor/types";
 import type {
@@ -185,10 +189,44 @@ assertCampaignCuePlatformTemplateCatalogScope({
     catalogId: "food",
     catalogStatus: "active",
     data: [summary],
+    overflowDocIds: ["food_2"],
     schemaVersion: 1,
     updatedAt: 1,
     updatedBy: "seed",
 }, "food");
+assert.equal(buildCampaignCuePackTemplateOverflowDocId("food", 1), "food");
+assert.equal(buildCampaignCuePackTemplateOverflowDocId("food", 2), "food_2");
+assert.equal(isCampaignCuePackTemplateCatalogIdForCategory("food_2", "food"), true);
+assert.equal(isCampaignCuePackTemplateCatalogIdForCategory("retail_2", "food"), false);
+assertCampaignCuePlatformTemplateCatalogScope({
+    businessCategory: "food",
+    catalogId: "food_2",
+    catalogStatus: "active",
+    data: [summary],
+    schemaVersion: 1,
+    updatedAt: 1,
+    updatedBy: "seed",
+}, "food", "food_2");
+assert.throws(() => assertCampaignCuePlatformTemplateCatalogScope({
+    businessCategory: "food",
+    catalogId: "food_2",
+    catalogStatus: "active",
+    data: [summary],
+    overflowDocIds: ["food_3"],
+    schemaVersion: 1,
+    updatedAt: 1,
+    updatedBy: "seed",
+}, "food", "food_2"), /Only the base/);
+assert.throws(() => assertCampaignCuePlatformTemplateCatalogScope({
+    businessCategory: "food",
+    catalogId: "food",
+    catalogStatus: "active",
+    data: [summary],
+    overflowDocIds: ["retail_2"],
+    schemaVersion: 1,
+    updatedAt: 1,
+    updatedBy: "seed",
+}, "food"), /overflow catalog identity/);
 assert.throws(() => assertCampaignCuePlatformTemplateCatalogScope({
     businessCategory: "food",
     catalogId: "food",

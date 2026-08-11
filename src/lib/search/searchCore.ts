@@ -67,6 +67,8 @@ import type { AnswerlatticeEntitySearchIndex, AnswerlatticeRelease } from '@type
 
 import type { CoreSearchInput, CoreSearchReference, CoreSearchResult, SearchPerfMetrics } from './types';
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 // Image processing constants
 const TRUSTED_STORAGE_HOST = 'firebasestorage.googleapis.com';
@@ -212,9 +214,9 @@ const getDefaultBucketForProject = (projectId?: string | null): string | null =>
 
 const getTrustedStorageBucketPaths = (): string[] => {
     const buckets = [
-        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        process.env.FIREBASE_STORAGE_BUCKET,
-        getDefaultBucketForProject(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID),
+        menulistPublicEnv.firebaseStorageBucket,
+        menulistServerEnv.firebaseStorageBucket,
+        getDefaultBucketForProject(menulistPublicEnv.firebaseProjectId || menulistServerEnv.firebaseProjectId),
         process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET,
         process.env.ANSWERLATTICE_FIREBASE_STORAGE_BUCKET,
         getDefaultBucketForProject(process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID || process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID),

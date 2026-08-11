@@ -6,8 +6,8 @@ Safe upload spine implemented. The active v1 runtime keeps CueLayers lightweight
 
 Current implementation notes:
 
-- Firestore rules expose scoped read-only access for CueLayers design/job/version/export/repair/correction/quality documents and keep cost/review samples admin-only.
-- Storage rules allow scoped workspace-member reads under `campaigncue/cue-layers/{workspaceId}/{designId}/...` and deny client writes/deletes.
+- Firestore rules deny direct owner-client reads and writes for CueLayers design/job/version/export/repair/correction/quality documents. Bounded protected APIs apply current workspace/content-manager authorization before returning admitted records; platform admin access remains an operator boundary.
+- Storage rules deny every direct owner-client read/write/delete under `campaigncue/cue-layers/{workspaceId}/{designId}/...`. Boot and export/download flows use server-side validation and short-lived hydration URLs only.
 - Server/Admin code writes active CueLayers artifacts and metadata through CampaignCue workspace scope.
 - The active path is upload -> flat-safe editor projection -> autosave/version -> Storage-backed PNG export registration. Provider calls are not active, so provider cost is zero in the current runtime.
 - Asset Library downloads for private Storage-backed exports use runtime signed URLs. Signed URLs are not stored in Firestore or durable editor JSON.
@@ -30,7 +30,7 @@ Current implementation notes:
 | Provider calls last | Run local quality checks, hash dedupe, route budgeting, SAFE_MODE, rate limits, and AI capacity checks before model calls. |
 | Reuse existing patterns | Mirror MenuList image generation: preflight capacity, task-secret worker calls, bounded concurrency, transactional progress, Storage-first artifacts. |
 
-## Proposed Firestore Collections
+## Firestore Collections And Dormant Contracts
 
 All collections are nested under:
 
@@ -38,12 +38,12 @@ All collections are nested under:
 
 | Collection | Purpose | Client access |
 | --- | --- | --- |
-| `cueLayerDesigns/{designId}` | Design state, source pointer, current editor snapshot pointer, readiness, summary warnings. | Read only through rules; writes through API/Admin. |
-| `cueLayerJobs/{jobId}` | Reconstruction job state, progress, source package pointer, error code, retry metadata. | Read single job through `cueLayerDesigns.current.jobId` where available; writes through API/Admin. |
+| `cueLayerDesigns/{designId}` | Design state, source pointer, current editor snapshot pointer, readiness, summary warnings. | Protected API/Admin only for owners; no direct client read/write. |
+| `cueLayerJobs/{jobId}` | Reconstruction job state, progress, source package pointer, error code, retry metadata. | Protected single-job API/Admin only; no direct client read/write. |
 | `cueLayerJobEvents/{eventId}` | Dormant provider/ops contract for bounded operational events when worker decomposition is enabled. Active v1 does not write this collection. | Admin/server read by default. |
-| `cueLayerVersions/{versionId}` | Version pointer records, not the large editor document snapshot itself. | Read list with limit. |
-| `cueLayerExports/{exportId}` | Export request/result state and download asset pointer. | Read own workspace exports. |
-| `cueLayerRepairRequests/{repairId}` | Targeted repair request/result state. | Read own request; writes through API/Admin. |
+| `cueLayerVersions/{versionId}` | Version pointer records, not the large editor document snapshot itself. | Protected API/Admin only; active owner UI does not list version documents directly. |
+| `cueLayerExports/{exportId}` | Export request/result state and download asset pointer. | Protected API/Admin only. |
+| `cueLayerRepairRequests/{repairId}` | Targeted repair request/result state. | Protected API/Admin only. |
 | `cueLayerCorrectionEvents/{eventId}` | Dormant learning/support stream for provider repair and owner corrections. Active v1 restore-fallback repair writes only a repair request. | Server write; scoped/admin read by default. |
 | `cueLayerQualityReports/{qualityReportId}` | Dormant provider-mode quality gate summary and Storage report pointer. Active v1 keeps the compact warning/quality summary on `cueLayerDesigns`. | Read own design summary; writes through API/Admin. |
 | `cueLayerCostRecords/{recordId}` | Dormant estimated provider/worker/render costs. Active v1 has no provider spend and does not write cost records. | Admin/server only or summary only. |

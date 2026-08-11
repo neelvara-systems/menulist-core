@@ -62,7 +62,7 @@ For each feature, the audit must cover the complete connected flow where applica
 | 38 | Multi-language articles | Medium | Local source complete | Locale configuration -> translation -> review/publish -> fallback and rollout gate |
 | 39 | Advanced white label | Medium | Local source complete | Private branding inputs -> validated storage -> explicit non-delivery -> safe defaults and rollout gate |
 | 40 | AI failure escalation | Small | Local source complete | Failure classification -> safe fallback -> handoff context -> audit and rollout gate |
-| 41 | Native Knowledge Intake connectors | Medium | Local source complete | Reserved flag/contract -> connector validation -> source permissions -> implement only if justified |
+| 41 | Native Knowledge Intake Connectors | Medium | Local source complete | GitHub verified install -> owner repository policy -> signed event -> private intake evidence -> existing governed review; rollout remains gated |
 | 42 | Signal-quality scoring | Small | Local source complete | Reserved flag/contract -> evidence/metric definition -> implement only if justified |
 | 43 | Native Zendesk, Intercom, Freshdesk, Help Scout, and Jira connectors | Large | Local source complete | Market/customer validation -> connector boundary -> source permissions -> avoid connector-count scope |
 | 44 | Autonomous browser and account-changing actions | Large | Local source complete | Deliberate non-goal audit -> authorization/action policy -> reconsider only after trustworthy answering proof |
@@ -1722,29 +1722,36 @@ The focused aggregate proves strict API credential/scope contracts, key rotation
 ### Feature 41 — Native Knowledge Intake Connectors
 
 **Status:** Local source complete
-**Decision:** Do not build now
+**Decision:** Implement one GitHub provider; keep rollout disabled until hosted QA
 **Dossier:** `__docs__/answerlattice/native-knowledge-intake-connectors/README.md`
 
-**Verified flow:** reserved false app flag -> no runtime consumer -> no Functions mirror, OAuth, credential, provider, sync, UI, route, rule, index, or public claim; current selected-URL/file/export/pasted/repeated-reply/media intake -> bounded review evidence -> human-governed existing destinations.
+**Verified flow:** owner with integration permission and active subscription -> signed GitHub App install state -> canonical stage callback -> GitHub user authorization verifies installation ownership -> pending installation remains separate from any active connection -> owner selects up to ten repositories and event policy -> bounded signed webhook -> exact repository binding -> active-subscription and replay/daily-cap claim -> compact current-job pointer -> deterministic existing Knowledge Intake job/source -> owner-triggered analysis -> existing source governance, Release-to-Truth, Answer Tests, and publication controls.
 
 **Findings and changes:**
 
-- confirmed the repository has no native Knowledge Intake connector implementation and no customer-facing claim;
-- distinguished outbound Slack/email/Linear/GitHub governance notifications from source-ingestion connectors;
-- confirmed the current founder job is already served by selected public URLs, supported files/exports, pasted notes, repeated replies, screenshots/images, and short media without private-system credentials;
-- changed the app flag comment from a misleading true/false capability description to an explicit reserved-only, no-runtime contract;
-- corrected Knowledge Intake implementation docs that previously instructed adding a nonexistent mirrored Functions flag;
-- added an executable recursive source gate proving the flag has no consumer, no matching server flag/path exists, and public copy does not claim provider availability;
-- documented a strict reconsideration gate: repeated paying-client demand for one provider, demonstrated export failure, selected-scope permission preservation, complete revoke/delete/dependency review, sustainable cost, and evidence-only ingestion;
-- limited any future approved implementation to one read-only provider with manual import before background sync and no write-back or automatic truth publication.
+- admitted GitHub only and kept the implementation provider-specific instead of creating a connector framework or catalog;
+- added short-lived HMAC state bound to purpose, user, tenant, and workspace, then verified installation ownership through GitHub user authorization before any repository choice is stored;
+- fixed callback and return destinations to the stage-specific canonical Answerlattice deployment target instead of trusting an incoming request host;
+- bounded every GitHub JSON response and used a GraphQL path-only selection for merged pull requests, avoiding the REST files response that includes patch text;
+- separated pending installation data from active connection data, so starting and abandoning a reconnect does not pause the last confirmed repository binding;
+- added owner-confirmed repository and event policy, with published Releases on by default and merged default-branch pull-request summaries off by default;
+- added a bounded signed webhook with stable delivery hashes, ten-minute failed-processing leases, a 100-event daily workspace cap, and retry-safe deterministic source identity;
+- reused the existing active-subscription authority before setup, policy changes, or event claims, preventing provider-triggered writes after entitlement ends;
+- stored one bounded monthly rolling-job slot in the compact integration summary, avoiding an increasing scan across earlier full jobs while retaining enough theoretical capacity for the daily cap;
+- made that slot pointer monotonic under concurrent completion and collapsed repository-removal handling from up to 100 binding queries to one installation-scoped query plus one transaction per affected workspace;
+- reused existing Knowledge Intake redaction, limits, source/job/summary counters, owner-triggered model analysis, source governance, Release-to-Truth, Answer Tests, Daily Brief, and publication controls;
+- added one server-only repository-binding collection for exact event fanout and included it in workspace teardown; browser rules deny all reads and writes;
+- excluded polling, schedulers, repository clones, content/blob/diff/patch reads, source-code indexing, token retention, event-time model calls, GitHub write-back, and automatic truth/publication;
+- kept the outbound GitHub issue adapter independent and kept all public website claims deferred;
+- retained the false app flag until GitHub App credentials, exact callback URLs, permission review, signed hosted webhook behavior, and one real workspace are verified.
 
-**Verification passed:** `npm run verify:answerlattice-native-intake-connectors`, strict root TypeScript, `npm run typecheck:answerlattice`, Answerlattice runtime truth, documentation links, dependency freeze, package parse, and diff integrity.
+**Verification passed:** `npm run verify:answerlattice-native-intake-connectors`, strict root TypeScript, `npm run typecheck:answerlattice`, focused ESLint, dedicated and shared Knowledge Intake Firestore rule suites, documentation links with zero broken links, dependency freeze, package parse, and diff integrity.
 
-**Deployment:** No app runtime, Firebase rule/index/Storage/Functions, provider, or Vercel-deployable customer surface was added. No deployment applies.
+**Deployment:** The dedicated Firestore rules add an explicit server-only binding collection. The scoped QA deploy was attempted after local verification with `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` and stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule revision changed. App routes and the owner card require an explicitly authorized Vercel deployment for hosted QA; no Vercel deployment is authorized by this task.
 
-**Cost and retention:** Current feature cost is zero. No source, credential, cursor, webhook, log, TTL, Storage object, provider call, scheduler work, or cleanup obligation exists for this reserved feature.
+**Cost and retention:** No polling, scheduler, listener, Storage object, repository index, or event-time model call exists. Connection load is one existing summary-document read. A selected event performs one bounded binding query, the existing active-subscription lookup, a compact replay/config transaction, and existing job/source/summary writes; inactive, duplicate, ignored, and capped deliveries create no source. One compact month/slot pointer keeps rolling-job lookup effectively constant instead of rescanning prior full jobs. At most 50 delivery hashes remain in the integration summary. Bindings are removed on disconnect, repository removal, installation deletion, and workspace teardown; imported evidence follows existing Knowledge Intake retention.
 
-**External evidence:** repeated paying-client demand for the same provider, measured export/import activation friction, provider-specific permission/deletion feasibility, provider pricing/limits, and reduced founder maintenance remain required before reconsideration.
+**External evidence:** GitHub App registration, hosted callback/webhook behavior, real private-repository permission scope, redelivery, repository access changes, one authenticated owner flow, and reduced release-maintenance work remain pending before flag activation or public claims.
 
 ### Feature 42 — Signal-Quality Scoring
 
@@ -1853,3 +1860,87 @@ The final July 26 C1 current-worktree recheck preserved the existing product-sep
 **Deployment evidence:** dedicated QA rules plus `answerlatticeNightly`/`processIntegrationEvent`, shared MenuList QA rules, and the final dedicated/shared Firestore-plus-Storage rule sets were attempted after validation. Every attempt stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed.
 
 **External release evidence still required:** successful remote CI, QA deploy/readback, managed backup plus isolated restore rehearsal, a disposable QA workspace close/recover/erase rehearsal including dedicated staff Auth and cross-service Storage rule permission, first-client answer evaluation, browser/device/accessibility, live payment/email/provider/DNS journeys, production telemetry, and 1,000+ due-workspace scheduler load evidence.
+
+## Post-Inventory Owner-Relief Expansion — August 10, 2026
+
+The frozen 44-feature inventory remains unchanged. These are additive owner
+decision overlays over audited systems, not Features 45+.
+
+### Expansion Items 1-4 — Support Truth Change Control
+
+The existing pending-release flow now contains Release-to-Truth Review, Source
+Freshness & Conflict Watch, Cross-Surface Dependency Review, and Truth
+Propagation Proof. The dossier is
+`__docs__/answerlattice/support-truth-change-control/README.md`.
+
+### Expansion Item 5 — Plan, Role, State & Version Coverage Matrix
+
+**Status:** Local source complete; authenticated hosted responsive QA pending.
+
+**Verified flow:** existing Answer Tests route -> explicit
+`includeScopeCoverage=1` -> one Answer Tests summary plus one compact current
+source-version document -> pure bounded projection -> strict private browser
+admission -> responsive matrix -> existing edit, canonical-only run, and
+Canonical Answer Governance handoffs.
+
+**Boundaries:** active owner-defined questions only; explicit contexts only;
+no Cartesian context generation, canonical-answer scan, new collection,
+persisted matrix, listener, scheduler, Storage object, model call, score,
+automatic answer creation, approval, or publication.
+
+**Cost:** the standard requested matrix load is two compact document reads and
+zero writes. Existing save/run/release-check operations add one compact
+source-version response read when matrix proof is requested; their existing
+transaction and test execution costs remain unchanged.
+
+**Dossier:** `__docs__/answerlattice/scope-coverage-matrix/README.md`.
+
+### Expansion Item 6 — Post-Change Support Evidence Review
+
+**Status:** Local source complete; authenticated hosted responsive QA pending.
+
+**Verified flow:** Product Friction Evidence -> explicit **Review recent
+changes** action -> bounded active-release and implemented-correction list ->
+exact selected-change revalidation -> complete 14-day UTC before/after windows
+over directly linked entities -> strict private response -> responsive count
+comparison with waiting, insufficient-evidence, source-saturation, and
+retention states.
+
+**Boundaries:** support-evidence events only; no unique-user, question,
+product-health, root-cause, or causal-release claim. The selected change day is
+excluded. Legacy nightly `impactResult.improvementPercent` is not read or
+displayed. No automatic 7/14/30-day workflow, persisted outcome, owner action,
+notification, issue creation, or publication is added.
+
+**Cost:** zero incremental reads on Product Friction Evidence mount; at most 16
+reads when recent changes are explicitly loaded; one exact change plus at most
+201 rows per complete window for an eligible comparison. No write, collection,
+index, listener, scheduler, Storage object, cache, model, embedding, or external
+integration operation is added.
+
+**Dossier:**
+`__docs__/answerlattice/post-change-support-evidence-review/README.md`.
+
+### Expansion Item 7 — Owner-Selected Friction Review Continuation
+
+**Status:** Local source complete; authenticated hosted responsive QA pending.
+
+**Verified flow:** Product Friction Evidence -> prepare one bounded evidence
+brief -> choose one admitted owner review path -> read the explicit next-action
+consequence -> continue into entity-scoped Knowledge Map or trusted answers,
+copy locally for product/engineering review, or close without state.
+
+**Boundaries:** the path is a handoff instruction, not a diagnosis. Product
+behavior remains an export to the owner's existing execution system. Watch
+creates no reminder; no action creates no saved decision. Invalid entity
+context and unknown runtime paths fail closed to local copy. No product problem,
+task, owner-decision, notification, issue-delivery, or review-path record is
+created.
+
+**Cost:** route resolution, helper copy, local export, close, and client
+navigation add zero Firebase reads, writes, collections, listeners, schedulers,
+Storage objects, providers, integrations, or cache entries. Existing destination
+pages retain their bounded reads only after explicit owner navigation.
+
+**Dossier:**
+`__docs__/answerlattice/product-friction-intelligence/README.md`.

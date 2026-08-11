@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Product Teams',
-    description: 'AnswerLattice helps product teams inside growing companies keep approved support truth aligned with product surfaces and releases.',
+    description: 'AnswerLattice helps product teams inside growing companies keep reviewed support knowledge aligned with product areas and releases.',
     alternates: { canonical: '/use-cases/product-teams' },
 };
 
@@ -26,14 +26,14 @@ export default async function ProductTeamsUseCasePage() {
             canonicalPath="/use-cases/product-teams"
             eyebrow="For product teams"
             title="See where product changes break support."
-            description="A bounded product, support, and engineering group can use AnswerLattice to turn releases, product pages, support gaps, and approved answers into accountable review work."
+            description="Product, support, and engineering teammates can use AnswerLattice to turn releases, product pages, support gaps, and approved answers into accountable review work."
             problem="Fast releases change workflows, limits, roles, and states. Without stale-answer review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
             answerlatticeAnswer="The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed."
-            ownerReview="Product changes become support-review work through stale-answer checks, coverage, and signal queues. Proposals still require human approval before they become official answers."
+            ownerReview="Product changes become support-review work through stale-answer checks, coverage, and review queues. Draft changes still require human approval before they become official answers."
             setupSteps={[
-                'Keep one accountable owner for official support truth and invite only active operators.',
+                'Keep one accountable owner for official support and invite only active teammates.',
                 'Define surfaces for release-heavy areas such as billing, limits, permissions, and settings.',
                 'Map changelog entries to affected surfaces and answers.',
                 'Review stale-answer and coverage signals after releases.',

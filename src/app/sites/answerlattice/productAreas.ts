@@ -12,11 +12,11 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Help center and tickets',
         href: '/product/support-control',
-        description: 'Turn scattered product knowledge into docs, article topic maps, FAQs, owner answers, release notes, fallback tickets, feedback, and a qualified read-only owner brief.',
+        description: 'Turn scattered product knowledge into scannable docs, FAQs, owner answers, release notes, widget help, fallback tickets, feedback, and a focused read-only owner brief.',
     },
     {
         label: 'Review approved answers',
         href: '/product/knowledge-governance',
-        description: 'Use Knowledge Map, Product Friction Evidence, release impact, and evidence-backed answer tests before support becomes official.',
+        description: 'See missing, stale, or release-affected support, review proposed changes, and approve what becomes official.',
     },
 ];

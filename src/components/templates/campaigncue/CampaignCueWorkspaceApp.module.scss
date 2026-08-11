@@ -178,7 +178,8 @@
 }
 
 .headline h1,
-.sectionHeader h2 {
+.sectionHeader h2,
+.sectionHeader h3 {
   margin: 0;
   color: var(--cc-text, #142420);
   letter-spacing: 0;
@@ -236,7 +237,8 @@
   gap: 16px;
 }
 
-.sectionHeader h2 {
+.sectionHeader h2,
+.sectionHeader h3 {
   font-size: 20px;
 }
 
@@ -530,6 +532,50 @@
   min-width: 0;
 }
 
+.captureHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.captureHeader h3,
+.captureHeader p {
+  margin: 4px 0 0;
+}
+
+.captureHeader h3 {
+  color: var(--cc-text, #142420);
+  font-size: 16px;
+}
+
+.captureHeader p,
+.mediaUploadProgress {
+  color: var(--cc-text-muted, #667085);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mediaCaptureActions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mediaUploadProgress {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.mediaUploadProgress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--cc-primary, #24564d);
+}
+
 .input,
 .select,
 .textarea {
@@ -545,6 +591,101 @@
 .textarea {
   min-height: 112px;
   resize: vertical;
+}
+
+.campaignInboxPanel,
+.campaignInboxReview {
+  display: grid;
+  gap: 14px;
+}
+
+.campaignInboxHintRow {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.campaignInboxHintRow p,
+.campaignInboxHintRow span,
+.campaignInboxNotice {
+  margin: 0;
+  color: var(--cc-text-muted, #667085);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.campaignInboxHintRow span {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.campaignInboxNotice[data-blocked="true"] {
+  color: var(--cc-error-text, #9b341f);
+  font-weight: 700;
+}
+
+.campaignInboxCandidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--cc-border-soft, #e0d9ca);
+  border-radius: 8px;
+  background: var(--cc-surface, #fff);
+  padding: 12px;
+}
+
+.campaignInboxCandidate[data-destination="business_details"] {
+  border-color: var(--cc-warning-border, #d9b66f);
+}
+
+.campaignInboxCandidateMain {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  min-height: 44px;
+  min-width: 0;
+}
+
+label.campaignInboxCandidateMain {
+  cursor: pointer;
+}
+
+.campaignInboxCandidateMain > input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--cc-primary, #24564d);
+}
+
+.campaignInboxCandidateMain > svg {
+  flex: 0 0 auto;
+  color: var(--cc-warning-text, #8a5b08);
+  margin-top: 1px;
+}
+
+.campaignInboxCandidate .titleBlock p,
+.campaignInboxCandidate .titleBlock span {
+  overflow-wrap: anywhere;
+}
+
+.campaignInboxCandidate .titleBlock span {
+  display: block;
+  margin-top: 4px;
+  color: var(--cc-text-muted, #667085);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.campaignInboxActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .toggleRow {
@@ -722,6 +863,142 @@
   background: var(--cc-panel, #fffdfa);
   padding: 14px;
   box-shadow: var(--cc-shadow, 0 12px 32px rgba(31, 41, 51, 0.05));
+  scroll-margin-top: 96px;
+}
+
+.videoCoach,
+.videoCaptureGuide {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--cc-border, #ddd8cc);
+  border-radius: 8px;
+  background: var(--cc-panel, #fffdfa);
+  padding: 14px;
+}
+
+.videoCoachHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.videoCoachHeader > div,
+.videoCaptureGuide > div,
+.videoLearningItem {
+  display: grid;
+  gap: 4px;
+}
+
+.videoCoachHeader strong,
+.videoCaptureGuide > div > strong {
+  color: var(--cc-text, #142420);
+  font-size: 16px;
+}
+
+.videoCoachGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.videoCoachGrid article {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--cc-border, #ddd8cc);
+  border-radius: 8px;
+  background: var(--cc-surface, #fff);
+  padding: 12px;
+}
+
+.videoCoachGrid article[data-status="ready"] {
+  border-color: var(--cc-success-border, #9ec8b8);
+}
+
+.videoCoachGrid article[data-status="review"] {
+  border-color: var(--cc-warning-border, #d8b76a);
+}
+
+.videoCoachGrid article[data-status="fix"] {
+  border-color: var(--cc-error-border, #d9a097);
+}
+
+.videoCoachGrid article > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cc-text, #142420);
+}
+
+.videoCoachGrid p,
+.videoCoachGrid small,
+.videoCaptureGuide p,
+.videoLearningItem p,
+.noteBox small {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--cc-text-muted, #667085);
+  line-height: 1.45;
+}
+
+.videoCoachGrid p,
+.videoCaptureGuide p,
+.videoLearningItem p {
+  font-size: 13px;
+}
+
+.videoCoachGrid small,
+.noteBox small {
+  font-size: 12px;
+}
+
+.videoCaptureGuide ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.videoCaptureGuide li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  border-top: 1px solid var(--cc-border, #ddd8cc);
+  padding-top: 8px;
+}
+
+.videoCaptureGuide li > span {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--cc-surface-soft, #edf5f2);
+  color: var(--cc-primary, #24564d);
+}
+
+.videoCaptureGuide li > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.videoLearningItem {
+  border-top: 1px solid var(--cc-border, #ddd8cc);
+  padding-top: 8px;
+}
+
+.videoLearningItem > span {
+  color: var(--cc-text, #142420);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
 }
 
 .videoFileControl {
@@ -970,7 +1247,8 @@
   .twoGrid,
   .formGrid,
   .videoProjectControls,
-  .videoSceneFields {
+  .videoSceneFields,
+  .videoCoachGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -995,8 +1273,14 @@
   .twoGrid,
   .formGrid,
   .videoProjectControls,
-  .videoSceneFields {
+  .videoSceneFields,
+  .videoCoachGrid {
     grid-template-columns: 1fr;
+  }
+
+  .videoCoachHeader {
+    align-items: start;
+    flex-direction: column;
   }
 
   .outputPickerGroups {
@@ -1016,9 +1300,16 @@
   .assetRow,
   .scheduleRow,
   .findingRow,
-  .handoffField {
+  .handoffField,
+  .campaignInboxCandidate {
     align-items: start;
     flex-direction: column;
     grid-template-columns: 1fr;
+  }
+
+  .campaignInboxHintRow,
+  .campaignInboxActions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

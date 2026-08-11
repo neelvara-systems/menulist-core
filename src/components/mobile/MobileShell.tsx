@@ -6,7 +6,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
-import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
+import { hasStarterWorkspaceAccess, isStarterActivationStore } from '@lib/onboarding/starterActivation';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
@@ -279,6 +279,7 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 
 export default function MobileShell() {
     const t = useTranslations('MobileShell');
+    const starterT = useTranslations('StarterActivation');
     const {
         activeSubscription,
         activeSubscriptionLoading,
@@ -299,6 +300,7 @@ export default function MobileShell() {
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
+    const isStarterStore = isStarterActivationStore(storeDetails);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
@@ -598,10 +600,12 @@ export default function MobileShell() {
                 <Flex align="center" flex={1} justify="center" vertical>
                     <Card style={{ maxWidth: 420, width: '100%' }}>
                         <Flex align="center" gap={16} vertical>
-                            <LuCreditCard color={token.colorPrimary} size={48} />
-                            <Title level={4} style={{ margin: 0, textAlign: 'center' }}>{t('subscribeTitle')}</Title>
+                            <LuCreditCard aria-hidden="true" color={token.colorPrimary} size={48} />
+                            <Title level={4} style={{ margin: 0, textAlign: 'center' }}>
+                                {isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle')}
+                            </Title>
                             <Text style={{ textAlign: 'center' }}>
-                                {t('subscribeDescription')}
+                                {isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription')}
                             </Text>
                             <Button
                                 block

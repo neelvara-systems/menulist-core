@@ -15,6 +15,23 @@ membership authoritative:
 - no provider call,
 - no Cloud Function required for owner browsing.
 
+Browser access is not granted by a reusable workspace token. Each operation uses
+one short-lived in-memory Firebase session with an exact purpose:
+
+- `template_read` for platform/workspace catalog and Storage artifact reads;
+- `workspace_template_write` for the bounded workspace index transaction and
+  immutable workspace artifact write/delete operations.
+
+The token purpose does not replace the authoritative workspace-document role
+lookup. Media-upload tokens cannot read or mutate template data.
+
+CampaignCue always uses its own named browser Firebase app for these temporary
+sessions. In local/QA shared-project mode the named app points at the same
+Firebase project, but it does not share the primary MenuList Auth instance.
+Template payload, editor-document, and preview objects are create-only;
+replacing a saved template writes a new version path and moves the bounded
+index pointer before obsolete owned objects are deleted.
+
 ## Firestore Collections
 
 ```text
@@ -154,10 +171,10 @@ Not allowed:
 
 | Path | Read | Write |
 | --- | --- | --- |
-| `campaigncuePlatformPackTemplates/{businessCategory}` | Active durable CampaignCue workspace member or platform user | Platform/admin only |
-| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Active durable workspace member | Active durable workspace member under the exact tenant/store scope |
-| `campaigncue/templates/platform/...` | Active durable CampaignCue workspace member or platform user | Platform/admin only |
-| `campaigncue/templates/workspaces/{workspaceId}/...` | Active durable workspace member | Active durable workspace member under the exact tenant/store scope and exact artifact allowlist |
+| `campaigncuePlatformPackTemplates/{businessCategory}` | Platform admin, or current workspace content manager with `template_read` purpose | Platform/admin only |
+| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Platform admin, or current workspace content manager with `template_read`/`workspace_template_write` purpose | Platform admin, or current workspace content manager with `workspace_template_write` purpose and strict index schema |
+| `campaigncue/templates/platform/...` | Platform admin, or current workspace content manager with `template_read` purpose | Platform/admin only |
+| `campaigncue/templates/workspaces/{workspaceId}/...` | Platform admin, or current workspace content manager with `template_read` purpose | Platform admin, or current workspace content manager with `workspace_template_write` purpose and exact artifact allowlist |
 
 The rules require the authoritative workspace document to have exact
 `id`/`workspaceId`, `productId: "CC"`, tenant/store scope, `status: "active"`,

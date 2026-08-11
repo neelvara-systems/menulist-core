@@ -1,6 +1,6 @@
 import { LuArrowRight, LuExternalLink } from 'react-icons/lu';
 import { NEELVARA_PRODUCT_LINEUP } from './siteConfig';
-import { PagePrismPanel, PageShell } from './content';
+import { PageShell } from './content';
 import { NeelvaraLink } from './SiteHeaderNav';
 
 export default function NeelvaraNotFound() {
@@ -31,15 +31,6 @@ export default function NeelvaraNotFound() {
                             </NeelvaraLink>
                         </div>
                     </div>
-                    <PagePrismPanel
-                        eyebrow="Recovery routes"
-                        title="Page not found"
-                        rows={[
-                            'Home',
-                            'Products',
-                            'Contact',
-                        ]}
-                    />
                 </div>
             </section>
 

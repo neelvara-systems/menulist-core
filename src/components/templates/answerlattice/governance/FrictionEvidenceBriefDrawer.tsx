@@ -6,6 +6,7 @@ import {
     buildAnswerlatticeFrictionEvidenceBrief,
     isAnswerlatticeFrictionReviewPath,
 } from '@lib/answerlattice/frictionEvidenceBrief';
+import { getAnswerlatticeFrictionReviewDestination } from '@lib/answerlattice/frictionReviewRouting';
 import { copyAnswerlatticeSupportTextToClipboard } from '@lib/answerlattice/supportClipboard';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type {
@@ -13,8 +14,9 @@ import type {
     AnswerlatticeSupportMetricWindow,
 } from '@type/answerlattice';
 import { Alert, Button, Drawer, Flex, Grid, message, Select, Space, Tag, Typography, theme } from 'antd';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { LuClipboardCopy, LuDownload, LuFileText } from 'react-icons/lu';
+import { LuArrowRight, LuClipboardCopy, LuDownload, LuFileText, LuX } from 'react-icons/lu';
 
 const { Paragraph, Text } = Typography;
 
@@ -40,6 +42,7 @@ export default function FrictionEvidenceBriefDrawer({
     open,
     sourceLastUpdated,
 }: FrictionEvidenceBriefDrawerProps) {
+    const router = useRouter();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -63,6 +66,11 @@ export default function FrictionEvidenceBriefDrawer({
             return null;
         }
     }, [entity, metricWindow, reviewPath, sourceLastUpdated]);
+    const reviewDestination = useMemo(() => (
+        entity
+            ? getAnswerlatticeFrictionReviewDestination(reviewPath, entity.entityId)
+            : null
+    ), [entity, reviewPath]);
 
     const copyBrief = async () => {
         if (!brief) return;
@@ -98,6 +106,20 @@ export default function FrictionEvidenceBriefDrawer({
             anchor?.remove();
             if (objectUrl) URL.revokeObjectURL(objectUrl);
         }
+    };
+
+    const continueReview = () => {
+        if (!reviewDestination) return;
+        if (reviewDestination.kind === 'internal_route') {
+            onClose();
+            router.push(reviewDestination.href);
+            return;
+        }
+        if (reviewDestination.kind === 'local_export') {
+            void copyBrief();
+            return;
+        }
+        onClose();
     };
 
     return (
@@ -141,6 +163,11 @@ export default function FrictionEvidenceBriefDrawer({
                             style={{ display: 'block', marginTop: 8, minHeight: 44, width: '100%' }}
                             value={reviewPath}
                         />
+                        {reviewDestination ? (
+                            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                {reviewDestination.helperText}
+                            </Text>
+                        ) : null}
                     </div>
 
                     {brief ? (
@@ -165,13 +192,27 @@ export default function FrictionEvidenceBriefDrawer({
                             <Flex gap={8} vertical={isMobile}>
                                 <Button
                                     block={isMobile}
-                                    icon={<LuClipboardCopy />}
-                                    onClick={() => void copyBrief()}
+                                    icon={reviewDestination?.kind === 'internal_route'
+                                        ? <LuArrowRight />
+                                        : reviewDestination?.kind === 'close'
+                                            ? <LuX />
+                                            : <LuClipboardCopy />}
+                                    onClick={continueReview}
                                     style={{ minHeight: 44 }}
                                     type="primary"
                                 >
-                                    Copy brief
+                                    {reviewDestination?.actionLabel || 'Continue review'}
                                 </Button>
+                                {reviewDestination?.kind !== 'local_export' ? (
+                                    <Button
+                                        block={isMobile}
+                                        icon={<LuClipboardCopy />}
+                                        onClick={() => void copyBrief()}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        Copy brief
+                                    </Button>
+                                ) : null}
                                 <Button
                                     block={isMobile}
                                     icon={<LuDownload />}

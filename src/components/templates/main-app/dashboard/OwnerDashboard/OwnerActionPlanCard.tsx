@@ -2,6 +2,16 @@ import {
     markOwnerActionDone,
 } from '@database/ownerDashboard';
 import {
+    getOwnerActionDisplay,
+    getOwnerActionPriorityLabel,
+    getOwnerActionResultDisplay,
+    getOwnerConfidenceDisplay,
+} from '@lib/analytics/ownerActionPlanPresentation';
+import {
+    formatDashboardPercent,
+    getOwnerDashboardSourceLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
+import {
     AnalyticsAiEntitlement,
     OwnerActionReceipt,
     OwnerActionPlan,
@@ -10,7 +20,7 @@ import {
     SourceQuality,
 } from '@template/main-app/projects/types';
 import { Button, Card, Col, Empty, Row, Space, Tag, Typography, message, theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useEffect, useState } from 'react';
 import { LuCheckCircle, LuCompass, LuFlame, LuLock, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -41,6 +51,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
     projectId,
 }) => {
     const t = useTranslations('Dashboard.owner');
+    const locale = useLocale();
     const actions = actionPlan?.actions || [];
     const [localReceipts, setLocalReceipts] = useState<Record<string, OwnerActionReceipt>>({});
     const [markingActionId, setMarkingActionId] = useState<string | null>(null);
@@ -49,6 +60,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
         && !analyticsAiEntitlement.enabled
         && analyticsAiEntitlement.reason !== 'feature_flag_disabled';
     const { token } = theme.useToken();
+    const confidenceDisplay = confidence ? getOwnerConfidenceDisplay(confidence, locale, t) : null;
 
     useEffect(() => {
         setLocalReceipts(actionPlan?.receipts || {});
@@ -106,20 +118,20 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                 {!isPlanLocked && confidence ? (
                     <div>
                         <Tag color={confidence.status === 'stable' ? 'success' : confidence.status === 'watch' ? 'warning' : 'default'}>
-                            {confidence.label}
+                            {confidenceDisplay?.label}
                         </Tag>
-                        <Text type="secondary">{confidence.message}</Text>
+                        <Text type="secondary">{confidenceDisplay?.message}</Text>
                     </div>
                 ) : null}
 
                 {!isPlanLocked && bestSource ? (
                     <div>
                         <Text type="secondary">{t('actionPlan.bestSourcePrefix')} </Text>
-                        <Text strong>{bestSource.label}</Text>
+                        <Text strong>{getOwnerDashboardSourceLabel(bestSource.source, bestSource.label, t)}</Text>
                         <Text type="secondary">
-                            {t('actionPlan.bestSourceStats', {
+                            {t('actionPlan.bestSourceStatsFormatted', {
                                 visits: bestSource.menuSessions,
-                                rate: bestSource.actionRate,
+                                rate: formatDashboardPercent(bestSource.actionRate),
                             })}
                         </Text>
                     </div>
@@ -127,34 +139,38 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
 
                 {!isPlanLocked && actions.length > 0 ? (
                     <Row gutter={[12, 12]}>
-                        {actions.map((action) => (
+                        {actions.map((action) => {
+                            const display = getOwnerActionDisplay(action, locale, t);
+                            const result = findReceipt(action)?.result;
+                            const resultDisplay = result ? getOwnerActionResultDisplay(result, locale, t) : null;
+                            return (
                             <Col xs={24} md={12} key={action.id}>
                                 <Card size="small">
                                     <Space direction="vertical" size={6} style={{ width: '100%' }}>
                                         <Space wrap>
                                             <Tag color={priorityColor[action.priority] || 'default'}>
-                                                {action.priority}
+                                                {getOwnerActionPriorityLabel(action.priority, t)}
                                             </Tag>
-                                            {action.metricLabel ? <Tag>{action.metricLabel}</Tag> : null}
+                                            {display.metricLabel ? <Tag>{display.metricLabel}</Tag> : null}
                                         </Space>
                                         <Title level={5} style={{ margin: 0 }}>
-                                            {action.title}
+                                            {display.title}
                                         </Title>
                                         <Paragraph style={{ marginBottom: 0 }}>
-                                            {action.description}
+                                            {display.description}
                                         </Paragraph>
-                                        <Text type="secondary">{action.reason}</Text>
+                                        <Text type="secondary">{display.reason}</Text>
                                         <Text strong>
-                                            <LuCompass style={{ marginRight: 6 }} />
-                                            {action.actionLabel}
+                                            <LuCompass style={{ marginInlineEnd: 6 }} />
+                                            {display.actionLabel}
                                         </Text>
-                                        {findReceipt(action)?.result ? (
+                                        {result && resultDisplay ? (
                                             <Space direction="vertical" size={2}>
-                                                <Tag color={findReceipt(action)?.result?.status === 'improved' ? 'success' : findReceipt(action)?.result?.status === 'pending' ? 'processing' : 'default'}>
-                                                    {findReceipt(action)?.result?.label}
+                                                <Tag color={result.status === 'improved' ? 'success' : result.status === 'pending' ? 'processing' : 'default'}>
+                                                    {resultDisplay.label}
                                                 </Tag>
                                                 <Text type="secondary">
-                                                    {findReceipt(action)?.result?.message}
+                                                    {resultDisplay.message}
                                                 </Text>
                                             </Space>
                                         ) : projectId ? (
@@ -171,7 +187,8 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                                     </Space>
                                 </Card>
                             </Col>
-                        ))}
+                            );
+                        })}
                     </Row>
                 ) : !isPlanLocked ? (
                     <Empty
@@ -188,11 +205,11 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                         <Space wrap>
                             {sourceQuality.slice(0, 4).map((source) => (
                                 <Tag key={source.source} icon={<LuFlame />}>
-                                    {t('actionPlan.sourceQualityTag', {
-                                        source: source.label,
+                                    {t('actionPlan.sourceQualityTagFormatted', {
+                                        source: getOwnerDashboardSourceLabel(source.source, source.label, t),
                                         visits: source.menuSessions,
                                         sessions: source.actionSessions,
-                                        rate: source.actionRate,
+                                        rate: formatDashboardPercent(source.actionRate),
                                     })}
                                 </Tag>
                             ))}

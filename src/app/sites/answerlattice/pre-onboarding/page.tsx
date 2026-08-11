@@ -77,7 +77,7 @@ const SAFETY_ITEMS = [
     'No ticket, chat, macro, or repeated reply becomes approved truth without review.',
     'No guarantee that every AI IDE can inspect every private repo, login-only app, website, recording, or file.',
     'Unavailable sources must be marked pending instead of treated as covered.',
-    'No live support until sources, product surfaces, widget context, and test questions pass.',
+    'No live support until sources, product pages, widget context, and test questions pass.',
 ];
 
 export default async function AnswerlatticePreOnboardingPage() {
@@ -245,10 +245,10 @@ export default async function AnswerlatticePreOnboardingPage() {
                             items={[
                                 { title: 'Paste prompt', detail: 'Run the master prompt in a repo, docs workspace, website brief, or owner-notes workspace.' },
                                 { title: 'Inspect sources', detail: 'Check website pages, docs, app routes, policies, support flows, and screenshots.' },
-                                { title: 'Create package', detail: 'Generate source files, payloads, product surfaces, support tests, and asset rules.' },
+                                { title: 'Create package', detail: 'Generate source files, payloads, a product-page map, support tests, and asset rules.' },
                                 { title: 'Owner review', detail: 'Remove private data, fix inaccuracies, and approve what can enter AnswerLattice.' },
                                 { title: 'Upload to AnswerLattice', detail: 'Use Knowledge Intake to create review drafts from the prepared source set.' },
-                                { title: 'Enable support', detail: 'Go live only after answers, surfaces, widget context, and test questions pass.' },
+                                { title: 'Enable support', detail: 'Go live only after answers, product pages, widget context, and test questions pass.' },
                             ]}
                         />
                     </div>

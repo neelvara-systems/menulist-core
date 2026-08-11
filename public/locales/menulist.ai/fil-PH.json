@@ -410,12 +410,12 @@
     "errorLoadingAnalytics": "Error sa Paglo-load ng Analytics",
     "owner": {
       "viewing": "Pagtingin:",
-      "menu": "Menu Menu Menu",
+      "menu": "Menu",
       "unableToLoad": "Hindi ma-load ang dashboard",
       "refreshOrContactSupport": "Pakisubukang i-refresh ang pahina. Kung magpapatuloy ang problema, makipag-ugnayan sa suporta.",
       "settledTabHelper": "Kumpletuhin ang pag-load ng analytics kapag binuksan mo ang tab na ito. Pagkatapos ng unang pag-load, ginagamit ng device na ito ang mga naka-save na resulta hanggang sa makumpleto ng lokasyon ang susunod nitong update sa pagtatapos ng araw.",
       "views": {
-        "todaySoFar": "Ngayon hanggang ngayon",
+        "todaySoFar": "ngayon sa",
         "overview": "Pangkalahatang-ideya",
         "yesterday": "Nakaraang araw",
         "last7Days": "Nakaraang 7 Araw",
@@ -428,7 +428,8 @@
         "daily": "Nakaraang araw",
         "weekly": "Nakaraang 7 Araw",
         "monthly": "Ngayong Buwan",
-        "overall": "Kabuuan"
+        "overall": "Kabuuan",
+        "graph": "Mga graph"
       },
       "today": {
         "noMenuActivityToday": "Wala pang aktibidad sa menu ngayon.",
@@ -446,7 +447,7 @@
         "livePartialData": "Live na bahagyang data"
       },
       "metrics": {
-        "itemClicks": "Mga Pag-click sa Item",
+        "itemClicks": "ang mga click",
         "engagedSessions": "Mga session na may aktibidad",
         "actionRate": "Rate ng Aksyon",
         "customerActions": "Mga Pagkilos ng Customer",
@@ -454,16 +455,16 @@
         "noResultSearches": "Mga Paghahanap na Walang Resulta",
         "unavailableInterest": "Hindi Magagamit na Interes",
         "topLanguage": "Nangungunang Wika",
-        "smartPicksShown": "Ipinakita ang Mga Smart Pick",
+        "smartPicksShown": "Smart Picks ang show",
         "smartPicksClicks": "Mga Pag-click sa Smart Picks",
         "smartPicksTaps": "Mga pag-tap sa Smart Picks",
-        "smartPicksUsed": "Nagamit na Mga Smart Pick",
+        "smartPicksUsed": "Smart Picks Pagkakaiba",
         "smartPicksEngagement": "Pakikipag-ugnayan sa Smart Picks",
         "totalMenuScans": "Kabuuang Pag-scan ng Menu",
         "totalItemClicks": "Kabuuang Mga Pag-click sa Item",
         "activeDays": "Mga Aktibong Araw",
         "daysActive": "Mga Araw na Aktibo",
-        "avgDailyScans": "Avg. Pang-araw-araw na Pag-scan",
+        "avgDailyScans": "ang mga daily scans",
         "smartPicksActive": "Aktibo ang Smart Picks",
         "engagementRate": "Rate ng Pakikipag-ugnayan",
         "topItem": "Nangungunang Item",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Walang aktibidad na naitala kahapon",
         "noAnalyticsYet": "Wala pang data. Lalabas ang iyong analytics kapag nagsimula nang tumingin ang mga customer.",
-        "noItemClicksYet": "Wala pang mga pag-click sa item"
+        "noItemClicksYet": "Wala pang mga pag-click sa item",
+        "lowActivityTitle": "Mababang aktibidad",
+        "lowActivityDescription": "Walang sapat na aktibidad upang gumuhit ng isang kapaki-pakinabang na konklusyon para sa panahong ito.",
+        "noWeeklyData": "Walang nalulutas na menu na aktibidad ang magagamit para sa huling7araw pa.",
+        "noMonthlyData": "Walang nakatakdang menu activity ang magagamit para sa buwan na ito."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% vs noong nakaraang linggo"
+        "vsLastWeek": "{sign}{change}% vs noong nakaraang linggo",
+        "changeVsLastWeek": "{change} vs nakaraang linggo"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# araw ng aktibidad na naitala} other {# mga araw ng aktibidad na naitala}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Oo",
         "no": "Hindi",
-        "notAvailable": "N/A Angkop sa mga sumusunod na kaso:",
+        "notAvailable": "N/A",
         "active": "Aktibo",
         "lowActivity": "Mababang Aktibidad",
         "noData": "Walang Data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Naghihintay para sa unang pag-scan",
         "weeklyInsights": "Lingguhang Mga Insight",
         "last4WeeksComparison": "Paghahambing sa Huling 4 na Linggo",
-        "historicalDataWillAppear": "Lalabas ang makasaysayang data pagkatapos ng ilang linggo"
+        "historicalDataWillAppear": "Lalabas ang makasaysayang data pagkatapos ng ilang linggo",
+        "statusMessages": {
+          "working": "Ginagamit ng mga customer ang iyong kasalukuyang menu.",
+          "low_activity": "Ang iyong kasalukuyang menu ay mananatiling magagamit. Ang iyong mga kasalubong na produkto ay mananatili sa listahan ng pagbili.",
+          "no_data": "Lalabas ang aktibidad pagkatapos na magsimulang buksan ng mga customer ang iyong menu."
+        }
       },
       "aiSummary": {
         "daily": "Nakaraang araw sa isang sulyap",
         "weekly": "Sa isang sulyap ngayong linggo",
-        "monthly": "Sa buwang ito bilang buod"
+        "monthly": "Sa buwang ito bilang buod",
+        "localized": {
+          "noActivity": "Walang tagapagdag ng customer activity sa loob ng isang oras na ito.",
+          "menuViews": "Ang mga customer ay binuksan ang menu ng {count} beses.",
+          "itemTaps": "Ang mga customer ay na-tap ang mga item sa menu ng {count} beses.",
+          "customerActions": "Natapos ng mga customer ang {count} huling aksyon.",
+          "searches": "Ang mga customer ay naghahanap ng menu {count} beses.",
+          "unavailableInterest": "Ang mga hindi magagamit na item ay tumanggap ng {count} taps."
+        }
       },
       "actions": {
         "call": "Tumawag",
@@ -543,7 +562,7 @@
         "order": "Umorder"
       },
       "actionPlan": {
-        "menuIntelligenceTitle": "Menu Intelligence Action Plan Plano ng Aksyon sa Intelihensiya",
+        "menuIntelligenceTitle": "Panatilihin ang Intelligence Action Plan",
         "todayTitle": "Listahan ng Aksyon Ngayon",
         "availableOnPro": "Available sa Pro",
         "proDescription": "Nagdaragdag ang Pro ng menu intelligence, mga listahan ng aksyon ng may-ari, at mga buod sa simpleng wika mula sa iyong aktibidad sa menu.",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} pagbisita · {rate}%",
         "markDone": "Markahan bilang tapos na",
         "markDoneSaved": "Minarkahan bilang tapos na. Maa-update ang mga resulta kapag handa na ang susunod na buod ng analytics.",
-        "markDoneFailed": "Hindi mamarkahang tapos na ang pagkilos na ito. Subukan muli."
+        "markDoneFailed": "Hindi mamarkahang tapos na ang pagkilos na ito. Subukan muli.",
+        "bestSourceStatsFormatted": "· {visits} pagbisita · {rate} rate ng aksyon",
+        "bestSourceMobileFormatted": "Pinakamahusay na pinagkukunan ngayon: {source} · {visits} pagbisita · {rate} rate ng aksyon.",
+        "sourceQualityTagFormatted": "{source}: {visits} pagbisita · {sessions} session ng aksyon · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} na pagbisita · {rate}",
+        "priorities": {
+          "high": "Mataas na priyoridad",
+          "medium": "Katamtamang priyoridad",
+          "low": "Mababang priyoridad"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Matatag",
+            "message": "Ang magagamit na aktibidad ay sumusuporta sa isang malinaw na check menu."
+          },
+          "watch": {
+            "label": "Tingnan ang observation",
+            "message": "Ang ilang mga aktibidad ay maaaring kailangan ng isa pang check bago baguhin ang menu."
+          },
+          "no_data": {
+            "label": "Ang mga data ay kailangan",
+            "message": "Maghintay para sa mas nalulutas na aktibidad ng customer bago gumuhit ng konklusyon."
+          }
+        },
+        "localizedActions": {
+          "reason": "Batay sa pinakabagong napag-usapang aktibidad ng customer.",
+          "availability": {
+            "title": "Tingnan ang availability ng item na ito.",
+            "description": "Tingnan kung ang mga hindi magagamit o nakatagong item ay dapat ibalik o panatilihin sa labas ng paningin.",
+            "action": "Suriin ang availability"
+          },
+          "customerActions": {
+            "title": "Tingnan ang mga aksyon ng customer.",
+            "description": "Tingnan ang mga detalye ng menu at mga link na ginagamit ng mga customer bago gumawa ng aksyon.",
+            "action": "Tingnan ang mga aksyon ng customer."
+          },
+          "details": {
+            "title": "Pagbutihin ang mga detalye ng item",
+            "description": "Tingnan ang mga pangalan ng item, mga pagpipilian, paglalarawan at mga imahe na maaaring kailangang mas malinaw na impormasyon.",
+            "action": "Mga detalye ng review"
+          },
+          "general": {
+            "title": "Maghintay para sa isang mas malinaw na signal.",
+            "description": "Panatilihin ang kasalukuyang menu na matatag hanggang sa mas maraming mga aktibidad ay magagamit.",
+            "action": "Basahin ito mamaya."
+          },
+          "menuOrder": {
+            "title": "Review ang menu order",
+            "description": "Tingnan kung ang mga mahalagang item at kategorya ay madaling mahanap ng mga customer.",
+            "action": "Review ang menu order"
+          },
+          "pricing": {
+            "title": "ang review price",
+            "description": "Tingnan ang mga presyo na konektado sa pinakabagong customer-interes signal.",
+            "action": "Review ng mga presyo"
+          },
+          "search": {
+            "title": "Suriin ang mga paghahanap ng customer",
+            "description": "Tingnan ang mga paghahanap na maaaring hindi humantong sa mga customer sa isang kapaki-pakinabang na menu resulta.",
+            "action": "Mga review ng searches"
+          },
+          "source": {
+            "title": "Tingnan ang mga pinagkukunan ng pag-entry ng customer.",
+            "description": "Tingnan kung ang mga pampublikong link at QR na placement ay tumutukoy sa mga customer sa kasalukuyang menu.",
+            "action": "Review ng Public Links"
+          },
+          "timing": {
+            "title": "Mga review ng menu timing",
+            "description": "Tingnan kung ang mga naka-timed na kategorya at availability ay tumutugma kapag hinahanap ng mga customer ang mga ito.",
+            "action": "Mga review ng Timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "ang marking",
+            "message": "Ang resulta ay susuriin pagkatapos ng mas maraming mga nalulutas na aktibidad ay magagamit."
+          },
+          "improved": {
+            "label": "Magbigay ng",
+            "message": "Ang susunod na nakaayos na tseke ay nagpapakita ng pagpapabuti."
+          },
+          "no_clear_change": {
+            "label": "Walang malinaw na pagbabago.",
+            "message": "Ang susunod na nakaayos na tseke ay hindi nagpakita ng malinaw na pagbabago."
+          },
+          "not_enough_data": {
+            "label": "Ang mga data ay kailangan",
+            "message": "Hindi naman na may mga pananaliksik para sa pagbabago na ito."
+          },
+          "pending": {
+            "label": "ang check",
+            "message": "Ang MenuList ay susuriin ito pagkatapos na mas maraming mga gawaing nakaayos ang magagamit."
+          }
+        }
       },
       "details": {
         "menuDetails": "Mga Detalye ng Menu",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Hindi Magagamit na Interes",
           "languages": "Mga Wika",
           "filters": "Mga Filter",
-          "smartPicks": "Mga Smart Picks",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Mga pagkilos ayon sa oras ng negosyo"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Mga view ng menu",
-          "itemTaps": "Mga pag-tap ng item",
+          "itemTaps": "Mga pag-tap sa item",
           "menuSessions": "Mga session ng menu",
           "engagedSessions": "Mga session na may aktibidad",
           "actionSessions": "Mga session ng pagkilos",
@@ -617,6 +729,12 @@
           "unknown": "Mga pagkilos kapag hindi available ang status ng mga oras",
           "open": "Mga aksyon kapag bukas",
           "closedShare": "{rate}% ng lahat ng naitalang pagkilos ang nangyari habang sarado"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} ang mga tapes na hindi magagamit",
+          "strongItem": "{count} Mga pag-tap sa item",
+          "needsWork": "{count} views, walang taps",
+          "gettingAttention": "{count} view"
         }
       },
       "smartPicks": {
@@ -652,7 +770,7 @@
         "googleReviews": "Mga Review ng Google",
         "instagram": "Instagram",
         "facebook": "Facebook",
-        "website": "Website Website",
+        "website": "ang website",
         "sourceViews": "{count} view",
         "sourceMenu": "Menu ng {count}",
         "sourceActions": "Mga pagkilos na {count}",
@@ -663,9 +781,9 @@
         "stayed": "{count} nanatili",
         "weeklyTrend": "Lingguhang Trend (Nakaraang 4 na Linggo)",
         "pageViews": "Mga Pagtingin sa Pahina",
-        "viewMenuClicks": "Tingnan ang Mga Pag-click sa Menu",
+        "viewMenuClicks": "Tingnan ang menu click",
         "actions": "Mga Pagkilos",
-        "linkTaps": "Mga Pag-tap sa Link",
+        "linkTaps": "Mga Link",
         "shares": "Mga Pagbabahagi",
         "titles": {
           "overall": "Opisyal na Pahina ng Negosyo · Pangkalahatan",
@@ -690,7 +808,7 @@
         "noInstallsYet": "Wala pang pag-install.",
         "noInstallsDescription": "Lalabas dito ang mga numero pagkatapos simulan ng mga customer ang pag-install ng iyong menu app.",
         "mobileNoInstallsDescription": "Wala pang pag-install. Lalabas dito ang mga numero sa sandaling simulan ng mga customer ang pag-install ng iyong menu app.",
-        "installedCustomers": "Mga Naka-install na Customer",
+        "installedCustomers": "Ang mga customer ay",
         "installed": "Naka-install",
         "appOpens30d": "Nagbubukas ang App (30d)",
         "installs30d": "Mga Pag-install (30d)",
@@ -706,21 +824,21 @@
         "shortcutBreakdown": "Pagkasira ng shortcut",
         "installsByPlatform": "Mga pag-install ayon sa platform",
         "appStickiness": "Pagiging malagkit ng app",
-        "returningOpens30d": "Bukas ang pagbabalik (30d)",
         "avgOpensPerInstall": "Avg na nagbubukas sa bawat pag-install",
-        "iosManualInstalls": "mga manu-manong pag-install ng iOS",
+        "iosManualInstalls": "iOS manual ang pag-install",
         "shortcuts": {
           "menu": "Tingnan ang Menu",
           "reservation": "Pagpapareserba",
-          "order": "Mag-order ng isang Mahusay na presyo sa Pilipinas!"
+          "order": "ang online order"
         },
         "platforms": {
-          "ios": "iOS iOS 10.3.2",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Ang Android ay isang sistemang pang-operatibong batay sa Android.",
-          "desktop": "Desktop desktop.",
+          "android": "Android",
+          "desktop": "Mga Desktop",
           "other": "Iba pa"
-        }
+        },
+        "tryAgainLater": "Subukan muli mamaya."
       },
       "projectSelector": {
         "deleted": "Tinanggal",
@@ -728,7 +846,7 @@
         "ended": "Natapos na",
         "special": "Espesyal",
         "cancelled": "Kinansela",
-        "default": "Ang default na halaga ay 0.",
+        "default": "Mga default",
         "untitled": "Walang Pamagat",
         "fromBase": "Mula sa {name}",
         "noCatalogs": "Walang mga katalogo",
@@ -761,7 +879,8 @@
         "copied": "Kinopya",
         "copy": "Kopyahin",
         "openGoogle": "Buksan ang Google",
-        "done": "Tapos na"
+        "done": "Tapos na",
+        "couldNotOpen": "Hindi ma-open ang Google Business Profile."
       },
       "behaviorNudge": {
         "linkCopied": "Kinopya ang link",
@@ -782,11 +901,752 @@
         "checkedJustNow": "Kaka-check ngayon",
         "noActionNeeded": "Walang kinakailangang pagkilos",
         "publicMenuReady": "Handa na ang iyong pampublikong menu.",
-        "repairNow": "Ayusin kung ano ang maaaring ayusin ngayon",
+        "repairNow": "Repair what can be fixed sa ngayon.",
         "reviewTopIssue": "Suriin ang nangungunang isyu",
         "repairMenu": "Menu ng Pag-aayos",
         "review": "Suriin",
-        "repair": "Ayusin"
+        "repair": "Ayusin",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {Ang item na # ay kulang sa isang paglalarawan.} other {Ang # na item ay kulang sa mga paglalarawan.}}",
+            "ok": "Ang lahat ng mga item ay may paglalarawan.",
+            "help": "Tutulong ang mga paglalarawan sa mga customer na maunawaan ang bawat alok."
+          },
+          "images": {
+            "warning": "{count, plural, one {Ang item na # ay kulang ng isang imahe.} other {Ang # na item ay mga nawalang imahe.}}",
+            "ok": "Ang lahat ng mga item ay may mga larawan.",
+            "help": "Maaaring makatulong ang mga larawan sa mga customer na pumili nang mas mabilis."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Ang kategoryang # ay kulang ng isang icon.} other {Ang mga kategoryang # ay kulang sa mga icon.}}",
+            "ok": "Lahat ng mga kategorya ay may mga icon.",
+            "help": "Ang mga icon ay ginagawang mas madali ang pag-scan ng mga kategorya."
+          },
+          "prices": {
+            "warning": "{count, plural, one {Ang item na # ay wala ng presyo.} other {Ang # item ay kulang sa presyo.}}",
+            "ok": "Ang lahat ng mga item ay may presyo.",
+            "help": "Ang mga customer ay inihambing ang mga presyo bago magpasya."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {Ang item na # ay nakatago sa mga customer.} other {Ang # item ay nakatago sa mga customer.}}",
+            "ok": "Walang mga item na nakatago.",
+            "help": "Hindi lalabas ang mga nakatagong item sa pampublikong menu."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {Ang presyo ng # ay nangangailangan ng pagsusuri.} other {Kailangang suriin ang mga presyo ng #.}}",
+            "ok": "Ang mga presyo ay nasa loob ng inaasahang hanay.",
+            "help": "Ang MenuList ay nagpapakita ng mga presyo ng isang item sa loob ng parehong kategorya. I-mark ang isang inaasahang presyo bilang nasuri."
+          },
+          "translations": {
+            "warning": "{count, plural, one {Ang item na # ay kulang sa mga pagsasalin.} other {Ang # na item ay kulang sa pagsasalin.}}",
+            "ok": "Ang lahat ng mga nakikitang item ay isinalin.",
+            "help": "Ang ilang mga item ay hindi kumpleto sa mga napiling wika ng menu."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {Ang # menu detail ay nawawala translations} other {Ang mga detalye ng menu na # ay nawawala.}}",
+            "ok": "Ang mga detalye ng menu ay isinalin sa wikang Ingles.",
+            "help": "Ang pangalan ng menu, paglalarawan, o mga tala ay hindi kumpleto sa mga napiling wika ng menu."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "ang kopya link",
+        "direct": "ang Direct",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Kit ng menu",
+        "nativeShare": "Mga Device",
+        "obp": "Pahina ng negosyo",
+        "other": "Iba pa",
+        "qr": "QR ang code",
+        "shortcut": "Shortcut ng app",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Kalusugan ng Negosyo",
+        "open": "Buksan ang kalagayan ng negosyo",
+        "today": "Ngayon",
+        "latestActivity": "Pinakabagong aktibidad",
+        "noActionNeeded": "Walang kinakailangang pagkilos",
+        "status": {
+          "stable": "Matatag",
+          "watch": "Kailangan ng atensyon",
+          "needs_review": "Kailangang suriin muli.",
+          "insufficient_data": "Ang mga data ay kailangan",
+          "stale": "Kailangan ng isang sariwang check.",
+          "not_ready": "Lahat ng Prepared"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {Ang # customer-facing na detalye ay nangangailangan ng pagsusuri.} other {Ang mga detalye ng customer na nakaharap sa # ay kailangang suriin.}}",
+          "stable": {
+            "headline": "Ang iyong pampublikong impormasyon ay matatag.",
+            "message": "Walang customer-facing isyu kailangan aksyon sa pinakabagong check."
+          },
+          "watch": {
+            "headline": "Ang isang detalye ay maaaring kailangan ng pansin.",
+            "message": "Tingnan ang iminungkahing check bago baguhin ang pampublikong impormasyon."
+          },
+          "needs_review": {
+            "headline": "Review customer-facing details",
+            "message": "Dapat na suriin ang isa o higit pang mga pampublikong detalye."
+          },
+          "insufficient_data": {
+            "headline": "Higit pang mga gawain ay kailangang gawin.",
+            "message": "Panatilihin ang kasalukuyang impormasyon na matatag habang ang MenuList ay kumukuha ng isang kapaki-pakinabang na signal."
+          },
+          "stale": {
+            "headline": "Kailangan ng Business Health ang isang sariwang check.",
+            "message": "Ang huling check ay luma. Ang iyong kasalukuyang pampublikong impormasyon ay nananatiling hindi nagbabago."
+          },
+          "not_ready": {
+            "headline": "Ang Negosyo ng Kalusugan ay handa nang handa.",
+            "message": "Ang unang check ng store ay lilitaw dito kapag handa na ito."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Check ang menu source",
+            "message": "Walang aktibong pampublikong menu source ang natagpuan. Tingnan ang menu bago ibahagi ito.",
+            "title": "Ang menu source ay nangangailangan ng pag-check sa pag-verify."
+          },
+          "low_latest_activity": {
+            "action": "Check ang mga link",
+            "message": "Ang aktibidad ng customer ay mababa. Tingnan ang QR, Google , Instagram at WhatsApp.",
+            "title": "Ang aktibidad ng customer ay mababa."
+          },
+          "unavailable_item_taps": {
+            "action": "Tingnan ang mga hindi magagamit na item.",
+            "message": "Ang mga customer ay nagpakita ng interes sa mga hindi magagamit na item. Restock ang mga ito o panatilihin ang mga iyon nakatago.",
+            "title": "Ang mga hindi magagamit na item ay nakakakuha ng pansin."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Tingnan ang feedback ng bisita.",
+            "message": "Kailangan ng feedback ng bisita ang isang pag-check ng may-ari bago baguhin ang mga pampublikong detalye.",
+            "title": "Ang mga bisita ay kailangang suriin ang feedback ng bisita."
+          },
+          "default": {
+            "action": "Suriin ang mga detalye",
+            "message": "Ang isang customer-facing na detalye ay nangangailangan ng isang pag-check ng may-ari.",
+            "title": "Ang isang detalye ay kailangang suriin."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {Kailangang suriin ang pribadong item ng feedback na #.} other {Kailangang suriin ang mga pribadong item ng feedback na #.}}",
+          "clear": "Ang personal feedback ay malapit."
+        },
+        "freshness": {
+          "notReady": "Ang Business Health ay hindi real time. Ipakita ng unang store check ang petsa ng data dito.",
+          "throughDate": "Ginagamit ang data sa pamamagitan ng {date}. Maaaring hindi pa kumpleto ang araw na ito.",
+          "latest": "Ginagamit ang pinakabagong magagamit na data ng MenuList. Maaaring hindi pa kumpleto ang araw na ito."
+        },
+        "periods": {
+          "today": "Ngayon",
+          "yesterday": "Nakaraang araw",
+          "thisWeek": "Ngayong linggo",
+          "lastWeek": "Nakaraang linggo",
+          "thisMonth": "Ngayong buwan",
+          "lastMonth": "Nakaraang buwan",
+          "last7Days": "Huling 7 araw",
+          "last30Days": "Huling 30 araw",
+          "overall": "Kabuuan"
+        },
+        "metrics": {
+          "menuViews": "Mga view ng menu",
+          "topDemand": "Pinakamataas na demand",
+          "topDemandDetail": "Pagkakaiba: {count} {signal}",
+          "bestSource": "Ang pinakamahusay na source",
+          "bestSourceDetail": "I-update ang link: {count} visits"
+        },
+        "signals": {
+          "views": "ang mga view",
+          "clicks": "Mga pag-tap",
+          "attention": "Panatilihin ang signal"
+        },
+        "page": {
+          "description": "Araw-araw na katayuan ng negosyo at mga tseke sa customer.",
+          "latestCheck": "AI health check",
+          "loading": "ang loading",
+          "loadingMessage": "Paglo-load ng Kalusugan sa Negosyo...",
+          "notReady": "Ang Health Care Business ay hindi nakuha ngayon.",
+          "loadErrorTitle": "Hindi na-load ang Business Health ng mga file.",
+          "loadErrorDescription": "Mangyaring i-refresh ang pahinang ito at subukan muli.",
+          "refresh": "I-refresh",
+          "needsAttention": "Kailangan ng atensyon",
+          "desktopSettingsOnly": "Buksan ito mula sa mga setting ng desktop."
+        },
+        "scope": {
+          "title": "Ang Business Health",
+          "allMenus": "Lahat ng menu",
+          "selectedMenu": "Napili na menu.",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "View sa antas ng lokasyon",
+          "inactiveMenu": "Mga Menu sa Inactive",
+          "thisMenuOnly": "Ang menu lamang",
+          "allMenusInLocation": "Lahat ng mga menu sa lokasyong ito ay nasa lokasyon na ito.",
+          "thisMenuHelper": "Gamitin ang menu na ito para sa mga katanungan at gawain.",
+          "allMenusHelper": "Ang mga katanungan at aktibidad ay gumagamit ng lahat ng menu sa lokasyong ito.",
+          "dialogDescription": "Pumili ng lahat ng mga menu o isang menu para sa aktibidad at checks.",
+          "all": "ang lahat",
+          "close": "Isara"
+        },
+        "locations": {
+          "title": "Mga lokasyon",
+          "loading": "Paglo-load ng mga lokasyon...",
+          "empty": "Walang buod ng lokasyon pa.",
+          "storeFallback": "Lokasyon {id}",
+          "checkedOn": "Pagkakaroon ng {date}",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {Ang # customer-facing check ay nangangailangan ng pagsusuri.} other {Ang mga check na nakaharap sa customer ng # ay kailangang suriin.}}",
+          "statusReason": {
+            "stable": "Walang customer-facing isyu na nangangailangan ng aksyon.",
+            "watch": "Ang isang customer-facing detalye ay maaaring kailangan ng pansin.",
+            "needs_review": "Customer-facing detalye kailangan suriin.",
+            "insufficient_data": "Higit pang mga customer na aktibidad ay kinakailangan para sa isang kapaki-pakinabang na check.",
+            "stale": "Kailangan ng isang bagong check ang lokasyong ito.",
+            "not_ready": "Ang unang pag-check ng lokasyon ay handa na."
+          }
+        },
+        "assistant": {
+          "title": "Magtanong sa Negosyo Kalusugan Asked Business Health",
+          "askShort": "Sino ang",
+          "englishOnlyTitle": "Ang mga katanungan ay kasalukuyang magagamit sa wikang Ingles.",
+          "englishOnlyDescription": "Ang iyong katayuan at mga tseke ay lokal. I-swipe ang wika ng app sa Ingles upang magtanong ng mga katanungan sa Kalusugan ng Negosyo.",
+          "notReady": "Ang Business Health ay sasagot pagkatapos ng huling pag-check.",
+          "suggestedUnavailable": "Hindi magagamit ang mga iminungkahing katanungan ngayon.",
+          "freeTextUnavailable": "Hindi magagamit ang mga tanong na may libreng teksto ngayon.",
+          "answerError": "Ang Business Health ay hindi nagbibigay ito.",
+          "suggestedQuestions": "Mga iminungkahing katanungan",
+          "followUps": "Lahat ng ask ang next",
+          "you": "sa iyo",
+          "empty": "Pumili ng isang tanong o magtanong tungkol sa iyong negosyo.",
+          "placeholderReady": "Magtanong tungkol sa ngayon, linggo na ito, menu pansin, o susunod na mga checks.",
+          "placeholderMobile": "Magtanong tungkol sa ngayon o sa linggo na ito.",
+          "placeholderPending": "Available pagkatapos ng pinakabagong pag-check.",
+          "send": "Tingnan ang question",
+          "cachedFacts": "Batay sa naka-cache na MenuList mga katotohanan ng negosyo.",
+          "questions": {
+            "checks": "Ano ang kailangang suriin?",
+            "today_stats": "Paano ang araw na ito?",
+            "this_week_stats": "Ano ang nangyari sa linggo na ito?",
+            "top_item": "Aling item ang nakakuha ng pansin?",
+            "last_week_stats": "Ano ang nangyari noong nakaraang linggo?",
+            "this_month_stats": "Paano ang buwan na ito?",
+            "last_month_stats": "Ano ang nangyari noong nakaraang buwan?",
+            "public_menu_status": "Tama ba ang aking pampublikong menu?",
+            "profile_status": "Kumpleto ba ang aking profile sa negosyo?",
+            "feedback_reviews": "Anumang mga bisita feedback upang suriin?",
+            "feedback_recent": "Ano ang sinabi ng mga bisita kamakailan?",
+            "default": "Ano ang dapat kong suriin sa susunod?"
+          }
+        },
+        "sources": {
+          "title": "ang data source",
+          "menuProjects": "Menu ng mga proyekto",
+          "ownerAnalytics": "Mga Aktividad sa Owner",
+          "guestFeedback": "Mga Feedback sa Guest",
+          "storeSettings": "Mga setting ng negosyo",
+          "menuListData": "Data ng MenuList",
+          "updatedOn": "Na-update {date}",
+          "latest": "Pinakabagong magagamit na data."
+        },
+        "publicTruth": {
+          "title": "Opisyal na mapagkukunan ng impormasyon para sa customer",
+          "checking": "mga check",
+          "checkingFacts": "Pagsisiyasat sa mga pampublikong katotohanan ng MenuList...",
+          "checkedMenu": "Na-check na menu: {name}",
+          "boundary": "Na-check mula sa kasalukuyang MenuList na data ng negosyo at menu. Ang mga panlabas na platform ay mananatiling may-ari-nakumpirma.",
+          "boundaryShort": "Ang mga panlabas na platform ay mananatiling may-ari-nakumpirma.",
+          "historyTitle": "Mga History ng Public Information",
+          "historyBoundary": "Ginagamit lamang ang MenuList business at menu facts. Walang panlabas na site ang sinusubaybayan.",
+          "historyBoundaryShort": "MenuList mga katotohanan lamang. Walang panlabas na site ang na-scan.",
+          "refreshErrorTitle": "Hindi na-refresh ang customer-source check.",
+          "refreshErrorDescription": "Ang huling magagamit na MenuList katotohanan ay ipinapakita pa rin sa ibaba.",
+          "historyRefreshError": "Hindi na-refresh ang kasaysayan ng pampublikong impormasyon.",
+          "historyLoadError": "Hindi na-load ang kasaysayan ng pampublikong impormasyon.",
+          "historyErrorDescription": "Ang huling nai-save na ulat ay ipinapakita pa rin kapag magagamit.",
+          "notRun": "Wala sa running",
+          "lastSaved": "Huling nai-save ang {date}",
+          "noSavedReport": "Walang report sa ngayon",
+          "noSavedReportDescription": "Patakbuhin ang check upang i-save ang unang ulat para sa lokasyong ito.",
+          "downloadEnglishReport": "I-download ang ulat sa wikang Ingles",
+          "downloadEnglishShort": "Ang ulat sa Ingles ay inilathala",
+          "runCheck": "ang check",
+          "currentFix": "Kasalukuyang item ng pag-aayos ng item",
+          "nextFixes": "Susunod na pampublikong mga pag-aayos",
+          "none": "Walang",
+          "attentionCount": "{count, plural, one {Kailangang suriin ang item na #.} other {Kailangang suriin ang mga item na #.}}",
+          "readyModuleCount": "Handang {count}/{total}",
+          "missingCount": "Nawawalang {count}",
+          "checkCount": "Tingnan ang {count}",
+          "savedCount": "Nai-save ang {count}/{total}.",
+          "modulesReady": "Ang {count}/{total} module ay handa na.",
+          "status": {
+            "ready": {
+              "label": "Lahat ng",
+              "message": "Ang iyong opisyal na customer source ay may mga pangunahing kailangan ng mga customer."
+            },
+            "missing_basics": {
+              "label": "Pagkakaroon ng Basics",
+              "message": "Ang menu, oras, presyo, mga aksyon, o mga detalye ng customer-link ay nangangailangan ng pansin bago mas malawak na pagbabahagi."
+            },
+            "unclear": {
+              "label": "Kailangan ng check",
+              "message": "Karamihan sa mga pangunahing kaalaman ay naroroon, ngunit kailangan pa ring suriin ang isa o higit pang mga pampublikong katotohanan."
+            }
+          },
+          "metrics": {
+            "readyModules": "Mga Modules",
+            "missingFacts": "Nawawalang katotohanan",
+            "checkedMenu": "Mga menu sa check",
+            "savedReports": "Salamat ng mga report"
+          },
+          "results": {
+            "present": "Lahat ng",
+            "missing": "Magbigay ng",
+            "unclear": "check ang",
+            "not_applicable": "Hindi kailangan",
+            "not_checked": "walang check"
+          },
+          "moduleStatus": {
+            "ready": "Lahat ng",
+            "needs_attention": "Magbigay ng",
+            "check": "check ang",
+            "not_checked": "walang check"
+          },
+          "facts": {
+            "business_identity": "ang pangalan ng business",
+            "menu_or_service_source": "Menu o listahan ng serbisyo.",
+            "prices": "Mga presyo",
+            "hours": "Mga oras",
+            "location": "Mga lokasyon",
+            "contact": "Mga contact sa Contact",
+            "customer_actions": "Mga Customer Action",
+            "public_link": "Link para sa customer",
+            "photos": "Mga Foto",
+            "machine_readable_source": "Mga detalyeng madaling hanapin sa paghahanap"
+          },
+          "evidence": {
+            "owner_entered": "Ipinasok sa check na ito.",
+            "owner_selected": "Nagsimula sa pamamagitan ng owner.",
+            "source_text_hint": "Natagpuan sa ibinigay na pinagmulan.",
+            "valid_public_url": "Ang public link format ay valid.",
+            "invalid_public_url": "Ang pampublikong link ay nangangailangan ng pagwawasto.",
+            "menulist_store": "Na-check ang kasalukuyang mga setting ng negosyo ng MenuList.",
+            "menulist_project": "Na-check ang napili o default na menu ng MenuList.",
+            "menulist_summary": "Na-check ang kasalukuyang buod ng menu na MenuList.",
+            "menulist_public_route": "Na-check ang kasalukuyang MenuList na mga setting ng customer-link.",
+            "menulist_index_gate": "Na-check ang kasalukuyang mga patakaran sa pamahalaan ng MenuList.",
+            "not_provided": "Ang katotohanang ito ay nawawala sa kasalukuyang data ng MenuList.",
+            "not_checked": "Ang katotohanang ito ay hindi ligtas na na-check mula sa kasalukuyang data ng MenuList.",
+            "priceNotLoaded": "Buksan ang napiling menu nang isang beses upang ma-check ng MenuList ang mga presyo nito."
+          },
+          "moduleEvidence": {
+            "ready": "Ang kasalukuyang data ng MenuList ay nagpapakita na handa na ang lugar na ito.",
+            "needs_attention": "Ang kasalukuyang MenuList data ay nagpapakita na ang kinakailangang impormasyon ay nawawala.",
+            "check": "Tingnan ang lugar na ito bago umasa sa mga customer.",
+            "not_checked": "Hindi nagawang ganap na suriin ng MenuList ang lugar na ito mula sa kasalukuyang data."
+          },
+          "setupReason": {
+            "needs_attention": "Ang kinakailangang impormasyon sa customer ay nawawala.",
+            "check": "Tingnan ito bago umasa ang mga customer sa ito.",
+            "not_checked": "Hindi nagawang ganap na suriin ito ng MenuList mula sa kasalukuyang data."
+          },
+          "targetActions": {
+            "basic_settings": "Mga detalye ng Open Business",
+            "domain_settings": "Buksan ang customer link",
+            "hours_edit": "Open din sa",
+            "menu_tab": "Magbukas ng menu",
+            "official_page": "Magbukas ng business page ng negosyo",
+            "presence_monitor": "Buksan ang pag-check ng placement check.",
+            "share_tab": "Magbukas ng mga tool sa pagbabahagi ng file"
+          },
+          "actions": {
+            "openCustomerSource": "Open source ng customer",
+            "openShareTools": "Buksan ang mga tool sa pagbabahagi",
+            "fixFact": "Ayusin ang {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Pangunahing kaalaman sa pampublikong impormasyon",
+              "description": "Pangalan ng negosyo, kasalukuyang menu o pinagmulan ng serbisyo, contact, mga pagkilos, at link sa customer."
+            },
+            "business_facts_copy_pack": {
+              "title": "Muling magamit na mga detalye ng negosyo",
+              "description": "Ang mga kasalukuyang katotohanan ay maaaring muling gamitin ng mga tauhan sa mga pampublikong profile, tugon, at customer-link handoffs."
+            },
+            "qr_link_health": {
+              "title": "QR ang pag-aalis ng link",
+              "description": "Ang isang kasalukuyang customer link para sa QR at naka-print na mga placement."
+            },
+            "social_bio_link_consistency": {
+              "title": "Pagkapareho ng link sa profile ng profile.",
+              "description": "Isang kasalukuyang link ng customer para sa mga social profile at iba pang mga placement."
+            },
+            "customer_link_preview": {
+              "title": "Preview ng link para sa customer",
+              "description": "Ang pangunahing katotohanan na dapat makita ng mga customer bago sila kumilos."
+            },
+            "print_share_assets": {
+              "title": "I-print at share ang mga assets",
+              "description": "Kasalukuyang-link na handa para sa QR poster, counter card, at ibahagi ang mga imahe."
+            },
+            "menu_service_readability": {
+              "title": "Menu o serbisyo clarity",
+              "description": "Mga kategorya, mga item o serbisyo, at mga presyo sa napili menu."
+            },
+            "price_availability_gap": {
+              "title": "Pricing at Availability clarity",
+              "description": "Mga presyo, mga pagkakaiba-iba, estado ng sold-out, at availability na ipinapakita sa mga customer."
+            },
+            "menu_pdf_cleanup": {
+              "title": "ang Old PDF Substantiasyon",
+              "description": "Ang isang kasalukuyang MenuList source at customer link na maaaring palitan ang mga lumang PDF."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp Mga Aksiyon",
+              "description": "Isang malinaw na WhatsApp o alternatibong pag-uugali ng contact sa customer."
+            },
+            "hours_readiness": {
+              "title": "Mga oras na preparasyon",
+              "description": "Regular na oras customer ay maaaring umasa sa."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp reply sa mga fakto",
+              "description": "Kasalukuyang menu, oras, makipag-ugnay, at mga link na katotohanan para sa mga tugon ng kawani."
+            },
+            "photo_visual_identity": {
+              "title": "Mga larawan at visual na pagkakakilanlan ng tatak.",
+              "description": "Isang logo, takip, larawan ng negosyo, o mga visual na item at serbisyo."
+            },
+            "customer_question_coverage": {
+              "title": "Ang mga problema ng customer",
+              "description": "Malinaw na mga katotohanan para sa alok, oras, presyo, lokasyon, makipag-ugnay, at susunod na aksyon."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Magandang customer responses",
+              "description": "Ang kasalukuyang mga katotohanan ng staff ay maaaring muling gamitin kapag nagtatanong ang mga customer ng mga karaniwang katanungan."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Pagreserba at pag-iingat sa mga katanungan.",
+              "description": "Isang malinaw na landas upang mag-order, mag-book, magreserba, tumawag, magpadala ng mensahe, humiling ng isang quote o bisitahin."
+            },
+            "google_profile_handoff": {
+              "title": "Google ang profile link",
+              "description": "Ang kasalukuyang link ng customer ay inihanda para sa Google Business Profile."
+            },
+            "menu_freshness": {
+              "title": "Mga menu sa freshness",
+              "description": "Ang isang kamakailang menu update kapag ang mga presyo, mga item, o availability ay nagbago."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Mga graph",
+        "description": "Ang isang visual na buod mula sa parehong settled aktibidad ay ipinapakita sa dashboard.",
+        "ranges": {
+          "days7": "7 araw",
+          "days30": "30 araw"
+        },
+        "metrics": {
+          "menu_activity": "Mga Menu Aktividad",
+          "customer_actions": "Mga Customer Action",
+          "search_demand": "Pagkakaroon ng demand",
+          "item_interest": "Mga interes ng item",
+          "unavailable_demand": "Unavailable ang demand",
+          "missing_searches": "Ang mga taga-hanga"
+        },
+        "trend": {
+          "summary": "Buod ng trend",
+          "updatedAfterClose": "Na-update pagkatapos ang iyong tindahan araw ay sarado.",
+          "status": {
+            "up": "ang Higher",
+            "down": "ang Lower",
+            "stable": "Matatag",
+            "not_enough_data": "Hindi lamang ang istorya"
+          },
+          "period": {
+            "week": "Pagsusuri sa linggo",
+            "month": "isang buwan check"
+          },
+          "shortPeriod": {
+            "week": "sa Weekly",
+            "month": "isang buwan"
+          },
+          "needsMoreDays": "Kailangan ng mas maraming mga naninirahan araw.",
+          "versus": "{current} kumpara sa {previous}",
+          "messages": {
+            "up": "Ang {metric} ay mas mataas para sa check na ito ng {period}.",
+            "down": "Ang {metric} ay mas mababa para sa check na ito ng {period}.",
+            "stable": "Ang {metric} ay matatag para sa check na ito ng {period}.",
+            "not_enough_data": "Walang sapat na nakaayos na kasaysayan ng {metric} para sa check na ito ng {period}."
+          },
+          "change": {
+            "gathering": "{period}: pagtitipon ng mga tao",
+            "newActivity": "{period}: bagong gawain",
+            "steady": "{period}: matatag",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Ang mga comparison",
+          "description": "Linggo at buwan na paggalaw mula sa settled araw."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Mga Trend Menu",
+            "days7": "Huling7napag-ayos na araw.",
+            "days30": "Huling 30 natapos na araw ng pag-aayos."
+          },
+          "customerActions": {
+            "title": "Mga Customer Action",
+            "description": "Ano ang mga customer na na-tap pagkatapos buksan ang menu?"
+          },
+          "sources": {
+            "title": "Mula saan nagmula ang mga customer?",
+            "description": "Menu pagbisita at mga sesyon ng aksyon ayon sa pinagmulan."
+          },
+          "items": {
+            "title": "Nangungunang item ng interes sa interes",
+            "description": "Mga item na binuksan o na-tap ng karamihan sa mga customer ang mga item."
+          },
+          "search": {
+            "title": "Pagkakaroon ng demand",
+            "description": "Ano ang hinahanap ng mga customer para sa"
+          },
+          "officialPage": {
+            "title": "Mga Trend sa Official Page",
+            "description": "Mga views at mga aksyon mula sa Opisyal na Pahina ng Negosyo"
+          }
+        },
+        "legends": {
+          "visits": "Mga Visit",
+          "actionSessions": "Mga session ng pagkilos",
+          "views": "ang mga view",
+          "taps": "Mga pag-tap",
+          "noResult": "Walang resulta."
+        },
+        "empty": {
+          "default": "Walang mga graph data para sa view na ito ngayon.",
+          "menuActivity": "Ang menu na aktibidad ay lilitaw pagkatapos ng mga customer buksan ang menu.",
+          "customerActions": "Lalabas ang mga pagkilos ng customer pagkatapos tumawag, magpadala ng mensahe, mag-order, magreserba o humingi ng direksyon.",
+          "customerActionsPeriod": "Walang mga pagkilos ng customer sa panahong ito pa.",
+          "searchDemand": "Maglalabas ng demand sa paghahanap pagkatapos na gamitin ng mga customer ang menu search.",
+          "itemInterest": "Ang interes sa item ay lilitaw pagkatapos buksan ng mga customer ang mga item sa menu.",
+          "unavailableDemand": "Ang hindi magagamit na demand ay lilitaw kapag ang mga customer ay nag-tap sa mga item na hindi magagamit.",
+          "missingSearches": "Ang mga nawawalang paghahanap ay lilitaw kapag ang mga customer ay naghanap ngunit hindi makahanap ng tugma.",
+          "sources": "Ang mga detalye ng pinagmulan ay lalabas pagkatapos dumating ang mga customer mula sa mga link, QR, o mga social page.",
+          "officialPage": "Ang opisyal na aktibidad ng pahina ay lilitaw pagkatapos buksan ng mga customer ang pampublikong pahina ng negosyo."
+        },
+        "footer": {
+          "sameData": "Ang mga data ng dashboard",
+          "noExtraTracking": "Walang dagdag na pagsubaybay.",
+          "settledAfterClose": "Nakipag-ayos pagkatapos ng pagtatapos ng araw ng tindahan."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Mga Menu",
+          "viewsLabel": "Mga view ng menu",
+          "viewsTooltip": "Ang bilang ng mga beses na binuksan ng mga customer ang iyong menu.",
+          "thisMonthLabel": "Ang iyong menu sa buwan na ito."
+        },
+        "product": {
+          "singular": "Mga Catalog",
+          "viewsLabel": "Mga view ng katalogo",
+          "viewsTooltip": "Ang bilang ng beses na binuksan ng mga customer ang iyong katalogo.",
+          "thisMonthLabel": "Ang iyong katalogo sa buwan na ito."
+        },
+        "service": {
+          "singular": "listahan ng serbisyo",
+          "viewsLabel": "Mga view ng listahan ng serbisyo",
+          "viewsTooltip": "Bilang ng beses na binuksan ng mga customer ang iyong listahan ng serbisyo.",
+          "thisMonthLabel": "Ang iyong listahan ng serbisyo sa buwan na ito."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Kailangan ng atensyon",
+          "active": "Ang opisyal na customer source ay aktibong aktibo.",
+          "readyToPlace": "Ang opisyal na customer source ay handa nang ilagay sa lugar."
+        },
+        "description": {
+          "needsAttention": "Ayusin ang menu, oras, o customer link bago ibahagi ito malawak.",
+          "active": "Walang kailangang gawin. Maaaring gamitin ng mga customer ang iyong kasalukuyang pampublikong detalye mula sa isang pinagmulan.",
+          "readyToPlace": "Ang iyong customer link ay handa na. Idagdag ito sa Google, Instagram , WhatsApp o QR upang gamitin ng mga customer ang kasalukuyang pinagmulan."
+        },
+        "link": {
+          "ready": "Ang customer link ay ready",
+          "missing": "Nawawala ang link ng customer"
+        },
+        "states": {
+          "set": "Nakatakda",
+          "missing": "Magbigay ng",
+          "ready": "Lahat ng",
+          "notReady": "Hindi pa handa?",
+          "live": "Live",
+          "hidden": "Hindi aktibo"
+        },
+        "tags": {
+          "menu": "{status}",
+          "hours": "Oras: {status}",
+          "customerLink": "{status}",
+          "link": "{status}",
+          "placed": "Ilagay: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Ayusin kung ano ang nangangailangan ng pansin.",
+          "preview": "Preview ng pampublikong menu",
+          "share": "ang menu"
+        },
+        "updated": {
+          "notUpdated": "Walang update ngayon",
+          "recently": "Updated sa ngayon",
+          "today": "Na-update ngayong araw",
+          "yesterday": "Na-update kahapon.",
+          "daysAgo": "Update ang {count, plural, one {# Isang araw} other {# sa mga araw}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Susunod na pagkilos ng may-ari:",
+        "open": "Buksan",
+        "placement": {
+          "notConfirmed": "Hindi pa nakumpirma pa.",
+          "today": "Tapos na ang confirmation",
+          "yesterday": "Nagsimula sa yesterday",
+          "daysAgo": "Kinukumpirma ang {count, plural, one {# araw na ang nakalilipas} other {# araw na ang nakalilipas}}"
+        },
+        "status": {
+          "ready": "Lahat ng",
+          "missing": "Magbigay ng",
+          "set": "Nakatakda",
+          "live": "Live",
+          "notLive": "Wala akong buhay",
+          "confirmedCount": "{count}/{total} ang pag-aalis",
+          "on": "Naka-on",
+          "off": "Naka-off",
+          "dailyChanges": "Dagdag ng mga pagbabago",
+          "hoursException": "Mga oras sa exception",
+          "staffUse": "Mga personal na paggamit",
+          "menuPrices": "Menu ang presyo",
+          "openCount": "{count, plural, one {# ang open action} other {# Mga Aksiyon Open}}",
+          "stable": "Matatag"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "ang customer link",
+            "description": "Lumikha ng link sa customer bago ibahagi ang QR, mga tugon ng kawani, o mga pampublikong profile."
+          },
+          "setHours": {
+            "label": "Mga oras",
+            "description": "Panatilihin ang publikong bukas at saradong katayuan malinaw bago bisitahin ng mga customer."
+          },
+          "publishMenu": {
+            "labelPublish": "I-publish ang menu",
+            "labelOpen": "Magbukas ng menu",
+            "descriptionVisible": "I-publish ang kasalukuyang menu bago malawak na pagbabahagi.",
+            "descriptionHidden": "Gawin ang menu na makikita bago gamitin ng mga customer ang link."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Kumpirmahin ang pag-upo ng link.",
+            "labelPlace": "Mga Link sa Customer",
+            "descriptionPlaced": "Panatilihin ang Google, Instagram at WhatsApp na tumuturo sa parehong pinagmulan.",
+            "descriptionUnplaced": "Idagdag ang parehong link para sa customer sa Google, Instagram, WhatsApp, QR, at mga naka-print na materyal."
+          },
+          "openPrivateFeedback": {
+            "label": "Magbukas ng pribadong feedback.",
+            "description": "Gamitin ang pribadong feedback bago ang mga isyu ng bisita ay maging pampublikong mga review."
+          },
+          "captureDailyChange": {
+            "label": "Sabihin sa MenuList kung ano ang nagbago.",
+            "description": "Sabihin sa MenuList kung ano ang nagbago ngayon at aprubahan ang inihandang menu card."
+          },
+          "setTodayStatus": {
+            "label": "Ang status ng ngayon ay",
+            "description": "Itakda ang sarado ngayon, pagbubukas ng huli, kusina sarado, o isang espesyal na-menu abiso."
+          },
+          "prepareStaffHandoff": {
+            "label": "Maghanda ng staff handoff.",
+            "description": "Bigyan ang mga kawani ng menu link, QR, at mga linya ng sagot ng customer mula sa isang lugar."
+          },
+          "updatePrices": {
+            "label": "I-update ang mga presyo",
+            "description": "Gamitin ang Menu Manager para sa mga pagbabago ng presyo, pagkatapos ay aprubahan bago mag-publish."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Pag-set up ng menu",
+        "complete": "Ang menu setup ay lumabas.",
+        "ready": "Ang menu ay ready.",
+        "actions": {
+          "openMenu": "Magbukas ng menu",
+          "createMenu": "Gumawa ng menu",
+          "reviewDetails": "Suriin ang mga detalye",
+          "publishMenu": "I-publish ang menu",
+          "openSharingTools": "Buksan ang mga tool sa pagbabahagi",
+          "prepareDescriptions": "Maghanda ng mga paglalarawan.",
+          "addImages": "ang mga larawan",
+          "reviewLanguageText": "Tingnan ang teksto sa wikang ito.",
+          "openMenuCheck": "Buksan ang pagsusuri ng menu",
+          "updatePublicLinks": "Updates ng Public Links",
+          "addPublicPhoto": "Magbigay ng Public Photo"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Naidagdag ang pinagmulan",
+            "doneDescription": "Ang menu source ay na-connected.",
+            "nextDescription": "Magdagdag ng larawan sa menu, PDF, link, o simulan nang manu-mano."
+          },
+          "menuImported": {
+            "label": "Mga menu sa impormasyon",
+            "doneDescription": "{count, plural, one {Natagpuan ang # nakikitang item.} other {Natagpuan ang # nakikitang item.}}",
+            "nextDescription": "Mag-import o magdagdag ng mga item sa menu."
+          },
+          "keyDetailsChecked": {
+            "label": "Ang mga detalye ay checked",
+            "doneDescription": "Ang mga presyo at pangunahing detalye ng menu ay malinaw.",
+            "nextDescription": "Tingnan ang mga presyo at pangunahing detalye bago mag-publish."
+          },
+          "menuPublished": {
+            "label": "Menu sa pamamagitan",
+            "doneDescription": "Ang pampublikong menu ay nai-publish na.",
+            "nextDescription": "I-publish kapag ang menu ay handa na para sa mga customer."
+          },
+          "linkPlaced": {
+            "label": "ang link ay",
+            "readyLabel": "Handa na ang link",
+            "doneDescription": "Ang opisyal na link ay handa na para sa mga customer.",
+            "progressDescription": "{count} ng {total} na pagkilos sa paglalagay ay tapos na.",
+            "nextDescription": "Buksan ang mga tool sa pagbabahagi kapag nai-publish na ang menu."
+          },
+          "descriptionsReady": {
+            "label": "Para sa mga deskripsiyon",
+            "doneDescription": "Ang mga nakikitang item ay may paglalarawan.",
+            "nextDescription": "Maghanda ng mga paglalarawan para sa mas malinaw na mga item sa menu."
+          },
+          "imagesReady": {
+            "label": "ang mga larawan ready",
+            "doneDescription": "Ang mga nakikitang item ay may mga imahe.",
+            "nextDescription": "Magdagdag o makabuo ng mga imahe ng item kapag kapaki-pakinabang."
+          },
+          "translationsReady": {
+            "label": "Ang mga translation",
+            "doneDescription": "Ang mga napiling wika ng menu ay kumpleto.",
+            "nextDescription": "Tingnan ang mga napiling wika ng menu."
+          },
+          "publicLinksAdded": {
+            "label": "Mga Public Link Added",
+            "doneDescription": "Available ang mga link sa pampublikong aksyon o social.",
+            "nextDescription": "Magdagdag ng mga kapaki-pakinabang na pampublikong link para sa pahina ng negosyo."
+          },
+          "publicPhotoAdded": {
+            "label": "Mga larawan ng Public Added",
+            "doneDescription": "Available ang isang pampublikong larawan.",
+            "nextDescription": "Magdagdag ng isang takip, logo, o pampublikong larawan kapag handa ka na."
+          }
+        }
       }
     }
   },
@@ -1397,8 +2257,8 @@
       "common": {
         "business": "negosyo",
         "team": "ang pangkat",
-        "feedback": "Feedback",
-        "rating": "Rating",
+        "feedback": "Feedback Feedback Ang feedback ay isang mahalagang bahagi ng pagbebenta.",
+        "rating": "Rating Rating Rating",
         "switchToDarkTheme": "Lumipat sa madilim na tema ng display",
         "switchToLightTheme": "Lumipat sa light display theme",
         "allRightsReserved": "Lahat ng karapatan ay nakalaan",
@@ -1407,7 +2267,7 @@
       },
       "menu": {
         "businessInformation": "Impormasyon sa negosyo",
-        "businessHome": "{businessName} pahina ng negosyo",
+        "businessHome": "Pangunahing pahina ng {businessName}",
         "call": "Tumawag",
         "callPhone": "Tumawag sa {phone}",
         "whatsApp": "WhatsApp",
@@ -1463,7 +2323,7 @@
         "itemInCategoryAt": "{itemName} sa {categoryName}, available sa {businessName}.",
         "itemAt": "{itemName}, available sa {businessName}.",
         "metadataObpTitle": "{businessName} — Menu, Oras, Contact",
-        "metadataMenuTitle": "{businessName} | Menu",
+        "metadataMenuTitle": "{businessName} | Menu | Menu",
         "metadataObpDescription": "{businessName} — Tingnan ang menu, tingnan ang mga oras, kumuha ng mga direksyon, at hanapin ang mga detalye ng contact. Opisyal na pahina ng negosyo.",
         "metadataMenuDescription": "Tingnan ang digital na menu para sa {businessName}.",
         "metadataUnavailableTitle": "Hindi available ang menu | {businessName}",
@@ -1511,7 +2371,7 @@
         "menuCategories": "Mga kategorya ng menu",
         "menuFilters": "Mga filter ng menu",
         "popular": "Sikat",
-        "vegetarian": "Vegetarian",
+        "vegetarian": "Vegetarian Vegetaryan",
         "nonVeg": "Hindi vegetarian",
         "forMen": "Para sa mga lalaki",
         "forWomen": "Para sa mga babae",
@@ -1584,9 +2444,9 @@
         "spiceMedium": "Katamtaman",
         "spiceHot": "Mainit",
         "spiceVeryHot": "Napakainit",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 10 min min.",
         "hoursShort": "{count} oras",
-        "calories": "{count} cal",
+        "calories": "{count} cal cal cal Cal ay isang uri ng yunit ng sukat.",
         "protein": "Protina {value}g",
         "carbs": "Carbohydrate {value}g",
         "fat": "Mataba {value}g",
@@ -1631,9 +2491,9 @@
         "goodChoice": "Magandang pagpipilian",
         "worthTheInvestment": "Sulit ang puhunan",
         "ownerChoice": "Pagpipilian ng may-ari",
-        "menuOffering": "Menu",
+        "menuOffering": "Menu Menu Menu",
         "servicesOffering": "Mga serbisyo",
-        "catalogOffering": "Catalog",
+        "catalogOffering": "Catalog ng katalogo ng catalog",
         "offeringsOffering": "Mga handog",
         "open": "Bukas",
         "closed": "sarado",
@@ -1662,7 +2522,7 @@
         }
       },
       "feedback": {
-        "pageTitle": "Feedback",
+        "pageTitle": "Feedback Feedback Ang feedback ay isang mahalagang bahagi ng pagbebenta.",
         "metadataTitle": "Magbahagi ng feedback | {businessName}",
         "metadataDescription": "Magbahagi lamang ng feedback sa negosyo.",
         "shareFeedback": "Magbahagi ng feedback",
@@ -1718,11 +2578,11 @@
         "yourName": "pangalan mo",
         "phoneNumber": "Numero ng telepono",
         "phonePlaceholder": "+1 (555) 000-0000",
-        "emailAddress": "Email address",
+        "emailAddress": "Email address:",
         "emailPlaceholder": "name@example.com",
         "submittingFeedback": "Nagsusumite ng feedback...",
         "submitFeedback": "Magsumite ng feedback",
-        "ratingGroup": "Rating",
+        "ratingGroup": "Rating Rating Rating",
         "rateStars": "I-rate ang {count} {stars}",
         "oneStar": "bituin",
         "manyStars": "mga bituin",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Walang kasaysayan ng billing pa.",
     "perMonth": "/buwan/buwan",
     "contactUs": "Makipag-ugnay sa Amin"
+  },
+  "StarterActivation": {
+    "activeTitle": "Ang iyong menu ay online",
+    "endingSoonTitle": "Panatilihing online ang iyong menu",
+    "publicMenuQrActive": "Ang iyong pampublikong menu at QR code ay aktibo.",
+    "activeRemaining": "Aktibo ang iyong access sa menu.",
+    "daysRemaining": "{days, plural, one {Pumili ng plano sa loob ng # araw upang panatilihing online ang iyong menu.} other {Pumili ng plano sa loob ng # araw upang panatilihing online ang iyong menu.}}",
+    "sharingComplete": "Kumpleto na ang setup ng iyong pagbabahagi.",
+    "sharingProgress": "{count, number} ng {target, number} na mga hakbang sa pagbabahagi ay tapos na.",
+    "evidenceRecorded": "Awtomatikong naitala: {systemCount, number}. Kinumpirma mo: {ownerCount, number}.",
+    "evidenceEmpty": "Kopyahin o ibahagi ang link ng menu, i-download ang QR code nito, o kumpirmahin kung saan mo ito inilagay.",
+    "keepLiveAction": "Panatilihing online ang iyong menu",
+    "noSubscriptionDescription": "Pumili ng plano para panatilihing available ang mga update sa menu at mga page ng customer.",
+    "choosePlanDescription": "Ang iyong menu ay naka-save. Pumili ng plano para panatilihin itong online at napapanahon."
   },
   "Transactions": {
     "title": "Transaksyon Kasaysayan ng Transaksyon",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobile App Mobile App",
     "subscribeTitle": "Mag-subscribe sa Magsimula na!",
     "subscribeDescription": "Pumili ng isang plano upang simulan ang paglikha ng iyong digital na menu at pamahalaan ang iyong negosyo.",
-    "viewPlans": "Tingnan ang mga Plano Tingnan Ang Mga Plano"
+    "viewPlans": "Tingnan ang mga Plano Tingnan Ang Mga Plano",
+    "returnToMobile": "Ikaw ay tumitingin sa desktop na bersyon. Bumalik sa mobile."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Codes Ang mga code ng %1 $s ay",

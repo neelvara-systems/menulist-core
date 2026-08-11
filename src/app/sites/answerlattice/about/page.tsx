@@ -38,10 +38,10 @@ export default async function AnswerlatticeAboutPage() {
                             AI can build apps fast. Support still has to be handled.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            AnswerLattice exists because solo founders and small product teams now launch faster than traditional docs and helpdesks can keep up. We give them a first support layer built around in-app help, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and reviewable gaps.
+                            AnswerLattice exists because solo founders and small product teams now launch faster than traditional support processes can keep up. We turn the knowledge already scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies into in-app help, hosted help, FAQs, ticket fallback, feedback review, approved answers, and visible support gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            AnswerLattice turns existing support knowledge into product-surface support outputs. Founders get launch setup, hosted help, widget support, changelog support, ticket fallback, and a review queue without having to run a large support operation.
+                            Founders get a practical support system without starting from a blank help center or running a large support operation. AnswerLattice organizes what they already know, serves it where users need help, and keeps every official answer under owner review.
                         </p>
                         <div className="flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink
@@ -63,7 +63,7 @@ export default async function AnswerlatticeAboutPage() {
                             className="mt-8 text-left"
                             items={[
                                 { label: 'Audience', value: 'Live, beta, and near-launch product teams preparing support' },
-                                { label: 'Belief', value: 'Reviewed support truth beats scattered support channels' },
+                                { label: 'Belief', value: 'Reviewed support knowledge beats scattered replies' },
                                 { label: 'Boundary', value: 'Not a helpdesk replacement or autopilot' },
                             ]}
                         />
@@ -75,11 +75,11 @@ export default async function AnswerlatticeAboutPage() {
                         <h2 className="mb-8 text-2xl font-bold">What we believe</h2>
                         <div className="space-y-6">
                             {[
-                                { title: 'A support layer beats scattered channels', body: 'AnswerLattice is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
+                                { title: 'One support system beats scattered channels', body: 'AnswerLattice is not trying to become a full helpdesk. It keeps the knowledge behind your widget, help center, FAQs, tickets, and feedback clear, approved, and current.' },
                                 { title: 'Page context should reduce user effort', body: 'A billing question from the billing screen should not get the same generic answer as a settings or onboarding question.' },
                                 { title: 'Fallback should create learning', body: 'Fallback can help while coverage grows. Repeated fallback becomes a support gap, not hidden automation.' },
-                                { title: 'Founders should approve official answers', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. AnswerLattice does not silently rewrite product guidance.' },
-                                { title: 'Coverage should be visible', body: 'The main operating metric is whether product surfaces have enough support coverage for real user questions.' },
+                                { title: 'Founders should approve official answers', body: 'Draft answers, product candidates, and suggested changes stay reviewable. AnswerLattice does not silently rewrite product guidance.' },
+                                { title: 'Coverage should be visible', body: 'Founders should be able to see which product areas have enough support for real user questions and which still need work.' },
                             ].map((belief, i) => (
                                 <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
                                     <h3 className="mb-2 text-base font-semibold text-white">{belief.title}</h3>

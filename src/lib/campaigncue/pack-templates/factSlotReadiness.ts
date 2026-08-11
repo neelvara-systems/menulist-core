@@ -9,6 +9,7 @@ import type {
     CampaignCueOutputIntentRequirement,
     CampaignCueOutputPickerItem,
 } from "@constant/campaigncue/outputPicker";
+import { isCampaignCueReadyVisualAsset } from "@lib/campaigncue/mediaMissions";
 
 type CampaignCuePackTemplateFactSlot = CampaignCuePackTemplatePayload["factSlots"][number];
 
@@ -48,9 +49,7 @@ export function isCampaignCuePackTemplateFactSlotReady(
     const type = normalized(slot.type).replace(/-/g, "_");
     const availableItems = context.businessBrain.catalog.items.filter((item) => item.available);
     const availableServices = context.businessBrain.catalog.services.filter((item) => item.available);
-    const readyVisualAssets = context.assets.filter((asset) => (
-        asset.status === "ready" && (asset.assetType === "image" || asset.assetType === "logo")
-    ));
+    const readyVisualAssets = context.assets.filter(isCampaignCueReadyVisualAsset);
     switch (type) {
         case "business_name":
             return hasText(context.businessBrain.name);
@@ -96,10 +95,10 @@ export function isCampaignCuePackTemplateFactSlotReady(
             return readyVisualAssets.length > 0
                 || [...availableItems, ...availableServices].some((item) => hasText(item.imageUrl));
         case "approved_asset":
-            return readyVisualAssets.some((asset) => asset.rights.status === "confirmed");
+            return readyVisualAssets.length > 0;
         case "usage_rights":
         case "asset_rights":
-            return readyVisualAssets.some((asset) => asset.rights.status === "confirmed");
+            return readyVisualAssets.length > 0;
         case "offer":
         case "current_offer":
             return hasEvidence(context, ["offer", "promotion", "package"], ["offer"]);

@@ -88,7 +88,7 @@ Production must repeat the same TTL setup in the production Answerlattice Fireba
 
 Current implementation:
 
-- Answerlattice dashboard routes resolve Answerlattice scope from `productAccounts.AL` on the shared NextAuth profile, or from the Answerlattice `users` document when running in `ANSWERLATTICE_FIREBASE_MODE=separate`.
+- Answerlattice dashboard routes resolve Answerlattice scope from `productAccounts.AL` on the shared NextAuth profile, or from the Answerlattice `users` document when running in `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate`.
 - Answerlattice onboarding writes tenant, store, user, subscription, widget key, and summaries to the Answerlattice Firebase project, then writes only the `productAccounts.AL` bridge back to the default auth user document.
 - Answerlattice widget config/key APIs use Answerlattice Firestore in separate mode.
 - Public widget runtime keys validate only against Answerlattice `answerlatticeWidgetApi` for widget routes.
@@ -529,11 +529,9 @@ Before production launch on `answerlattice.com`:
    - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID`
    - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID`
 5. Add production server env to Vercel production env:
-   - `ANSWERLATTICE_FIREBASE_MODE=separate`
-   - `ANSWERLATTICE_FIREBASE_PROJECT_ID`
    - `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`
    - `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`
-   - `ANSWERLATTICE_FIRESTORE_DATABASE_ID` only if using a non-default database.
+   Server code reuses the canonical public mode, project ID, bucket, and optional database ID from step 4.
 6. Create production `ANSWERLATTICE_CRON_SECRET`, `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`, and declared `ANSWERLATTICE_GEMINI_AI_KEY*` secrets in Secret Manager.
 7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-answerlattice.json` against project `answerlattice`.
 8. Run the manual scheduler smoke test and verify the `answerlattice_schedulerRunLogs/{runLogId}` document.

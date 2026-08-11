@@ -1,5 +1,343 @@
 # MenuList — Changelog
 
+## August 11, 2026 - Transitive Dependency Security Closure
+
+- Pinned patched `js-yaml@4.3.1`, `nanoid@3.3.17`, and
+  `dompurify@3.4.13` resolutions without changing the Next.js, PostCSS, SVG,
+  PDF, or sanitizer parent runtimes.
+- Applied the separate `js-yaml@4.3.1` safeguard to MenuList Functions'
+  development-only ESLint chain.
+- Extended dependency-freeze verification to reject future override or
+  lockfile regressions for all three advisories.
+
+## August 11, 2026 - MenuList Meta Env Boundary Correction
+
+- Structurally validated the four vaulted Meta QA credentials without printing
+  secret material or calling Meta.
+- Removed the unused Meta credentials and messaging-onboarding runtime flags
+  from root `.env.local`; the values remain vaulted for Firebase Secret Manager.
+- Kept only the optional Next.js phone id/access token rows in managed root env
+  templates and removed Functions-only app-secret, verify-token, and flag rows.
+- Added verifier coverage preventing Functions-only Meta names from returning
+  to root env files. The QA Functions master gate remains disabled; no webhook,
+  provider request, secret write, or deployment was performed.
+
+## August 11, 2026 - Shared-App Sentry Env Consolidation
+
+- Consolidated root browser, server, and edge monitoring onto one
+  environment-scoped `NEXT_PUBLIC_SENTRY_DSN` for the shared Vercel app.
+- Removed redundant root `SENTRY_DSN`, `SENTRY_DEV_DSN`, and
+  `NEXT_PUBLIC_SENTRY_DEV_DSN` rows from local and managed env templates.
+- Retired the stale auto-loaded `.env` as ignored `legacy.env` after it was found
+  to contain overlapping and cross-product values; `.env.local` is now the sole
+  local MenuList QA source without deleting credentials needed for later review.
+- Preserved Firebase Functions' project-local `SENTRY_DSN` Secret Manager
+  contract and the read-only legacy root server fallback.
+- Updated focused env/security verifiers and active setup/security guidance so
+  Vercel Preview and Production scopes select different DSN values without
+  duplicate variable names.
+
+## August 11, 2026 - Answerlattice GitHub Change Intake
+
+- Added one rollout-gated, read-only GitHub App path for published Releases and
+  optional merged default-branch pull-request summaries.
+- Bound installation setup to a short-lived signed user/workspace state and
+  verified installation ownership through GitHub user authorization before an
+  owner can select repositories.
+- Added bounded signed-webhook processing with replay hashes, processing
+  leases, repository fanout limits, daily workspace caps, and retry-safe
+  deterministic source identity.
+- Kept pending reconnect state separate from the active installation, so an
+  abandoned access refresh cannot pause an otherwise healthy connection.
+- Added active-subscription enforcement before setup, policy changes, or event
+  claims, plus a compact monthly rolling-job pointer that avoids rereading all
+  earlier full jobs.
+- Kept the rolling pointer monotonic during concurrent delivery completion and
+  reduced multi-repository removal from one query per repository to one
+  installation-scoped binding query.
+- Bound OAuth callback and return destinations to the stage-specific canonical
+  Answerlattice deployment target instead of the incoming request host.
+- Bounded every GitHub JSON response and replaced the pull-request REST files
+  request with a GraphQL path-only selection so patch text is never fetched.
+- Reused existing Knowledge Intake jobs, sources, summaries, redaction,
+  owner-triggered analysis, source governance, Release-to-Truth, Answer Tests,
+  and publication controls. Incoming GitHub evidence is private and unreviewed.
+- Added one server-only repository-binding collection with workspace teardown
+  coverage and explicit browser deny rules. No scheduler, polling, listener,
+  Storage object, source-code index, patch retention, or event-time model call
+  was introduced.
+- Added the responsive Teach Answerlattice connection control, full feature
+  dossier, focused contracts, runtime-truth wiring, environment templates, and
+  cost/security boundaries. The flag remains false pending hosted GitHub QA,
+  and the public website remains unchanged.
+- The dedicated QA Firestore rules deployment was attempted after local rule
+  tests and stopped before upload because Firebase CLI authentication is not
+  available in this environment.
+
+## August 11, 2026 - Answerlattice Friction Review Cross-Check
+
+- Bound every prepared friction brief to one entity, completed metric window,
+  source timestamp, and `tId:sId` scope so refreshes and workspace switches
+  cannot mix evidence.
+- Enforced the Knowledge Map feature flag across direct friction links and the
+  investigate-further resolver; disabled map review now fails closed to the
+  browser-local evidence packet.
+- Stopped Knowledge Map from substituting another topic when a validated
+  requested entity is absent from the current graph. The owner now sees an
+  explicit unavailable state and must select another topic deliberately.
+- Added focused regression contracts and documentation parity. These changes
+  add no Firebase read, write, listener, collection, scheduler, provider call,
+  integration, cache, or deployment target.
+
+## August 10, 2026 - MenuList Website Audit Corrections
+
+- Restored the shared skip-navigation contract by adding `main` landmarks to the Features, Trust/Security, Privacy, Terms, and Refund page bodies, and upgraded the verifier to parse localized skip-link usage and guard those landmarks.
+- Fixed desktop Features dropdown toggling, visible accessible names, and Escape focus return without changing the existing hover and pointer-travel behavior.
+- Aligned public menu-import and lifecycle claims with the real `/create-menu` inputs: photo/PDF upload or a permission-confirmed owned public menu, service-list, image, or PDF link. Typed-list copy remains only in the separate WhatsApp onboarding flow.
+- Added a service-business MenuList proof composite for salon, spa, and service-list industry heroes while retaining the restaurant composite on food pages.
+- Removed the footer-hidden X profile from Organization structured data so public schema matches the visible social links.
+- This pass changes only public website semantics, navigation behavior, copy, imagery, schema, documentation, and source verification. Pricing/payment, authentication, upload/import APIs, owner dashboard, customer menu/OBP runtime, Firebase, Cloud Functions, Vercel deployment, and DNS remain unchanged.
+
+## August 10, 2026 - Answerlattice Friction Review Continuation
+
+- Completed the existing Product Friction Evidence handoff with deterministic
+  next actions for every owner-selected review path.
+- Knowledge review preserves the validated product topic into the existing
+  Knowledge Map or trusted-answer surface; product and engineering review stays
+  a browser-local evidence export.
+- Watch and no-action paths now state that no reminder or saved decision is
+  created. Invalid entity context fails closed to local copy instead of opening
+  an unscoped governance route.
+- Added focused routing and responsive UI contract coverage with no new
+  Firebase read, write, collection, listener, scheduler, provider, integration,
+  or feature flag.
+
+## August 10, 2026 - Neelvara Company-Site Audit And Simplification
+
+- Reworked the Neelvara homepage into a company-first public reference: the H1 is now the company name, duplicated company-summary and boundary sections are removed, and the current product and contact paths remain concise.
+- Simplified Products, Contact, About, Legal, Privacy, Terms, and the true 404 response by removing repeated right-side summaries, the redundant product map, and decorative framing that did not help visitors complete a task.
+- Stabilized local-prefix hydration and viewport-entry reveals, including responsive-hidden targets and fast scroll entry, while preserving reduced-motion behavior.
+- Kept the supplied Neelvara SVG and palette exact, retained canonical MenuList and Answerlattice marks, and kept CampaignCue and ConstantLayer absent from the public company site.
+- Benchmarked the result against Automattic, 37signals, Tiny, and Mailmodo. The source/local implementation is ready for owner review; `neelvara.com` still serves GoDaddy Website Builder and requires a separately approved Vercel/DNS cutover.
+
+## August 10, 2026 - CampaignCue Multi-Location Pack Variants
+
+- Added bounded creation of independently checked Campaign Packs for up to eight active locations from one original workspace campaign, using existing campaign and trust-report records rather than a variant collection.
+- Branch packs snapshot effective locality and contacts, combine global and branch truth for freshness, and start independent approval, export, hosted-page, and result lifecycles.
+- Restricted location management to owner, admin, marketer, and agency-member roles; local managers can act only on assigned branches, with scope rechecked inside final transactions.
+- Fixed campaign freshness to use the durable current source snapshot instead of reconstructing truth from only the recent source-input window.
+- Bounded branch titles/reasons and made each output retain only its own branch id in compact provenance.
+- Added the complete feature doc set and a 28-check focused verifier. Authenticated multi-role and CampaignCue Firebase QA remain externally blocked until the dedicated runtime is provisioned.
+
+## August 10, 2026 - Answerlattice Post-Change Support Evidence Review
+
+- Added an explicit, permission-gated review inside Product Friction Evidence
+  for activated releases and implemented knowledge corrections.
+- The review excludes the change day and compares complete 14-day UTC ticket,
+  negative-feedback, and escalation event windows over direct entity links.
+- Strict waiting, insufficient-evidence, retention, and source-saturation
+  states prevent partial or overconfident conclusions; all copy describes
+  observed association rather than product relief or causation.
+- The owner-facing path ignores the legacy mutation
+  `impactResult.improvementPercent` field and returns no raw support content,
+  event IDs, metadata, or customer identity.
+- Product Friction Evidence keeps zero incremental reads on mount. Explicit
+  recent-change loading is capped at 16 reads; an eligible exact comparison is
+  capped at 403 reads and adds no write, collection, index, listener,
+  scheduler, Storage object, cache, model, embedding, or external integration.
+- Added the full feature dossier, strict DTOs, protected route, responsive UI,
+  focused contract tests, and source verifier. Hosted authenticated QA remains
+  pending an explicitly authorized app deployment.
+
+## August 10, 2026 - CampaignCue Approval And Comment Inbox
+
+- Added a bounded current approval thread to existing Campaign Packs with explicit comment and resolve actions, role gates, idempotency, and open-comment approval blocking.
+- Fixed approval scope validation so an arbitrary output id or mismatched location id cannot be attached to a campaign approval.
+- Campaign and deterministic approval records now update atomically; compact events retain comment digest metadata without duplicating raw review text.
+- Added the complete feature doc set and focused tests without a comment collection, attachment Storage path, listener, notification provider, or additional overview read.
+
+## August 10, 2026 - CampaignCue Local Visibility Action Center
+
+- Replaced the loose visibility checklist with deterministic `do_now`, `review`, and `ready` actions derived from the already-loaded CampaignCue overview.
+- A Google handoff is ready only when its Campaign Pack is trust-clear and current at the supplied Daily Desk clock; a ready video can no longer satisfy local image readiness.
+- Added bounded evidence, manual steps, unlocks, completion-source metadata, multi-location locality review, and explicit no-external-profile-inspection copy.
+- Added the complete Local Visibility Action Center doc set and focused regression coverage without a collection, listener, Storage object, provider call, scraper, or incremental Firebase operation.
+
+## August 10, 2026 - CampaignCue Campaign Experiment Coach
+
+- Expanded the existing Campaign Pack experiment hint into a deterministic suggested, accepted, and completed lifecycle without adding an experiment collection, listener, Storage object, scheduler, or provider call.
+- Suggestions now use the latest matching non-archived campaign, identify a bounded baseline, distinguish guidance from owner-history evidence, name the fields that must stay unchanged, and preserve a no-performance-prediction boundary.
+- Added an explicit role-checked `Use this test` action. Agency workspaces require pack approval before acceptance, and test acceptance deliberately avoids an unrelated dashboard-summary write.
+- Fixed a result-integrity bug that previously inferred the suggested variable when the owner recorded no tested variable. Only an explicit matching variable and a non-`not_used` owner result can complete an accepted test.
+- Added the complete Campaign Experiment Coach documentation set, owner UI, backward-compatible persisted schema, and focused regression coverage.
+
+## August 10, 2026 - CampaignCue Winning Pack Refresh
+
+- Hardened the existing safe-reuse flow into Winning Pack Refresh: only active registered recipes with positive owner-reported evidence can be nominated.
+- Candidate ranking now prefers the current deterministic recommendation and labels other useful recipes as needing timing review. A current owner-entered local/seasonal moment may be shown, but expired context and inferred holidays are excluded.
+- Refreshed campaigns continue to rebuild from current facts, source hash, commercial policy, trust, and approval state. They now preserve compact immediate/root campaign provenance, bounded refresh generation, and source-template identity without campaign-chain reads.
+- Added a server-side feature gate, persisted-schema bounds, owner context chips, full feature documentation, and focused regression coverage without a new collection, listener, Storage object, provider call, or overview read.
+
+## August 10, 2026 - CampaignCue Campaign Memory 2.0
+
+- Added bounded owner-reported recipe and channel evidence to the existing CampaignCue dashboard summary, with explicit `not_enough_results`, `early_signal`, and `repeated_signal` confidence states.
+- Result IDs now fail closed unless they belong to the campaign's exact registered recipe; missing and retired recipe IDs cannot borrow another recipe's result options.
+- Outcome recording reads the dashboard summary inside the existing idempotent transaction, updates campaign/result/event/summary state atomically, and returns the committed summary for local UI merge without an overview refetch.
+- Minimized outcome events store note presence and length rather than duplicating raw owner notes. The owner-facing Results panel labels all memory as directional, owner-reported evidence rather than attribution or revenue proof.
+- Added the complete Campaign Memory documentation set and regression coverage without a new collection, listener, Storage object, job, provider call, or default overview read.
+
+## August 10, 2026 - CampaignCue Photo And Clip Missions
+
+- Added recipe-linked Photo/Clip Missions to the Daily Desk and Asset Library so owners can take a photo or choose a photo/clip after explicitly recording permission status.
+- Reused the existing private resumable CampaignCue uploader, Asset Library document, and source/preview Storage paths; no mission collection, listener, duplicate media pipeline, provider call, or overview refetch was added.
+- Campaign visual readiness now requires an image/logo/video with ready state, confirmed rights, a workspace-owned Storage path, and immutable Storage generation. Audio and metadata-only file notes can no longer unlock photo readiness.
+- Added 12 MiB image, 50 MiB audio, 250 MiB video, and 25 MiB document/export ceilings across schema/server/Storage boundaries, plus bounded media decode, failed-registration cleanup, and temporary Firebase upload-session sign-out.
+- Updated Asset Library owner copy to separate actual uploads from file notes, kept direct posting disabled, and added the complete Photo/Clip Mission doc set and adversarial verifier.
+
+## August 10, 2026 - CampaignCue Campaign Inbox
+
+- Added a deterministic, browser-local Campaign Inbox so owners can enter several current offer, timing, availability, asset-note, or business-detail changes and review every candidate before saving.
+- Canonical phone, WhatsApp, location, website, menu, and booking values route to the existing Business Details draft; Campaign Inbox never silently promotes them into protected truth.
+- Confirmed source candidates use the existing authenticated sources route, one idempotent transaction, deterministic source IDs, one compact current-snapshot update, and one aggregate audit event.
+- Snapshot compaction is bounded to 200 facts and 120 source references and now guarantees that retained source-input facts cannot point to a dropped reference.
+- The feature adds no collection, Storage object, listener, model/provider call, direct posting, contact import, or raw-draft persistence.
+- Added the full Campaign Inbox documentation set, parser/schema regression suite, runtime-verifier coverage, mobile touch targets, and exact Firebase cost contract.
+
+## August 10, 2026 - Answerlattice Support Truth Change Control
+
+- The existing pending-release review now combines directly affected approved
+  answers, Answer Tests, cited source freshness, direct product-surface
+  mappings, and compiled distribution proof in one owner decision.
+- Source inspection reads only Knowledge Intake IDs already cited by affected
+  canonical answers, uses metadata field masks, and stops at 50 documents.
+  Source Governance remains rollout-gated and advisory.
+- Surface evidence comes from the existing compact workspace summary; attached
+  articles, FAQs, and changelog entries are labeled contextual mappings rather
+  than inferred factual dependencies.
+- Source-version and bundle-manifest proof shows direct, compiled, disabled,
+  and post-activation rebuild states without downloading Storage objects or
+  claiming external cache delivery.
+- No route, collection, index, listener, scheduler, model call, preview write,
+  activation fingerprint field, or Firebase deployment was added.
+
+## August 10, 2026 - Answerlattice Scope Coverage Matrix
+
+- Answer Tests now show one bounded owner matrix for active important questions
+  across explicit plan, user role, product state, and product version context.
+- The matrix distinguishes current approved-answer coverage, a canonical answer
+  that needs review, a missing canonical route, stale or absent proof, and an
+  intentionally different expected route without inventing context combinations.
+- Product state and numeric version can now be edited through the existing
+  Answer Test context form and use the existing context-aware retrieval contract.
+- Currentness is derived from each case's edit time and retained source-version
+  proof. Editing one case does not invalidate an unchanged row, while governed
+  source changes conservatively require a rerun.
+- The standard matrix load adds one compact source-version document read to the
+  existing Answer Tests summary read. No collection scan, new document, index,
+  listener, scheduler, Storage object, model call, or automatic answer change
+  was added.
+
+## August 10, 2026 - CampaignCue Video Content Coach And Format Learning
+
+- Video Reel Studio now derives six owner-facing content checks and a phone
+  shot list from the already-loaded storyboard. The checks are deterministic,
+  make no provider call, and add no Firestore read or write.
+- New render receipts bind to the exact project version. Result memory and a
+  useful reusable blueprint now use the rendered snapshot instead of whichever
+  draft happens to be current when the owner records the outcome.
+- Owner-reported video results now retain a compact, content-free format
+  signature. Recent workspace projects are grouped locally into use-again,
+  avoid-for-now, or insufficient-evidence guidance without competitor
+  monitoring or performance prediction.
+- Updating an existing video result adjusts its previous counter contribution
+  and does not increment the dashboard outcome summary again.
+- Exact and legacy render/result evidence are now discriminated in both
+  TypeScript and runtime schemas. Impossible exact-without-version records fail
+  closed, while old unbound records remain readable but cannot drive learning.
+- The content coach counts only owner-controlled uploaded/imported/session
+  visuals with confirmed rights as business proof; generated, unavailable,
+  restricted, or unconfirmed media remains a review or fix item.
+- Render admission now verifies the approved version, preset, duration, durable
+  asset ids, and session-rights evidence. Exact result records also reject
+  contradictory snapshot versions, duration bands, or format signatures.
+- Recording fresh local narration revokes the previous session-media rights
+  confirmation, and render progress no longer creates redundant audit-event
+  documents.
+- The CampaignCue website now shows the bounded owner-source to abstract-pattern
+  to checked-pack to owner-result flow and explicitly excludes account spying,
+  copied scripts, automatic posting, and virality promises. Public copy no
+  longer labels an owner-supplied reference as proven without outcome evidence.
+
+## August 10, 2026 - Starter Success Conversion Handoff
+
+- The new-account `/create-menu/success` screen now places one localized
+  **Keep this menu online** action immediately after the permanent customer link.
+  It explains the existing seven-day starter boundary and opens the maintained
+  Billing route without starting checkout automatically.
+- The Billing and setup-workspace actions share one ref-backed, bounded session
+  refresh before fixed internal navigation, preventing a newly claimed account
+  from reaching an owner route with stale tenant/store scope.
+- The action appears only when the strict, versioned browser claim handoff
+  matches the current session tenant and store. Its click event is consent-gated
+  and carries no owner, menu, store, URL, or payment data.
+- The owner starter banner changes from informational to warning presentation
+  only during the final three days. The seven-day duration, payment entitlement,
+  permanent customer URL, QR Code module, and Assets module are unchanged.
+- Starter banner, desktop Billing recovery, and mobile expired-starter labels
+  now share one ICU-safe namespace translated across all 52 owner locale packs.
+  Remaining days and sharing counts use locale-aware plural/number formatting;
+  public success URLs remain LTR-isolated when the surrounding page is RTL.
+- Rendered-output review replaced a first generated pass that contained
+  duplicated phrases or provider markers in some languages. The final 12-message
+  namespace uses clearer source copy, protected-token isolated retries, and
+  per-locale semantic hashes; no translation provider is called at runtime.
+- The complete public upload, preview, and success journey is now translated in
+  all eight website-switcher languages: 115 `CreateMenu`, 32
+  `CreateMenuPreview`, and 23 `CreateMenuSuccess` messages per pack. The source
+  gate locks keys, placeholders, translation residue, and heading-highlight
+  containment. The success heading now renders a complete sentence, Arabic uses
+  start alignment with isolated LTR URLs, and no-link states hide QR/placement
+  instructions instead of referring to an absent link.
+- Extracted menu preview now follows the language marked primary rather than
+  array order, uses the shared localized-text fallback for every displayed menu
+  field, and owns an independent `lang`/direction boundary with bidi-isolated
+  prices. Logical CSS keeps Arabic interface layout correct without forcing an
+  English menu into RTL, or an Arabic menu into LTR.
+- The shared analytics-consent panel now has all 11 labels in every advertised
+  website language; Hindi English residue and the six-pack English fallback are
+  removed without changing consent storage or analytics loading behavior.
+- The shared Header (61 labels), Footer (56), Theme switcher (7), Language
+  switcher (1), and accessibility skip link (1) are now complete in all eight
+  website languages. The Public Menu Entry gate rejects missing keys,
+  placeholder/protected-token drift, provider residue, and unintended English
+  fallback across the full mounted `/create-menu` shell.
+- Translated desktop navigation no longer collides with the wordmark or wraps
+  ordinary commands at 1440px. The Header uses a wider header-only container,
+  tighter stable gaps, and switches to the drawer below 1280px; the drawer now
+  enters from the logical end edge in RTL. Arabic and Spanish mobile/desktop
+  renders showed no horizontal overflow, missing labels, or clipped dropdown
+  text.
+
+## August 10, 2026 - Product-Scoped Environment Contract
+
+- MenuList local, Vercel, and checked-in env templates now store one canonical
+  `MENULIST_*` or `NEXT_PUBLIC_MENULIST_*` key per product value. Generic
+  Firebase, Gemini, Razorpay, Upstash, SMTP, Telegram, WhatsApp, revalidation,
+  and batch-worker duplicate rows were removed.
+- Root runtime readers prefer the canonical MenuList namespace and keep generic
+  names only as read-only migration fallbacks for existing deployments.
+  Answerlattice Redis now has an independent `ANSWERLATTICE_UPSTASH_*`
+  namespace; Firebase Functions retain project-local Secret Manager names.
+- `verify:menulist-env-contract` rejects duplicate managed env rows and direct
+  runtime bypasses of the scoped readers.
+- Cross-product verification extended the same one-key rule to Answerlattice
+  and CampaignCue Firebase mode, project ID, storage bucket, and optional
+  database ID. Their root server runtimes now reuse canonical public
+  identifiers while Admin credentials remain private and product-scoped.
+- CampaignCue browser Firebase configuration now uses literal
+  `NEXT_PUBLIC_CAMPAIGNCUE_*` references so Next.js can inline the canonical
+  values; computed public-env access is no longer part of the client path.
+
 ## August 7, 2026 - Public Create-Menu PDF Intake
 
 - The authenticated public `/create-menu` starter now accepts one PDF up to
@@ -31525,3 +31863,20 @@ TEMPLATE FOR NEW ENTRIES:
 - Source-provider timeout/request failures return 503 instead of 400.
 - Blocked-mobile audit failures remain inside the route's bounded private error
   path and never execute the requested mutation.
+# August 10, 2026 - CampaignCue Read-Only Result Evidence
+
+- Added a Results-tab workflow for authorized owners and workspace operators to save one compact snapshot copied from Google Business Profile, Google Ads, Meta Ads, Instagram Insights, or Facebook Insights reports.
+- Added strict provider, scope, metric, date-window, role, workspace, location, and idempotency contracts. Duplicate latest evidence does not inflate its count.
+- Kept the evidence explicitly directional: it does not change Campaign Memory, analytics outcome counts, provider accounts, posts, or ad spend.
+- Reused the existing campaign/action/event/idempotency records with no new collection, listener, Storage object, provider call, or dashboard-summary write.
+- Provider OAuth/API import remains disabled behind a separate verified-connection and operations gate.
+
+## August 10, 2026 - CampaignCue Durable Campaign Pack Archive
+
+- Added an optional owner-triggered cloud copy for the deterministic Campaign Pack ZIP while preserving local download as the default fallback.
+- Kept persistence bounded to one current campaign pointer, one deterministic Asset Library record, and two rotating Storage object names per campaign; no archive collection, listener, Cloud Function, provider call, or model call was added.
+- Added strict 25 MB size, ZIP type/name, SHA-256, CRC32C, exact path, upload-lease ownership, object-generation, and idempotent-finalization checks.
+- Denied direct Firebase client access to report archives and limited upload/download access to short-lived server-issued signed URLs.
+- Kept campaign-linked archive and Asset Library records branch-scoped, with assigned-location filtering for local managers and fail-closed handling for older linked records without a location identity.
+- Added bounded filename fallback for non-Latin and oversized campaign titles, and pinned ZIP header inspection to the exact Storage generation returned by metadata verification.
+- The final local matrix passed 2,190 runtime assertions, 158 operating-loop assertions, the 60-check archive suite, strict TypeScript, repository lint, and Firestore/Storage rules emulators. The QA rules deploy remains blocked until Firebase CLI authentication is available.

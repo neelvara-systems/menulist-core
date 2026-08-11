@@ -850,7 +850,7 @@ function verifyPublicStoreLookupUsesCurrentTenantLifecycleState() {
   assertIncludes(route, 'tenantBlockedSyncedAt: now', 'Platform tenant-block sync timestamp');
   assertIncludes(backfill, "const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;", 'Tenant-block backfill checks both tenant scope fields');
   assertIncludes(backfill, 'for (const field of TENANT_STORE_SCOPE_FIELDS)', 'Tenant-block backfill direct store query covers tenantId and tId fields');
-  assertIncludes(backfill, "const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;", 'Tenant-block backfill requires explicit project target');
+  assertIncludes(backfill, "const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;", 'Tenant-block backfill requires explicit product-scoped project target');
   assertIncludes(backfill, "throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running tenant-block backfill.');", 'Tenant-block backfill refuses ambient default project');
   assertIncludes(backfill, 'function initializeFirestore(projectId: string): FirebaseFirestore.Firestore', 'Tenant-block backfill initializes Firestore after project validation');
   assertIncludes(backfill, 'initializeApp({ projectId })', 'Tenant-block backfill initializes with explicit project id');
@@ -4979,6 +4979,7 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   const googleListingGuide = read('src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx');
   const googleListingCard = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
   const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
+  const menuListEnUsLocale = read('public/locales/menulist.ai/en-US.json');
   const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
   const mobileShareScreen = read('src/components/mobile/screens/MobileShareScreen.tsx');
 
@@ -5066,8 +5067,10 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(googleListingCard, "const copied = document.execCommand('copy');", 'Owner dashboard Google listing textarea copy acknowledgement');
   assertIncludes(googleListingCard, "openIsolatedBrowserUrl('https://business.google.com/')", 'Owner dashboard Google listing safe Google open');
 
-  assertIncludes(ownerDashboard, 'Official customer source is active', 'Owner Dashboard official-source behavior framing');
-  assertIncludes(ownerDashboard, 'Your customer link is ready.', 'Owner Dashboard customer-link adoption guidance');
+  assertIncludes(ownerDashboard, "t('publicTruthStatus.title.active')", 'Owner Dashboard localized official-source behavior framing');
+  assertIncludes(ownerDashboard, "t('publicTruthStatus.description.readyToPlace')", 'Owner Dashboard localized customer-link adoption guidance');
+  assertIncludes(menuListEnUsLocale, '"active": "Official customer source is active"', 'Owner Dashboard official-source behavior framing');
+  assertIncludes(menuListEnUsLocale, '"readyToPlace": "Your customer link is ready.', 'Owner Dashboard customer-link adoption guidance');
   assertIncludes(projectShareModal, 'FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES', 'Desktop share behavior-copy gate');
   assertIncludes(mobileShareScreen, 'FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES', 'Mobile share behavior-copy gate');
   assert(!fs.existsSync(path.join(ROOT, 'src/components/templates/main-app/dashboard/OwnerDashboard/BehaviorNudgeCard.tsx')), 'Retired duplicate dashboard behavior nudge card must stay absent');

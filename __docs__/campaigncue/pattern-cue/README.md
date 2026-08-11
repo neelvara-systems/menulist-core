@@ -18,4 +18,4 @@ It learns structure, not content. CampaignCue does not copy scripts, monitor cre
 
 ## Runtime Boundary
 
-The active runtime accepts an owner-submitted public HTTPS link plus transcript/format notes. It derives a deterministic compact observation, stores one current example on the existing CampaignCue workspace document, and feeds the observation only into video/UGC outputs. Provider analysis remains disabled.
+The active runtime accepts an owner-submitted public HTTPS link plus transcript/format notes. It derives a deterministic compact observation, stores one current example on the existing CampaignCue workspace document, and feeds the observation only into video/UGC outputs. Hook type, format, pacing, and duration band can follow the output into Video Reel Studio's compact format evidence; the raw transcript, wording, and media do not. Provider analysis remains disabled.

@@ -46,7 +46,7 @@ review step to the existing versioned release lifecycle:
 | Approved-pending-effective answer versions | Rejected for this pass | It changes canonical authority and scheduling semantics. |
 | Scheduled truth activation | Rejected for this pass | Requires separate failure, suppression, rollback, and retrieval design. |
 | Known-stale answer suppression | Separate runtime decision | Do not alter retrieval from a changelog feature review. |
-| Post-release friction attribution | Validation only | Existing friction summaries do not establish causality. |
+| Post-release friction attribution | Rejected; bounded correlation overlay implemented separately | Existing summaries do not establish causality. Product Friction Evidence now offers an explicit complete-window event comparison without attribution. |
 | Release Guard summary document | Rejected | Current list/detail access does not justify another summary without telemetry. |
 | CI/CD deployment gate | Rejected | Answerlattice does not own deployment. |
 
@@ -74,7 +74,6 @@ desktop/narrow-width evidence remains a release certification gate.
 
 - atomic change units;
 - article, procedure, and product-surface dependency expansion;
-- release-correlated friction comparison;
 - owner evidence that a preview changes release behavior and prevents stale
   answer exposure.
 
@@ -84,3 +83,34 @@ Feature 4 remains part of Releases and Changelog plus Answer Tests and Drift
 Governance. The bounded pre-activation preview is justified because it converts
 the current reactive drift marking into a preventive founder decision without
 creating a general release-management system.
+
+## Narrow Extension Accepted On 2026-08-10
+
+The earlier rejection of a broad article/procedure/surface dependency queue
+still stands. A smaller extension is now source-complete because it does not
+claim semantic or complete dependency coverage:
+
+- directly cited canonical evidence IDs may be checked against at most 50
+  Knowledge Intake source metadata records;
+- directly entity-linked surfaces may be projected from the existing compact
+  surface summary;
+- attached article, FAQ, and changelog counts are labeled contextual mappings;
+- current source-version and bundle-manifest control state may be shown as
+  Answerlattice-only propagation proof.
+
+These additions live in the existing preview, perform zero writes, do not alter
+the activation fingerprint, and are documented in
+`../support-truth-change-control/README.md`.
+
+## Bounded Post-Change Evidence Extension Accepted On 2026-08-10
+
+A separate Product Friction Evidence section now lets an authorized owner
+explicitly compare complete 14-day UTC support-evidence windows around an
+activated release or implemented knowledge correction. It revalidates the
+selected change, uses only its direct entity links, excludes the change day,
+and reports ticket, negative-feedback, and escalation event counts.
+
+This extension is correlation only. It does not modify the release lifecycle,
+activation fingerprint, readiness state, nightly summaries, changelog, or
+canonical truth, and it does not claim the release caused a lower or higher
+event count. See `../post-change-support-evidence-review/README.md`.

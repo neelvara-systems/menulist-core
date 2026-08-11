@@ -32,7 +32,9 @@ The Knowledge Governance hub includes a `Knowledge Map` tab. It:
 11. exposes last rebuild time and a manual refresh control;
 12. collapses relationship groups through one accessible disclosure on narrow screens;
 13. accepts one optional, validated entity focus from a governed owner surface;
-14. passes the selected entity to Canonical Answers without adding a map-owned repair workflow.
+14. keeps selection empty and shows a warning when that valid requested entity
+    is absent from the exact-scope graph;
+15. passes the selected entity to Canonical Answers without adding a map-owned repair workflow.
 
 The governance view never changes an entity, relation, answer, or approval.
 

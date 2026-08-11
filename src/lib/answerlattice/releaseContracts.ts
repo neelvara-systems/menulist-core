@@ -1,10 +1,12 @@
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { PRODUCT_IDS } from '@constant/product';
+import { AnswerlatticeSupportTruthChangeControlSchema } from '@lib/answerlattice/supportTruthChangeControl';
 import { z } from 'zod';
 
 export const ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES = 25;
 export const ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS = 200;
 export const ANSWERLATTICE_RELEASE_ACTIVATION_LEASE_MS = 5 * 60 * 1000;
+export const ANSWERLATTICE_RELEASE_ACTION_RESPONSE_MAX_BYTES = 256 * 1024;
 
 const strictDocumentId = (label: string) => z.string()
     .trim()
@@ -377,6 +379,7 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
             lastRunAt: z.string().datetime({ offset: true }).nullable(),
         }).strict(),
         directDependencyCoverage: AnswerlatticeReleaseDirectDependencyCoverageSchema,
+        changeControl: AnswerlatticeSupportTruthChangeControlSchema.optional(),
     }).strict(),
     z.object({
         success: z.literal(true),
@@ -409,6 +412,19 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
             code: z.ZodIssueCode.custom,
             message: 'Direct answer dependency count must match the affected-answer projection.',
             path: ['directDependencyCoverage', 'directActiveAnswerCount'],
+        });
+    }
+    if (result.changeControl && (
+        result.changeControl.releaseReview.changedEntityCount
+            !== result.directDependencyCoverage.changedEntityIds.length
+        || result.changeControl.releaseReview.directActiveAnswerCount !== result.affectedAnswerCount
+        || result.changeControl.releaseReview.reviewRequiredCount !== result.reviewRequiredCount
+        || result.changeControl.releaseReview.answerTestState !== result.answerTestProof.state
+    )) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Support truth release review must match the release impact projection.',
+            path: ['changeControl', 'releaseReview'],
         });
     }
     const testEvidenceAvailable = ![
@@ -475,6 +491,7 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
             lastRunAt: z.string().datetime({ offset: true }).nullable(),
         }).strict(),
         directDependencyCoverage: AnswerlatticeReleaseDirectDependencyCoverageSchema,
+        changeControl: AnswerlatticeSupportTruthChangeControlSchema.optional(),
         scope: actionScopeSchema,
     }).strict(),
     z.object({
@@ -509,6 +526,19 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
             code: z.ZodIssueCode.custom,
             message: 'Direct answer dependency count must match the affected-answer projection.',
             path: ['directDependencyCoverage', 'directActiveAnswerCount'],
+        });
+    }
+    if (result.changeControl && (
+        result.changeControl.releaseReview.changedEntityCount
+            !== result.directDependencyCoverage.changedEntityIds.length
+        || result.changeControl.releaseReview.directActiveAnswerCount !== result.affectedAnswerCount
+        || result.changeControl.releaseReview.reviewRequiredCount !== result.reviewRequiredCount
+        || result.changeControl.releaseReview.answerTestState !== result.answerTestProof.state
+    )) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Support truth release review must match the release impact projection.',
+            path: ['changeControl', 'releaseReview'],
         });
     }
     const testEvidenceAvailable = ![

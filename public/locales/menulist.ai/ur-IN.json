@@ -428,7 +428,8 @@
         "daily": "پچھلا دن",
         "weekly": "آخری 7 دن",
         "monthly": "اس مہینے",
-        "overall": "مجموعی طور پر"
+        "overall": "مجموعی طور پر",
+        "graph": "گراف"
       },
       "today": {
         "noMenuActivityToday": "آج تک کوئی مینو سرگرمی نہیں ہے۔",
@@ -454,17 +455,17 @@
         "noResultSearches": "بے نتیجہ تلاشیں۔",
         "unavailableInterest": "غیر دستیاب دلچسپی",
         "topLanguage": "سر فہرست زبان",
-        "smartPicksShown": "اسمارٹ پکس دکھائے گئے۔",
-        "smartPicksClicks": "اسمارٹ پکس کلکس",
-        "smartPicksTaps": "اسمارٹ پکس ٹیپس",
-        "smartPicksUsed": "استعمال شدہ اسمارٹ پکس",
-        "smartPicksEngagement": "اسمارٹ پکس مصروفیت",
+        "smartPicksShown": "Smart Picks دکھایا گیا",
+        "smartPicksClicks": "Smart Picks کلکس",
+        "smartPicksTaps": "Smart Picks نلیاں",
+        "smartPicksUsed": "Smart Picks استعمال کیا گیا",
+        "smartPicksEngagement": "Smart Picks مشغولیت",
         "totalMenuScans": "کل مینو اسکینز",
         "totalItemClicks": "کل آئٹم کلکس",
         "activeDays": "فعال دن",
         "daysActive": "فعال دن",
         "avgDailyScans": "اوسط روزانہ اسکینز",
-        "smartPicksActive": "اسمارٹ پکس ایکٹو",
+        "smartPicksActive": "Smart Picks فعال ہے",
         "engagementRate": "منگنی کی شرح",
         "topItem": "ٹاپ آئٹم",
         "topCategory": "ٹاپ کیٹیگری"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "کل کوئی سرگرمی ریکارڈ نہیں ہوئی۔",
         "noAnalyticsYet": "ابھی تک کوئی ڈیٹا نہیں ہے۔ آپ کے تجزیات اس وقت ظاہر ہوں گے جب گاہک دیکھنا شروع کر دیں گے۔",
-        "noItemClicksYet": "ابھی تک کوئی آئٹم کلک نہیں ہوا ہے۔"
+        "noItemClicksYet": "ابھی تک کوئی آئٹم کلک نہیں ہوا ہے۔",
+        "lowActivityTitle": "کم سرگرمی",
+        "lowActivityDescription": "اس عرصے کے لیے مفید نتیجہ اخذ کرنے کے لیے کافی سرگرمی نہیں تھی۔",
+        "noWeeklyData": "پچھلے 7 دنوں سے ابھی تک کوئی طے شدہ مینو سرگرمی دستیاب نہیں ہے۔",
+        "noMonthlyData": "اس مہینے کے لیے ابھی تک کوئی طے شدہ مینو سرگرمی دستیاب نہیں ہے۔"
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% بمقابلہ پچھلے ہفتے"
+        "vsLastWeek": "{sign}{change}% بمقابلہ پچھلے ہفتے",
+        "changeVsLastWeek": "{change} بمقابلہ گزشتہ ہفتہ"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# فعال دن ریکارڈ ہوا} other {# فعال دن ریکارڈ ہوئے}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "جی ہاں",
         "no": "نہیں",
-        "notAvailable": "لاگو نہیں",
+        "notAvailable": "N/A",
         "active": "فعال",
         "lowActivity": "کم سرگرمی",
         "noData": "کوئی ڈیٹا نہیں۔"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "پہلے اسکین کا انتظار ہے۔",
         "weeklyInsights": "ہفتہ وار بصیرت",
         "last4WeeksComparison": "گزشتہ 4 ہفتوں کا موازنہ",
-        "historicalDataWillAppear": "تاریخی ڈیٹا چند ہفتوں کے بعد ظاہر ہوگا۔"
+        "historicalDataWillAppear": "تاریخی ڈیٹا چند ہفتوں کے بعد ظاہر ہوگا۔",
+        "statusMessages": {
+          "working": "گاہک آپ کا موجودہ مینو استعمال کر رہے ہیں۔",
+          "low_activity": "گاہکوں کی سرگرمی اب بھی بڑھ رہی ہے۔ آپ کا موجودہ مینو دستیاب ہے۔",
+          "no_data": "گاہکوں کے آپ کا مینو کھولنا شروع کرنے کے بعد سرگرمی ظاہر ہوگی۔"
+        }
       },
       "aiSummary": {
         "daily": "پچھلا دن ایک نظر میں",
         "weekly": "اس ہفتے ایک نظر میں",
-        "monthly": "اس مہینے کا خلاصہ"
+        "monthly": "اس مہینے کا خلاصہ",
+        "localized": {
+          "noActivity": "اس مدت کے لیے کوئی آباد گاہک سرگرمی ریکارڈ نہیں کی گئی۔",
+          "menuViews": "گاہکوں نے مینو {count} بار کھولا۔",
+          "itemTaps": "صارفین نے مینو آئٹموں کو {count} بار ٹیپ کیا۔",
+          "customerActions": "گاہکوں نے {count} حتمی اقدامات مکمل کیے۔",
+          "searches": "صارفین نے مینو {count} بار تلاش کیا۔",
+          "unavailableInterest": "غیر دستیاب اشیاء موصول ہوئی {count} نلیاں۔"
+        }
       },
       "actions": {
         "call": "کال کریں۔",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} دورے · {rate}%",
         "markDone": "ہو گیا کے بطور نشان زد کریں۔",
         "markDoneSaved": "ہو گیا کے بطور نشان زد۔ اگلی تجزیاتی خلاصہ تیار ہونے پر نتائج اپ ڈیٹ ہو جائیں گے۔",
-        "markDoneFailed": "اس کارروائی کو ہو گیا کے طور پر نشان زد نہیں کیا جا سکا۔ دوبارہ کوشش کریں۔"
+        "markDoneFailed": "اس کارروائی کو ہو گیا کے طور پر نشان زد نہیں کیا جا سکا۔ دوبارہ کوشش کریں۔",
+        "bestSourceStatsFormatted": "· {visits} وزٹ · {rate} ایکشن ریٹ",
+        "bestSourceMobileFormatted": "ابھی بہترین ماخذ: {source} · {visits} وزٹ· {rate} ایکشن ریٹ",
+        "sourceQualityTagFormatted": "{source}: {visits} وزٹ · {sessions} ایکشن سیشن · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} وزٹ · {rate}",
+        "priorities": {
+          "high": "اعلی ترجیح",
+          "medium": "درمیانی ترجیح",
+          "low": "کم ترجیح"
+        },
+        "confidence": {
+          "stable": {
+            "label": "مستحکم",
+            "message": "دستیاب سرگرمی واضح مینو چیک کی حمایت کرتی ہے۔"
+          },
+          "watch": {
+            "label": "دیکھتے رہیں۔",
+            "message": "کچھ سرگرمیوں کو مینو تبدیل کرنے سے پہلے ایک اور چیک کی ضرورت پڑ سکتی ہے۔"
+          },
+          "no_data": {
+            "label": "مزید ڈیٹا درکار ہے",
+            "message": "کوئی نتیجہ اخذ کرنے سے پہلے گاہکوں کی مزید طے شدہ سرگرمی کا انتظار کریں۔"
+          }
+        },
+        "localizedActions": {
+          "reason": "تازہ ترین طے شدہ گاہک کی سرگرمی پر مبنی۔",
+          "availability": {
+            "title": "آئٹم کی دستیابی کا جائزہ لیں",
+            "description": "چیک کریں کہ آیا دستیاب یا پوشیدہ اشیاء کو بحال کیا جانا چاہیے یا نظر سے باہر رکھا جانا چاہیے۔",
+            "action": "دستیابی کا جائزہ لیں"
+          },
+          "customerActions": {
+            "title": "گاہکوں کے اقدامات کا جائزہ لیں",
+            "description": "کارروائی کرنے سے پہلے مینو کی تفصیلات اور صارفین کے استعمال کردہ لنکس چیک کریں۔",
+            "action": "گاہکوں کے اقدامات کا جائزہ لیں"
+          },
+          "details": {
+            "title": "آئٹم کی تفصیلات کو بہتر بنائیں",
+            "description": "آئٹم کے ناموں، اختیارات، وضاحتوں اور تصاویر کا جائزہ لیں جن کے لیے واضح معلومات کی ضرورت ہو سکتی ہے۔",
+            "action": "آئٹم کی تفصیلات کا جائزہ لیں"
+          },
+          "general": {
+            "title": "واضح سگنل کا انتظار کریں",
+            "description": "موجودہ مینو کو اس وقت تک مستحکم رکھیں جب تک کہ مزید طے شدہ سرگرمی دستیاب نہ ہو۔",
+            "action": "بعد میں جائزہ لیں"
+          },
+          "menuOrder": {
+            "title": "مینو آرڈر کا جائزہ لیں",
+            "description": "چیک کریں کہ آیا اہم اشیاء اور زمرے گاہکوں کے لیے تلاش کرنا آسان ہیں۔",
+            "action": "مینو آرڈر کا جائزہ لیں"
+          },
+          "pricing": {
+            "title": "قیمتوں کا جائزہ لیں",
+            "description": "تازہ ترین کسٹمر انٹرسٹ سگنل سے منسلک قیمتوں کو چیک کریں۔",
+            "action": "قیمتوں کا جائزہ لیں"
+          },
+          "search": {
+            "title": "گاہکوں کی تلاشوں کا جائزہ لیں",
+            "description": "ایسی تلاشوں کو چیک کریں جو گاہکوں کو مفید مینو کے نتائج کی طرف نہیں لے جا سکتی ہیں۔",
+            "action": "تلاشوں کا جائزہ لیں"
+          },
+          "source": {
+            "title": "کسٹمر انٹری ذرائع کا جائزہ لیں",
+            "description": "چیک کریں کہ آیا عوامی لنکس اور QR پلیسمنٹ صارفین کو موجودہ مینو کی طرف اشارہ کرتے ہیں۔",
+            "action": "عوامی لنکس کا جائزہ لیں"
+          },
+          "timing": {
+            "title": "مینو کے وقت کا جائزہ لیں",
+            "description": "چیک کریں کہ آیا وقت پر زمرے اور دستیابی میل کھاتے ہیں جب گاہک انہیں تلاش کرتے ہیں۔",
+            "action": "وقت کا جائزہ لیں"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "نشان زد کیا گیا ہے",
+            "message": "مزید طے شدہ سرگرمی دستیاب ہونے کے بعد نتیجہ کی جانچ کی جائے گی۔"
+          },
+          "improved": {
+            "label": "بہتر کیا گیا",
+            "message": "اگلا طے شدہ چیک بہتری دکھاتا ہے۔"
+          },
+          "no_clear_change": {
+            "label": "کوئی واضح تبدیلی نہیں",
+            "message": "اگلے طے شدہ چیک میں واضح تبدیلی نہیں دکھائی دی۔"
+          },
+          "not_enough_data": {
+            "label": "مزید ڈیٹا درکار ہے",
+            "message": "اس تبدیلی کا اندازہ لگانے کے لیے ابھی تک کافی طے شدہ سرگرمی نہیں ہے۔"
+          },
+          "pending": {
+            "label": "زیر التواء چیک",
+            "message": "مزید طے شدہ سرگرمی دستیاب ہونے کے بعد MenuList اس کی جانچ کرے گا۔"
+          }
+        }
       },
       "details": {
         "menuDetails": "مینو کی تفصیلات",
@@ -574,7 +686,7 @@
           "unavailableInterest": "غیر دستیاب دلچسپی",
           "languages": "زبانیں",
           "filters": "فلٹرز",
-          "smartPicks": "اسمارٹ پکس",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "کاروباری اوقات کے لحاظ سے کارروائیاں"
         },
         "descriptions": {
@@ -617,6 +729,12 @@
           "unknown": "اوقات کی حیثیت غیر دستیاب ہونے پر کارروائیاں",
           "closed": "بند ہونے پر اعمال",
           "open": "کھلے ہونے پر اعمال"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} دستیاب نہیں نلیاں",
+          "strongItem": "{count} آئٹم ٹیپس",
+          "needsWork": "{count} ویوز، کوئی ٹیپ نہیں",
+          "gettingAttention": "{count} ملاحظات"
         }
       },
       "smartPicks": {
@@ -650,8 +768,8 @@
         "copyLink": "لنک کاپی کریں۔",
         "copyMessage": "پیغام کاپی کریں۔",
         "googleReviews": "Google جائزے",
-        "instagram": "انسٹاگرام",
-        "facebook": "فیس بک",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "ویب سائٹ",
         "sourceViews": "{count} ملاحظات",
         "sourceMenu": "{count} مینو",
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "شارٹ کٹ بریک ڈاؤن",
         "installsByPlatform": "پلیٹ فارم کے ذریعے انسٹال کرتا ہے۔",
         "appStickiness": "ایپ کی چپچپا پن",
-        "returningOpens30d": "ریٹرننگ کھلتا ہے (30d)",
         "avgOpensPerInstall": "اوسط فی انسٹال کھلتا ہے۔",
         "iosManualInstalls": "iOS دستی تنصیبات",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "آن لائن آرڈر کریں۔"
         },
         "platforms": {
-          "ios": "آئی او ایس",
-          "iosLong": "آئی او ایس (آئی فون/آئی پیڈ)",
-          "android": "اینڈرائیڈ",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "ڈیسک ٹاپ",
           "other": "دیگر"
-        }
+        },
+        "tryAgainLater": "بعد میں دوبارہ کوشش کریں۔"
       },
       "projectSelector": {
         "deleted": "حذف کر دیا گیا۔",
@@ -761,7 +879,8 @@
         "copied": "کاپی",
         "copy": "کاپی",
         "openGoogle": "Google کھولیں۔",
-        "done": "ہو گیا"
+        "done": "ہو گیا",
+        "couldNotOpen": "Google کاروباری پروفائل نہیں کھول سکا"
       },
       "behaviorNudge": {
         "linkCopied": "لنک کاپی ہو گیا۔",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "سر فہرست مسئلہ کا جائزہ لیں۔",
         "repairMenu": "مرمت کا مینو",
         "review": "جائزہ لیں",
-        "repair": "مرمت"
+        "repair": "مرمت",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# آئٹم میں تفصیل غائب ہے} other {# آئٹموں کی تفصیل غائب ہے}}",
+            "ok": "تمام آئٹموں کی وضاحت ہوتی ہے",
+            "help": "تفصیل گاہکوں کو ہر پیشکش کو سمجھنے میں مدد کرتی ہے۔"
+          },
+          "images": {
+            "warning": "{count, plural, one {# آئٹم میں تصویر غائب ہے} other {# آئٹموں میں تصاویر غائب ہیں}}",
+            "ok": "تمام اشیا میں تصاویر ہیں",
+            "help": "تصاویر صارفین کو تیزی سے انتخاب کرنے میں مدد کر سکتی ہیں۔"
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# زمرہ میں ایک آئیکن غائب ہے} other {# زمرہ جات میں آئیکن غائب ہیں}}",
+            "ok": "تمام زمروں میں آئیکنز ہیں",
+            "help": "آئیکنز زمرہ جات کو اسکین کرنا آسان بناتے ہیں۔"
+          },
+          "prices": {
+            "warning": "{count, plural, one {# آئٹم کی قیمت غائب ہے} other {# اشیاء کی قیمتیں غائب ہیں}}",
+            "ok": "تمام اشیاء کی قیمتیں ہیں",
+            "help": "گاہک فیصلہ کرنے سے پہلے قیمتوں کا موازنہ کرتے ہیں۔"
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# آئٹم گاہکوں سے چھپا ہوا ہے} other {# اشیاء گاہکوں سے چھپائی جاتی ہیں}}",
+            "ok": "کوئی چیز پوشیدہ نہیں ہے",
+            "help": "پوشیدہ اشیاء عوامی مینو میں ظاہر نہیں ہوتی ہیں۔"
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# قیمت کا جائزہ درکار ہے} other {# قیمتوں کا جائزہ لینا ضروری ہے}}",
+            "ok": "قیمتیں متوقع حد کے اندر ہیں۔",
+            "help": "MenuList اسی زمرے میں ایک ہی آئٹم کی قیمتوں کا موازنہ کرتا ہے۔ جائزہ لیا گیا جان بوجھ کر قیمت نشان زد کریں۔"
+          },
+          "translations": {
+            "warning": "{count, plural, one {# آئٹم میں ترجمے غائب ہیں} other {# آئٹموں کے ترجمے غائب ہیں}}",
+            "ok": "تمام نظر آنے والی اشیاء کا ترجمہ کیا گیا ہے",
+            "help": "کچھ آئٹم منتخب مینو زبانوں میں نامکمل ہیں۔"
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# مینو کی تفصیل میں ترجمے غائب ہیں} other {# مینو کی تفصیلات میں ترجمے غائب ہیں}}",
+            "ok": "مینو کی تفصیلات کا ترجمہ کیا گیا ہے",
+            "help": "مینو کا نام، تفصیل یا نوٹ منتخب مینو زبانوں میں نامکمل ہیں۔"
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "کاپی شدہ لنک",
+        "direct": "براہ راست",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "مینو کٹ",
+        "nativeShare": "ڈیوائس شیئر",
+        "obp": "کاروباری صفحہ",
+        "other": "دیگر",
+        "qr": "QR کوڈ",
+        "shortcut": "ایپ شارٹ کٹ",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "کاروبار صحت",
+        "open": "اوپن بزنس ہیلتھ",
+        "today": "آج",
+        "latestActivity": "تازہ ترین سرگرمی",
+        "noActionNeeded": "کسی کارروائی کی ضرورت نہیں۔",
+        "status": {
+          "stable": "مستحکم",
+          "watch": "توجہ کی ضرورت ہے۔",
+          "needs_review": "جائزے کی ضرورت ہے",
+          "insufficient_data": "مزید ڈیٹا درکار ہے",
+          "stale": "ایک نئے چیک کی ضرورت ہے",
+          "not_ready": "تیار ہو رہا ہے"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# گاہکوں کا سامنا کرنے والی تفصیلات کا جائزہ لینے کی ضرورت ہے۔} other {# گاہکوں کا سامنا کرنے والی تفصیلات کا جائزہ لینے کی ضرورت ہے۔}}",
+          "stable": {
+            "headline": "آپ کی عوامی معلومات مستحکم ہے۔",
+            "message": "گاہکوں کو درپیش کسی بھی مسئلے پر تازہ ترین چیک میں کارروائی کی ضرورت نہیں ہے۔"
+          },
+          "watch": {
+            "headline": "تفصیل پر توجہ دینے کی ضرورت پڑ سکتی ہے",
+            "message": "عوامی معلومات کو تبدیل کرنے سے پہلے تجویز کردہ چیک کا جائزہ لیں۔"
+          },
+          "needs_review": {
+            "headline": "گاہکوں کا سامنا کرنے کی تفصیلات کا جائزہ لیں",
+            "message": "ایک یا زیادہ عوامی تفصیلات چیک کی جانی چاہئیں۔"
+          },
+          "insufficient_data": {
+            "headline": "مزید سرگرمی کی ضرورت ہے۔",
+            "message": "موجودہ معلومات کو مستحکم رکھیں جب کہ MenuList ایک مفید سگنل جمع کرتا ہے۔"
+          },
+          "stale": {
+            "headline": "کاروباری صحت کو ایک نئی جانچ کی ضرورت ہے",
+            "message": "آخری چیک پرانا ہے۔ آپ کی موجودہ عوامی معلومات میں کوئی تبدیلی نہیں ہوئی ہے۔"
+          },
+          "not_ready": {
+            "headline": "کاروباری صحت تیار ہو رہی ہے",
+            "message": "اسٹور کا پہلا چیک یہاں اس وقت ظاہر ہوگا جب یہ تیار ہو جائے گا۔"
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "مینو کا ماخذ چیک کریں",
+            "message": "مینو کا کوئی فعال عوامی ماخذ نہیں ملا۔ مینو کو شیئر کرنے سے پہلے اسے چیک کریں۔",
+            "title": "مینو کے ماخذ کو چیک کرنے کی ضرورت ہے"
+          },
+          "low_latest_activity": {
+            "action": "اشتراک کے لنکس چیک کریں",
+            "message": "گاہکوں کی سرگرمی کم ہے۔ چیک کریں QR, Google, Instagram, WhatsApp، اور ویب سائٹ کے لنکس۔",
+            "title": "گاہکوں کی سرگرمی کم ہے"
+          },
+          "unavailable_item_taps": {
+            "action": "دستیاب نہیں آئٹم چیک کریں",
+            "message": "گاہکوں نے دستیاب نہ ہونے والی اشیاء میں دلچسپی ظاہر کی۔ انہیں دوبارہ اسٹاک کریں یا چھپائیں۔",
+            "title": "غیر دستیاب اشیاء پر توجہ دی گئی"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "مہمانوں کے تاثرات کا جائزہ لیں",
+            "message": "مہمانوں کے تاثرات کو عوامی تفصیلات تبدیل کرنے سے پہلے مالک کی جانچ پڑتال کی ضرورت ہوتی ہے۔",
+            "title": "مہمانوں کے تاثرات کی جانچ پڑتال کی ضرورت ہے"
+          },
+          "default": {
+            "action": "تفصیلات کا جائزہ لیں",
+            "message": "گاہک کا سامنا کرنے والی تفصیل کے لیے مالک کی جانچ کی ضرورت ہوتی ہے۔",
+            "title": "تفصیل کی جانچ پڑتال درکار ہے"
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# نجی فیڈ بیک آئٹم کو چیک کرنے کی ضرورت ہے۔} other {# نجی فیڈ بیک آئٹمز کو چیک کرنے کی ضرورت ہے۔}}",
+          "clear": "نجی رائے واضح ہے۔"
+        },
+        "freshness": {
+          "notReady": "بزنس ہیلتھ حقیقی وقت نہیں ہے۔ اسٹور کا پہلا چیک یہاں ڈیٹا کی تاریخ دکھائے گا۔",
+          "throughDate": "{date} کے ذریعے ڈیٹا کا استعمال کرتا ہے۔ آج ابھی تک مکمل نہیں ہو سکتا۔",
+          "latest": "تازہ ترین دستیاب MenuList ڈیٹا استعمال کرتا ہے۔ آج کا دن ابھی مکمل نہیں ہو سکتا۔"
+        },
+        "periods": {
+          "today": "آج",
+          "yesterday": "پچھلا دن",
+          "thisWeek": "اس ہفتے",
+          "lastWeek": "گزشتہ ہفتے",
+          "thisMonth": "اس مہینے میں",
+          "lastMonth": "گزشتہ ماہ",
+          "last7Days": "آخری 7 دن",
+          "last30Days": "آخری 30 دن",
+          "overall": "مجموعی طور پر"
+        },
+        "metrics": {
+          "menuViews": "مینو کے نظارے",
+          "topDemand": "سب سے زیادہ مانگ",
+          "topDemandDetail": "فروغ دیں: {count} {signal}",
+          "bestSource": "بہترین ماخذ",
+          "bestSourceDetail": "اپ ڈیٹ لنک: {count} وزٹس"
+        },
+        "signals": {
+          "views": "نظارہ",
+          "clicks": "آئٹم ٹیپس",
+          "attention": "توجہ کے اشارے"
+        },
+        "page": {
+          "description": "روزانہ کاروباری حیثیت اور گاہکوں کا سامنا کرنے والے چیک۔",
+          "latestCheck": "AI health check",
+          "loading": "لوڈ ہو رہا ہے",
+          "loadingMessage": "کاروباری صحت کو لوڈ کر رہا ہے...",
+          "notReady": "بزنس ہیلتھ ابھی تیار نہیں ہے۔",
+          "loadErrorTitle": "بزنس ہیلتھ لوڈ نہیں ہو سکا",
+          "loadErrorDescription": "براہ کرم اس صفحہ کو ریفریش کریں اور دوبارہ کوشش کریں۔",
+          "refresh": "تازہ کریں",
+          "needsAttention": "توجہ کی ضرورت ہے۔",
+          "desktopSettingsOnly": "اسے ڈیسک ٹاپ سیٹنگز سے کھولیں۔"
+        },
+        "scope": {
+          "title": "کاروباری صحت کا دائرہ کار",
+          "allMenus": "تمام مینو",
+          "selectedMenu": "منتخب مینو",
+          "menuCount": "{count, plural, one {اس مقام پر # مینو} other {اس مقام پر # مینو}}",
+          "locationLevel": "مقام کی سطح کا نظارہ",
+          "inactiveMenu": "غیر فعال مینو",
+          "thisMenuOnly": "صرف یہ مینو",
+          "allMenusInLocation": "اس مقام پر موجود تمام مینو",
+          "thisMenuHelper": "سوالات اور سرگرمی اس مینو کا استعمال کرتے ہیں۔",
+          "allMenusHelper": "سوالات اور سرگرمی اس مقام کے تمام مینو کا استعمال کرتے ہیں۔",
+          "dialogDescription": "سرگرمی اور چیک کے لیے تمام مینو یا ایک مینو منتخب کریں۔",
+          "all": "سب کچھ",
+          "close": "بند کریں"
+        },
+        "locations": {
+          "title": "مقامات",
+          "loading": "مقامات لوڈ ہو رہے ہیں...",
+          "empty": "ابھی تک کوئی محل وقوع کا خلاصہ نہیں ہے",
+          "storeFallback": "مقام {id}",
+          "checkedOn": "چیک کیا گیا {date}",
+          "checkCount": "{count, plural, one {# چیک کریں} other {# چیک کریں}}",
+          "checksNeedReview": "{count, plural, one {# گاہک کا سامنا کرنے والے چیک کو جائزے کی ضرورت ہے۔} other {# گاہکوں کا سامنا کرنے والے چیک کو جائزے کی ضرورت ہے۔}}",
+          "statusReason": {
+            "stable": "گاہکوں کو درپیش کسی بھی مسئلے پر کارروائی کی ضرورت نہیں ہے۔",
+            "watch": "گاہک کا سامنا کرنے والی تفصیل پر توجہ دینے کی ضرورت پڑ سکتی ہے۔",
+            "needs_review": "گاہکوں کا سامنا کرنے والی تفصیلات کا جائزہ لینے کی ضرورت ہے۔",
+            "insufficient_data": "مفید چیک کے لیے گاہکوں کی مزید سرگرمی کی ضرورت ہے۔",
+            "stale": "اس مقام کو ایک نئے چیک کی ضرورت ہے۔",
+            "not_ready": "پہلا لوکیشن چیک تیار ہو رہا ہے۔"
+          }
+        },
+        "assistant": {
+          "title": "کاروباری صحت سے پوچھیں",
+          "askShort": "پوچھیں۔",
+          "englishOnlyTitle": "سوالات فی الحال انگریزی میں دستیاب ہیں۔",
+          "englishOnlyDescription": "آپ کی حیثیت اور چیک مقامی ہیں۔ بزنس ہیلتھ کے سوالات پوچھنے کے لیے ایپ کی زبان کو انگریزی میں تبدیل کریں۔",
+          "notReady": "بزنس ہیلتھ تازہ ترین چیک ختم ہونے کے بعد جواب دے گا۔",
+          "suggestedUnavailable": "تجویز کردہ سوالات ابھی دستیاب نہیں ہیں۔",
+          "freeTextUnavailable": "فری ٹیکسٹ سوالات ابھی دستیاب نہیں ہیں۔",
+          "answerError": "بزنس ہیلتھ اس کا جواب نہیں دے سکی۔",
+          "suggestedQuestions": "تجویز کردہ سوالات",
+          "followUps": "آپ اگلا پوچھ سکتے ہیں",
+          "you": "آپ۔",
+          "empty": "کوئی سوال منتخب کریں یا اپنے کاروبار کے بارے میں پوچھیں۔",
+          "placeholderReady": "آج، اس ہفتے، مینو پر توجہ دینے یا اگلے چیک کے بارے میں پوچھیں۔",
+          "placeholderMobile": "آج یا اس ہفتے کے بارے میں پوچھیں",
+          "placeholderPending": "تازہ ترین چیک کے بعد دستیاب ہے",
+          "send": "سوال بھیجیں",
+          "cachedFacts": "کیش شدہ MenuList کاروباری حقائق پر مبنی",
+          "questions": {
+            "checks": "کس چیز کی جانچ پڑتال کی ضرورت ہے؟",
+            "today_stats": "آج کا دن کیسا چل رہا ہے؟",
+            "this_week_stats": "اس ہفتے کیا ہوا؟",
+            "top_item": "کون سی چیز توجہ حاصل کر رہی ہے؟",
+            "last_week_stats": "پچھلے ہفتے کیا ہوا؟",
+            "this_month_stats": "یہ مہینہ کیسا ہے؟",
+            "last_month_stats": "پچھلے مہینے کیا ہوا؟",
+            "public_menu_status": "کیا میرا عوامی مینو ٹھیک ہے؟",
+            "profile_status": "کیا میرا کاروباری پروفائل مکمل ہے؟",
+            "feedback_reviews": "چیک کرنے کے لیے مہمانوں کا کوئی فیڈ بیک؟",
+            "feedback_recent": "مہمانوں نے حال ہی میں کیا کہا؟",
+            "default": "مجھے آگے کیا چیک کرنا چاہیے؟"
+          }
+        },
+        "sources": {
+          "title": "ڈیٹا کے ذرائع",
+          "menuProjects": "مینو پروجیکٹس",
+          "ownerAnalytics": "مالک کی سرگرمی",
+          "guestFeedback": "مہمانوں کا تاثرات",
+          "storeSettings": "کاروباری ترتیبات",
+          "menuListData": "MenuList ڈیٹا",
+          "updatedOn": "اپ ڈیٹ کیا گیا {date}",
+          "latest": "تازہ ترین دستیاب ڈیٹا"
+        },
+        "publicTruth": {
+          "title": "سرکاری کسٹمر ماخذ",
+          "checking": "چیک کر رہے ہیں",
+          "checkingFacts": "چیک کر رہے ہیں MenuList عوامی حقائق...",
+          "checkedMenu": "چیک شدہ مینو: {name}",
+          "boundary": "موجودہ MenuList کاروبار اور مینو ڈیٹا سے چیک کیا گیا۔ بیرونی پلیٹ فارم مالک کی تصدیق شدہ رہتے ہیں۔",
+          "boundaryShort": "بیرونی پلیٹ فارم مالک کی تصدیق شدہ رہتے ہیں۔",
+          "historyTitle": "عوامی معلومات کی تاریخ",
+          "historyBoundary": "MenuList صرف کاروباری اور مینو کے حقائق استعمال کرتا ہے۔ کوئی بیرونی سائٹس اسکین نہیں کی جاتی ہیں۔",
+          "historyBoundaryShort": "MenuList صرف حقائق۔ کوئی بیرونی سائٹس اسکین نہیں کی گئی۔",
+          "refreshErrorTitle": "کسٹمر سورس چیک ریفریش نہیں ہو سکا",
+          "refreshErrorDescription": "آخری دستیاب MenuList حقائق اب بھی ذیل میں دکھائے گئے ہیں۔",
+          "historyRefreshError": "عوامی معلومات کی تاریخ تازہ نہیں ہو سکی۔",
+          "historyLoadError": "عوامی معلومات کی تاریخ لوڈ نہیں ہو سکی۔",
+          "historyErrorDescription": "آخری محفوظ شدہ رپورٹ دستیاب ہونے پر بھی دکھائی جاتی ہے۔",
+          "notRun": "نہیں چل رہا ہے",
+          "lastSaved": "آخری بار محفوظ کیا گیا {date}",
+          "noSavedReport": "ابھی تک کوئی محفوظ شدہ رپورٹ نہیں ہے",
+          "noSavedReportDescription": "اس مقام کے لیے پہلی رپورٹ کو محفوظ کرنے کے لیے چیک چلائیں۔",
+          "downloadEnglishReport": "انگریزی رپورٹ ڈاؤن لوڈ کریں",
+          "downloadEnglishShort": "انگریزی رپورٹ",
+          "runCheck": "چیک چلائیں",
+          "currentFix": "موجودہ فکس آئٹم",
+          "nextFixes": "اگلی عوامی اصلاحات",
+          "none": "کوئی نہیں۔",
+          "attentionCount": "{count, plural, one {# آئٹم کو چیک کرنے کی ضرورت ہے} other {# آئٹموں کو چیک کرنے کی ضرورت ہے}}",
+          "readyModuleCount": "تیار {count}/{total}",
+          "missingCount": "گمشدہ {count}",
+          "checkCount": "چیک کریں {count}",
+          "savedCount": "محفوظ کیا گیا {count}/{total}",
+          "modulesReady": "{count}/{total} ماڈیول تیار ہیں",
+          "status": {
+            "ready": {
+              "label": "تیار ہیں۔",
+              "message": "آپ کے سرکاری کسٹمر سورس میں بنیادی ضروریات موجود ہیں جو گاہکوں کو درکار ہیں۔"
+            },
+            "missing_basics": {
+              "label": "بنیادی باتیں غائب ہیں",
+              "message": "مینو، گھنٹے، قیمتیں، اعمال، یا کسٹمر لنک کی تفصیلات کو وسیع تر اشتراک سے پہلے توجہ دینے کی ضرورت ہے۔"
+            },
+            "unclear": {
+              "label": "جانچ پڑتال کی ضرورت ہے",
+              "message": "زیادہ تر بنیادی باتیں موجود ہیں، لیکن ایک یا زیادہ عوامی حقائق کو اب بھی جانچنے کی ضرورت ہے۔"
+            }
+          },
+          "metrics": {
+            "readyModules": "تیار ماڈیولز",
+            "missingFacts": "گمشدہ حقائق",
+            "checkedMenu": "چیک شدہ مینو",
+            "savedReports": "محفوظ شدہ رپورٹیں"
+          },
+          "results": {
+            "present": "تیار ہیں۔",
+            "missing": "گمشدہ ہے",
+            "unclear": "چیک کریں",
+            "not_applicable": "ضرورت نہیں ہے",
+            "not_checked": "چیک نہیں کیا گیا"
+          },
+          "moduleStatus": {
+            "ready": "تیار ہیں۔",
+            "needs_attention": "گمشدہ ہے",
+            "check": "چیک کریں",
+            "not_checked": "چیک نہیں کیا گیا"
+          },
+          "facts": {
+            "business_identity": "کاروباری نام",
+            "menu_or_service_source": "مینو یا سروس لسٹ",
+            "prices": "قیمتیں",
+            "hours": "اوقات",
+            "location": "مقام",
+            "contact": "رابطہ کریں",
+            "customer_actions": "گاہکوں کے اقدامات",
+            "public_link": "کسٹمر لنک",
+            "photos": "تصاویر",
+            "machine_readable_source": "تلاش کے موافق تفصیلات"
+          },
+          "evidence": {
+            "owner_entered": "اس چیک میں داخل ہوا۔",
+            "owner_selected": "مالک کے ذریعے منتخب کیا گیا۔",
+            "source_text_hint": "فراہم کردہ ماخذ میں پایا گیا۔",
+            "valid_public_url": "پبلک لنک فارمیٹ درست ہے۔",
+            "invalid_public_url": "عوامی لنک میں اصلاح کی ضرورت ہے۔",
+            "menulist_store": "موجودہ MenuList کاروباری ترتیبات چیک کی گئی ہیں۔",
+            "menulist_project": "منتخب یا ڈیفالٹ MenuList مینو چیک کیا۔",
+            "menulist_summary": "موجودہ MenuList مینو کا خلاصہ چیک کیا۔",
+            "menulist_public_route": "موجودہ MenuList کسٹمر لنک کی ترتیبات چیک کی گئی۔",
+            "menulist_index_gate": "موجودہ MenuList عوامی دریافت کے قوانین چیک کیے گئے۔",
+            "not_provided": "یہ حقیقت موجودہ MenuList ڈیٹا سے غائب ہے۔",
+            "not_checked": "موجودہ MenuList ڈیٹا سے اس حقیقت کی محفوظ طریقے سے جانچ نہیں کی گئی تھی۔",
+            "priceNotLoaded": "منتخب مینو کو ایک بار کھولیں تاکہ MenuList اس کی قیمتیں چیک کر سکے۔"
+          },
+          "moduleEvidence": {
+            "ready": "موجودہ MenuList ڈیٹا سے پتہ چلتا ہے کہ یہ علاقہ تیار ہے۔",
+            "needs_attention": "موجودہ MenuList ڈیٹا سے پتہ چلتا ہے کہ مطلوبہ معلومات غائب ہیں۔",
+            "check": "گاہکوں کے اس پر بھروسہ کرنے سے پہلے اس علاقے کو چیک کریں۔",
+            "not_checked": "MenuList موجودہ ڈیٹا سے اس علاقے کو مکمل طور پر چیک نہیں کر سکا۔"
+          },
+          "setupReason": {
+            "needs_attention": "گاہکوں کے سامنے ضروری معلومات غائب ہیں۔",
+            "check": "گاہکوں کے اس پر بھروسہ کرنے سے پہلے اسے چیک کر لیں۔",
+            "not_checked": "MenuList موجودہ ڈیٹا سے اسے مکمل طور پر چیک نہیں کر سکا۔"
+          },
+          "targetActions": {
+            "basic_settings": "کاروباری تفصیلات کھولیں",
+            "domain_settings": "کسٹمر لنک کھولیں",
+            "hours_edit": "کھلے اوقات",
+            "menu_tab": "مینو کھولیں",
+            "official_page": "کاروباری صفحہ کھولیں",
+            "presence_monitor": "پلیسمنٹ چیک کھولیں",
+            "share_tab": "شیئر ٹولز کھولیں"
+          },
+          "actions": {
+            "openCustomerSource": "اوپن کسٹمر سورس",
+            "openShareTools": "اشتراک کے اوزار کھولیں",
+            "fixFact": "ٹھیک کریں {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "عوامی معلومات کی بنیادی باتیں",
+              "description": "کاروباری نام، موجودہ مینو یا سروس کا ذریعہ، رابطہ، اعمال اور کسٹمر لنک۔"
+            },
+            "business_facts_copy_pack": {
+              "title": "دوبارہ استعمال ہونے والی کاروباری تفصیلات",
+              "description": "موجودہ حقائق کا عملہ عوامی پروفائلز، جوابات اور کسٹمر لنک ہینڈ آف میں دوبارہ استعمال کر سکتا ہے۔"
+            },
+            "qr_link_health": {
+              "title": "QR لنک کی تیاری",
+              "description": "QR اور پرنٹ شدہ پلیسمنٹ کے لیے موجودہ کسٹمر لنک۔"
+            },
+            "social_bio_link_consistency": {
+              "title": "پروفائل لنک کی مستقل مزاجی",
+              "description": "سماجی پروفائلز اور دیگر تقرریوں کے لیے ایک موجودہ کسٹمر لنک۔"
+            },
+            "customer_link_preview": {
+              "title": "کسٹمر لنک کا پیش نظارہ",
+              "description": "اہم حقائق جو گاہکوں کو عمل کرنے سے پہلے دیکھنا چاہیے۔"
+            },
+            "print_share_assets": {
+              "title": "اثاثے پرنٹ کریں اور شیئر کریں",
+              "description": "موجودہ لنک کی تیاری QR پوسٹر، کاؤنٹر کارڈ اور تصاویر شیئر کریں۔"
+            },
+            "menu_service_readability": {
+              "title": "مینو یا سروس کی وضاحت",
+              "description": "منتخب مینو میں زمرہ جات، اشیاء یا خدمات اور قیمتیں۔"
+            },
+            "price_availability_gap": {
+              "title": "قیمت اور دستیابی کی وضاحت",
+              "description": "قیمتیں، مختلف حالتیں، فروخت شدہ حالت اور دستیابی گاہکوں کو دکھائی گئی۔"
+            },
+            "menu_pdf_cleanup": {
+              "title": "پرانی PDF تبدیلی",
+              "description": "ایک موجودہ MenuList ماخذ اور کسٹمر لنک جو پرانے پی ڈی ایف کو تبدیل کر سکتا ہے۔"
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp عمل",
+              "description": "ایک واضح WhatsApp یا متبادل کسٹمر رابطہ کارروائی۔"
+            },
+            "hours_readiness": {
+              "title": "اوقات کی تیاری",
+              "description": "باقاعدہ اوقات گاہک اس پر بھروسہ کر سکتے ہیں۔"
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp جواب حقائق",
+              "description": "عملے کے جوابات کے لیے موجودہ مینو، گھنٹے، رابطہ اور لنک حقائق۔"
+            },
+            "photo_visual_identity": {
+              "title": "تصاویر اور بصری شناخت",
+              "description": "لوگو، کور، کاروباری تصویر، یا آئٹم اور سروس کے بصری۔"
+            },
+            "customer_question_coverage": {
+              "title": "عام گاہکوں کے سوالات",
+              "description": "پیشکش، اوقات، قیمت، مقام، رابطہ اور اگلی کارروائی کے لیے حقائق واضح کریں۔"
+            },
+            "customer_faq_reply_pack": {
+              "title": "دوبارہ استعمال کے قابل گاہک کے جوابات",
+              "description": "موجودہ حقائق کا عملہ دوبارہ استعمال کر سکتا ہے جب گاہک عام سوالات پوچھتے ہیں۔"
+            },
+            "booking_inquiry_readiness": {
+              "title": "بکنگ اور انکوائری کی تیاری",
+              "description": "آرڈر، بک، ریزرو، کال، میسج، کوٹیٹ کی درخواست، یا وزٹ کرنے کا ایک واضح راستہ۔"
+            },
+            "google_profile_handoff": {
+              "title": "Google پروفائل لنک",
+              "description": "موجودہ کسٹمر لنک Google بزنس پروفائل کے لیے تیار کیا گیا ہے۔"
+            },
+            "menu_freshness": {
+              "title": "مینو کی تازگی",
+              "description": "جب قیمتیں، اشیاء یا دستیابی تبدیل ہوتی ہے تو مینو کی حالیہ اپ ڈیٹ۔"
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "گراف",
+        "description": "ڈیش بورڈ میں دکھائی گئی اسی طے شدہ سرگرمی کا بصری خلاصہ۔",
+        "ranges": {
+          "days7": "7 دن",
+          "days30": "30 دن"
+        },
+        "metrics": {
+          "menu_activity": "مینو سرگرمی",
+          "customer_actions": "گاہکوں کے اقدامات",
+          "search_demand": "تلاش کی مانگ",
+          "item_interest": "آئٹم کی دلچسپی",
+          "unavailable_demand": "غیر دستیاب مطالبہ",
+          "missing_searches": "گمشدہ تلاش"
+        },
+        "trend": {
+          "summary": "رجحان کا خلاصہ",
+          "updatedAfterClose": "آپ کے اسٹور کا دن بند ہونے کے بعد اپ ڈیٹ کیا جاتا ہے۔",
+          "status": {
+            "up": "اعلی ترین",
+            "down": "کم",
+            "stable": "مستحکم",
+            "not_enough_data": "کافی تاریخ نہیں ہے"
+          },
+          "period": {
+            "week": "ہفتہ چیک کریں",
+            "month": "ماہ چیک"
+          },
+          "shortPeriod": {
+            "week": "ہفتہ",
+            "month": "مہینہ"
+          },
+          "needsMoreDays": "مزید طے شدہ دنوں کی ضرورت ہے",
+          "versus": "{current} بمقابلہ {previous}",
+          "messages": {
+            "up": "اس {period} چیک کے لیے {metric} زیادہ ہے۔",
+            "down": "اس {period} چیک کے لیے {metric} کم ہے۔",
+            "stable": "اس {period} چیک کے لیے {metric} مستحکم ہے۔",
+            "not_enough_data": "اس {period} چیک کے لیے کافی سیٹل شدہ {metric} ہسٹری نہیں ہے۔"
+          },
+          "change": {
+            "gathering": "{period}: جمع کرنا",
+            "newActivity": "{period}: نئی سرگرمی",
+            "steady": "{period}: مستحکم",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "موازنہ چارٹ",
+          "description": "طے شدہ دنوں سے ہفتہ اور مہینے کی نقل و حرکت۔"
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "مینو کا رجحان",
+            "days7": "آخری 7 طے شدہ دن",
+            "days30": "آخری 30 طے شدہ دن"
+          },
+          "customerActions": {
+            "title": "گاہکوں کے اقدامات",
+            "description": "مینو کھولنے کے بعد گاہکوں نے کیا ٹیپ کیا"
+          },
+          "sources": {
+            "title": "گاہک کہاں سے آئے تھے",
+            "description": "مینو وزٹ اور ایکشن سیشن بذریعہ ماخذ"
+          },
+          "items": {
+            "title": "سب سے زیادہ آئٹم کی دلچسپی",
+            "description": "اشیاء جو گاہکوں نے سب سے زیادہ کھولی یا ٹیپ کی ہیں"
+          },
+          "search": {
+            "title": "تلاش کی مانگ",
+            "description": "گاہکوں نے کیا تلاش کیا"
+          },
+          "officialPage": {
+            "title": "آفیشل پیج کا رجحان",
+            "description": "سرکاری کاروباری صفحہ سے خیالات اور اقدامات"
+          }
+        },
+        "legends": {
+          "visits": "دورے",
+          "actionSessions": "ایکشن سیشنز",
+          "views": "نظارہ",
+          "taps": "آئٹم ٹیپس",
+          "noResult": "کوئی نتیجہ نہیں"
+        },
+        "empty": {
+          "default": "اس منظر کے لیے ابھی تک کوئی گراف ڈیٹا نہیں ہے۔",
+          "menuActivity": "صارفین کے مینو کھولنے کے بعد مینو کی سرگرمی ظاہر ہوگی۔",
+          "customerActions": "گاہکوں کی کال، پیغام، آرڈر، ریزرو، یا ہدایات کے لیے پوچھنے کے بعد صارفین کی کارروائیاں ظاہر ہوں گی۔",
+          "customerActionsPeriod": "اس عرصے میں ابھی تک گاہکوں کی کوئی کارروائی نہیں ہوئی۔",
+          "searchDemand": "گاہکوں کے مینو سرچ استعمال کرنے کے بعد سرچ ڈیمانڈ ظاہر ہوگا۔",
+          "itemInterest": "صارفین کے مینو آئٹمز کھولنے کے بعد آئٹم کی دلچسپی ظاہر ہوگی۔",
+          "unavailableDemand": "جب گاہک دستیاب اشیاء کو ٹیپ کریں گے تو غیر دستیاب مانگ ظاہر ہوگی۔",
+          "missingSearches": "گمشدہ تلاشیں تب ظاہر ہوں گی جب گاہک تلاش کریں گے لیکن کوئی موازنہ نہیں پائیں گے۔",
+          "sources": "لنک، QR، یا سماجی صفحات سے گاہکوں کے آنے کے بعد ماخذ کی تفصیلات ظاہر ہوں گی۔",
+          "officialPage": "صارفین کے پبلک بزنس پیج کھولنے کے بعد آفیشل پیج کی سرگرمی ظاہر ہوگی۔"
+        },
+        "footer": {
+          "sameData": "ایک ہی ڈیش بورڈ ڈیٹا",
+          "noExtraTracking": "کوئی اضافی ٹریکنگ نہیں ہے",
+          "settledAfterClose": "اسٹور کے دن کے اختتام کے بعد آباد کیا گیا"
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "مینو",
+          "viewsLabel": "مینو کے نظارے",
+          "viewsTooltip": "گاہکوں نے آپ کا مینو کتنی بار کھولا",
+          "thisMonthLabel": "اس مہینے آپ کا مینو"
+        },
+        "product": {
+          "singular": "کیٹلاگ",
+          "viewsLabel": "کیٹلاگ کے نظارے",
+          "viewsTooltip": "گاہکوں نے کتنی بار آپ کا کیٹلاگ کھولا",
+          "thisMonthLabel": "اس مہینے آپ کا کیٹلاگ"
+        },
+        "service": {
+          "singular": "خدمات کی فہرست",
+          "viewsLabel": "سروس لسٹ کے نظارے",
+          "viewsTooltip": "گاہکوں نے کتنی بار آپ کی سروس لسٹ کھولی ہے",
+          "thisMonthLabel": "اس مہینے آپ کی خدمات کی فہرست"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "توجہ کی ضرورت ہے۔",
+          "active": "سرکاری کسٹمر ماخذ فعال ہے",
+          "readyToPlace": "سرکاری کسٹمر سورس رکھنے کے لیے تیار ہے"
+        },
+        "description": {
+          "needsAttention": "مینو، گھنٹے یا کسٹمر لنک کو بڑے پیمانے پر شیئر کرنے سے پہلے اسے ٹھیک کریں۔",
+          "active": "کسی کارروائی کی ضرورت نہیں ہے۔ گاہک آپ کی موجودہ عوامی تفصیلات کو ایک ذریعہ سے استعمال کر سکتے ہیں۔",
+          "readyToPlace": "آپ کا کسٹمر لنک تیار ہے۔ اسے اس میں شامل کریں Google, Instagram, WhatsApp, QR، یا پرنٹ کریں تاکہ گاہک موجودہ ماخذ کا استعمال کریں۔"
+        },
+        "link": {
+          "ready": "کسٹمر لنک تیار ہے",
+          "missing": "کسٹمر لنک غائب ہے"
+        },
+        "states": {
+          "set": "سیٹ کریں",
+          "missing": "گمشدہ ہے",
+          "ready": "تیار ہیں۔",
+          "notReady": "تیار نہیں ہے۔",
+          "live": "زندہ رہیں",
+          "hidden": "غیر فعال"
+        },
+        "tags": {
+          "menu": "مینو: {status}",
+          "hours": "اوقات: {status}",
+          "customerLink": "کسٹمر لنک: {status}",
+          "link": "لنک: {status}",
+          "placed": "رکھا گیا: {count}/{total}"
+        },
+        "actions": {
+          "fix": "جس چیز پر توجہ دینے کی ضرورت ہے اسے ٹھیک کریں",
+          "preview": "عوامی مینو کا پیش نظارہ کریں",
+          "share": "مینو کا اشتراک کریں"
+        },
+        "updated": {
+          "notUpdated": "ابھی تک اپ ڈیٹ نہیں کیا گیا ہے",
+          "recently": "حال ہی میں اپ ڈیٹ کیا گیا",
+          "today": "آج اپ ڈیٹ کیا گیا۔",
+          "yesterday": "کل اپ ڈیٹ کیا گیا",
+          "daysAgo": "اپ ڈیٹ کیا گیا {count, plural, one {# دن پہلے} other {# دن پہلے}}"
+        }
+      },
+      "ownerActions": {
+        "title": "مالک کی اگلی کارروائی",
+        "open": "کھولیں",
+        "placement": {
+          "notConfirmed": "ابھی تک تصدیق نہیں ہوئی ہے",
+          "today": "آج تصدیق ہوئی",
+          "yesterday": "کل تصدیق ہوئی",
+          "daysAgo": "تصدیق شدہ {count, plural, one {# دن پہلے} other {# دن پہلے}}"
+        },
+        "status": {
+          "ready": "تیار ہیں۔",
+          "missing": "گمشدہ ہے",
+          "set": "سیٹ کریں",
+          "live": "زندہ رہیں",
+          "notLive": "زندہ نہیں ہے۔",
+          "confirmedCount": "{count}/{total} تصدیق شدہ ہے",
+          "on": "آن",
+          "off": "آف",
+          "dailyChanges": "روزانہ کی تبدیلیاں",
+          "hoursException": "اوقات مستثنی",
+          "staffUse": "عملے کا استعمال",
+          "menuPrices": "مینو کی قیمتیں",
+          "openCount": "{count, plural, one {# ایکشن کھلا ہے} other {# ایکشن کھل گئے}}",
+          "stable": "مستحکم"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "کسٹمر لنک سیٹ کریں",
+            "description": "QR، عملے کے جوابات، یا عوامی پروفائلز شیئر کرنے سے پہلے کسٹمر لنک بنائیں۔"
+          },
+          "setHours": {
+            "label": "اوقات مقرر کریں",
+            "description": "گاہکوں کے آنے سے پہلے عوام کی کھلی اور بند حیثیت کو واضح رکھیں۔"
+          },
+          "publishMenu": {
+            "labelPublish": "مینو شائع کریں",
+            "labelOpen": "مینو کھولیں",
+            "descriptionVisible": "وسیع اشتراک سے پہلے موجودہ مینو کو شائع کریں۔",
+            "descriptionHidden": "گاہکوں کے لنک استعمال کرنے سے پہلے مینو کو دکھائی دیں۔"
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "لنک کی جگہ کی تصدیق کریں",
+            "labelPlace": "کسٹمر لنک رکھیں",
+            "descriptionPlaced": "Google، Instagram، اور WhatsApp کو ایک ہی ماخذ کی طرف اشارہ کرتے ہوئے رکھیں۔",
+            "descriptionUnplaced": "اسی کسٹمر لنک کو شامل کریں Google, Instagram, WhatsApp, QR، اور پرنٹ کریں۔"
+          },
+          "openPrivateFeedback": {
+            "label": "نجی فیڈ بیک کھولیں",
+            "description": "مہمانوں کے مسائل کو عوامی جائزوں میں تبدیل کرنے سے پہلے نجی رائے کا استعمال کریں۔"
+          },
+          "captureDailyChange": {
+            "label": "MenuList کو بتائیں کہ کیا بدل گیا ہے",
+            "description": "MenuList کو بتائیں کہ آج کیا بدلا ہے اور تیار مینو کارڈ کو منظور کریں۔"
+          },
+          "setTodayStatus": {
+            "label": "آج کی حیثیت مقرر کریں",
+            "description": "آج ہی بند کریں، دیر سے کھولیں، باورچی خانہ بند کریں یا خصوصی مینو نوٹس دیں۔"
+          },
+          "prepareStaffHandoff": {
+            "label": "عملے کی دستیابی تیار کریں",
+            "description": "عملے کو مینو لنک، QR، اور ایک جگہ سے گاہکوں کی جوابی لائنیں دیں۔"
+          },
+          "updatePrices": {
+            "label": "قیمتوں کو اپ ڈیٹ کریں",
+            "description": "قیمت میں تبدیلیوں کے لیے مینو مینیجر کا استعمال کریں، پھر شائع کرنے سے پہلے منظوری دیں۔"
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "مینو سیٹ اپ",
+        "complete": "مینو سیٹ اپ مکمل ہو چکا ہے۔",
+        "ready": "مینو سیٹ اپ تیار ہے۔",
+        "actions": {
+          "openMenu": "مینو کھولیں",
+          "createMenu": "مینو بنائیں",
+          "reviewDetails": "تفصیلات کا جائزہ لیں",
+          "publishMenu": "مینو شائع کریں",
+          "openSharingTools": "اشتراک کے اوزار کھولیں",
+          "prepareDescriptions": "وضاحت تیار کریں",
+          "addImages": "تصاویر شامل کریں",
+          "reviewLanguageText": "زبان کے متن کا جائزہ لیں",
+          "openMenuCheck": "مینو چیک کھولیں",
+          "updatePublicLinks": "عوامی لنکس کو اپ ڈیٹ کریں",
+          "addPublicPhoto": "عوامی تصویر شامل کریں"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "ماخذ شامل کیا گیا",
+            "doneDescription": "مینو کا ماخذ منسلک ہے۔",
+            "nextDescription": "مینو فوٹو، PDF، لنک شامل کریں، یا دستی طور پر شروع کریں۔"
+          },
+          "menuImported": {
+            "label": "مینو درآمد کیا گیا",
+            "doneDescription": "{count, plural, one {# نظر آنے والی شے ملی۔} other {# نظر آنے والی اشیاء پائی گئیں۔}}",
+            "nextDescription": "مینو آئٹم درآمد کریں یا شامل کریں۔"
+          },
+          "keyDetailsChecked": {
+            "label": "کلیدی تفصیلات چیک کی گئیں",
+            "doneDescription": "قیمتیں اور اہم مینو کی تفصیلات واضح ہیں۔",
+            "nextDescription": "شائع کرنے سے پہلے قیمتوں اور اہم تفصیلات کو چیک کریں۔"
+          },
+          "menuPublished": {
+            "label": "مینو شائع ہوا",
+            "doneDescription": "عوامی مینو شائع کر دیا گیا ہے۔",
+            "nextDescription": "جب مینو گاہکوں کے لیے تیار ہو تو شائع کریں۔"
+          },
+          "linkPlaced": {
+            "label": "لنک رکھا گیا ہے",
+            "readyLabel": "لنک تیار ہے",
+            "doneDescription": "سرکاری لنک گاہکوں کے لیے تیار ہے۔",
+            "progressDescription": "{total} کی جگہ کا تعین کرنے کے اعمال کا {count} انجام دیا گیا۔",
+            "nextDescription": "مینو شائع ہونے پر شیئرنگ ٹولز کھولیں۔"
+          },
+          "descriptionsReady": {
+            "label": "تفصیل تیار ہے",
+            "doneDescription": "نظر آنے والی اشیاء کی وضاحت ہوتی ہے۔",
+            "nextDescription": "مینو کی واضح آئٹمز کے لیے تفصیل تیار کریں۔"
+          },
+          "imagesReady": {
+            "label": "تصاویر تیار ہیں۔",
+            "doneDescription": "نظر آنے والی اشیاء میں تصاویر ہوتی ہیں۔",
+            "nextDescription": "جب مفید ہو تو آئٹم کی تصاویر شامل کریں یا بنائیں۔"
+          },
+          "translationsReady": {
+            "label": "ترجمے تیار ہیں۔",
+            "doneDescription": "منتخب مینو زبانیں مکمل ہیں۔",
+            "nextDescription": "منتخب مینو زبانوں کا جائزہ لیں۔"
+          },
+          "publicLinksAdded": {
+            "label": "عوامی روابط شامل کیے گئے",
+            "doneDescription": "عوامی کارروائی یا سماجی روابط دستیاب ہیں۔",
+            "nextDescription": "کاروباری صفحہ کے لیے مفید عوامی لنکس شامل کریں۔"
+          },
+          "publicPhotoAdded": {
+            "label": "عوامی تصویر شامل کی گئی",
+            "doneDescription": "ایک عوامی تصویر دستیاب ہے۔",
+            "nextDescription": "تیار ہونے پر کور، لوگو یا عوامی تصویر شامل کریں۔"
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "ابھی تک بلنگ کی کوئی تاریخ نہیں ہے۔",
     "perMonth": "/ مہینہ",
     "contactUs": "ہم سے رابطہ کریں"
+  },
+  "StarterActivation": {
+    "activeTitle": "آپ کا مینو آن لائن ہے۔",
+    "endingSoonTitle": "اپنا مینو آن لائن رکھیں",
+    "publicMenuQrActive": "آپ کا عوامی مینو اور QR کوڈ فعال ہیں۔",
+    "activeRemaining": "آپ کے مینو تک رسائی فعال ہے۔",
+    "daysRemaining": "{days, plural, one {اپنے مینو کو آن لائن رکھنے کے لیے # دن کے اندر ایک پلان منتخب کریں۔} other {اپنے مینو کو آن لائن رکھنے کے لیے # دنوں کے اندر ایک پلان منتخب کریں۔}}",
+    "sharingComplete": "آپ کا اشتراک سیٹ اپ مکمل ہو گیا ہے۔",
+    "sharingProgress": "{target, number} میں سے {count, number} اشتراک کے مراحل مکمل ہو گئے۔",
+    "evidenceRecorded": "خود بخود ریکارڈ شدہ: {systemCount, number}۔ آپ کے ذریعہ تصدیق شدہ: {ownerCount, number}۔",
+    "evidenceEmpty": "مینو لنک کو کاپی یا شیئر کریں، اس کا QR کوڈ ڈاؤن لوڈ کریں، یا تصدیق کریں کہ آپ نے اسے کہاں رکھا ہے۔",
+    "keepLiveAction": "اپنا مینو آن لائن رکھیں",
+    "noSubscriptionDescription": "مینو اپ ڈیٹس اور کسٹمر کے صفحات کو دستیاب رکھنے کے لیے ایک منصوبہ منتخب کریں۔",
+    "choosePlanDescription": "آپ کا مینو محفوظ ہو گیا ہے۔ اسے آن لائن اور اپ ٹو ڈیٹ رکھنے کے لیے ایک منصوبہ منتخب کریں۔"
   },
   "Transactions": {
     "title": "لین دین کی تاریخ",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "موبائل ایپ",
     "subscribeTitle": "شروع کرنے کے لیے سبسکرائب کریں",
     "subscribeDescription": "اپنا ڈیجیٹل مینو بنانا اور اپنے کاروبار کا انتظام شروع کرنے کے لیے ایک منصوبہ منتخب کریں۔",
-    "viewPlans": "منصوبے دیکھیں"
+    "viewPlans": "منصوبے دیکھیں",
+    "returnToMobile": "آپ ڈیسک ٹاپ ورژن دیکھ رہے ہیں۔ موبائل پر واپس جائیں۔"
   },
   "UseMenuList": {
     "qrSectionTitle": "QR کوڈز",

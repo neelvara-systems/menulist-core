@@ -100,6 +100,19 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_OPERATING_LOOP: true,
     ENABLE_CAMPAIGNCUE_AI_ASSISTANCE_PLAN: true,
     ENABLE_CAMPAIGNCUE_AI_PROVIDER_CALLS: false,
+    ENABLE_CAMPAIGNCUE_CAMPAIGN_INBOX: true,
+    ENABLE_CAMPAIGNCUE_CAMPAIGN_INBOX_MODEL_ASSIST: false,
+    ENABLE_CAMPAIGNCUE_SECURE_MEDIA_CAPTURE: true,
+    ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY: true,
+    ENABLE_CAMPAIGNCUE_WINNING_PACK_REFRESH: true,
+    ENABLE_CAMPAIGNCUE_VERTICAL_PLAYBOOKS: true,
+    ENABLE_CAMPAIGNCUE_HOSTED_OFFER_PAGES: true,
+    ENABLE_CAMPAIGNCUE_EXPERIMENT_COACH: true,
+    ENABLE_CAMPAIGNCUE_LOCAL_VISIBILITY_ACTION_CENTER: true,
+    ENABLE_CAMPAIGNCUE_APPROVAL_COMMENT_INBOX: true,
+    ENABLE_CAMPAIGNCUE_MULTI_LOCATION_VARIANTS: true,
+    ENABLE_CAMPAIGNCUE_READ_ONLY_RESULT_EVIDENCE: true,
+    ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE: true,
     ENABLE_CAMPAIGNCUE_PATTERN_CUE: true,
     ENABLE_CAMPAIGNCUE_PATTERN_CUE_MODEL_ASSIST: false,
 
@@ -249,16 +262,16 @@ export const FEATURE_FLAGS = {
      * true: Allow Sentry tracking when a DSN is configured
      * false: Disable Sentry completely (no events sent, no overhead)
      *
-     * How It Works (Dual Projects):
+     * How It Works (Environment-Scoped Project):
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      *
-     * 🔧 DEVELOPMENT:
-     *    - Errors → Dev Sentry project when NEXT_PUBLIC_SENTRY_DEV_DSN or SENTRY_DEV_DSN is configured
-     *    - Clean separation from production
+     * 🔧 LOCAL / QA:
+     *    - Errors → QA Sentry project from the environment-scoped NEXT_PUBLIC_SENTRY_DSN
+     *    - Vercel Preview scope keeps QA separate from production
      *    - Full context: tenant, store, subscription
      *
      * 🚀 PRODUCTION:
-     *    - Errors → Production Sentry project when NEXT_PUBLIC_SENTRY_DSN or SENTRY_DSN is configured
+     *    - Errors → Production Sentry project from Production-scoped NEXT_PUBLIC_SENTRY_DSN
      *    - Release tracking with git commit SHA
      *    - User context with email-friendly username
      *    - Session replay for visual debugging
@@ -2570,6 +2583,24 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_ANSWER_TESTS: true,
 
     /**
+     * Answerlattice Plan, Role, State & Version Coverage Matrix
+     *
+     * true: Answer Tests can request one deterministic coverage projection over
+     *       active owner-defined questions and their explicit customer context.
+     * false: Existing Answer Tests behavior and stored context remain intact.
+     *
+     * Cost model: one additional compact source-version document read only when
+     * the matrix is requested. The existing Answer Tests summary is reused. No
+     * collection scan, listener, scheduler, Storage object, model call, or
+     * persisted matrix is added.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_ANSWER_TESTS.
+     *
+     * @see __docs__/answerlattice/scope-coverage-matrix/
+     */
+    ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX: true,
+
+    /**
      * Answerlattice Answer Trace
      *
      * Read-only, support-authorized projection of already-retained search
@@ -2699,6 +2730,28 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE: false,
 
     /**
+     * Answerlattice Support Truth Change Control
+     *
+     * true: The existing pending-release impact review also shows bounded
+     *       source freshness, direct product-surface dependencies, and compiled
+     *       delivery proof. The release lifecycle and activation fingerprint
+     *       remain unchanged.
+     * false: The existing release impact and Answer Test review remain intact.
+     *
+     * Cost model: owner-triggered preview only. Reuses the affected-answer
+     * query and Answer Test summary, then reads at most 50 directly cited
+     * Knowledge Intake source metadata documents plus three compact control
+     * documents. No listener, scheduler, AI call, new collection, or preview
+     * write is added.
+     *
+     * Source freshness remains advisory while
+     * ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE is false.
+     *
+     * @see __docs__/answerlattice/support-truth-change-control/
+     */
+    ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_CHANGE_CONTROL: true,
+
+    /**
      * Answerlattice Repeated Reply Import
      *
      * true: Owners can paste one repeated user question and the reply they
@@ -2729,13 +2782,22 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Intake Native Connectors
      *
-     * RESERVED ONLY: no app, API, OAuth, credential, provider, sync worker, or
-     * Functions runtime reads this flag. Setting it to true enables nothing.
+     * true: Owners can connect one repository-scoped, read-only GitHub App.
+     *       Published releases and optionally merged default-branch pull
+     *       requests enter the existing governed Knowledge Intake flow.
+     * false: Manual URL/file/text/release-evidence intake remains unchanged and
+     *        all GitHub setup, connection, and webhook routes fail closed.
      *
-     * Keep false while day-one intake stays file/text/URL/repeated-reply based.
-     * A future single-provider implementation requires a separate docs-first
-     * security, permission, retention, deletion, freshness, cost, and customer-
-     * evidence decision before any runtime consumer or server flag is added.
+     * Cost model: signed webhooks only; no polling, scheduler, repository clone,
+     * code index, patch retention, Storage object, or event-time model call.
+     * Existing bounded intake jobs, sources, summaries, and owner-triggered
+     * credit accounting are reused. One server-only repository binding
+     * collection supports exact webhook routing.
+     *
+     * Rollout remains false until GitHub App credentials and hosted QA evidence
+     * are complete.
+     *
+     * @see __docs__/answerlattice/native-knowledge-intake-connectors/
      */
     ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 
@@ -3061,6 +3123,27 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/product-friction-intelligence/
      */
     ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE: true,
+
+    /**
+     * Answerlattice Post-Change Support Evidence Review
+     *
+     * true: governance owners can explicitly compare complete 14-day support-
+     *       evidence windows around an activated release or implemented
+     *       knowledge correction.
+     * false: the Product Friction Evidence section and private route are absent.
+     *
+     * Cost model: zero automatic reads. Loading recent changes reads at most
+     * 8 releases plus 8 implemented proposals. An eligible exact comparison
+     * reads the selected change plus at most 201 signal rows per window. No
+     * write, collection, index, listener, scheduler, Storage object, cache, or
+     * model call is added.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE and
+     * ENABLE_ANSWERLATTICE_SIGNAL_MUTATION.
+     *
+     * @see __docs__/answerlattice/post-change-support-evidence-review/
+     */
+    ENABLE_ANSWERLATTICE_POST_CHANGE_EVIDENCE_REVIEW: true,
 
     /**
      * Answerlattice Founder Onboarding (Knowledge Bootstrap Engine)

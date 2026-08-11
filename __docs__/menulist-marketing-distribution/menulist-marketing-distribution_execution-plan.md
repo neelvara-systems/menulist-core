@@ -50,7 +50,7 @@ Execution contracts:
 
 - run the first eligible proof through `menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md`;
 - use `menulist-marketing-distribution_weekly-distribution-watch.md` for the read-only weekly platform and workflow change review;
-- keep the recurring watch unscheduled until the supported Codex scheduler is available; do not introduce raw cron, launchd, GitHub Actions, or another automation surface for this research task.
+- keep the active recurring watch observe-only through the supported Codex automation; update the existing automation instead of creating a duplicate, and do not introduce raw cron, launchd, GitHub Actions, or another automation surface for this research task.
 
 ## Phase 0 - Foundation and Operating Setup
 

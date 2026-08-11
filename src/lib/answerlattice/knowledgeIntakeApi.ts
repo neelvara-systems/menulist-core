@@ -273,7 +273,7 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     }
 
     if (options.requireActiveLicense) {
-        const license = await hasActiveAnswerlatticeLicense(tId, sId);
+        const license = await hasActiveAnswerlatticeKnowledgeIntakeLicense(tId, sId);
         if (license.allowed !== true) {
             return { response: answerlatticeKnowledgeIntakeJson({ error: license.message }, { status: license.status }) };
         }
@@ -291,7 +291,7 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     };
 }
 
-async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<{ allowed: true } | { allowed: false; status: number; message: string }> {
+export async function hasActiveAnswerlatticeKnowledgeIntakeLicense(tId: number, sId: number): Promise<{ allowed: true } | { allowed: false; status: number; message: string }> {
     if (!answerlatticeAdminApp) {
         return { allowed: false, status: 503, message: 'Answerlattice Firebase is not configured.' };
     }

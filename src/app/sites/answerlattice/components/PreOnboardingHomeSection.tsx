@@ -11,7 +11,7 @@ const PRE_ONBOARDING_STEPS = [
     {
         icon: LuClipboardCheck,
         title: 'Create the intake package',
-        description: 'The prompt prepares source files, support questions, product surfaces, asset briefs, and upload skeletons.',
+        description: 'The prompt prepares source files, support questions, product pages, asset briefs, and upload skeletons.',
     },
     {
         icon: LuShieldCheck,

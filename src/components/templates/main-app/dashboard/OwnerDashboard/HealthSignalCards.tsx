@@ -57,7 +57,6 @@ type SignalTone = 'success' | 'primary' | 'warning' | 'error';
 
 interface SignalConfig {
     tone: SignalTone;
-    label: string;
 }
 
 // ================================================================
@@ -65,21 +64,21 @@ interface SignalConfig {
 // ================================================================
 
 const TRUST_STATE_CONFIG: Record<string, SignalConfig> = {
-    strong: { tone: 'success', label: 'Strong' },
-    stable: { tone: 'primary', label: 'Stable' },
-    weak: { tone: 'warning', label: 'Weak' },
+    strong: { tone: 'success' },
+    stable: { tone: 'primary' },
+    weak: { tone: 'warning' },
 };
 
 const LOYALTY_STATE_CONFIG: Record<string, SignalConfig> = {
-    strong: { tone: 'success', label: 'Strong' },
-    stable: { tone: 'primary', label: 'Stable' },
-    weak: { tone: 'warning', label: 'Weak' },
+    strong: { tone: 'success' },
+    stable: { tone: 'primary' },
+    weak: { tone: 'warning' },
 };
 
 const RISK_STATE_CONFIG: Record<string, SignalConfig> = {
-    stable: { tone: 'success', label: 'Stable' },
-    watch: { tone: 'warning', label: 'Needs attention' },
-    at_risk: { tone: 'error', label: 'At Risk' },
+    stable: { tone: 'success' },
+    watch: { tone: 'warning' },
+    at_risk: { tone: 'error' },
 };
 
 const resolveSignalColor = (token: ReturnType<typeof useToken>['token'], tone: SignalTone) => {

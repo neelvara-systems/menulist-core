@@ -1,7 +1,7 @@
 const { Redis } = require('@upstash/redis');
 
-const url = (process.env.UPSTASH_REDIS_REST_URL || '').trim();
-const token = (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
+const url = (process.env.MENULIST_UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_URL || '').trim();
+const token = (process.env.MENULIST_UPSTASH_REDIS_REST_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
 
 if (!url || !token) {
   console.error('Upstash readiness blocked: required URL/token are not available in this shell');

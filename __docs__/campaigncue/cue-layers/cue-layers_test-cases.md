@@ -162,6 +162,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Status UI | Uses one doc listener or bounded polling and unsubscribes/stops. |
 | Active v1 upload writes | Writes original image, source package JSON with inline truth snapshots, layer index JSON, editor snapshot JSON, design doc, job doc, version doc, and optional idempotency completion only. Does not write separate truth snapshot JSON, projection JSON, reconstruction JSON, quality report JSON/doc, job event, or cost record. |
 | Autosave typing | Debounced; no write per keystroke. |
+| Slow overlapping autosaves | Saves execute serially; save N+1 uses the revision committed by save N, and an obsolete editor session cannot apply its response to the active design. |
 | Autosave layer index reuse | Normal text/shape edits write one editor snapshot and version pointer but do not rewrite the unchanged layer index. |
 | Reopen design | Reads the design pointer plus bounded editor-snapshot and layer-index artifacts, not full history, and signs only referenced image assets. |
 | Repair fallback | Writes one repair request only; no repair patch artifact or correction-event doc until provider repair is enabled. |

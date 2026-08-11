@@ -234,8 +234,8 @@ async function main() {
   assert(content.includes('NEELVARA_LOGO_PATH'), 'Structured data must use the shared Neelvara logo path');
   assert(constants.includes("NEELVARA_LOGO_PATH = '/neelvara-logo.svg'"), 'Shared logo constant must point to the master SVG');
   assert(
-    (missingRoute.match(/src="\/neelvara-logo\.svg"/g) || []).length === 2,
-    'Static 404 must use the master Neelvara SVG for both brand and recovery artwork',
+    (missingRoute.match(/src="\/neelvara-logo\.svg"/g) || []).length === 1,
+    'Static 404 must use one master Neelvara SVG without duplicate recovery artwork',
   );
   assert(!missingRoute.includes('.prism-visual span'), 'Static 404 must not reconstruct the retired three-panel mark');
   assert(missingRoute.includes('href="/neelvara-favicon.svg"'), 'Static 404 must use the optimized SVG favicon');

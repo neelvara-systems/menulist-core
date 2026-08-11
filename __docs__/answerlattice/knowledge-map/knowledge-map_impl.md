@@ -59,11 +59,13 @@ The source-version snapshot is read before graph queries. A concurrent mutation 
 
 `KnowledgeMapDashboard` normalizes the optional `entity` query value with the
 shared governance ID boundary. The requested entity is selected only when it
-exists in the exact-scope graph. Selecting **Review canonical answers** sends
-the same validated entity to the existing Canonical Answer Editor, which
-filters its already-loaded answer set. If the entity has no answer, the create
-proposal prefills it only after matching the current loaded entity options. No
-map node, filter, or destination state is persisted.
+exists in the exact-scope graph. A valid but absent requested entity leaves the
+selection empty and renders an explicit warning; the filter-selection effect
+does not silently substitute the highest-ranked node. Selecting **Review
+canonical answers** sends the same validated entity to the existing Canonical
+Answer Editor, which filters its already-loaded answer set. If the entity has
+no answer, the create proposal prefills it only after matching the current
+loaded entity options. No map node, filter, or destination state is persisted.
 
 ## Public Data Flow
 
@@ -105,7 +107,8 @@ Related links are selected from the compact category payload already sent for ar
 - No active entity: reconcile the previous graph to an empty current summary and show an explicit empty-ontology state.
 - Invalid, incomplete, orphaned, or wrong-scope summary: show a generic load failure and log no private payload.
 - Invalid or absent URL focus: ignore it and use the normal bounded selection.
-- Valid URL focus absent from the exact-scope graph: do not use it.
+- Valid URL focus absent from the exact-scope graph: keep selection empty, show
+  the explicit unavailable warning, and require deliberate owner selection.
 - Source changes after rebuild: keep the map usable but show `Rebuild needed`.
 - Missing legacy source-version evidence: keep the map usable but show `Freshness pending`.
 - No relation: keep the selected entity visible and show a no-relationship state.

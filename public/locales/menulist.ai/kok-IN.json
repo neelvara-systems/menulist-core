@@ -428,7 +428,8 @@
         "daily": "आदलो दीस",
         "weekly": "फाटले 7 दीस",
         "monthly": "ह्या म्हयन्यांत",
-        "overall": "एकूण"
+        "overall": "एकूण",
+        "graph": "आलेख"
       },
       "today": {
         "noMenuActivityToday": "आयज अजून मेनू क्रियाशीलता ना.",
@@ -440,7 +441,7 @@
         "topLanguageNow": "सध्या वयली भास: {label} ({sessions} सत्रां/दृश्यां, {adoptions} स्वीच रावले)",
         "noResultSearchesSoFar": "आतां मेरेन परिणाम नाशिल्लो सोद: {count}",
         "mostTappedUnavailableItem": "चड करून टॅप केल्ली अनुपलब्ध आयटम: {item} ({count})",
-        "customerActionsBreakdown": "ग्राहकांचीं कृती: {call}, व्हॉट्सअॅप {whatsapp}, दिका {directions}, {reserve} राखून दवरात, {order} ऑर्डर करात",
+        "customerActionsBreakdown": "गिरायक कृतीः कॉल {call}, WhatsApp {whatsapp}, निर्देश {directions}, राखीव {reserve}, ऑर्डर {order}",
         "currentActivity": "आयच्या खातीर सद्याची मेनू क्रियाशीलता.",
         "updated": "{time}",
         "livePartialData": "आंशिक डेटा जिवो"
@@ -454,17 +455,17 @@
         "noResultSearches": "परिणाम नाशिल्लो सोद",
         "unavailableInterest": "उपलब्ध व्याज",
         "topLanguage": "वयली भास",
-        "smartPicksShown": "स्मार्ट पिक्स दाखयल्या",
-        "smartPicksClicks": "स्मार्ट पिक क्लिक करता",
-        "smartPicksTaps": "स्मार्ट पिक टॅप करता",
-        "smartPicksUsed": "स्मार्ट पिक्स वापरल्यात",
-        "smartPicksEngagement": "स्मार्ट पिक्स इंगेजमेंट",
+        "smartPicksShown": "Smart Picks दाखयल्या",
+        "smartPicksClicks": "Smart Picks क्लिक करतात",
+        "smartPicksTaps": "Smart Picks टॅप्स",
+        "smartPicksUsed": "Smart Picks वापरतात",
+        "smartPicksEngagement": "Smart Picks संबंद",
         "totalMenuScans": "एकूण मेनू स्कॅन",
         "totalItemClicks": "एकूण आयटम क्लिक",
         "activeDays": "सक्रीय दीस",
         "daysActive": "दिस सक्रिय",
         "avgDailyScans": "सरासरी. दिसपट्टे स्कॅन",
-        "smartPicksActive": "स्मार्ट पिक्स सक्रिय",
+        "smartPicksActive": "Smart Picks सक्रीय",
         "engagementRate": "इंगेजमेंट दर",
         "topItem": "वयली आयटम",
         "topCategory": "वयली श्रेणी"
@@ -473,19 +474,24 @@
         "itemClicks": "ग्राहकांनी वस्तूंचेर टॅप केल्ल्या वेळांचो आंकडो",
         "engagedSessions": "ग्राहकांनी खरी मेनू आवड दाखयली अशे सत्र",
         "actionRate": "निमाणी गिरायक कृती करपाक कारण जाल्ले सत्र",
-        "smartPicksShown": "तुमच्या पानाचेर कितले फावटीं स्मार्ट पिक्स दिसले",
-        "smartPicksUsed": "स्मार्ट पिक्स वापरपी गिरायकांची टक्केवारी",
-        "customerActions": "कॉल, व्हॉट्सअॅप, दिका, राखण, आनी ऑर्डर सारकिल्ल्यो निमाण्यो कृती",
+        "smartPicksShown": "तुज्या पानाचेर Smart Picks कितले फावटीं दिसलें?",
+        "smartPicksUsed": "Smart Picks वापरिल्ल्या गिरायकांची टक्केवारी",
+        "customerActions": "कॉल, WhatsApp, दिशा, राखीव, ऑर्डर सारकिल्ल्यो निमाणो कृती",
         "searches": "मेन्युमांतल्यान डुप्लिकेट केल्ली सोद मागणी",
         "unavailableInterest": "उपलब्ध वस्तूंचेर टॅप करता"
       },
       "empty": {
         "noActivityYesterday": "काल खंयचीच क्रिया नोंद जावंक ना",
         "noAnalyticsYet": "आतां मेरेन डेटा ना. गिरायक पळोवंक सुरवात केल्या उपरांत तुमचें विश्लेशण दिसतलें.",
-        "noItemClicksYet": "आतां मेरेन खंयचीच आयटम क्लिक जायना"
+        "noItemClicksYet": "आतां मेरेन खंयचीच आयटम क्लिक जायना",
+        "lowActivityTitle": "उणें क्रियाशीलता",
+        "lowActivityDescription": "ह्या काळार उपेगी थारावणी हाडपा खातीर फावोशी हालचाल नाशिल्ली.",
+        "noWeeklyData": "फाटल्या 7 दिसांनी अजून मेरेन खंयचीच सेटलमेंट मेनू क्रिया उपलब्ध ना.",
+        "noMonthlyData": "ह्या म्हयन्याक अजून मेरेन खंयचीच सेटलमेंट मेनू क्रिया उपलब्ध ना."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% विरुद्ध फाटल्या सप्तकांत"
+        "vsLastWeek": "{sign}{change}% विरुद्ध फाटल्या सप्तकांत",
+        "changeVsLastWeek": "{change} वर्सस फाटल्या सप्तकांत"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# नोंदणी केल्ल्या कार्यावळीचो दीस} other {# दिसांची क्रिया नोंद जाल्या}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "होय",
         "no": "ना",
-        "notAvailable": "न/अ",
+        "notAvailable": "N/A",
         "active": "सक्रीय",
         "lowActivity": "उण्या क्रियाशीलता",
         "noData": "डेटा ना"
@@ -527,17 +533,30 @@
         "waitingForFirstScan": "पयल्या स्कॅनाची वाट पळयता",
         "weeklyInsights": "सप्तकी अंतर्दृष्टी",
         "last4WeeksComparison": "फाटल्या 4 सप्तकांची तुळा",
-        "historicalDataWillAppear": "इतिहासीक डेटा कांय सप्तकां उपरांत दिसतलो"
+        "historicalDataWillAppear": "इतिहासीक डेटा कांय सप्तकां उपरांत दिसतलो",
+        "statusMessages": {
+          "working": "गिरायक तुमचो सद्याचो मेनू वापरतात.",
+          "low_activity": "गिरायकांची हालचाल अजूनय वाडत आसा. तुमचो सद्याचो मेनू उपलब्ध उरता.",
+          "no_data": "गिरायकांनी तुमचो मेनू उगडपाक सुरवात केल्या उपरांत कृती दिसतली."
+        }
       },
       "aiSummary": {
         "daily": "फाटलो दीस एके नदरेन",
         "weekly": "ह्या सप्तकांत एके नदरेन",
-        "monthly": "ह्या म्हयनो सारांशांत"
+        "monthly": "ह्या म्हयनो सारांशांत",
+        "localized": {
+          "noActivity": "ह्या काळांत खंयचीच स्थिर गिरायक हालचाल नोंद जावंक ना.",
+          "menuViews": "गिरायकांनी मेनू {count} वेळा उक्तो केलो.",
+          "itemTaps": "गिरायकांनी मेनू आयटम {count} वेळा टॅप केले.",
+          "customerActions": "गिरायकांनी {count} निमाणीं कृती पुराय केल्यो.",
+          "searches": "गिरायकांनी मेनू {count} वेळा सोदलो.",
+          "unavailableInterest": "उपलब्ध नाशिल्ल्यो वस्तू मेळिल्ल्यो {count} टॅप्स."
+        }
       },
       "actions": {
         "call": "कॉल करात",
         "calls": "कॉल करता",
-        "whatsapp": "व्हाट्सअॅप",
+        "whatsapp": "WhatsApp",
         "directions": "दिका मेळोवची",
         "reserve": "आरक्षण",
         "order": "आदेश"
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} भेट दिता · {rate}%",
         "markDone": "केल्लें तशें चिन्न करात",
         "markDoneSaved": "केल्लें अशें चिन्न केल्लें. फुडलो विश्लेशण सारांश तयार जातकच परिणाम अद्ययावत जातले.",
-        "markDoneFailed": "ही कृती केल्या अशें चिन्न दिवंक शकलें ना. परतून यत्न करात."
+        "markDoneFailed": "ही कृती केल्या अशें चिन्न दिवंक शकलें ना. परतून यत्न करात.",
+        "bestSourceStatsFormatted": "· {visits} भेटां · {rate} कृती दर",
+        "bestSourceMobileFormatted": "सद्या सगळ्यांत बरो स्रोतः {source}· {visits} भेटां · {rate} कृती दर",
+        "sourceQualityTagFormatted": "{source}: {visits} भेटां · {sessions} कृती सत्रे · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} भेटां · {rate}",
+        "priorities": {
+          "high": "उच्च प्राधान्य",
+          "medium": "मध्यम प्राधान्य",
+          "low": "उण्या प्राधान्याचो."
+        },
+        "confidence": {
+          "stable": {
+            "label": "स्थिर",
+            "message": "उपलब्ध कार्यावळ स्पश्ट मेनू तपासणीक आदार दिता."
+          },
+          "watch": {
+            "label": "पळयत राव.",
+            "message": "कांय हालचालींक मेनू बदलचे पयलीं आनीक एक तपासणी करपाची गरज पडूं येता."
+          },
+          "no_data": {
+            "label": "चड डेटा जाय",
+            "message": "निष्कर्ष काडचे पयलीं चड स्थीर गिरायक कृतीची वाट पळयात."
+          }
+        },
+        "localizedActions": {
+          "reason": "हालींच्या स्थीत केल्ल्या गिरायक क्रियाकलापाचेर आदारून.",
+          "availability": {
+            "title": "वस्तू उपलब्धताय नियाळ",
+            "description": "उपलब्ध नाशिल्ल्यो वा लिपिल्ल्यो वस्तू परतून मेळपाक जाय काय वा पळोवपा भायर दवरपाक जाय तें तपासात.",
+            "action": "उपलब्धतायेचो नियाळ घे."
+          },
+          "customerActions": {
+            "title": "गिरायकांच्या कृतींचो नियाळ घेयात",
+            "description": "कृती करचे पयलीं गिरायकांनी वापरिल्ले मेनू तपशील आनी लिंक तपासात.",
+            "action": "गिरायकांच्या कृतींचो नियाळ घेयात"
+          },
+          "details": {
+            "title": "वस्तू तपशील सुदार.",
+            "description": "स्पश्ट म्हायती जाय पडूं येता अशीं वस्तूंचीं नांवां, पर्याय, वर्णन आनी प्रतिमांचो नियाळ घे.",
+            "action": "वस्तू तपशीलांची नियाळ घे."
+          },
+          "general": {
+            "title": "स्पश्ट संकेताची वाट पळयात.",
+            "description": "चड स्थीर क्रिया उपलब्ध जावचे मेरेन सद्याचो मेनू स्थिर दवरात.",
+            "action": "उपरांत नियाळ घेयात."
+          },
+          "menuOrder": {
+            "title": "मेनू क्रमाचो नियाळ घे.",
+            "description": "गिरायकांक म्हत्वाच्यो वस्तू आनी वर्ग सोदपाक सोंप्यो आसात काय ना तें तपासात.",
+            "action": "मेनू क्रमाचो नियाळ घे."
+          },
+          "pricing": {
+            "title": "दरांची नियाळ घे.",
+            "description": "हालींच्या गिरायक-व्याज संकेताक जोडिल्ल्यो किंमती तपासात.",
+            "action": "दरांची नियाळ घे"
+          },
+          "search": {
+            "title": "गिरायकांच्या सोदांची नियाळ घेयात",
+            "description": "गिरायकांक उपेगी मेनू परिणामांचेर व्हरूंक शकनाशिल्ले सोद तपासात.",
+            "action": "सोदपाचो नियाळ घेयात"
+          },
+          "source": {
+            "title": "गिरायकांच्या प्रवेश स्त्रोतांचो नियाळ घेयात",
+            "description": "भौशीक लिंक आनी QR प्लेसमेंटां गिरायकांक सद्याच्या मेनूचेर दाखयतात काय ना तें तपासात.",
+            "action": "भौशीक दुव्यांचो नियाळ घेयात"
+          },
+          "timing": {
+            "title": "मेनू वेळाचो नियाळ घे.",
+            "description": "गिरायक ते सोदतात तेन्ना वेळान मेळिल्लीं वर्ग आनी उपलब्धताय जुळटात काय ना तें तपासात.",
+            "action": "वेळाचो नियाळ घे."
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "चिन्हाळिल्ली.",
+            "message": "चड स्थीरतायेन काम उपलब्ध जाले उपरांत परिणाम तपासटले."
+          },
+          "improved": {
+            "label": "सुदारल्या.",
+            "message": "फुडली सेटलमेंट चेक सुदारणा दाखयता."
+          },
+          "no_clear_change": {
+            "label": "स्पश्ट बदल ना",
+            "message": "फुडल्या सेटल केल्ल्या चेकांत स्पश्ट बदल दिसलो ना."
+          },
+          "not_enough_data": {
+            "label": "चड डेटा जाय",
+            "message": "ह्या बदलाचो अदमास काडपा खातीर अजून फावोशी थारावणी घडणूक जावंक ना."
+          },
+          "pending": {
+            "label": "प्रलंबित तपासणी",
+            "message": "चड स्थीरतायेन घडणूक उपलब्ध जाले उपरांत MenuList हें तपासतलो."
+          }
+        }
       },
       "details": {
         "menuDetails": "मेनू तपशील",
@@ -574,7 +686,7 @@
           "unavailableInterest": "उपलब्ध व्याज",
           "languages": "भासो",
           "filters": "फिल्टर करता",
-          "smartPicks": "स्मार्ट पिक्स",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "वेवसायीक वेळा प्रमाण कृती"
         },
         "descriptions": {
@@ -617,6 +729,12 @@
           "closed": "बंद आसतना कृती",
           "unknown": "तासांची स्थिती उपलब्ध नाशिल्ली तेन्ना कृती",
           "closedShare": "सगळ्या नोंद केल्ल्या कृतींतले {rate}% बंद आसतना घडले"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} अनुपलब्ध नळ",
+          "strongItem": "{count} आयटम टॅप करता",
+          "needsWork": "{count} पळोवपाक मेळटा, टॅप ना",
+          "gettingAttention": "{count} पळोवप"
         }
       },
       "smartPicks": {
@@ -627,7 +745,7 @@
       "overall": {
         "allTimeSummary": "सगल्या वेळाचो सारांश",
         "since": "{date}",
-        "actionsSummary": "कृती: {call}, व्हॉट्सअॅप {whatsapp}, दिका {directions}, राखून {reserve}, आदेश {order}",
+        "actionsSummary": "कृतीः कॉल {call}, WhatsApp {whatsapp}, निर्देश {directions}, राखीव {reserve}, ऑर्डर {order}",
         "topItemsSummary": "वयलीं वस्तू: {items}",
         "itemTapsSummary": "{item} ({count} टॅप करता)",
         "topCategorySummary": "वयलो वर्ग: {categories}",
@@ -642,16 +760,16 @@
         "officialBusinessPage": "अधिकृत वेवसाय पान",
         "loadingCurrentActivity": "सद्याची OBP क्रियाशीलता लोड करप",
         "loadingActivity": "ओबीपी क्रियाशीलता लोड करप",
-        "sharedInfo": "कॉल, व्हॉट्सअॅप, डायरेक्शन, रिझर्व्ह, आनी ऑर्डर हांचेर निमाणे ओबीपी क्लिक मेजतात. शेअर अधिकृत वेवसायीक दुवो कार्डा वयल्यान येतात, आनी दुवो टॅप भौशीक OBP कडल्यान Google पुनरावलोकन, Instagram, Facebook, आनी संकेतथळ भेटींचो गणीत करतात.",
+        "sharedInfo": "कृती कॉल, WhatsApp, दिशा, राखीव, आनी ऑर्डर हांचेर निमाण्या ओ. बी. पी. क्लिकांची गणना करतात. शेअर अधिकृत वेवसायीक लिंक कार्डांतल्यान येतात, आनी लिंक टॅप्स काउंट Google रिव्ह्यू, Instagram, Facebook, आनी भौशीक ओ. बि. पी कडल्यान संकेतथळाचेर भेट दितात.",
         "noActivityToday": "आयज अजून ओबीपी कार्यावळ ना.",
         "noComparison": "तुळा ना",
         "sameAsLastWeek": "फाटल्या सप्तका प्रमाण",
-        "whatsappShares": "व्हाट्सअॅप शेअर करता",
+        "whatsappShares": "WhatsApp समभाग",
         "copyLink": "दुवो कॉपी करचो",
         "copyMessage": "संदेश कॉपी करचो",
-        "googleReviews": "गूगल समीक्षा",
-        "instagram": "इंस्टाग्राम",
-        "facebook": "फेसबुक",
+        "googleReviews": "Google पुनरावलोकनां",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "वेबसायट",
         "sourceViews": "{count} पळोवप",
         "sourceMenu": "{count} मेनू",
@@ -680,7 +798,7 @@
         "actionBreakdown": "क्रियेचें विभाजन",
         "shareBreakdown": "शेअरिंग ब्रेकडावन",
         "mobileInfoIntro": "मेनू उगडचे पयलीं वा ताचे भोंवतणी गिरायक तुमच्या अधिकृत वेवसाय पृष्ठा कडेन कशे संवाद सादतात तें हें कार्ड दाखयता.",
-        "mobileInfoActions": "कृती कॉल, व्हॉट्सअॅप, दिका, राखण, आनी ऑर्डर हांचेर निमाणे क्लिक मेजतात.",
+        "mobileInfoActions": "कृती कॉल, WhatsApp, दिशा, राखीव, आनी ऑर्डर हांचेर निमाण्या क्लिकांची गणना करतात.",
         "mobileInfoLinks": "शेअर अधिकृत वेवसायीक दुवो कार्डा वयल्यान येतात, आनी दुवो टॅप भौशीक OBP कडल्यान Google पुनरावलोकन, Instagram, Facebook, आनी वेबसायटी भेटींचो गणीत करतात.",
         "todayPartialInfo": "आयज आतां मेरेन फकत आंशिक लायव्ह एक्टिव्हिटी आसा. ताचो अजून फाटलो दीस, निमाणे 7 दीस, हो म्हयनो, वा आयुश्यभरांतल्या वट्टांत आस्पाव केल्लो ना."
       },
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "शॉर्टकट विभाजन",
         "installsByPlatform": "प्लॅटफॉर्म प्रमाणें प्रतिष्ठापीत करता",
         "appStickiness": "ऍप्लिकेशन चिकटपणा",
-        "returningOpens30d": "परत येवप उगडटा (30d)",
         "avgOpensPerInstall": "दर प्रतिष्ठापनाक सरासरी उगडटा",
         "iosManualInstalls": "iOS मॅन्युअल प्रतिष्ठापीत करता",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "ऑनलायन ऑर्डर करात"
         },
         "platforms": {
-          "ios": "आयओएस",
-          "iosLong": "आयओएस (आयफोन / आयपॅड)",
-          "android": "एंड्रॉयड",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "डेस्कटॉप",
           "other": "हेर"
-        }
+        },
+        "tryAgainLater": "उपरांत परतून यत्न कर."
       },
       "projectSelector": {
         "deleted": "काडून उडयलां",
@@ -754,14 +872,15 @@
         "couldNotCopy": "दुवो कॉपी करूंक शकलो ना",
         "markedUpdated": "Google यादी अद्ययावत म्हणून चिन्न केल्ली",
         "couldNotSave": "सेव्ह करूंक शकलो ना",
-        "title": "गूगल यादी",
+        "title": "Google वळेरी",
         "updatedDescription": "वेबसायटीचो दुवो तुमच्या अधिकृत पानाचेर सेट केला",
         "setOfficialLink": "तुमचो अधिकृत दुवो Google",
         "updateProfileWebsite": "तुमची Google बिझनेस प्रोफायल वेबसायट {url}",
         "copied": "प्रतिलिपी केल्या",
         "copy": "प्रत",
-        "openGoogle": "गूगल उगडात",
-        "done": "कले"
+        "openGoogle": "Google उगड",
+        "done": "कले",
+        "couldNotOpen": "Google वेवसायीक प्रोफायल उगडपाक शकलें ना"
       },
       "behaviorNudge": {
         "linkCopied": "दुवो कॉपी केला",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "वयल्या अंकाची पुनरावलोकन करात",
         "repairMenu": "दुरुस्ती मेनू",
         "review": "पुनरावलोकन",
-        "repair": "दुरुस्ती करप"
+        "repair": "दुरुस्ती करप",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# वस्तूचें वर्णन ना.} other {# वस्तूंचें वर्णन ना.}}",
+            "ok": "सगळ्या वस्तूंचें वर्णन आसा.",
+            "help": "वर्णन केल्ल्यान गिरायकांक दर एक प्रस्ताव समजून घेवपाक मदत जाता."
+          },
+          "images": {
+            "warning": "{count, plural, one {# वस्तूची प्रतिमा ना.} other {# वस्तू प्रतिमांक मेळनात}}",
+            "ok": "सगळ्या वस्तूंचेर प्रतिमा आसतात.",
+            "help": "चित्रां गिरायकांक बेगीन निवड करपाक मदत करूंक शकतात."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# वर्गांत आयकॉन ना.} other {# वर्गांत आयकॉन ना}}",
+            "ok": "सगळ्या वर्गांत आयकॉन आसतात.",
+            "help": "आयकॉन वर्ग स्कॅन करप सोंपें करता."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# वस्तूची किंमत ना} other {# वस्तूंच्यो किंमती ना}}",
+            "ok": "सगळ्या वस्तूंच्यो दर आसतात.",
+            "help": "गिरायक निर्णय घेचे पयलीं दरांची तुळा करतात."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# वस्तू गिरायकांकडल्यान लुकोवन दवरल्या.} other {# वस्तू गिरायकांकडल्यान लुकोवन दवरतात.}}",
+            "ok": "खंयच्योच वस्तू लिपिल्ल्यो नात.",
+            "help": "लपल्यो वस्तू भौशीक मेनूचेर दिसनात."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# किंमतीची नियाळ करपाची गरज आसा} other {# दरांची नियाळ करपाची गरज आसा}}",
+            "ok": "दर अपेक्षे प्रमाण आसात.",
+            "help": "MenuList एकाच वर्गांतल्या एक-वस्तूच्या किंमतींची तुळा करता. नियाळ केल्या प्रमाण जाणूनबुजून किंमत नोंद करात."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# आयटमांत अनुवाद ना} other {# आयटमांत अनुवाद ना.}}",
+            "ok": "सगळ्यो दिसपी वस्तू अनुवादित केल्यात.",
+            "help": "निवडिल्ल्या मेनू भाशांनी कांय वस्तू अपूर्ण आसात."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# मेनू तपशीलांत अनुवाद ना} other {# मेनू तपशीलांत अनुवाद ना.}}",
+            "ok": "मेनू तपशीलांचे भाषांतर केलां.",
+            "help": "निवडलेल्या मेनू भाशांनी मेनूचें नांव, वर्णन वा नोट्स अपूर्ण आसात."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "कॉपी केल्ली लिंक",
+        "direct": "थेट",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "मेनू किट",
+        "nativeShare": "उपकरण वांटून घेवप",
+        "obp": "वेवसाय पान",
+        "other": "हेर",
+        "qr": "QR कोड",
+        "shortcut": "ऍप्लिकेशन शॉर्टकट",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "वेवसाय भलायकी",
+        "open": "उक्तें वेवसाय भलायकी",
+        "today": "आयज",
+        "latestActivity": "हालींची कृती",
+        "noActionNeeded": "कांयच कृतीची गरज ना",
+        "status": {
+          "stable": "स्थिर",
+          "watch": "लक्ष दिवपाची गरज आसा",
+          "needs_review": "पुनरावलोकनाची गरज",
+          "insufficient_data": "चड डेटा जाय",
+          "stale": "नवे चेक जाय पडटात.",
+          "not_ready": "तयारी कर."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# गिरायकाक तोंड दिवपी तपशीलांक नियाळ घेवपाची गरज आसा.} other {# गिरायकाक तोंड दिवपी तपशीलांक नियाळ घेवपाची गरज आसा.}}",
+          "stable": {
+            "headline": "तुमची भौशीक म्हायती स्थिर आसा.",
+            "message": "हालींच्या चेकांत गिरायकाक तोंड दिवपाच्या समस्येक लागून कारवाई करपाची गरज ना."
+          },
+          "watch": {
+            "headline": "तपशीलाक लक्ष दिवपाची गरज पडूं येता.",
+            "message": "भौशीक म्हायती बदलचे पयलीं सुचयल्ल्या तपासणीचो नियाळ घेयात."
+          },
+          "needs_review": {
+            "headline": "गिरायकांक तोंड दिवपाच्या तपशीलांचो नियाळ घेयात",
+            "message": "एक वा चड भौशीक तपशील तपासपाक जाय."
+          },
+          "insufficient_data": {
+            "headline": "चड हालचालींची गरज आसा.",
+            "message": "MenuList एक उपेगी संकेत एकठांय करता तेन्ना सद्याची म्हायती स्थिर दवरात."
+          },
+          "stale": {
+            "headline": "वेवसायीक भलायकेची नवी तपासणी करपाची गरज आसा.",
+            "message": "निमाणो धनादेश पोरणो. तुमची सद्याची भौशीक म्हायती बदलून उरना."
+          },
+          "not_ready": {
+            "headline": "वेवसायीक भलायकी तयार जायत आसा.",
+            "message": "स्टोरांतलो पयलो चेक तयार जातकच हांगा दिसतलो."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "मेनू स्त्रोत तपास.",
+            "message": "भौशीक मेनूचो खंयचोच सक्रीय स्त्रोत मेळ्ळो ना. वांटचे पयलीं मेनू तपासात.",
+            "title": "मेनू स्त्रोत तपासपाची गरज आसा"
+          },
+          "low_latest_activity": {
+            "action": "वांटपाच्यो लिंक तपासात",
+            "message": "गिरायकांची हालचाल उणी आसा. तपासात. QR, Google, Instagram, WhatsApp, आनी संकेतथळांचे दुवे.",
+            "title": "गिरायकांची हालचाल उणी आसा."
+          },
+          "unavailable_item_taps": {
+            "action": "अनुपलब्ध वस्तू तपासात",
+            "message": "गिरायकांनी उपलब्ध नाशिल्ल्या वस्तूंची आवड दाखयली. तीं परतून सांठोवन दवरात वा लुपून दवरात.",
+            "title": "उपलब्ध नाशिल्ल्या वस्तूंचेर लक्ष दिलें"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "अतिथींच्या प्रतिसादाची नियाळ घेयात",
+            "message": "भौशीक तपशील बदलचे पयलीं अतिथी अभिप्रायाक मालकाची तपासणी करपाची गरज आसता.",
+            "title": "अतिथी अभिप्राय तपासपाची गरज आसा"
+          },
+          "default": {
+            "action": "तपशीलांची नियाळ घे.",
+            "message": "गिरायकाक तोंड दिवपी तपशीलाक मालकाची तपासणी करपाची गरज आसता.",
+            "title": "तपशील तपासपाची गरज आसा."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# खाजगी अभिप्राय आयटम तपासपाची गरज आसा.} other {# खाजगी अभिप्राय आयटम तपासपाची गरज आसा.}}",
+          "clear": "खाजगी प्रतिसाद स्पश्ट आसा."
+        },
+        "freshness": {
+          "notReady": "वेवसायीक भलायकी प्रत्यक्ष वेळ न्हय. दुकानांत पयलेच खेपे तपासल्यार हांगा डेटा तारीख दिसतली.",
+          "throughDate": "{date} वरवीं डेटा वापरता. आयज अजून पुराय जावंक ना.",
+          "latest": "उपलब्ध आशिल्ली सामकी हालींची MenuList म्हायती वापरता. आयज अजून पुराय जावंक ना."
+        },
+        "periods": {
+          "today": "आयज",
+          "yesterday": "आदलो दीस",
+          "thisWeek": "ह्या सप्तकांत",
+          "lastWeek": "फाटल्या सप्तकांत",
+          "thisMonth": "ह्या म्हयन्यांत",
+          "lastMonth": "फाटल्या म्हयन्यांत",
+          "last7Days": "निमाणें 7 दीस",
+          "last30Days": "निमाणें 30 दीस",
+          "overall": "एकूण"
+        },
+        "metrics": {
+          "menuViews": "मेनू पळोवप",
+          "topDemand": "सगळ्यांत चड मागणी",
+          "topDemandDetail": "प्रचार करः {count} {signal}",
+          "bestSource": "सगळ्यांत बरो स्त्रोत",
+          "bestSourceDetail": "अद्ययावत लिंकः {count} भेट"
+        },
+        "signals": {
+          "views": "दृश्ये",
+          "clicks": "आयटम टॅप करता",
+          "attention": "लक्ष दिवपाचे संकेत"
+        },
+        "page": {
+          "description": "दिसपट्ट्या वेवसायाची स्थिती आनी गिरायकांक तोंड दिवपाची तपासणी.",
+          "latestCheck": "AI health check",
+          "loading": "लोडिंग",
+          "loadingMessage": "वेवसायीक भलायकी लोड करतना...",
+          "notReady": "वेवसायीक भलायकी अजून तयार जावंक ना.",
+          "loadErrorTitle": "वेवसायीक भलायकी भरपाक शकली ना",
+          "loadErrorDescription": "उपकार करून हें पान रिफ्रेश करात आनी परतून यत्न करात.",
+          "refresh": "ताजें करचें",
+          "needsAttention": "लक्ष दिवपाची गरज आसा",
+          "desktopSettingsOnly": "डेस्कटॉप सेटिंगांतल्यान हें उगड."
+        },
+        "scope": {
+          "title": "वेवसायीक भलायकेची व्याप्ती",
+          "allMenus": "सगळीं मेन्यू",
+          "selectedMenu": "वेंचून काडिल्लो मेनू",
+          "menuCount": "{count, plural, one {ह्या सुवातेर # मेनू} other {ह्या सुवातेर # मेनू}}",
+          "locationLevel": "सुवात-पांवड्याचो नदर",
+          "inactiveMenu": "निष्क्रिय मेनू",
+          "thisMenuOnly": "फकत हो मेनू",
+          "allMenusInLocation": "ह्या सुवातेर सगळीं मेनू",
+          "thisMenuHelper": "प्रस्न आनी कृती ह्या मेनूचो उपेग करतात.",
+          "allMenusHelper": "प्रस्न आनी कृती ह्या सुवातेर सगळे मेनू वापरतात.",
+          "dialogDescription": "हालचाली आनी तपासणी खातीर सगळे मेनू वा एक मेनू निवड.",
+          "all": "सगळें.",
+          "close": "बंद करचें"
+        },
+        "locations": {
+          "title": "थळां",
+          "loading": "थळां लोड करतात...",
+          "empty": "अजून सुवातेचो सारांश ना",
+          "storeFallback": "सुवात {id}",
+          "checkedOn": "तपासलें {date}",
+          "checkCount": "{count, plural, one {# तपास} other {# तपासतात}}",
+          "checksNeedReview": "{count, plural, one {# गिरायकां मुखार आशिल्ल्या चेकाक नियाळ घेवपाची गरज आसा.} other {# गिरायकांखातीर केल्ल्या चेकांची नियाळ घेवपाची गरज आसा.}}",
+          "statusReason": {
+            "stable": "गिरायकांक तोंड दिवपाच्या समस्येक लागून खंयचीच कारवाई करपाची गरज ना.",
+            "watch": "गिरायकाक तोंड दिवपी तपशीलाक लक्ष दिवपाची गरज पडूं येता.",
+            "needs_review": "गिरायकाक तोंड दिवपी तपशीलांची नियाळ करपाची गरज आसा.",
+            "insufficient_data": "उपयुक्त तपासणी खातीर चड गिरायकांची हालचाल गरजेची आसा.",
+            "stale": "ह्या सुवातेर नवे तपासणीची गरज आसा.",
+            "not_ready": "पयली सुवात तपासणी तयार जायत आसा."
+          }
+        },
+        "assistant": {
+          "title": "वेवसायीक भलायकी विचार.",
+          "askShort": "विचार.",
+          "englishOnlyTitle": "सध्या प्रस्न इंग्लीश भाशेंत मेळटात.",
+          "englishOnlyDescription": "तुमची स्थिती आनी तपासणी थळाव्या दर्ज्यांत आसा. वेवसायीक भलायकेचे प्रस्न विचारपा खातीर एप भास इंग्लीश भाशेंत बदलात.",
+          "notReady": "हालींची तपासणी सोंपतकच वेवसायीक भलायकी जाप दितली.",
+          "suggestedUnavailable": "सुचयिल्ले प्रस्न सद्या उपलब्ध नात.",
+          "freeTextUnavailable": "मुक्त मजकूराचीं प्रस्न सद्या उपलब्ध नात.",
+          "answerError": "वेवसायीक भलायकी ताका जाप दिवंक शकली ना.",
+          "suggestedQuestions": "सुचयल्ल्या प्रस्न",
+          "followUps": "तूं फुडलो विचारूंक शकता.",
+          "you": "तूं.",
+          "empty": "एक प्रस्न वेंचून काडात वा तुमच्या वेवसाया विशीं विचारात.",
+          "placeholderReady": "आयज, ह्या सप्तकांत, मेनू लक्ष वा फुडल्या तपासणी विशीं विचार.",
+          "placeholderMobile": "आयच्या वा ह्या सप्तका विशीं विचार.",
+          "placeholderPending": "हालींच्या तपासणी उपरांत उपलब्ध",
+          "send": "प्रस्न धाड.",
+          "cachedFacts": "कॅशे केल्ल्या MenuList वेवसायीक तथ्यांचेर आदारून",
+          "questions": {
+            "checks": "कितें तपासपाची गरज आसा?",
+            "today_stats": "आयज कितें चलता?",
+            "this_week_stats": "ह्या सप्तकांत कितें जालें?",
+            "top_item": "खंयच्या विशयाचेर लक्ष दितात?",
+            "last_week_stats": "फाटल्या सप्तकांत कितें जालें?",
+            "this_month_stats": "हो म्हयनो कसो आसा?",
+            "last_month_stats": "फाटल्या म्हयन्यांत कितें जालें?",
+            "public_menu_status": "म्हजो भौशीक मेनू बरो आसा?",
+            "profile_status": "म्हजी वेवसायीक प्रोफायल पुराय जाल्या?",
+            "feedback_reviews": "खंयचोय अतिथी अभिप्राय तपासपाक?",
+            "feedback_recent": "हालींच अतिथींनी कितें सांगलें?",
+            "default": "फुडें कितें तपासपाक जाय?"
+          }
+        },
+        "sources": {
+          "title": "डेटा स्त्रोत",
+          "menuProjects": "मेन्यू प्रकल्प",
+          "ownerAnalytics": "मालकाची कृती",
+          "guestFeedback": "अतिथी अभिप्राय",
+          "storeSettings": "वेवसायीक मांडणी",
+          "menuListData": "MenuList डेटा",
+          "updatedOn": "{date} अद्ययावत केलां",
+          "latest": "हालींची उपलब्ध म्हायती"
+        },
+        "publicTruth": {
+          "title": "अधिकृत गिरायक स्त्रोत",
+          "checking": "तपासप",
+          "checkingFacts": "MenuList भौशीक तथ्यां तपासत आसा...",
+          "checkedMenu": "तपासिल्लो मेनूः {name}",
+          "boundary": "सद्याच्या MenuList वेवसाय आनी मेनू डेटा वयल्यान तपासलें. भायले प्लॅटफॉर्म मालकाची खात्री करून घेतात.",
+          "boundaryShort": "भायले प्लॅटफॉर्म मालकाची पुश्टी जावन आसतात.",
+          "historyTitle": "भौशीक म्हायती इतिहास",
+          "historyBoundary": "MenuList फकत वेवसायीक आनी मेनू तथ्यांचो वापर करता. भायली संकेतस्थळे स्कॅन करनात.",
+          "historyBoundaryShort": "MenuList फकत तथ्यां. भायली संकेतथळी स्कॅन करूंक ना.",
+          "refreshErrorTitle": "गिरायक-स्त्रोत तपासणी ताजे करपाक शकली ना",
+          "refreshErrorDescription": "उपलब्ध आशिल्लीं निमणी MenuList तथ्यां अजूनय सकयल दाखयल्यांत.",
+          "historyRefreshError": "भौशीक म्हायती इतिहास ताजो जावंक शकलो ना.",
+          "historyLoadError": "भौशीक म्हायती इतिहास लोड जावंक शकलो ना.",
+          "historyErrorDescription": "निमाणो सांबाळिल्लो अहवाल उपलब्ध आसतनाय दाखयतात.",
+          "notRun": "चलना.",
+          "lastSaved": "निमाणें सांबाळिल्लें {date}",
+          "noSavedReport": "अजून मेरेन खंयचोय सेव्ह रिपोर्ट ना",
+          "noSavedReportDescription": "ह्या सुवाते खातीर पयलो अहवाल सेव्ह करपाक चेक चलयात.",
+          "downloadEnglishReport": "इंग्लीश अहवाल डावनलोड कर",
+          "downloadEnglishShort": "इंग्लीश अहवाल",
+          "runCheck": "तपासणी चलोव.",
+          "currentFix": "सद्याची दुरुस्त वस्तू",
+          "nextFixes": "फुडले भौशीक दुरुस्त",
+          "none": "कांयच ना.",
+          "attentionCount": "{count, plural, one {# वस्तू तपासपाची गरज आसा} other {# वस्तू तपासपाची गरज आसा}}",
+          "readyModuleCount": "तयार {count}/{total}",
+          "missingCount": "गायब आसा {count}",
+          "checkCount": "{count} तपास",
+          "savedCount": "बचत केलीं {count}/{total}",
+          "modulesReady": "{count}/{total} मॉड्यूल तयार आसा",
+          "status": {
+            "ready": {
+              "label": "तयार आसा.",
+              "message": "तुमच्या अधिकृत गिरायक स्त्रोताक गिरायकांक जाय आशिल्लीं मुळावी गजाल आसात."
+            },
+            "missing_basics": {
+              "label": "मुळाव्या गजालींचो उणाव",
+              "message": "मेनू, वरां, दर, कृती वा गिरायक-लिंक तपशीलांचेर व्यापक वांटणे पयलीं लक्ष दिवपाची गरज आसा."
+            },
+            "unclear": {
+              "label": "तपासणी करपाची गरज आसा",
+              "message": "चडशीं मुळावी गजालीं आसात, पूण एक वा चड भौशीक तथ्यांचेर अजूनय नियाळ घेवपाची गरज आसा."
+            }
+          },
+          "metrics": {
+            "readyModules": "तयार मॉड्यूल",
+            "missingFacts": "तथ्यां ना जावप",
+            "checkedMenu": "तपासिल्लो मेनू",
+            "savedReports": "सांबाळिल्ले अहवाल"
+          },
+          "results": {
+            "present": "तयार आसा.",
+            "missing": "गायब.",
+            "unclear": "तपास.",
+            "not_applicable": "गरज ना.",
+            "not_checked": "तपासूंक ना"
+          },
+          "moduleStatus": {
+            "ready": "तयार आसा.",
+            "needs_attention": "गायब.",
+            "check": "तपास.",
+            "not_checked": "तपासूंक ना"
+          },
+          "facts": {
+            "business_identity": "वेवसायीक नांव",
+            "menu_or_service_source": "मेनू वा सेवा वळेरी",
+            "prices": "दर",
+            "hours": "वरां.",
+            "location": "सुवात",
+            "contact": "संपर्क करचो.",
+            "customer_actions": "गिरायकांची कृती",
+            "public_link": "गिरायक जोडणी",
+            "photos": "फोटो",
+            "machine_readable_source": "सोदपा सारके तपशील"
+          },
+          "evidence": {
+            "owner_entered": "ह्या चेकांत प्रवेश केलो.",
+            "owner_selected": "मालकान वेंचून काडिल्ली.",
+            "source_text_hint": "दिल्ल्या स्त्रोताचेर मेळ्ळें.",
+            "valid_public_url": "भौशीक लिंक स्वरूप वैध आसा.",
+            "invalid_public_url": "भौशीक लिंकांत दुरुस्ती करपाची गरज आसा.",
+            "menulist_store": "सद्याची MenuList वेवसायीक मांडणी तपासली.",
+            "menulist_project": "वेंचून काडिल्लो वा पूर्वनिर्धारित MenuList मेनू तपासलो.",
+            "menulist_summary": "सद्याचो MenuList मेनू सारांश तपासलो.",
+            "menulist_public_route": "सद्याची MenuList गिरायक-लिंक सेटिंग तपासली.",
+            "menulist_index_gate": "सद्याचे MenuList भौशीक-सोद नियमाचें तपासणी केलें.",
+            "not_provided": "सद्याच्या MenuList डेटाचेर हें तथ्य ना.",
+            "not_checked": "सद्याच्या MenuList डेटाचेरल्यान ही वस्तुस्थिती सुरक्षीतपणान तपासूंक नाशिल्ली.",
+            "priceNotLoaded": "वेंचून काडिल्लो मेनू एक फावट उगडात जाका लागून MenuList ताची किंमत तपासपाक शकतलो."
+          },
+          "moduleEvidence": {
+            "ready": "सद्याचो MenuList डेटा दाखयता की हो वाठार तयार आसा.",
+            "needs_attention": "सद्याची MenuList म्हायती दाखयता की गरजेची म्हायती ना.",
+            "check": "गिरायक ताचेर आदारून रावचे पयलीं हो वाठार तपासात.",
+            "not_checked": "MenuList सद्याच्या म्हायती वयल्यान हो वाठार पुरायपणान तपासपाक शकलो ना."
+          },
+          "setupReason": {
+            "needs_attention": "गिरायकांक तोंड दिवपाची गरजेची म्हायती ना.",
+            "check": "गिरायक ताचेर आदारून रावचे पयलीं हें तपासात.",
+            "not_checked": "MenuList सद्याच्या डेटाचेरून हें पुरायपणान तपासपाक शकले ना."
+          },
+          "targetActions": {
+            "basic_settings": "वेवसाय तपशील उक्तो कर",
+            "domain_settings": "गिरायकांची लिंक उगड",
+            "hours_edit": "उक्तें जावपाची वेळ",
+            "menu_tab": "मेनू उगड.",
+            "official_page": "वेवसायीक पान उगड.",
+            "presence_monitor": "प्लेसमेंट तपासणी उक्ती कर",
+            "share_tab": "शेअर साधनां उक्तीं कर"
+          },
+          "actions": {
+            "openCustomerSource": "गिरायक स्रोत उक्तो कर",
+            "openShareTools": "वांटपाची साधनां उक्तीं कर",
+            "fixFact": "{fact} दुरुस्त कर"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "भौशीक म्हायती मुळावी",
+              "description": "वेवसायीक नांव, सद्याचो मेनू वा सेवा स्त्रोत, संपर्क, कृती आनी गिरायक जोड."
+            },
+            "business_facts_copy_pack": {
+              "title": "परतून वापरपा सारके वेवसाय तपशील",
+              "description": "सद्याचे तथ्यांचो कर्मचारी भौशीक प्रोफायलां, जापां आनी गिरायक-लिंक हॅण्डऑफ्सांत परतून वापर करूंक शकतात."
+            },
+            "qr_link_health": {
+              "title": "QR लिंक तयारी",
+              "description": "QR आनी छापिल्ल्या प्लेसमेंटा खातीर सद्याची गिरायक लिंक."
+            },
+            "social_bio_link_consistency": {
+              "title": "प्रोफायल लिंक सुसंगतताय",
+              "description": "सामाजीक प्रोफायल आनी हेर प्लेसमेंटां खातीर सद्याची गिरायक लिंक."
+            },
+            "customer_link_preview": {
+              "title": "गिरायक लिंक पूर्वावलोकन",
+              "description": "गिरायकांनी कृती करचे पयलीं मुखेल तथ्यां पळोवंक जाय."
+            },
+            "print_share_assets": {
+              "title": "मालमत्ता छापून वांटून घे.",
+              "description": "QR पोस्टर, काउंटर कार्ड आनी प्रतिमा वांटपा खातीर सद्याची लिंक तयारी."
+            },
+            "menu_service_readability": {
+              "title": "मेनू वा सेवेची स्पश्टताय",
+              "description": "निवडलेल्या मेनूंत वर्ग, वस्तू वा सेवा आनी दर."
+            },
+            "price_availability_gap": {
+              "title": "किंमत आनी उपलब्धताय स्पश्टताय",
+              "description": "दर, प्रकार, विकली गेल्ली स्थिती आनी उपलब्धताय गिरायकांक दाखयल्या."
+            },
+            "menu_pdf_cleanup": {
+              "title": "पोरणे PDF बदली",
+              "description": "सद्याचो MenuList स्त्रोत आनी गिरायक दुवा जो पोरण्या पी. डी. एफ. ची सुवात घेवंक शकता."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp कृती",
+              "description": "स्पश्ट WhatsApp वा पर्यायी गिरायक संपर्क कृती."
+            },
+            "hours_readiness": {
+              "title": "वरां तयारी",
+              "description": "नेमान घंटो गिरायकांचेर आदारून रावूंक शकतात."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp तथ्यांक जाप दिवची",
+              "description": "कर्मचाऱ्यांच्या जापां खातीर सद्याचो मेनू, वरां, संपर्क आनी लिंक तथ्यां."
+            },
+            "photo_visual_identity": {
+              "title": "फोटो आनी दृश्टीक वळख",
+              "description": "लोगो, कव्हर, वेवसायीक फोटो, वा वस्तू आनी सेवेचे दृश्य."
+            },
+            "customer_question_coverage": {
+              "title": "गिरायकांक सामान्य प्रस्न",
+              "description": "प्रस्ताव, वरां, किंमत, सुवात, संपर्क आनी फुडली कृती हांचे खातीर तथ्यां स्पश्ट करात."
+            },
+            "customer_faq_reply_pack": {
+              "title": "परतून वापरपा सारक्यो गिरायक जापां",
+              "description": "गिरायक सामान्य प्रस्न विचारतात तेन्ना सद्याच्या तथ्यांचो कर्मचारी परतून वापर करूंक शकतात."
+            },
+            "booking_inquiry_readiness": {
+              "title": "आरक्षण आनी चौकशीची तयारी",
+              "description": "ऑर्डर, पुस्तक, राखीव, कॉल, संदेश, अवतरण विनंती, वा भेट दिवपाचो स्पश्ट मार्ग."
+            },
+            "google_profile_handoff": {
+              "title": "Google प्रोफायल लिंक",
+              "description": "Google वेवसाय प्रोफायला खातीर तयार केल्ली सद्याची गिरायक लिंक."
+            },
+            "menu_freshness": {
+              "title": "मेनू ताजेपण",
+              "description": "दर, वस्तू वा उपलब्धताय बदलल्यार हालींच मेनू अद्ययावत जाता."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "आलेख",
+        "description": "डॅशबोर्डांत दाखयल्ल्या त्याच स्थीत क्रियाकलापांचो एक दृश्य सारांश.",
+        "ranges": {
+          "days7": "7 दीस",
+          "days30": "30 दीस"
+        },
+        "metrics": {
+          "menu_activity": "मेनू क्रिया",
+          "customer_actions": "गिरायकांची कृती",
+          "search_demand": "मागणी सोद.",
+          "item_interest": "वस्तूचें व्याज",
+          "unavailable_demand": "उपलब्ध नाशिल्ल्या मागणीची.",
+          "missing_searches": "सोद ना पडिल्ले"
+        },
+        "trend": {
+          "summary": "ट्रेंड सारांश",
+          "updatedAfterClose": "तुजो स्टोर दीस बंद जाले उपरांत अद्ययावत जाता.",
+          "status": {
+            "up": "चड.",
+            "down": "उणो.",
+            "stable": "स्थिर.",
+            "not_enough_data": "इतिहास फावोसो ना."
+          },
+          "period": {
+            "week": "सप्तकाची तपासणी",
+            "month": "म्हयन्याची तपासणी"
+          },
+          "shortPeriod": {
+            "week": "सप्तक",
+            "month": "म्हयनो."
+          },
+          "needsMoreDays": "चड स्थीर दिस जाय",
+          "versus": "{current} वर्सस {previous}",
+          "messages": {
+            "up": "ह्या {period} चेकाक {metric} चड आसा.",
+            "down": "ह्या {period} चेक खातीर {metric} उणें आसा.",
+            "stable": "ह्या {period} तपासणी खातीर {metric} स्थिर आसा.",
+            "not_enough_data": "ह्या {period} तपासणी खातीर फावोसो सेटल {metric} इतिहास ना."
+          },
+          "change": {
+            "gathering": "{period}: एकठांय करप",
+            "newActivity": "{period}: नवी कृती",
+            "steady": "{period}: स्थिर",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "तुलनात्मक तक्ता",
+          "description": "थाराविल्ल्या दिसांनी सप्तक आनी म्हयने हालचाल."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "मेनू ट्रेंड",
+            "days7": "निमाणें 7 दीस स्थीर जाले.",
+            "days30": "निमाणें 30 दीस स्थीत जाले."
+          },
+          "customerActions": {
+            "title": "गिरायकांची कृती",
+            "description": "मेनू उगडल्या उपरांत गिरायकांनी कितें टॅप केलें?"
+          },
+          "sources": {
+            "title": "गिरायक खंयच्यान आयले?",
+            "description": "मेन्यू भेट आनी कृती सत्रे स्त्रोतान"
+          },
+          "items": {
+            "title": "सगळ्यांत चड आवडीची वस्तू",
+            "description": "गिरायकांनी चड करून उक्त्यो वा टॅप केल्ल्यो वस्तू"
+          },
+          "search": {
+            "title": "मागणी सोद.",
+            "description": "गिरायकांनी कितें सोदलें?"
+          },
+          "officialPage": {
+            "title": "अधिकृत पानांचो कल",
+            "description": "अधिकृत वेवसाय पाना वयल्यान पळोवपी दृश्यां आनी कृती"
+          }
+        },
+        "legends": {
+          "visits": "भेटां.",
+          "actionSessions": "कृती सत्रां",
+          "views": "दृश्ये",
+          "taps": "आयटम टॅप करता",
+          "noResult": "परिणाम ना."
+        },
+        "empty": {
+          "default": "ह्या दृश्याक अजून ग्राफ डेटा ना.",
+          "menuActivity": "गिरायकांनी मेनू उगडल्या उपरांत मेनूची क्रिया दिसतली.",
+          "customerActions": "गिरायकांनी फोन केल्यार, संदेश दिल्या उपरांत, ऑर्डर केल्या उपरांत, राखीव दवरल्या उपरांत वा दिशा विचारल्या उपरांत गिरायकांची कृती दिसटली.",
+          "customerActionsPeriod": "ह्या काळांत अजून मेरेन गिरायकांनी कसलीच कृती करूंक ना.",
+          "searchDemand": "गिरायकांनी मेनू सोद वापरल्यानंतर सोद मागणी दिसतली.",
+          "itemInterest": "गिरायकांनी मेनू आयटम उगडल्या उपरांत आयटम व्याज दिसटलें.",
+          "unavailableDemand": "गिरायकांनी उपलब्ध नाशिल्ल्या वस्तूंचेर टॅप केल्यार अनुपलब्ध मागणी दिसतली.",
+          "missingSearches": "गिरायकांनी सोदलो पूण मेळ मेळना तेन्ना हरयल्ल्या सोद दिसटले.",
+          "sources": "दुवे, QR, वा समाजीक पानांवयल्यान गिरायक पावतकच स्त्रोताचो तपशील दिसतलो.",
+          "officialPage": "गिरायकांनी भौशीक वेवसाय पान उगडल्या उपरांत अधिकृत पानांची हालचाल दिसतली."
+        },
+        "footer": {
+          "sameData": "तोच डॅशबोर्ड डेटा",
+          "noExtraTracking": "अतिरिक्त ट्रॅकिंग ना",
+          "settledAfterClose": "दुकानाचो दीस सोंपतकच वसणूक"
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "मेनू",
+          "viewsLabel": "मेनू पळोवप",
+          "viewsTooltip": "कितले फावटीं गिरायकांनी तुमचो मेनू उगडलो",
+          "thisMonthLabel": "ह्या म्हयन्यांत तुजो मेनू"
+        },
+        "product": {
+          "singular": "कॅटलॉग",
+          "viewsLabel": "कॅटलॉग दृश्यां",
+          "viewsTooltip": "कितले फावटीं गिरायकांनी तुमचें कॅटलॉग उगडलें",
+          "thisMonthLabel": "ह्या म्हयन्यांत तुजी कॅटलॉग"
+        },
+        "service": {
+          "singular": "सेवा वळेरी",
+          "viewsLabel": "सेवा-वळेरीचे दृश्ये",
+          "viewsTooltip": "कितले फावटीं गिरायकांनी तुमची सेवा वळेरी उक्ती केली",
+          "thisMonthLabel": "ह्या म्हयन्यांत तुजी सेवा वळेरी"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "लक्ष दिवपाची गरज आसा",
+          "active": "अधिकृत गिरायक स्त्रोत सक्रीय आसा.",
+          "readyToPlace": "अधिकृत गिरायक स्त्रोत दवरपाक तयार आसा."
+        },
+        "description": {
+          "needsAttention": "मेनू, वरां वा गिरायकांची लिंक व्हड प्रमाणांत वांटचे पयलीं ती थारावची.",
+          "active": "कृती करपाची गरज ना. गिरायकांक एकाच स्त्रोता कडल्यान तुमचो सद्याचो भौशीक तपशील वापरपाक मेळटा.",
+          "readyToPlace": "तुजी गिरायक लिंक तयार आसा. ती जोड Google, Instagram, WhatsApp, QR, वा प्रिंट करचो जाका लागून गिरायक सद्याचो स्त्रोत वापरतात."
+        },
+        "link": {
+          "ready": "गिरायक जोडणी तयार आसा",
+          "missing": "गिरायक जोडगो नाशिल्लो"
+        },
+        "states": {
+          "set": "सेट कर",
+          "missing": "गायब.",
+          "ready": "तयार आसा.",
+          "notReady": "तयार ना.",
+          "live": "जिवीत.",
+          "hidden": "निष्क्रिय"
+        },
+        "tags": {
+          "menu": "मेनूः {status}",
+          "hours": "वरांः {status}",
+          "customerLink": "गिरायक लिंकः {status}",
+          "link": "लिंकः {status}",
+          "placed": "दवरिल्लेंः {count}/{total}"
+        },
+        "actions": {
+          "fix": "खंयचेर लक्ष दिवपाची गरज आसा तें थारावचें.",
+          "preview": "भौशीक मेनू पूर्वावलोकन कर",
+          "share": "मेनू वांटून घे."
+        },
+        "updated": {
+          "notUpdated": "अजून अपडेट जावंक ना",
+          "recently": "हालींच अद्ययावत केल्लें",
+          "today": "आयज अद्ययावत केलां",
+          "yesterday": "काल अद्ययावत केल्लें",
+          "daysAgo": "अद्ययावत केल्या {count, plural, one {# दीस आदीं} other {# दीस आदीं}}"
+        }
+      },
+      "ownerActions": {
+        "title": "मालकाची फुडली कृती",
+        "open": "उगडचें",
+        "placement": {
+          "notConfirmed": "अजूनय खात्री जावंक ना",
+          "today": "आयज खात्री मेळ्ळी",
+          "yesterday": "काल खात्री जाली",
+          "daysAgo": "पुश्टी जाल्ली {count, plural, one {# दीस आदीं} other {# दीस आदीं}}"
+        },
+        "status": {
+          "ready": "तयार आसा.",
+          "missing": "गायब.",
+          "set": "सेट कर",
+          "live": "जिवीत.",
+          "notLive": "जिवीत ना.",
+          "confirmedCount": "{count}/{total} हाची पुश्टी जाल्या.",
+          "on": "चालू",
+          "off": "बंद",
+          "dailyChanges": "दिसपट्टें बदल",
+          "hoursException": "वरां अपवाद",
+          "staffUse": "कर्मचाऱ्यांचो वापर",
+          "menuPrices": "मेनूचे दर",
+          "openCount": "{count, plural, one {# कृती उक्ती} other {# कृती उक्त्यो}}",
+          "stable": "स्थिर"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "गिरायक जोडणी थाराव.",
+            "description": "QR, कर्मचाऱ्यांच्यो जापो वा भौशीक प्रोफायल शेअर करचे पयलीं गिरायकांची लिंक तयार करात."
+          },
+          "setHours": {
+            "label": "वरां थारावचीं",
+            "description": "गिरायक भेट दिवचे पयलीं भौशीक उक्तें आनी बंद स्थिती स्पश्ट दवरात."
+          },
+          "publishMenu": {
+            "labelPublish": "मेनू उजवाडाक हाड.",
+            "labelOpen": "मेनू उगड.",
+            "descriptionVisible": "व्हडा प्रमाणांत वांटचे पयलीं सद्याचो मेनू उजवाडाक हाड.",
+            "descriptionHidden": "गिरायकांनी लिंक वापरचे पयलीं मेनू दिसपाक लाय."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "लिंक बसोवपाची खात्री कर",
+            "labelPlace": "गिरायकांची लिंक दवर.",
+            "descriptionPlaced": "Google, Instagram, आनी WhatsApp एकाच स्त्रोता वटेन दाखोवपाक दवरात.",
+            "descriptionUnplaced": "तीच गिरायक लिंक जोड. Google, Instagram, WhatsApp, QR, आनी छाप."
+          },
+          "openPrivateFeedback": {
+            "label": "खाजगी अभिप्राय उक्तो कर",
+            "description": "अतिथींच्या समस्यांक भौशीक पुनरावलोकनांत बदलचे पयलीं खाजगी अभिप्राय वापरात."
+          },
+          "captureDailyChange": {
+            "label": "सांग. MenuList कितें बदललें?",
+            "description": "सांग. MenuList आयज कितें बदललें आनी तयार केल्ल्या मेनू कार्डाक मान्यताय दिली."
+          },
+          "setTodayStatus": {
+            "label": "आयची स्थिती थारायात",
+            "description": "आयज बंद दवरात, उसरां उगडटात, किचन बंद करता, वा खाशेली मेनू सूचना."
+          },
+          "prepareStaffHandoff": {
+            "label": "कर्मचाऱ्यांची सोंपणी तयार कर",
+            "description": "कर्मचार्यांक मेनू लिंक, QR, आनी एकाच सुवातेरल्यान गिरायक जाप लायनी दिवच्यो."
+          },
+          "updatePrices": {
+            "label": "दर अद्ययावत करात",
+            "description": "मोल बदलपा खातीर मेनू मॅनेजर वापरात, मागीर उजवाडाक हाडचे पयलीं मान्य करात."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "मेनू मांडणी",
+        "complete": "मेनू सेटअप पुराय जाला.",
+        "ready": "मेनू सेटअप तयार आसा.",
+        "actions": {
+          "openMenu": "मेनू उगड.",
+          "createMenu": "मेनू तयार कर",
+          "reviewDetails": "तपशीलांची नियाळ घे.",
+          "publishMenu": "मेनू उजवाडाक हाड.",
+          "openSharingTools": "वांटपाची साधनां उक्तीं कर",
+          "prepareDescriptions": "वर्णन तयार कर.",
+          "addImages": "प्रतिमा जोडो.",
+          "reviewLanguageText": "भाशेच्या मजकुराचो नियाळ घे.",
+          "openMenuCheck": "मेनू तपासा उक्तो कर",
+          "updatePublicLinks": "भौशीक लिंक अद्ययावत कर",
+          "addPublicPhoto": "भौशीक फोटो घाल."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "स्त्रोत जोडलो",
+            "doneDescription": "मेनू स्त्रोत जोडिल्लो आसा.",
+            "nextDescription": "मेनू फोटो, PDF, लिंक जोडो वा हातान सुरू कर."
+          },
+          "menuImported": {
+            "label": "मेनू आयात केला",
+            "doneDescription": "{count, plural, one {# दिसपी वस्तू मेळ्ळी.} other {# दिसपी वस्तू मेळ्ळ्यो.}}",
+            "nextDescription": "मेनू आयटम आयात करात वा जोडात."
+          },
+          "keyDetailsChecked": {
+            "label": "मुखेल तपशील तपासले",
+            "doneDescription": "दर आनी मुखेल मेनू तपशील स्पश्ट आसात.",
+            "nextDescription": "उजवाडाक हाडचे पयलीं दर आनी मुखेल तपशील तपासात."
+          },
+          "menuPublished": {
+            "label": "मेन्यू उजवाडाक आयिल्लो",
+            "doneDescription": "भौशीक मेनू उजवाडाक आयल्या.",
+            "nextDescription": "गिरायकांक मेनू तयार जाता तेन्ना उजवाडाक हाडात."
+          },
+          "linkPlaced": {
+            "label": "लिंक दवरल्या",
+            "readyLabel": "लिंक तयार आसा.",
+            "doneDescription": "अधिकृत लिंक गिरायकांक तयार आसा.",
+            "progressDescription": "{total} प्लेसमेंटाची क्रिया {count} केली.",
+            "nextDescription": "मेनू उजवाडाक आयल्यार वांटपाची साधनां उगडात."
+          },
+          "descriptionsReady": {
+            "label": "वर्णन तयार आसा.",
+            "doneDescription": "दिसपी वस्तूंचें वर्णन आसता.",
+            "nextDescription": "मेनू आयटम स्पश्ट करपा खातीर वर्णन तयार करात."
+          },
+          "imagesReady": {
+            "label": "प्रतिमा तयार आसात.",
+            "doneDescription": "दिसपी वस्तूंचेर प्रतिमा आसतात.",
+            "nextDescription": "उपयुक्त पडल्यार वस्तूचे फोटो जोडो वा तयार कर."
+          },
+          "translationsReady": {
+            "label": "अनुवाद तयार आसात.",
+            "doneDescription": "वेंचून काडिल्ल्यो मेनू भाशे पुराय जाल्यांत.",
+            "nextDescription": "निवडलेल्या मेनू भाशांचो नियाळ घेयात."
+          },
+          "publicLinksAdded": {
+            "label": "भौशीक लिंक जोडल्या",
+            "doneDescription": "भौशीक कृती वा समाजीक जोडयो उपलब्ध आसात.",
+            "nextDescription": "वेवसाय पाना खातीर उपेगी भौशीक दुवे जोडो."
+          },
+          "publicPhotoAdded": {
+            "label": "भौशीक फोटो जोडलो",
+            "doneDescription": "भौशीक फोटो उपलब्ध आसा.",
+            "nextDescription": "तयार जातकच कव्हर, लोगो वा भौशीक फोटो घालात."
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "अजून बिलिंग इतिहास ना.",
     "perMonth": "/ म्हयनो",
     "contactUs": "आमचो संपर्क कर"
+  },
+  "StarterActivation": {
+    "activeTitle": "तुमचें मेनू ऑनलायन आसा",
+    "endingSoonTitle": "तुमचें मेनू ऑनलायन दवरात",
+    "publicMenuQrActive": "तुमचें भौशीक मेनू आनी QR कोड सक्रिय आसात.",
+    "activeRemaining": "तुमचो मेनू प्रवेश सक्रिय आसा.",
+    "daysRemaining": "{days, plural, one {तुमचें मेनू ऑनलायन दवरपाक # दिसा भितर एक येवजण निवडात.} other {तुमचें मेनू ऑनलायन दवरपाक # दिसां भितर एक येवजण निवडात.}}",
+    "sharingComplete": "तुमचें शेअरिंग सेटअप पुराय जालां.",
+    "sharingProgress": "{target, number} ची {count, number} वांटणी पावलां पुराय जाल्यांत.",
+    "evidenceRecorded": "आपोआप रेकॉर्ड केल्लें: {systemCount, number}. तुमी पुष्टी केल्या: {ownerCount, number}.",
+    "evidenceEmpty": "मेनू दुवो कॉपी करात वा वांटून घेयात, ताचो QR कोड डाउनलोड करात, वा तुमी तो खंय दवरला हाची खात्री करात.",
+    "keepLiveAction": "तुमचें मेनू ऑनलायन दवरात",
+    "noSubscriptionDescription": "मेनू अद्ययावत आनी गिरायक पानां उपलब्ध दवरपा खातीर येवजण निवडात.",
+    "choosePlanDescription": "तुमचें मेनू जतनाय घेतलां. तो ऑनलायन आनी अद्ययावत दवरपा खातीर एक येवजण निवडात."
   },
   "Transactions": {
     "title": "वेव्हाराचो इतिहास",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "मोबायल एप",
     "subscribeTitle": "सुरवात करपाक वर्गणी कर",
     "subscribeDescription": "तुमचो डिजिटल मेनू तयार करपाक आनी तुमचो वेवसाय वेवस्थापन करपाक सुरवात करपाची येवजण निवडात.",
-    "viewPlans": "येवजण्यो पळयात"
+    "viewPlans": "येवजण्यो पळयात",
+    "returnToMobile": "तूं डेस्कटॉप आवृत्ती पळयता. मोबायलाचेर परत वच."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR कोड",

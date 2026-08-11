@@ -12,6 +12,8 @@ The feature is mobile-relevant because local owners commonly review a reel, atta
 - Use 44px or larger controls for scene movement, variant selection, approval, retry, and render.
 - Keep overlay, script, CTA, total duration, format, actual encoding, approval, and trust state visible without horizontal scroll.
 - Allow phone camera/gallery image or video selection, narration recording, and separate audio-file selection through native controls.
+- Derive a scene-linked **Phone shot list** from the current storyboard. It tells the owner what to record, how long the shot is, whether media is already ready, and opens the matching scene without another data load.
+- Show the same deterministic opening/proof/pacing/readability/action/rights checks as desktop in a single-column layout with no horizontal scrolling.
 - Direct uploads are explicit, resumable, progress-labelled, and stay inside private CampaignCue Storage; a local preview is shown before registration.
 - Allow save, approve/reject, render, retry, and download from phone when the browser supports Canvas capture and MediaRecorder.
 - If the browser cannot record, keep the explicit **Download storyboard** action available and explain the limitation without losing the project.
@@ -31,4 +33,5 @@ The feature is mobile-relevant because local owners commonly review a reel, atta
 - Owners see `0 provider credits` and the local-processing boundary before rendering.
 - Session-local image/video/audio requires the same right-to-use confirmation as desktop.
 - Review-note, resolve, cancel, recover, result, and reusable-layout actions use 44px controls and do not require drag or hover.
+- Optional review prompts can prefill a bounded scene note; they do not require a consultant, chat service, or extra mobile route.
 - A completed file downloads using its actual MIME extension.

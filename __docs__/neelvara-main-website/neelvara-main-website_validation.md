@@ -2,9 +2,31 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** July 26, 2026
+**Last cross-check:** August 10, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
+
+---
+
+## August 10, 2026 Company-Site Benchmark And Simplification Audit
+
+- Benchmarked the current Neelvara surface against the official Automattic, 37signals, and Tiny company/portfolio sites. Adopted their direct company-first hierarchy, restrained product proof, and short route-to-product model without importing their unrelated claims or brand systems.
+- Reviewed Mailmodo only for landing-page hierarchy and CTA discipline. Its product-funnel density, social proof, conversion modules, and repeated calls to action remain intentionally out of scope for this quiet operating-company website.
+- Replaced the homepage's category-style headline with the company name as the primary first-viewport signal, followed by one clear operating statement and the exact current product relationship.
+- Removed the duplicate company-reference panel, comparison table, product map, boundary summary, right-side page summary cards, and repeated closing calls to action. The retained sections now give visitors only distinct company, product, policy, and contact information.
+- Simplified the Products page to two canonical product cards and one company/product-boundary statement. MenuList and Answerlattice retain their actual shared logo components and canonical product destinations.
+- Converted Contact into compact inbox rows and converted About, Legal, Privacy, and Terms content into unframed horizontal information rows. On small screens, every row becomes one readable column.
+- Reduced the reveal distance and duration, widened the observer entry margin, and made responsive-hidden reveal targets resolve immediately. A completed scroll no longer leaves reached content transparent.
+- Made local alias links hydration-stable. The server and first client render now agree before the client resolves `/__neelvara` or `/nv`, eliminating the prior route-prefix hydration mismatch.
+- Simplified the real catch-all `404` response to one branded recovery surface and retained its actual HTTP `404` status, `noindex` directive, product shortcuts, and 44px actions.
+- Kept Akshar as the only primary Neelvara typeface with Inter/system fallback, retained the owner-supplied SVG artwork and exact palette, kept CampaignCue and ConstantLayer absent, and added no form, analytics, preference storage, Firebase, or API behavior.
+- Public-host check: `https://neelvara.com` resolves and returns `200`, but it currently identifies GoDaddy Website Builder in the response and is not this repository implementation. No Vercel deployment or DNS change was made.
+- External product destinations `https://menulist.ai` and `https://answerlattice.com` both return `200`.
+- Email DNS publishes Google MX, SPF, Google DKIM, and DMARC (`p=none`). This verifies DNS configuration, not mailbox send/receive behavior for the three public role addresses.
+- Local route checks pass for all seven pages, `robots.txt`, `sitemap.xml`, `security.txt`, and the real `404`. Rendered checks pass at `1440x1000`, `390x844`, and `320x720` with no overflow, broken assets, small visible targets, retired product names, browser warnings/errors, or reached reveal targets left pending.
+- Metadata checks confirm one H1 per page, page-specific title/description/canonical/Open Graph values, one parseable Organization/WebSite JSON-LD graph, and only MenuList and Answerlattice in `knowsAbout`.
+- Focused Neelvara lint, logo-asset verification, environment-target verification, documentation-link integrity, documented-command verification, and scoped diff integrity pass.
+- Repository-wide TypeScript is currently blocked outside this website by `TS2802` errors in `src/lib/campaigncue/exportArchiveClient.ts:48` and `:89`; the compiler reports no Neelvara diagnostic. Those unrelated CampaignCue changes were not modified in this audit.
 
 ---
 
@@ -419,7 +441,9 @@ External product-link check:
 
 - `https://menulist.ai`: HTTP 200
 - `https://answerlattice.com`: HTTP 200
-Owner-side launch blocker: configure and verify SPF, DKIM, and DMARC for `neelvara.com` contact inboxes before treating email trust as complete.
+- `neelvara.com`: Google MX, SPF, Google DKIM, and DMARC records present
+
+Owner-side launch blocker: complete a send/receive round trip for each public role inbox before treating email delivery as verified.
 
 ---
 
@@ -437,10 +461,10 @@ The Neelvara site was recalibrated against the approved blue-rooted Neelvara bra
 | Shared glass primitive present | Pass | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment |
 | Akshar typography present | Pass | `styles.css` self-hosts Akshar and uses it as the primary font across display headings, body copy, buttons, labels, legal pages, product cards, and page chrome, with Inter only as fallback |
 | Floating glass nav present | Pass | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass` |
-| Home page rebuilt in company-site section order | Pass | Home includes hero, marquee, ledger, problem-first bento, spotlight cards, quote, comparison table, product lineup, contact routes, CTA, and footer |
-| Secondary pages redesigned | Pass | `SecondaryPage` renders mesh/glass page hero, current-color Prism panel, spotlight cards, glass text panels, policy dates where needed, and page-specific final CTAs for About, Legal, Privacy, and Terms |
-| Custom Products page | Pass | `/products` explains operated products, product boundaries, focus chips, direct product-site CTAs, and uses the shared Prism page panel |
-| Custom Contact page | Pass | `/contact` routes company inboxes, product support links, before-you-contact guidance, country of operation, and uses the shared Prism page panel |
+| Home page rebuilt in company-site section order | Pass | Home includes a brand-first hero, entity ledger, operating approach, relationship statement, two-product lineup, compact contact directory, and footer |
+| Secondary pages redesigned | Pass | `SecondaryPage` renders one clear hero, unframed policy rows, policy dates where needed, and one page-specific final action for About, Legal, Privacy, and Terms |
+| Custom Products page | Pass | `/products` explains the two distinct product jobs through two canonical product cards and one company/product-boundary statement, without a duplicate product map or hero summary card |
+| Custom Contact page | Pass | `/contact` uses compact inbox rows, product support links, and focused first-message guidance without a duplicate hero summary card or closing CTA |
 | Product/legal boundary preserved | Pass | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added |
 | Homepage transition | Pass | Hero leads directly into the compact entity ledger without a decorative or duplicate company-reference panel |
 | Solid CTA contrast | Pass | Primary CTA uses white text on Neel blue/indigo gradient |
@@ -566,7 +590,7 @@ Audit date: June 20, 2026.
 | Runtime legal copy scoped | Pass | `/legal` says product policies stay on product sites and does not claim incorporation, subsidiaries, or holding-company structure |
 | Runtime privacy copy scoped | Pass | `/privacy` identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
 | Runtime terms copy scoped | Pass | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product sites |
-| Runtime contact copy scoped | Pass | `/contact` warns not to send PAN, residential address, private registration records, or sensitive documents unless requested by the legal/privacy inbox |
+| Runtime contact copy scoped | Pass | `/contact` warns not to send private records, secrets, customer datasets, or sensitive documents unless requested by the legal/privacy inbox |
 | Structured data scoped | Pass | Rendered JSON-LD uses `knowsAbout` for MenuList and Answerlattice and does not use `owns` |
 
 Targeted legal route checks on local runtime:
@@ -610,7 +634,15 @@ npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file sr
 node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
-Result: pass.
+Result:
+
+- scoped diff integrity: pass
+- focused Neelvara lint: pass
+- Neelvara logo verifier: pass
+- environment-target verification: pass
+- documentation links: 0 broken links; 62 existing video-artifact filename warnings outside this feature
+- documented npm commands: pass
+- full TypeScript: blocked by unrelated `TS2802` errors in `src/lib/campaigncue/exportArchiveClient.ts:48` and `:89`; no Neelvara diagnostic reported
 
 ---
 
@@ -662,7 +694,7 @@ Additional measured evidence:
 - home text color: `rgb(7, 19, 35)`
 - primary CTA background: `linear-gradient(135deg, rgb(20, 87, 217) 0%, rgb(39, 55, 200) 68%, rgb(101, 66, 232) 100%)`
 - logo mark background: `url("/neelvara-logo.svg") center / contain no-repeat`
-- visible logo mark source: `public/neelvara-logo.svg`, using the uploaded 578x328 true-vector path geometry with the approved frosted parent palette
+- visible logo mark source: `public/neelvara-logo.svg`, preserving the uploaded `0 0 1135 686` true-vector canvas, one compound path, and exact approved blue-to-violet gradient colors
 - `public/neelvara-logo.png`, favicon derivatives, Apple touch icon, and manifest icon derivatives have transparent corner pixels
 - page metadata exposes title, description, canonical, Open Graph, Twitter, manifest, favicon, Apple touch icon, theme color, and Organization JSON-LD on all public pages
 - desktop home H1: `Neelvara Systems`
@@ -676,10 +708,6 @@ Additional measured evidence:
 - current-public-lineup check: Home and Products show MenuList and Answerlattice only
 - unpublished-product check: no public route renders CampaignCue
 - 404 check: unmatched Neelvara routes return HTTP `404`, `noindex`, and a plain Neelvara-branded page
-- desktop screenshot: `tmp/neelvara-blue-palette-desktop-2026-06-28.png`
-- mobile screenshot: `tmp/neelvara-blue-palette-mobile-390-2026-06-28.png`
-- SVG logo desktop screenshot: `tmp/neelvara-svg-logo-clean-desktop-2026-06-29.png`
-- SVG logo mobile screenshot: `tmp/neelvara-svg-logo-clean-mobile-390-2026-06-29.png`
 
 ---
 
@@ -687,7 +715,7 @@ Additional measured evidence:
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Feature README status updated | Pass | README now records the current-color Prism glass relayout and current validation commands |
+| Feature README status updated | Pass | README records the restrained company-site presentation, current host boundary, and validation commands |
 | Spec no longer draft | Pass | Specification status is implemented/validated and includes current-color Prism glass presentation constraints |
 | Marketing no longer pre-redesign | Pass | Presentation direction accepts scoped Neelvara mesh/prism/glass and rejects unrelated gradient systems |
 | Help/support boundary current | Pass | Helpdoc confirms the redesign does not alter support routing or data scope |
@@ -700,8 +728,7 @@ Additional measured evidence:
 
 These are owner-side or deployment-side blockers, not code blockers:
 
-- final domain ownership
-- email inbox deliverability
+- explicit Vercel deployment, domain attachment, and DNS cutover from the current GoDaddy Website Builder page
+- send/receive verification for `hello@neelvara.com`, `legal@neelvara.com`, and `privacy@neelvara.com`; authentication records already exist
 - CA/legal approval of public identity wording
 - trademark/search evidence pack
-- explicit Vercel deploy request

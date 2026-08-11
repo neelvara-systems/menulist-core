@@ -1,12 +1,9 @@
 'use client'
 
 import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
-import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
-import {
-    getOwnerBusinessCheckActionLabel,
-    getOwnerBusinessCheckOwnerMessage,
-} from '@lib/ownerBusinessAssistant/businessSignals';
+import { getOwnerBusinessHealthDashboardPresentation } from '@lib/ownerBusinessAssistant/dashboardPresentation';
 import { theme } from 'antd';
+import { useFormatter, useTranslations } from 'next-intl';
 import { LuActivity, LuArrowRight, LuCheckCircle2 } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text } from '../antd';
 
@@ -17,29 +14,18 @@ type MobileBusinessHealthMetric = {
     delta?: string;
 };
 
-const getFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
-    const feedback = current.feedbackSummary;
-    if (!feedback) return null;
-    const needsAttention = feedback.periods.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
-    if (needsAttention > 0) {
-        return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
-    }
-    const total = feedback.periods.last30Days?.totalCount ?? feedback.sampledCount;
-    return total > 0 ? 'Guest feedback is clear' : null;
-};
-
 export default function MobileBusinessHealthCard({
     current,
-    freshnessNote,
     metrics = [],
     onClick,
 }: {
     current?: OwnerBusinessHealthCurrentDoc | null;
-    freshnessNote?: string | null;
     metrics?: MobileBusinessHealthMetric[];
     onClick?: () => void;
 }) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
+    const t = useTranslations('Dashboard.owner');
 
     if (!current) return null;
 
@@ -52,11 +38,7 @@ export default function MobileBusinessHealthCard({
             : isReady
                 ? 'success'
                 : 'default';
-    const headline = current?.summary.headline || 'Latest check';
-    const ownerMessage = current?.summary.ownerMessage || 'MenuList will show Business Health after the first store check finishes.';
-    const displayFreshness = freshnessNote || current?.sourceRefs?.[0]?.freshnessLabel || current?.localDate || null;
-    const feedbackLine = getFeedbackLine(current);
-    const firstSignal = current.suggestedChecks?.[0];
+    const presentation = getOwnerBusinessHealthDashboardPresentation(current, formatter, t);
 
     return (
         <Card>
@@ -79,14 +61,14 @@ export default function MobileBusinessHealthCard({
                     </Flex>
                     <Flex flex={1} gap={6} style={{ minWidth: 0 }} vertical>
                         <Flex align="center" gap={8} justify="space-between">
-                            <Text type="secondary" style={{ fontSize: 12 }}>Business Health</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>{presentation.title}</Text>
                             <Tag color={statusColor}>
-                                {OWNER_BUSINESS_HEALTH_STATUS_LABELS[status] || status}
+                                {presentation.statusLabel}
                             </Tag>
                         </Flex>
-                        <Text strong>{headline}</Text>
-                        <Text type="secondary">{ownerMessage}</Text>
-                        {firstSignal ? (
+                        <Text strong>{presentation.headline}</Text>
+                        <Text type="secondary">{presentation.message}</Text>
+                        {presentation.firstSignal ? (
                             <Flex
                                 gap={6}
                                 style={{
@@ -97,17 +79,17 @@ export default function MobileBusinessHealthCard({
                                 }}
                                 vertical
                             >
-                                <Text strong>{getOwnerBusinessCheckActionLabel(firstSignal)}</Text>
-                                <Text type="secondary">{getOwnerBusinessCheckOwnerMessage(firstSignal)}</Text>
+                                <Text strong>{presentation.firstSignal.action}</Text>
+                                <Text type="secondary">{presentation.firstSignal.message}</Text>
                             </Flex>
                         ) : null}
-                        {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
-                        {displayFreshness ? <Text type="secondary" style={{ fontSize: 12 }}>{displayFreshness}</Text> : null}
+                        {presentation.feedbackLine ? <Text type="secondary">{presentation.feedbackLine}</Text> : null}
+                        <Text type="secondary" style={{ fontSize: 12 }}>{presentation.freshnessNote}</Text>
                     </Flex>
                 </Flex>
 
                 {current?.summary.noActionNeeded && isReady ? (
-                    <Tag color="success"><LuCheckCircle2 size={14} /> No action needed</Tag>
+                    <Tag color="success"><LuCheckCircle2 size={14} /> {presentation.noActionLabel}</Tag>
                 ) : null}
 
                 {isReady && metrics.length ? (
@@ -137,7 +119,7 @@ export default function MobileBusinessHealthCard({
 
                 {onClick ? (
                     <Button block fill="outline" onClick={onClick} style={{ justifyContent: 'center', minHeight: 44 }}>
-                        Open Business Health <LuArrowRight size={16} />
+                        {t('businessHealth.open')} <LuArrowRight size={16} />
                     </Button>
                 ) : null}
             </Flex>

@@ -1442,6 +1442,7 @@ const storeSwitcher = read('src/components/molecules/StoreSwitcher/index.tsx');
 const outletContextBanner = read('src/components/atoms/OutletContextBanner/index.tsx');
 const mobileItemEditSheet = read('src/components/mobile/sheets/ItemEditSheet.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
+const menuListEnUsLocale = read('public/locales/menulist.ai/en-US.json');
 const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
 const businessCopySetupTab = read('src/components/templates/main-app/businessSettings/tabs/BusinessCopySetupTab.tsx');
 const reviewReplyTool = read('src/components/templates/main-app/reviews/ReviewReplyTool.tsx');
@@ -1680,14 +1681,11 @@ assertIncludes(sentryShared, "summarizeMonitoringString('error_message_present'"
 assertIncludes(sentryShared, 'seen: WeakSet<object>', 'Sentry context sanitizer must guard circular context values.');
 [
     'function getConfiguredClientSentryDsn()',
-    "const publicProdDsn = String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();",
-    "const publicDevDsn = String(process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || '').trim();",
-    'return isDevelopment ? publicDevDsn || publicProdDsn : publicProdDsn || publicDevDsn;',
+    "return String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();",
     'function getConfiguredServerSentryDsn()',
-    "const serverProdDsn = String(process.env.SENTRY_DSN || '').trim();",
-    "const serverDevDsn = String(process.env.SENTRY_DEV_DSN || '').trim();",
     'const publicDsn = getConfiguredClientSentryDsn();',
-    'return isDevelopment ? serverDevDsn || serverProdDsn || publicDsn : serverProdDsn || publicDsn;',
+    "const legacyServerDsn = String(process.env.SENTRY_DSN || '').trim();",
+    'return publicDsn || legacyServerDsn;',
     'const clientDsn = getConfiguredClientSentryDsn();',
     'const serverDsn = getConfiguredServerSentryDsn();',
 ].forEach((token) => {
@@ -1747,9 +1745,9 @@ assertIncludes(testSentryPage, "const TEST_USER_CONTEXT = getBoundedRuntimeStrin
 assertIncludes(testSentryPage, "const TEST_PRODUCT_CONTEXT = getBoundedRuntimeStringContext('testProductId'", 'Sentry test page must bound test product metadata.');
 assert(!testSentryPage.includes('test-user-123'), 'Sentry test page must not emit raw fake user IDs.');
 assert(!testSentryPage.includes("productId: 'abc123'"), 'Sentry test page must not emit raw fake product IDs.');
-assertIncludes(testSentryPage, 'Dev Sentry project when enabled and configured', 'Sentry test page must say dev Sentry requires config.');
-assertIncludes(testSentryPage, 'when the production DSN is configured', 'Sentry test page must say production Sentry requires config.');
-assertIncludes(testSentryPage, 'If `ENABLE_SENTRY` and a dev DSN are configured', 'Sentry test page checklist must require the flag and DSN.');
+assertIncludes(testSentryPage, 'QA Sentry project when ENABLE_SENTRY and the scoped DSN are configured', 'Sentry test page must say QA Sentry requires config.');
+assertIncludes(testSentryPage, 'Production Sentry project from the Production-scoped DSN', 'Sentry test page must explain production env scoping.');
+assertIncludes(testSentryPage, 'If `ENABLE_SENTRY` and the environment-scoped DSN are configured', 'Sentry test page checklist must require the flag and scoped DSN.');
 assertIncludes(testSentryRoute, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Sentry test route must use the shared platform route guard.');
 assertIncludes(testSentryRoute, 'await requirePlatformAdminRouteAccess();', 'Sentry test route must check platform admin access before rendering diagnostics.');
 assert(!testSentryRoute.includes('Access: Requires authentication (platform routes)'), 'Sentry test route docs must not imply generic authentication is sufficient.');
@@ -2438,7 +2436,7 @@ assert(!ownerBusinessAssistantAnswerHook.includes('err.message === OWNER_BUSINES
     ['mobile basic settings screen', mobileBasicSettingsScreen, 'mobile_basic_settings_logo_prepare_failed'],
     ['mobile Business Copy setup screen', mobileBusinessCopySetupScreen, 'mobile_business_copy_generation_failed'],
     ['mobile item edit sheet', mobileItemEditSheet, 'mobile_item_image_prepare_failed'],
-    ['owner assistant panel', ownerAssistantPanel, 'Business Health could not answer that.'],
+    ['owner assistant panel', ownerAssistantPanel, "message.error(t('businessHealth.assistant.answerError'))"],
     ['business settings screen', businessSettings, 'business_settings_logo_prepare_failed'],
     ['Business Copy setup tab', businessCopySetupTab, 'business_settings_business_copy_generation_failed'],
     ['review reply tool', reviewReplyTool, 'desktop_review_reply_generation_failed'],
@@ -2452,6 +2450,7 @@ assert(!ownerBusinessAssistantAnswerHook.includes('err.message === OWNER_BUSINES
     assertIncludes(source, expectedToken, `${label} must keep bounded diagnostics or fixed owner-safe copy for failure paths.`);
     assertNoOwnerVisibleRawErrorMessage(source, label);
 });
+assertIncludes(menuListEnUsLocale, '"answerError": "Business Health could not answer that."', 'Owner assistant locale must keep fixed owner-safe failure copy.');
 assertIncludes(imageUploadModal, 'menu_editor_item_image_prepare_failed', 'Image upload modal must code item image preparation failures.');
 assertIncludes(imageUploadModal, 'menu_editor_batch_image_generation_start_failed', 'Image upload modal must code batch trigger acknowledgement failures.');
 assert(!imageUploadModal.includes('menu_editor_batch_image_job_mark_failed'), 'Image upload modal must not restore retired client-owned failed-job mutation diagnostics.');

@@ -10,9 +10,16 @@ import {
     OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
+import {
+    formatDashboardPercent,
+    formatDashboardWeekRange,
+    getDashboardLanguageLabel,
+    getOwnerDashboardSourceLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
+import { formatDateKey } from '@util/dateTime';
 import { formatNumber } from '@util/formatters';
 import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography, theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import React from 'react';
 import {
     LuArrowDownRight,
@@ -40,24 +47,11 @@ interface OBPMetricsCardProps {
     mode: OBPCardMode;
 }
 
-function dashboardLabel(
-    t: DashboardTranslator,
-    key: string,
-    fallback: string,
-    values?: Record<string, string | number>,
-) {
-    try {
-        return t(key, values);
-    } catch {
-        return fallback;
-    }
-}
-
 function ChangeIndicator({ change, t }: { change: number | null; t: DashboardTranslator }) {
     if (change === null) return <Text type="secondary" style={{ fontSize: 11 }}>{t('obp.noComparison')}</Text>;
     if (change === 0) return <Tag icon={<LuMinus size={10} />} color="default" style={{ fontSize: 11 }}>{t('obp.sameAsLastWeek')}</Tag>;
-    if (change > 0) return <Tag icon={<LuArrowUpRight size={10} />} color="success" style={{ fontSize: 11 }}>{t('weekly.vsLastWeek', { sign: '+', change })}</Tag>;
-    return <Tag icon={<LuArrowDownRight size={10} />} color="warning" style={{ fontSize: 11 }}>{t('weekly.vsLastWeek', { sign: '', change })}</Tag>;
+    if (change > 0) return <Tag icon={<LuArrowUpRight size={10} />} color="success" style={{ fontSize: 11 }}>{t('weekly.changeVsLastWeek', { change: formatDashboardPercent(change, true) })}</Tag>;
+    return <Tag icon={<LuArrowDownRight size={10} />} color="warning" style={{ fontSize: 11 }}>{t('weekly.changeVsLastWeek', { change: formatDashboardPercent(change, true) })}</Tag>;
 }
 
 function ActionBreakdown({ actions, t }: { actions: OBPActionBreakdown; t: DashboardTranslator }) {
@@ -66,11 +60,11 @@ function ActionBreakdown({ actions, t }: { actions: OBPActionBreakdown; t: Dashb
 
     return (
         <Flex gap={16} wrap="wrap">
-            {actions.call > 0 && <Statistic title={t('actions.calls')} value={actions.call} prefix={<LuPhone size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.whatsapp > 0 && <Statistic title={t('actions.whatsapp')} value={actions.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.directions > 0 && <Statistic title={t('actions.directions')} value={actions.directions} prefix={<LuMapPin size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.reserve > 0 && <Statistic title={t('actions.reserve')} value={actions.reserve} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.order > 0 && <Statistic title={t('actions.order')} value={actions.order} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.call > 0 && <Statistic title={t('actions.calls')} value={formatNumber(actions.call)} prefix={<LuPhone size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.whatsapp > 0 && <Statistic title={t('actions.whatsapp')} value={formatNumber(actions.whatsapp)} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.directions > 0 && <Statistic title={t('actions.directions')} value={formatNumber(actions.directions)} prefix={<LuMapPin size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.reserve > 0 && <Statistic title={t('actions.reserve')} value={formatNumber(actions.reserve)} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.order > 0 && <Statistic title={t('actions.order')} value={formatNumber(actions.order)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
@@ -81,9 +75,9 @@ function ShareBreakdown({ shares, t }: { shares: OBPShareBreakdown; t: Dashboard
 
     return (
         <Flex gap={16} wrap="wrap">
-            {shares.whatsapp > 0 && <Statistic title={t('obp.whatsappShares')} value={shares.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {shares.copy_link > 0 && <Statistic title={t('obp.copyLink')} value={shares.copy_link} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {shares.copy_message > 0 && <Statistic title={t('obp.copyMessage')} value={shares.copy_message} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.whatsapp > 0 && <Statistic title={t('obp.whatsappShares')} value={formatNumber(shares.whatsapp)} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.copy_link > 0 && <Statistic title={t('obp.copyLink')} value={formatNumber(shares.copy_link)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.copy_message > 0 && <Statistic title={t('obp.copyMessage')} value={formatNumber(shares.copy_message)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
@@ -94,10 +88,10 @@ function LinkBreakdown({ links, t }: { links: OBPLinkBreakdown; t: DashboardTran
 
     return (
         <Flex gap={16} wrap="wrap">
-            {links.google_review > 0 && <Statistic title={t('obp.googleReviews')} value={links.google_review} prefix={<LuGlobe size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.instagram > 0 && <Statistic title={t('obp.instagram')} value={links.instagram} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.facebook > 0 && <Statistic title={t('obp.facebook')} value={links.facebook} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.website > 0 && <Statistic title={t('obp.website')} value={links.website} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.google_review > 0 && <Statistic title={t('obp.googleReviews')} value={formatNumber(links.google_review)} prefix={<LuGlobe size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.instagram > 0 && <Statistic title={t('obp.instagram')} value={formatNumber(links.instagram)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.facebook > 0 && <Statistic title={t('obp.facebook')} value={formatNumber(links.facebook)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.website > 0 && <Statistic title={t('obp.website')} value={formatNumber(links.website)} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
@@ -117,7 +111,7 @@ function SourceBreakdown({ sources, t }: { sources?: OBPSourceBreakdown[]; t: Da
                 {rows.slice(0, 6).map((source) => (
                     <Card key={source.source} size="small" styles={{ body: { padding: '8px 10px' } }}>
                         <Flex vertical gap={2}>
-                            <Text strong style={{ fontSize: 12 }}>{source.label}</Text>
+                            <Text strong style={{ fontSize: 12 }}>{getOwnerDashboardSourceLabel(source.source, source.label, t)}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 {t('obp.sourceViews', { count: formatNumber(source.views) })}
                                 {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: formatNumber(source.menuClicks) })}` : ''}
@@ -139,24 +133,24 @@ function OpenHoursBreakdown({ breakdown, t }: { breakdown?: OBPOpenHoursActionBr
     return (
         <div>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                {dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours')}
+                {t('details.sections.openHoursActions')}
             </Text>
             <Flex gap={16} wrap="wrap">
                 {Number(breakdown?.open || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.open', 'Actions when open')} value={breakdown?.open || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={t('details.openHours.open')} value={formatNumber(breakdown?.open || 0)} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
                 {Number(breakdown?.closed || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.closed', 'Actions when closed')} value={breakdown?.closed || 0} suffix={`${breakdown?.closedShare || 0}%`} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={t('details.openHours.closed')} value={formatNumber(breakdown?.closed || 0)} suffix={formatDashboardPercent(breakdown?.closedShare)} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
                 {Number(breakdown?.unknown || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable')} value={breakdown?.unknown || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={t('details.openHours.unknown')} value={formatNumber(breakdown?.unknown || 0)} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
             </Flex>
         </div>
     );
 }
 
-function LanguageBreakdown({ languages, t }: { languages?: OBPLanguageUsage[]; t: DashboardTranslator }) {
+function LanguageBreakdown({ languages, locale, t }: { languages?: OBPLanguageUsage[]; locale: string; t: DashboardTranslator }) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
     ));
@@ -171,7 +165,7 @@ function LanguageBreakdown({ languages, t }: { languages?: OBPLanguageUsage[]; t
                 {rows.slice(0, 5).map((language) => (
                     <Card key={language.language} size="small" styles={{ body: { padding: '8px 10px' } }}>
                         <Flex vertical gap={2}>
-                            <Text strong style={{ fontSize: 12 }}>{language.label}</Text>
+                            <Text strong style={{ fontSize: 12 }}>{getDashboardLanguageLabel(language.language, language.label, locale)}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 {t('obp.pageOpens', { count: formatNumber(Math.max(language.sessions, language.views)) })}
                                 {language.adoptions > 0 ? ` · ${t('obp.stayedAfterSwitch', { count: formatNumber(language.adoptions) })}` : ''}
@@ -186,6 +180,7 @@ function LanguageBreakdown({ languages, t }: { languages?: OBPLanguageUsage[]; t
 
 function WeeklyTrend({ weeks, t }: { weeks: OBPHistoricalWeek[]; t: DashboardTranslator }) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
 
     if (weeks.length === 0) return null;
     const maxViews = Math.max(...weeks.map((week) => week.views), 1);
@@ -207,14 +202,14 @@ function WeeklyTrend({ weeks, t }: { weeks: OBPHistoricalWeek[]; t: DashboardTra
                                 transition: 'height 0.3s',
                             }}
                         />
-                        <Text style={{ fontSize: 10, color: token.colorTextSecondary }}>{week.views}</Text>
+                        <Text style={{ fontSize: 10, color: token.colorTextSecondary }}>{formatNumber(week.views)}</Text>
                     </Flex>
                 ))}
             </Flex>
             <Flex justify="space-between" style={{ marginTop: 2 }}>
                 {weeks.map((week, index) => (
                     <Text key={index} style={{ fontSize: 9, color: token.colorTextTertiary, flex: 1, textAlign: 'center' }}>
-                        {week.weekLabel}
+                        {formatDashboardWeekRange(week.weekStart, week.weekEnd, formatter, t('views.last7Days'))}
                     </Text>
                 ))}
             </Flex>
@@ -222,27 +217,27 @@ function WeeklyTrend({ weeks, t }: { weeks: OBPHistoricalWeek[]; t: DashboardTra
     );
 }
 
-function renderPeriodGrid(metrics: OBPPeriodMetrics, t: DashboardTranslator) {
+function renderPeriodGrid(metrics: OBPPeriodMetrics, locale: string, t: DashboardTranslator) {
     return (
         <>
             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('obp.pageViews')} value={metrics.views} prefix={<LuGlobe size={14} />} />
+                    <Statistic title={t('obp.pageViews')} value={formatNumber(metrics.views)} prefix={<LuGlobe size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('obp.viewMenuClicks')} value={metrics.menuClicks} prefix={<LuExternalLink size={14} />} />
+                    <Statistic title={t('obp.viewMenuClicks')} value={formatNumber(metrics.menuClicks)} prefix={<LuExternalLink size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('obp.actions')} value={metrics.actionClicks} prefix={<LuTrendingUp size={14} />} />
+                    <Statistic title={t('obp.actions')} value={formatNumber(metrics.actionClicks)} prefix={<LuTrendingUp size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('obp.linkTaps')} value={metrics.linkClicks} prefix={<LuExternalLink size={14} />} />
+                    <Statistic title={t('obp.linkTaps')} value={formatNumber(metrics.linkClicks)} prefix={<LuExternalLink size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('obp.shares')} value={metrics.shares} />
+                    <Statistic title={t('obp.shares')} value={formatNumber(metrics.shares)} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title={t('metrics.daysActive')} value={metrics.daysWithData} />
+                    <Statistic title={t('metrics.daysActive')} value={formatNumber(metrics.daysWithData)} />
                 </Col>
             </Row>
             <div style={{ marginTop: 12 }}>
@@ -261,7 +256,7 @@ function renderPeriodGrid(metrics: OBPPeriodMetrics, t: DashboardTranslator) {
                 <OpenHoursBreakdown breakdown={metrics.openHoursActionBreakdown} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
-                <LanguageBreakdown languages={metrics.topLanguages} t={t} />
+                <LanguageBreakdown languages={metrics.topLanguages} locale={locale} t={t} />
             </div>
         </>
     );
@@ -269,6 +264,8 @@ function renderPeriodGrid(metrics: OBPPeriodMetrics, t: DashboardTranslator) {
 
 const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingToday, mode }) => {
     const t = useTranslations('Dashboard.owner');
+    const formatter = useFormatter();
+    const locale = useLocale();
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
     const today = data?.today || null;
@@ -290,7 +287,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     {t('obp.sharedInfo')}
                 </Text>
                 {today ? (
-                    renderPeriodGrid(today, t)
+                    renderPeriodGrid(today, locale, t)
                 ) : (
                     <Text type="secondary">{t('obp.noActivityToday')}</Text>
                 )}
@@ -325,7 +322,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                 variant="borderless"
                 title={
                     <span>
-                        <LuGlobe size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                        <LuGlobe size={16} style={{ marginInlineEnd: 8, verticalAlign: 'middle' }} />
                         {modeTitle}
                     </span>
                 }
@@ -341,7 +338,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
             variant="borderless"
             title={
                 <span>
-                    <LuGlobe size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                    <LuGlobe size={16} style={{ marginInlineEnd: 8, verticalAlign: 'middle' }} />
                     {modeTitle}
                 </span>
             }
@@ -366,19 +363,19 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                             <Text type="secondary" style={{ fontSize: 12 }}>{t('views.last7Days')}</Text>
                             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title={t('obp.pageViews')} value={overview.wtd.views} prefix={<LuGlobe size={14} />} />
+                                    <Statistic title={t('obp.pageViews')} value={formatNumber(overview.wtd.views)} prefix={<LuGlobe size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title={t('obp.viewMenuClicks')} value={overview.wtd.menuClicks} prefix={<LuExternalLink size={14} />} />
+                                    <Statistic title={t('obp.viewMenuClicks')} value={formatNumber(overview.wtd.menuClicks)} prefix={<LuExternalLink size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title={t('obp.actions')} value={overview.wtd.actionClicks} prefix={<LuTrendingUp size={14} />} />
+                                    <Statistic title={t('obp.actions')} value={formatNumber(overview.wtd.actionClicks)} prefix={<LuTrendingUp size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title={t('obp.linkTaps')} value={overview.wtd.linkClicks} prefix={<LuExternalLink size={14} />} />
+                                    <Statistic title={t('obp.linkTaps')} value={formatNumber(overview.wtd.linkClicks)} prefix={<LuExternalLink size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title={t('obp.shares')} value={overview.wtd.shares} />
+                                    <Statistic title={t('obp.shares')} value={formatNumber(overview.wtd.shares)} />
                                 </Col>
                                 <Col xs={12} sm={6}>
                                     <div style={{ paddingTop: 4 }}>
@@ -402,7 +399,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                                 <OpenHoursBreakdown breakdown={overview.wtd.openHoursActionBreakdown} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
-                                <LanguageBreakdown languages={overview.wtd.topLanguages} t={t} />
+                                <LanguageBreakdown languages={overview.wtd.topLanguages} locale={locale} t={t} />
                             </div>
                         </>
                     ) : (
@@ -412,8 +409,8 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     {overview?.mtd ? (
                         <>
                             <Divider style={{ margin: '16px 0 12px' }} />
-                            <Text type="secondary" style={{ fontSize: 12 }}>{overview.mtd.monthName}</Text>
-                            {renderPeriodGrid(overview.mtd, t)}
+                            <Text type="secondary" style={{ fontSize: 12 }}>{t('periods.thisMonth')}</Text>
+                            {renderPeriodGrid(overview.mtd, locale, t)}
                         </>
                     ) : null}
 
@@ -425,7 +422,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     ) : null}
                 </>
             ) : selectedMetrics ? (
-                renderPeriodGrid(selectedMetrics, t)
+                renderPeriodGrid(selectedMetrics, locale, t)
             ) : (
                 <Empty description={<Text type="secondary">{t('obp.noSettledActivityPeriod')}</Text>} />
             )}
@@ -445,7 +442,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                             </Text>
                             {overall.firstDataDate ? (
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    {t('overall.since', { date: overall.firstDataDate })}
+                                    {t('overall.since', { date: formatDateKey(overall.firstDataDate, formatter) })}
                                 </Text>
                             ) : null}
                         </Flex>
@@ -465,7 +462,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                             <OpenHoursBreakdown breakdown={overall.lifetimeOpenHoursActionBreakdown} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
-                            <LanguageBreakdown languages={overall.lifetimeLanguages} t={t} />
+                            <LanguageBreakdown languages={overall.lifetimeLanguages} locale={locale} t={t} />
                         </div>
                     </>
                 ) : (

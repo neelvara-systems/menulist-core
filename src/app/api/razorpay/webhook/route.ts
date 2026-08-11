@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
@@ -267,7 +268,7 @@ export async function POST(request: NextRequest) {
     // 1. Security First: Validate the webhook signature before processing anything.
     // This is a critical step to ensure the request is genuinely from Razorpay.
     const signature = request.headers.get('x-razorpay-signature');
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const secret = menulistServerEnv.razorpayWebhookSecret;
 
     if (!signature || !secret) {
         logger.warn('Webhook validation failed', {

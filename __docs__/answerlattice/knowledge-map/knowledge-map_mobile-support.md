@@ -12,6 +12,8 @@ The Knowledge Map remains inside the existing Answerlattice governance route and
 - changing focus preserves the current route.
 - an inbound entity handoff selects that entity only after it is found in the
   exact-scope map;
+- a valid but absent inbound entity keeps the map unselected and shows the same
+  explicit unavailable warning as desktop;
 - **Review canonical answers** opens the responsive existing editor filtered to
   the selected entity.
 

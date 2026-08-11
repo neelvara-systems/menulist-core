@@ -428,7 +428,8 @@
         "daily": "전날",
         "weekly": "지난 7일",
         "monthly": "이번 달",
-        "overall": "전체"
+        "overall": "전체",
+        "graph": "그래프"
       },
       "today": {
         "noMenuActivityToday": "오늘은 아직 메뉴 활동이 없습니다.",
@@ -454,17 +455,17 @@
         "noResultSearches": "결과가 없는 검색",
         "unavailableInterest": "사용할 수 없는 이자",
         "topLanguage": "주요 언어",
-        "smartPicksShown": "스마트 추천 표시",
-        "smartPicksClicks": "스마트 추천 클릭수",
-        "smartPicksTaps": "스마트 픽 탭",
-        "smartPicksUsed": "사용된 스마트 픽",
-        "smartPicksEngagement": "스마트 픽 참여",
+        "smartPicksShown": "Smart Picks 출연",
+        "smartPicksClicks": "Smart Picks 클릭",
+        "smartPicksTaps": "Smart Picks 타이프",
+        "smartPicksUsed": "Smart Picks 사용된",
+        "smartPicksEngagement": "Smart Picks 헌신",
         "totalMenuScans": "전체 메뉴 스캔",
         "totalItemClicks": "총 항목 클릭수",
         "activeDays": "활동일수",
         "daysActive": "활성 일수",
         "avgDailyScans": "평균 일일 검사",
-        "smartPicksActive": "스마트 픽 활성",
+        "smartPicksActive": "Smart Picks 활성화",
         "engagementRate": "참여율",
         "topItem": "상위 항목",
         "topCategory": "상위 카테고리"
@@ -473,8 +474,8 @@
         "itemClicks": "고객이 항목을 탭한 횟수",
         "engagedSessions": "고객이 실제 메뉴에 관심을 보인 세션",
         "actionRate": "최종 고객 행동으로 이어진 세션",
-        "smartPicksShown": "페이지에 스마트 추천이 표시된 횟수",
-        "smartPicksUsed": "스마트 픽을 사용한 고객 비율",
+        "smartPicksShown": "얼마나 자주 Smart Picks 당신의 페이지에 나타났다",
+        "smartPicksUsed": "사용하는 고객의 비율 Smart Picks",
         "customerActions": "통화, WhatsApp, 길찾기, 예약, 주문 등의 최종 작업",
         "searches": "메뉴에서 중복 제거된 검색 수요",
         "unavailableInterest": "사용할 수 없는 항목을 탭합니다"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "어제 기록된 활동이 없습니다",
         "noAnalyticsYet": "아직 데이터가 없습니다. 고객이 보기 시작하면 귀하의 분석이 표시됩니다.",
-        "noItemClicksYet": "아직 항목 클릭이 없습니다"
+        "noItemClicksYet": "아직 항목 클릭이 없습니다",
+        "lowActivityTitle": "낮은 활동",
+        "lowActivityDescription": "이 기간에 대해 유용한 결론을 내릴 수 있는 충분한 활동이 없었다.",
+        "noWeeklyData": "아직 지난 7일 동안 정해진 메뉴 활동이 없습니다.",
+        "noMonthlyData": "아직 설정된 메뉴 활동이 이번 달에 사용할 수 없습니다."
       },
       "weekly": {
-        "vsLastWeek": "지난주 대비 {sign}{change}%"
+        "vsLastWeek": "지난주 대비 {sign}{change}%",
+        "changeVsLastWeek": "{change} vs 지난주 vs 지난 주"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# 기록된 활동일} other {# 기록된 활동 일수}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "예",
         "no": "아니요",
-        "notAvailable": "해당 사항 없음",
+        "notAvailable": "N/A",
         "active": "활성",
         "lowActivity": "낮은 활동",
         "noData": "데이터 없음"
@@ -527,17 +533,30 @@
         "waitingForFirstScan": "첫 번째 스캔을 기다리는 중",
         "weeklyInsights": "주간 통계",
         "last4WeeksComparison": "지난 4주 비교",
-        "historicalDataWillAppear": "이전 데이터는 몇 주 후에 표시됩니다."
+        "historicalDataWillAppear": "이전 데이터는 몇 주 후에 표시됩니다.",
+        "statusMessages": {
+          "working": "고객이 현재 메뉴를 사용하고 있습니다.",
+          "low_activity": "고객 활동이 아직도 이루어지고 있습니다. 현재 메뉴는 계속 사용할 수 있습니다.",
+          "no_data": "고객이 메뉴를 여는 것을 시작하면 활동이 나타납니다."
+        }
       },
       "aiSummary": {
         "daily": "전날 개요",
         "weekly": "이번 주 개요",
-        "monthly": "이번 달 요약"
+        "monthly": "이번 달 요약",
+        "localized": {
+          "noActivity": "이 기간 동안 정해진 고객 활동은 기록되지 않았습니다.",
+          "menuViews": "고객이 메뉴를 {count} 번 열었습니다.",
+          "itemTaps": "고객이 메뉴 항목을 {count} 번 탭했습니다.",
+          "customerActions": "고객이 {count} 마지막 작업을 완료했습니다.",
+          "searches": "고객이 {count} 번 이 메뉴를 검색했습니다.",
+          "unavailableInterest": "사용할 수 없는 항목은 {count} 탭을 받았습니다."
+        }
       },
       "actions": {
         "call": "전화",
         "calls": "전화",
-        "whatsapp": "왓츠앱",
+        "whatsapp": "WhatsApp",
         "directions": "길 찾기",
         "reserve": "예약",
         "order": "주문"
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} 방문수 · {rate}%",
         "markDoneSaved": "완료로 표시되었습니다. 다음 분석 요약이 준비되면 결과가 업데이트됩니다.",
         "markDoneFailed": "이 작업을 완료로 표시할 수 없습니다. 다시 시도해 보세요.",
-        "markDone": "완료로 표시"
+        "markDone": "완료로 표시",
+        "bestSourceStatsFormatted": "· {visits} 방문 · {rate} 액션 비율",
+        "bestSourceMobileFormatted": "현재 최고의 소스: {source} · {visits} 방문자 · {rate} 액션 속도",
+        "sourceQualityTagFormatted": "{source}: {visits} 방문 · {sessions} 액션 세션 · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} 방문 · {rate} 페이지",
+        "priorities": {
+          "high": "높은 우선순위",
+          "medium": "중간 우선순위",
+          "low": "낮은 우선순위"
+        },
+        "confidence": {
+          "stable": {
+            "label": "안정적",
+            "message": "사용 가능한 액티비티는 명확한 메뉴 확인을 지원합니다."
+          },
+          "watch": {
+            "label": "계속 지켜보세요.",
+            "message": "일부 활동은 메뉴를 바꾸기 전에 다시 확인해야 할 수도 있습니다."
+          },
+          "no_data": {
+            "label": "더 많은 데이터가 필요합니다.",
+            "message": "결론을 내리기 전에 고객 활동이 더 정착될 때까지 기다려야 합니다."
+          }
+        },
+        "localizedActions": {
+          "reason": "최근 결제된 고객 활동을 기반으로 합니다.",
+          "availability": {
+            "title": "항목 가용성을 확인하십시오.",
+            "description": "사용할 수 없거나 숨겨진 항목을 복원해야 하는지 보이지 않게 유지해야 하는 지 확인합니다.",
+            "action": "이용 가능 여부 검토"
+          },
+          "customerActions": {
+            "title": "고객 행동을 검토하십시오.",
+            "description": "행동을 취하기 전에 고객이 사용하는 메뉴 세부 정보와 링크를 확인하십시오.",
+            "action": "고객 행동을 검토하십시오."
+          },
+          "details": {
+            "title": "아이템 세부 정보 개선",
+            "description": "보다 명확한 정보가 필요할 수 있는 항목 이름, 옵션, 설명 및 이미지를 검토하십시오.",
+            "action": "항목 세부 정보를 검토하십시오."
+          },
+          "general": {
+            "title": "보다 분명한 신호가 나타날 때까지 기다려라.",
+            "description": "더 정착된 활동을 사용할 수 있을 때까지 현재 메뉴를 안정적으로 유지합니다.",
+            "action": "나중에 검토하십시오."
+          },
+          "menuOrder": {
+            "title": "메뉴 순서를 검토하십시오.",
+            "description": "중요한 품목과 카테고리가 고객이 쉽게 찾을 수 있는지 확인하십시오.",
+            "action": "메뉴 순서를 검토하십시오."
+          },
+          "pricing": {
+            "title": "가격 정보 검토",
+            "description": "최신 고객 관심 신호에 연결된 가격을 확인하십시오.",
+            "action": "리뷰 가격"
+          },
+          "search": {
+            "title": "고객 검색 내용을 검토해 보세요.",
+            "description": "고객이 유용한 메뉴 결과로 이어지지 않을 수 있는 검색을 확인합니다.",
+            "action": "검색을 검토합니다."
+          },
+          "source": {
+            "title": "고객 입력 소스를 검토하십시오.",
+            "description": "공개 링크와 QR 배치가 고객을 현재 메뉴로 가리키는지 확인합니다.",
+            "action": "공개 링크를 검토하십시오."
+          },
+          "timing": {
+            "title": "메뉴 타이밍을 검토하세요.",
+            "description": "고객이 검색할 때 시간 지정 카테고리와 가용성이 일치하는지 확인합니다.",
+            "action": "검토 타이밍 검사 타임링크"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "완료됨으로 표시됨",
+            "message": "결과는 더 많은 정리된 활동이 이용 가능한 후에 확인됩니다."
+          },
+          "improved": {
+            "label": "개선된 디자인",
+            "message": "다음 체크는 개선된 결과를 보여준다."
+          },
+          "no_clear_change": {
+            "label": "명확한 변화는 없다.",
+            "message": "다음으로 처리된 수표는 분명한 변화를 보이지 않았다."
+          },
+          "not_enough_data": {
+            "label": "더 많은 데이터가 필요합니다.",
+            "message": "이 변화를 판단하기에 아직 정착된 활동이 충분하지 않습니다."
+          },
+          "pending": {
+            "label": "보류 중인 수표",
+            "message": "MenuList는 더 많은 정리된 활동이 있을 때 이를 확인할 것입니다."
+          }
+        }
       },
       "details": {
         "menuDetails": "메뉴 세부정보",
@@ -574,7 +686,7 @@
           "unavailableInterest": "사용할 수 없는 이자",
           "languages": "언어",
           "filters": "필터",
-          "smartPicks": "현명한 추천",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "영업시간별 조치"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "메뉴 보기",
-          "itemTaps": "아이템 탭",
+          "itemTaps": "항목 탭",
           "menuSessions": "메뉴 세션",
           "engagedSessions": "활동이 있는 세션",
           "actionSessions": "액션 세션",
@@ -617,6 +729,12 @@
           "open": "열 때 수행할 작업",
           "unknown": "근무시간 상태를 확인할 수 없을 때의 조치",
           "closedShare": "기록된 모든 작업 중 {rate}%가 닫혀 있는 동안 발생했습니다."
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} 사용할 수 없는 taps가 있습니다.",
+          "strongItem": "{count} 항목 탭",
+          "needsWork": "{count} 뷰, 탭 없음",
+          "gettingAttention": "{count} 조회수"
         }
       },
       "smartPicks": {
@@ -650,8 +768,8 @@
         "copyLink": "링크 복사",
         "copyMessage": "메시지 복사",
         "googleReviews": "Google 리뷰",
-        "instagram": "인스타그램",
-        "facebook": "페이스북",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
         "website": "웹사이트",
         "sourceViews": "{count} 조회수",
         "sourceMenu": "{count} 메뉴",
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "바로가기 분석",
         "installsByPlatform": "플랫폼별 설치 수",
         "appStickiness": "앱 끈적임",
-        "returningOpens30d": "반품 개시(30일)",
         "avgOpensPerInstall": "설치당 평균 오픈 횟수",
         "iosManualInstalls": "iOS 수동 설치",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "온라인 주문"
         },
         "platforms": {
-          "ios": "iOS iOS 12.4 이상에서 지원된다.",
-          "iosLong": "iOS(아이폰/아이패드)",
-          "android": "안드로이드",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "데스크톱",
           "other": "기타"
-        }
+        },
+        "tryAgainLater": "나중에 다시 시도해 보십시오."
       },
       "projectSelector": {
         "deleted": "삭제",
@@ -760,8 +878,9 @@
         "updateProfileWebsite": "Google 비즈니스 프로필 웹사이트를 {url}로 업데이트",
         "copied": "복사됨",
         "copy": "복사",
-        "openGoogle": "구글 열기",
-        "done": "완료"
+        "openGoogle": "오픈 Google",
+        "done": "완료",
+        "couldNotOpen": "Google 비즈니스 프로필을 열 수 없습니다."
       },
       "behaviorNudge": {
         "linkCopied": "링크가 복사되었습니다",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "가장 중요한 문제 검토",
         "repairMenu": "수리 메뉴",
         "review": "검토",
-        "repair": "수리"
+        "repair": "수리",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# 항목에 설명이 없습니다.} other {# 항목에 대한 설명이 누락되었습니다.}}",
+            "ok": "모든 항목은 설명이 있습니다.",
+            "help": "설명은 고객이 각 제품을 이해하는 데 도움이 됩니다."
+          },
+          "images": {
+            "warning": "{count, plural, one {# 항목에 이미지가 없습니다.} other {# 항목은 누락된 이미지입니다.}}",
+            "ok": "모든 항목은 이미지가 있습니다.",
+            "help": "이미지는 고객이 더 빠르게 선택할 수 있도록 도와줄 수 있습니다."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# 범주에 아이콘이 없습니다.} other {# 카테고리에 아이콘이 없습니다.}}",
+            "ok": "모든 카테고리는 아이콘이 있습니다.",
+            "help": "아이콘은 카테고리를 더욱 쉽게 스캔할 수 있도록 해준다."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# 항목에 가격이 없습니다.} other {# 항목의 가격이 누락되었습니다.}}",
+            "ok": "모든 항목은 가격이 있습니다.",
+            "help": "고객은 결정하기 전에 가격을 비교합니다."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# 항목이 고객에게 보이지 않도록 숨겨졌습니다.} other {# 항목은 고객에게 보이지 않도록 숨겨져 있습니다.}}",
+            "ok": "숨겨진 항목이 없습니다.",
+            "help": "숨겨진 항목은 공개 메뉴에 나타나지 않습니다."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# 가격은 검토가 필요합니다.} other {# 가격은 검토가 필요합니다.}}",
+            "ok": "가격은 예상 범위 내에 있습니다.",
+            "help": "MenuList는 동일한 카테고리 내의 단일 품목 가격을 비교합니다. 의도된 가격이 검토되었음을 표시합니다."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# 항목에 대한 번역이 없습니다.} other {# 항목의 번역이 누락되었습니다.}}",
+            "ok": "보이는 모든 항목은 번역됩니다.",
+            "help": "일부 항목은 선택한 메뉴 언어에서 불완전합니다."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# 메뉴 세부 정보에 대한 번역이 없습니다.} other {# 메뉴 세부 정보는 번역이 없습니다.}}",
+            "ok": "메뉴 세부 정보는 번역됩니다.",
+            "help": "선택한 메뉴 언어에서 메ニュー 이름, 설명 또는 노트가 불완전합니다."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "링크 복사됨",
+        "direct": "직접적인",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "메뉴 키트 메인 키",
+        "nativeShare": "장치 공유 기기 공유",
+        "obp": "비즈니스 페이지",
+        "other": "기타",
+        "qr": "QR 코드를 입력합니다.",
+        "shortcut": "짧은 앱",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "비즈니스 건강",
+        "open": "오픈 비즈니스 건강",
+        "today": "오늘",
+        "latestActivity": "최근 활동",
+        "noActionNeeded": "필요한 조치 없음",
+        "status": {
+          "stable": "안정적",
+          "watch": "주의가 필요함",
+          "needs_review": "검토가 필요합니다.",
+          "insufficient_data": "더 많은 데이터가 필요합니다.",
+          "stale": "새 체크가 필요합니다.",
+          "not_ready": "준비하고 있어요."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# 고객 맞춤형 세부사항은 검토가 필요합니다.} other {# 고객 맞춤형 세부 정보를 검토해야 합니다.}}",
+          "stable": {
+            "headline": "귀하의 공개 정보는 안정적입니다.",
+            "message": "최신 검사에서 조치를 취해야 할 고객 관련 문제는 없습니다."
+          },
+          "watch": {
+            "headline": "세부 사항에 주의를 기울여야 할 수도 있습니다.",
+            "message": "공개 정보를 변경하기 전에 제안된 확인을 검토하십시오."
+          },
+          "needs_review": {
+            "headline": "고객 맞춤형 세부사항을 검토합니다.",
+            "message": "하나 이상의 공개 세부 정보를 확인해야 합니다."
+          },
+          "insufficient_data": {
+            "headline": "더 많은 활동이 필요하다.",
+            "message": "MenuList가 유용한 신호를 수집하는 동안 현재 정보를 안정적으로 유지합니다."
+          },
+          "stale": {
+            "headline": "비즈니스 건강은 새롭게 확인되어야합니다.",
+            "message": "마지막 확인이 오래되었습니다. 현재 공개된 정보는 변경되지 않습니다."
+          },
+          "not_ready": {
+            "headline": "비즈니스 헬스가 준비를 하고 있습니다.",
+            "message": "첫 번째 상점 체크가 준비되면 여기에 나타납니다."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "메뉴 소스를 확인하십시오.",
+            "message": "활성 공개 메뉴 소스를 찾을 수 없습니다. 공유하기 전에 메ニュー를 확인하십시오. 활동 중인 공개적인 메누 소스가 발견되지 않았습니다.",
+            "title": "메뉴 소스를 확인해야 합니다."
+          },
+          "low_latest_activity": {
+            "action": "공유 링크를 확인하십시오.",
+            "message": "고객 활동이 낮습니다. 확인하십시오. QR, Google, Instagram, WhatsApp, 및 웹 사이트 링크.",
+            "title": "고객 활동이 낮습니다."
+          },
+          "unavailable_item_taps": {
+            "action": "사용할 수 없는 항목을 확인하십시오.",
+            "message": "고객이 사용할 수 없는 상품에 관심을 보였습니다. 재고를 늘리거나 숨겨 두십시오.",
+            "title": "사용할 수 없는 아이템은 관심을 끌었다."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "고객 피드백을 검토하십시오.",
+            "message": "게스트 피드백은 공개 세부 정보가 변경되기 전에 소유자의 확인이 필요합니다.",
+            "title": "손님 피드백을 확인해야합니다."
+          },
+          "default": {
+            "action": "세부 정보 검토",
+            "message": "고객을 향한 세부사항은 소유자 확인이 필요합니다.",
+            "title": "세부사항을 확인해야합니다."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# 개인 피드백 항목을 확인해야 합니다.} other {# 개인 피드백 항목을 확인해야 합니다.}}",
+          "clear": "개인적인 피드백은 분명합니다."
+        },
+        "freshness": {
+          "notReady": "비즈니스 건강은 실시간이 아닙니다. 첫번째 저장소 확인은 데이터 날짜를 여기에 표시합니다.",
+          "throughDate": "{date}를 통해 데이터를 사용합니다. 오늘은 아직 완료되지 않았을 수 있습니다.",
+          "latest": "사용 가능한 최신 MenuList 데이터를 사용합니다. 오늘은 아직 완료되지 않았을 수 있습니다."
+        },
+        "periods": {
+          "today": "오늘",
+          "yesterday": "전날",
+          "thisWeek": "이번 주",
+          "lastWeek": "지난주",
+          "thisMonth": "이번 달",
+          "lastMonth": "지난달",
+          "last7Days": "최근 7일",
+          "last30Days": "최근 30일",
+          "overall": "전체"
+        },
+        "metrics": {
+          "menuViews": "메뉴 보기",
+          "topDemand": "가장 높은 수요",
+          "topDemandDetail": "승진: {count} {signal}",
+          "bestSource": "최고의 소스",
+          "bestSourceDetail": "업데이트 링크: {count} 방문"
+        },
+        "signals": {
+          "views": "의견",
+          "clicks": "탭",
+          "attention": "주의 신호를 보낸다."
+        },
+        "page": {
+          "description": "일일 비즈니스 상태 및 고객 맞춤형 확인.",
+          "latestCheck": "AI health check",
+          "loading": "로딩 중...",
+          "loadingMessage": "로딩 중인 비즈니스 건강...",
+          "notReady": "비즈니스 헬스는 아직 준비되지 않았습니다.",
+          "loadErrorTitle": "Business Health를 로드할 수 없습니다.",
+          "loadErrorDescription": "이 페이지를 새로 고쳐 다시 시도해 주십시오.",
+          "refresh": "새로고침",
+          "needsAttention": "주의가 필요함",
+          "desktopSettingsOnly": "데스크톱 설정에서 열어보세요."
+        },
+        "scope": {
+          "title": "비즈니스 건강 범위",
+          "allMenus": "모든 메뉴는 무료입니다.",
+          "selectedMenu": "선택된 메뉴",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "위치 레벨 보기",
+          "inactiveMenu": "비활성화된 메뉴를 선택하십시오.",
+          "thisMenuOnly": "이 메뉴만이 가능합니다.",
+          "allMenusInLocation": "이 위치의 모든 메뉴",
+          "thisMenuHelper": "질문과 활동은 이 메뉴를 사용합니다.",
+          "allMenusHelper": "질문과 활동은 이 위치의 모든 메뉴를 사용합니다.",
+          "dialogDescription": "모든 메뉴 또는 활동과 검사에 대한 하나의 메ニュー를 선택합니다.",
+          "all": "모두 전부",
+          "close": "닫기"
+        },
+        "locations": {
+          "title": "장소들",
+          "loading": "위치 로드 중...",
+          "empty": "아직 위치 요약이 없습니다.",
+          "storeFallback": "위치 {id}",
+          "checkedOn": "{date}를 확인했습니다.",
+          "checkCount": "{count, plural, one {#개 확인} other {#개 확인}}",
+          "checksNeedReview": "{count, plural, one {# 고객 측의 확인이 검토되어야 합니다.} other {# 고객 측의 확인이 검토되어야 합니다.}}",
+          "statusReason": {
+            "stable": "고객이 직면한 문제는 조치를 필요로하지 않습니다.",
+            "watch": "고객을 향한 세부사항은 주의를 요할 수 있습니다.",
+            "needs_review": "고객을 향한 세부사항은 검토가 필요하다.",
+            "insufficient_data": "유용한 검사를 위해서는 더 많은 고객 활동이 필요합니다.",
+            "stale": "이 위치는 새로 확인해야 합니다.",
+            "not_ready": "첫번째 위치 확인이 준비되고 있습니다."
+          }
+        },
+        "assistant": {
+          "title": "비즈니스 건강에 대해 물어보세요",
+          "askShort": "물어보세요.",
+          "englishOnlyTitle": "질문은 현재 영어로 이용 가능합니다.",
+          "englishOnlyDescription": "상태와 검사는 현지화되어 있습니다. 비즈니스 건강에 대한 질문을 할 때 앱 언어를 영어로 전환합니다.",
+          "notReady": "최신 확인이 완료된 후에 Business Health가 답변을 할 것입니다.",
+          "suggestedUnavailable": "제안된 질문은 현재 사용할 수 없습니다.",
+          "freeTextUnavailable": "무료 텍스트 질문은 현재 사용할 수 없습니다.",
+          "answerError": "Business Health는 그 질문에 대답할 수 없었습니다.",
+          "suggestedQuestions": "제안된 질문",
+          "followUps": "다음에 물어볼 수 있습니다.",
+          "you": "너는 너다.",
+          "empty": "질문을 하거나 사업에 대해 물어보십시오.",
+          "placeholderReady": "오늘, 이번 주, 메뉴 관심사 또는 다음 확인에 대해 물어보십시오.",
+          "placeholderMobile": "오늘 또는 이번 주에 대해 물어보세요.",
+          "placeholderPending": "최근 확인 후 사용 가능",
+          "send": "질문 보내기",
+          "cachedFacts": "캐시된 MenuList 비즈니스 사실을 기반으로 합니다.",
+          "questions": {
+            "checks": "무엇을 확인해야 하나요?",
+            "today_stats": "오늘은 어떠세요?",
+            "this_week_stats": "이번 주에 무슨 일이 있었나요?",
+            "top_item": "어떤 항목이 주목을 받고 있습니까?",
+            "last_week_stats": "지난 주에 무슨 일이 있었어요?",
+            "this_month_stats": "이번 달은 어떠세요?",
+            "last_month_stats": "지난달에 무슨 일이 있었어요?",
+            "public_menu_status": "내 공개 메뉴는 괜찮습니까?",
+            "profile_status": "내 비즈니스 프로필이 완전합니까?",
+            "feedback_reviews": "확인할 게스트 피드백이 있습니까?",
+            "feedback_recent": "최근 투숙객들의 의견은 어떠셨나요?",
+            "default": "다음에 무엇을 확인해야 하나요?"
+          }
+        },
+        "sources": {
+          "title": "데이터 소스 데이타 소스",
+          "menuProjects": "메뉴 프로젝트 메인 프로젝츠",
+          "ownerAnalytics": "소유자 활동 소유주 활성화",
+          "guestFeedback": "투숙객 피드백 게스트 피드back",
+          "storeSettings": "비즈니스 설정 사업 설정",
+          "menuListData": "MenuList 데이터",
+          "updatedOn": "{date} 업데이트됨",
+          "latest": "사용 가능한 최신 데이터입니다."
+        },
+        "publicTruth": {
+          "title": "공식 고객 정보 출처",
+          "checking": "검사 중...",
+          "checkingFacts": "MenuList 공개 사실 확인 중...",
+          "checkedMenu": "체크된 메뉴: {name}",
+          "boundary": "현재 MenuList 비즈니스 및 메뉴 데이터에서 확인됨. 외부 플랫폼은 소유자가 확인한 상태로 유지됩니다.",
+          "boundaryShort": "외부 플랫폼은 소유자가 확인한 상태로 유지됩니다.",
+          "historyTitle": "공공 정보 역사",
+          "historyBoundary": "MenuList 비즈니스 및 메뉴 정보만 사용합니다. 외부 사이트는 검색되지 않습니다.",
+          "historyBoundaryShort": "MenuList 사실만. 외부 사이트는 검색되지 않았습니다.",
+          "refreshErrorTitle": "고객 소스 검사에서 새로 고칠 수 없음",
+          "refreshErrorDescription": "사용 가능한 마지막 MenuList 사실은 아래에 표시되어 있습니다.",
+          "historyRefreshError": "공공 정보 역사는 새롭게 될 수 없었다.",
+          "historyLoadError": "공공 정보 역사는 충전 할 수 없습니다.",
+          "historyErrorDescription": "마지막으로 저장된 보고서가 사용 가능할 때는 여전히 표시됩니다.",
+          "notRun": "실행되지 않음",
+          "lastSaved": "마지막으로 저장한 {date}",
+          "noSavedReport": "아직 저장된 보고서가 없습니다.",
+          "noSavedReportDescription": "이 위치에 대한 첫 번째 보고서를 저장하려면 검사를 실행합니다.",
+          "downloadEnglishReport": "영어 보고서 다운로드",
+          "downloadEnglishShort": "영어 보고서 번역본",
+          "runCheck": "체크를 실행합니다.",
+          "currentFix": "현재 수정 항목",
+          "nextFixes": "다음 공개 정보 수정 사항",
+          "none": "아무것도",
+          "attentionCount": "{count, plural, one {# 항목을 확인해야 합니다.} other {# 항목은 확인이 필요합니다.}}",
+          "readyModuleCount": "{count}/{total} 준비 중",
+          "missingCount": "{count}가 누락되었습니다.",
+          "checkCount": "{count}를 체크합니다.",
+          "savedCount": "{count}/{total}를 저장했습니다.",
+          "modulesReady": "{count}/{total} 모듈이 준비되었습니다.",
+          "status": {
+            "ready": {
+              "label": "준비됐어요.",
+              "message": "공식 고객 소스는 고객이 필요로 하는 기본적인 것을 가지고 있습니다."
+            },
+            "missing_basics": {
+              "label": "기본이 빠진다.",
+              "message": "메뉴, 시간, 가격, 행동 또는 고객 링크 세부 사항은 더 넓게 공유하기 전에 주의를 기울여야합니다."
+            },
+            "unclear": {
+              "label": "확인이 필요합니다.",
+              "message": "대부분의 기본 사항은 존재하지만, 하나 이상의 공공 사실이 여전히 확인되어야합니다."
+            }
+          },
+          "metrics": {
+            "readyModules": "준비된 모듈들",
+            "missingFacts": "누락된 사실들",
+            "checkedMenu": "메뉴를 확인했습니다.",
+            "savedReports": "저장된 보고서"
+          },
+          "results": {
+            "present": "준비됐어요.",
+            "missing": "누락된 사람",
+            "unclear": "Check 체크",
+            "not_applicable": "필요 없음",
+            "not_checked": "체크되지 않음"
+          },
+          "moduleStatus": {
+            "ready": "준비됐어요.",
+            "needs_attention": "누락된 사람",
+            "check": "Check 체크",
+            "not_checked": "체크되지 않음"
+          },
+          "facts": {
+            "business_identity": "사업자명(영업 이름)",
+            "menu_or_service_source": "메뉴 또는 서비스 목록.",
+            "prices": "가격",
+            "hours": "시간 운영 시간",
+            "location": "위치",
+            "contact": "연락처 연락하기",
+            "customer_actions": "고객 행동",
+            "public_link": "고객 링크 고객 연결",
+            "photos": "사진",
+            "machine_readable_source": "검색 친화적인 세부사항"
+          },
+          "evidence": {
+            "owner_entered": "이 체크에 입력하십시오.",
+            "owner_selected": "소유자가 선택합니다.",
+            "source_text_hint": "제공된 소스에서 발견되었습니다.",
+            "valid_public_url": "공개 링크 형식이 유효합니다.",
+            "invalid_public_url": "공개 링크는 수정이 필요합니다.",
+            "menulist_store": "현재 MenuList 비즈니스 설정이 확인되었습니다.",
+            "menulist_project": "선택하거나 기본 MenuList 메뉴를 확인했습니다.",
+            "menulist_summary": "현재 MenuList 메뉴 요약을 확인했습니다.",
+            "menulist_public_route": "현재 MenuList 고객 링크 설정을 확인했습니다.",
+            "menulist_index_gate": "현재 MenuList 공개 검색 규칙을 확인했습니다.",
+            "not_provided": "이 사실은 현재 MenuList 데이터에서 누락되었습니다.",
+            "not_checked": "이 사실은 현재 MenuList 데이터에서 안전하게 확인되지 않았습니다.",
+            "priceNotLoaded": "MenuList가 가격을 확인할 수 있도록 선택한 메뉴를 한 번만 엽니다."
+          },
+          "moduleEvidence": {
+            "ready": "현재 MenuList 데이터는 이 영역이 준비되었음을 보여줍니다.",
+            "needs_attention": "현재 MenuList 데이터는 필요한 정보가 누락되었음을 보여줍니다.",
+            "check": "고객이 이 영역을 신뢰하기 전에 확인하십시오.",
+            "not_checked": "MenuList 는 현재 데이터로부터 이 영역을 완전히 확인할 수 없습니다."
+          },
+          "setupReason": {
+            "needs_attention": "필요한 고객 대응 정보가 누락되었습니다.",
+            "check": "고객이 신뢰하기 전에 이것을 확인하십시오.",
+            "not_checked": "MenuList 는 현재 데이터에서 이것을 완전히 확인할 수 없습니다."
+          },
+          "targetActions": {
+            "basic_settings": "비즈니스 세부 정보 열기",
+            "domain_settings": "고객 링크를 여십시오.",
+            "hours_edit": "오픈시간",
+            "menu_tab": "메뉴를 엽니 다.",
+            "official_page": "비즈니스 페이지 열기",
+            "presence_monitor": "오픈 배치 검사를 확인합니다.",
+            "share_tab": "공유 도구 열기"
+          },
+          "actions": {
+            "openCustomerSource": "오픈 고객 소스를 개방하십시오.",
+            "openShareTools": "공유 도구를 열어 보세요.",
+            "fixFact": "{fact}를 수정하세요."
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "공공정보 기초 공공 정보 기본",
+              "description": "사업자명, 현재 메뉴 또는 서비스 소스, 연락처, 작업 및 고객 링크."
+            },
+            "business_facts_copy_pack": {
+              "title": "재사용 가능한 사업 정보",
+              "description": "현재 사실은 직원들이 공개 프로필, 답변 및 고객 링크 전달에 재사용할 수 있습니다."
+            },
+            "qr_link_health": {
+              "title": "QR 링크 준비 상태",
+              "description": "QR와 인쇄된 배치에 대한 현재 고객 링크입니다."
+            },
+            "social_bio_link_consistency": {
+              "title": "프로필 링크 일관성",
+              "description": "소셜 프로필 및 기타 배치를 위한 하나의 현재 고객 링크."
+            },
+            "customer_link_preview": {
+              "title": "고객 링크 미리보기",
+              "description": "고객이 행동하기 전에 알아야 할 주요 사실."
+            },
+            "print_share_assets": {
+              "title": "에셋을 인쇄하고 공유하세요.",
+              "description": "QR 포스터, 카운터 카드 및 공유 이미지에 대한 현재 링크 준비 상태입니다."
+            },
+            "menu_service_readability": {
+              "title": "메뉴 또는 서비스의 명확성",
+              "description": "선택한 메뉴의 범주, 항목 또는 서비스 및 가격."
+            },
+            "price_availability_gap": {
+              "title": "가격 및 가용성 명확성",
+              "description": "고객에게 표시된 가격, 변형, 매진 상태 및 가용성."
+            },
+            "menu_pdf_cleanup": {
+              "title": "이전 PDF 대체 버전",
+              "description": "이전 PDF를 대체할 수 있는 현재 MenuList 소스 및 고객 링크입니다."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp 동작",
+              "description": "명확한 WhatsApp 또는 대체 고객 연락처 작업."
+            },
+            "hours_readiness": {
+              "title": "준비 시간",
+              "description": "고객이 신뢰할 수 있는 정기 운영 시간."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp 응답 사실을 보내다.",
+              "description": "현재 메뉴, 시간, 연락처 및 직원 답변에 대한 링크 사실."
+            },
+            "photo_visual_identity": {
+              "title": "사진 및 비주얼 아이덴티티",
+              "description": "로고, 커버, 비즈니스 사진 또는 아이템 및 서비스 비주얼."
+            },
+            "customer_question_coverage": {
+              "title": "일반적인 고객 질문",
+              "description": "제안, 시간, 가격, 위치, 연락처 및 다음 행동에 대한 명확한 사실."
+            },
+            "customer_faq_reply_pack": {
+              "title": "재사용 가능한 고객 답변",
+              "description": "고객이 일반적인 질문을 할 때 현재 사실 직원은 재사용할 수 있습니다."
+            },
+            "booking_inquiry_readiness": {
+              "title": "예약 및 문의 준비가 되어 있습니다.",
+              "description": "주문, 예약, 전화, 메시지, 견적 요청 또는 방문을 위한 명확한 경로."
+            },
+            "google_profile_handoff": {
+              "title": "Google 프로필 링크",
+              "description": "Google 비즈니스 프로필을 위해 준비된 현재 고객 링크입니다."
+            },
+            "menu_freshness": {
+              "title": "메뉴 신선도",
+              "description": "가격, 품목 또는 가용성이 변경되었을 때 최근 메뉴 업데이트."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "그래프",
+        "description": "대시보드에 표시된 동일한 정리된 활동의 시각적 요약.",
+        "ranges": {
+          "days7": "7일",
+          "days30": "30일"
+        },
+        "metrics": {
+          "menu_activity": "메뉴 활동 메인 활성화",
+          "customer_actions": "고객 행동",
+          "search_demand": "검색 요청",
+          "item_interest": "항목 관심",
+          "unavailable_demand": "불가능한 요구",
+          "missing_searches": "누락된 검색 결과"
+        },
+        "trend": {
+          "summary": "트렌드 요약",
+          "updatedAfterClose": "매장 폐점 후에 업데이트됩니다.",
+          "status": {
+            "up": "더 높은",
+            "down": "낮은 하부",
+            "stable": "안정적",
+            "not_enough_data": "역사가 충분하지 않다."
+          },
+          "period": {
+            "week": "주간 체크를 확인하십시오.",
+            "month": "월별 확인 월간 확인"
+          },
+          "shortPeriod": {
+            "week": "일주일",
+            "month": "Month월월월달월월 달월월"
+          },
+          "needsMoreDays": "좀 더 정착된 날이 필요합니다.",
+          "versus": "{current} 대 {previous}",
+          "messages": {
+            "up": "{metric}가 이 {period} 체크에 대해 더 높습니다.",
+            "down": "{metric}는 이 {period} 검사에 대해 더 낮습니다.",
+            "stable": "{metric}는 이 {period} 검사에 대해 안정적입니다.",
+            "not_enough_data": "이 {period} 검사를 위한 정리된 {metric} 기록이 충분하지 않습니다."
+          },
+          "change": {
+            "gathering": "{period}: 수집 중",
+            "newActivity": "{period}: 새로운 액티비티",
+            "steady": "{period}: 안정적입니다.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "비교 차트",
+          "description": "정해진 날짜에서 주와 달의 움직임."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "메뉴 추세 메인 트렌드",
+            "days7": "마지막 7일 정리된 일.",
+            "days30": "마지막 30일 정산된 일."
+          },
+          "customerActions": {
+            "title": "고객 행동",
+            "description": "메뉴를 열고 나서 고객이 탭한 것은 무엇인가?"
+          },
+          "sources": {
+            "title": "고객이 어디서 왔는지, 고객들이 어디에서 온 것인지.",
+            "description": "소스별 메뉴 방문 및 액션 세션"
+          },
+          "items": {
+            "title": "상위 항목 관심",
+            "description": "고객이 가장 많이 열거나 탭한 항목"
+          },
+          "search": {
+            "title": "검색 요청",
+            "description": "고객들이 검색한 내용은 무엇인가요?"
+          },
+          "officialPage": {
+            "title": "공식 페이지 추세",
+            "description": "공식 비즈니스 페이지의 보기 및 작업"
+          }
+        },
+        "legends": {
+          "visits": "방문",
+          "actionSessions": "액션 세션",
+          "views": "보기",
+          "taps": "탭",
+          "noResult": "검색결과 없음"
+        },
+        "empty": {
+          "default": "이 뷰에 대한 그래프 데이터가 아직 없습니다.",
+          "menuActivity": "고객이 메뉴를 열면 메ニュー 활동이 나타납니다.",
+          "customerActions": "고객 행동은 고객이 전화, 메시지, 주문, 예약 또는 방향을 물어본 후에 나타납니다.",
+          "customerActionsPeriod": "이 기간 동안 아직 고객 행동이 없습니다.",
+          "searchDemand": "고객이 메뉴 검색을 사용한 후에 검사 수요가 나타납니다.",
+          "itemInterest": "항목 관심은 고객이 메뉴 항目을 여는 후에 나타날 것이다.",
+          "unavailableDemand": "고객이 사용할 수 없는 항목을 탭하면 사용할수 없는 수요가 나타납니다.",
+          "missingSearches": "고객이 검색하지만 일치하는 내용을 찾지 못할 때 누락된 검사가 나타납니다.",
+          "sources": "소스 세부 정보는 고객이 링크, QR 또는 소셜 페이지를 통해 도착한 후에 나타납니다.",
+          "officialPage": "고객이 공개 비즈니스 페이지를 열면 공식 페이라이브가 나타납니다."
+        },
+        "footer": {
+          "sameData": "동일한 대시보드 데이터.",
+          "noExtraTracking": "추가적인 추적이 필요 없습니다.",
+          "settledAfterClose": "매장 종료 후에 결제."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "메뉴 menu 메인 화면",
+          "viewsLabel": "메뉴 보기",
+          "viewsTooltip": "고객이 메뉴를 열었던 횟수",
+          "thisMonthLabel": "이달의 메뉴는?"
+        },
+        "product": {
+          "singular": "카탈로그 목록",
+          "viewsLabel": "카탈로그 보기 카털로그보기",
+          "viewsTooltip": "고객이 카탈로그를 열었던 횟수",
+          "thisMonthLabel": "이달의 카탈로그입니다."
+        },
+        "service": {
+          "singular": "서비스 목록",
+          "viewsLabel": "서비스 목록 보기",
+          "viewsTooltip": "고객이 서비스 목록을 열었던 횟수",
+          "thisMonthLabel": "이달의 서비스 목록입니다."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "주의가 필요함",
+          "active": "공식 고객 소스는 활성화되어 있습니다.",
+          "readyToPlace": "공식 고객 소스는 배치 할 준비가되어 있습니다."
+        },
+        "description": {
+          "needsAttention": "메뉴, 영업 시간 또는 고객 링크를 수정한 후에 널리 공유하십시오.",
+          "active": "고객은 한 곳에서 현재 공개된 정보를 사용할 수 있습니다. 어떠한 조치도 필요하지 않습니다.",
+          "readyToPlace": "고객 링크가 준비되었습니다. 이제 페이지에 추가하세요. Google, Instagram, WhatsApp, QR, 또는 인쇄하여 고객이 현재 소스를 사용할 수 있도록 합니다."
+        },
+        "link": {
+          "ready": "고객 링크 준비가 되었습니다.",
+          "missing": "고객 링크가 없습니다."
+        },
+        "states": {
+          "set": "설정됨",
+          "missing": "누락된 사람",
+          "ready": "준비됐어요.",
+          "notReady": "준비가 되지 않음",
+          "live": "게시됨",
+          "hidden": "비활성"
+        },
+        "tags": {
+          "menu": "메뉴: {status}",
+          "hours": "시간: {status}",
+          "customerLink": "고객 링크: {status}",
+          "link": "링크: {status}",
+          "placed": "배치됨: {count}/{total}"
+        },
+        "actions": {
+          "fix": "관심을 기울여야 할 것을 고치십시오.",
+          "preview": "공개 메뉴 미리보기",
+          "share": "메뉴 공유하기 메인 공유"
+        },
+        "updated": {
+          "notUpdated": "아직 업데이트되지 않았습니다.",
+          "recently": "최근 업데이트된 내용",
+          "today": "오늘 업데이트됨",
+          "yesterday": "어제 업데이트",
+          "daysAgo": "업데이트 {count, plural, one {# 하루 전} other {# 며칠 전}}"
+        }
+      },
+      "ownerActions": {
+        "title": "다음 소유자 행동",
+        "open": "열기",
+        "placement": {
+          "notConfirmed": "아직 확인되지 않았습니다.",
+          "today": "오늘 확인된 바에 따르면,",
+          "yesterday": "어제 확인",
+          "daysAgo": "확인된 {count, plural, one {# 하루 전} other {# 며칠 전}}"
+        },
+        "status": {
+          "ready": "준비됐어요.",
+          "missing": "누락된 사람",
+          "set": "설정됨",
+          "live": "게시됨",
+          "notLive": "라이브는 아니다.",
+          "confirmedCount": "{count}/{total}가 확인되었습니다.",
+          "on": "켜기",
+          "off": "끄기",
+          "dailyChanges": "매일 변화하는 음식들.",
+          "hoursException": "시간 예외",
+          "staffUse": "직원이 사용하는 용도",
+          "menuPrices": "메뉴 가격 메인 가격",
+          "openCount": "{count, plural, one {# 작업 열기} other {# 액션 열기 행동을 엽니 다.}}",
+          "stable": "안정적"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "고객 링크 설정",
+            "description": "QR, 직원 답변 또는 공개 프로필을 공유하기 전에 고객 링크를 만듭니다."
+          },
+          "setHours": {
+            "label": "시간을 설정합니다.",
+            "description": "고객이 방문하기 전에 공개적으로 개방 및 폐쇄 상태를 확인하십시오."
+          },
+          "publishMenu": {
+            "labelPublish": "메뉴 게시",
+            "labelOpen": "메뉴를 엽니 다.",
+            "descriptionVisible": "광범위하게 공유하기 전에 현재 메뉴를 게시합니다.",
+            "descriptionHidden": "고객이 링크를 사용하기 전에 메뉴를 보여주세요."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "링크 배치 확인",
+            "labelPlace": "고객 링크를 배치하십시오.",
+            "descriptionPlaced": "Google, Instagram 및 WhatsApp를 동일한 소스로 가리킵니다.",
+            "descriptionUnplaced": "동일한 고객 링크를 추가 Google, Instagram, WhatsApp, QR그리고 인쇄."
+          },
+          "openPrivateFeedback": {
+            "label": "개인 피드백을 열어보세요.",
+            "description": "고객 문제가 공개 리뷰로 바뀌기 전에 개인 피드백을 사용하세요."
+          },
+          "captureDailyChange": {
+            "label": "MenuList에게 무엇이 변경되었는지 알려주세요.",
+            "description": "MenuList에게 오늘 변경된 내용을 알려주고 준비한 메뉴 카드를 승인하세요."
+          },
+          "setTodayStatus": {
+            "label": "오늘의 상태를 설정합니다.",
+            "description": "오늘 폐장, 늦게 개점, 주방 폐쇄 또는 특별 메뉴 공지."
+          },
+          "prepareStaffHandoff": {
+            "label": "직원 전달을 위한 준비",
+            "description": "직원에게 한 곳에서 메뉴 링크, QR, 고객 답변 줄을 제공합니다."
+          },
+          "updatePrices": {
+            "label": "가격 업데이트",
+            "description": "가격 변경은 메뉴 관리자를 사용하여 게시하기 전에 승인하십시오."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "메뉴 설정",
+        "complete": "메뉴 설정이 완료되었습니다.",
+        "ready": "메뉴 설정이 준비되어 있습니다.",
+        "actions": {
+          "openMenu": "메뉴를 엽니 다.",
+          "createMenu": "메뉴 만들기",
+          "reviewDetails": "세부 정보 검토",
+          "publishMenu": "메뉴 게시",
+          "openSharingTools": "공유 도구를 열어 보세요.",
+          "prepareDescriptions": "설명서를 준비하십시오.",
+          "addImages": "이미지 추가",
+          "reviewLanguageText": "언어 텍스트를 검토합니다.",
+          "openMenuCheck": "메뉴 열기 확인",
+          "updatePublicLinks": "공개 링크를 업데이트합니다.",
+          "addPublicPhoto": "공개 사진 추가"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "출처 추가",
+            "doneDescription": "메뉴 출처가 연결되어 있습니다.",
+            "nextDescription": "메뉴 사진, PDF, 링크를 추가하거나 수동으로 시작합니다."
+          },
+          "menuImported": {
+            "label": "가져온 메뉴",
+            "doneDescription": "{count, plural, one {# 보이는 항목을 찾았습니다.} other {# 보이는 항목을 찾았습니다.}}",
+            "nextDescription": "메뉴 항목을 가져오거나 추가합니다."
+          },
+          "keyDetailsChecked": {
+            "label": "핵심 세부사항이 확인되었습니다.",
+            "doneDescription": "가격과 주요 메뉴 세부 사항은 명확합니다.",
+            "nextDescription": "게시하기 전에 가격과 주요 세부 사항을 확인하십시오."
+          },
+          "menuPublished": {
+            "label": "메뉴 게시됨",
+            "doneDescription": "공공 메뉴가 공개되었습니다.",
+            "nextDescription": "메뉴가 고객에게 제공될 준비가 되면 게시합니다."
+          },
+          "linkPlaced": {
+            "label": "링크가 배치되었습니다.",
+            "readyLabel": "링크 준비 링克準備",
+            "doneDescription": "공식 링크는 고객을 위해 준비되어 있습니다.",
+            "progressDescription": "{total}의 배치 작업 중 {count}가 완료되었습니다.",
+            "nextDescription": "메뉴가 게시되면 공유 도구를 열어줍니다."
+          },
+          "descriptionsReady": {
+            "label": "설명 준비",
+            "doneDescription": "보이는 항목에는 설명이 있습니다.",
+            "nextDescription": "메뉴 항목에 대한 설명을 명확하게 준비하십시오."
+          },
+          "imagesReady": {
+            "label": "사진 준비",
+            "doneDescription": "보이는 항목에는 이미지가 있습니다.",
+            "nextDescription": "유용할 때 항목 이미지를 추가하거나 생성합니다."
+          },
+          "translationsReady": {
+            "label": "번역 준비",
+            "doneDescription": "선택한 메뉴 언어가 완료되었습니다.",
+            "nextDescription": "선택한 메뉴 언어를 검토합니다."
+          },
+          "publicLinksAdded": {
+            "label": "공개 링크가 추가되었습니다.",
+            "doneDescription": "공공 행동 또는 소셜 링크를 사용할 수 있습니다.",
+            "nextDescription": "비즈니스 페이지에 유용한 공개 링크를 추가하세요."
+          },
+          "publicPhotoAdded": {
+            "label": "공개 사진이 추가되었습니다.",
+            "doneDescription": "공개 사진이 있습니다.",
+            "nextDescription": "준비가 되면 커버, 로고 또는 공개 사진을 추가합니다."
+          }
+        }
       }
     }
   },
@@ -1692,7 +2552,7 @@
         "ratingFivePlaceholder": "팀은 무엇을 계속해야합니까?",
         "defaultPrompt": "눈에 띄는 점이나 개선할 수 있었던 점을 공유하세요.",
         "defaultNote": "등급을 선택한 후 팀에서 어떤 조치를 취해야 할지 알 수 있도록 간단한 메모를 추가하세요.",
-        "defaultPlaceholder": "무엇이 눈에 띄었나요? 아니면 무엇이 더 좋았을까요?",
+        "defaultPlaceholder": "무엇이 눈에 띄거나 더 나아질 수 있었을까요?",
         "selectRating": "등급을 선택해 주세요",
         "selectRatingToContinue": "계속하려면 등급을 선택하세요.",
         "checkHighlightedFields": "강조표시된 필드를 확인하세요.",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "아직 청구 내역이 없습니다.",
     "perMonth": "/월 10,000원",
     "contactUs": "저희에게 연락하십시오."
+  },
+  "StarterActivation": {
+    "activeTitle": "메뉴가 온라인 상태입니다.",
+    "endingSoonTitle": "메뉴를 온라인으로 유지하세요",
+    "publicMenuQrActive": "공개 메뉴와 QR 코드가 활성화되었습니다.",
+    "activeRemaining": "메뉴 액세스가 활성화되었습니다.",
+    "daysRemaining": "{days, plural, one {메뉴를 온라인으로 유지하려면 #일 이내에 계획을 선택하세요.} other {메뉴를 온라인으로 유지하려면 #일 이내에 계획을 선택하세요.}}",
+    "sharingComplete": "공유 설정이 완료되었습니다.",
+    "sharingProgress": "{target, number}개 중 {count, number}개의 공유 단계가 완료되었습니다.",
+    "evidenceRecorded": "자동으로 기록됨: {systemCount, number}. 귀하가 확인함: {ownerCount, number}.",
+    "evidenceEmpty": "메뉴 링크를 복사 또는 공유하고, QR 코드를 다운로드하거나, 위치를 확인하세요.",
+    "keepLiveAction": "메뉴를 온라인으로 유지하세요",
+    "noSubscriptionDescription": "메뉴 업데이트와 고객 페이지를 계속 사용할 수 있도록 계획을 선택하세요.",
+    "choosePlanDescription": "메뉴가 저장되었습니다. 온라인으로 최신 상태로 유지하려면 계획을 선택하세요."
   },
   "Transactions": {
     "title": "거래 내역 트랜잭션 이력",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "모바일 앱",
     "subscribeTitle": "Get Started 구독하기 시작하기",
     "subscribeDescription": "디지털 메뉴를 만들고 사업을 관리하기 시작하려면 요금제를 선택하십시오.",
-    "viewPlans": "요금제 보기 플랜 보기"
+    "viewPlans": "요금제 보기 플랜 보기",
+    "returnToMobile": "데스크톱 버전을 보고 계십니다. 모바일로 돌아가세요."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR 코드 코딩",

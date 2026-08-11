@@ -423,7 +423,7 @@ measurable two-surface activation chain.
   the useful research loop, corrected the unsupported thresholds and
   structural absolutes, and deferred use to MenuList's paid-acquisition gate.
 
-### ML-MKT-EXT-006 - HyperFrames 0.7.101 Release Train And Recent Production Articles
+### ML-MKT-EXT-006 - HyperFrames 0.7.105 Release Train And Recent Production Articles
 
 - **Status:** `DEFERRED_REFERENCE`
 - **Shared:** August 1, 2026
@@ -431,11 +431,11 @@ measurable two-surface activation chain.
 - **Source type:** Release notes and X article series
 - **Topics:** hyperframes, video-production, local-rendering, prompt-guide, BRIEF.md, motion-continuity, transition-flicker, product-screenshots, audio-opening, audio-ducking, captions, native-aspect-ratios, templates, color-grading, media-effects, overlays, website-capture, media-probing, sub-compositions, registry-families, component-reuse, deterministic-blocks, parallel-capture-canary, claude-design-mcp
 - **Use when:** Starting the next MenuList video project or explicitly admitting a newer HyperFrames CLI into the local production toolchain.
-- **Revalidate:** Current npm latest version, release notes since `0.7.101`, Node and FFmpeg requirements, local skill state, CLI command compatibility, canary defaults, Apache license, third-party media rights, encoded output parity, and the zero-cost local-only production boundary.
+- **Revalidate:** Current npm latest version, release notes since `0.7.105`, Node and FFmpeg requirements, local skill state, CLI command compatibility, parallel-router defaults, Apache license, third-party media rights, encoded output parity, and the zero-cost local-only production boundary.
 
 **Source idea**
 
-The upstream project moved from `0.7.62` to `0.7.101` through a large patch train. The completed official series covers cloud rendering, reusable components, templates and variables, deterministic color grading, a structured Prompt Guide, media effects, deployment, catalog contribution, coherent component families, and community examples. Releases through `0.7.101` also add safer media probing, bounded long-source extraction, external-edit recovery, stronger preview/render parity, mounted-composition style fixes, software-capture ghosting fixes, and a canary parallel drawElement path.
+The upstream project moved from `0.7.62` to `0.7.105` through a large patch train. The completed official series covers cloud rendering, reusable components, templates and variables, deterministic color grading, a structured Prompt Guide, media effects, deployment, catalog contribution, coherent component families, and community examples. Releases through `0.7.105` also add safer media probing, bounded long-source extraction, external-edit recovery, stronger preview/render parity, mounted-composition style fixes, software-capture ghosting fixes, query-safe composition variables, caption color states, fleet-wide parallel drawElement routing, more reliable Studio manipulation, and local meaning-based catalog search.
 
 **MenuList verdict**
 
@@ -461,7 +461,7 @@ The upstream skills directory still contains 19 workflows. The registry now expo
 
 **Current decision**
 
-No installation or production upgrade in this review pass. Keep `0.7.62` as the last verified production baseline and treat `0.7.101` as the reviewed candidate. The next toolchain action is an isolated, pinned, telemetry-disabled `0.7.101` smoke test with `HF_DE_PARALLEL_ROUTER=false` on a disposable short composition. Frozen videos and source projects must not be migrated in place.
+No installation or production upgrade in this review pass. Keep `0.7.62` as the last verified production baseline and treat `0.7.105` as the reviewed candidate. The next toolchain action is an isolated, pinned, telemetry-disabled `0.7.105` smoke test on a disposable short composition, comparing the default router with `HF_DE_PARALLEL_ROUTER=false` where the override remains supported. Frozen videos and source projects must not be migrated in place.
 
 **Official recent articles**
 
@@ -488,6 +488,383 @@ No installation or production upgrade in this review pass. Keep `0.7.62` as the 
 
 - August 1, 2026 - Verified npm latest `0.7.87`, reviewed official release notes from the `0.7.62` baseline, inspected the 19-skill directory, and read the official Day 21-26 X article list plus the full Day 26 article. Recorded a selective adoption verdict and deferred the CLI change to an isolated local smoke test.
 - August 8, 2026 - Verified npm latest `0.7.101` with Node `>=22` and Apache-2.0 metadata, reviewed releases `0.7.88` through `0.7.101`, confirmed the upstream skill count remains 19 and the registry now contains 132 blocks plus 36 components, read the official Day 27-30 articles, and reviewed the Claude Design MCP announcement. Kept `0.7.62` as the proven baseline, moved the reviewed candidate to `0.7.101`, rejected cloud and account-backed paths, and specified an isolated canary-disabled local smoke gate.
+- August 10, 2026 - Verified npm latest `0.7.105` with Node `>=22` and Apache-2.0 metadata and reviewed official releases `0.7.102` through `0.7.105`. Retained `0.7.62` as the production baseline, advanced only the unadmitted smoke candidate to `0.7.105`, and added query/caption, parallel-router, Studio manipulation, and local semantic-catalog checks to the disposable comparison gate.
+- August 10, 2026 - Ran a read-only `hyperframes@0.7.62 skills check`; it reported two current and 17 outdated workflows in the Claude skill location. No global skill update, project migration, render, login, hosted action, or dependency change was performed.
+
+### ML-MKT-EXT-007 - Guarded Meta Ads Marketing-Agent Loop
+
+- **Status:** `DEFERRED_REFERENCE`
+- **Shared:** August 10, 2026
+- **Source:** Founder-supplied full text attributed to Prajwal Tomar (`@PrajwalTomar_`), titled `This Marketing Agent Replaces Your $10K/Month Ad Agency. Here's the Full System.`; the supplied copy shows `Jul 31`, but no stable X URL was supplied or found.
+- **Source type:** X article/post with a separate AI-generated review
+- **Topics:** meta-ads, paid-acquisition, marketing-agent, andromeda, creative-diversification, marketing-api, ads-insights-api, ads-library, conversions-api, attribution, randomized-experiments, signaldesk, campaigncue, human-approval, stop-loss
+- **Use when:** MenuList's attribution chain is certified and the founder explicitly opens a capped Meta Ads test, or when SignalDesk or CampaignCue's Meta provider boundary is formally reconsidered.
+- **Revalidate:** Current Meta targeting and Advantage+ behavior, campaign-specific ad and creative limits, learning guidance, Marketing API and Ads Library permissions, automated-collection terms, Conversions API privacy and deduplication requirements, experiment and lift capabilities, app review, provider cost, and MenuList's active paid-acquisition gate.
+
+**Source idea**
+
+Run a persistent research, creative, publication, measurement, pause-or-scale,
+and learning loop that connects each ad concept to business outcomes. The post
+argues that unified data, scheduled decisions, stored creative evidence, and
+continuous feedback can replace much of a paid-ad operating team.
+
+**MenuList verdict**
+
+Retain the durable operating principles:
+
+- connect acquisition evidence to qualified business outcomes rather than
+  optimizing cheap leads;
+- preserve hypotheses, source evidence, stop rules, financial limits, and
+  observed results;
+- test genuinely different creative concepts instead of cosmetic variants;
+- keep fresh, rights-safe evidence in the loop; and
+- require human approval for brand, positioning, provider, and spend decisions.
+
+Correct or reject the post's platform absolutes:
+
+- Andromeda is an ad-retrieval system; it did not remove audience targeting;
+- `150` is not a universal ad-set limit, and `15-25` concepts is not a
+  universal operating requirement;
+- 48 hours can be a spend-safety checkpoint, not proof of profitability,
+  positioning, payment, or retention;
+- authorized Ads Insights reads are supported, so `writes only` is not a Meta
+  safety rule;
+- the public Ad Library is not a blanket commercial-ad ingestion feed, and
+  competitor creative must not be scraped or copied;
+- Conversions API improves signal delivery and attribution but does not create
+  deterministic attribution or causal proof; and
+- optimizing-campaign winners are observational evidence unless a controlled
+  test establishes the comparison.
+
+The cited 31-day experiment demonstrated that a bounded agent loop could keep
+running. It spent `$1,493`, generated `243` leads at `$6.14` each against a
+`$2.50` target, did not establish monetization, and therefore did not prove
+agency replacement.
+
+Most of the proposed product architecture is already covered. SignalDesk owns
+internal evidence, experiment cards, readback windows, approvals, attribution,
+cost controls, and kill switches. CampaignCue owns source-backed campaign
+outputs, manual ad handoff, result receipts, and one-variable learning.
+MenuList's Outcome Bridge owns the current bounded activation events. Do not
+create parallel experiment, concept, attribution, or warehouse systems.
+
+Potential future deltas remain evidence-gated:
+
+- one compact read-only Meta performance summary mapped into existing
+  SignalDesk experiments;
+- bounded provider campaign, ad-set, ad, and creative identifiers linked to
+  the existing Outcome Bridge;
+- a CampaignCue-owned concept identity or diversity check after a real manual
+  test produces multiple same-channel concepts and per-concept results; and
+- payment and retention correlation after privacy, attribution, and
+  cross-product ownership are approved.
+
+**Current decision**
+
+No immediate implementation, campaign, spend, provider connection, warehouse,
+Conversions API change, new attribution fields, SignalDesk expansion, or
+CampaignCue mutation path. Continue the existing zero-spend, manual Bengaluru
+activation-proof trial. Preserve this corrected pattern for the named paid
+acquisition and provider trigger.
+
+**Validation basis**
+
+- [Meta Andromeda engineering note](https://engineering.fb.com/2024/12/02/production-engineering/meta-andromeda-advantage-automation-next-gen-personalized-ads-retrieval-engine/)
+- [Meta Advantage+ audience controls](https://www.facebook.com/business/ads/meta-advantage-plus/audience)
+- [Meta Ads Insights API](https://www.postman.com/meta/facebook-marketing-api/request/u07tack/get-ad-insights-l1)
+- [Meta Ad Library scope](https://www.facebook.com/help/259468828226154)
+- [Meta Conversions API](https://www.facebook.com/business/help/AboutConversionsAPI)
+- [Original 31-day experiment](https://technically.dev/posts/claude-code-autonomous-ad-campaign)
+
+**Related MenuList truth**
+
+- [Existing paid acquisition reference](#ml-mkt-ext-001---simplified-paid-saas-acquisition-playbook)
+- [SignalDesk Operating Layer](../menulist-signaldesk/signaldesk-operating-layer/README.md)
+- [SignalDesk owner-control gate](../menulist-signaldesk/menulist-signaldesk_owner-control-model.md)
+- [SignalDesk Outcome Bridge](../menulist-signaldesk/signaldesk-outcome-bridge/README.md)
+- [CampaignCue delivery boundary](../campaigncue/campaigncue-delivery-boundary.md)
+- [CampaignCue Ads Studio validation](../campaigncue/ads-studio/ads-studio_validation.md)
+- [Paid-ad launch gates](../videos/videos_paid-ad-cutdowns.md)
+
+**Outcome history**
+
+- August 10, 2026 - Checked the article and cited experiment against current Meta engineering, targeting, Marketing API, Ad Library, experiment, and Conversions API sources; retained the guarded operating pattern as deferred reference and rejected the unsupported platform absolutes and autonomous-spend conclusion.
+- August 10, 2026 - Cross-checked the proposed build against current SignalDesk, CampaignCue, and MenuList contracts; confirmed that no new code, schema, provider, campaign, or warehouse work is currently admitted.
+
+### ML-MKT-EXT-008 - 2026 Launch-Video Market And HyperFrames Production Study
+
+- **Status:** `APPLY_NOW`
+- **Shared:** August 10, 2026
+- **Source:** Current official HyperFrames launch examples and source projects, Wistia 2026 State of Video, LinkedIn 2026 B2B video guidance, Gartner consumer GenAI trust research, and public SaaS launch examples
+- **Source type:** Market study, source-repository audit, platform research, and competitor-example review
+- **Topics:** launch-video, product-video, hyperframes, real-ui, modular-compositions, native-aspect-ratios, founder-video, human-trust, ai-fatigue, audio-design, short-form, product-demo, conversion-measurement, local-production
+- **Use when:** Briefing, storyboarding, building, reviewing, distributing, or measuring any MenuList launch, product, feature, demo, founder, social, website, sales, or paid video.
+- **Revalidate:** Current HyperFrames source-project patterns and license status, platform format rules, video-distribution behavior, research methodology, AI-content trust findings, MenuList product truth, and campaign attribution readiness.
+
+**Source idea**
+
+Current launch-video practice is moving from one polished hero film to a reusable
+system of product proof: real UI, one workflow per cut, modular source, deliberate
+audio, platform-native versions, human expertise, and measurement tied to the
+next product action. AI is increasingly used in production and repurposing, but
+generic synthetic polish and unsupported claims can weaken trust.
+
+**MenuList verdict**
+
+Adopt:
+
+- a recognizable owner problem or relief in the opening rather than a long
+  logo-only slate;
+- existing menu source to private preview as the default first proof;
+- one job-to-be-done and one belief change per cut;
+- real MenuList UI or an internally disclosed exact mock;
+- beat-level HyperFrames compositions with a conversion brief, frame system,
+  storyboard, handoff, and immutable approved render;
+- native `16:9` and `9:16` compositions built from shared scene logic;
+- approved MenuList BGM, voice-reactive ducking, and motivated SFX;
+- founder or human-reviewed Indian-English delivery where trust matters; and
+- a plain encoded end slate with logo, name, tagline, and readable
+  `menulist.ai`, while interactive CTAs live beside the video.
+
+Adapt:
+
+- the official open HyperFrames launch repository's modular project pattern,
+  not its visual styles or media;
+- SaaS feature-reel pace to non-technical owner comprehension;
+- LinkedIn's people-led B2B guidance to founder, partner, investor, and
+  multi-location contexts rather than assuming it is the only SMB-owner
+  channel; and
+- AI-assisted production into a local, founder-reviewed, product-truth
+  workflow rather than consumer-facing AI spectacle.
+
+Reject:
+
+- paid prompt-to-video, avatar, hosted-render, stock-catalog, and cloud paths;
+- generic glass, neon, dark technical, robot, or AI-magic aesthetics;
+- fake social posts, testimonials, ratings, customer logos, external-platform
+  sync, and vendor conversion claims;
+- fixed cut cadences, constant motion, universal retention targets, and
+  automatic speed-ups; and
+- copying code, assets, fonts, music, or design systems from reference
+  projects without explicit rights.
+
+The August 10 source audit found 17 projects in the official HyperFrames launch
+repository: 15 landscape, two square, and no native vertical project. Source
+duration ranged from approximately `16.47s` to `64.05s`, with a median near
+`39.5s`; the median project used nine scene compositions. Eight projects had a
+storyboard, eight had a handoff, and one had a brief. This is a curated vendor
+sample, not a market-performance benchmark. The repository had no observed
+root license file, so it is a pattern reference only.
+
+**Current decision**
+
+Apply the production and distribution rules to all new MenuList video work now.
+Keep HyperFrames as the only video composition system and retain the zero-cost,
+local-only media boundary. No new paid tool, hosted generation path, external
+asset, campaign spend, product claim, runtime feature, or tracking
+implementation is authorized by this market study.
+
+**Validation basis**
+
+- [Official HyperFrames examples](https://hyperframes.heygen.com/launch-videos)
+- [Open HyperFrames launch-project repository](https://github.com/heygen-com/hyperframes-launches)
+- [Wistia 2026 State of Video](https://wistia.com/blog/video-marketing-statistics)
+- [YouTube Shorts ads guidance](https://support.google.com/google-ads/answer/16040527?hl=en)
+- [YouTube Shorts asset specifications](https://support.google.com/google-ads/answer/16041697?hl=en)
+- [TikTok creative best practices](https://ads.tiktok.com/help/article/creative-best-practices?redirected=1)
+- [TikTok commercial-content quality standard](https://ads.tiktok.com/help/article/about-tiktoks-content-quality-standard-for-creator-commercial-content)
+- [LinkedIn 2026 people-powered B2B guidance](https://www.linkedin.com/business/marketing/blog/trends-tips/b2b-marketing-insights-creators-thought-leadership)
+- [Gartner 2026 consumer GenAI trust survey](https://www.gartner.com/en/newsroom/press-releases/2026-03-16-gartner-marketing-survey-finds-50-percent-of-consumers-prefer-brands-that-avoid-using-genai-in-consumer-facing-content0)
+- [Toast digital-menu setup](https://support.toasttab.com/en/article/Setting-up-mobile-payments-and-digital-menus)
+- [Owner.com current positioning](https://www.owner.com/)
+- [PureMenu current positioning](https://www.getpuremenu.com/)
+- [Arcade 2026 public launch-example index](https://www.arcade.software/post/product-launch-video-examples) - directional competitor source only; vendor performance claims were not adopted
+
+**Related MenuList truth**
+
+- [Launch-video conversion research](../videos/videos_launch-video-conversion-research.md#august-2026-market-study-what-teams-are-actually-shipping)
+- [HyperFrames operating guide](../videos/videos_hyperframes-operating-guide.md#market-derived-hyperframes-decisions)
+- [Founder-approved production standard](../videos/videos_founder-approved-production-standard.md)
+- [Market, format, and script system](../videos/videos_market-format-and-script-system.md)
+- [Video asset intake and readiness](../videos/videos_asset-intake-and-readiness.md)
+- [Campaign measurement ledger](../videos/videos_campaign-measurement-ledger.md)
+
+**Outcome history**
+
+- August 10, 2026 - Audited current market research, official platform guidance, the official HyperFrames examples gallery, and the source structure of 17 open HyperFrames launch projects.
+- August 10, 2026 - Added the accepted patterns and explicit rejections to the maintained launch-video conversion research and HyperFrames operating guide without changing the local-only production boundary.
+- August 10, 2026 - Mapped official YouTube Shorts, TikTok, LinkedIn, Wistia, Toast, Owner.com, and PureMenu evidence into native-format roles, current category contrast, a canonical 12-video script system, and a real-asset intake gate.
+- August 10, 2026 - Revised all 12 individual handoffs to remove unmeasured `in minutes` and absolute `no typing` claims, front-load product proof, preserve owner approval, require native aspect-ratio composition, and separate encoded identity from clickable CTA.
+
+### ML-MKT-EXT-009 - Signal-Led GTM Plays For Permissioned MenuList Distribution
+
+- **Status:** `ALREADY_COVERED`
+- **Shared:** August 10, 2026
+- **Source:** [Clay buying-signal guide](https://www.clay.com/guides/how-to-identify-buying-signals), [Common Room signals](https://www.commonroom.io/resources/signals/), [HubSpot lead scoring](https://knowledge.hubspot.com/scoring/build-lead-scores), [Pocus playbook reporting](https://www.pocus.com/blog/introducing-playbook-reporting), [Customer.io lifecycle automations](https://docs.customer.io/messaging/send/types-of-automations-and-broadcasts/), [Google Business Profile menu editor](https://support.google.com/business/answer/9455840?hl=en), [Google business-representation guidelines](https://support.google.com/business/answer/3038177?hl=en-en), [WhatsApp Business policy](https://whatsappbusiness.com/policy/), [Owner.com website grader](https://grader.owner.com/), [Toast referral flow](https://pos.toasttab.com/uk/events/referral), and [Petpooja reseller programme](https://www.petpooja.com/poss/reseller-program)
+- **Source type:** Current vendor-product, lifecycle-workflow, restaurant-distribution, and platform-policy review
+- **Topics:** signal-led-gtm, signal-stacking, matched-plays, first-party-lifecycle, permissioned-introduction, current-list-consistency, private-preview, google-profile, trust-partner, proof-reuse, outcome-receipts
+- **Use when:** Selecting the first permissioned MenuList field play, reviewing SignalDesk recommendation quality, or deciding whether a repeated field gap justifies later automation.
+- **Revalidate:** Current vendor features and terms, Google and WhatsApp policies, SignalDesk permissions and provider flags, and real MenuList pilot outcomes. Vendor examples are directional operating evidence, not proof of MenuList results.
+
+**Source idea**
+
+The useful market pattern is not an autonomous marketing agent. It is a bounded loop:
+
+```text
+fresh signals
+-> corroborated fit
+-> one matched play
+-> human and permission gate
+-> executed action
+-> outcome receipt
+-> keep, change, or stop
+```
+
+Stronger systems combine current signals, keep fit and contact permission separate, start with human-assisted plays, use first-party lifecycle events after opt-in, and connect activity to downstream outcomes instead of treating message volume as success.
+
+**MenuList verdict**
+
+The pattern confirms the existing MenuList and SignalDesk architecture:
+
+- keep business fit, current-list gap, evidence freshness, contactability, permission, risk, and downstream outcome separate;
+- never treat one public fact, public contact value, or high fit score as permission to contact;
+- when multiple permissioned businesses are available, prioritize two corroborating current-source facts or one owner-confirmed problem without changing the current runtime score;
+- use the existing no-cost current-list consistency audit plus private MenuList preview as the first matched play;
+- progress only through a real permissioned business or approved partner introduction, owner review, owner-approved publication, Google/Profile plus one additional customer surface, and an outcome receipt;
+- use consented first-party lifecycle recovery only after an owner enters the funnel;
+- use new-opening, relaunch, or seasonal-change evidence only when it is current, corroborated, and connected to a permissioned route;
+- turn owner questions into existing MenuList tools or proof-led resources instead of creating another generic content or free-tool system; and
+- turn one eligible activation into the existing proof, partner, referral, and channel-derivative workflow.
+
+Reject anonymous visitor identification, purchased or scraped signal-to-send automation, cold WhatsApp or social outreach, opaque composite lead scores, a new CRM, another partner portal, more generic free tools, auto-publishing, autonomous spend, and vendor pipeline statistics as MenuList forecasts.
+
+**Current decision**
+
+No new code, collection, score, provider, integration, channel, or public surface. Align the maintained operating wording and execute one existing field unit first:
+
+```text
+permissioned business or partner
+-> current-list consistency audit
+-> private preview
+-> owner approval
+-> Google/Profile plus one additional surface
+-> outcome receipt
+-> separate proof permission
+```
+
+Add runtime only if repeated real runs expose a decision or evidence gap that current SignalDesk records cannot represent. Paid click-to-WhatsApp, partner rewards, and provider-managed profile changes remain evidence-gated.
+
+**Related MenuList truth**
+
+- [SignalDesk AI sales, marketing, and distribution research](../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md)
+- [Distribution workflow research](./menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md)
+- [Bengaluru activation-trial operating pack](../menulist-signaldesk/menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md)
+- [Activation Concierge](../menulist-activation-concierge/README.md)
+- [Activation and follow-up](./menulist-marketing-distribution_activation-follow-up.md)
+- [Physical partner pilot](./menulist-marketing-distribution_physical-partner-pilot.md)
+- [Pilot proof and owner learning pack](./menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md)
+- [First proof distribution run](./menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md)
+- [Public Truth Tools](../menulist-tools/public-truth-tools/README.md)
+
+**Outcome history**
+
+- August 10, 2026 - Compared current signal-led GTM, lifecycle, restaurant-partner, Google Business Profile, and messaging-policy patterns with current MenuList and SignalDesk contracts.
+- August 10, 2026 - Confirmed that the useful architecture is already covered; aligned the maintained field wording, lifecycle recovery, referral timing, and derivative count without adding runtime scope.
+
+### ML-MKT-EXT-010 - Evidence-Backed Organic Product Distribution
+
+- **Status:** `ALREADY_COVERED`
+- **Shared:** August 10, 2026
+- **Source:** Founder-supplied full text attributed to Chris (`@everestchris6`), titled `how to actually sell a product (full guide)`; no stable X URL was supplied.
+- **Source type:** X article/post
+- **Topics:** founder-led-distribution, audience-research, voice-of-customer, customer-language, organic-marketing, content-packaging, hooks, retention, native-repurposing, community-listening, reddit, instagram, youtube, tiktok, apify-mcp, manual-first-automation
+- **Use when:** Refreshing the MenuList audience-language hypothesis or briefing a proof-led asset after three permissioned owner interviews or the first approved proof run.
+- **Revalidate:** Current platform recommendation guidance, Reddit and Meta data-access terms, Apify Actor permissions and telemetry, owner consent and proof rights, actual cross-format audience behavior, and current MenuList pilot outcomes.
+
+**Source idea**
+
+Define one concrete buyer and problem before creating content, validate assumed
+needs against real language, choose channels by where that buyer already seeks
+help, package the promise before production, test bounded variants, read
+attention alongside delivery, adapt one useful idea to each channel, and
+automate only repetitive collection or drafting after manual judgment is
+reliable.
+
+**MenuList verdict**
+
+The useful spine confirms the existing MenuList distribution system:
+
+- use one evidence-backed campaign audience, problem, promise, proof, and next
+  action rather than addressing a generic SMB category in each asset;
+- learn from permissioned owner interviews, observed update workflows,
+  first-party questions, and consented owner wording;
+- use the existing current-list consistency audit plus private preview as the
+  small first offer rather than creating another guide, course, template pack,
+  or product;
+- choose each channel by its job, with permissioned founder or trust-partner
+  introduction first and public content only after approved proof;
+- align title, thumbnail or first frame, opening, proof, and CTA so the asset
+  delivers the promise it packages;
+- turn one approved proof packet into channel-native derivatives instead of
+  copying one post unchanged; and
+- measure qualified conversation, preview acceptance, owner approval,
+  two-surface activation, first owner update, day-30 continuity, proof
+  permission, and referral instead of treating reach as the outcome.
+
+Adapt or reject the unsafe and unsupported instructions:
+
+- an AI-generated persona is a hypothesis with stated confidence and unknowns,
+  not evidence of income, fears, identity, or an hour-by-hour life;
+- do not infer demographics or psychographics from profile photos or retain
+  identifiable follower dossiers;
+- do not use an unrestricted Apify MCP or another actor to bulk-scrape Reddit,
+  Instagram, YouTube, or follower data; Actor availability does not grant
+  platform or commercial-use permission;
+- do not treat age-to-platform stereotypes, a two-platform count, a fixed
+  two-second or three-word opening, or thumbnail-text trends as universal laws;
+- do not post the same commercial body under different titles in separate
+  subreddits as an A/B test; community, audience, timing, and rules differ;
+- do not treat click and retention as one disclosed algorithm number, infer one
+  certain cause from a retention curve, or treat retention as the only honest
+  feedback; and
+- do not automate community monitoring, posting, replies, or product-scope
+  decisions from repeated anonymous complaints.
+
+**Current decision**
+
+No code, schema, collection, provider connection, scraper, scheduler, audience
+profile document, SignalDesk expansion, CampaignCue expansion, publishing
+action, or spend. The next evidence unit remains three permissioned owner
+conversations and one completed two-surface activation. Only then should the
+audience-language hypothesis be refreshed from observed deltas.
+
+**Validation basis**
+
+- [YouTube appeal, engagement, and satisfaction guidance](https://support.google.com/youtube/answer/16559650)
+- [YouTube audience-retention interpretation](https://support.google.com/youtube/answer/9314415)
+- [YouTube native title and thumbnail testing](https://support.google.com/youtube/answer/16391400)
+- [TikTok creative best practices](https://ads.tiktok.com/help/article/creative-best-practices)
+- [Reddit developer access and commercial-use rules](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data)
+- [Reddit spam policy](https://support.reddithelp.com/hc/en-us/articles/360043504051-Spam)
+- [Instagram Terms of Use](https://www.facebook.com/help/instagram/581066165581870)
+- [Meta Automated Data Collection Terms](https://www.facebook.com/legal/automated_data_collection_terms)
+- [Apify MCP documentation](https://docs.apify.com/integrations/mcp)
+- [Apify general terms](https://docs.apify.com/legal/general-terms-and-conditions)
+
+**Related MenuList truth**
+
+- [Existing organic-distribution decision](#ml-mkt-ext-004---audience-aligned-organic-distribution-across-x-youtube-and-short-form)
+- [Portfolio distribution insight ledger](../strategy/product-portfolio-distribution-insight-ledger.md)
+- [Distribution workflow research](./menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md)
+- [Pilot proof and owner learning](./menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md)
+- [First proof distribution run](./menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md)
+- [Video conversion brief](../videos/videos_conversion-brief-template.md)
+- [SignalDesk Apify source broker](../menulist-signaldesk/menulist-signaldesk_apify-source-broker.md)
+- [SignalDesk Content Distribution Rail](../menulist-signaldesk/signaldesk-content-distribution-rail/README.md)
+
+**Outcome history**
+
+- August 10, 2026 - Checked the founder-supplied article against current YouTube, TikTok, Reddit, Meta, Instagram, and Apify guidance plus MenuList, SignalDesk, CampaignCue, video, owner-learning, and proof-distribution contracts. Retained the evidence-backed manual-first framework, rejected profiling, bulk scraping, duplicate-community testing, and universal algorithm rules, and confirmed that no runtime change is needed.
 
 ## Maintenance
 

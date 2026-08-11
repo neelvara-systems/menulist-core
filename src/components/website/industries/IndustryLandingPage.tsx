@@ -16,7 +16,7 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
 
     return (
         <main className="ws-industry-page">
-            <section className="ws-industry-hero">
+            <section className="ws-industry-hero" data-visual={page.heroVisual}>
                 <div className="ws-container ws-industry-hero__inner">
                     <AnimateOnScroll preset="hero">
                         <p className="ws-page-hero__eyebrow">{page.eyebrow}</p>

@@ -31,7 +31,7 @@ const SECTIONS = [
             'AnswerLattice handles account, team member, workspace, widget, hosted-help domain, and ticket details needed to operate the service.',
             'It also handles product support content, knowledge-base imports, FAQs, changelog entries, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
             'Knowledge intake sources can include selected public URLs, pasted support text, starter answers, and supported document text. Customers should avoid importing unnecessary personal data.',
-            'Page context should describe the product surface, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
+            'Page context should describe the product page, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
         ],
     },
     {

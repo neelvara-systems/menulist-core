@@ -64,3 +64,14 @@ The manifest is a reusable baseline, not a permanent pass ledger. A persisted pa
 - External SAST, secret, dependency, container, or AI scanner
 
 No production build or deployment was run. The changed Firestore rules are locally validated and remain pending an operator-controlled QA deploy and deployed-state readback.
+
+## August 11 GitHub Ingress Extension
+
+| Command | Result |
+| --- | --- |
+| `npm run security-os:audit -- --product answerlattice` | Passed after registering the GitHub Change Intake boundary; 43 evidence entries and 7 bundles |
+| `npm run security-os:plan -- --bundle answerlattice.authority-and-ingress` | Passed; the new local-only GitHub ingress verifier is selectable and the planner executed nothing |
+| `npm run verify:answerlattice-native-intake-connectors` | Passed; signed ingress, least-data, replay, Firebase cost, and fail-closed rollout contracts |
+| Dedicated and shared Knowledge Intake Firestore emulator suites | Passed; repository bindings remain server-only |
+
+The new evidence entry is local read-only with `networkPolicy: none`. Hosted GitHub App verification and the Answerlattice QA rules deployment remain external gates, not SecurityOS pass claims.

@@ -80,7 +80,7 @@ const CONTROLS = [
     },
     {
         title: 'Owner-approved answers',
-        body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active approved answers.',
+        body: 'Generated drafts, product candidates, and suggested changes require human review before they become active approved answers.',
     },
     {
         title: 'Compiled context boundary',
@@ -203,7 +203,7 @@ const TRUST_AREAS = [
             'Public URL discovery imports only owner-selected pages.',
             'Files are capped before processing; screenshots and short recordings are extracted into support text.',
             'Paid OCR and transcription work is support-credit logged and refund-aware on failure.',
-            'Accepted output publishes through existing KB, FAQ, surface, changelog, or approved-answer proposal workflows.',
+            'Accepted output publishes through existing knowledge base, FAQ, product-page, changelog, or approved-answer review workflows.',
         ],
     },
     {
@@ -211,7 +211,7 @@ const TRUST_AREAS = [
         body: 'Support correctness comes from approved knowledge, not automatic rewriting.',
         points: [
             'Approved answers are served before fallback.',
-            'Drafts and mutation proposals remain review work until approved.',
+            'Drafts and suggested changes remain review work until approved.',
             'Stale-answer and signal checks surface stale or missing knowledge.',
         ],
     },
@@ -238,11 +238,11 @@ const TRUST_AREAS = [
     },
     {
         title: 'Support-truth portability',
-        body: 'Export is intentionally narrower than a full workspace backup so approved knowledge can move without exposing private support operations.',
+        body: 'Support Truth Export is intentionally narrower than a full workspace backup so approved knowledge can move without exposing private support operations.',
         points: [
             'Only members with export permission can request the package.',
             'Queries are workspace-scoped, projected, capped, and rate limited.',
-            'The export either returns a complete package or fails; it never silently truncates authoritative content.',
+            'The export either returns a complete package or fails; it never silently truncates approved content.',
             'Tickets, chats, signals, raw audits, keys, credentials, and private visitor data stay out.',
         ],
     },

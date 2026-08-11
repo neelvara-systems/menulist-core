@@ -66,13 +66,12 @@ NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=
 ### Server Firebase Admin Config
 
 ```bash
-ANSWERLATTICE_FIREBASE_MODE=separate
-ANSWERLATTICE_FIREBASE_PROJECT_ID=
-ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=
-ANSWERLATTICE_FIRESTORE_DATABASE_ID=
 ```
+
+Server code reuses the browser Firebase mode, project ID, storage bucket, and
+optional Firestore database ID. Keep only Admin credentials private.
 
 For local-only testing, `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=./answerlattice-service-account.json` is supported, but Vercel should use explicit env credentials instead of a local file.
 

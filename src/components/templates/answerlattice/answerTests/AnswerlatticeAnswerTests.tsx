@@ -40,6 +40,13 @@ import {
     getAnswerlatticeAnswerContextRoute,
     normalizeAnswerlatticeOwnerReleaseContext,
 } from '@lib/answerlattice/ownerDecisionNavigation';
+import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
+import {
+    parseAnswerlatticeScopeCoverageMatrixForClient,
+    type AnswerlatticeScopeCoverageMatrix,
+    type AnswerlatticeScopeCoverageRow,
+    type AnswerlatticeScopeCoverageStatus,
+} from '@lib/answerlattice/scopeCoverageMatrix';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type {
@@ -66,6 +73,7 @@ import {
     Statistic,
     Table,
     Tag,
+    Tooltip,
     Typography,
     message,
     theme,
@@ -80,6 +88,7 @@ import {
     LuExternalLink,
     LuFlaskConical,
     LuPencil,
+    LuPlay,
     LuPlus,
     LuRefreshCw,
     LuRocket,
@@ -99,6 +108,7 @@ type AnswerTestResponse = {
     summary?: AnswerlatticeAnswerTestSummary;
     run?: AnswerlatticeAnswerTestRun;
     launchProof?: AnswerlatticeActivationAnswerTestSummary;
+    scopeCoverageMatrix?: unknown;
     proposalId?: string;
     error?: string;
 };
@@ -106,6 +116,10 @@ type AnswerTestResponse = {
 type IntakeJobsResponse = {
     jobs?: AnswerlatticeKnowledgeIntakeJob[];
     error?: string;
+};
+
+type ScopeCoverageDisplayRow = AnswerlatticeScopeCoverageRow & {
+    testCase: AnswerlatticeAnswerTestCase;
 };
 
 type TestFormValues = {
@@ -127,6 +141,8 @@ type TestFormValues = {
     workflow?: string;
     plan?: string;
     role?: string;
+    state?: string;
+    version?: string;
     active: boolean;
 };
 
@@ -163,6 +179,22 @@ const PROOF_STATUS_COLORS = {
     review: 'orange',
     blocked: 'red',
 } as const;
+
+const SCOPE_COVERAGE_LABELS: Record<AnswerlatticeScopeCoverageStatus, string> = {
+    covered: 'Covered',
+    needs_review: 'Needs review',
+    missing: 'Approved answer missing',
+    unverified: 'Not verified',
+    other_route: 'Different expected route',
+};
+
+const SCOPE_COVERAGE_COLORS: Record<AnswerlatticeScopeCoverageStatus, string> = {
+    covered: 'green',
+    needs_review: 'orange',
+    missing: 'red',
+    unverified: 'default',
+    other_route: 'blue',
+};
 
 const splitLines = (value?: string, maxItems = 8) => (
     Array.from(new Set(String(value || '')
@@ -228,6 +260,8 @@ const formatDateTime = (value?: string | null) => {
     return Number.isNaN(date.getTime()) ? 'Unknown' : date.toLocaleString();
 };
 
+const getScopeValue = (value?: string | null) => value?.trim() || 'Not specified';
+
 const buildFormValues = (testCase?: AnswerlatticeAnswerTestCase | null): TestFormValues => ({
     title: testCase?.title || '',
     query: testCase?.query || '',
@@ -247,6 +281,8 @@ const buildFormValues = (testCase?: AnswerlatticeAnswerTestCase | null): TestFor
     workflow: testCase?.context?.workflow || '',
     plan: testCase?.context?.plan || '',
     role: testCase?.context?.userRole || testCase?.context?.role || '',
+    state: testCase?.context?.state || '',
+    version: testCase?.context?.version || '',
     active: testCase?.active !== false,
 });
 
@@ -259,6 +295,8 @@ const buildContext = (values: TestFormValues) => {
         ...(values.workflow?.trim() ? { workflow: values.workflow.trim() } : {}),
         ...(values.plan?.trim() ? { plan: values.plan.trim() } : {}),
         ...(values.role?.trim() ? { role: values.role.trim() } : {}),
+        ...(values.state?.trim() ? { state: values.state.trim() } : {}),
+        ...(values.version?.trim() ? { version: values.version.trim() } : {}),
     };
     return Object.keys(context).length > 1 ? context : undefined;
 };
@@ -279,6 +317,11 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const isMobile = screens.md !== true;
     const isLaunchMode = entryMode === 'launch';
     const launchProofQuery = isLaunchMode ? '?includeLaunchProof=1' : '';
+    const scopeCoverageEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX
+        && !isLaunchMode;
+    const answerTestProofQuery = scopeCoverageEnabled
+        ? '?includeScopeCoverage=1'
+        : launchProofQuery;
     const tId = Number(session?.tId || 0);
     const sId = Number(session?.sId || 0);
     const [form] = Form.useForm<TestFormValues>();
@@ -306,13 +349,14 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const [productPackGenerating, setProductPackGenerating] = useState(false);
     const [lastPackWasCached, setLastPackWasCached] = useState<boolean | null>(null);
     const [currentLaunchProof, setCurrentLaunchProof] = useState<AnswerlatticeActivationAnswerTestSummary | null>(null);
+    const [scopeCoverageMatrix, setScopeCoverageMatrix] = useState<AnswerlatticeScopeCoverageMatrix | null>(null);
     const handledReleaseContextRef = useRef('');
 
     const loadSummary = useCallback(async () => {
         if (!tId || !sId || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) return;
         setLoading(true);
         try {
-            const response = await fetch(`/api/answerlattice/answer-tests${launchProofQuery}`, {
+            const response = await fetch(`/api/answerlattice/answer-tests${answerTestProofQuery}`, {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
@@ -325,12 +369,19 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not load answer tests.'));
             setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
+            setScopeCoverageMatrix(scopeCoverageEnabled
+                ? parseAnswerlatticeScopeCoverageMatrixForClient(
+                    payload?.scopeCoverageMatrix,
+                    parsedSummary,
+                )
+                : null);
         } catch (error) {
+            setScopeCoverageMatrix(null);
             message.error(error instanceof Error ? error.message : 'Could not load answer tests.');
         } finally {
             setLoading(false);
         }
-    }, [launchProofQuery, sId, tId]);
+    }, [answerTestProofQuery, sId, scopeCoverageEnabled, tId]);
 
     useEffect(() => {
         void loadSummary();
@@ -390,7 +441,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const saveCases = useCallback(async (cases: AnswerlatticeAnswerTestCase[]) => {
         setSaving(true);
         try {
-            const response = await fetch(`/api/answerlattice/answer-tests${launchProofQuery}`, {
+            const response = await fetch(`/api/answerlattice/answer-tests${answerTestProofQuery}`, {
                 method: 'PUT',
                 cache: 'no-store',
                 credentials: 'same-origin',
@@ -406,6 +457,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not save answer tests.'));
             setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
+            setScopeCoverageMatrix(scopeCoverageEnabled
+                ? parseAnswerlatticeScopeCoverageMatrixForClient(
+                    payload?.scopeCoverageMatrix,
+                    parsedSummary,
+                )
+                : null);
             return true;
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not save answer tests.');
@@ -413,7 +470,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         } finally {
             setSaving(false);
         }
-    }, [launchProofQuery, sId, summary.revision, tId]);
+    }, [answerTestProofQuery, sId, scopeCoverageEnabled, summary.revision, tId]);
 
     const openCreate = useCallback(() => {
         setEditingCase(null);
@@ -598,7 +655,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             const endpointPath = options?.releaseId
                 ? '/api/answerlattice/answer-tests/release-check'
                 : '/api/answerlattice/answer-tests/run';
-            const endpoint = `${endpointPath}${launchProofQuery}`;
+            const endpoint = `${endpointPath}${answerTestProofQuery}`;
             const body = options?.releaseId
                 ? { requestId: createRuntimeId('release_check'), releaseId: options.releaseId, mode }
                 : { requestId: createRuntimeId('answer_test'), caseIds: requestedCaseIds, mode };
@@ -621,6 +678,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             }
             setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
+            setScopeCoverageMatrix(scopeCoverageEnabled
+                ? parseAnswerlatticeScopeCoverageMatrixForClient(
+                    payload?.scopeCoverageMatrix,
+                    parsedSummary,
+                )
+                : null);
             setReleaseModalOpen(false);
             const run = parsedRun.data as AnswerlatticeAnswerTestRun;
             const runIsCurrent = isAnswerlatticeAnswerTestRunCurrent(run, parsedSummary);
@@ -638,7 +701,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         } finally {
             setRunningMode(null);
         }
-    }, [launchProofQuery, sId, selectedIds, summary.cases, tId]);
+    }, [answerTestProofQuery, sId, scopeCoverageEnabled, selectedIds, summary.cases, tId]);
 
     const runFirstTrustedAnswers = useCallback(() => {
         const launchCases = getAnswerlatticeFirstTrustedAnswerCases(summary.cases, { activeOnly: true });
@@ -808,6 +871,14 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         { activeOnly: true },
     ));
     const hasProductStarterPack = summary.cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id));
+    const scopeCoverageRows = useMemo<ScopeCoverageDisplayRow[]>(() => {
+        if (!scopeCoverageMatrix) return [];
+        const casesById = new Map(summary.cases.map(testCase => [testCase.id, testCase]));
+        return scopeCoverageMatrix.rows.flatMap((row) => {
+            const testCase = casesById.get(row.caseId);
+            return testCase ? [{ ...row, testCase }] : [];
+        });
+    }, [scopeCoverageMatrix, summary.cases]);
     const selectedIntakeJob = intakeJobs.find(job => job.id === selectedIntakeJobId);
     const productPackEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK
         && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE;
@@ -922,6 +993,121 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             ),
         },
     ], [deleteCase, openEdit]);
+
+    const scopeCoverageColumns = useMemo<ColumnsType<ScopeCoverageDisplayRow>>(() => [
+        {
+            title: 'Important question',
+            key: 'question',
+            width: 270,
+            render: (_, row) => (
+                <Flex vertical gap={2}>
+                    <Space size={6} wrap>
+                        <Text strong>{row.testCase.title}</Text>
+                        {row.testCase.riskLevel === 'critical' && <Tag color="red">Critical</Tag>}
+                    </Space>
+                    <Text type="secondary" ellipsis={{ tooltip: row.testCase.query }}>
+                        {row.testCase.query}
+                    </Text>
+                </Flex>
+            ),
+        },
+        {
+            title: 'Plan',
+            key: 'plan',
+            width: 115,
+            render: (_, row) => <Text>{getScopeValue(row.testCase.context?.plan)}</Text>,
+        },
+        {
+            title: 'Role',
+            key: 'role',
+            width: 135,
+            render: (_, row) => (
+                <Text>{getScopeValue(row.testCase.context?.userRole || row.testCase.context?.role)}</Text>
+            ),
+        },
+        {
+            title: 'Product state',
+            key: 'state',
+            width: 135,
+            render: (_, row) => <Text>{getScopeValue(row.testCase.context?.state)}</Text>,
+        },
+        {
+            title: 'Version',
+            key: 'version',
+            width: 105,
+            render: (_, row) => <Text>{getScopeValue(row.testCase.context?.version)}</Text>,
+        },
+        {
+            title: 'Coverage',
+            key: 'coverage',
+            width: 205,
+            render: (_, row) => (
+                <Flex vertical gap={4} align="start">
+                    <Tag color={SCOPE_COVERAGE_COLORS[row.status]}>
+                        {SCOPE_COVERAGE_LABELS[row.status]}
+                    </Tag>
+                    {row.actualSource && row.actualSource !== 'canonical' && (
+                        <Text type="secondary">Current route: {SOURCE_LABELS[row.actualSource]}</Text>
+                    )}
+                </Flex>
+            ),
+        },
+        {
+            title: 'Last verified',
+            key: 'verifiedAt',
+            width: 165,
+            render: (_, row) => <Text type="secondary">{formatDateTime(row.verifiedAt)}</Text>,
+        },
+        {
+            title: '',
+            key: 'actions',
+            width: 142,
+            fixed: 'right',
+            render: (_, row) => (
+                <Space size={2}>
+                    <Tooltip title="Edit question and context">
+                        <Button
+                            type="text"
+                            icon={<LuPencil />}
+                            aria-label={`Edit scope for ${row.testCase.title}`}
+                            onClick={() => openEdit(row.testCase)}
+                            style={ICON_ACTION_BUTTON_STYLE}
+                        />
+                    </Tooltip>
+                    {row.status !== 'other_route' && (
+                        <Tooltip title="Run this check">
+                            <Button
+                                type="text"
+                                icon={<LuPlay />}
+                                aria-label={`Run coverage check for ${row.testCase.title}`}
+                                onClick={() => void executeRun('canonical_only', { caseIds: [row.caseId] })}
+                                loading={runningMode === 'canonical_only'}
+                                style={ICON_ACTION_BUTTON_STYLE}
+                            />
+                        </Tooltip>
+                    )}
+                    {(row.status === 'missing' || row.status === 'needs_review') && (
+                        <Tooltip title={row.answerId ? 'Review this approved answer' : 'Review approved answers'}>
+                            <Button
+                                type="text"
+                                icon={<LuExternalLink />}
+                                aria-label={row.answerId
+                                    ? `Review approved answer for ${row.testCase.title}`
+                                    : `Review approved answers for ${row.testCase.title}`}
+                                onClick={() => router.push(row.answerId
+                                    ? getAnswerlatticeAnswerContextRoute(
+                                        getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+                                        row.answerId,
+                                    )
+                                    : getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))}
+                                style={ICON_ACTION_BUTTON_STYLE}
+                            />
+                        </Tooltip>
+                    )}
+                </Space>
+            ),
+        },
+    ], [executeRun, openEdit, router, runningMode]);
 
     const answerTestCaseEmptyState = (
         <Empty
@@ -1112,6 +1298,121 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 </Card>
                 <Card size="small" style={{ flex: '1 1 220px' }}><Statistic title="Last run" value={formatDateTime(latestRun?.completedAt)} valueStyle={{ fontSize: 16 }} /></Card>
             </Flex>
+
+            {scopeCoverageEnabled ? (
+                <Card
+                    title="Scope coverage"
+                >
+                    <Flex vertical gap={14}>
+                        <Text type="secondary">
+                            This view uses only active questions and customer contexts you defined. Empty context fields are not treated as proof for every possible value, and Answerlattice does not invent missing combinations.
+                        </Text>
+                        {!scopeCoverageMatrix && !loading ? (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="Scope coverage is unavailable"
+                                description="Refresh Answer Tests before relying on this view. Existing tests and saved results remain available."
+                            />
+                        ) : null}
+                        {scopeCoverageMatrix ? (
+                            <>
+                                <Text strong>
+                                    {scopeCoverageMatrix.coveredCount}/{scopeCoverageMatrix.canonicalTargetCount} approved-answer questions covered
+                                </Text>
+                                <Space size={[6, 6]} wrap>
+                                    <Tag color="green">{scopeCoverageMatrix.coveredCount} covered</Tag>
+                                    <Tag color="red">{scopeCoverageMatrix.missingCount} missing</Tag>
+                                    <Tag color="orange">{scopeCoverageMatrix.needsReviewCount} need review</Tag>
+                                    <Tag>{scopeCoverageMatrix.unverifiedCount} not verified</Tag>
+                                    {scopeCoverageMatrix.otherRouteCount > 0 && (
+                                        <Tag color="blue">{scopeCoverageMatrix.otherRouteCount} different expected route</Tag>
+                                    )}
+                                </Space>
+                                {scopeCoverageRows.length === 0 ? (
+                                    <Text type="secondary">Add and activate an Answer Test to review its customer context.</Text>
+                                ) : isMobile ? (
+                                    <List
+                                        dataSource={scopeCoverageRows}
+                                        renderItem={row => (
+                                            <List.Item>
+                                                <Flex vertical gap={10} style={{ width: '100%' }}>
+                                                    <Flex justify="space-between" align="start" gap={8} wrap="wrap">
+                                                        <Flex vertical gap={2} style={{ minWidth: 0 }}>
+                                                            <Space size={6} wrap>
+                                                                <Text strong>{row.testCase.title}</Text>
+                                                                {row.testCase.riskLevel === 'critical' && <Tag color="red">Critical</Tag>}
+                                                            </Space>
+                                                            <Text type="secondary">{row.testCase.query}</Text>
+                                                        </Flex>
+                                                        <Tag color={SCOPE_COVERAGE_COLORS[row.status]}>
+                                                            {SCOPE_COVERAGE_LABELS[row.status]}
+                                                        </Tag>
+                                                    </Flex>
+                                                    <Flex gap={12} wrap="wrap">
+                                                        <Text><Text type="secondary">Plan:</Text> {getScopeValue(row.testCase.context?.plan)}</Text>
+                                                        <Text><Text type="secondary">Role:</Text> {getScopeValue(row.testCase.context?.userRole || row.testCase.context?.role)}</Text>
+                                                        <Text><Text type="secondary">State:</Text> {getScopeValue(row.testCase.context?.state)}</Text>
+                                                        <Text><Text type="secondary">Version:</Text> {getScopeValue(row.testCase.context?.version)}</Text>
+                                                    </Flex>
+                                                    {row.actualSource && row.actualSource !== 'canonical' && (
+                                                        <Text type="secondary">Current route: {SOURCE_LABELS[row.actualSource]}</Text>
+                                                    )}
+                                                    <Text type="secondary">Last verified: {formatDateTime(row.verifiedAt)}</Text>
+                                                    <Flex gap={8} vertical>
+                                                        {row.status !== 'other_route' && (
+                                                            <Button
+                                                                icon={<LuPlay />}
+                                                                onClick={() => void executeRun('canonical_only', { caseIds: [row.caseId] })}
+                                                                loading={runningMode === 'canonical_only'}
+                                                                block
+                                                                style={ACTION_BUTTON_STYLE}
+                                                            >
+                                                                Run check
+                                                            </Button>
+                                                        )}
+                                                        {(row.status === 'missing' || row.status === 'needs_review') && (
+                                                            <Button
+                                                                icon={<LuExternalLink />}
+                                                                onClick={() => router.push(row.answerId
+                                                                    ? getAnswerlatticeAnswerContextRoute(
+                                                                        getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+                                                                        row.answerId,
+                                                                    )
+                                                                    : getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))}
+                                                                block
+                                                                style={ACTION_BUTTON_STYLE}
+                                                            >
+                                                                {row.answerId ? 'Review this approved answer' : 'Review approved answers'}
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            icon={<LuPencil />}
+                                                            onClick={() => openEdit(row.testCase)}
+                                                            block
+                                                            style={ACTION_BUTTON_STYLE}
+                                                        >
+                                                            Edit question and context
+                                                        </Button>
+                                                    </Flex>
+                                                </Flex>
+                                            </List.Item>
+                                        )}
+                                    />
+                                ) : (
+                                    <Table
+                                        rowKey="caseId"
+                                        dataSource={scopeCoverageRows}
+                                        columns={scopeCoverageColumns}
+                                        pagination={false}
+                                        scroll={{ x: 1270 }}
+                                    />
+                                )}
+                            </>
+                        ) : null}
+                    </Flex>
+                </Card>
+            ) : null}
 
             <Card
                 title="Regression cases"
@@ -1421,6 +1722,27 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                         <Form.Item name="plan" label="Plan" style={{ flex: 1 }}><Input placeholder="growth" /></Form.Item>
                         <Form.Item name="role" label="User role" style={{ flex: 1 }}><Input placeholder="workspace_owner" /></Form.Item>
                     </Flex>
+                    {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SCOPE_COVERAGE_MATRIX ? (
+                        <Flex gap={12} vertical={isMobile}>
+                            <Form.Item name="state" label="Product state" style={{ flex: 1 }}>
+                                <Input placeholder="trial_expired" />
+                            </Form.Item>
+                            <Form.Item
+                                name="version"
+                                label="Product version"
+                                style={{ flex: 1 }}
+                                rules={[{
+                                    validator: async (_, value) => {
+                                        if (value && !normalizeAnswerlatticeVersionLabel(value)) {
+                                            throw new Error('Use a numeric version such as 2.4.1');
+                                        }
+                                    },
+                                }]}
+                            >
+                                <Input placeholder="2.4.1" />
+                            </Form.Item>
+                        </Flex>
+                    ) : null}
                     <Form.Item name="relatedEntityIds" label="Related entity IDs" extra="Add one per line so release checks can run only affected tests.">
                         <TextArea rows={3} placeholder="billing_invoices" />
                     </Form.Item>

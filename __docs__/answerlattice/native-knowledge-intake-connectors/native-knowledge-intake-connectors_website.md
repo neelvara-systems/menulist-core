@@ -1,9 +1,15 @@
-# Native Knowledge Intake Connectors - Website Boundary
+# GitHub Change Intake - Website Boundary
 
-> **Publication Status:** No feature page
-> **Last Updated:** 2026-07-19
+> **Publication Status:** DEFERRED BY OWNER
+> **Last Updated:** 2026-08-11
 
-Do not add connector logos, provider cards, integration-directory entries, setup CTAs, schema, or availability claims for native Knowledge Intake connectors.
+No public website code is changed in this implementation pass.
 
-The website may accurately explain that founders can import selected public URLs, supported files/exports, pasted evidence, repeated replies, screenshots/images, and short media for human review. The existing workflow-notification integration page must not be described as a source-ingestion connector page.
+After hosted QA, credential setup, one real repository connection, signed webhook evidence, and rollout approval, the website may add one bounded proof point:
+
+```text
+Product change in GitHub -> private change evidence -> owner review -> approved answers stay current
+```
+
+Do not add connector directories, provider-logo walls, broad repository-reading claims, automatic-documentation claims, or availability copy while the flag remains disabled.
 

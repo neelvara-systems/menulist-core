@@ -1,24 +1,28 @@
 # Multi-Location Center - Mobile Support
 
-## Mobile Admission
+## Admission Decision
 
-Multi-Location Center is mobile-relevant for local manager review and central status checks.
+Mobile is appropriate for branch review, approval comments, download/copy, mark-used, and result capture. Dense multi-branch setup and full creative editing remain desktop-oriented.
 
-## Mobile Requirements
+## Required Mobile Behavior
 
-- Show location list with status chips.
-- Keep current location visible on campaign review screens.
-- Allow approve/request changes per location.
-- Avoid bulk publishing as the primary phone action.
-- Show differences in hours, services, prices, and channel status.
+- Show the branch name and locality on every branch pack.
+- Show current trust, approval, freshness, and manual-delivery state.
+- Let assigned local managers comment, resolve permitted comments, approve/reject where their role allows, download/copy, and record results for their branch only.
+- Keep at least 44px touch targets.
+- Use the shared CampaignCue mobile shell, locale, timezone, RTL, theme, and auth state.
+- Never route a phone user into an unscoped desktop table or another branch's campaign.
 
-## Mobile Non-Goals
+## Desktop-First Actions
 
-- Large bulk-edit tables.
-- Complex group setup.
-- Advanced rollup reporting.
+- Creating or editing multiple branch profiles.
+- Selecting a batch of up to eight branches.
+- Comparing many branch packs at once.
+- Full shared Creative Editor work.
 
 ## Acceptance
 
-- Local manager can review and approve their branch campaign from mobile.
-- Central user can see which locations are blocked, approved, exported, or completed manually.
+- A local manager cannot view or mutate another branch variant.
+- A mobile review clearly names the branch before approval or download.
+- No provider posting or bulk approval appears as a mobile shortcut.
+- Branch truth changes block stale public-use actions on every viewport.

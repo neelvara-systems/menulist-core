@@ -428,7 +428,8 @@
         "daily": "پوئين ڏينهن",
         "weekly": "آخري 7 ڏينهن",
         "monthly": "هن مهيني",
-        "overall": "مجموعي طور تي"
+        "overall": "مجموعي طور تي",
+        "graph": "گرافس"
       },
       "today": {
         "noMenuActivityToday": "اڄ تائين ڪابه مينيو سرگرمي ناهي.",
@@ -454,17 +455,17 @@
         "noResultSearches": "بغير نتيجو ڳولها",
         "unavailableInterest": "غير دستياب دلچسپي",
         "topLanguage": "مٿي ٻولي",
-        "smartPicksShown": "سمارٽ چنتا ڏيکاريا ويا",
-        "smartPicksClicks": "سمارٽ پِڪس ڪلڪس",
-        "smartPicksTaps": "سمارٽ پِڪس ٽيپس",
-        "smartPicksUsed": "استعمال ٿيل سمارٽ چونڊ",
-        "smartPicksEngagement": "سمارٽ چونڊي مصروفيت",
+        "smartPicksShown": "Smart Picks ڏیکاریو ویو",
+        "smartPicksClicks": "Smart Picks ڪلڪ",
+        "smartPicksTaps": "Smart Picks نل",
+        "smartPicksUsed": "Smart Picks استعمال ڪیو ویو",
+        "smartPicksEngagement": "Smart Picks مشغولیت",
         "totalMenuScans": "مجموعي مينيو اسڪين",
         "totalItemClicks": "ڪُل آئٽم ڪلڪس",
         "activeDays": "فعال ڏينهن",
         "daysActive": "سرگرم ڏينهن",
         "avgDailyScans": "اوس روزاني اسڪين",
-        "smartPicksActive": "ہوشیار چنیون فعال آھن",
+        "smartPicksActive": "Smart Picks سرگرم آھی",
         "engagementRate": "مصروفيت جي شرح",
         "topItem": "مٿيون شيون",
         "topCategory": "مٿين درجي"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "ڪالهه به سرگرمي رڪارڊ نه ڪئي وئي",
         "noAnalyticsYet": "اڃا تائين ڪا ڊيٽا ناهي. توهان جا تجزيا ظاهر ٿيندا جڏهن گراهڪ ڏسڻ شروع ڪندا.",
-        "noItemClicksYet": "اڃا تائين ڪا به شئي ڪلڪ نه ڪئي وئي آهي"
+        "noItemClicksYet": "اڃا تائين ڪا به شئي ڪلڪ نه ڪئي وئي آهي",
+        "lowActivityTitle": "گهٽ سرگرمي",
+        "lowActivityDescription": "ھن عرصی لاء ڪارگر نتیجو ڪ toڻ لا ڪافی سرگرمی نہ ھئی",
+        "noWeeklyData": "گذریل 7 ڏینھن کان اڃا تائین ڪو بہ آباد مینو سرگرمی دستیاب ناہی",
+        "noMonthlyData": "ھن مہینی لاء اڃا تائین ڪو آباد مینو سرگرمی دستیاب ناہی"
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}٪ بمقابله گذريل هفتي"
+        "vsLastWeek": "{sign}{change}٪ بمقابله گذريل هفتي",
+        "changeVsLastWeek": "{change} بمقابلہ گذریل ہفتی"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# ڪارگردگي جو ڏينهن رڪارڊ ڪيو ويو} other {# رڪارڊ ٿيل سرگرمي جا ڏينهن}}"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "پهرين اسڪين جو انتظار",
         "weeklyInsights": "هفتيوار بصيرت",
         "last4WeeksComparison": "گذريل 4 هفتن جو مقابلو",
-        "historicalDataWillAppear": "تاريخي ڊيٽا ڪجهه هفتن کان پوءِ ظاهر ٿيندي"
+        "historicalDataWillAppear": "تاريخي ڊيٽا ڪجهه هفتن کان پوءِ ظاهر ٿيندي",
+        "statusMessages": {
+          "working": "گراہڪ توہان جی موجودہ مینو استعمال ڪری رہیا آھن",
+          "low_activity": "گراہڪ سرگرمی اڃا تائین تعمیر ٿی رھی آھی توھان جو موجودہ مینو موجود آھی",
+          "no_data": "گراہڪ توہان جو مینو کولڻ شروع ڪرڻ کان پوء سرگرمی ظاھر ٿیندی"
+        }
       },
       "aiSummary": {
         "daily": "هڪ نظر ۾ گذريل ڏينهن",
         "weekly": "هن هفتي هڪ نظر ۾",
-        "monthly": "هن مهيني جو خلاصو"
+        "monthly": "هن مهيني جو خلاصو",
+        "localized": {
+          "noActivity": "ھن عرصی لاء ڪا بہ آباد گراہڪ سرگرمی رڪارڊ نہ ڪئی وئی",
+          "menuViews": "گراہڪن مینو {count} دفعا کولیو",
+          "itemTaps": "گراہڪن مینو شیون {count} دفعا ٽیپ ڪیون",
+          "customerActions": "گراہڪن {count} آخری عمل مڪمل ڪیا",
+          "searches": "گراہڪن مینو {count} دفعا ڳولہیو",
+          "unavailableInterest": "غیر دستیاب شیون حاصل ڪیون ویون {count} نل"
+        }
       },
       "actions": {
         "call": "ڪال",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} دورو · {rate}%",
         "markDone": "مڪمل طور تي نشان لڳايو",
         "markDoneFailed": "ھن عمل کي مڪمل طور تي نشان ھڻي نه ٿو سگھجي. ٻيهر ڪوشش ڪريو.",
-        "markDoneSaved": "مڪمل طور تي نشان لڳل. نتيجن کي اپڊيٽ ڪيو ويندو جڏهن ايندڙ تجزياتي خلاصو تيار آهي."
+        "markDoneSaved": "مڪمل طور تي نشان لڳل. نتيجن کي اپڊيٽ ڪيو ويندو جڏهن ايندڙ تجزياتي خلاصو تيار آهي.",
+        "bestSourceStatsFormatted": "· {visits} دورو · {rate} عمل جی شرح",
+        "bestSourceMobileFormatted": "ھن وقت بہترین ذریعو: {source}· {visits} دورو · {rate} عمل جی شرح",
+        "sourceQualityTagFormatted": "{source}: {visits} دورو ڪیو · {sessions} عمل سیشن · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} دورو · {rate}",
+        "priorities": {
+          "high": "اعلی ترجیح",
+          "medium": "وچولی ترجیح",
+          "low": "گھٽ ترجیح"
+        },
+        "confidence": {
+          "stable": {
+            "label": "مستحڪم",
+            "message": "دستیاب سرگرمی ھڪ صاف مینو چیڪ جی حمایت ڪری ٿی"
+          },
+          "watch": {
+            "label": "نظر رکجو۔",
+            "message": "ڪجھ سرگرمین کی مینو بدلائڻ کان اڳ ہڪ ٻی چیڪ جی ضرورت ٿی سگہی ٿی"
+          },
+          "no_data": {
+            "label": "وڌیڪ ڊیٽا جی ضرورت آھی",
+            "message": "نتیجو ڪ toڻ کان ا more و تہ وڌیڪ آباد گراہڪ سرگرمی جو انتظار ڪریو"
+          }
+        },
+        "localizedActions": {
+          "reason": "جدید آباد ڪیل گراہڪ سرگرمی جی بنیاد تی",
+          "availability": {
+            "title": "شیون جی دستیابی جو جائزو وٺو",
+            "description": "چیڪ ڪریو تہ ڇا دستیاب یا لڪیل شیون بحال ٿیڻ گہرجن یا نظر کان ٻاہر رکڻ گھرجی",
+            "action": "دستیابی جو جائزو وٺو"
+          },
+          "customerActions": {
+            "title": "گراہڪ جی عملن جو جائزو وٺو",
+            "description": "عمل ڪرڻ کان اڳ ۾ مینو جی تفصیل ۽ لنڪ چیڪ ڪریو جیڪی گراہڪ استعمال ڪن ٿا",
+            "action": "گراہڪ جی عملن جو جائزو وٺو"
+          },
+          "details": {
+            "title": "شیون جی تفصیل کی بہتر ڪریو",
+            "description": "شیون جا نالا، اختیار، وضاحت ۽ تصویرن جو جائزو وٺو جن کی واضح معلومات جی ضرورت ٿی سگہی ٿی",
+            "action": "شیون جی تفصیل جو جائزو وٺو"
+          },
+          "general": {
+            "title": "صاف سگنل جو انتظار ڪریو",
+            "description": "موجودہ مینو کی مستحڪم رکو جیستائین وڌیڪ آباد سرگرمی دستیاب نہ ھجی",
+            "action": "بعد ۾ جائزو وٺو"
+          },
+          "menuOrder": {
+            "title": "مینو آرڊر جو جائزو وٺو",
+            "description": "چیڪ ڪریو تہ ڇا اہم شیون ۽ قسم گراہڪن لاء ڳولن ۾ آسان آھن",
+            "action": "مینو آرڊر جو جائزو وٺو"
+          },
+          "pricing": {
+            "title": "قیمت جو جائزو وٺو",
+            "description": "تازو گراہڪ-دلچسپی سگنل سان ڳنڍیل قیمتن کی چیڪ ڪریو",
+            "action": "قیمتن جو جائزو وٺو"
+          },
+          "search": {
+            "title": "گراہڪ جی ڳولا جو جائزو وٺو",
+            "description": "چیڪ ڪریو ڳولھون جیڪی شاید گراہڪن کی ڪارگر مینو نتیجن ڏانہن نہ وٺی وڃن",
+            "action": "تلاشن جو جائزو وٺو"
+          },
+          "source": {
+            "title": "گراہڪ داخلا ذریعن جو جائزو وٺو",
+            "description": "چیڪ ڪریو تہ ڇا عوامی لنڪ ۽ QR پلیسمینٽ گراہڪن کی موجودہ مینو ڏانہن اشارو ڪن ٿا",
+            "action": "عوامی لنڪ جو جائزو وٺو"
+          },
+          "timing": {
+            "title": "مینو جی وقت جو جائزو وٺو",
+            "description": "چیڪ ڪریو تہ ڇا وقت وارا قسم ۽ دستیابی میچ ڪن ٿا جڏھن گراہڪ انھن کی ڳولن ٿا",
+            "action": "وقت جو جائزو وٺو"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "نشان لڳایو ویو",
+            "message": "وڌیڪ آباد سرگرمی دستیاب ٿیڻ کان پوء نتیجو چیڪ ڪیو ویندو"
+          },
+          "improved": {
+            "label": "بہتر ڪیو ویو",
+            "message": "ایندڙ سیٽ ٿیل چیڪ ہڪ سدھار ڏیکاری ٿو"
+          },
+          "no_clear_change": {
+            "label": "ڪا صاف تبدیلی ناہی",
+            "message": "ایندڙ سیٽ ٿیل چیڪ صاف تبدیلی نہ ڏیکاری"
+          },
+          "not_enough_data": {
+            "label": "وڌیڪ ڊیٽا جی ضرورت آھی",
+            "message": "ھن تبدیلی جو اندازو لڳائڻ لاء اڃا تائین ڪافی آباد سرگرمی ناہی"
+          },
+          "pending": {
+            "label": "انتظار ۾ چیڪ",
+            "message": "MenuList ھن کی چیڪ ڪندو وڌیڪ آباد سرگرمی دستیاب ٿیڻ کان پوء"
+          }
+        }
       },
       "details": {
         "menuDetails": "مينيو تفصيلات",
@@ -574,7 +686,7 @@
           "unavailableInterest": "غير دستياب دلچسپي",
           "languages": "ٻوليون",
           "filters": "فلٽر",
-          "smartPicks": "سمارٽ چونڊون",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "ڪاروباري ڪلاڪن جي حساب سان عمل"
         },
         "descriptions": {
@@ -617,6 +729,12 @@
           "closed": "بند ٿيڻ تي عمل",
           "unknown": "ڪارناما جڏهن ڪلاڪ اسٽيٽس موجود نه هئي",
           "closedShare": "سڀني رڪارڊ ٿيل عملن جو {rate}% بند ٿيڻ دوران ٿيو"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} دستیاب نہ آھن",
+          "strongItem": "{count} آئٽم ٽيپس",
+          "needsWork": "{count} نظارا، ڪو نل نہ آھی",
+          "gettingAttention": "{count} نظريا"
         }
       },
       "smartPicks": {
@@ -642,7 +760,7 @@
         "officialBusinessPage": "سرڪاري ڪاروباري صفحو",
         "loadingCurrentActivity": "موجوده OBP سرگرمي لوڊ ڪندي",
         "loadingActivity": "OBP سرگرمي لوڊ ڪندي",
-        "sharedInfo": "ڪاريون ڪال، WhatsApp، هدايتون، رزرو، ۽ آرڊر تي آخري OBP ڪلڪن کي شمار ڪن ٿيون. حصص سرڪاري ڪاروباري لنڪ ڪارڊ مان ايندا آهن، ۽ لنڪ ٽيپس گوگل جي نظرثاني، Instagram، Facebook، ۽ عوامي OBP جي ويب سائيٽن جي دوري کي شمار ڪن ٿا.",
+        "sharedInfo": "ڪال، WhatsApp، ڊائرڪشن، رزرو ۽ آرڊر تی آخری او۔ بی۔ پی ڪلڪن جی حساب سان عمل ڪیو ویندو آھی۔ شیئر سرڪاری ڪاروباری لنڪ ڪارڊ مان ایندا آھن، ۽ لنڪ ٽیپ ڳڻپ Google جائزو، Instagram، Facebook، ۽ عوامی O. B. P. کان ویب سائیٽ جو دورو",
         "noActivityToday": "اڄ تائين ڪابه OBP سرگرمي ناهي.",
         "noComparison": "ڪو به مقابلو ناهي",
         "sameAsLastWeek": "گذريل هفتي وانگر",
@@ -651,7 +769,7 @@
         "copyMessage": "پيغام نقل ڪريو",
         "googleReviews": "Google جائزو",
         "instagram": "Instagram",
-        "facebook": "فيس بڪ",
+        "facebook": "Facebook",
         "website": "ويب سائيٽ",
         "sourceViews": "{count} نظريا",
         "sourceMenu": "{count} مينيو",
@@ -681,7 +799,7 @@
         "shareBreakdown": "حصيداري جي ڀڃڪڙي",
         "mobileInfoIntro": "هي ڪارڊ ڏيکاري ٿو ته ڪئين گراهڪ توهان جي آفيشل بزنس پيج سان مينيو کولڻ کان اڳ يا ان جي آس پاس ڪن ٿا.",
         "mobileInfoActions": "ڪاريون ڪال، WhatsApp، هدايتون، رزرو، ۽ آرڊر تي آخري ڪلڪن جي ڳڻپ ڪن ٿيون.",
-        "mobileInfoLinks": "حصص سرڪاري ڪاروباري لنڪ ڪارڊ مان ايندا آهن، ۽ لنڪ ٽيپس گوگل جي نظرثاني، انسٽاگرام، فيس بوڪ، ۽ عوامي OBP جي ويب سائيٽن جي زيارتن کي شمار ڪن ٿا.",
+        "mobileInfoLinks": "شیئر سرڪاری ڪاروباری لنڪ ڪارڊ مان ایندا آھن، ۽ لنڪ ٽیپ ڳڻپ Google جائزو، Instagram، Facebook، ۽ عوامی او بی پی کان ویب سائیٽ جو دورو",
         "todayPartialInfo": "اڄ تائين صرف جزوي لائيو سرگرمي آهي. اهو اڃا تائين شامل نه آهي گذريل ڏينهن، آخري 7 ڏينهن، هن مهيني، يا زندگي جي مجموعي ۾."
       },
       "customerApp": {
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "شارٽ ڪٽ بريڪ ڊائون",
         "installsByPlatform": "پليٽ فارم ذريعي انسٽال",
         "appStickiness": "ايپ چپپڻ",
-        "returningOpens30d": "ريٽرننگ اوپن (30d)",
         "avgOpensPerInstall": "سراسري اوپن في انسٽال",
         "iosManualInstalls": "iOS دستي تنصيب",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "آن لائن آرڊر ڪريو"
         },
         "platforms": {
-          "ios": "IOS",
-          "iosLong": "آئی او ایس (آئی فون/آئیپیڊ)",
-          "android": "اینڊرائیڊ",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "ڊيسڪ ٽاپ",
           "other": "ٻيا"
-        }
+        },
+        "tryAgainLater": "پوء وری ڪوشش ڪریو۔"
       },
       "projectSelector": {
         "deleted": "ختم ڪيو ويو",
@@ -752,16 +870,17 @@
       "googleListing": {
         "linkCopied": "لنڪ نقل ڪيو ويو",
         "couldNotCopy": "لنڪ نقل نه ٿي سگھيو",
-        "markedUpdated": "گوگل لسٽنگ کي اپڊيٽ ڪيو ويو",
+        "markedUpdated": "Google لسٽنگ کی اپڊیٽ ڪیو ویو آھی",
         "couldNotSave": "محفوظ نه ٿي سگهيو",
-        "title": "گوگل لسٽنگ",
+        "title": "Google لسٽنگ",
         "updatedDescription": "ويب سائيٽ لنڪ توهان جي آفيشل پيج تي سيٽ ڪئي وئي آهي",
-        "setOfficialLink": "گوگل تي پنهنجو سرڪاري لنڪ سيٽ ڪريو",
-        "updateProfileWebsite": "پنهنجي گوگل ڪاروباري پروفائل ويب سائيٽ کي {url} تي اپڊيٽ ڪريو",
+        "setOfficialLink": "Google تی پنھنجو سرڪاری لنڪ سیٽ ڪریو",
+        "updateProfileWebsite": "پنھنجی Google ڪاروباری پروفائل ویب سائیٽ کی {url} تی اپ ڊیٽ ڪریو",
         "copied": "ڪاپي ٿيل",
         "copy": "ڪاپي",
-        "openGoogle": "گوگل کوليو",
-        "done": "ٿي ويو"
+        "openGoogle": "کولیو Google",
+        "done": "ٿي ويو",
+        "couldNotOpen": "Google ڪاروباری پروفائل کولی نہ سگھیو"
       },
       "behaviorNudge": {
         "linkCopied": "لنڪ نقل ڪيو ويو",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "مٿين مسئلي جو جائزو وٺو",
         "repairMenu": "مرمت مينيو",
         "review": "جائزو",
-        "repair": "مرمت"
+        "repair": "مرمت",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# شیون ہڪ وضاحت غائب آھی} other {# شیون وضاحت کان محروم آھن}}",
+            "ok": "سڀنی شین ۾ وضاحت آھی",
+            "help": "تفصیل گراہڪن کی ہر پیشڪش کی سمجھڻ ۾ مدد ڪن ٿا"
+          },
+          "images": {
+            "warning": "{count, plural, one {# شیون ھڪ تصویر غائب آھی} other {# شیون غائب آھن}}",
+            "ok": "سڀنی شین ۾ تصویرون آھن",
+            "help": "تصویرون گراہڪن کی جلدی چونڊڻ ۾ مدد ڪری سگہن ٿیون"
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# درجی ۾ ھڪ آئڪن غائب آھی} other {# قسمن ۾ آئڪن غائب آھن}}",
+            "ok": "سڀنی قسمن ۾ آئڪن آھن",
+            "help": "آئڪن قسمن کی اسڪن ڪرڻ آسان بڻائی ٿو"
+          },
+          "prices": {
+            "warning": "{count, plural, one {# شیون قیمت کان محروم آھن} other {# شیون گم آھن قیمتون}}",
+            "ok": "سڀنی شین جون قیمتون آھن",
+            "help": "گراہڪ فیصلو ڪرڻ کان اڳ قیمتن جو مقابلو ڪن ٿا"
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# شیون گراہڪن کان لڪایو ویو آھی} other {# شیون گراہڪن کان لڪیل آھن}}",
+            "ok": "ڪا بہ شیون نہ لڪایو ویو آھی",
+            "help": "پوشیدہ شیون عوامی مینو تی ظاھر نہ ٿیندیون آھن"
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# قیمت جو جائزو وٺڻ جی ضرورت آھی} other {# قیمتن کی نظر ثانی جی ضرورت آھی}}",
+            "ok": "قیمتون متوقع حد اندر آھن",
+            "help": "MenuList ساڳئی درجی جی اندر ھڪ-آئٹم جی قیمتن جو مقابلو ڪری ٿو۔ ہڪ ارادی قیمت نشان لڳایو جیئن جائزو ورتو ویو"
+          },
+          "translations": {
+            "warning": "{count, plural, one {# آئٹم ترجمو غائب آھی} other {# شیون ترجمو غائب آھن}}",
+            "ok": "سڀئی ڏسڻ واریون شیون ترجمو ڪیون ویون آھن",
+            "help": "ڪجھ شیون چونڊیل مینو ٻولین ۾ نامڪمل آھن"
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# مینو تفصیل ترجمو غائب آھی} other {# مینو جا تفصیل ترجمو غائب آھن}}",
+            "ok": "مینو جی تفصیل جو ترجمو ڪیو ویو آھی",
+            "help": "مینو جو نالو، وضاحت یا نوٽس چونڊیل مینو ٻولین ۾ نامڪمل آھن"
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "نقل ٿیل لنڪ",
+        "direct": "سڌو",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "مینو ڪٽ",
+        "nativeShare": "ڊوائس شیئر",
+        "obp": "ڪاروباري صفحو",
+        "other": "ٻيا",
+        "qr": "QR ڪوڊ",
+        "shortcut": "ایپ شارٽ ڪٽ",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "ڪاروباري صحت",
+        "open": "کلیل ڪاروباری صحت",
+        "today": "اڄ",
+        "latestActivity": "تازیون سرگرمیون",
+        "noActionNeeded": "ڪنهن ڪم جي ضرورت ناهي",
+        "status": {
+          "stable": "مستحڪم",
+          "watch": "ڌيان جي ضرورت آهي",
+          "needs_review": "نظر ثانی جی ضرورت آھی",
+          "insufficient_data": "وڌیڪ ڊیٽا جی ضرورت آھی",
+          "stale": "ھڪ نئین چیڪ جی ضرورت آھی",
+          "not_ready": "تیار ٿی وڃ۔"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# گراہڪ جی سامہون تفصیل جو جائزو وٺڻ جی ضرورت آھی} other {# گراہڪ جی سامہون تفصیل جو جائزو وٺڻ جی ضرورت آھی}}",
+          "stable": {
+            "headline": "توھان جی عوامی معلومات مستحڪم آھی",
+            "message": "ڪنھن بہ گراہڪ کی منھن ڏیڻ واری مسئلی کی جدید چیڪ ۾ عمل جی ضرورت ناہی"
+          },
+          "watch": {
+            "headline": "تفصیل تی ڌیان ڏیڻ جی ضرورت ٿی سگہی ٿی",
+            "message": "عوامی معلومات کی بدلائڻ کان اڳ تجویز ڪیل چیڪ جو جائزو وٺو"
+          },
+          "needs_review": {
+            "headline": "گراہڪ جی سامہون تفصیل جو جائزو وٺو",
+            "message": "ھڪ یا وڌیڪ عوامی تفصیل چیڪ ڪرڻ گھرجی"
+          },
+          "insufficient_data": {
+            "headline": "وڌیڪ سرگرمی جی ضرورت آھی",
+            "message": "موجودہ معلومات کی مستحڪم رکو جڏھن تہ MenuList ھڪ مفید سگنل گڏ ڪری ٿو"
+          },
+          "stale": {
+            "headline": "ڪاروباری صحت کی نئین جانچ جی ضرورت آھی",
+            "message": "آخری چیڪ پراڻو آھی۔ توہان جی موجودہ عوامی معلومات تبدیل نہ ٿیندی رھی ٿی"
+          },
+          "not_ready": {
+            "headline": "ڪاروباری صحت تیار ٿی رھی آھی",
+            "message": "پہرین اسٽور چیڪ ھتی ظاھر ٿیندی جڏھن اھو تیار ٿیندو"
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "مینو جو ذریعو چیڪ ڪریو",
+            "message": "ڪو بہ فعال عوامی مینو ذریعو نہ ملیو آھی۔ ان کی حصیداری ڪرڻ کان اڳ ۾ مینو چیڪ ڪریو",
+            "title": "مینو جی ذریعن کی جانچڻ جی ضرورت آھی"
+          },
+          "low_latest_activity": {
+            "action": "حصیداری لنڪ چیڪ ڪریو",
+            "message": "گراہڪ سرگرمی گھٽ آھی چیڪ ڪریو QR, Google, Instagram, WhatsApp، ۽ ویب سائیٽ لنڪ",
+            "title": "گراہڪ سرگرمی گھٽ آھی"
+          },
+          "unavailable_item_taps": {
+            "action": "نا میسر شیون چیڪ ڪریو",
+            "message": "گراہڪن غیر دستیاب شین ۾ دلچسپی ڏیکاری۔ انھن کی بحال ڪریو یا انھن کی لڪایو رکو",
+            "title": "غیر میسر شین تی ڌیان ڏنو ویو"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "مھمان جی موٽ جو جائزو وٺو",
+            "message": "عوامی تفصیل بدلائڻ کان اڳ مہمان موٽ کی مالڪ جی چیڪ جی ضرورت آھی",
+            "title": "مھمان جی موٽ کی جانچڻ جی ضرورت آھی"
+          },
+          "default": {
+            "action": "تفصیل جو جائزو وٺو",
+            "message": "ھڪ گراہڪ جی سامہون تفصیل کی مالڪ چیڪ جی ضرورت آھی",
+            "title": "تفصیل جی جانچ ڪرڻ جی ضرورت آھی"
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# خانگی موٽ واری شیون کی جانچڻ جی ضرورت آھی} other {# خانگی موٽ شیون چیڪ ڪرڻ جی ضرورت آھی}}",
+          "clear": "شخصی موٽ صاف آھی"
+        },
+        "freshness": {
+          "notReady": "ڪاروباری صحت حقیقی وقت نہ آھی۔ پہرین اسٽور چیڪ ھتی ڊیٽا جی تاریخ ڏیکاریندی",
+          "throughDate": "{date} جی ذریعی ڊیٽا جو استعمال ڪری ٿو۔ اڄ شاید اڃا تائین مڪمل نہ آھی",
+          "latest": "جدید دستیاب MenuList ڊیٽا استعمال ڪری ٿو۔ اڄ شاید اڃا تائین مڪمل نہ ٿی آھی"
+        },
+        "periods": {
+          "today": "اڄ",
+          "yesterday": "پوئين ڏينهن",
+          "thisWeek": "ھن ہفتی",
+          "lastWeek": "گذریل ہفتی",
+          "thisMonth": "ھن مہینی",
+          "lastMonth": "پوئین مہینی",
+          "last7Days": "آخری 7 ڏینھن",
+          "last30Days": "آخری 30 ڏینھن",
+          "overall": "مجموعي طور تي"
+        },
+        "metrics": {
+          "menuViews": "مينيو ڏيک",
+          "topDemand": "اعلی طلب",
+          "topDemandDetail": "واڌاری ڪریو: {count} {signal}",
+          "bestSource": "بہترین ذریعو",
+          "bestSourceDetail": "اپ ڊیٽ لنڪ: {count} دورو"
+        },
+        "signals": {
+          "views": "نظارا",
+          "clicks": "آئٽم ٽيپس",
+          "attention": "ڌیان جا اشارو"
+        },
+        "page": {
+          "description": "روزانی ڪاروباری حالت ۽ گراہڪ جی منھن واری چیڪ",
+          "latestCheck": "AI health check",
+          "loading": "لوڊ ڪرڻ",
+          "loadingMessage": "ڪاروباری صحت کی لوڊ ڪری رھیو آھی۔۔۔",
+          "notReady": "ڪاروباری صحت اڃا تائین تیار ناہی",
+          "loadErrorTitle": "ڪاروباری صحت لوڊ نہ ٿی سگہی",
+          "loadErrorDescription": "مہربانی ڪری ھن صفحی کی ریفریش ڪریو ۽ وری ڪوشش ڪریو",
+          "refresh": "ريفريش",
+          "needsAttention": "ڌيان جي ضرورت آهي",
+          "desktopSettingsOnly": "ھن کی ڊیسڪ ٽاپ جی ترتیبن مان کولیو"
+        },
+        "scope": {
+          "title": "ڪاروباری صحت جو دائری",
+          "allMenus": "سڀ مینو",
+          "selectedMenu": "چونڊیو مینو",
+          "menuCount": "{count, plural, one {ھن جڳھ تی # مینو} other {ھن جڳھ تی # مینو}}",
+          "locationLevel": "جڳھ جی سطح جو نظارو",
+          "inactiveMenu": "غیر فعال مینو",
+          "thisMenuOnly": "ہی مینو صرف",
+          "allMenusInLocation": "ھن جڳھ تی سڀ مینو",
+          "thisMenuHelper": "سوال ۽ سرگرمی ھن مینو کی استعمال ڪن ٿا",
+          "allMenusHelper": "سوال ۽ سرگرمی ھن جڳھ تی سڀ مینو استعمال ڪن ٿا",
+          "dialogDescription": "سرگرمی ۽ چیڪ لاء سڀ مینو یا ہڪ مینو چونڊیو",
+          "all": "سڀ ڪجھ",
+          "close": "بند ڪريو"
+        },
+        "locations": {
+          "title": "جڳھون",
+          "loading": "جڳھون لوڊ ڪری رہیا آھن۔۔۔",
+          "empty": "اڃا تائین ڪو جڳھ جو خلاصو ناہی",
+          "storeFallback": "جڳھ {id}",
+          "checkedOn": "چیڪ ڪیو ویو {date}",
+          "checkCount": "{count, plural, one {# چیڪ ڪریو} other {# چیڪ}}",
+          "checksNeedReview": "{count, plural, one {# گراہڪ جی منھن واری چیڪ کی جائزو وٺڻ جی ضرورت آھی} other {# گراہڪ جی منھن واری چیڪ کی جائزو وٺڻ جی ضرورت آھی}}",
+          "statusReason": {
+            "stable": "ڪنھن بہ گراہڪ کی منھن ڏیڻ واری مسئلی تی عمل جی ضرورت ناہی",
+            "watch": "گراہڪ جی سامہون تفصیل تی ڌیان ڏیڻ جی ضرورت ٿی سگہی ٿی",
+            "needs_review": "گراہڪ جی سامہون تفصیل جو جائزو وٺڻ جی ضرورت آھی",
+            "insufficient_data": "ھڪ ڪارگر چیڪ لاء وڌیڪ گراہڪ سرگرمی جی ضرورت آھی",
+            "stale": "ھن جڳھ کی ھڪ نئین چیڪ جی ضرورت آھی",
+            "not_ready": "پہرین جڳھ چیڪ تیار ٿی رھیو آھی"
+          }
+        },
+        "assistant": {
+          "title": "ڪاروباری صحت پڇو",
+          "askShort": "پڇ۔",
+          "englishOnlyTitle": "سوال ھن وقت انگریزی ۾ موجود آھن",
+          "englishOnlyDescription": "توھان جی حالت ۽ چیڪ مقامی آھن۔ ڪاروباری صحت جا سوال پڇڻ لاء ایپ ٻولی کی انگریزی ۾ تبدیل ڪریو",
+          "notReady": "ڪاروباری صحت جواب ڏیندو تازو چیڪ ختم ٿیڻ کان پوء",
+          "suggestedUnavailable": "تجویز ڪیل سوال ھن وقت دستیاب نہ آھن",
+          "freeTextUnavailable": "مفت متن جا سوال ھن وقت دستیاب نہ آھن",
+          "answerError": "ڪاروباری صحت ان جو جواب نہ ڏئی سگہی۔",
+          "suggestedQuestions": "تجویز ڪیل سوال",
+          "followUps": "تون اگلا پڇی سگھین ٿو۔",
+          "you": "تون ئی تہ آھین۔",
+          "empty": "ہڪ سوال چونڊیو یا پنھنجی ڪاروبار بابت پڇو",
+          "placeholderReady": "اڄ، ھن ہفتی، مینو تی ڌیان ڏیڻ یا ایندڙ چیڪ بابت پڇو",
+          "placeholderMobile": "اڄ یا ھن ہفتی بابت پڇو",
+          "placeholderPending": "تازو چیڪ کان پوء دستیاب آھی",
+          "send": "سوال موڪلیو",
+          "cachedFacts": "ڪیش ٿیل MenuList ڪاروباری حقیقت جی بنیاد تی",
+          "questions": {
+            "checks": "چیڪ ڪرڻ جی ڪہڙی ضرورت آھی؟",
+            "today_stats": "اڄ ڪیئن ھلندو آھی؟",
+            "this_week_stats": "ھن ہفتی ڇا ٿیو؟",
+            "top_item": "ڪھڙی شی تی ڌیان ڏئی رھیو آھی؟",
+            "last_week_stats": "گذریل ہفتی ڇا ٿیو؟",
+            "this_month_stats": "ہی دھن ڪیئن آھی؟",
+            "last_month_stats": "گذریل مہینی ڇا ٿیو؟",
+            "public_menu_status": "ڇا منھنجو عوامی مینو ٺیڪ آھی؟",
+            "profile_status": "ڇا منھنجو ڪاروباری پروفائل پورو آھی؟",
+            "feedback_reviews": "چیڪ ڪرڻ لاء ڪنھن مھمان جی موٽ؟",
+            "feedback_recent": "مھمانن تازو ڇا چیو؟",
+            "default": "اڳتی مونکی ڇا چیڪ ڪرڻ گھرجی؟"
+          }
+        },
+        "sources": {
+          "title": "ڊیٽا جا ذریعا",
+          "menuProjects": "مینو پروجیڪٽ",
+          "ownerAnalytics": "مالڪ سرگرمی",
+          "guestFeedback": "مھمان جو موٽ",
+          "storeSettings": "ڪاروباری ترتیبات",
+          "menuListData": "MenuList ڊیٽا",
+          "updatedOn": "اپڊيٽ ڪيو ويو {date}",
+          "latest": "تازو دستیاب ڊیٽا"
+        },
+        "publicTruth": {
+          "title": "سرڪاری گراہڪ ذریعو",
+          "checking": "چیڪ ڪرڻ",
+          "checkingFacts": "چیڪ ڪرڻ MenuList عوامی حقیقت۔۔۔",
+          "checkedMenu": "چیڪ ٿیل مینو: {name}",
+          "boundary": "موجودہ MenuList ڪاروبار ۽ مینو ڊیٽا مان چیڪ ڪیو ویو۔ خارجی پلیٽفارم مالڪ جی تصدیق ٿیل رہن ٿا",
+          "boundaryShort": "خارجی پلیٽفارم مالڪ جی تصدیق ٿیل رہن ٿا",
+          "historyTitle": "عوامی معلومات جی تاریخ",
+          "historyBoundary": "MenuList ڪاروبار ۽ مینو جی صرف حقیقت کی استعمال ڪری ٿو۔ ڪا بہ خارجی سائیٽن کی اسڪن نہ ڪیو ویو آھی",
+          "historyBoundaryShort": "MenuList صرف حقیقتون۔ ڪا بہ خارجی سائیٽن کی اسڪن نہ ڪیو ویو",
+          "refreshErrorTitle": "گراہڪ-ذریعو چیڪ ریفریش نہ ٿی سگہی",
+          "refreshErrorDescription": "آخری دستیاب MenuList حقیقت اڃا تائین ھیٺ ڏیکاریل آھن",
+          "historyRefreshError": "عوامی معلومات جی تاریخ تازو نہ ٿی سگہی",
+          "historyLoadError": "عوامی معلومات جی تاریخ لوڊ نہ ٿی سگہی",
+          "historyErrorDescription": "آخری محفوظ ڪیل رپورٽ اڃا تائین ڏیکاری وئی آھی جڏھن دستیاب ھجی",
+          "notRun": "نہ ڊوڙی",
+          "lastSaved": "آخری محفوظ ٿیل {date}",
+          "noSavedReport": "اڃا تائین ڪو محفوظ ٿیل رپورٽ ناہی",
+          "noSavedReportDescription": "ھن جڳھ لاء پہرین رپورٽ محفوظ ڪرڻ لا چیڪ ہلائی",
+          "downloadEnglishReport": "انگریزی رپورٽ ڊائون لوڊ ڪریو",
+          "downloadEnglishShort": "انگریزی رپورٽ",
+          "runCheck": "چیڪ ہلائی",
+          "currentFix": "موجودہ فڪس آئٹم",
+          "nextFixes": "اگلا عوامی فڪسس",
+          "none": "ڪو نہ۔",
+          "attentionCount": "{count, plural, one {# شیون چیڪ ڪرڻ جی ضرورت آھی} other {# شیون چیڪ ڪرڻ جی ضرورت آھی}}",
+          "readyModuleCount": "تیار {count}/{total}",
+          "missingCount": "گم ٿی رھیو آھی {count}",
+          "checkCount": "چیڪ ڪریو {count}",
+          "savedCount": "محفوظ ڪیو ویو {count}/{total}",
+          "modulesReady": "{count}/{total} ماڊل تیار آھن",
+          "status": {
+            "ready": {
+              "label": "تیار ٿی وڃ۔",
+              "message": "توھان جی سرڪاری گراہڪ ذریعن وٽ بنیادی گراہڪن جی ضرورت آھی"
+            },
+            "missing_basics": {
+              "label": "بنیادی شیون غائب آھن",
+              "message": "مینو ڪلاڪ قیمتون عمل یا گراہڪ-لنڪ جی تفصیل کی وسیع حصیداری ڪرڻ کان اڳ ڌیان ڏیڻ جی ضرورت آھی"
+            },
+            "unclear": {
+              "label": "جانچ جی ضرورت آھی",
+              "message": "اڪثر بنیادی شیون موجود آھن، پر ھڪ یا وڌیڪ عوامی حقیقتون اڃا تائین جانچڻ جی ضرورت آھی"
+            }
+          },
+          "metrics": {
+            "readyModules": "تیار ماڊل",
+            "missingFacts": "گم ٿیل حقیقت",
+            "checkedMenu": "چیڪ ٿیل مینو",
+            "savedReports": "محفوظ ڪیل رپورٽون"
+          },
+          "results": {
+            "present": "تیار ٿی وڃ۔",
+            "missing": "گم ٿی ویو آھی۔",
+            "unclear": "چیڪ ڪریو",
+            "not_applicable": "ضرورت ڪانہ آھی۔",
+            "not_checked": "چیڪ نہ ڪیو ویو آھی"
+          },
+          "moduleStatus": {
+            "ready": "تیار ٿی وڃ۔",
+            "needs_attention": "گم ٿی ویو آھی۔",
+            "check": "چیڪ ڪریو",
+            "not_checked": "چیڪ نہ ڪیو ویو آھی"
+          },
+          "facts": {
+            "business_identity": "ڪاروباری نالو",
+            "menu_or_service_source": "مینو یا خدمت جی فھرست",
+            "prices": "قیمتون",
+            "hours": "ڪلاڪ",
+            "location": "جڳھ",
+            "contact": "رابطی",
+            "customer_actions": "گراہڪ جی عمل",
+            "public_link": "گراہڪ لنڪ",
+            "photos": "فوٽو",
+            "machine_readable_source": "تلاش-دوست تفصیل"
+          },
+          "evidence": {
+            "owner_entered": "ھن چیڪ ۾ داخل ٿیو",
+            "owner_selected": "مالڪ طرفان چونڊیو ویو",
+            "source_text_hint": "مہیا ڪیل ذریعو ۾ ملیو",
+            "valid_public_url": "عوامی لنڪ فارمیٽ صحیح آھی",
+            "invalid_public_url": "عوامی لنڪ کی سڌارڻ جی ضرورت آھی",
+            "menulist_store": "چیڪ ڪیو ویو موجودہ MenuList ڪاروباری سیٽنگون",
+            "menulist_project": "چونڊیل یا ڊیفالٽ MenuList مینو چیڪ ڪیو",
+            "menulist_summary": "موجودہ MenuList مینو جو خلاصو چیڪ ڪیو",
+            "menulist_public_route": "چیڪ ڪیو ویو موجودہ MenuList ڪسٽمر-لنڪ سیٽنگس",
+            "menulist_index_gate": "چیڪ ٿیل موجودہ MenuList عوامی دریافت جا اصول",
+            "not_provided": "اھا حقیقت موجودہ MenuList ڊیٽا مان غائب آھی",
+            "not_checked": "اھا حقیقت موجودہ MenuList ڊیٽا مان محفوظ طئور تی چیڪ نہ ڪئی وئی ھئی",
+            "priceNotLoaded": "چونڊیل مینو کی ھڪ دفعو کولیو تہ جیئن MenuList ان جی قیمتن کی چیڪ ڪری سگہی"
+          },
+          "moduleEvidence": {
+            "ready": "موجودہ MenuList ڊیٽا ڏیکاری ٿو تہ ہی علائقو تیار آھی",
+            "needs_attention": "موجودہ MenuList ڊیٽا ڏیکاری ٿو تہ ضروری معلومات غائب آھی",
+            "check": "گراہڪن تی ڀروسو ڪرڻ کان اڳ ھن علائقا کی چیڪ ڪریو",
+            "not_checked": "MenuList موجودہ ڊیٽا مان ھن علائقا کی مڪمل طئور تی چیڪ نہ ڪری سگھیو"
+          },
+          "setupReason": {
+            "needs_attention": "ضروری گراہڪ جی سامہون معلومات غائب آھی",
+            "check": "گراہڪن تی ڀروسو ڪرڻ کان اڳ ھن کی چیڪ ڪریو",
+            "not_checked": "MenuList ھن کی موجودہ ڊیٽا مان مڪمل طئور تی چیڪ نہ ڪری سگھیو"
+          },
+          "targetActions": {
+            "basic_settings": "کلیل ڪاروباری تفصیل",
+            "domain_settings": "گراہڪ لنڪ کولیو",
+            "hours_edit": "کلیل ڪلاڪ",
+            "menu_tab": "مینو کولیو",
+            "official_page": "ڪاروباری صفحو کولیو",
+            "presence_monitor": "اوپن پلیسمینٽ چیڪ",
+            "share_tab": "شیئر اوزار کولیو"
+          },
+          "actions": {
+            "openCustomerSource": "کلیل گراہڪ ذریعو",
+            "openShareTools": "حصیداری جا اوزار کولیو",
+            "fixFact": "ٺیڪ ڪریو {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "عوامی معلومات بنیادی",
+              "description": "ڪاروباری نالو، موجودہ مینو یا خدمت جو ذریعو، رابطی، عملن ۽ گراہڪ لنڪ"
+            },
+            "business_facts_copy_pack": {
+              "title": "وری استعمال ٿیل ڪاروباری تفصیل",
+              "description": "موجودہ حقیقت عملی عوامی پروفائلز، جوابن ۽ گراہڪ-لنڪ ھینڊ آف ۾ وری استعمال ڪری سگہی ٿو"
+            },
+            "qr_link_health": {
+              "title": "QR لنڪ جی تیاری",
+              "description": "QR ۽ ڇپیل پلیسمینٽ لاء ھڪ موجودہ گراہڪ لنڪ"
+            },
+            "social_bio_link_consistency": {
+              "title": "پروفائل لنڪ جی استحڪام",
+              "description": "سماجی پروفائیل ۽ ٻین پلیسمینٽ لاء ھڪ موجودہ گراہڪ لنڪ"
+            },
+            "customer_link_preview": {
+              "title": "گراہڪ لنڪ پریویو",
+              "description": "مکیہ حقیقتون گراہڪن کی عمل ڪرڻ کان اڳ ڏسڻ گھرجی"
+            },
+            "print_share_assets": {
+              "title": "اثاثن کی پرنٽ ۽ شیئر ڪریو",
+              "description": "لاء موجودہ لنڪ جی تیاری QR پوسٽر، کاؤنٽر ڪارڊ ۽ تصویرن کی حصیداری ڪریو"
+            },
+            "menu_service_readability": {
+              "title": "مینو یا خدمت جی وضاحت",
+              "description": "چونڊیل مینو ۾ قسمن، شین یا خدمتن ۽ قیمتن"
+            },
+            "price_availability_gap": {
+              "title": "قیمت ۽ دستیابی جی وضاحت",
+              "description": "قیمتون، مختلف قسم، وڪرو ٿیل ریاست ۽ دستیابی گراہڪن کی ڏیکاری وئی"
+            },
+            "menu_pdf_cleanup": {
+              "title": "پراڻی PDF بدلی",
+              "description": "ھڪ موجودہ MenuList ذریعو ۽ گراہڪ لنڪ جیڪا پراڻی PDF کی تبدیل ڪری سگہی ٿی"
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp عمل",
+              "description": "ھڪ صاف WhatsApp یا متبادل گراہڪ رابطی جی عمل"
+            },
+            "hours_readiness": {
+              "title": "ڪلاڪ تیار",
+              "description": "باقاعدہ ڪلاڪ گراہڪ تی ڀروسو ڪری سگہن ٿا"
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp جواب جی حقیقت",
+              "description": "عملی جی جوابن لاء موجودہ مینو ڪلاڪ رابطی ۽ لنڪ جا حق"
+            },
+            "photo_visual_identity": {
+              "title": "فوٽو ۽ بصری سڃاڻپ",
+              "description": "ہڪ لوگو، ڪپڙا، ڪاروباری فوٽو، یا شیون ۽ خدمت جا بصری"
+            },
+            "customer_question_coverage": {
+              "title": "عام گراہڪ سوال",
+              "description": "پیشڪش، ڪلاڪ، قیمت، جڳھ، رابطی ۽ ایندڙ عمل لاء واضح حق"
+            },
+            "customer_faq_reply_pack": {
+              "title": "وری استعمال ٿیندڙ گراہڪ جا جواب",
+              "description": "موجودہ حقیقت عملی کی وری استعمال ڪری سگہی ٿو جڏھن گراہڪ عام سوال پڇن ٿا"
+            },
+            "booking_inquiry_readiness": {
+              "title": "بک ڪرڻ ۽ جاچ جی تیاری",
+              "description": "آرڊر، ڪتاب، رزرو، ڪال، پیغام، اقتباس جی درخواست ڪرڻ یا دورو ڪرڻ جو صاف رستو"
+            },
+            "google_profile_handoff": {
+              "title": "Google پروفائل لنڪ",
+              "description": "Google ڪاروباری پروفائل لاء تیار ڪیل موجودہ گراہڪ لنڪ"
+            },
+            "menu_freshness": {
+              "title": "مینو تازگی",
+              "description": "ھڪ تازو مینو اپڊیٽ جڏھن قیمتون، شیون یا دستیابی تبدیل ٿی"
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "گرافس",
+        "description": "ڊش بورڊ ۾ ڏیکاریل ساڳئی آباد سرگرمی مان ہڪ بصری خلاصو",
+        "ranges": {
+          "days7": "7 ڊینھ",
+          "days30": "30 ڊینھ"
+        },
+        "metrics": {
+          "menu_activity": "مینو سرگرمی",
+          "customer_actions": "گراہڪ جی عمل",
+          "search_demand": "طلب ڳولھیو",
+          "item_interest": "شیون دلچسپی",
+          "unavailable_demand": "نا قابل استیمال",
+          "missing_searches": "گم ٿیل ڳولاون"
+        },
+        "trend": {
+          "summary": "رجحان جو خلاصو",
+          "updatedAfterClose": "توہان جی اسٽور جو ڏینھن بند ٿیڻ کان پوء اپڊیٽ ڪیو ویو",
+          "status": {
+            "up": "وڌیڪ",
+            "down": "گھٽ",
+            "stable": "سمانگی",
+            "not_enough_data": "ڪافی تاریخ ناہی"
+          },
+          "period": {
+            "week": "ہفتی چیڪ",
+            "month": "مھنھ چیڪ"
+          },
+          "shortPeriod": {
+            "week": "ہفتو",
+            "month": "مھنھ"
+          },
+          "needsMoreDays": "وڌیڪ مقرر ٿیل ڏینھن جی ضرورت آھی",
+          "versus": "{current} بمقابلہ {previous}",
+          "messages": {
+            "up": "ھن {period} چیڪ لاء {metric} وڌیڪ آھی",
+            "down": "ھن {period} چیڪ لاء {metric} گھٽ آھی",
+            "stable": "ھن {period} چیڪ لاء {metric} مستحڪم آھی",
+            "not_enough_data": "ھن {period} چیڪ لاء ڪافی آباد ٿیل {metric} تاریخ ناہی"
+          },
+          "change": {
+            "gathering": "{period}: گڏ ڪرڻ",
+            "newActivity": "{period} نئین سرگرمی",
+            "steady": "{period}: مسلسل",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "موازنہ چارٽ",
+          "description": "مقرر ڪیل ڏینھن کان ہفتی ۽ مہینی جی حرڪت"
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "مینو رجحان",
+            "days7": "آخری 7 مقرر ٿیل ڏینھن",
+            "days30": "آخری 30 مقرر ٿیل ڏینھن"
+          },
+          "customerActions": {
+            "title": "گراہڪ جی عمل",
+            "description": "مینو کولڻ کان پوء گراہڪن ڇا ٽیپ ڪیو"
+          },
+          "sources": {
+            "title": "گراہڪ ڪٿان آیا",
+            "description": "مینو جو دورو ۽ عمل سیشن ذریعو طرفان"
+          },
+          "items": {
+            "title": "بہترین شیون دلچسپی",
+            "description": "شیون گراہڪ سڀ کان وڌیڪ کولیا یا ٽیپ ڪیا ویا"
+          },
+          "search": {
+            "title": "طلب ڳولھیو",
+            "description": "گراہڪ ڇا ڳولھا"
+          },
+          "officialPage": {
+            "title": "سرڪاری صفحی جو رجحان",
+            "description": "سرڪاری ڪاروباری صفحی کان نظارا ۽ عمل"
+          }
+        },
+        "legends": {
+          "visits": "دورو",
+          "actionSessions": "ايڪشن سيشن",
+          "views": "نظارا",
+          "taps": "آئٽم ٽيپس",
+          "noResult": "ڪو نتیجو نہ آھی"
+        },
+        "empty": {
+          "default": "ھن ڏسڻ لاء اڃا تائین ڪو گراف ڊیٽا ناہی",
+          "menuActivity": "گراہڪ جی مینو کولڻ کان پوء مینو سرگرمی ظاھر ٿیندی",
+          "customerActions": "گراہڪ ڪال ڪرڻ، پیغام ڏیڻ، آرڊر ڏیڻ، محفوظ ڪرڻ یا ہدایتن لاء پڇڻ کان پوء گراہڪ جا عمل ظاھر ٿیندا",
+          "customerActionsPeriod": "ھن عرصی ۾ اڃا تائین ڪو گراہڪ عمل ناہی",
+          "searchDemand": "گراہڪ مینو سرچ استعمال ڪرڻ کان پوء ڳولا جی طلب ظاھر ٿیندی",
+          "itemInterest": "گراہڪ جی مینو شیون کولڻ کان پوء آئٹم جی دلچسپی ظاھر ٿیندی",
+          "unavailableDemand": "غیر دستیاب گھرج ظاھر ٿیندی جڏھن گراہڪ ناقابل دستیاب شین کی ٽیپ ڪندا آھن",
+          "missingSearches": "گم ٿیل ڳولا ظاھر ٿیندی جڏھن گراہڪ ڳولیندا آھن پر ڪو میچ نہ ملندو",
+          "sources": "صارفین جی لنڪ، QR، یا سماجی پیجن کان اچڻ بعد ذریعو تفصیل ظاھر ٿیندو",
+          "officialPage": "سرڪاری صفحی جی سرگرمی ظاھر ٿیندی جڏھن گراہڪ عوامی ڪاروباری صفحو کولیندا"
+        },
+        "footer": {
+          "sameData": "ساھی ڊیش بورڊ ڊیٽا",
+          "noExtraTracking": "ڪو اضافی ٽریڪنگ ناہی",
+          "settledAfterClose": "دڪان جی ڏینھن جی آخر کان پوء آباد ڪیو ویو"
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "مینو",
+          "viewsLabel": "مينيو ڏيک",
+          "viewsTooltip": "ڪیترا دفعا گراہڪن توہان جو مینو کولیو",
+          "thisMonthLabel": "ھن مہینی توھان جو مینو"
+        },
+        "product": {
+          "singular": "فہرست",
+          "viewsLabel": "فہرست جا نظارا",
+          "viewsTooltip": "ڪیترا دفعا گراہڪن توہان جی فہرست کولی",
+          "thisMonthLabel": "ھن مہینی توھان جی فہرست"
+        },
+        "service": {
+          "singular": "خدمت جی فھرست",
+          "viewsLabel": "خدمت-لسٽ نظارا",
+          "viewsTooltip": "ڪیترا دفعا گراہڪن توہان جی خدمت لسٽ کولی",
+          "thisMonthLabel": "ھن مہینی توھان جی خدمت لسٽ"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "ڌيان جي ضرورت آهي",
+          "active": "سرڪاری گراہڪ ذریعو سرگرم آھی",
+          "readyToPlace": "سرڪاری گراہڪ ذریعو رکڻ لاء تیار آھی"
+        },
+        "description": {
+          "needsAttention": "مینو، ڪلاڪ یا گراہڪ لنڪ کی وڏی پئمانی تی حصیداری ڪرڻ کان اڳ ۾ ٺیڪ ڪریو",
+          "active": "ڪنھن بہ عمل جی ضرورت ناہی۔ گراہڪ توہان جی موجودہ عوامی تفصیلن کی ھڪ ذریعو کان استعمال ڪری سگہن ٿا",
+          "readyToPlace": "توھان جو گراہڪ لنڪ تیار آھی ان ۾ شامل ڪریو Google, Instagram, WhatsApp, QRیا پرنٽ ڪریو تہ جیئن گراہڪ موجودہ ذریعو استعمال ڪن"
+        },
+        "link": {
+          "ready": "گراہڪ لنڪ تیار آھی",
+          "missing": "گراہڪ لنڪ غائب آھی"
+        },
+        "states": {
+          "set": "سیٽ ڪریو",
+          "missing": "گم ٿی ویو آھی۔",
+          "ready": "تیار ٿی وڃ۔",
+          "notReady": "تیار نہ آھی۔",
+          "live": "جیون",
+          "hidden": "غير فعال"
+        },
+        "tags": {
+          "menu": "مینو: {status}",
+          "hours": "ڪلاڪ: {status}",
+          "customerLink": "گراہڪ لنڪ: {status}",
+          "link": "لنڪ: {status}",
+          "placed": "جڳھ: {count}/{total}"
+        },
+        "actions": {
+          "fix": "ٺیڪ ڪریو جنہن تی ڌیان ڏیڻ جی ضرورت آھی",
+          "preview": "عوامی مینو جو پریویو ڪریو",
+          "share": "حصیداری مینو"
+        },
+        "updated": {
+          "notUpdated": "اڃا تائین اپڊیٽ نہ ڪیو ویو آھی",
+          "recently": "تازو ئی اپڊیٽ ڪیو ویو",
+          "today": "اڄ اپڊيٽ ڪيو ويو",
+          "yesterday": "ڪالھ اپڊیٽ ڪیو ویو",
+          "daysAgo": "اپڊیٽ ڪیو ویو {count, plural, one {# ڏینھن اڳ} other {# ڏینھن اڳ}}"
+        }
+      },
+      "ownerActions": {
+        "title": "اگلا مالڪ عمل",
+        "open": "کليل",
+        "placement": {
+          "notConfirmed": "اڃا تائین تصدیق نہ ٿی آھی",
+          "today": "اڄ تصدیق ٿی وئی",
+          "yesterday": "ڪالھ تصدیق ٿی وئی",
+          "daysAgo": "تصدیق ٿیل {count, plural, one {# ڏینھن اڳ} other {# ڏینھن اڳ}}"
+        },
+        "status": {
+          "ready": "تیار ٿی وڃ۔",
+          "missing": "گم ٿی ویو آھی۔",
+          "set": "سیٽ ڪریو",
+          "live": "جیون",
+          "notLive": "نہ جیو۔",
+          "confirmedCount": "{count}/{total} تصدیق ٿیل آھی",
+          "on": "آن",
+          "off": "آف",
+          "dailyChanges": "روزانی تبدیلیون",
+          "hoursException": "ڪلاڪ استثنا",
+          "staffUse": "ملازمن جو استعمال",
+          "menuPrices": "مینو قیمتون",
+          "openCount": "{count, plural, one {# عمل کلیل آھی} other {# عمل کلیل آھن}}",
+          "stable": "مستحڪم"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "گراہڪ لنڪ سیٽ ڪریو",
+            "description": "QR حصیداری ڪرڻ کان اڳ گراہڪ لنڪ ٺاہیو، عملی جا جواب، یا عوامی پروفائل"
+          },
+          "setHours": {
+            "label": "ڪلاڪ مقرر ڪریو",
+            "description": "گراہڪن جی دوری کان اڳ عوامی کلیل ۽ بند حالت صاف رکو"
+          },
+          "publishMenu": {
+            "labelPublish": "مینو شایع ڪریو",
+            "labelOpen": "مینو کولیو",
+            "descriptionVisible": "وسیع شیئرنگ کان اڳ موجودہ مینو شایع ڪریو",
+            "descriptionHidden": "گراہڪن جی لنڪ استعمال ڪرڻ کان اڳ مینو کی ڏسڻ ۾ اچو"
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "لنڪ جی جڳھ جی تصدیق ڪریو",
+            "labelPlace": "گراہڪ لنڪ رکجو",
+            "descriptionPlaced": "Google، Instagram، ۽ WhatsApp کی ساھی ذریعو ڏانہن اشارو ڪریو",
+            "descriptionUnplaced": "ساھی گراہڪ لنڪ شامل ڪریو Google, Instagram, WhatsApp, QR۽ پرنٽ ڪریو"
+          },
+          "openPrivateFeedback": {
+            "label": "خانگی موٽ کولیو",
+            "description": "مھمان جی مسئلن کی عوامی جائزی ۾ بدلائڻ کان اڳ نجی موٽ استعمال ڪریو"
+          },
+          "captureDailyChange": {
+            "label": "MenuList کی ٻڌایو تہ ڇا بدلایو ویو آھی",
+            "description": "MenuList کی ٻڌایو تہ اڄ ڇا بدلایو ویو آھی ۽ تیار ڪیل مینو ڪارڊ کی منظور ڪریو"
+          },
+          "setTodayStatus": {
+            "label": "اڄ جی حالت مقرر ڪریو",
+            "description": "اڄ بند سیٽ ڪریو دیر سان کولڻ، باورچی خانہ بند ڪرڻ، یا ہڪ خاص مینو اطلاع"
+          },
+          "prepareStaffHandoff": {
+            "label": "ملازمن جی دستیابی تیار ڪریو",
+            "description": "ملازمن کی مینو لنڪ ڏیو، QR، ۽ گراہڪ جواب لائینون ھڪ جڳھ کان"
+          },
+          "updatePrices": {
+            "label": "قیمتن کی اپ ڊیٽ ڪریو",
+            "description": "قیمت جی تبدیلین لاء مینو مینیجر استعمال ڪریو، پوء شایع ڪرڻ کان اڳ ۾ منظور ڪریو"
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "مینو سیٽ اپ",
+        "complete": "مینو سیٽ اپ مڪمل ٿی چڪو آھی",
+        "ready": "مینو سیٽ اپ تیار آھی",
+        "actions": {
+          "openMenu": "مینو کولیو",
+          "createMenu": "مینو ٺاہیو",
+          "reviewDetails": "تفصیل جو جائزو وٺو",
+          "publishMenu": "مینو شایع ڪریو",
+          "openSharingTools": "حصیداری جا اوزار کولیو",
+          "prepareDescriptions": "وضاحت تیار ڪریو",
+          "addImages": "تصویرن کی شامل ڪریو",
+          "reviewLanguageText": "ٻولیء جی متن جو جائزو وٺو",
+          "openMenuCheck": "مینو چیڪ کولیو",
+          "updatePublicLinks": "عوامی لنڪ کی اپ ڊیٽ ڪریو",
+          "addPublicPhoto": "عوامی تصویر شامل ڪریو"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "ذریعو شامل ڪیو ویو",
+            "doneDescription": "مینو ذریعو ڳنڍیل آھی",
+            "nextDescription": "ہڪ مینو فوٽو شامل ڪریو، PDF، لنڪ، یا دستی طئور تی شروع ڪریو"
+          },
+          "menuImported": {
+            "label": "مینو درآمد ڪیو ویو",
+            "doneDescription": "{count, plural, one {# ڏسڻ واری شیون ملی ویون} other {# ڏسڻ ۾ آیل شیون ملیا آھن}}",
+            "nextDescription": "مینو شیون درآمد ڪریو یا شامل ڪریو"
+          },
+          "keyDetailsChecked": {
+            "label": "اہم تفصیل چیڪ ڪیا ویا",
+            "doneDescription": "قیمتون ۽ اہم مینو تفصیل صاف آھن",
+            "nextDescription": "شایع ڪرڻ کان اڳ قیمتون ۽ اہم تفصیل چیڪ ڪریو"
+          },
+          "menuPublished": {
+            "label": "مینو شایع ڪیو ویو",
+            "doneDescription": "عوامی مینو شایع ڪیو ویو آھی",
+            "nextDescription": "شایع ڪریو جڏھن مینو گراہڪن لاء تیار آھی"
+          },
+          "linkPlaced": {
+            "label": "لنڪ رکیل آھی",
+            "readyLabel": "لنڪ تیار آھی",
+            "doneDescription": "سرڪاری لنڪ گراہڪن لاء تیار آھی",
+            "progressDescription": "{total} جی جڳھ جی عملن جو {count} ڪیو ویو",
+            "nextDescription": "مینو شایع ٿیڻ تی شیئرنگ اوزار کولیو"
+          },
+          "descriptionsReady": {
+            "label": "وضاحت تیار آھی",
+            "doneDescription": "ڏسڻ ۾ آیل شین جی وضاحت آھی۔",
+            "nextDescription": "صاف مینو آئٽین لاء وضاحت تیار ڪریو"
+          },
+          "imagesReady": {
+            "label": "تصویر تیار آھی",
+            "doneDescription": "ڏسڻ واری شین ۾ تصویرون آھن",
+            "nextDescription": "جڏھن ڪارگر ھجی تہ شیون جون تصویرون شامل ڪریو یا ٺاہی"
+          },
+          "translationsReady": {
+            "label": "ترجمو تیار آھی",
+            "doneDescription": "چونڊیل مینو ٻولیون مڪمل آھن",
+            "nextDescription": "چونڊیل مینو ٻولین جو جائزو وٺو"
+          },
+          "publicLinksAdded": {
+            "label": "عوامی لنڪ شامل ڪیا ویا",
+            "doneDescription": "عوامی عمل یا سماجی لنڪ موجود آھن",
+            "nextDescription": "ڪاروباری صفحی لاء ڪارگر عوامی لنڪ شامل ڪریو"
+          },
+          "publicPhotoAdded": {
+            "label": "عوامی تصویر شامل ڪئی وئی",
+            "doneDescription": "ھڪ عوامی تصویر موجود آھی",
+            "nextDescription": "تیار ٿیڻ تی ڪوپر، لوگو یا عوامی تصویر شامل ڪریو"
+          }
+        }
       }
     }
   },
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "اڃا تائین بلنگ جی تاریخ ناہی",
     "perMonth": "/ مھنھ",
     "contactUs": "اسان سان رابطو ڪریو"
+  },
+  "StarterActivation": {
+    "activeTitle": "توھان جو مينيو آن لائن آھي",
+    "endingSoonTitle": "پنهنجو مينيو آن لائن رکو",
+    "publicMenuQrActive": "توھانجو عوامي مينيو ۽ QR ڪوڊ فعال آھن.",
+    "activeRemaining": "توهان جي مينيو رسائي فعال آهي.",
+    "daysRemaining": "{days, plural, one {پنھنجي مينيو کي آن لائن رکڻ لاءِ # ڏينھن اندر ھڪڙو منصوبو چونڊيو.} other {پنهنجي مينيو کي آن لائن رکڻ لاءِ # ڏينهن اندر هڪ منصوبو چونڊيو.}}",
+    "sharingComplete": "توهان جي شيئرنگ سيٽ اپ مڪمل آهي.",
+    "sharingProgress": "{target, number} مان {count, number} شيئرنگ جا مرحلا مڪمل.",
+    "evidenceRecorded": "خودڪار رڪارڊ ٿيل: {systemCount, number}. توهان طرفان تصديق ٿيل: {ownerCount, number}.",
+    "evidenceEmpty": "مينيو جي لنڪ ڪاپي يا شيئر ڪريو، ان جو QR ڪوڊ ڊائون لوڊ ڪريو، يا تصديق ڪريو ته توھان ان کي ڪٿي رکيو آھي.",
+    "keepLiveAction": "پنهنجو مينيو آن لائن رکو",
+    "noSubscriptionDescription": "مينيو اپڊيٽ ۽ ڪسٽمر صفحا دستياب رکڻ لاءِ هڪ منصوبو چونڊيو.",
+    "choosePlanDescription": "توھان جو مينيو محفوظ ڪيو ويو آھي. ان کي آن لائن ۽ تازه ترين رکڻ لاءِ ھڪڙو منصوبو چونڊيو."
   },
   "Transactions": {
     "title": "واپار جی تاریخ",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "موبائل ایپ",
     "subscribeTitle": "شروع ڪرڻ لاء سبسڪرائب ڪریو",
     "subscribeDescription": "پنھنجی ڊجیٽل مینو ٺاہڻ ۽ پنھنجی ڪاروبار کی منظم ڪرڻ شروع ڪرڻ لاء ہڪ منصوبو چونڊیو",
-    "viewPlans": "منصوبا ڏسو"
+    "viewPlans": "منصوبا ڏسو",
+    "returnToMobile": "توھان ڊسڪٽاپ ورجن ڏسی رہیا آہیو۔ موبائیلی ڏانہن موٽیو"
   },
   "UseMenuList": {
     "qrSectionTitle": "QR ڪوڊ",

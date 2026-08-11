@@ -225,7 +225,7 @@ const campaign = (overrides: Partial<CampaignCueCampaign> = {}): CampaignCueCamp
             status: "current",
             validatedAt: NOW.toISOString(),
             expiresAt: "2026-07-12T07:00:00.000Z",
-            recheckActions: ["download", "export", "mark_used", "schedule"],
+            recheckActions: ["download", "export", "archive_export", "mark_used", "schedule"],
         },
         commercialGate: { status: "ready", findings: [] },
     },
@@ -269,7 +269,7 @@ const decisionsFor = (brain: CampaignCueBusinessBrain, inputs: CampaignCueSource
 });
 
 const verifyRecipesAndDecisions = () => {
-    assert(CAMPAIGNCUE_DAILY_DESK_RECIPES.length === 14, "CampaignCue must keep fourteen bounded action recipes");
+    assert(CAMPAIGNCUE_DAILY_DESK_RECIPES.length === 20, "CampaignCue must keep twenty bounded action recipes");
     recipe("local_review_request");
     recipe("return_customer_reminder");
 
@@ -582,6 +582,67 @@ const verifyCampaignRhythmAndReadiness = () => {
         "output pack decision card must inherit elapsed-expired blocking status",
     );
 
+    const liveOfferCampaign = campaign({
+        pack: {
+            ...campaign().pack!,
+            offerPage: {
+                slug: "0123456789abcdefabcd",
+                status: "published",
+                publishedAt: "2026-07-10T04:30:00.000Z",
+                expiresAt: "2026-07-11T05:00:00.000Z",
+            },
+        },
+    });
+    const liveOfferDesk = buildCampaignCueDailyDesk({
+        analytics,
+        assets: [asset],
+        businessBrain: businessBrain(),
+        campaigns: [liveOfferCampaign],
+        locations: [],
+        opportunities: [],
+        schedules: [],
+        sourceFacts,
+        sourceInputs: [sourceInput()],
+        workspace,
+        now: NOW,
+    });
+    const liveMiniPage = liveOfferDesk.packReview?.outputPack?.miniPage;
+    assert(liveMiniPage?.status === "ready", "output pack must expose a current published offer page as ready");
+    assert(liveMiniPage?.slug === "0123456789abcdefabcd", "output pack must retain the opaque published offer-page slug");
+    assert(liveMiniPage?.publicPath === "/offer/0123456789abcdefabcd", "output pack must expose the environment-neutral public offer path");
+    assert(liveMiniPage?.publicUrl === "http://localhost:3000/__campaigncue/offer/0123456789abcdefabcd", "output pack must expose the current-stage owner-ready offer URL");
+    assert(
+        liveMiniPage?.fields.some((field) => field.id === "mini_page_public_url" && field.value === liveMiniPage.publicUrl),
+        "download bundle must include the published offer-page URL",
+    );
+
+    const expiredOfferDesk = buildCampaignCueDailyDesk({
+        analytics,
+        assets: [asset],
+        businessBrain: businessBrain(),
+        campaigns: [campaign({
+            pack: {
+                ...campaign().pack!,
+                offerPage: {
+                    slug: "0123456789abcdefabcd",
+                    status: "published",
+                    publishedAt: "2026-07-09T04:30:00.000Z",
+                    expiresAt: "2026-07-10T04:59:59.000Z",
+                },
+            },
+        })],
+        locations: [],
+        opportunities: [],
+        schedules: [],
+        sourceFacts,
+        sourceInputs: [sourceInput()],
+        workspace,
+        now: NOW,
+    });
+    assert(expiredOfferDesk.packReview?.outputPack?.miniPage.status !== "ready", "expired offer-page pointers must not be presented as live");
+    assert(!expiredOfferDesk.packReview?.outputPack?.miniPage.publicPath, "expired offer-page pointers must not enter the download bundle as public paths");
+    assert(!expiredOfferDesk.packReview?.outputPack?.miniPage.publicUrl, "expired offer-page pointers must not enter the download bundle as public URLs");
+
     const legacyCampaign = campaign();
     legacyCampaign.pack = {
         ...legacyCampaign.pack!,
@@ -790,21 +851,32 @@ const verifyStaticBoundaries = () => {
 
     assert(packageJson.scripts?.["verify:campaigncue-operating-loop"]?.includes("verify-campaigncue-operating-loop.ts"), "package must expose operating-loop verifier");
     assert(packageJson.scripts?.["verify:campaigncue"]?.includes("verify:campaigncue-operating-loop"), "CampaignCue aggregate verifier must run operating-loop verifier");
+    assert(packageJson.scripts?.["verify:campaigncue"]?.includes("test:campaigncue-read-only-result-evidence"), "CampaignCue aggregate verifier must run read-only result evidence tests");
+    assert(packageJson.scripts?.["verify:campaigncue"]?.includes("test:campaigncue-export-archive"), "CampaignCue aggregate verifier must run export archive tests");
     assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_OPERATING_LOOP: true", "CampaignCue operating-loop feature flag");
     assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_AI_ASSISTANCE_PLAN: true", "CampaignCue AI assistance feature flag");
     assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_AI_PROVIDER_CALLS: false", "CampaignCue AI provider-call gate");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_EXPERIMENT_COACH: true", "CampaignCue Experiment Coach feature flag");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_LOCAL_VISIBILITY_ACTION_CENTER: true", "CampaignCue Local Visibility Action Center feature flag");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_APPROVAL_COMMENT_INBOX: true", "CampaignCue Approval and Comment Inbox feature flag");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_MULTI_LOCATION_VARIANTS: true", "CampaignCue multi-location variants feature flag");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_READ_ONLY_RESULT_EVIDENCE: true", "CampaignCue read-only result evidence feature flag");
+    assertIncludes(featureFlags, "ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE: true", "CampaignCue durable cloud export archive feature flag");
     [operatingLoop, decisionEngine].forEach((content, index) => {
         const label = index === 0 ? "operating loop" : "decision engine";
         assertExcludes(content, "fetch(", label);
         assertExcludes(content, "firebase", label);
         assertExcludes(content, "@google", label);
     });
-    ["PULSES", "RESULT_RECEIPTS", "EXPERIMENTS", "PRESENCE_PASSPORTS", "RETENTION_AUDIENCES", "STAFF_TASKS"]
+    ["PULSES", "RESULT_RECEIPTS", "EXPERIMENTS", "PRESENCE_PASSPORTS", "RETENTION_AUDIENCES", "STAFF_TASKS", "EXPORT_ARCHIVES"]
         .forEach((token) => assertExcludes(database, token, "CampaignCue collection registry"));
     assertIncludes(server, "readSourceSnapshot(workspaceId)", "public-use truth recheck");
     assertIncludes(server, "reusedFromCampaignId: reuseCampaign?.id", "current-truth campaign reuse provenance");
     assertIncludes(server, "campaignCueApprovalId(params.campaignId)", "deterministic approval document id");
     assertIncludes(server, "recordCampaignCueApprovalActionTransactional", "transactional approval lifecycle");
+    assertIncludes(server, "addCampaignCueApprovalComment", "transactional approval comments");
+    assertIncludes(server, "resolveCampaignCueApprovalComment", "transactional approval comment resolution");
+    assertIncludes(server, "!current.outputs.some((output) => output.id === params.outputId)", "approval output scope recheck");
     assertIncludes(server, "buildCampaignCueIdempotencyRequestHash", "request-bound idempotency identity");
     assertIncludes(server, "actorId: params.scope.userId", "actor-bound idempotency identity");
     assertIncludes(actionServerBlock, "return requireCampaignCueFirestoreAdmin().runTransaction", "ordinary action final transaction");
@@ -822,8 +894,15 @@ const verifyStaticBoundaries = () => {
     assertIncludes(dailyDesk, "|| rhythm.status === \"result_due\"", "result-due Daily Desk priority");
     assertIncludes(server, "usedAt: isNotUsed ? undefined", "not-used receipt handling");
     assertIncludes(server, "metrics: isNotUsed ? {}", "not-used metric handling");
+    assertExcludes(server, "receipt?.experimentVariable || params.campaign.pack?.experiment?.variable", "result recording must not infer an experiment variable");
+    assertIncludes(server, "completeCampaignCueExperimentForResult", "accepted one-change test completion boundary");
+    assertIncludes(server, 'params.input.action !== "accept_experiment"', "experiment acceptance avoids unrelated dashboard summary write");
+    assertIncludes(server, 'params.input.action !== "record_result_evidence"', "copied provider evidence avoids unrelated dashboard summary write");
     assertIncludes(server, "metrics: updates.resultMemory?.lastReceipt?.metrics || {}", "result-event normalized metrics");
-    assertIncludes(server, "confidence: params.input.action === \"record_outcome\" ? \"owner_reported\"", "owner-reported event confidence");
+    assertIncludes(actionServerBlock, 'confidence: params.input.action === "record_outcome"', "owner-result event confidence branch");
+    assertIncludes(actionServerBlock, '? "owner_reported"', "owner results use owner-reported confidence");
+    assertIncludes(actionServerBlock, ': params.input.action === "record_result_evidence"', "copied report evidence has a separate confidence branch");
+    assertIncludes(actionServerBlock, '? "manual"', "copied report evidence uses manual confidence");
     assertIncludes(workspaceUi, "source.status === \"active\" ? \"expired\"", "expired source owner label");
     assertIncludes(workspaceUi, "CampaignCue does not post, send, or spend", "manual delivery boundary");
     assertIncludes(workspaceUi, "AI assistance plan", "AI assistance owner section");
@@ -833,6 +912,10 @@ const verifyStaticBoundaries = () => {
     assertIncludes(workspaceUi, "resultCampaignId", "campaign-specific result targeting");
     assertIncludes(workspaceUi, "!selectedOutcomeSignalId", "result choice required before result write");
     assertIncludes(workspaceUi, "experimentVariable: resultReceiptDraft.experimentVariable || undefined", "optional tested-variable result field");
+    assertIncludes(workspaceUi, "Use this test", "explicit owner experiment acceptance action");
+    assertIncludes(workspaceUi, "Select this variable above only if it was the one thing you actually changed.", "explicit tested-variable evidence copy");
+    assertIncludes(workspaceUi, "This is not a live account connection", "copied provider evidence boundary copy");
+    assertIncludes(workspaceUi, "It does not change Campaign Memory recommendations", "provider evidence learning boundary copy");
     assertIncludes(workspaceUi, "isCampaignApprovalBusy", "duplicate approval action guard");
     assertIncludes(workspaceUi, "isCampaignActionBusy(scheduleCampaign.id, \"schedule\")", "duplicate manual reminder guard");
     assertIncludes(workspaceUi, "recordAction(editorContext.campaign as CampaignCueCampaign, \"export\")", "editor server-first export gate");

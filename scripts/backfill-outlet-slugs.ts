@@ -62,7 +62,7 @@ function getArg(name: string): string | null {
 }
 
 function getRequiredProjectId(): string {
-    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
+    const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
     if (!projectId) {
         throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running the outlet-slug backfill.');
     }

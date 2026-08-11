@@ -1,14 +1,23 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { CAMPAIGNCUE_VIDEO_STUDIO } from "@constant/campaigncue/videoReel";
 import {
+    buildCampaignCueVideoCaptureChecklist,
+    buildCampaignCueVideoFormatLearning,
+    buildCampaignCueVideoFormatSignature,
+    buildCampaignCueVideoFormatSnapshot,
     buildCampaignCueVideoStoryboardText,
     buildCampaignCueVideoProject,
     canApplyCampaignCueVideoRenderReceipt,
+    evaluateCampaignCueVideoContentCoach,
     evaluateCampaignCueVideoTrust,
     getCampaignCueVideoAssetIds,
     getCampaignCueVideoSourceTrustGate,
     getCampaignCueVideoDuration,
+    getCampaignCueVideoResultCounterDelta,
+    isCampaignCueVideoRenderEvidenceConsistent,
     parseCampaignCueVideoProjectRecord,
     regenerateCampaignCueVideoScene,
 } from "@lib/campaigncue/videoReel";
@@ -43,6 +52,18 @@ const output: CampaignCueOutput = {
         utm: "",
         approvalNote: "Review before use.",
         manualSteps: ["Review", "Render", "Post manually"],
+    },
+    metadata: {
+        patternCue: {
+            sourceInputId: "source_pattern_1",
+            sourceHash: "abcdef0123456789abcdef01",
+            platform: "instagram",
+            rightsStatus: "reference_only",
+            hookType: "demonstration",
+            format: "mixed",
+            pacing: "steady",
+            durationBand: "under_15_seconds",
+        },
     },
 };
 const campaign = {
@@ -93,6 +114,7 @@ assert.equal(project.status, "draft");
 assert.equal(project.version, 1);
 assert.equal(project.variants.length, CAMPAIGNCUE_VIDEO_STUDIO.MAX_VARIANTS);
 assert.equal(project.scenes.length, 4);
+assert.equal(project.patternCue?.format, "mixed");
 assert.deepEqual(project.audio, {
     voiceover: { mode: "none", volume: 0.9 },
     backgroundMusic: { mode: "none", volume: 0.45 },
@@ -114,6 +136,90 @@ assert.deepEqual(project.cost, {
     renderer: "campaigncue_browser_compositor",
 });
 assert.equal(parseCampaignCueVideoProjectRecord(project, { workspaceId }).id, project.id);
+const coach = evaluateCampaignCueVideoContentCoach({ project });
+assert.equal(coach.checks.length, 6);
+assert.equal(coach.status, "needs_review", "text-only story should recommend adding real business proof");
+assert.equal(coach.checks.find((check) => check.id === "opening_clarity")?.status, "ready");
+assert.equal(coach.checks.find((check) => check.id === "real_business_proof")?.status, "review");
+const visualAssetBase: Omit<CampaignCueAsset, "source"> = {
+    id: "asset_visual_1",
+    workspaceId,
+    name: "Campaign visual",
+    assetType: "image",
+    status: "ready",
+    rights: { status: "confirmed", consentType: "owner_confirmed" },
+    tags: [],
+    usageRefs: [],
+};
+const projectWithVisual = {
+    ...project,
+    scenes: project.scenes.map((scene) => scene.purpose === "proof"
+        ? { ...scene, assetId: visualAssetBase.id }
+        : scene),
+};
+assert.equal(evaluateCampaignCueVideoContentCoach({
+    project: projectWithVisual,
+    assets: [{ ...visualAssetBase, source: "generated" }],
+}).checks.find((check) => check.id === "real_business_proof")?.status, "review", "generated media must not be presented as real business proof");
+assert.equal(evaluateCampaignCueVideoContentCoach({
+    project: projectWithVisual,
+    assets: [{ ...visualAssetBase, source: "manual" }],
+}).checks.find((check) => check.id === "real_business_proof")?.status, "review", "manual metadata without upload provenance must not be presented as real business proof");
+assert.equal(evaluateCampaignCueVideoContentCoach({
+    project: projectWithVisual,
+    assets: [{ ...visualAssetBase, source: "upload" }],
+}).checks.find((check) => check.id === "real_business_proof")?.status, "ready", "owner-uploaded media can satisfy the proof check");
+assert.equal(evaluateCampaignCueVideoContentCoach({
+    project: projectWithVisual,
+    assets: [{ ...visualAssetBase, source: "imported" }],
+}).checks.find((check) => check.id === "real_business_proof")?.status, "ready", "owner-imported media can satisfy the proof check");
+const restrictedVisual = { ...visualAssetBase, source: "upload" as const, rights: { status: "restricted" as const } };
+const restrictedCoach = evaluateCampaignCueVideoContentCoach({
+    project: projectWithVisual,
+    assets: [restrictedVisual],
+});
+assert.equal(restrictedCoach.checks.find((check) => check.id === "real_business_proof")?.status, "review", "restricted media cannot be labeled ready as real proof");
+assert.equal(restrictedCoach.checks.find((check) => check.id === "source_and_rights")?.status, "fix", "restricted draft media must fail the coach rights check before save");
+const sessionProofWithoutRights = evaluateCampaignCueVideoContentCoach({
+    project,
+    sessionMediaSceneIds: [project.scenes.find((scene) => scene.purpose === "proof")?.id || ""],
+    sessionMediaUsed: true,
+    sessionMediaRightsConfirmed: false,
+});
+assert.equal(sessionProofWithoutRights.checks.find((check) => check.id === "real_business_proof")?.status, "review", "unconfirmed session media cannot be labeled ready as real proof");
+assert.equal(sessionProofWithoutRights.checks.find((check) => check.id === "source_and_rights")?.status, "fix");
+const captureChecklist = buildCampaignCueVideoCaptureChecklist(project);
+assert.equal(captureChecklist.length, 4);
+assert.ok(captureChecklist.every((task) => task.status === "record"));
+const formatSnapshot = buildCampaignCueVideoFormatSnapshot(project, project.versions[0]);
+const formatSignature = buildCampaignCueVideoFormatSignature(formatSnapshot);
+assert.match(formatSignature, /^campaigncue-video-format\.v1\|9:16\|demonstration\|mixed\|steady\|under_15_seconds\|/);
+const learnedProject = parseCampaignCueVideoProjectRecord({
+    ...project,
+    resultMemory: {
+        signalId: "useful",
+        renderReceiptId: "cc_video_receipt_result_1",
+        projectVersion: 1,
+        versionBinding: "exact",
+        formatSignature,
+        formatSnapshot,
+        recordedBy: "user_video_owner",
+    },
+}, { workspaceId });
+const formatLearning = buildCampaignCueVideoFormatLearning([learnedProject]);
+assert.equal(formatLearning.length, 1);
+assert.equal(formatLearning[0].status, "use_again");
+assert.equal(formatLearning[0].usefulCount, 1);
+assert.deepEqual(getCampaignCueVideoResultCounterDelta(undefined, "useful"), {
+    usefulDelta: 1,
+    notUsefulDelta: 0,
+    newOutcomeDelta: 1,
+});
+assert.deepEqual(getCampaignCueVideoResultCounterDelta("useful", "not_useful"), {
+    usefulDelta: -1,
+    notUsefulDelta: 1,
+    newOutcomeDelta: 0,
+});
 assert.equal(getCampaignCueVideoSourceTrustGate("clear", "needs_fix"), "needs_fix");
 const regeneratedScenes = regenerateCampaignCueVideoScene(project, project.scenes[0].id);
 assert.notEqual(regeneratedScenes[0].overlay, project.scenes[0].overlay);
@@ -204,6 +310,8 @@ assert.equal(CampaignCueVideoProjectMutationSchema.safeParse({
         id: "cc_video_receipt_1",
         attempt: 1,
         status: "completed",
+        projectVersion: project.version,
+        versionBinding: "exact",
         aspectRatio: "9:16",
         durationSeconds: 14,
     },
@@ -214,11 +322,33 @@ assert.equal(CampaignCueVideoProjectMutationSchema.safeParse({
     projectId: project.id,
     expectedVersion: project.version,
     receipt: {
+        id: "cc_video_receipt_missing_version",
+        attempt: 1,
+        status: "started",
+        versionBinding: "exact",
+        aspectRatio: "9:16",
+        durationSeconds: 14,
+        progressPercent: 0,
+        rightsEvidence: { assetIds: [], sessionMediaUsed: false, sessionMediaRightsConfirmed: false },
+        credit: { estimated: 0, reserved: 0, captured: 0, refunded: 0, currency: "credits" },
+    },
+    idempotencyKey: "video_receipt_missing_version_123",
+}).success, false, "new render receipts require an exact project version");
+assert.equal(CampaignCueVideoProjectMutationSchema.safeParse({
+    action: "render_receipt",
+    projectId: project.id,
+    expectedVersion: project.version,
+    receipt: {
         id: "cc_video_receipt_1",
         attempt: 1,
         status: "started",
+        projectVersion: project.version,
+        versionBinding: "exact",
         aspectRatio: "9:16",
         durationSeconds: 14,
+        progressPercent: 0,
+        rightsEvidence: { assetIds: [], sessionMediaUsed: false, sessionMediaRightsConfirmed: false },
+        credit: { estimated: 0, reserved: 0, captured: 0, refunded: 0, currency: "credits" },
         errorCode: "recording_failed",
     },
     idempotencyKey: "video_receipt_started_metadata_123",
@@ -227,16 +357,43 @@ const startedReceipt = {
     id: "cc_video_receipt_1",
     attempt: 1,
     status: "started" as const,
+    projectVersion: project.version,
+    versionBinding: "exact" as const,
     aspectRatio: "9:16" as const,
     durationSeconds: 14,
     progressPercent: 0,
     rightsEvidence: { assetIds: [], sessionMediaUsed: false, sessionMediaRightsConfirmed: false },
     credit: { estimated: 0 as const, reserved: 0 as const, captured: 0 as const, refunded: 0 as const, currency: "credits" as const },
 };
+assert.equal(isCampaignCueVideoRenderEvidenceConsistent({ project, receipt: startedReceipt }), true);
+assert.equal(isCampaignCueVideoRenderEvidenceConsistent({
+    project,
+    receipt: { ...startedReceipt, aspectRatio: "1:1" },
+}), false, "render evidence must use the approved project aspect ratio");
+assert.equal(isCampaignCueVideoRenderEvidenceConsistent({
+    project,
+    receipt: { ...startedReceipt, rightsEvidence: { ...startedReceipt.rightsEvidence, assetIds: ["asset_unrelated_1"] } },
+}), false, "render evidence cannot omit or substitute durable project assets");
 assert.equal(canApplyCampaignCueVideoRenderReceipt(undefined, startedReceipt), true);
 assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, startedReceipt), false, "a second key cannot restart one receipt id");
-assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, { attempt: 1, status: "completed" }), true);
-assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, { attempt: 2, status: "failed" }), false);
+assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, {
+    attempt: 1,
+    status: "completed",
+    projectVersion: project.version,
+    versionBinding: "exact",
+}), true);
+assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, {
+    attempt: 2,
+    status: "failed",
+    projectVersion: project.version,
+    versionBinding: "exact",
+}), false);
+assert.equal(canApplyCampaignCueVideoRenderReceipt(startedReceipt, {
+    attempt: 1,
+    status: "completed",
+    projectVersion: project.version + 1,
+    versionBinding: "exact",
+}), false, "terminal receipt must match the started project version");
 assert.equal(CampaignCueVideoProjectMutationSchema.safeParse({
     action: "render_progress",
     projectId: project.id,
@@ -295,6 +452,77 @@ const legacyProject = parseCampaignCueVideoProjectRecord({
 }, { workspaceId });
 assert.equal(legacyProject.audio.backgroundMusic.mode, "session_file");
 assert.deepEqual(legacyProject.reviewNotes, []);
+const legacyReceiptProject = parseCampaignCueVideoProjectRecord({
+    ...project,
+    renderReceipts: [{
+        ...startedReceipt,
+        projectVersion: undefined,
+        versionBinding: undefined,
+    }],
+}, { workspaceId });
+assert.equal(legacyReceiptProject.renderReceipts[0].versionBinding, "legacy_unverified");
+assert.equal(legacyReceiptProject.renderReceipts[0].projectVersion, undefined);
+assert.throws(
+    () => parseCampaignCueVideoProjectRecord({
+        ...project,
+        renderReceipts: [{
+            ...startedReceipt,
+            projectVersion: undefined,
+        }],
+    }, { workspaceId }),
+    /invalid_type/,
+    "persisted exact receipts without a project version must fail closed",
+);
+assert.throws(
+    () => parseCampaignCueVideoProjectRecord({
+        ...project,
+        resultMemory: {
+            signalId: "useful",
+            renderReceiptId: "cc_video_receipt_result_invalid",
+            projectVersion: 1,
+            versionBinding: "exact",
+            formatSignature,
+            recordedBy: "user_video_owner",
+        },
+    }, { workspaceId }),
+    /invalid_type/,
+    "exact result memory without its format snapshot must fail closed",
+);
+assert.throws(
+    () => parseCampaignCueVideoProjectRecord({
+        ...project,
+        resultMemory: {
+            signalId: "useful",
+            renderReceiptId: "cc_video_receipt_result_mismatch",
+            projectVersion: 1,
+            versionBinding: "exact",
+            formatSignature: `${formatSignature}_changed`,
+            formatSnapshot,
+            recordedBy: "user_video_owner",
+        },
+    }, { workspaceId }),
+    /signature does not match/,
+    "exact result memory rejects a signature that contradicts its snapshot",
+);
+assert.throws(
+    () => parseCampaignCueVideoProjectRecord({
+        ...project,
+        resultMemory: {
+            signalId: "useful",
+            renderReceiptId: "cc_video_receipt_result_future",
+            projectVersion: project.version + 1,
+            versionBinding: "exact",
+            formatSignature: buildCampaignCueVideoFormatSignature({
+                ...formatSnapshot,
+                projectVersion: project.version + 1,
+            }),
+            formatSnapshot: { ...formatSnapshot, projectVersion: project.version + 1 },
+            recordedBy: "user_video_owner",
+        },
+    }, { workspaceId }),
+    /result version exceeds/,
+    "exact result memory cannot point to a future project version",
+);
 assert.throws(
     () => parseCampaignCueVideoProjectRecord({
         ...project,
@@ -317,5 +545,22 @@ assert.throws(
     /unrecognized_keys/,
     "persisted started receipts with terminal metadata must fail closed",
 );
+
+const root = path.resolve(__dirname, "..", "..");
+const componentSource = fs.readFileSync(
+    path.join(root, "src/components/templates/campaigncue/CampaignCueVideoStudio.tsx"),
+    "utf8",
+);
+const workspaceSource = fs.readFileSync(
+    path.join(root, "src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"),
+    "utf8",
+);
+assert.match(componentSource, /workspaceMember\?: CampaignCueWorkspace\["members"\]\[string\]/, "Video Studio receives the durable workspace member boundary");
+assert.match(componentSource, /campaignCueCanMutateVideoProject\(\{/, "Video Studio preflights every server mutation through the shared role contract");
+assert.match(componentSource, /disabled=\{!canEditDraft\}/, "review-only Video Studio mode disables local editing controls");
+assert.match(componentSource, /disabled=\{Boolean\(busy\) \|\| !canApproveDraft/, "Video Studio approval controls follow reviewer permissions");
+assert.match(workspaceSource, /workspaceMember=\{currentWorkspaceMember\}/, "CampaignCue workspace wires the current durable member into Video Studio");
+const serverSource = fs.readFileSync(path.join(root, "src/lib/campaigncue/server.ts"), "utf8");
+assert.match(serverSource, /filterCampaignCueAssetsForMember\(\s*assets,\s*currentWorkspace\.members\?\.\[params\.scope\.userId\],\s*\)\.length !== assets\.length/, "Video Studio rejects selected assets outside the current member's branch scope");
 
 console.log("CampaignCue Video Reel Studio contract tests passed.");

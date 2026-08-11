@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
@@ -13,7 +14,9 @@ import {
     ANSWERLATTICE_CACHE_SOURCES,
 } from '@lib/answerlattice/cacheVersionManifest';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS } from '@type/answerlattice';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import {
     ANSWERLATTICE_RELEASE_ACTIVATION_LEASE_MS,
@@ -31,6 +34,8 @@ import {
     getAnswerlatticeMissingSourceVersionsBase,
     readAnswerlatticeInvalidationOwnership,
 } from './invalidationOwnership';
+import { ANSWERLATTICE_MAX_RELEASE_EVIDENCE_SOURCE_IDS } from './supportTruthChangeControl';
+import { loadAnswerlatticeSupportTruthChangeControl } from './supportTruthChangeControlServer';
 
 const RELEASES = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
 const ENTITIES = DB_COLLECTIONS.ANSWERLATTICE_ENTITIES;
@@ -127,9 +132,43 @@ type AffectedAnswerProjection = {
 
 type InternalAffectedAnswerProjection = {
     client: AffectedAnswerProjection;
+    evidenceSourceIds: string[];
+    invalidEvidenceReferenceCount: number;
     entityIds: string[];
     modifiedOnMillis: number;
     releaseReason: string | null;
+};
+
+const normalizeAffectedAnswerEvidenceSourceIds = (value: unknown): {
+    evidenceSourceIds: string[];
+    invalidEvidenceReferenceCount: number;
+} => {
+    if (value === undefined) return { evidenceSourceIds: [], invalidEvidenceReferenceCount: 0 };
+    if (!Array.isArray(value)) return { evidenceSourceIds: [], invalidEvidenceReferenceCount: 1 };
+
+    const evidenceSourceIds = new Set<string>();
+    let invalidEvidenceReferenceCount = 0;
+    for (const sourceId of value) {
+        if (typeof sourceId !== 'string'
+            || sourceId.trim() !== sourceId
+            || !isValidFirestoreDocumentId(sourceId)) {
+            invalidEvidenceReferenceCount += 1;
+            continue;
+        }
+        if (evidenceSourceIds.has(sourceId)) continue;
+        if (evidenceSourceIds.size >= ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_SOURCE_IDS) {
+            invalidEvidenceReferenceCount += 1;
+            continue;
+        }
+        evidenceSourceIds.add(sourceId);
+    }
+    return {
+        evidenceSourceIds: Array.from(evidenceSourceIds).sort(),
+        invalidEvidenceReferenceCount: Math.min(
+            ANSWERLATTICE_MAX_RELEASE_EVIDENCE_SOURCE_IDS,
+            invalidEvidenceReferenceCount,
+        ),
+    };
 };
 
 const getAffectedAnswersQuery = (
@@ -155,6 +194,10 @@ const projectAffectedAnswer = (
         ? Array.from(new Set((rawEntityIds as string[]).map(entityId => entityId.trim()))).sort()
         : null;
     const lastValidated = raw.productBinding?.lastValidatedInVersion;
+    const {
+        evidenceSourceIds,
+        invalidEvidenceReferenceCount,
+    } = normalizeAffectedAnswerEvidenceSourceIds(raw.evidence?.sourceIds);
     if (raw.pId !== PRODUCT_IDS.ANSWERLATTICE
         || raw.tId !== access.scope.tenantId
         || raw.sId !== access.scope.storeId
@@ -195,6 +238,8 @@ const projectAffectedAnswer = (
             matchReason: 'direct_entity_binding',
             matchedEntityCount,
         },
+        evidenceSourceIds,
+        invalidEvidenceReferenceCount,
         entityIds,
         modifiedOnMillis: getAnswerlatticeTimestampMillis(raw.modifiedOn),
         releaseReason,
@@ -493,6 +538,22 @@ async function previewReleaseImpact(
         testEntityIds: answerTestEvidence.linkedEntityIds,
         testLinkEvidence: answerTestEvidence.testLinkEvidence,
     });
+    const reviewRequiredCount = affectedAnswers.filter(answer => answer.client.willRequireReview).length;
+    const changeControl = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_CHANGE_CONTROL
+        ? await loadAnswerlatticeSupportTruthChangeControl({
+            access,
+            affectedAnswers: affectedAnswers.map(answer => ({
+                answerId: answer.client.answerId,
+                evidenceSourceIds: answer.evidenceSourceIds,
+                invalidEvidenceReferenceCount: answer.invalidEvidenceReferenceCount,
+            })),
+            answerTestState: answerTestEvidence.proof.state,
+            changedEntityIds: release.entityChanges,
+            directActiveAnswerCount: affectedAnswers.length,
+            entityIdsWithoutVisibleDirectLinks: directDependencyCoverage.entityIdsWithoutVisibleDirectLinks,
+            reviewRequiredCount,
+        })
+        : undefined;
     return {
         success: true,
         action: 'preview_impact',
@@ -500,10 +561,11 @@ async function previewReleaseImpact(
         status: 'pending',
         impactFingerprint: buildReleaseImpactFingerprint(action.releaseId, release, affectedAnswers),
         affectedAnswerCount: affectedAnswers.length,
-        reviewRequiredCount: affectedAnswers.filter(answer => answer.client.willRequireReview).length,
+        reviewRequiredCount,
         affectedAnswers: affectedAnswers.map(answer => answer.client),
         answerTestProof: answerTestEvidence.proof,
         directDependencyCoverage,
+        ...(changeControl ? { changeControl } : {}),
     };
 }
 

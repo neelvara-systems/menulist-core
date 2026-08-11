@@ -17,6 +17,7 @@
 - Do not query all client campaign collections on agency dashboard load.
 - Store report snapshots for sharing instead of recomputing from raw events per view.
 - Paginate approval requests and client history.
+- The active owner workspace does not query approval requests separately. A maximum 20-comment current-thread projection is stored on the already-loaded campaign and mirrored to the deterministic approval record in the same transaction.
 
 ## Security
 
@@ -24,4 +25,3 @@
 - Approval share tokens must expire.
 - Client report shares must be revocable.
 - Cross-client template reuse must strip source refs.
-

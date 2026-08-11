@@ -428,7 +428,8 @@
         "daily": "Ziua anterioară",
         "weekly": "Ultimele 7 zile",
         "monthly": "Luna aceasta",
-        "overall": "General"
+        "overall": "General",
+        "graph": "Grafice"
       },
       "today": {
         "noMenuActivityToday": "Nu există încă activitate în meniu astăzi.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Căutări fără rezultate",
         "unavailableInterest": "Interesul indisponibil",
         "topLanguage": "Limba de top",
-        "smartPicksShown": "Selecții inteligente afișate",
-        "smartPicksClicks": "Clicuri de alegeri inteligente",
+        "smartPicksShown": "Smart Picks Întâlnire",
+        "smartPicksClicks": "Smart Picks clicuri",
         "smartPicksTaps": "Atingeți Smart Picks",
-        "smartPicksUsed": "Selecții inteligente utilizate",
-        "smartPicksEngagement": "Implicare cu alegeri inteligente",
+        "smartPicksUsed": "Smart Picks utilizat",
+        "smartPicksEngagement": "Smart Picks angajamentul",
         "totalMenuScans": "Numărul total de scanări de meniu",
         "totalItemClicks": "Numărul total de clicuri pe articole",
         "activeDays": "Zile active",
         "daysActive": "Zile active",
         "avgDailyScans": "Media Scanări zilnice",
-        "smartPicksActive": "Selecții inteligente active",
+        "smartPicksActive": "Smart Picks activă",
         "engagementRate": "Rata de implicare",
         "topItem": "Articol de top",
         "topCategory": "Categoria de top"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Nicio activitate înregistrată ieri",
         "noAnalyticsYet": "Nu există date încă. Datele dvs. de analiză vor apărea odată ce clienții încep să vizioneze.",
-        "noItemClicksYet": "Niciun clic încă pe articol"
+        "noItemClicksYet": "Niciun clic încă pe articol",
+        "lowActivityTitle": "Activitate redusă",
+        "lowActivityDescription": "Nu a existat suficientă activitate pentru a se putea trage o concluzie utilă pentru această perioadă.",
+        "noWeeklyData": "Nu există încă nicio activitate detaliată a meniului în ultimele 7 zile.",
+        "noMonthlyData": "Încă nu este disponibilă nicio activitate de meniu stabilită pentru această lună."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% față de săptămâna trecută"
+        "vsLastWeek": "{sign}{change}% față de săptămâna trecută",
+        "changeVsLastWeek": "{change} vs săptămâna trecută"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# zi de activitate înregistrată} other {# zile de activitate înregistrate}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Da",
         "no": "Nu",
-        "notAvailable": "N/A N/D",
+        "notAvailable": "N/A",
         "active": "Activ",
         "lowActivity": "Activitate redusă",
         "noData": "Fără date"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Se așteaptă prima scanare",
         "weeklyInsights": "Informații săptămânale",
         "last4WeeksComparison": "Comparația ultimelor 4 săptămâni",
-        "historicalDataWillAppear": "Datele istorice vor apărea după câteva săptămâni"
+        "historicalDataWillAppear": "Datele istorice vor apărea după câteva săptămâni",
+        "statusMessages": {
+          "working": "Clienții folosesc meniul dvs.",
+          "low_activity": "Activitatea clienților este încă în creștere. Meniul dvs. curent rămâne disponibil.",
+          "no_data": "Activitatea va apărea după ce clienții încep să vă deschidă meniul."
+        }
       },
       "aiSummary": {
         "daily": "Ziua anterioară dintr-o privire",
         "weekly": "Pe scurt săptămâna aceasta",
-        "monthly": "Rezumat în această lună"
+        "monthly": "Rezumat în această lună",
+        "localized": {
+          "noActivity": "Nu s-a înregistrat nicio activitate decontată a clienților pentru această perioadă.",
+          "menuViews": "Clienții au deschis meniul de {count} ori.",
+          "itemTaps": "Clienții au apăsat pe elementele de meniu de {count} ori.",
+          "customerActions": "Clienții au finalizat {count} acțiuni finale.",
+          "searches": "Clienții au căutat meniul de {count} ori.",
+          "unavailableInterest": "Elementele indisponibile au primit {count} atingeri."
+        }
       },
       "actions": {
         "call": "Apelați",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} vizite · {rate}%",
         "markDoneFailed": "Această acțiune nu a putut fi marcată ca făcută. Încearcă din nou.",
         "markDoneSaved": "Marcat ca gata. Rezultatele se vor actualiza când următorul rezumat analitic este gata.",
-        "markDone": "Marcați ca gata"
+        "markDone": "Marcați ca gata",
+        "bestSourceStatsFormatted": "· {visits} vizite · {rate} rata de acțiune",
+        "bestSourceMobileFormatted": "Cea mai bună sursă în acest moment: {source} · {visits} vizite · {rate} rată de acțiune.",
+        "sourceQualityTagFormatted": "{source}: {visits} vizite · {sessions} sesiuni de acțiune · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} vizite · {rate} utilizatori",
+        "priorities": {
+          "high": "Prioritate ridicată",
+          "medium": "Prioritate medie",
+          "low": "Prioritate scăzută"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "Activitatea disponibilă acceptă o verificare clară a meniului."
+          },
+          "watch": {
+            "label": "Urmăriți în continuare.",
+            "message": "Unele activități pot necesita o altă verificare înainte de a schimba meniul."
+          },
+          "no_data": {
+            "label": "Mai multe date necesare",
+            "message": "Așteptați ca activitatea clienților să se stabilizeze înainte de a trage o concluzie."
+          }
+        },
+        "localizedActions": {
+          "reason": "Pe baza ultimei activități decontate a clientului.",
+          "availability": {
+            "title": "Verificați disponibilitatea articolului.",
+            "description": "Verificați dacă elementele indisponibile sau ascunse ar trebui restaurate sau păstrate în afara vizibilității.",
+            "action": "Verifică disponibilitatea"
+          },
+          "customerActions": {
+            "title": "Examinați acțiunile clienților.",
+            "description": "Verificați detaliile meniului și link-urile pe care clienții le folosesc înainte de a lua o decizie.",
+            "action": "Examinați acțiunile clienților."
+          },
+          "details": {
+            "title": "Îmbunătățește detaliile obiectului.",
+            "description": "Examinați numele articolelor, opțiunile, descrierile și imaginile care ar putea avea nevoie de informații mai clare.",
+            "action": "Revizuirea detaliilor"
+          },
+          "general": {
+            "title": "Așteptați un semnal mai clar.",
+            "description": "Menține meniul curent stabil până când este disponibilă o activitate mai stabilită.",
+            "action": "Revizuiți mai târziu."
+          },
+          "menuOrder": {
+            "title": "Revizuiți ordinea meniului.",
+            "description": "Verificați dacă articolele și categoriile importante sunt ușor de găsit pentru clienți.",
+            "action": "Revizuiți ordinea meniului."
+          },
+          "pricing": {
+            "title": "Revizuirea prețurilor de preț",
+            "description": "Verificați prețurile conectate la cel mai recent semnal de interes al clienților.",
+            "action": "Prețuri de revizuire"
+          },
+          "search": {
+            "title": "Examinați căutările clienților.",
+            "description": "Verificați căutările care ar putea să nu conducă clienții la un rezultat de meniu util.",
+            "action": "Căutările de revizuire"
+          },
+          "source": {
+            "title": "Examinați sursele de intrare ale clienților.",
+            "description": "Verificați dacă linkurile publice și destinațiile de plasare QR direcționează clienții către meniul curent.",
+            "action": "Examinați link-urile publice."
+          },
+          "timing": {
+            "title": "Revizuirea meniului Timing",
+            "description": "Verificați dacă categoriile programate și disponibilitatea se potrivesc atunci când clienții le caută.",
+            "action": "Revizuirea timpului"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Marcat ca finalizat",
+            "message": "Rezultatul va fi verificat după ce vor fi disponibile mai multe activități decontate."
+          },
+          "improved": {
+            "label": "Îmbunătățite",
+            "message": "Următoarea verificare stabilită arată o îmbunătățire."
+          },
+          "no_clear_change": {
+            "label": "Nicio schimbare clară.",
+            "message": "Următoarea verificare stabilită nu a arătat o schimbare clară."
+          },
+          "not_enough_data": {
+            "label": "Mai multe date necesare",
+            "message": "Nu există încă suficientă activitate stabilită pentru a judeca această schimbare."
+          },
+          "pending": {
+            "label": "Verificări în așteptare",
+            "message": "MenuList va verifica acest lucru după ce vor fi disponibile mai multe activități reglementate."
+          }
+        }
       },
       "details": {
         "menuDetails": "Detalii meniu",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Interesul indisponibil",
           "languages": "Limbi",
           "filters": "Filtre",
-          "smartPicks": "Alegeri inteligente",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Acțiuni în funcție de programul de lucru"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Afișări de meniu",
-          "itemTaps": "Atingerea articolului",
+          "itemTaps": "Atingeri pe articole",
           "menuSessions": "Sesiuni de meniu",
           "engagedSessions": "Sesiuni cu activitate",
           "actionSessions": "Sesiuni de acțiune",
@@ -617,6 +729,12 @@
           "closed": "Acțiuni când este închis",
           "closedShare": "{rate}% din toate acțiunile înregistrate au avut loc în timp ce era închis",
           "unknown": "Acțiuni în care starea orelor nu era disponibilă"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} nu este disponibil pentru atingeri.",
+          "strongItem": "{count} Atingeri pe articole",
+          "needsWork": "{count} vizualizări, niciun click.",
+          "gettingAttention": "Vizualizări {count}"
         }
       },
       "smartPicks": {
@@ -679,7 +797,7 @@
         "noLifetimeActivity": "Încă nu există activitate OBP pe viață.",
         "actionBreakdown": "Defalcarea acțiunii",
         "shareBreakdown": "Defectarea partajării",
-        "mobileInfoIntro": "Acest card arată cum interacționează clienții cu Pagina dvs. oficială de afaceri înainte sau în jurul deschiderii meniului.",
+        "mobileInfoIntro": "Acest card arată modul în care clienții interacționează cu pagina dvs.",
         "mobileInfoActions": "Acțiunile contează clicurile finale pe Apel, WhatsApp, Indicații de orientare, Rezervare și Comandă.",
         "mobileInfoLinks": "Comercializările provin de la cardul oficial de linkuri de afaceri, iar atingerile linkului contează recenziile Google, Instagram, Facebook și vizitele site-ului web de la OBP public.",
         "todayPartialInfo": "Astăzi până acum este doar activitate live parțială. Nu este inclus încă în Ziua anterioară, Ultimele 7 zile, Luna aceasta sau totalurile de-a lungul vieții."
@@ -688,7 +806,7 @@
         "title": "Aplicația pentru clienți",
         "couldNotLoad": "Nu s-a putut încărca statisticile aplicației pentru clienți",
         "noInstallsYet": "Încă nu există instalări.",
-        "noInstallsDescription": "Numerele apar aici după ce clienții încep să instaleze aplicația dvs. de meniu.",
+        "noInstallsDescription": "Numerele apar aici după ce clienții încep să vă instaleze aplicația de meniu.",
         "mobileNoInstallsDescription": "Încă nu există instalări. Numerele apar aici odată ce clienții încep să instaleze aplicația dvs. de meniu.",
         "installedCustomers": "Clienți instalați",
         "installed": "Instalat",
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "Defalcarea comenzilor rapide",
         "installsByPlatform": "Instalări în funcție de platformă",
         "appStickiness": "Lipicibilitatea aplicației",
-        "returningOpens30d": "Revenirea deschide (30d)",
         "avgOpensPerInstall": "Deschideri medii pe instalare",
         "iosManualInstalls": "Instalări manuale iOS",
         "shortcuts": {
@@ -715,18 +832,19 @@
           "order": "Comanda online"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
-          "iosLong": "iOS (iPhone/iPad)",
-          "android": "Android Android",
-          "desktop": "Desktop Desktop Desktop",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
+          "desktop": "Desktopul",
           "other": "Altele"
-        }
+        },
+        "tryAgainLater": "Încercați din nou mai târziu."
       },
       "projectSelector": {
         "deleted": "Șters",
         "inactive": "Inactiv",
         "ended": "Încheiat",
-        "special": "Special Special",
+        "special": "Specială",
         "cancelled": "Anulat",
         "default": "Implicit",
         "untitled": "Fără titlu",
@@ -755,13 +873,14 @@
         "markedUpdated": "Înregistrarea Google marcată ca actualizată",
         "couldNotSave": "Nu s-a putut salva",
         "title": "Înregistrare Google",
-        "updatedDescription": "Link site-ul setat către pagina dvs. oficială",
+        "updatedDescription": "Link-ul site-ului la pagina ta oficială",
         "setOfficialLink": "Setați-vă linkul oficial pe Google",
         "updateProfileWebsite": "Actualizați-vă site-ul web Profil de companie Google la {url}",
         "copied": "Copiat",
         "copy": "Copiați",
         "openGoogle": "Deschideți Google",
-        "done": "Terminat"
+        "done": "Terminat",
+        "couldNotOpen": "Nu s-a putut deschide profilul de afaceri Google."
       },
       "behaviorNudge": {
         "linkCopied": "Link copiat",
@@ -781,12 +900,753 @@
         "menuCheck": "Verificarea meniului",
         "checkedJustNow": "Verificat acum",
         "noActionNeeded": "Nu este necesară nicio acțiune",
-        "publicMenuReady": "Meniul dvs. public este gata.",
+        "publicMenuReady": "Prețurile, disponibilitatea și detaliile cheie sunt pregătite pe meniul public.",
         "repairNow": "Reparați ceea ce se poate repara acum",
         "reviewTopIssue": "Examinați problema principală",
         "repairMenu": "Meniul Reparații",
         "review": "Examinare",
-        "repair": "Reparare"
+        "repair": "Reparare",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {Elementului # îi lipsește o descriere.} other {# articolelor le lipsesc descrierile.}}",
+            "ok": "Toate articolele au descrieri.",
+            "help": "Descrierile ajută clienții să înțeleagă fiecare ofertă."
+          },
+          "images": {
+            "warning": "{count, plural, one {La elementul # lipsește o imagine.} other {# elementele sunt imagini lipsă.}}",
+            "ok": "Toate articolele au imagini.",
+            "help": "Imaginile pot ajuta clienții să aleagă mai repede."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Categoriei # îi lipsește o pictogramă.} other {Din categoriile # lipsesc pictograme.}}",
+            "ok": "Toate categoriile au pictograme.",
+            "help": "Icoanele fac categoriile mai ușor de scanat."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# articolului îi lipsește un preț.} other {# articolelor le lipsesc prețurile.}}",
+            "ok": "Toate articolele au prețuri.",
+            "help": "Clienții compară prețurile înainte de a decide."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {Articolul # este ascuns de clienți.} other {# articole sunt ascunse de clienți.}}",
+            "ok": "Niciun element nu este ascuns.",
+            "help": "Elementele ascunse nu apar în meniul public, dar pot fi afișate în meniu."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {Prețul # trebuie revizuit.} other {Prețurile # trebuie revizuite.}}",
+            "ok": "Prețurile se încadrează în intervalul așteptat.",
+            "help": "MenuList compară prețurile pentru un singur articol din aceeași categorie. Marcați un preț intenționat ca fiind revizuit."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# elementului îi lipsesc traduceri.} other {# Din păcate, din cauza unor erori de traducere, unele articole lipsesc.}}",
+            "ok": "Toate elementele vizibile sunt traduse.",
+            "help": "Unele elemente sunt incomplete în limbile selectate ale meniului."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# Detaliul din meniu lipsește traduceri lipsesc traduceri} other {# Detaliile meniului lipsesc traducerile lipsesc detalii despre meniu}}",
+            "ok": "Detaliile meniului sunt traduse.",
+            "help": "Numele meniului, descrierea sau notele sunt incomplete în limbile selectate ale meniului."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Link copiat",
+        "direct": "directă",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Meniu kit",
+        "nativeShare": "Dispozitiv de partajare",
+        "obp": "Pagina de afaceri",
+        "other": "Altele",
+        "qr": "QR codează $s.",
+        "shortcut": "Comandă rapidă pentru aplicație",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Sănătatea afacerilor",
+        "open": "Deschide Afaceri Sănătate Săptămânal",
+        "today": "Astăzi",
+        "latestActivity": "Cea mai recentă activitate",
+        "noActionNeeded": "Nu este necesară nicio acțiune",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Necesită atenție",
+          "needs_review": "Necesită revizuire.",
+          "insufficient_data": "Mai multe date necesare",
+          "stale": "Este nevoie de o verificare proaspătă",
+          "not_ready": "Pregătirile se fac."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# detaliul cu privire la client trebuie revizuit.} other {# detaliile referitoare la client trebuie revizuite.}}",
+          "stable": {
+            "headline": "Informațiile dvs.",
+            "message": "Nicio problemă cu care se confruntă clienții nu necesită acțiuni în ultima verificare."
+          },
+          "watch": {
+            "headline": "Un detaliu poate avea nevoie de atenție.",
+            "message": "Revizuiți verificarea sugerată înainte de a modifica informațiile publice."
+          },
+          "needs_review": {
+            "headline": "Examinați detaliile cu care se confruntă clienții.",
+            "message": "Trebuie verificate unul sau mai multe detalii publice, iar datele private trebuie să fie șterse."
+          },
+          "insufficient_data": {
+            "headline": "Este nevoie de mai multă activitate.",
+            "message": "Păstrează stabile informațiile curente în timp ce MenuList colectează un semnal util."
+          },
+          "stale": {
+            "headline": "Sănătatea afacerii are nevoie de o nouă verificare.",
+            "message": "Ultima verificare este veche. informațiile dvs. publice actuale rămân inalterate."
+          },
+          "not_ready": {
+            "headline": "Business Health se pregătește să lanseze un nou magazin online.",
+            "message": "Primul magazin de verificare va apărea aici, atunci când este gata."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Verificați sursa meniului.",
+            "message": "Nu a fost găsită nicio sursă publică activă de meniuri.Verificați meniul înainte de a-l partaja. Nu s-a găsi nicio resursă publicǎ activǎ de meniu",
+            "title": "Sursa meniului trebuie verificată."
+          },
+          "low_latest_activity": {
+            "action": "Verificați link-urile de partajare",
+            "message": "Activitatea clienților este scăzută. Verificați. QR, Google, Instagram, WhatsApp, și link-uri către site-uri web.",
+            "title": "Activitatea clienților este scăzută."
+          },
+          "unavailable_item_taps": {
+            "action": "Verificați articolele indisponibile.",
+            "message": "Clienții au arătat interes pentru articolele indisponibile, reaprovizionați-le sau păstrați-le ascunse.",
+            "title": "Articolele indisponibile au atras atenția asupra lor."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Consultați feedback-ul oaspeților.",
+            "message": "Feedback-ul oaspeților necesită o verificare din partea proprietarului înainte ca detaliile publice să fie modificate.",
+            "title": "Feedback-ul oaspeților trebuie verificat."
+          },
+          "default": {
+            "action": "Verifică detaliile",
+            "message": "Un detaliu care se adresează clientului are nevoie de o verificare a proprietarului.",
+            "title": "Un detaliu trebuie verificat."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# elementul de feedback privat trebuie verificat.} other {# elementele de feedback privat trebuie verificate.}}",
+          "clear": "Feedback-ul personal este clar."
+        },
+        "freshness": {
+          "notReady": "Starea afacerii nu este în timp real. Prima verificare a magazinului va afișa data datelor aici.",
+          "throughDate": "Folosește date prin {date}. Este posibil ca ziua de azi să nu fie încă completă.",
+          "latest": "Folosește cele mai recente date disponibile MenuList. Este posibil ca ziua de azi să nu fie încă completă."
+        },
+        "periods": {
+          "today": "Astăzi",
+          "yesterday": "Ziua anterioară",
+          "thisWeek": "Săptămâna aceasta",
+          "lastWeek": "Săptămâna trecută",
+          "thisMonth": "Luna aceasta",
+          "lastMonth": "Luna trecută",
+          "last7Days": "Ultimele 7 zile",
+          "last30Days": "Ultimele 30 de zile",
+          "overall": "General"
+        },
+        "metrics": {
+          "menuViews": "Afișări de meniu",
+          "topDemand": "Cea mai mare cerere",
+          "topDemandDetail": "Promovare: {count} {signal}",
+          "bestSource": "Cea mai bună sursă",
+          "bestSourceDetail": "Link de actualizare: {count} vizitează site-ul"
+        },
+        "signals": {
+          "views": "Viziuni",
+          "clicks": "Atingeri",
+          "attention": "semnalele de atenție"
+        },
+        "page": {
+          "description": "Starea zilnică a afacerii și verificările cu privire la clienți.",
+          "latestCheck": "AI health check",
+          "loading": "Se încarcă Se încărcă",
+          "loadingMessage": "Întreprinderea în domeniul sănătății...",
+          "notReady": "Sănătatea nu este încă pregătită.",
+          "loadErrorTitle": "Business Health nu a putut încărca.",
+          "loadErrorDescription": "Vă rugăm să reveniți această pagină și să încercați din nou.",
+          "refresh": "Actualizați",
+          "needsAttention": "Necesită atenție",
+          "desktopSettingsOnly": "Deschideți acest lucru din setările desktop."
+        },
+        "scope": {
+          "title": "Afaceri Domeniul de aplicare al sănătății Sănătate",
+          "allMenus": "Toate menusurile",
+          "selectedMenu": "Meniul selectat.",
+          "menuCount": "{count, plural, one {# meniu în această locație.} other {# meniuri în această locație.}}",
+          "locationLevel": "Vizualizare la nivel de locație",
+          "inactiveMenu": "Meniu inactiv Meniul inactiv",
+          "thisMenuOnly": "Acest meniu este singurul.",
+          "allMenusInLocation": "Toate meniurile din această locație.",
+          "thisMenuHelper": "Întrebări și activități folosesc acest meni.",
+          "allMenusHelper": "Întrebările și activitățile utilizează toate meniurile din această locație.",
+          "dialogDescription": "Alegeți toate meniurile sau un meniu pentru activitate și verificări, apoi selectați opțiunea de verificare.",
+          "all": "toate",
+          "close": "Închideți"
+        },
+        "locations": {
+          "title": "Locuri",
+          "loading": "Se încarcă locaţiile...",
+          "empty": "Încă nu există un rezumat al locației.",
+          "storeFallback": "Localizare Locație Locaţie {id}",
+          "checkedOn": "Verificată {date}",
+          "checkCount": "{count, plural, one {# verificare} other {# verificări}}",
+          "checksNeedReview": "{count, plural, one {# verificarea clientului are nevoie de revizuire.} other {# verificările clientului trebuie revizuite.}}",
+          "statusReason": {
+            "stable": "Nicio problemă cu care se confruntă clienții nu necesită acțiune.",
+            "watch": "Un detaliu care se adresează clientului poate avea nevoie de atenție.",
+            "needs_review": "Detaliile care se referă la clienți trebuie revizuite.",
+            "insufficient_data": "Mai multă activitate a clienților este necesară pentru o verificare utilă.",
+            "stale": "Această locație are nevoie de o verificare proaspătă.",
+            "not_ready": "Prima verificare a locației este în curs de pregătire, iar prima locație va fi verificată în curând."
+          }
+        },
+        "assistant": {
+          "title": "Întreabă sănătatea afacerilor",
+          "askShort": "Întreabă",
+          "englishOnlyTitle": "Întrebările sunt disponibile în prezent în limba engleză.",
+          "englishOnlyDescription": "Starea și verificările dvs. sunt localizate.Comutați limba aplicației la engleză pentru a pune întrebări despre Business Health.Starea și controalele dvs sunt localizat.",
+          "notReady": "Business Health va raspunde dupa ce se vor finaliza ultimele verificari.",
+          "suggestedUnavailable": "Întrebările propuse nu sunt disponibile în prezent.",
+          "freeTextUnavailable": "Întrebările cu text liber nu sunt disponibile în acest moment.",
+          "answerError": "Business Health nu a putut răspunde la această întrebare.",
+          "suggestedQuestions": "Întrebări propuse",
+          "followUps": "Puteți întreba în continuare.",
+          "you": "Tu ești",
+          "empty": "Alegeți o întrebare sau întrebați despre afacerea dvs.",
+          "placeholderReady": "Întrebați despre ziua de azi, săptămâna aceasta, atenția meniului sau următoarele verificări.",
+          "placeholderMobile": "Întrebați despre ziua de azi sau săptămâna aceasta.",
+          "placeholderPending": "Disponibil după ultima verificare.",
+          "send": "Trimite întrebări",
+          "cachedFacts": "Pe baza datelor de afaceri MenuList stocate în cache.",
+          "questions": {
+            "checks": "Ce trebuie verificat?",
+            "today_stats": "Cum merge ziua de azi?",
+            "this_week_stats": "Ce s-a întâmplat săptămâna aceasta?",
+            "top_item": "Ce articol atrage atenția?",
+            "last_week_stats": "Ce s-a întâmplat săptămâna trecută?",
+            "this_month_stats": "Cum este luna aceasta?",
+            "last_month_stats": "Ce s-a întâmplat luna trecută?",
+            "public_menu_status": "Meniul meu public este în regulă?",
+            "profile_status": "Este complet profilul meu de afaceri?",
+            "feedback_reviews": "Vreun feedback de la oaspeți pe care să-l verifici?",
+            "feedback_recent": "Ce au spus oaspeţii recent?",
+            "default": "Ce trebuie să verific mai târziu?"
+          }
+        },
+        "sources": {
+          "title": "Sursă de date",
+          "menuProjects": "Proiecte de meniu",
+          "ownerAnalytics": "Activitatea proprietarului",
+          "guestFeedback": "Feedback pentru oaspeți",
+          "storeSettings": "Setări de afaceri Setările de afacere",
+          "menuListData": "Datele MenuList",
+          "updatedOn": "Actualizat {date}",
+          "latest": "Ultimele date disponibile"
+        },
+        "publicTruth": {
+          "title": "Sursa oficială de informații pentru clienți",
+          "checking": "Checking",
+          "checkingFacts": "Se verifică informaţiile publice ale MenuList...",
+          "checkedMenu": "Meniu bifat: {name}",
+          "boundary": "Verificat din datele curente ale afacerii și meniului MenuList. Platformele externe rămân confirmate de proprietar.",
+          "boundaryShort": "Platformele externe rămân confirmate de proprietar.",
+          "historyTitle": "Istoria informațiilor publice",
+          "historyBoundary": "Folosește doar informațiile despre MenuList business și meniu. Nu sunt scanate site-uri externe.",
+          "historyBoundaryShort": "MenuList doar fapte. Nu au fost scanate site-uri externe.",
+          "refreshErrorTitle": "Verificarea sursei clientului nu a putut reîmprospăta.",
+          "refreshErrorDescription": "Ultimele MenuList fapte disponibile sunt încă afișate mai jos.",
+          "historyRefreshError": "Istoria informațiilor publice nu se poate refac.",
+          "historyLoadError": "Istoria informațiilor publice nu poate fi încărcată.",
+          "historyErrorDescription": "Ultimul raport salvat este afișat în continuare atunci când este disponibil.",
+          "notRun": "Nu se execută.",
+          "lastSaved": "Ultima salvare {date} salvată.",
+          "noSavedReport": "Niciun raport salvat încă.",
+          "noSavedReportDescription": "Executați verificarea pentru a salva primul raport pentru această locație.",
+          "downloadEnglishReport": "Descarcă raportul în limba engleză",
+          "downloadEnglishShort": "Raportul englez",
+          "runCheck": "Verificare Run",
+          "currentFix": "Elementul de remediere curent",
+          "nextFixes": "Următoarele corecturi ale informațiilor publice",
+          "none": "Niciun",
+          "attentionCount": "{count, plural, one {Elementul # trebuie verificat.} other {# elemente trebuie să fie verificate.}}",
+          "readyModuleCount": "Pregătit {count}/{total}",
+          "missingCount": "Lipsește {count}.",
+          "checkCount": "Verificați {count}.",
+          "savedCount": "S-au salvat {count}/{total}.",
+          "modulesReady": "{count}/{total} module gata.",
+          "status": {
+            "ready": {
+              "label": "Pregătit",
+              "message": "Sursa dvs. oficială pentru clienți conține informațiile de bază de care aceștia au nevoie."
+            },
+            "missing_basics": {
+              "label": "lipsă de bază",
+              "message": "Meniu, orele de program, prețurile, acțiunile sau detaliile referitoare la legătura cu clienții necesită atenție înainte de a fi distribuite pe scară mai largă."
+            },
+            "unclear": {
+              "label": "Trebuie verificat.",
+              "message": "Majoritatea elementelor de bază sunt prezente, dar unul sau mai multe fapte publice trebuie încă verificate."
+            }
+          },
+          "metrics": {
+            "readyModules": "Module gata făcute.",
+            "missingFacts": "Lipsa unor fapte:",
+            "checkedMenu": "Meniu verificat",
+            "savedReports": "Raporturi salvate"
+          },
+          "results": {
+            "present": "Pregătit",
+            "missing": "dispărut",
+            "unclear": "Verificare",
+            "not_applicable": "Nu este necesară.",
+            "not_checked": "Nu verificat"
+          },
+          "moduleStatus": {
+            "ready": "Pregătit",
+            "needs_attention": "dispărut",
+            "check": "Verificare",
+            "not_checked": "Nu verificat"
+          },
+          "facts": {
+            "business_identity": "Numele companiei Denumirea afacerii",
+            "menu_or_service_source": "Lista de meniuri sau servicii.",
+            "prices": "Prețuri",
+            "hours": "Ore de funcţionare",
+            "location": "Localizare",
+            "contact": "Contacte",
+            "customer_actions": "Acțiunile clienților",
+            "public_link": "Link de client",
+            "photos": "Fotografii",
+            "machine_readable_source": "Detalii de căutare ușor de utilizat"
+          },
+          "evidence": {
+            "owner_entered": "Am intrat în acest check.",
+            "owner_selected": "selectat de proprietar.",
+            "source_text_hint": "găsit în sursă furnizată.",
+            "valid_public_url": "Formatul de legătură publică este valabil.",
+            "invalid_public_url": "Legătura publică are nevoie de corectare.",
+            "menulist_store": "Setările curente ale afacerii MenuList au fost verificate.",
+            "menulist_project": "A fost verificat meniul selectat sau implicit MenuList.",
+            "menulist_summary": "S-a verificat rezumatul meniului curent MenuList.",
+            "menulist_public_route": "S-au verificat setările curente ale clientului MenuList.",
+            "menulist_index_gate": "S-au verificat regulile de descoperire publică curente MenuList.",
+            "not_provided": "Acest fapt lipsește din datele curente MenuList.",
+            "not_checked": "Acest fapt nu a fost verificat în siguranță din datele curente MenuList.",
+            "priceNotLoaded": "Deschide meniul selectat o singură dată, astfel încât MenuList să-i poată verifica prețurile."
+          },
+          "moduleEvidence": {
+            "ready": "Datele curente MenuList arată că această zonă este gata.",
+            "needs_attention": "Datele curente MenuList arată că lipsesc informațiile necesare.",
+            "check": "Verificați această zonă înainte ca clienții să se bazeze pe ea.",
+            "not_checked": "MenuList nu a putut verifica pe deplin această zonă din datele curente."
+          },
+          "setupReason": {
+            "needs_attention": "Lipsesc informaţiile necesare pentru client.",
+            "check": "Verificați acest lucru înainte ca clienții să se bazeze pe el.",
+            "not_checked": "MenuList nu a putut verifica complet acest lucru din datele curente."
+          },
+          "targetActions": {
+            "basic_settings": "Deschideți detaliile companiei",
+            "domain_settings": "Deschideți link-ul clientului.",
+            "hours_edit": "Program de lucru:",
+            "menu_tab": "Menu deschis",
+            "official_page": "Pagina de afaceri deschisă",
+            "presence_monitor": "Deschideți verificarea plasării pentru verificare.",
+            "share_tab": "Instrumentele de partajare deschise"
+          },
+          "actions": {
+            "openCustomerSource": "Deschideți sursa de clienți.",
+            "openShareTools": "Instrumente de partajare deschisă",
+            "fixFact": "Remediază {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Elementele de bază ale informării publice",
+              "description": "Numele companiei, meniul curent sau sursa de servicii, contact, acțiuni și legătura către client."
+            },
+            "business_facts_copy_pack": {
+              "title": "Detalii de afaceri reutilizabile.",
+              "description": "Personalul poate reutiliza informațiile actuale în profilurile publice, răspunsuri și transmiteri de link-uri către clienți."
+            },
+            "qr_link_health": {
+              "title": "QR link readyness (pregătirea legăturii)",
+              "description": "Un link curent pentru QR și destinații de plasare tipărite."
+            },
+            "social_bio_link_consistency": {
+              "title": "Consistența legăturilor profilului",
+              "description": "Un link pentru profilurile de socializare și alte destinații de plasare."
+            },
+            "customer_link_preview": {
+              "title": "Previzualizare link client pentru clienți",
+              "description": "Principalele fapte pe care clienții ar trebui să le vadă înainte de a acționa."
+            },
+            "print_share_assets": {
+              "title": "Imprimați și partajați materialele.",
+              "description": "Pregătirea legăturii curente pentru QR postere, cărți de numărat și partajare imagini."
+            },
+            "menu_service_readability": {
+              "title": "Claritatea meniului sau a serviciului",
+              "description": "Categorii, articole sau servicii și prețuri în meniul selectat."
+            },
+            "price_availability_gap": {
+              "title": "Claritatea prețurilor și a disponibilității.",
+              "description": "Prețurile, variantele, starea de epuizare și disponibilitatea sunt afișate clienților."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Înlocuirea vechiului PDF",
+              "description": "O sursă MenuList curentă și o legătură către client care pot înlocui PDF-urile vechi."
+            },
+            "whatsapp_action_link": {
+              "title": "Acțiunea WhatsApp",
+              "description": "O acțiune clară WhatsApp sau o acțiuni de contact alternativă pentru client."
+            },
+            "hours_readiness": {
+              "title": "Ore de pregătire pentru utilizare",
+              "description": "Program regulat de lucru pe care clienții se pot baza."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp Răspuns Fapte",
+              "description": "Meniul curent, orele de deschidere, datele de contact și link-urile pentru răspunsurile personalului."
+            },
+            "photo_visual_identity": {
+              "title": "Fotografii și identitate vizuală",
+              "description": "Un logo, o copertă, o fotografie de afaceri sau imagini ale unui produs sau serviciu."
+            },
+            "customer_question_coverage": {
+              "title": "Întrebări frecvente ale clienților",
+              "description": "Fapte clare pentru ofertă, ore, preț, locație, contact și acțiunea următoare."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Răspunsuri reutilizabile ale clienților",
+              "description": "Personalul poate reutiliza informațiile actuale atunci când clienții îi pun întrebări obișnuite."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Pregătirea pentru rezervări și solicitări de informații.",
+              "description": "O cale clară pentru a comanda, rezerva, suna, trimite un mesaj, solicita o ofertă sau vizita."
+            },
+            "google_profile_handoff": {
+              "title": "Google Linkul profilului link-ul profilurilor",
+              "description": "Legătura curentă a clientului pregătită pentru profilul de afaceri Google."
+            },
+            "menu_freshness": {
+              "title": "Prospețimea meniului",
+              "description": "O actualizare recentă a meniului atunci când prețurile, produsele sau disponibilitatea s-au modificat."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafice",
+        "description": "Un rezumat vizual din aceeași activitate decontată afișată în tabloul de bord.",
+        "ranges": {
+          "days7": "7 zile",
+          "days30": "30 de zile"
+        },
+        "metrics": {
+          "menu_activity": "Activitatea meniului",
+          "customer_actions": "Acțiunile clienților",
+          "search_demand": "Cererea de căutare",
+          "item_interest": "Articol de interes:",
+          "unavailable_demand": "Cererea inadecvată",
+          "missing_searches": "Căutările lipsă"
+        },
+        "trend": {
+          "summary": "Rezumatul tendințelor",
+          "updatedAfterClose": "Actualizat după închiderea magazinului.",
+          "status": {
+            "up": "Mai înalt",
+            "down": "Mai jos",
+            "stable": "Stabil",
+            "not_enough_data": "Nu este suficientă istorie."
+          },
+          "period": {
+            "week": "Check-ul săptămânal:",
+            "month": "Verificarea lunii"
+          },
+          "shortPeriod": {
+            "week": "Săptămâna",
+            "month": "Lună"
+          },
+          "needsMoreDays": "Are nevoie de mai multe zile stabilite.",
+          "versus": "{current} față de {previous}",
+          "messages": {
+            "up": "{metric} este mai mare pentru această verificare {period}.",
+            "down": "{metric} este mai mic pentru această verificare {period}.",
+            "stable": "{metric} este stabil pentru această verificare {period}.",
+            "not_enough_data": "Nu există suficient istoric {metric} stabilit pentru această verificare {period}."
+          },
+          "change": {
+            "gathering": "{period}: se adună",
+            "newActivity": "{period}: activitate nouă",
+            "steady": "{period}: constantă.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Cărţi de comparaţie",
+          "description": "Mișcarea săptămânii și a lunii din zilele stabilite."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menu tendință",
+            "days7": "Ultimele 7 zile decontate.",
+            "days30": "Ultimele 30 de zile decontate."
+          },
+          "customerActions": {
+            "title": "Acțiunile clienților",
+            "description": "Ce au apăsat clienții după ce au deschis meniul?"
+          },
+          "sources": {
+            "title": "De unde veneau clienții?",
+            "description": "Vizite la meniu și sesiuni de acțiune pe surse"
+          },
+          "items": {
+            "title": "Top articole de interes:",
+            "description": "Elementele pe care clienții le-au deschis sau le-a atins cel mai des"
+          },
+          "search": {
+            "title": "Cererea de căutare",
+            "description": "Ce au căutat clienții?"
+          },
+          "officialPage": {
+            "title": "Pagina oficială Trend",
+            "description": "Vizualizări și acțiuni de pe Pagina Oficială de Afaceri"
+          }
+        },
+        "legends": {
+          "visits": "vizite",
+          "actionSessions": "Sesiuni de acțiune",
+          "views": "Vizualizări",
+          "taps": "Atingeri",
+          "noResult": "Niciun rezultat."
+        },
+        "empty": {
+          "default": "Încă nu există date grafice pentru această vizualizare.",
+          "menuActivity": "Activitatea din meniu va apărea după ce clienții deschid meniul.",
+          "customerActions": "Acțiunile clienților vor apărea după ce clienții sună, trimit mesaje, comandă, rezervă sau solicită indicații de orientare.",
+          "customerActionsPeriod": "Nu au existat acțiuni ale clienților în această perioadă.",
+          "searchDemand": "Cererea de căutare va apărea după ce clienții utilizează meniul de căițare.",
+          "itemInterest": "Interesul pentru articol va apărea după ce clienții deschid elementele din meniu.",
+          "unavailableDemand": "Cererea indisponibilă va apărea atunci când clienții ating articolele indisponabile.",
+          "missingSearches": "Căutările lipsă vor apărea atunci când clienții caută, dar nu găsesc nicio potrivire.",
+          "sources": "Detaliile sursei vor apărea după ce clienții ajung prin linkuri, QR sau pagini de socializare.",
+          "officialPage": "Activitatea paginii oficiale va apărea după ce clienții deschid pagina publică a companiei."
+        },
+        "footer": {
+          "sameData": "Datele din dashboard",
+          "noExtraTracking": "Fără urmărire suplimentară.",
+          "settledAfterClose": "Se decontează după încheierea zilei de tranzacționare din magazin."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "meniu",
+          "viewsLabel": "Afișări de meniu",
+          "viewsTooltip": "Numărul de ori în care clienții au deschis meniul dvs.",
+          "thisMonthLabel": "Meniul tău din această lună"
+        },
+        "product": {
+          "singular": "Catalogul de produse",
+          "viewsLabel": "Vizualizări în Catalog",
+          "viewsTooltip": "Numărul de ori în care clienții au deschis catalogul dvs.",
+          "thisMonthLabel": "Catalogul tău în această lună"
+        },
+        "service": {
+          "singular": "Lista de servicii",
+          "viewsLabel": "Vizualizări ale listei de servicii",
+          "viewsTooltip": "De câte ori clienții vă deschid lista de servicii",
+          "thisMonthLabel": "Lista ta de servicii din această lună"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Necesită atenție",
+          "active": "Sursa oficială a clientului este activă.",
+          "readyToPlace": "Sursa oficială a clientului este gata să plaseze."
+        },
+        "description": {
+          "needsAttention": "Remediază meniul, orele de program sau link-ul către client înainte de a le distribui pe scară largă.",
+          "active": "Nu este necesară nicio acțiune. Clienții pot utiliza detaliile dvs. publice actuale dintr-o singură sursă.",
+          "readyToPlace": "Link-ul dvs. de client este gata, adăugați-l la lista de clienți și veți fi conectat imediat. Google, Instagram, WhatsApp, QR, sau imprimaţi astfel încât clienţii să utilizeze sursa curentă."
+        },
+        "link": {
+          "ready": "Link-ul clientului este gata",
+          "missing": "Lipsește legătura cu clientul."
+        },
+        "states": {
+          "set": "Setat",
+          "missing": "dispărut",
+          "ready": "Pregătit",
+          "notReady": "Nu sunt gata.",
+          "live": "Publicat",
+          "hidden": "Inactiv"
+        },
+        "tags": {
+          "menu": "Meniu: {status}",
+          "hours": "Ore: {status}",
+          "customerLink": "Legătură client: {status}",
+          "link": "Legătură: {status}",
+          "placed": "Plasat: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Remediați ceea ce are nevoie de atenție.",
+          "preview": "Previzualizează meniul public Previsualizează",
+          "share": "Întâlniți meniul"
+        },
+        "updated": {
+          "notUpdated": "Nu actualizat încă",
+          "recently": "Actualizat recent",
+          "today": "Actualizat astăzi",
+          "yesterday": "Actualizat ieri",
+          "daysAgo": "Actualizat {count, plural, one {# Anul trecut} other {# zile în urmă}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Următoarea acțiune a proprietarului:",
+        "open": "Deschide",
+        "placement": {
+          "notConfirmed": "Nu este confirmat încă.",
+          "today": "Confirmat astăzi.",
+          "yesterday": "Confirmat ieri.",
+          "daysAgo": "confirmată {count, plural, one {# Anul trecut} other {# zile în urmă}}"
+        },
+        "status": {
+          "ready": "Pregătit",
+          "missing": "dispărut",
+          "set": "Setat",
+          "live": "Publicat",
+          "notLive": "Nu trăieşte",
+          "confirmedCount": "{count}/{total} a confirmat.",
+          "on": "Activat",
+          "off": "Dezactivat",
+          "dailyChanges": "Schimbări zilnice",
+          "hoursException": "oră excepţie",
+          "staffUse": "Utilizarea personalului",
+          "menuPrices": "Menu Prețuri",
+          "openCount": "{count, plural, one {Acțiunea # open a fost lansată.} other {# Acțiuni deschise acțiuni în curs de desfășurare}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Setează legătura cu clientul.",
+            "description": "Creați linkul clientului înainte de a partaja QR, răspunsurile personalului sau profilurile publice."
+          },
+          "setHours": {
+            "label": "Set de ore",
+            "description": "Păstrați starea publică deschisă și închisă clar înainte de vizita clienților."
+          },
+          "publishMenu": {
+            "labelPublish": "Publică meniul",
+            "labelOpen": "Menu deschis",
+            "descriptionVisible": "Publică meniul curent înainte de partajarea largă.",
+            "descriptionHidden": "Faceți meniul vizibil înainte ca clienții să utilizeze link-ul."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Confirmați plasarea linkului.",
+            "labelPlace": "Localizare client link",
+            "descriptionPlaced": "Păstrează Google, Instagram și WhatsApp indicând spre aceeași sursă.",
+            "descriptionUnplaced": "Adăugați aceeași legătură cu clientul Google, Instagram, WhatsApp, QRşi prin imprimare."
+          },
+          "openPrivateFeedback": {
+            "label": "Deschideți feedback-ul privat.",
+            "description": "Folosiți feedback-ul privat înainte ca problemele clienților să devină recenzii publice."
+          },
+          "captureDailyChange": {
+            "label": "Spune-i lui MenuList ce s-a schimbat.",
+            "description": "Spune-i lui MenuList ce s-a schimbat astăzi și aprobă meniul pregătit."
+          },
+          "setTodayStatus": {
+            "label": "Setați starea de astăzi.",
+            "description": "Set închis astăzi, deschidere târzie, bucătărie închisă sau un anunț de meniu special."
+          },
+          "prepareStaffHandoff": {
+            "label": "Pregătiți predarea personalului.",
+            "description": "Oferă personalului link-ul de meniu, QR și liniile de răspuns ale clienților dintr-un singur loc."
+          },
+          "updatePrices": {
+            "label": "Actualizează prețurile",
+            "description": "Utilizați Managerul de meniuri pentru modificările prețurilor, apoi aprobați înainte de publicare."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Configurarea meniului",
+        "complete": "Configurarea meniului este completă.",
+        "ready": "Configurarea meniului este gata.",
+        "actions": {
+          "openMenu": "Menu deschis",
+          "createMenu": "Creează meniu",
+          "reviewDetails": "Verifică detaliile",
+          "publishMenu": "Publică meniul",
+          "openSharingTools": "Instrumente de partajare deschisă",
+          "prepareDescriptions": "Pregătiți descrieri.",
+          "addImages": "Adăugați imagini",
+          "reviewLanguageText": "Revizuirea textului în limba de revizuire.",
+          "openMenuCheck": "Verificarea meniului deschis",
+          "updatePublicLinks": "Actualizați link-urile publice.",
+          "addPublicPhoto": "Adăugați fotografii publice"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Sursa a adăugat:",
+            "doneDescription": "Sursă de meniu este conectată.",
+            "nextDescription": "Adăugați o fotografie de meniu, PDF, un link sau porniți manual."
+          },
+          "menuImported": {
+            "label": "Menu importat",
+            "doneDescription": "{count, plural, one {# element vizibil găsit.} other {# elemente vizibile găsite.}}",
+            "nextDescription": "Importul sau adăugarea elementelor de meniu."
+          },
+          "keyDetailsChecked": {
+            "label": "Detalii cheie verificate",
+            "doneDescription": "Prețurile și detaliile cheie ale meniului sunt clare.",
+            "nextDescription": "Verificați prețurile și detaliile cheie înainte de publicare."
+          },
+          "menuPublished": {
+            "label": "Menu publicat",
+            "doneDescription": "A fost publicat meniul public.",
+            "nextDescription": "Publică când meniul este gata pentru clienți și trimite-l la ei."
+          },
+          "linkPlaced": {
+            "label": "Link-ul este plasat",
+            "readyLabel": "Link pregătit",
+            "doneDescription": "Link-ul oficial este gata pentru clienți.",
+            "progressDescription": "{count} din {total} acțiuni de plasare efectuate.",
+            "nextDescription": "Deschideți instrumentele de partajare atunci când meniul este publicat."
+          },
+          "descriptionsReady": {
+            "label": "Descrieri gata făcute.",
+            "doneDescription": "Obiectele vizibile au descrieri.",
+            "nextDescription": "Pregătiți descrieri pentru elementele de meniu mai clare."
+          },
+          "imagesReady": {
+            "label": "Imagini gata",
+            "doneDescription": "Obiectele vizibile au imagini.",
+            "nextDescription": "Adăugați sau generați imagini ale articolelor atunci când este util."
+          },
+          "translationsReady": {
+            "label": "Traduceri gata",
+            "doneDescription": "Limbile de meniu selectate sunt complete.",
+            "nextDescription": "Revizuiți limbile selectate din meniu."
+          },
+          "publicLinksAdded": {
+            "label": "Linkuri publice adăugate",
+            "doneDescription": "Acțiunea publică sau legăturile sociale sunt disponibile.",
+            "nextDescription": "Adăugați link-uri publice utile pentru pagina de afaceri."
+          },
+          "publicPhotoAdded": {
+            "label": "Fotografii publice adăugate",
+            "doneDescription": "O fotografie publică este disponibilă.",
+            "nextDescription": "Adăugați o copertă, un logo sau o fotografie publică când sunteți gata."
+          }
+        }
       }
     }
   },
@@ -1510,9 +2370,9 @@
         "searchSuggestions": "Sugestii de căutare în meniu",
         "menuCategories": "Categorii de meniu",
         "menuFilters": "Filtre de meniu",
-        "popular": "Popular",
-        "vegetarian": "Vegetarian",
-        "nonVeg": "Non-vegetarian",
+        "popular": "Populare Populare",
+        "vegetarian": "Vegetarian Vegetariana Vegetar",
+        "nonVeg": "Non-vegetarian Non-vegetarian",
         "forMen": "Pentru bărbați",
         "forWomen": "Pentru femei",
         "selectLanguage": "Selectați limba",
@@ -1584,9 +2444,9 @@
         "spiceMedium": "Mediu",
         "spiceHot": "fierbinte",
         "spiceVeryHot": "Foarte fierbinte",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 1 min min min.",
         "hoursShort": "{count} oră",
-        "calories": "{count} cal",
+        "calories": "{count} cal cal cal.",
         "protein": "Proteine {value}g",
         "carbs": "Carbohidrați {value}g",
         "fat": "Grăsimi {value}g",
@@ -1633,7 +2493,7 @@
         "ownerChoice": "Alegerea proprietarului",
         "menuOffering": "Meniu",
         "servicesOffering": "Servicii",
-        "catalogOffering": "Catalog",
+        "catalogOffering": "Catalog Catalog Catalog",
         "offeringsOffering": "Oferte",
         "open": "Deschide",
         "closed": "Închis",
@@ -1666,8 +2526,8 @@
         "metadataTitle": "Distribuie feedback | {businessName}",
         "metadataDescription": "Distribuiți feedback numai cu compania.",
         "shareFeedback": "Distribuiți feedback",
-        "noteToTeam": "Nota dvs. ajunge direct la {team}.",
-        "taglineAndNote": "{tagline} Nota dvs. ajunge direct la {team}.",
+        "noteToTeam": "Notele tale merg direct la {team}.",
+        "taglineAndNote": "{tagline} Nota ta merge direct la {team}.",
         "howWasVisit": "Cum a fost vizita ta?",
         "tapStarToRate": "Atingeți o stea pentru a evalua",
         "needsAttention": "Necesită atenție",
@@ -1685,7 +2545,7 @@
         "ratingThreeNote": "Împărtășiți un lucru care a fost bun și unul care s-ar putea îmbunătăți.",
         "ratingThreePlaceholder": "Ce a fost bun și ce l-ar face mai bun?",
         "ratingFourPrompt": "Spuneți echipei ce a ieșit în evidență.",
-        "ratingFourNote": "Nota dvs. ajută echipa să repete ceea ce a funcționat bine.",
+        "ratingFourNote": "Nota dumneavoastră ajută echipa să repete ceea ce a funcționat bine.",
         "ratingFourPlaceholder": "Ce a ieșit în evidență pentru tine?",
         "ratingFivePrompt": "Spuneți echipei ce ar trebui să facă în continuare.",
         "ratingFiveNote": "O notă rapidă ajută compania să înțeleagă ce prețuiesc clienții.",
@@ -1713,7 +2573,7 @@
         "upToCharacters": "Până la {count} caractere",
         "feedbackStaysPrivate": "Feedback-ul tău rămâne privat.",
         "contactDetails": "Date de contact",
-        "contactDetailsHelp": "Adăugați detaliile dvs. de contact mai jos.",
+        "contactDetailsHelp": "Adăugați detaliile de contact de mai jos.",
         "name": "Nume",
         "yourName": "Numele tău",
         "phoneNumber": "Număr de telefon",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Nu există încă istoric de facturare.",
     "perMonth": "/lună",
     "contactUs": "Contactați-ne Contactați noi"
+  },
+  "StarterActivation": {
+    "activeTitle": "Meniul dvs. este online",
+    "endingSoonTitle": "Păstrați-vă meniul online",
+    "publicMenuQrActive": "meniul dvs. public și codul QR sunt active.",
+    "activeRemaining": "Accesul la meniu este activ.",
+    "daysRemaining": "{days, plural, one {Alegeți un plan în termen de # zi pentru a vă menține meniul online.} other {Alegeți un plan în # zile pentru a vă menține meniul online.}}",
+    "sharingComplete": "Configurarea dvs. de partajare este finalizată.",
+    "sharingProgress": "{count, number} din {target, number} pași de partajare finalizați.",
+    "evidenceRecorded": "Înregistrat automat: {systemCount, number}. Confirmat de dvs.: {ownerCount, number}.",
+    "evidenceEmpty": "copiați sau distribuiți linkul meniului, descărcați codul QR al acestuia sau confirmați unde l-ați plasat.",
+    "keepLiveAction": "Păstrați-vă meniul online",
+    "noSubscriptionDescription": "Alegeți un plan pentru a menține disponibile actualizările meniului și paginile clienților.",
+    "choosePlanDescription": "Meniul dvs. este salvat. Alegeți un plan pentru a-l menține online și actualizat."
   },
   "Transactions": {
     "title": "Istoricul tranzacțiilor Istoricul de tranzacții",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Aplicația mobilă",
     "subscribeTitle": "Abonați-vă la Get Started (Începeți)",
     "subscribeDescription": "Alege un plan pentru a începe să-ți creezi meniul digital și să-ţi gestionezi afacerea.",
-    "viewPlans": "Vezi planurile Vizualizare planuri"
+    "viewPlans": "Vezi planurile Vizualizare planuri",
+    "returnToMobile": "Vizualizați versiunea pentru desktop. Întoarceți-vă la mobil."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Coduri Coduri",

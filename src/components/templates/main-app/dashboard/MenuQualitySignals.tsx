@@ -15,7 +15,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
-import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
+import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, localizeQualitySignal, QualitySignal } from '@lib/mce/qualitySignals';
 import {
     getBoundedProjectPageStringContext,
     getProjectPageProjectLogContext,
@@ -136,6 +136,17 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
 
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
     const primarySignal = useMemo(() => getPrimaryQualitySignal(allSignals), [allSignals]);
+    const displayedPrimarySignal = useMemo(
+        () => primarySignal ? localizeQualitySignal(primarySignal, (key, values) => t(`menuQuality.${key}`, values)) : null,
+        [primarySignal, t],
+    );
+    const displayedSignals = useMemo(
+        () => signals.map((signal) => ({
+            source: signal,
+            display: localizeQualitySignal(signal, (key, values) => t(`menuQuality.${key}`, values)),
+        })),
+        [signals, t],
+    );
 
     if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || !projectId) return null;
 
@@ -197,7 +208,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
                 </Flex>
             ) : (
                 <Flex vertical gap={8}>
-                    {primarySignal ? (
+                    {primarySignal && displayedPrimarySignal ? (
                         <Flex
                             align="center"
                             justify="space-between"
@@ -213,7 +224,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
                                     {isRepairMenuSignal(primarySignal) ? t('menuQuality.repairNow') : t('menuQuality.reviewTopIssue')}
                                 </Text>
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    {primarySignal.label}
+                                    {displayedPrimarySignal.label}
                                 </Text>
                             </Flex>
                             <Button
@@ -225,7 +236,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
                             </Button>
                         </Flex>
                     ) : null}
-                    {signals.map((signal) => (
+                    {displayedSignals.map(({ source: signal, display }) => (
                         <Flex
                             key={signal.id}
                             align="center"
@@ -251,12 +262,12 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
                                         {SIGNAL_ICONS[signal.id]}
                                     </span>
                                     <div>
-                                        <Text style={{ fontSize: 13 }}>{signal.label}</Text>
-                                        {signal.helpText && (
+                                        <Text style={{ fontSize: 13 }}>{display.label}</Text>
+                                        {display.helpText && (
                                             <br />
                                         )}
-                                        {signal.helpText && (
-                                            <Text type="secondary" style={{ fontSize: 11 }}>{signal.helpText}</Text>
+                                        {display.helpText && (
+                                            <Text type="secondary" style={{ fontSize: 11 }}>{display.helpText}</Text>
                                         )}
                                     </div>
                                 </Flex>
@@ -268,7 +279,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
                                     onClick={() => handleAction(signal)}
                                     style={{ fontSize: 12, padding: '0 4px' }}
                                 >
-                                    {isRepairMenuSignal(signal) ? t('menuQuality.repair') : signal.actionLabel}
+                                    {isRepairMenuSignal(signal) ? t('menuQuality.repair') : t('menuQuality.review')}
                                 </Button>
                             )}
                         </Flex>

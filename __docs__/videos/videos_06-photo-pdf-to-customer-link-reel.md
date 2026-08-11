@@ -1,11 +1,15 @@
 # Videos - Photo/PDF To Customer Link Reel
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; current signed-in intake capture pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 6.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -32,11 +36,20 @@ Required boundaries:
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
 
+## Market Role And Asset Gate
+
+- **Market role:** Primary setup-relief and conversion reel for non-technical owners.
+- **Opening contract:** `Already have a menu? That is enough to start.`
+- **First payoff:** A real menu photo or PDF is visibly accepted and becomes a private preview.
+- **Asset gate:** Current signed-in intake, upload, progress, private preview, review, and customer-link states.
+- **Claim gate:** Say `no need to retype the whole menu before you begin`; do not promise zero corrections, skipped review, or a universal setup time.
+- **Native adaptation:** `9:16` is the master; keep the source and prepared preview large enough to inspect on a phone.
+
 ## Video 6 - Photo/PDF To Customer Link Reel
 
 ### A. Purpose
 
-This reel makes setup feel easy by showing that the owner can upload menu photos or a PDF instead of typing the menu into another tool.
+This reel makes setup feel easy by showing that the owner can start from menu photos or a PDF instead of rebuilding the whole menu before beginning.
 
 ### B. Audience
 
@@ -65,50 +78,50 @@ Already have a menu or service list? Upload photos and turn it into a customer l
 
 ### F. Emotional Job
 
-The viewer should feel: "I do not need to type or rebuild the menu manually."
+The viewer should feel: "I can begin with what is already on my phone and review the result before publishing."
 
 ### G. Narrative Arc
 
-1. Hook: Already have a menu? Start there.
-2. Problem: Owners think setup means manual entry.
-3. Product entry: Upload menu photos, PDF, or owned link.
-4. Proof: Private preview appears in minutes.
-5. Outcome: Customer link goes live after review.
-6. CTA: Create customer link.
+1. Hook: Already have a menu? That is enough to start.
+2. Problem: Owners expect another manual rebuild.
+3. Product entry: Sign in, then upload menu photos, PDF, or an owned link.
+4. Proof: A private customer preview is prepared.
+5. Outcome: Customer link goes live only after owner review and approval.
+6. Close: MenuList identity and `menulist.ai`; companion CTA is `Create customer link`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:03 | 3s | Owner holding paper menu or service list | Top-down phone shot | Already have a menu? Start there. | Already have a menu? Start there. | Cut from paper to phone | Familiar owner action | Paper menu/service list |
-| 0:03-0:08 | 5s | Upload menu photos, upload PDF, paste owned link | Three UI cards | Upload menu photos, a PDF, or the owned link you already use. | Upload photos. No typing required. | Cards slide into place | Remove setup fear | Intake UI |
-| 0:08-0:14 | 6s | MenuList prepares categories and items | UI transforms from source to structured list | MenuList prepares the customer-facing preview in minutes. | Preview prepared in minutes. | Source-to-structure transition | Keep factual | Preview UI |
-| 0:14-0:20 | 6s | Owner reviews prices/categories | Tap through item and price | You review before publishing. | Review before publishing. | Tap highlight | Approval safety | Review UI |
-| 0:20-0:25 | 5s | Customer link live on phone | End card with link | Then put one trusted customer link online. | Create your customer link. | Link reveal | Strong CTA | Customer link UI, logo |
+| 0:00-0:03 | 3s | Clear menu photos already in the owner's phone gallery | Source fills the native vertical frame; MenuList intake is visible below | Already have a menu? Start there. | Already have a menu? Start there. | Gallery selection moves into intake | Familiar owner action plus product context | Permissioned menu photos, current intake UI |
+| 0:03-0:08 | 5s | Current signed-in intake shows photo, PDF, and owned-link options | One source is selected with a deliberate tap | Sign in, then upload your photos or PDF. | Upload what you already have. | Source choices settle, selected source advances | Do not hide sign-in or imply every source is identical | Current intake UI and source files |
+| 0:08-0:14 | 6s | Upload progress resolves into categories and items under `Private` state | Source and preview remain connected | MenuList prepares a private customer preview. You do not rebuild the full menu first. | No full-menu rebuild to begin. | Source-to-preview transformation | Preparation is visible, not magical | Current progress and private preview UI |
+| 0:14-0:20 | 6s | Owner checks two item names, prices, and one business detail | Tap/focus indicators, then approval action | Check the items and prices. Nothing goes public until you approve. | Review before publishing. | Review focus -> approval press | Preserve owner control | Current review and approval UI |
+| 0:20-0:23 | 3s | Approved customer link opens on the customer page | Link and customer result fill the frame | Your approved customer link is ready. | One approved customer link. Ready to share. | Approved link reveal | Do not imply external auto-sharing | Current customer link and page |
+| 0:23-0:25 | 2s | MenuList lockup, tagline, and readable URL | Clean identity close |  | MenuList / One approved customer link / menulist.ai | Settle and hold to encoded end | Companion CTA sits outside the video | Approved lockup and URL |
 
 ### I. Full Voiceover Script
 
 ```text
 Already have a menu? Start there.
 
-Upload menu photos, a PDF, or the owned link you already use.
+Sign in, then upload your photos or PDF.
 
-No typing required to start.
+MenuList prepares a private customer preview. You do not rebuild the full menu first.
 
-MenuList prepares the customer-facing preview in minutes.
+Check the items and prices. Nothing goes public until you approve.
 
-You review before publishing.
-
-Then put one trusted customer link online.
+Your approved customer link is ready.
 ```
 
 ### J. On-Screen Text List
 
-1. Already have a menu? Start there.
-2. Upload photos. No typing required.
-3. Preview prepared in minutes.
+1. Already have a menu? That is enough to start.
+2. Upload what you already have.
+3. No full-menu rebuild to begin.
 4. Review before publishing.
-5. Create your customer link.
+5. One approved customer link.
+6. menulist.ai
 
 ### K. UI Screens Required
 
@@ -130,17 +143,17 @@ Use light upload and tap SFX. Music should feel easy and practical. Voiceover sh
 
 ### N. Design Checklist
 
-- All four starting sources appear.
+- Current starting sources appear accurately; typed entry is a fallback, not the main claim.
 - Private preview appears before public link.
 - Review before publishing is clear.
 - No claim says manual review is skipped.
-- CTA is visible for at least 2 seconds.
+- Final identity and URL hold through the last encoded frame.
 
 ### O. Versioning Requirements
 
 - 9:16 captioned.
 - 9:16 clean.
-- 1:1 feed crop.
+- Native 1:1 feed composition when required.
 - 15-second cut.
 - With VO.
 - Without VO.
@@ -148,7 +161,8 @@ Use light upload and tap SFX. Music should feel easy and practical. Voiceover sh
 
 ### P. CTA
 
-Create customer link.
+- Encoded close: `menulist.ai`.
+- Companion post/ad CTA: `Create customer link`.
 
 ### Q. Conversion Contract
 

@@ -58,6 +58,8 @@ function verifySmokeRoute() {
   assertIncludes(features, "ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE", "Feature flags expose editor test route gate");
   assertIncludes(mycodexPreviewRoute, "FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE", "MyCodex editor preview is feature-flag gated");
   assertIncludes(campaigncueLocalTestPage, "FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE", "CampaignCue local editor test is feature-flag gated");
+  assertIncludes(mycodexPreviewRoute, "!explicitTestRouteEnabled || !isLocalHost(host)", "MyCodex editor preview requires both the feature flag and a loopback host");
+  assertIncludes(campaigncueLocalTestPage, "!explicitTestRouteEnabled || !isLocalHost(host)", "CampaignCue editor preview requires both the feature flag and a loopback host");
   assertNotIncludes(mycodexPreviewRoute, OLD_EDITOR_TEST_ENV_GATE, "MyCodex editor preview");
   assertNotIncludes(campaigncueLocalTestPage, OLD_EDITOR_TEST_ENV_GATE, "CampaignCue local editor test");
   assertIncludes(mycodexPreviewRoute, "notFound()", "MyCodex editor preview fails closed");

@@ -20,10 +20,10 @@ export function parseSmtpPort(rawPort: string | undefined): number | null {
 }
 
 export function getSmtpConfigFromEnv(env: NodeJS.ProcessEnv = process.env): SmtpConfig | null {
-    const host = String(env.SMTP_HOST || '').trim();
-    const port = parseSmtpPort(env.SMTP_PORT);
-    const user = String(env.SMTP_USER || '').trim();
-    const pass = String(env.SMTP_PASS || '');
+    const host = String(env.MENULIST_SMTP_HOST || env.SMTP_HOST || '').trim();
+    const port = parseSmtpPort(env.MENULIST_SMTP_PORT || env.SMTP_PORT);
+    const user = String(env.MENULIST_SMTP_USER || env.SMTP_USER || '').trim();
+    const pass = String(env.MENULIST_SMTP_PASS || env.SMTP_PASS || '');
 
     if (!host || port === null || !user || pass.trim().length === 0) {
         return null;

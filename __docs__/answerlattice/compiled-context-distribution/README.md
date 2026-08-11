@@ -1,6 +1,6 @@
 # Answerlattice Compiled Context Distribution
 
-**Status:** Implemented and Feature 14 source-hardened; reserved-counter boundary reverified on July 26, 2026
+**Status:** Implemented and Feature 14 source-hardened; release-proof boundary reverified on August 10, 2026
 
 **Role:** Read distribution for approved support context; Firestore remains the governed source of truth.
 
@@ -16,6 +16,10 @@ The public prefix is deterministic ownership data, not a bearer-selected path. E
 - Public API bundle reads are implemented behind their existing rollout flags.
 - MCP is implemented but disabled by default.
 - Widget bundle bootstrap is disabled because the current widget does not consume the returned bundle files. Widget search continues through the governed server path.
+- Pending release review reads the existing source-version and manifest control
+  documents to show current channel mode and the expected post-activation
+  rebuild requirement. This is control-plane proof only: no Storage object is
+  downloaded and no external cache or client delivery is certified.
 - `branding` and `mcpPolicy` remain reserved invalidation counters. Their numeric values appear only in the complete source-version snapshot stored in Firestore control state and private `mcp/product-summary.json` metadata. The app and Functions builders do not read the private advanced-branding profile or an MCP authorization-policy document, and compiled context does not serialize either payload.
 
 ## Safety invariants
@@ -38,3 +42,4 @@ The public prefix is deterministic ownership data, not a bearer-selected path. E
 - [compiled-context-distribution_mobile-support.md](compiled-context-distribution_mobile-support.md)
 - [compiled-context-distribution_marketing.md](compiled-context-distribution_marketing.md)
 - [compiled-context-distribution_website.md](compiled-context-distribution_website.md)
+- [Support Truth Change Control](../support-truth-change-control/README.md)

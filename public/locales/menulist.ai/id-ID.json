@@ -410,7 +410,7 @@
     "errorLoadingAnalytics": "Kesalahan Saat Memuat Analytics",
     "owner": {
       "viewing": "Melihat:",
-      "menu": "Menu menu yang tersedia sangat beragam.",
+      "menu": "Menu yang",
       "unableToLoad": "Tidak dapat memuat dasbor",
       "refreshOrContactSupport": "Silakan coba segarkan halaman. Jika masalah terus berlanjut, hubungi dukungan.",
       "settledTabHelper": "Analisis lengkap dimuat hanya saat Anda membuka tab ini. Setelah pemuatan pertama, perangkat ini menggunakan hasil yang disimpan hingga lokasi menyelesaikan pembaruan akhir hari berikutnya.",
@@ -428,7 +428,8 @@
         "daily": "Hari sebelumnya",
         "weekly": "7 Hari Terakhir",
         "monthly": "Bulan Ini",
-        "overall": "Secara keseluruhan"
+        "overall": "Secara keseluruhan",
+        "graph": "Grafik"
       },
       "today": {
         "noMenuActivityToday": "Belum ada aktivitas menu hari ini.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Penelusuran tanpa hasil",
         "unavailableInterest": "Bunga Tidak Tersedia",
         "topLanguage": "Bahasa Teratas",
-        "smartPicksShown": "Pilihan Cerdas Ditampilkan",
-        "smartPicksClicks": "Klik Pilihan Cerdas",
-        "smartPicksTaps": "Ketuk Pilihan Cerdas",
-        "smartPicksUsed": "Pilihan Cerdas Digunakan",
-        "smartPicksEngagement": "Keterlibatan Pilihan Cerdas",
+        "smartPicksShown": "Smart Picks menunjukkan",
+        "smartPicksClicks": "Smart Picks klik",
+        "smartPicksTaps": "Smart Picks TAPS",
+        "smartPicksUsed": "Smart Picks digunakan",
+        "smartPicksEngagement": "Smart Picks komitmen",
         "totalMenuScans": "Total Pemindaian Menu",
         "totalItemClicks": "Total Klik Item",
         "activeDays": "Hari Aktif",
         "daysActive": "Hari Aktif",
-        "avgDailyScans": "Rata-rata. Pemindaian Harian",
-        "smartPicksActive": "Pilihan Cerdas Aktif",
+        "avgDailyScans": "Tag: pemindaian harian",
+        "smartPicksActive": "Smart Picks aktif",
         "engagementRate": "Tingkat Keterlibatan",
         "topItem": "Item Teratas",
         "topCategory": "Kategori Teratas"
@@ -473,7 +474,7 @@
         "itemClicks": "Frekuensi pelanggan mengetuk item",
         "engagedSessions": "Sesi saat pelanggan menunjukkan minat nyata terhadap menu",
         "actionRate": "Sesi yang menghasilkan tindakan akhir pelanggan",
-        "smartPicksShown": "Berapa kali Pilihan Cerdas muncul di halaman Anda",
+        "smartPicksShown": "Berapa kali Smart Picks muncul di halaman Anda",
         "smartPicksUsed": "Persentase pelanggan yang menggunakan Smart Picks",
         "customerActions": "Tindakan terakhir seperti panggilan, WhatsApp, petunjuk arah, reservasi, dan pemesanan",
         "searches": "Permintaan penelusuran yang dihapus dari menu",
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Tidak ada aktivitas yang tercatat kemarin",
         "noAnalyticsYet": "Belum ada data. Analisis Anda akan muncul setelah pelanggan mulai melihat.",
-        "noItemClicksYet": "Belum ada item yang diklik"
+        "noItemClicksYet": "Belum ada item yang diklik",
+        "lowActivityTitle": "Aktivitas rendah",
+        "lowActivityDescription": "Tidak ada cukup aktivitas untuk menarik kesimpulan yang berguna untuk periode ini.",
+        "noWeeklyData": "Tidak ada aktivitas menu teratur yang tersedia selama 7 hari terakhir.",
+        "noMonthlyData": "Tidak ada aktivitas menu teratur yang tersedia untuk bulan ini."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% vs minggu lalu"
+        "vsLastWeek": "{sign}{change}% vs minggu lalu",
+        "changeVsLastWeek": "{change} vs minggu lalu"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# hari aktivitas dicatat} other {# hari aktivitas dicatat}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ya",
         "no": "Tidak",
-        "notAvailable": "T/A",
+        "notAvailable": "N/A",
         "active": "Aktif",
         "lowActivity": "Aktivitas Rendah",
         "noData": "Tidak Ada Data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Menunggu pemindaian pertama",
         "weeklyInsights": "Wawasan Mingguan",
         "last4WeeksComparison": "Perbandingan 4 Minggu Terakhir",
-        "historicalDataWillAppear": "Data historis akan muncul setelah beberapa minggu"
+        "historicalDataWillAppear": "Data historis akan muncul setelah beberapa minggu",
+        "statusMessages": {
+          "working": "Pelanggan menggunakan menu saat ini.",
+          "low_activity": "Aktivitas pelanggan masih dalam proses pembangunan. Menu saat ini tetap tersedia.",
+          "no_data": "Aktivitas akan muncul setelah pelanggan mulai membuka menu Anda."
+        }
       },
       "aiSummary": {
         "daily": "Sekilas tentang hari sebelumnya",
         "weekly": "Sekilas minggu ini",
-        "monthly": "Ringkasan bulan ini"
+        "monthly": "Ringkasan bulan ini",
+        "localized": {
+          "noActivity": "Tidak ada aktivitas pelanggan yang diselesaikan yang tercatat untuk periode ini.",
+          "menuViews": "Pelanggan membuka menu {count} kali.",
+          "itemTaps": "Pelanggan menekan item menu {count} kali.",
+          "customerActions": "Pelanggan menyelesaikan {count} aksi akhir.",
+          "searches": "Pelanggan telah mencari menu {count} kali.",
+          "unavailableInterest": "Item yang tidak tersedia menerima {count} tap."
+        }
       },
       "actions": {
         "call": "Panggilan",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} kunjungan · {rate}%",
         "markDone": "Tandai sebagai selesai",
         "markDoneSaved": "Ditandai sebagai selesai. Hasil akan diperbarui ketika ringkasan analitik berikutnya sudah siap.",
-        "markDoneFailed": "Tindakan ini tidak dapat ditandai sebagai selesai. Coba lagi."
+        "markDoneFailed": "Tindakan ini tidak dapat ditandai sebagai selesai. Coba lagi.",
+        "bestSourceStatsFormatted": "· {visits} kunjungan · {rate} tingkat aksi",
+        "bestSourceMobileFormatted": "Sumber terbaik saat ini: {source} · {visits} kunjungan · {rate} tingkat aksi",
+        "sourceQualityTagFormatted": "{source}: {visits} kunjungan · {sessions} sesi aksi · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} kunjungan · {rate}",
+        "priorities": {
+          "high": "Prioritas tinggi",
+          "medium": "Prioritas sedang",
+          "low": "Prioritas rendah"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "Aktivitas yang tersedia mendukung periksa menu yang jelas."
+          },
+          "watch": {
+            "label": "terus menonton",
+            "message": "Beberapa aktivitas mungkin perlu diperiksa lagi sebelum mengubah menu."
+          },
+          "no_data": {
+            "label": "Diperlukan lebih banyak data.",
+            "message": "Tunggu aktivitas pelanggan yang lebih stabil sebelum membuat kesimpulan."
+          }
+        },
+        "localizedActions": {
+          "reason": "Berdasarkan aktivitas pelanggan yang diselesaikan terakhir.",
+          "availability": {
+            "title": "Periksa ketersediaan item.",
+            "description": "Periksa apakah item yang tidak tersedia atau tersembunyi harus dipulihkan atau disimpan.",
+            "action": "Tinjau ketersediaan"
+          },
+          "customerActions": {
+            "title": "Tinjau kembali tindakan pelanggan.",
+            "description": "Periksa rincian menu dan tautan yang digunakan pelanggan sebelum mengambil tindakan.",
+            "action": "Tinjau kembali tindakan pelanggan."
+          },
+          "details": {
+            "title": "Meningkatkan detail item.",
+            "description": "Tinjau nama item, opsi, deskripsi, dan gambar yang mungkin membutuhkan informasi yang lebih jelas.",
+            "action": "Detail item review"
+          },
+          "general": {
+            "title": "Tunggu sinyal yang lebih jelas.",
+            "description": "Jaga menu saat ini stabil sampai aktivitas yang lebih tertata tersedia.",
+            "action": "Lihat kembali nanti."
+          },
+          "menuOrder": {
+            "title": "Periksa kembali urutan menu.",
+            "description": "Periksa apakah item dan kategori penting mudah ditemukan oleh pelanggan.",
+            "action": "Periksa kembali urutan menu."
+          },
+          "pricing": {
+            "title": "Review harga",
+            "description": "Periksa harga yang terhubung dengan sinyal minat pelanggan terbaru.",
+            "action": "Tinjau harga-harganya."
+          },
+          "search": {
+            "title": "Lihat pencarian pelanggan yang dicari.",
+            "description": "Periksa pencarian yang mungkin tidak mengarah pada pelanggan untuk hasil menu yang berguna.",
+            "action": "Review Pencarian"
+          },
+          "source": {
+            "title": "Lihat kembali sumber masukan pelanggan.",
+            "description": "Periksa apakah tautan publik dan QR penempatan mengarahkan pelanggan ke menu saat ini.",
+            "action": "Lihat kembali tautan publik."
+          },
+          "timing": {
+            "title": "Tinjau waktu menu",
+            "description": "Periksa apakah kategori yang dijadwalkan dan ketersediaan sesuai ketika pelanggan mencarinya.",
+            "action": "Penilaian waktu pelaksanaan revisi"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Ditandai selesai",
+            "message": "Hasilnya akan diperiksa setelah aktivitas yang lebih jelas tersedia."
+          },
+          "improved": {
+            "label": "Meningkatkan",
+            "message": "Pemeriksaan yang disetujui berikutnya menunjukkan peningkatan."
+          },
+          "no_clear_change": {
+            "label": "Tidak ada perubahan yang jelas",
+            "message": "Pemeriksaan yang disetujui berikutnya tidak menunjukkan perubahan yang jelas."
+          },
+          "not_enough_data": {
+            "label": "Diperlukan lebih banyak data.",
+            "message": "Belum ada cukup aktivitas yang stabil untuk menilai perubahan ini."
+          },
+          "pending": {
+            "label": "Periksa Pendek",
+            "message": "MenuList akan memeriksa ini setelah aktivitas yang lebih tertata tersedia."
+          }
+        }
       },
       "details": {
         "menuDetails": "Rincian Menu",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Bunga Tidak Tersedia",
           "languages": "Bahasa",
           "filters": "Filter",
-          "smartPicks": "Pilihan Cerdas",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Tindakan berdasarkan jam kerja"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Tampilan menu",
-          "itemTaps": "Ketuk item",
+          "itemTaps": "Ketukan item",
           "menuSessions": "Sesi menu",
           "engagedSessions": "Sesi dengan aktivitas",
           "actionSessions": "Sesi aksi",
@@ -617,6 +729,12 @@
           "closed": "Tindakan saat ditutup",
           "unknown": "Tindakan ketika status jam tidak tersedia",
           "closedShare": "{rate}% dari semua tindakan yang tercatat terjadi saat ditutup"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} tidak tersedia taps tidak dapat diakses.",
+          "strongItem": "{count} ketukan item",
+          "needsWork": "{count} Pemandangan, Tidak ada tampilan",
+          "gettingAttention": "{count} tayangan"
         }
       },
       "smartPicks": {
@@ -628,7 +746,7 @@
         "allTimeSummary": "Ringkasan Sepanjang Masa",
         "since": "Sejak {date}",
         "actionsSummary": "Tindakan: Hubungi {call}, WhatsApp {whatsapp}, Petunjuk Arah {directions}, Reservasi {reserve}, Pesan {order}",
-        "topItemsSummary": "Item teratas: {items}",
+        "topItemsSummary": "Top item: {items}",
         "itemTapsSummary": "{item} (ketuk {count})",
         "topCategorySummary": "Kategori teratas: {categories}",
         "categorySummary": "{category} (penayangan {views}, ketukan {taps})",
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Rincian pintasan",
         "installsByPlatform": "Pemasangan berdasarkan platform",
         "appStickiness": "Kelekatan aplikasi",
-        "returningOpens30d": "Kembali dibuka (30 hari)",
-        "avgOpensPerInstall": "Rata-rata pembukaan per pemasangan",
+        "avgOpensPerInstall": "Avg buka per instalasi",
         "iosManualInstalls": "Instalasi manual iOS",
         "shortcuts": {
           "menu": "Lihat Menu",
@@ -715,12 +832,13 @@
           "order": "Pesan Secara Online"
         },
         "platforms": {
-          "ios": "iOS 10.3.2 dirilis untuk semua pengguna iOS.",
-          "iosLong": "iOS (iPhone/iPad)",
-          "android": "Android adalah sistem operasi yang digunakan oleh ponsel pintar.",
-          "desktop": "Desktop adalah tempat kerja yang paling umum.",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
+          "desktop": "Desktop",
           "other": "Lainnya"
-        }
+        },
+        "tryAgainLater": "Coba lagi nanti."
       },
       "projectSelector": {
         "deleted": "Dihapus",
@@ -761,7 +879,8 @@
         "copied": "Disalin",
         "copy": "Salin",
         "openGoogle": "Buka Google",
-        "done": "Selesai"
+        "done": "Selesai",
+        "couldNotOpen": "Tidak dapat membuka Google Profil Bisnis."
       },
       "behaviorNudge": {
         "linkCopied": "Tautan disalin",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Tinjau masalah teratas",
         "repairMenu": "Menu Perbaikan",
         "review": "Ulasan",
-        "repair": "Perbaikan"
+        "repair": "Perbaikan",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# item tidak memiliki deskripsi.} other {# item tidak memiliki deskripsi yang diperlukan.}}",
+            "ok": "Semua item memiliki deskripsi.",
+            "help": "Deskripsi membantu pelanggan memahami setiap penawaran."
+          },
+          "images": {
+            "warning": "{count, plural, one {# item tidak memiliki gambar.} other {# item adalah gambar yang hilang.}}",
+            "ok": "Semua item memiliki gambar.",
+            "help": "Gambar dapat membantu pelanggan memilih lebih cepat."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Kategori # tidak memiliki ikon.} other {# kategori adalah ikon yang hilang.}}",
+            "ok": "Semua kategori memiliki ikon.",
+            "help": "Ikon membuat kategori lebih mudah untuk dicari."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# item tidak memiliki harga.} other {# item tidak memiliki harga yang tepat.}}",
+            "ok": "Semua barang memiliki harga.",
+            "help": "Pelanggan membandingkan harga sebelum memutuskan."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# item tersembunyi dari pelanggan.} other {# item tersembunyi dari pelanggan.}}",
+            "ok": "Tidak ada item yang tersembunyi.",
+            "help": "Item tersembunyi tidak muncul di menu publik."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# harga perlu dicek ulang.} other {# harga perlu dicek ulang.}}",
+            "ok": "Harga berada dalam kisaran yang diharapkan.",
+            "help": "MenuList membandingkan harga satuan dalam kategori yang sama. Tandai harga yang disengaja sebagai telah ditinjau."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# item tidak memiliki terjemahan.} other {# item tidak memiliki terjemahan.}}",
+            "ok": "Semua item yang terlihat diterjemahkan.",
+            "help": "Beberapa item tidak lengkap dalam bahasa menu yang dipilih."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# detil menu tidak ada terjemahannya.} other {# rincian menu tidak tersedia dalam terjemahan.}}",
+            "ok": "Rincian menu diterjemahkan.",
+            "help": "Nama menu, deskripsi, atau catatan tidak lengkap dalam bahasa menu yang dipilih."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Link yang disalin.",
+        "direct": "langsung",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menu untuk kit",
+        "nativeShare": "Bagian perangkat berbagi",
+        "obp": "Halaman bisnis",
+        "other": "Lainnya",
+        "qr": "QR kode",
+        "shortcut": "Aplikasi Shortcut",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Kesehatan Bisnis",
+        "open": "Kesehatan Bisnis Terbuka",
+        "today": "Hari ini",
+        "latestActivity": "Aktivitas terbaru",
+        "noActionNeeded": "Tidak perlu tindakan apa pun",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Perlu perhatian",
+          "needs_review": "Perlu dikaji ulang.",
+          "insufficient_data": "Diperlukan lebih banyak data.",
+          "stale": "Perlu cek yang baru.",
+          "not_ready": "Menjadi Siap"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# detil yang berhubungan dengan pelanggan perlu dicek.} other {# rincian yang berhubungan dengan pelanggan perlu dicek.}}",
+          "stable": {
+            "headline": "Informasi publik Anda stabil.",
+            "message": "Tidak ada masalah yang dihadapi pelanggan yang memerlukan tindakan dalam periksaan terbaru."
+          },
+          "watch": {
+            "headline": "Sebuah detail mungkin memerlukan perhatian.",
+            "message": "Tinjau periksa yang diusulkan sebelum mengubah informasi publik."
+          },
+          "needs_review": {
+            "headline": "Tinjau detail yang berhadapan dengan pelanggan.",
+            "message": "Satu atau lebih detail publik harus diperiksa."
+          },
+          "insufficient_data": {
+            "headline": "Lebih banyak aktivitas diperlukan.",
+            "message": "Jaga informasi saat ini tetap stabil sementara MenuList mengumpulkan sinyal yang berguna."
+          },
+          "stale": {
+            "headline": "Kesehatan Bisnis memerlukan pemeriksaan yang baru.",
+            "message": "Pemeriksaan terakhir sudah lama. Informasi publik Anda saat ini tetap tidak berubah."
+          },
+          "not_ready": {
+            "headline": "Bisnis Kesehatan sedang bersiap-siap untuk siap.",
+            "message": "Pemeriksaan toko pertama akan muncul di sini ketika siap."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Periksa sumber menu.",
+            "message": "Tidak ada sumber menu publik aktif yang ditemukan. Periksa menu sebelum membaginya. Menu tidak dapat dibagikan karena tidak tersedia.",
+            "title": "Sumber menu perlu diperiksa untuk memastikannya."
+          },
+          "low_latest_activity": {
+            "action": "Periksa tautan berbagi.",
+            "message": "Aktivitas pelanggan rendah. Periksa QR, Google. Instagram dan WhatsApp serta tautan situs web.",
+            "title": "Aktivitas pelanggan rendah."
+          },
+          "unavailable_item_taps": {
+            "action": "Periksa item yang tidak tersedia.",
+            "message": "Pelanggan menunjukkan minat pada barang yang tidak tersedia. Isi ulang stoknya atau simpan tersembunyi.",
+            "title": "Barang-"
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Lihat kembali umpan balik tamu.",
+            "message": "Feedback tamu memerlukan periksa pemilik sebelum detail publik diubah.",
+            "title": "Feedback tamu perlu diperiksa untuk memastikan kebenarannya."
+          },
+          "default": {
+            "action": "Tinjau detail",
+            "message": "Detail yang berhadapan dengan pelanggan memerlukan periksa pemilik.",
+            "title": "Sebuah detail perlu diperiksa."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# item umpan balik pribadi perlu diperiksa.} other {# item umpan balik pribadi perlu diperiksa.}}",
+          "clear": "Feedback pribadi jelas."
+        },
+        "freshness": {
+          "notReady": "Kesehatan Bisnis bukan real time. Pemeriksaan toko pertama akan menunjukkan tanggal data di sini.",
+          "throughDate": "Menggunakan data melalui {date}. Hari ini mungkin belum selesai.",
+          "latest": "Menggunakan data terbaru yang tersedia MenuList. Hari ini mungkin belum lengkap."
+        },
+        "periods": {
+          "today": "Hari ini",
+          "yesterday": "Hari sebelumnya",
+          "thisWeek": "Minggu ini",
+          "lastWeek": "Minggu lalu",
+          "thisMonth": "Bulan ini",
+          "lastMonth": "Bulan lalu",
+          "last7Days": "7 hari terakhir",
+          "last30Days": "30 hari terakhir",
+          "overall": "Secara keseluruhan"
+        },
+        "metrics": {
+          "menuViews": "Tampilan menu",
+          "topDemand": "Permintaan tertinggi",
+          "topDemandDetail": "Naikkan pangkat: {count} {signal}",
+          "bestSource": "Sumber Terbaik",
+          "bestSourceDetail": "Update link: {count} mengunjungi:"
+        },
+        "signals": {
+          "views": "pandangan",
+          "clicks": "Ketukan",
+          "attention": "Sinyal Perhatian"
+        },
+        "page": {
+          "description": "Status bisnis harian dan periksa yang berhadapan dengan pelanggan.",
+          "latestCheck": "AI health check",
+          "loading": "Pengisian",
+          "loadingMessage": "Loading Bisnis Kesehatan...",
+          "notReady": "Bisnis Kesehatan belum siap.",
+          "loadErrorTitle": "Business Health tidak dapat dimuat.",
+          "loadErrorDescription": "Silakan refresh halaman ini dan coba lagi.",
+          "refresh": "Segarkan",
+          "needsAttention": "Perlu perhatian",
+          "desktopSettingsOnly": "Buka ini dari pengaturan desktop."
+        },
+        "scope": {
+          "title": "Bidang Kesehatan Bisnis",
+          "allMenus": "Semua menu tersedia.",
+          "selectedMenu": "Menu yang dipilih.",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "Tampilan tingkat lokasi",
+          "inactiveMenu": "Menu yang tidak aktif",
+          "thisMenuOnly": "Menu ini hanya",
+          "allMenusInLocation": "Semua menu di lokasi ini.",
+          "thisMenuHelper": "Pertanyaan dan aktivitas menggunakan menu ini.",
+          "allMenusHelper": "Pertanyaan dan aktivitas menggunakan semua menu di lokasi ini.",
+          "dialogDescription": "Pilih semua menu atau satu menu untuk aktivitas dan periksa.",
+          "all": "Semua",
+          "close": "Tutup"
+        },
+        "locations": {
+          "title": "Lokasi",
+          "loading": "Memuat lokasi...",
+          "empty": "Belum ada ringkasan lokasi.",
+          "storeFallback": "Lokasi {id}",
+          "checkedOn": "{date} telah diperiksa.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# periksa yang berhadapan dengan pelanggan perlu dicek.} other {# periksa yang berhadapan dengan pelanggan perlu dicek.}}",
+          "statusReason": {
+            "stable": "Tidak ada masalah yang dihadapi pelanggan yang memerlukan tindakan.",
+            "watch": "Detail yang menghadap ke pelanggan mungkin memerlukan perhatian.",
+            "needs_review": "Rincian yang berhubungan dengan pelanggan perlu dicek.",
+            "insufficient_data": "Lebih banyak aktivitas pelanggan diperlukan untuk melakukan pemeriksaan yang berguna.",
+            "stale": "Lokasi ini perlu diperiksa kembali.",
+            "not_ready": "Pemeriksaan lokasi pertama sudah siap."
+          }
+        },
+        "assistant": {
+          "title": "Permintaan Kesehatan Bisnis",
+          "askShort": "Tanyalah (Ask)",
+          "englishOnlyTitle": "Pertanyaan saat ini tersedia dalam bahasa Inggris.",
+          "englishOnlyDescription": "Status dan periksaannya terlokalisasi. Ganti bahasa aplikasi menjadi Bahasa Inggris untuk menanyakan pertanyaan Kesehatan Bisnis.",
+          "notReady": "Business Health akan menjawab setelah periksa terakhir selesai.",
+          "suggestedUnavailable": "Pertanyaan yang disarankan tidak tersedia saat ini.",
+          "freeTextUnavailable": "Pertanyaan teks gratis tidak tersedia saat ini.",
+          "answerError": "Business Health tidak bisa menjawab itu.",
+          "suggestedQuestions": "Pertanyaan yang diusulkan:",
+          "followUps": "Anda dapat bertanya selanjutnya.",
+          "you": "Anda",
+          "empty": "Pilih pertanyaan atau tanyakan tentang bisnis Anda.",
+          "placeholderReady": "Tanya tentang hari ini, minggu ini, perhatian menu, atau periksa berikutnya.",
+          "placeholderMobile": "Tanya tentang hari ini atau minggu ini.",
+          "placeholderPending": "Tersedia setelah periksa terakhir.",
+          "send": "Hantar Pertanyaan",
+          "cachedFacts": "Berdasarkan fakta bisnis MenuList yang tersimpan dalam cache.",
+          "questions": {
+            "checks": "Apa yang perlu diperiksa?",
+            "today_stats": "Bagaimana hari ini?",
+            "this_week_stats": "Apa yang terjadi minggu ini?",
+            "top_item": "Item mana yang mendapat perhatian?",
+            "last_week_stats": "Apa yang terjadi minggu lalu?",
+            "this_month_stats": "Bagaimana bulan ini?",
+            "last_month_stats": "Apa yang terjadi bulan lalu?",
+            "public_menu_status": "Apakah menu publik saya sudah benar?",
+            "profile_status": "Apakah profil bisnis saya lengkap?",
+            "feedback_reviews": "Ada umpan balik tamu yang ingin diperiksa?",
+            "feedback_recent": "Apa yang dikatakan tamu baru-baru ini?",
+            "default": "Apa yang harus saya periksa selanjutnya?"
+          }
+        },
+        "sources": {
+          "title": "Sumber Data",
+          "menuProjects": "Menu Proyek",
+          "ownerAnalytics": "Aktivitas Pemilik",
+          "guestFeedback": "Pengunjung Feedback",
+          "storeSettings": "Pengaturan Bisnis",
+          "menuListData": "Data MenuList",
+          "updatedOn": "Diperbarui {date}",
+          "latest": "Data terkini yang tersedia"
+        },
+        "publicTruth": {
+          "title": "Sumber informasi resmi untuk pelanggan",
+          "checking": "Periksa Pemeriksaan",
+          "checkingFacts": "Memastikan fakta publik MenuList...",
+          "checkedMenu": "Menu yang dicek: {name}",
+          "boundary": "Diverifikasi dari data bisnis dan menu MenuList saat ini. Platform eksternal tetap dikonfirmasi oleh pemilik.",
+          "boundaryShort": "Platform eksternal tetap dikonfirmasi oleh pemilik.",
+          "historyTitle": "Sejarah Informasi Publik",
+          "historyBoundary": "Hanya menggunakan MenuList bisnis dan fakta menu. Tidak ada situs eksternal yang dipindai.",
+          "historyBoundaryShort": "MenuList hanya fakta. Tidak ada situs eksternal yang dipindai.",
+          "refreshErrorTitle": "Pemeriksaan sumber pelanggan tidak dapat menyegarkan.",
+          "refreshErrorDescription": "Fakta MenuList terakhir yang tersedia masih ditampilkan di bawah ini.",
+          "historyRefreshError": "Sejarah informasi publik tidak dapat diperbarui.",
+          "historyLoadError": "Sejarah informasi publik tidak dapat dimuat.",
+          "historyErrorDescription": "Laporan terakhir yang disimpan masih ditampilkan ketika tersedia.",
+          "notRun": "Tidak Berlari",
+          "lastSaved": "Terakhir disimpan {date}",
+          "noSavedReport": "Belum ada laporan yang disimpan.",
+          "noSavedReportDescription": "Lakukan pemeriksaan untuk menyimpan laporan pertama untuk lokasi ini.",
+          "downloadEnglishReport": "Unduh laporan dalam bahasa Inggris",
+          "downloadEnglishShort": "Laporan Bahasa Inggris",
+          "runCheck": "Lakukan cek",
+          "currentFix": "Item perbaikan saat ini",
+          "nextFixes": "Perbaikan informasi publik berikutnya",
+          "none": "Tidak ada",
+          "attentionCount": "{count, plural, one {Item # perlu diperiksa.} other {# item perlu diperiksa.}}",
+          "readyModuleCount": "Siap {count}/{total}",
+          "missingCount": "{count} hilang.",
+          "checkCount": "Periksa {count}",
+          "savedCount": "Simpan {count}/{total}",
+          "modulesReady": "{count}/{total} modul siap.",
+          "status": {
+            "ready": {
+              "label": "Bersedia",
+              "message": "Sumber pelanggan resmi Anda memiliki dasar yang dibutuhkan oleh pelanggan."
+            },
+            "missing_basics": {
+              "label": "Kekurangan dasar",
+              "message": "Menu, jam kerja, harga, aksi, atau rincian tautan pelanggan memerlukan perhatian sebelum dibagikan secara luas."
+            },
+            "unclear": {
+              "label": "Perlu diperiksa.",
+              "message": "Kebanyakan dasarnya ada, tetapi satu atau lebih fakta publik masih perlu diperiksa."
+            }
+          },
+          "metrics": {
+            "readyModules": "Modul yang siap",
+            "missingFacts": "Fakta yang hilang:",
+            "checkedMenu": "Menu yang diperiksa",
+            "savedReports": "Laporan yang disimpan."
+          },
+          "results": {
+            "present": "Bersedia",
+            "missing": "hilang",
+            "unclear": "Periksa",
+            "not_applicable": "Tidak perlu",
+            "not_checked": "Tidak diperiksa"
+          },
+          "moduleStatus": {
+            "ready": "Bersedia",
+            "needs_attention": "hilang",
+            "check": "Periksa",
+            "not_checked": "Tidak diperiksa"
+          },
+          "facts": {
+            "business_identity": "Nama bisnis:",
+            "menu_or_service_source": "Menu atau daftar layanan.",
+            "prices": "Harga",
+            "hours": "jam",
+            "location": "Lokasi:",
+            "contact": "kontak",
+            "customer_actions": "Tindakan pelanggan",
+            "public_link": "klien link",
+            "photos": "Gambar",
+            "machine_readable_source": "Rincian yang mudah dicari dan dicari."
+          },
+          "evidence": {
+            "owner_entered": "Dimasukkan dalam cek ini.",
+            "owner_selected": "Dipilih oleh pemilik.",
+            "source_text_hint": "Ditemukan dalam sumber yang disediakan.",
+            "valid_public_url": "Format link publik adalah valid.",
+            "invalid_public_url": "Link publik perlu diperbaiki.",
+            "menulist_store": "Setelan bisnis MenuList saat ini telah diperiksa.",
+            "menulist_project": "Menu yang dipilih atau default MenuList telah diperiksa.",
+            "menulist_summary": "Ringkasan menu MenuList saat ini telah diperiksa.",
+            "menulist_public_route": "Setelan customer-link MenuList saat ini telah diperiksa.",
+            "menulist_index_gate": "Diperiksa aturan penemuan publik MenuList saat ini.",
+            "not_provided": "Fakta ini hilang dari data MenuList saat ini.",
+            "not_checked": "Fakta ini tidak dapat diverifikasi dengan aman dari data MenuList saat ini.",
+            "priceNotLoaded": "Buka menu yang dipilih sekali sehingga MenuList dapat memeriksa harga-harganya."
+          },
+          "moduleEvidence": {
+            "ready": "Data MenuList saat ini menunjukkan bahwa area ini sudah siap.",
+            "needs_attention": "Data MenuList saat ini menunjukkan bahwa informasi yang diperlukan hilang.",
+            "check": "Periksa area ini sebelum pelanggan mengandalkannya.",
+            "not_checked": "MenuList tidak dapat menyelidiki area ini secara penuh dari data saat ini."
+          },
+          "setupReason": {
+            "needs_attention": "Informasi yang diperlukan untuk pelanggan hilang.",
+            "check": "Periksa ini sebelum pelanggan bergantung padanya.",
+            "not_checked": "MenuList tidak dapat memeriksa ini sepenuhnya dari data saat ini."
+          },
+          "targetActions": {
+            "basic_settings": "Buka rincian bisnis.",
+            "domain_settings": "Buka tautan pelanggan.",
+            "hours_edit": "jam buka",
+            "menu_tab": "Menu terbuka",
+            "official_page": "Buka halaman bisnis.",
+            "presence_monitor": "Periksa pemasangan terbuka.",
+            "share_tab": "Alat share terbuka"
+          },
+          "actions": {
+            "openCustomerSource": "Buka sumber pelanggan Anda.",
+            "openShareTools": "Buka alat berbagi terbuka.",
+            "fixFact": "Perbaiki {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Informasi umum dasar",
+              "description": "Nama bisnis, menu atau sumber layanan saat ini, kontak, tindakan, dan tautan pelanggan."
+            },
+            "business_facts_copy_pack": {
+              "title": "Rincian bisnis yang dapat digunakan kembali.",
+              "description": "Fakta-fakta saat ini dapat digunakan kembali oleh staf di profil publik, jawaban, dan handoffs link pelanggan."
+            },
+            "qr_link_health": {
+              "title": "QR persiapan link",
+              "description": "Sebuah tautan pelanggan saat ini untuk QR dan penempatan cetak."
+            },
+            "social_bio_link_consistency": {
+              "title": "Konsistensi tautan profil yang konsisten.",
+              "description": "Satu tautan pelanggan saat ini untuk profil sosial dan penempatan lainnya."
+            },
+            "customer_link_preview": {
+              "title": "Link klien Preview",
+              "description": "Fakta utama yang harus dilihat pelanggan sebelum mereka bertindak."
+            },
+            "print_share_assets": {
+              "title": "Cetak dan bagikan aset dengan mudah.",
+              "description": "Kesiapan link saat ini untuk QR poster, kartu counter, dan gambar berbagi."
+            },
+            "menu_service_readability": {
+              "title": "Kejelasan menu atau layanan yang ditawarkan.",
+              "description": "Kategori, item atau layanan, dan harga dalam menu yang dipilih."
+            },
+            "price_availability_gap": {
+              "title": "Kejelasan harga dan ketersediaan.",
+              "description": "Harga, varian, status terjual habis, dan ketersediaan ditampilkan kepada pelanggan."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Lama PDF penggantian",
+              "description": "Sumber MenuList dan tautan pelanggan yang dapat menggantikan PDF-PDF lama."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp Aksi",
+              "description": "Sebuah WhatsApp yang jelas atau tindakan kontak pelanggan alternatif."
+            },
+            "hours_readiness": {
+              "title": "Waktu persiapan",
+              "description": "Jam kerja yang teratur yang dapat diharapkan oleh pelanggan."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp jawaban fakta",
+              "description": "Menu saat ini, jam buka, kontak, dan link fakta untuk jawaban staf."
+            },
+            "photo_visual_identity": {
+              "title": "Foto dan identitas visual",
+              "description": "Logo, sampul, foto bisnis, atau visual barang dan layanan."
+            },
+            "customer_question_coverage": {
+              "title": "Pertanyaan umum pelanggan yang sering diajukan.",
+              "description": "Fakta yang jelas untuk penawaran, jam kerja, harga, lokasi, kontak, dan tindakan selanjutnya."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Jawaban pelanggan yang dapat digunakan kembali.",
+              "description": "Fakta-fakta saat ini dapat digunakan kembali oleh staf ketika pelanggan menanyakan pertanyaan umum."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Kesiapan pemesanan dan pertanyaan.",
+              "description": "Sebuah jalur yang jelas untuk memesan, booking, reservasi, menelepon, pesan, meminta penawaran, atau kunjungi."
+            },
+            "google_profile_handoff": {
+              "title": "Google Link profil link profile link",
+              "description": "Link pelanggan saat ini telah disiapkan untuk Google Profil Bisnis."
+            },
+            "menu_freshness": {
+              "title": "Menu yang segar",
+              "description": "Sebuah update menu baru-baru ini ketika harga, item, atau ketersediaan berubah."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafik",
+        "description": "Ringkasan visual dari aktivitas yang sama yang tercatat di dashboard.",
+        "ranges": {
+          "days7": "7 hari",
+          "days30": "30 hari"
+        },
+        "metrics": {
+          "menu_activity": "Aktivitas Menu",
+          "customer_actions": "Tindakan pelanggan",
+          "search_demand": "Permintaan pencarian",
+          "item_interest": "Item Kepentingan",
+          "unavailable_demand": "Permintaan yang tidak tersedia",
+          "missing_searches": "Pencarian yang hilang"
+        },
+        "trend": {
+          "summary": "Trend ringkasan",
+          "updatedAfterClose": "Diperbarui setelah hari penutupan toko Anda.",
+          "status": {
+            "up": "lebih tinggi",
+            "down": "di bawah",
+            "stable": "Stabil",
+            "not_enough_data": "Tidak cukup sejarah."
+          },
+          "period": {
+            "week": "Pemeriksaan Minggu",
+            "month": "Periksa bulanan."
+          },
+          "shortPeriod": {
+            "week": "minggu",
+            "month": "bulan"
+          },
+          "needsMoreDays": "Perlu lebih banyak hari yang tetap.",
+          "versus": "{current} dibandingkan dengan {previous}",
+          "messages": {
+            "up": "{metric} lebih tinggi untuk cek {period} ini.",
+            "down": "{metric} yang lebih rendah untuk ini {period} dan check.",
+            "stable": "{metric} stabil untuk hal ini {period} dan check.",
+            "not_enough_data": "Tidak ada cukup sejarah {metric} yang diselesaikan untuk periksa {period} ini."
+          },
+          "change": {
+            "gathering": "{period}: mengumpulkan",
+            "newActivity": "{period}: aktivitas baru",
+            "steady": "{period}: stabil",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Perbandingan grafis",
+          "description": "Pergerakan minggu dan bulan dari hari-hari yang telah ditetapkan."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menu Trend",
+            "days7": "7 Hari yang Terakhir",
+            "days30": "30 hari terakhir yang telah diselesaikan."
+          },
+          "customerActions": {
+            "title": "Tindakan pelanggan",
+            "description": "Apa yang ditekan oleh pelanggan setelah membuka menu?"
+          },
+          "sources": {
+            "title": "Dari mana pelanggan datang?",
+            "description": "Menu kunjungan dan sesi aksi menurut sumber"
+          },
+          "items": {
+            "title": "Item terpopuler yang menarik minat Anda",
+            "description": "Item yang pelanggan buka atau tekan paling banyak adalah:"
+          },
+          "search": {
+            "title": "Permintaan pencarian",
+            "description": "Apa yang dicari oleh pelanggan?"
+          },
+          "officialPage": {
+            "title": "Trend Halaman Resmi",
+            "description": "Pendapat dan tindakan dari Halaman Bisnis Resmi."
+          }
+        },
+        "legends": {
+          "visits": "Kunjungan",
+          "actionSessions": "Sesi aksi",
+          "views": "pandangan",
+          "taps": "Ketukan",
+          "noResult": "Tidak ada hasil"
+        },
+        "empty": {
+          "default": "Belum ada data grafik untuk tampilan ini.",
+          "menuActivity": "Aktivitas menu akan muncul setelah pelanggan membuka menu.",
+          "customerActions": "Tindakan pelanggan akan muncul setelah pelanggan menelepon, mengirim pesan, memesan, mempersiapkan atau meminta petunjuk.",
+          "customerActionsPeriod": "Belum ada aksi pelanggan dalam periode ini.",
+          "searchDemand": "Permintaan pencarian akan muncul setelah pelanggan menggunakan menu pencarian.",
+          "itemInterest": "Ketertarikan akan item akan muncul setelah pelanggan membuka item menu.",
+          "unavailableDemand": "Permintaan yang tidak tersedia akan muncul ketika pelanggan menekan item yang tidak ada.",
+          "missingSearches": "Pencarian yang hilang akan muncul ketika pelanggan mencari tetapi tidak menemukan hasil.",
+          "sources": "Rincian sumber akan muncul setelah pelanggan datang dari tautan, QR, atau halaman sosial.",
+          "officialPage": "Aktivitas halaman resmi akan muncul setelah pelanggan membuka halaman bisnis publik."
+        },
+        "footer": {
+          "sameData": "Data dashboard yang sama.",
+          "noExtraTracking": "Tidak ada pelacakan tambahan.",
+          "settledAfterClose": "Ditetapkan setelah akhir hari toko."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menu yang",
+          "viewsLabel": "Tampilan menu",
+          "viewsTooltip": "Jumlah kali pelanggan membuka menu Anda.",
+          "thisMonthLabel": "Menu Anda bulan ini."
+        },
+        "product": {
+          "singular": "Katalog",
+          "viewsLabel": "Catatan katalog views",
+          "viewsTooltip": "Jumlah kali pelanggan membuka katalog Anda.",
+          "thisMonthLabel": "Katalog Anda bulan ini"
+        },
+        "service": {
+          "singular": "Daftar Layanan",
+          "viewsLabel": "Tampilan daftar-layanan",
+          "viewsTooltip": "Jumlah kali pelanggan membuka daftar layanan Anda.",
+          "thisMonthLabel": "Daftar layanan Anda bulan ini adalah:"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Perlu perhatian",
+          "active": "Sumber pelanggan resmi aktif",
+          "readyToPlace": "Sumber resmi pelanggan siap untuk meletakkannya."
+        },
+        "description": {
+          "needsAttention": "Perbaiki menu, jam kerja, atau tautan pelanggan sebelum membagikannya secara luas.",
+          "active": "Tidak perlu tindakan. Pelanggan dapat menggunakan detail publik Anda saat ini dari satu sumber.",
+          "readyToPlace": "Link pelanggan Anda sudah siap. Tambahkan ke Google, Instagram , WhatsApp atau QR. Atau cetak agar pelanggan menggunakan sumber yang ada saat ini."
+        },
+        "link": {
+          "ready": "Link klien siap",
+          "missing": "Link customer yang hilang."
+        },
+        "states": {
+          "set": "Diatur",
+          "missing": "hilang",
+          "ready": "Bersedia",
+          "notReady": "Belum siap?",
+          "live": "Aktif",
+          "hidden": "Tidak aktif"
+        },
+        "tags": {
+          "menu": "{status}",
+          "hours": "Jam: {status}",
+          "customerLink": "Link pelanggan: {status}",
+          "link": "{status}",
+          "placed": "Ditempatkan: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Perbaiki apa yang membutuhkan perhatian.",
+          "preview": "Pralihat menu publik",
+          "share": "Membagi menu"
+        },
+        "updated": {
+          "notUpdated": "Belum diperbarui.",
+          "recently": "Baru-",
+          "today": "Diperbarui hari ini",
+          "yesterday": "Diperbarui kemarin.",
+          "daysAgo": "Diperbarui {count, plural, one {# hari yang lalu} other {# hari yang lalu}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Tindakan pemilik berikutnya selanjutnya",
+        "open": "Buka",
+        "placement": {
+          "notConfirmed": "Belum dikonfirmasi.",
+          "today": "Dikonfirmasi hari ini.",
+          "yesterday": "Dikonfirmasi kemarin.",
+          "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}} dikonfirmasi."
+        },
+        "status": {
+          "ready": "Bersedia",
+          "missing": "hilang",
+          "set": "Diatur",
+          "live": "Aktif",
+          "notLive": "Tidak Hidup",
+          "confirmedCount": "{count}/{total} disahkan",
+          "on": "Aktif",
+          "off": "Mati",
+          "dailyChanges": "Perubahan harian",
+          "hoursException": "Waktu pengecualian",
+          "staffUse": "Staff menggunakannya.",
+          "menuPrices": "Menu Harga",
+          "openCount": "{count, plural, one {# action open action open} other {# action open action terbuka}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Tetapkan tautan pelanggan.",
+            "description": "Buat tautan pelanggan sebelum berbagi QR, jawaban staf, atau profil publik."
+          },
+          "setHours": {
+            "label": "Set jam",
+            "description": "Jaga status terbuka dan tertutup publik jelas sebelum pelanggan mengunjungi."
+          },
+          "publishMenu": {
+            "labelPublish": "Publikasikan menu",
+            "labelOpen": "Menu terbuka",
+            "descriptionVisible": "Publikkan menu saat ini sebelum berbagi luas.",
+            "descriptionHidden": "Buat menu terlihat sebelum pelanggan menggunakan tautan."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Konfirmasi penempatan tautan.",
+            "labelPlace": "Lokasi customer link",
+            "descriptionPlaced": "Jaga Google, Instagram dan WhatsApp mengacu ke sumber yang sama.",
+            "descriptionUnplaced": "Tambahkan tautan pelanggan yang sama ke Google, Instagram, WhatsApp, QR, dan materi cetak."
+          },
+          "openPrivateFeedback": {
+            "label": "Buka umpan balik pribadi terbuka.",
+            "description": "Gunakan umpan balik pribadi sebelum masalah tamu berubah menjadi ulasan publik."
+          },
+          "captureDailyChange": {
+            "label": "Beritahu MenuList apa yang berubah.",
+            "description": "Beritahu MenuList apa yang berubah hari ini dan setujui kartu menu yang sudah disiapkan."
+          },
+          "setTodayStatus": {
+            "label": "Tetapkan status hari ini.",
+            "description": "Set ditutup hari ini, buka terlambat, dapur tutup, atau pemberitahuan menu khusus."
+          },
+          "prepareStaffHandoff": {
+            "label": "Siapkan pengiriman staf.",
+            "description": "Berikan staf tautan menu, QR, dan baris jawaban pelanggan dari satu tempat."
+          },
+          "updatePrices": {
+            "label": "Perbarui harga",
+            "description": "Gunakan Menu Manager untuk perubahan harga, lalu setujui sebelum mempublikasikan."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Pengaturan menu",
+        "complete": "Konfigurasi menu selesai.",
+        "ready": "Konfigurasi menu sudah siap.",
+        "actions": {
+          "openMenu": "Menu terbuka",
+          "createMenu": "Buat menu",
+          "reviewDetails": "Tinjau detail",
+          "publishMenu": "Publikasikan menu",
+          "openSharingTools": "Buka alat berbagi terbuka.",
+          "prepareDescriptions": "Siapkan deskripsi",
+          "addImages": "Tambahkan gambar",
+          "reviewLanguageText": "Tinjau teks bahasa yang diedit.",
+          "openMenuCheck": "Cek Menu Terbuka",
+          "updatePublicLinks": "Update tautan publik.",
+          "addPublicPhoto": "Tambahkan foto publik."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Sumber ditambahkan",
+            "doneDescription": "Menu sumber yang terhubung.",
+            "nextDescription": "Tambahkan foto menu, PDF, tautan, atau mulai secara manual."
+          },
+          "menuImported": {
+            "label": "Menu yang diimport",
+            "doneDescription": "{count, plural, one {# item terlihat ditemukan.} other {# item terlihat ditemukan.}}",
+            "nextDescription": "Mengimport atau menambahkan item menu."
+          },
+          "keyDetailsChecked": {
+            "label": "Rincian kunci diperiksa.",
+            "doneDescription": "Harga dan rincian menu utamanya jelas.",
+            "nextDescription": "Periksa harga dan rincian kunci sebelum mempublikasikan."
+          },
+          "menuPublished": {
+            "label": "Menu telah dipublikasikan.",
+            "doneDescription": "Menu publik sudah diterbitkan.",
+            "nextDescription": "Publikasi ketika menu siap untuk pelanggan."
+          },
+          "linkPlaced": {
+            "label": "Link ditempatkan.",
+            "readyLabel": "Link siap",
+            "doneDescription": "Link resminya sudah siap untuk pelanggan.",
+            "progressDescription": "{count} dari {total} aksi penempatan selesai.",
+            "nextDescription": "Buka alat berbagi ketika menu diterbitkan."
+          },
+          "descriptionsReady": {
+            "label": "deskripsi siap",
+            "doneDescription": "Item yang terlihat memiliki deskripsi.",
+            "nextDescription": "Siapkan deskripsi untuk item menu yang lebih jelas."
+          },
+          "imagesReady": {
+            "label": "Gambar siap dicetak.",
+            "doneDescription": "Item yang terlihat memiliki gambar.",
+            "nextDescription": "Tambahkan atau buat gambar item ketika berguna."
+          },
+          "translationsReady": {
+            "label": "Terjemahan siap.",
+            "doneDescription": "Bahasa menu yang dipilih sudah lengkap.",
+            "nextDescription": "Tinjau bahasa menu yang dipilih."
+          },
+          "publicLinksAdded": {
+            "label": "Link publik ditambahkan.",
+            "doneDescription": "Tindakan publik atau tautan sosial tersedia.",
+            "nextDescription": "Tambahkan tautan publik yang berguna untuk halaman bisnis."
+          },
+          "publicPhotoAdded": {
+            "label": "Foto publik ditambahkan.",
+            "doneDescription": "Sebuah foto publik tersedia.",
+            "nextDescription": "Tambahkan sampul, logo, atau foto publik ketika siap."
+          }
+        }
       }
     }
   },
@@ -1463,7 +2323,7 @@
         "itemInCategoryAt": "{itemName} dalam {categoryName}, tersedia di {businessName}.",
         "itemAt": "{itemName}, tersedia di {businessName}.",
         "metadataObpTitle": "{businessName} — Menu, Jam, Kontak",
-        "metadataMenuTitle": "{businessName} | Tidak bisa",
+        "metadataMenuTitle": "Menu {businessName}",
         "metadataObpDescription": "{businessName} — Melihat menu, memeriksa jam buka, mendapatkan petunjuk arah, dan menemukan detail kontak. Halaman bisnis resmi.",
         "metadataMenuDescription": "Lihat menu digital untuk {businessName}.",
         "metadataUnavailableTitle": "Menu tidak tersedia | {businessName}",
@@ -1587,7 +2447,7 @@
         "minutesShort": "{count} mnt",
         "hoursShort": "{count} jam",
         "calories": "{count} kal",
-        "protein": "Protein {value}g",
+        "protein": "Protein: {value} g",
         "carbs": "Karbohidrat {value}g",
         "fat": "Lemak {value}g",
         "serving": "Melayani {value}",
@@ -1623,7 +2483,7 @@
         "readyInstantly": "Siap secara instan",
         "expressMinutes": "Ekspresikan {minutes} mnt",
         "quickMinutesSession": "Sesi cepat {minutes} mnt",
-        "expressMinutesSession": "{minutes}sesi ekspres menit",
+        "expressMinutesSession": "Sesi ekspres {minutes} menit",
         "greatValue": "Nilai yang bagus",
         "worthEveryBite": "Layak setiap gigitan",
         "worthEveryPenny": "Sepadan dengan harganya",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Belum ada sejarah tagihan.",
     "perMonth": "/bulan",
     "contactUs": "Kontak Kami"
+  },
+  "StarterActivation": {
+    "activeTitle": "Menu Anda sedang online",
+    "endingSoonTitle": "Jaga agar menu Anda tetap online",
+    "publicMenuQrActive": "Menu publik dan kode QR Anda aktif.",
+    "activeRemaining": "Akses menu Anda aktif.",
+    "daysRemaining": "{days, plural, one {Pilih paket dalam # hari agar menu Anda tetap online.} other {Pilih paket dalam # hari agar menu Anda tetap online.}}",
+    "sharingComplete": "Pengaturan berbagi Anda selesai.",
+    "sharingProgress": "{count, number} dari {target, number} langkah berbagi selesai.",
+    "evidenceRecorded": "Direkam secara otomatis: {systemCount, number}. Dikonfirmasi oleh Anda: {ownerCount, number}.",
+    "evidenceEmpty": "Salin atau bagikan tautan menu, unduh kode QR-nya, atau konfirmasi di mana Anda meletakkannya.",
+    "keepLiveAction": "Jaga agar menu Anda tetap online",
+    "noSubscriptionDescription": "Pilih paket agar pembaruan menu dan halaman pelanggan tetap tersedia.",
+    "choosePlanDescription": "Menu Anda disimpan. Pilih paket agar tetap online dan terkini."
   },
   "Transactions": {
     "title": "Sejarah Transaksi Sejarah Transaksi",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Aplikasi Mobile App",
     "subscribeTitle": "Berlangganan untuk Mulai Sekarang",
     "subscribeDescription": "Pilih rencana untuk mulai membuat menu digital Anda dan mengelola bisnis Anda.",
-    "viewPlans": "Lihat Rencana Lihat rencana"
+    "viewPlans": "Lihat Rencana Lihat rencana",
+    "returnToMobile": "Anda sedang melihat versi desktop. Kembali ke ponsel."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Kode-kode",

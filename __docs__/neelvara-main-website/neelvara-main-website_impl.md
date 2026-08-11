@@ -36,9 +36,9 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `src/constants/neelvara/website.ts` | Canonical URL, public pages, contact emails, relationship line |
 | `src/constants/neelvara/index.ts` | Neelvara constant exports |
 | `src/app/sites/neelvara/layout.tsx` | Metadata, viewport, icon configuration |
-| `src/app/sites/neelvara/content.tsx` | Shared shell, factual reference panels, page data, content rows, contact directory, metadata, and structured data |
+| `src/app/sites/neelvara/content.tsx` | Shared shell, page data, document rows, contact directory, metadata, and structured data |
 | `src/app/sites/neelvara/ProductLogo.tsx` | Shared Neelvara product-logo renderer that reuses the canonical Answerlattice header/footer mark with placement-safe SVG IDs |
-| `src/app/sites/neelvara/ScrollRevealController.tsx` | Route-aware IntersectionObserver reveal controller with reduced-motion fallback |
+| `src/app/sites/neelvara/ScrollRevealController.tsx` | Route-aware IntersectionObserver reveal controller with request-animation-frame recovery for fast scroll jumps and reduced-motion fallback |
 | `src/app/sites/neelvara/page.tsx` | Home page |
 | `src/app/sites/neelvara/home/page.tsx` | Legacy internal homepage compatibility module; public middleware rewrites `/home` directly to `/sites/neelvara` |
 | `src/app/sites/neelvara/products/page.tsx` | Products page |
@@ -52,7 +52,7 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `src/app/sites/neelvara/robots.txt/route.ts` | Product-domain robots response |
 | `src/app/sites/neelvara/sitemap.xml/route.ts` | Product-domain sitemap response |
 | `src/app/sites/neelvara/.well-known/security.txt/route.ts` | Static security-contact discovery response |
-| `src/app/sites/neelvara/styles.css` | Scoped current-color Neelvara Prism tokens, fixed mesh/grain background, glass primitives, prism panels, and responsive layout |
+| `src/app/sites/neelvara/styles.css` | Scoped current-color Neelvara Prism tokens, fixed mesh/grain background, selective glass primitives, editorial rows, and responsive layout |
 | `public/neelvara-logo.svg` | Uploaded true-vector Neelvara source logo preserved byte-for-byte, with its single compound path, exact four-stop blue-to-violet gradient, and supplied `0 0 1135 686` canvas used by site chrome, footer identity, 404, and structured data |
 | `public/neelvara-logo.png` | Transparent `1135x686` compatibility render generated from the exact source SVG |
 | `public/neelvara-favicon.svg` | Square true-vector favicon wrapper reusing the exact source compound path and gradient without transforms or color changes |
@@ -98,26 +98,25 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 The visual implementation now follows the current-color Neelvara Prism glass parent-brand system while preserving the company-site boundary:
 
 - ice-white canvas with deep navy primary text and legal/docs surfaces
-- refined Neelvara mark used as transparent PNG without a visible square or rectangle frame
+- supplied Neelvara SVG mark used directly without a visible square or rectangle frame
 - dark navy wordmark/text treatment; wordmark text is not gradient-rendered
 - self-hosted Akshar font as the primary typeface across all Neelvara website text, with Inter retained only as the fallback font
 - fixed restrained mesh and SVG grain layer behind every section
-- shared glass primitive for header, factual reference summaries, comparison tables, product cards, contact cards, policy rows, and CTA bands
-- shared page Prism panels on Products, Contact, About, Legal, Privacy, Terms, and not-found routes
-- homepage Prism rhythm includes a logo-led split hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, comparison table, contact routing, CTA, and footer
+- glass is reserved for the header, entity ledger, product cards, and closing action bands; contact and policy content use unframed rows
+- repeated right-side page-summary panels are removed from Products, Contact, About, Legal, Privacy, Terms, and not-found routes
+- homepage Prism rhythm includes a brand-first logo-led hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact routing, and footer
 - full-width dark product band with an unframed section header and two individual light product cards; card accents reuse each product logo's approved colors
-- Products uses exact two-track grids for the two-product lineup: compact product-map nodes above two equal detail cards, with no empty third track or repeated map summary copy
+- Products uses one exact two-track grid for two equal detail cards, with no repeated product map or empty third track
 - Akshar-only typography across display headings, body copy, buttons, labels, legal pages, product cards, and inline 404 output; `Inter` remains the first fallback in the font stack
-- floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact only
-- home page anatomy: floating nav, logo-led split hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, comparison table, contact routing cards, CTA, footer
-- About, Legal, Privacy, and Terms inherit the same mesh/glass shell, split page hero, factual reference panel, horizontal content rows, policy dates where applicable, and page-specific final CTAs
-- Products and Contact use custom page flows with the same Prism hero/panel treatment for product relationship explanation and inquiry routing
-- the hero uses one factual company-reference panel and then flows into the compact entity ledger without a decorative dashboard mock
-- scroll reveal remains local to Neelvara sections, one-time on viewport entry through IntersectionObserver, route-aware on client navigation, and disabled for reduced-motion users
+- floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact once, with one `Email us` action
+- home page anatomy: floating nav, brand-first logo-led hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact rows, footer
+- About, Legal, Privacy, and Terms inherit the same mesh shell, one clear hero, unframed document rows, policy dates where applicable, and page-specific final CTAs
+- Products and Contact use focused custom flows without duplicate hero summary cards
+- scroll reveal remains local to Neelvara sections, one-time on viewport entry through IntersectionObserver, route-aware on client navigation, and disabled for reduced-motion users; non-rendered responsive targets resolve immediately, while a passive animation-frame recovery reveals any pending section already passed by a fast scroll or resize
 - no pricing table, testimonials, customer logos, lead form, product checkout, analytics, API route, Firebase runtime, or owner app behavior was added
 - SaaS pricing/customer sections were translated into entity-safe equivalents: problem-first company sections, product lineup, and business/legal/privacy contact routing
 - homepage proof avoids numeric product-count and page-count signals; products are listed as operated products lower on the page
-- local development links preserve the `/__neelvara` prefix without using server header reads
+- local development links preserve the `/__neelvara` prefix without server header reads or hydration divergence; the server and first client render use canonical paths before the local alias snapshot resolves
 - public copy remains concise, factual, and governed by Neelvara's legal/product separation rules
 
 ---
@@ -167,7 +166,7 @@ Current validation:
 npm run generate:neelvara-assets
 npm run verify:neelvara-logo-assets
 npx tsc --noEmit --incremental false --pretty false
-npm run lint -- --dir src/app/sites/neelvara
+npx eslint src/app/sites/neelvara src/constants/neelvara --max-warnings=0
 node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
@@ -196,3 +195,19 @@ Do not implement in v1:
 - `PRODUCT_IDS` registration
 
 Each deferral requires a separate docs and architecture review if later requested.
+
+---
+
+## 11. August 10, 2026 Audit Update
+
+Implemented from the parent-company benchmark audit:
+
+- homepage H1 is now `Neelvara Systems`
+- company and product purpose are stated directly beneath the brand
+- duplicate header destinations, hero summary cards, homepage comparison table, repeated product map, and repeated homepage/contact closing CTA were removed
+- contact routes render as compact rows
+- policy pages render as unframed document sections and collapse to one column on mobile
+- the true 404 route keeps its `404` response while using one branded recovery surface instead of a duplicate side panel
+- local rewritten routes no longer produce different server/client link values during hydration
+
+Source readiness and public availability remain separate: the repository implementation can be locally verified, but `neelvara.com` was still serving a GoDaddy Website Builder response during the August 10 audit. Vercel/DNS cutover was not performed in this work.

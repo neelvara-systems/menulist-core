@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
+import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
+    logCampaignCueInputValidationFailure,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
     withCampaignCueAuth,
@@ -30,8 +32,14 @@ export const GET = withCampaignCueAuth(async (
 
         const assetIdValidation = validateAPIInput(CampaignCueIdSchema, params?.assetId);
         if (!assetIdValidation.success) {
-            const details = "error" in assetIdValidation ? assetIdValidation.error : "Invalid input";
-            return NextResponse.json({ error: "Invalid asset", details }, { status: 400 });
+            logCampaignCueInputValidationFailure({
+                endpoint: CAMPAIGNCUE_API_ROUTES.ASSET_DOWNLOAD_TEMPLATE,
+                label: "Input Validation Failed - CampaignCue Asset Download",
+                request,
+                session,
+                validationError: "error" in assetIdValidation ? assetIdValidation.error : "Invalid input",
+            });
+            return NextResponse.json({ error: "Invalid asset" }, { status: 400 });
         }
 
         const rateLimit = await applyCampaignCueRateLimit({
@@ -49,7 +57,7 @@ export const GET = withCampaignCueAuth(async (
         return NextResponse.json({ data: download });
     } catch (error) {
         logCampaignCueServerError("CampaignCue asset download API error", error, {
-            endpoint: request.nextUrl.pathname,
+            endpoint: CAMPAIGNCUE_API_ROUTES.ASSET_DOWNLOAD_TEMPLATE,
             userId: getCampaignCueSessionScope(session).userId,
         });
         const apiError = buildCampaignCueApiError(error, "CampaignCue asset download unavailable");

@@ -40,7 +40,7 @@ const TRUST_CONTROLS = [
     {
         status: 'compiled',
         title: 'Serve approved context safely',
-        detail: 'Enabled readers can use bounded, versioned context while the widget stays on the governed server path.',
+        detail: 'Enabled readers can use bounded, versioned context while the widget stays on the controlled server path.',
         tone: 'good' as const,
         rows: [['runtime path', 'cache first']] as Array<[string, string]>,
     },
@@ -67,7 +67,7 @@ export default function HomeTrustSection() {
                 <SectionHeader
                     eyebrow="Security at a glance"
                     title="Safe page context, not secret data."
-                    description="AnswerLattice only needs safe context like page, feature, workflow, plan, or role. Approved runtime context stays bounded and source-governed, while secrets, tokens, card data, private customer records, and unrelated personal data stay out."
+                    description="AnswerLattice only needs safe context like page, feature, workflow, plan, or role. Approved runtime context stays bounded and source-backed, while secrets, tokens, card data, private customer records, and unrelated personal data stay out."
                 />
                 <AnswerlatticeStatusBoard items={TRUST_CONTROLS} />
             </div>

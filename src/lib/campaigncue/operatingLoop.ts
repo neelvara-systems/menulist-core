@@ -1,12 +1,18 @@
-import type { CampaignCueDailyDeskRecipe } from "@constant/campaigncue/dailyDesk";
+import { CAMPAIGNCUE_DAILY_DESK_RECIPES, type CampaignCueDailyDeskRecipe } from "@constant/campaigncue/dailyDesk";
+import { CAMPAIGNCUE_WINNING_PACK_MAX_REFRESH_GENERATION } from "@constant/campaigncue/winningPackRefresh";
+import { CAMPAIGNCUE_EXPERIMENT_VARIABLES } from "@lib/campaigncue/experimentCoach";
+import { isCampaignCueReadyVisualAsset } from "@lib/campaigncue/mediaMissions";
 import type {
     CampaignCueAsset,
     CampaignCueBusinessBrain,
     CampaignCueCampaign,
+    CampaignCueCampaignMemoryConfidence,
+    CampaignCueCampaignMemorySummary,
     CampaignCueCampaignRhythm,
     CampaignCueCommercialGate,
     CampaignCueCommercialPolicy,
     CampaignCueExperimentSuggestion,
+    CampaignCueExperimentVariable,
     CampaignCueLanguagePolicy,
     CampaignCueOperatingPulse,
     CampaignCuePackFreshness,
@@ -20,6 +26,7 @@ import type {
 export const CAMPAIGNCUE_PACK_RECHECK_ACTIONS: CampaignCuePackFreshness["recheckActions"] = [
     "download",
     "export",
+    "archive_export",
     "mark_used",
     "schedule",
 ];
@@ -269,8 +276,22 @@ const resultEvidenceForCampaign = (campaign: CampaignCueCampaign) => {
     return evidence.slice(0, 3);
 };
 
+const winningPackConfidence = (
+    usefulCount: number,
+    notUsefulCount: number,
+): CampaignCueCampaignMemoryConfidence => {
+    const evaluated = usefulCount + notUsefulCount;
+    if (evaluated < 2) return "not_enough_results";
+    const dominant = Math.max(usefulCount, notUsefulCount);
+    return dominant >= 3 && dominant / evaluated >= 0.75 ? "repeated_signal" : "early_signal";
+};
+
 export function buildCampaignCueCampaignRhythm(params: {
+    businessBrain?: CampaignCueBusinessBrain;
+    campaignMemory?: CampaignCueCampaignMemorySummary;
     campaigns: CampaignCueCampaign[];
+    enableReuse?: boolean;
+    recommendedRecipeId?: string;
     recipe: CampaignCueDailyDeskRecipe;
     schedules: CampaignCueSchedule[];
     workspace: CampaignCueWorkspace;
@@ -308,26 +329,51 @@ export function buildCampaignCueCampaignRhythm(params: {
     const resultCampaign = params.campaigns.find((campaign) => (
         campaign.status === "used" && !campaign.resultMemory?.lastRecordedAt
     ));
-    const reuseSource = params.campaigns
+    const registeredRecipeIds = new Set(CAMPAIGNCUE_DAILY_DESK_RECIPES.map((recipe) => recipe.id));
+    const reuseSource = params.enableReuse === false ? undefined : params.campaigns
         .filter((campaign) => (
             campaign.status !== "archived"
             && campaign.trustGate !== "blocked"
             && campaign.trustGate !== "needs_fix"
-            && Boolean(campaign.pack?.recipeId)
+            && Boolean(campaign.pack?.recipeId && registeredRecipeIds.has(campaign.pack.recipeId))
             && positiveResultScore(campaign) > 0
             && Number(campaign.resultMemory?.usefulCount || 0) > Number(campaign.resultMemory?.notUsefulCount || 0)
         ))
         .sort((left, right) => (
-            positiveResultScore(right) - positiveResultScore(left)
+            Number(right.pack?.recipeId === params.recommendedRecipeId)
+                - Number(left.pack?.recipeId === params.recommendedRecipeId)
+            || positiveResultScore(right) - positiveResultScore(left)
             || toTime(right.resultMemory?.lastRecordedAt || right.updatedAt || right.createdAt)
                 - toTime(left.resultMemory?.lastRecordedAt || left.updatedAt || left.createdAt)
         ))[0];
+    const reuseMemory = reuseSource?.pack?.recipeId
+        ? params.campaignMemory?.recipeSignals.find((signal) => signal.key === reuseSource.pack?.recipeId)
+        : undefined;
+    const reuseUsefulCount = reuseMemory?.usefulCount ?? Number(reuseSource?.resultMemory?.usefulCount || 0);
+    const reuseNotUsefulCount = reuseMemory?.notUsefulCount ?? Number(reuseSource?.resultMemory?.notUsefulCount || 0);
+    const pulse = params.businessBrain ? normalizeCampaignCueOperatingPulse(params.businessBrain.operatingPulse) : undefined;
+    const seasonalContext = pulse && isCampaignCueOperatingPulseCurrent(pulse, now) ? pulse.localMoment : undefined;
     const reuseCandidate = reuseSource?.pack?.recipeId ? {
         campaignId: reuseSource.id,
         title: reuseSource.title,
         recipeId: reuseSource.pack.recipeId,
-        reason: "A useful owner-reported result exists. Rebuild this recipe from current checked facts instead of copying old output.",
+        reason: reuseSource.pack.recipeId === params.recommendedRecipeId
+            ? "This useful owner-reported recipe also matches the current recommendation. Rebuild it from current checked facts."
+            : "A useful owner-reported result exists. Review whether the timing still fits, then rebuild from current checked facts.",
         positiveEvidence: resultEvidenceForCampaign(reuseSource),
+        sourceConfidence: "owner_reported" as const,
+        confidence: reuseMemory?.confidence || winningPackConfidence(reuseUsefulCount, reuseNotUsefulCount),
+        currentFit: reuseSource.pack.recipeId === params.recommendedRecipeId
+            ? "recommended_now" as const
+            : "available_after_review" as const,
+        seasonalContext,
+        sourceLastResultAt: reuseSource.resultMemory?.lastRecordedAt,
+        refreshRootCampaignId: reuseSource.pack.reuseRootCampaignId || reuseSource.id,
+        refreshGeneration: Math.min(
+            CAMPAIGNCUE_WINNING_PACK_MAX_REFRESH_GENERATION,
+            Number(reuseSource.pack.refreshGeneration || 0) + 1,
+        ),
+        recheckActions: [...CAMPAIGNCUE_PACK_RECHECK_ACTIONS],
         actionLabel: "Reuse safely" as const,
         mode: "rebuild_from_current_truth" as const,
     } : undefined;
@@ -438,12 +484,23 @@ export function buildCampaignCueExperimentSuggestion(params: {
     campaigns: CampaignCueCampaign[];
     recipe: CampaignCueDailyDeskRecipe;
 }): CampaignCueExperimentSuggestion {
-    const matching = params.campaigns.find((campaign) => (
-        campaign.pack?.recipeId === params.recipe.id || campaign.pack?.ownerGoal === params.recipe.ownerGoal
-    ));
+    const matching = params.campaigns
+        .filter((campaign) => (
+            campaign.status !== "archived"
+            && (campaign.pack?.recipeId === params.recipe.id || campaign.pack?.ownerGoal === params.recipe.ownerGoal)
+        ))
+        .sort((left, right) => {
+            const timeDelta = toTime(right.updatedAt || right.createdAt) - toTime(left.updatedAt || left.createdAt);
+            return timeDelta || right.id.localeCompare(left.id);
+        })[0];
     const wasNotUseful = Number(matching?.resultMemory?.notUsefulCount || 0) > 0;
     const hadMeasuredResponse = resultMetricTotal(matching) > 0 || Number(matching?.resultMemory?.usefulCount || 0) > 0;
-    const hasConfirmedAsset = params.assets.some((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
+    const hasOwnerHistory = Boolean(
+        matching?.resultMemory?.lastSignalId
+        || Number(matching?.resultMemory?.usefulCount || 0) > 0
+        || Number(matching?.resultMemory?.notUsefulCount || 0) > 0,
+    );
+    const hasConfirmedAsset = params.assets.some(isCampaignCueReadyVisualAsset);
     const hasCta = Boolean(
         params.businessBrain.contacts.bookingUrl
         || params.businessBrain.contacts.publicMenuUrl
@@ -451,20 +508,66 @@ export function buildCampaignCueExperimentSuggestion(params: {
         || params.businessBrain.contacts.whatsapp
         || params.businessBrain.contacts.phone,
     );
+    const buildSuggestion = (
+        variable: CampaignCueExperimentVariable,
+        instruction: string,
+        reason: string,
+        evidence: string[],
+    ): CampaignCueExperimentSuggestion => ({
+        variable,
+        instruction,
+        reason,
+        status: "suggested",
+        source: "deterministic_rules",
+        confidence: hasOwnerHistory ? "owner_history" : "guidance_only",
+        baselineCampaignId: matching?.id,
+        keepConstant: CAMPAIGNCUE_EXPERIMENT_VARIABLES.filter((candidate) => candidate !== variable),
+        evidence: evidence.slice(0, 6),
+        measurement: {
+            question: params.recipe.resultQuestion,
+            resultSignalIds: params.recipe.resultOptions.map((option) => option.id).slice(0, 12),
+        },
+        predictionBoundary: "no_performance_prediction",
+    });
 
     if (!hasCta) {
-        return { variable: "cta", instruction: "Add one confirmed customer next step and keep the rest of the pack unchanged.", reason: "A clear CTA is missing." };
+        return buildSuggestion(
+            "cta",
+            "Add one confirmed customer next step and keep the rest of the pack unchanged.",
+            "A clear customer next step is missing.",
+            ["No confirmed booking, menu, website, WhatsApp, or phone destination is available."],
+        );
     }
     if (!hasConfirmedAsset) {
-        return { variable: "photo", instruction: "Use one approved real business photo and keep the offer, copy, and channel unchanged.", reason: "No rights-confirmed visual is available yet." };
+        return buildSuggestion(
+            "photo",
+            "Use one approved real business photo and keep the offer, copy, and channel unchanged.",
+            "No rights-confirmed visual is available yet.",
+            ["The current asset library has no ready image or video with confirmed rights."],
+        );
     }
     if (wasNotUseful) {
-        return { variable: "channel", instruction: "Try one different owner-used channel while keeping the offer, photo, and CTA unchanged.", reason: "A similar campaign was marked not useful." };
+        return buildSuggestion(
+            "channel",
+            "Try one different owner-used channel while keeping the offer, photo, and customer next step unchanged.",
+            "A similar campaign was marked not useful.",
+            ["The latest matching campaign has an owner-reported not-useful result.", "Only the delivery channel should change in the next attempt."],
+        );
     }
     if (hadMeasuredResponse) {
-        return { variable: "timing", instruction: "Repeat the same campaign pattern at one different useful time and change nothing else.", reason: "A similar campaign had a positive owner-reported result." };
+        return buildSuggestion(
+            "timing",
+            "Repeat the same campaign pattern at one different useful time and change nothing else.",
+            "A similar campaign had a positive owner-reported result.",
+            ["The latest matching campaign has a positive owner-reported result.", "Keep the message and destination stable so the timing change remains understandable."],
+        );
     }
-    return { variable: "format", instruction: "Use one primary format first and keep the message, offer, photo, and CTA unchanged.", reason: "A single-variable test will make the first result easier to interpret." };
+    return buildSuggestion(
+        "format",
+        "Use one primary format first and keep the message, offer, photo, and customer next step unchanged.",
+        "A single-variable test will make the first owner-reported result easier to interpret.",
+        [matching ? "A matching pack exists but does not yet have a useful owner-reported result." : "No matching campaign result is available yet."],
+    );
 }
 
 export function buildCampaignCuePresencePassport(businessBrain: CampaignCueBusinessBrain): CampaignCuePresencePassportItem[] {

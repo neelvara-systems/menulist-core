@@ -50,6 +50,12 @@ function publicPagePathToFile(publicPath) {
     : `${WEBSITE_ROOT}${publicPath}/page.tsx`;
 }
 
+function publicPageFileToPath(relativeFile) {
+  const relativeRouteFile = relativeFile.slice(`${WEBSITE_ROOT}/`.length);
+  if (relativeRouteFile === 'page.tsx') return '/';
+  return `/${relativeRouteFile.replace(/\/page\.tsx$/, '')}`;
+}
+
 const { getAnswerlatticePlans } = require('../../src/data/answerlattice/plans');
 const { AI_ACTIONS_TYPES } = require('../../src/constants/common');
 const { AI_UNIT_COSTS } = require('../../src/constants/AI/unitCosts');
@@ -58,6 +64,7 @@ const {
 } = require('../../src/data/shared/answerlatticeRetention');
 const {
   ANSWERLATTICE_PUBLIC_PAGES,
+  ANSWERLATTICE_SITE_DESCRIPTION,
   ANSWERLATTICE_SITE_TITLE,
 } = require('../../src/app/sites/answerlattice/siteConfig');
 const {
@@ -85,8 +92,13 @@ assert(
   'public monthly plan, currency, and credit packaging must match the Answerlattice plan source',
 );
 assert(
-  ANSWERLATTICE_SITE_TITLE === 'AnswerLattice - Governed Support Layer for Founder-Led SaaS',
-  'public site title must keep the governed-support category instead of an uptime-style category claim',
+  ANSWERLATTICE_SITE_TITLE === 'AnswerLattice - Reviewed Support Layer for SaaS Products',
+  'public site title must keep the reviewed-support category instead of an uptime-style category claim',
+);
+assert(
+  ANSWERLATTICE_SITE_DESCRIPTION ===
+    'AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents.',
+  'public site description must explain the scattered-inputs-to-reviewed-support transformation',
 );
 
 const expectedAnswerlatticeCreditCosts = new Map([
@@ -226,6 +238,10 @@ assertIncludes(onboarding, 'ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES', 'onb
 assertIncludes(onboardingResponse, 'normalizeRazorpaySubscriptionCheckoutUrl', 'onboarding checkout URL admission');
 
 const registeredPaths = ANSWERLATTICE_PUBLIC_PAGES.map((page) => page.path);
+const publicRouteAliases = new Map([
+  ['/home', '/'],
+  ['/use-cases/vibe-coded-saas', '/use-cases/ai-built-saas'],
+]);
 assert(
   new Set(registeredPaths).size === registeredPaths.length,
   'Answerlattice public page registry must not contain duplicate paths',
@@ -236,6 +252,22 @@ for (const publicPath of registeredPaths) {
   }
   assert(exists(publicPagePathToFile(publicPath)), `public route file missing for ${publicPath}`);
 }
+const publicRouteFiles = listFiles(WEBSITE_ROOT, /^page\.tsx$/);
+const discoveredPublicPaths = publicRouteFiles.map(publicPageFileToPath);
+for (const publicPath of discoveredPublicPaths) {
+  assert(
+    registeredPaths.includes(publicPath) || publicRouteAliases.has(publicPath),
+    `public route ${publicPath} must be registered or declared as an intentional alias`,
+  );
+}
+for (const [aliasPath, canonicalPath] of publicRouteAliases) {
+  assert(discoveredPublicPaths.includes(aliasPath), `public alias route file missing for ${aliasPath}`);
+  assert(registeredPaths.includes(canonicalPath), `public alias ${aliasPath} targets unregistered ${canonicalPath}`);
+}
+assert(
+  discoveredPublicPaths.length === registeredPaths.length + publicRouteAliases.size,
+  'every Answerlattice page.tsx must be either one canonical public route or one intentional alias',
+);
 
 const sitemap = read(`${WEBSITE_ROOT}/sitemap.xml/route.ts`);
 const robots = read(`${WEBSITE_ROOT}/robots.txt/route.ts`);
@@ -287,15 +319,52 @@ const productCapabilityLandingPage = read(`${WEBSITE_ROOT}/components/ProductCap
 const productFeatureLandingPage = read(`${WEBSITE_ROOT}/components/ProductFeatureLandingPage.tsx`);
 const updatesPage = read(`${WEBSITE_ROOT}/updates/page.tsx`);
 const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
+assertIncludes(homepage, 'Scattered product knowledge into structured support', 'homepage whole-product eyebrow');
+assertIncludes(
+  homepage,
+  'AnswerLattice turns scattered docs, tickets, release notes, screenshots, recordings, owner notes, and repeated replies',
+  'homepage scattered-input transformation',
+);
+for (const surface of [
+  'In-app widget',
+  'Hosted help center',
+  'Docs and FAQs',
+  'Changelog',
+  'Ticket fallback',
+  'Feedback review',
+  'Approved answers',
+]) {
+  assertIncludes(homepage, `'${surface}'`, `homepage ${surface} surface`);
+}
+assertIncludes(homepage, 'Run deterministic checks', 'homepage deterministic Answer Test boundary');
+assertNotIncludes(homepage, 'Run free checks first', 'homepage unsupported free-tier implication');
 assertIncludes(homepage, 'Answer what is known. Catch what is missing. Improve it once.', 'homepage support-loop focus');
 assertIncludes(homepage, 'Why this answer is trusted', 'homepage trusted-answer proof');
 assertIncludes(homepage, '<FounderReviewSection basePath={basePath} />', 'homepage active owner-decision section');
 assertIncludes(homepage, 'id="owner-decision-system"', 'homepage owner-decision anchor');
-assertIncludes(homepage, 'Open once. Know what deserves your decision.', 'homepage owner-decision promise');
+assertIncludes(homepage, 'Review the support decisions that actually need you.', 'homepage founder-review promise');
 assertIncludes(homepage, 'ANSWERLATTICE_OWNER_DECISION_ASSET', 'homepage owner-decision proof asset');
 assertIncludes(homepage, 'assetSlotId="home.owner-decision-system"', 'homepage owner-decision AssetOS slot');
-assertIncludes(homepage, 'Article topic maps', 'homepage public article-navigation capability');
-assertIncludes(homepage, 'They do not publish answers, change releases, or create a second task system.', 'homepage owner-decision mutation boundary');
+assertIncludes(homepage, 'Help readers scan long guides', 'homepage public article-navigation outcome');
+assertIncludes(homepage, 'They never publish answers, activate releases, or create a second task system.', 'homepage owner-decision mutation boundary');
+
+const heroMotionEnd = websiteStyles.indexOf('.al-site-footer {');
+const heroMotionStart = websiteStyles.lastIndexOf('.al-home-hero-title__word {', heroMotionEnd);
+const heroKeyframesStart = websiteStyles.indexOf('@keyframes al-hero-word-reveal {');
+const heroKeyframesEnd = websiteStyles.indexOf('@keyframes al-map-pulse-flow {', heroKeyframesStart);
+assert(heroMotionStart >= 0 && heroMotionEnd > heroMotionStart, 'homepage hero motion styles must remain discoverable');
+assert(heroKeyframesStart >= 0 && heroKeyframesEnd > heroKeyframesStart, 'homepage hero keyframes must remain discoverable');
+const heroMotionStyles = websiteStyles.slice(heroMotionStart, heroMotionEnd);
+const heroKeyframeStyles = websiteStyles.slice(heroKeyframesStart, heroKeyframesEnd);
+assertIncludes(heroMotionStyles, 'animation: al-hero-word-reveal 360ms', 'homepage title motion duration');
+assertIncludes(heroMotionStyles, 'animation: al-hero-block-reveal 360ms', 'homepage content motion duration');
+assertIncludes(heroMotionStyles, 'animation-delay: 40ms;', 'homepage subtitle motion timing');
+assertIncludes(heroMotionStyles, 'animation-duration: 520ms;', 'homepage media motion duration');
+assertIncludes(heroMotionStyles, 'animation-delay: 160ms;', 'homepage media motion timing');
+assertNotIncludes(heroMotionStyles, 'filter: blur(', 'homepage first-fold motion');
+assertNotIncludes(heroKeyframeStyles, 'filter: blur(', 'homepage first-fold keyframes');
+assertNotIncludes(heroMotionStyles, 'animation-delay: 760ms;', 'homepage delayed subtitle motion');
+assertNotIncludes(heroMotionStyles, 'animation-delay: 1260ms;', 'homepage delayed proof motion');
 assertIncludes(
     homepage,
     'Deferred homepage sections retained for one-line reactivation.',
@@ -339,23 +408,23 @@ for (const capability of [
   assertIncludes(productPage, capability, `product owner-decision capability ${capability}`);
 }
 assertIncludes(productPage, 'Provider-backed fallback cannot certify critical proof.', 'product critical-proof boundary');
-assertIncludes(supportControlProductPage, 'clear quiet state when complete evidence needs no action', 'Support Control qualified quiet state');
-assertIncludes(supportControlProductPage, 'sanitized published headings', 'Support Control public topic-map boundary');
+assertIncludes(supportControlProductPage, 'clear quiet state when the evidence needs no action', 'Support Control focused quiet state');
+assertIncludes(supportControlProductPage, 'safe published headings', 'Support Control public topic-map boundary');
 assertIncludes(knowledgeGovernanceProductPage, 'One product model, several owner decisions.', 'Knowledge Governance connected model');
 assertIncludes(knowledgeGovernanceProductPage, 'ANSWERLATTICE_KNOWLEDGE_MAP_ASSET', 'Knowledge Governance curated map proof');
 assertIncludes(knowledgeGovernanceProductPage, 'heroAssetSlotId="product.knowledge-map"', 'Knowledge Governance map AssetOS slot');
 assertIncludes(knowledgeGovernanceProductPage, 'ANSWERLATTICE_RELEASE_ASSURANCE_ASSET', 'Knowledge Governance release assurance proof');
 assertIncludes(knowledgeGovernanceProductPage, 'workflowAssetSlotId="product.release-assurance"', 'Knowledge Governance release assurance AssetOS slot');
-assertIncludes(knowledgeGovernanceProductPage, 'Knowledge Map is a governed decision view, not a raw graph or diagram editor.', 'Knowledge Map raw-graph boundary');
-assertIncludes(knowledgeGovernanceProductPage, 'No map, metric, test, or impact preview changes support truth automatically.', 'Knowledge Governance mutation boundary');
-assertIncludes(productFeatures, 'Publish readable article topic maps', 'Knowledge Base topic-map capability');
+assertIncludes(knowledgeGovernanceProductPage, 'Knowledge Map helps owners make a decision; it is not a raw graph or diagram editor.', 'Knowledge Map raw-graph boundary');
+assertIncludes(knowledgeGovernanceProductPage, 'No map, metric, test, or impact preview changes official support automatically.', 'Knowledge Governance mutation boundary');
+assertIncludes(productFeatures, 'Help readers navigate long articles', 'Knowledge Base topic-map capability');
 assertIncludes(websiteAssets, "'knowledge-base': ANSWERLATTICE_ARTICLE_TOPIC_MAP_ASSET", 'Knowledge Base public topic-map proof');
 assertIncludes(productFeatureLandingPage, "'knowledge-base': 'product.article-topic-map'", 'Knowledge Base topic-map AssetOS slot');
 assertIncludes(productCapabilityLandingPage, 'assetRole="product-area-workflow-proof"', 'product capability workflow proof mounting');
 assertIncludes(productFeatures, 'Reject stale previews', 'Changelog stale-impact boundary');
-assertIncludes(faq, 'a clear quiet state when complete evidence needs no action', 'FAQ qualified Daily Brief truth');
+assertIncludes(faq, 'a clear quiet state when the available evidence needs no action', 'FAQ focused Daily Brief truth');
 assertIncludes(faq, 'does not expose a raw graph or become a diagram editor', 'FAQ Knowledge Map boundary');
-assertIncludes(faq, 'Private ontology, source, canonical-answer, ticket, and governance records do not enter the public payload.', 'FAQ public topic-map boundary');
+assertIncludes(faq, 'Private relationship, source, approved-answer, ticket, and review records do not enter the public payload.', 'FAQ public topic-map boundary');
 assertNotIncludes(faq, 'Knowledge Intake review counts', 'stale Daily Brief intake-count claim');
 assertIncludes(updatesPage, 'Owner decisions now keep their product context', 'public owner-decision update');
 assertIncludes(updatesPage, 'validated product-area context into governed answer review', 'public Knowledge Map handoff boundary');
@@ -399,7 +468,7 @@ assertIncludes(
   'mobile Operating Guide navigation',
 );
 assertNotIncludes(footer, 'The first 24/7 support layer', 'unsupported public category superlative');
-assertIncludes(footer, 'The governed support layer for founder-led SaaS.', 'public footer category');
+assertIncludes(footer, 'A reviewed support layer for founder-led SaaS.', 'public footer category');
 assertIncludes(footer, '/resources/answerlattice-operating-guide', 'footer Operating Guide navigation');
 
 const contact = read(`${WEBSITE_ROOT}/contact/ContactForm.tsx`);

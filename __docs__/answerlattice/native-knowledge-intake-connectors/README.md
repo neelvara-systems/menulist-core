@@ -1,58 +1,78 @@
-# Answerlattice - Native Knowledge Intake Connectors
+# Answerlattice - GitHub Change Intake
 
-> **Status:** DO NOT BUILD NOW - RESERVED PLACEHOLDER ONLY
+> **Status:** Local source complete; hosted QA pending
 > **Feature:** 41 of 44
-> **Version:** 1.1.0
-> **Last Updated:** 2026-08-05
+> **Version:** 2.0.0
+> **Last Updated:** 2026-08-11
 > **Flag:** `ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false`
-
-## Current Product Truth
-
-No native Knowledge Intake connector is implemented. The reserved app flag has no runtime consumer, no matching Functions flag, and no connected UI, API, OAuth callback, credential store, provider adapter, webhook, poller, or sync worker. Turning the flag on would enable nothing.
-
-The working founder path is:
-
-```text
-selected public URL, file/export, pasted notes, repeated reply, screenshot, or short media
--> bounded extraction and redaction
--> source-backed review items
--> human review
--> existing KB/FAQ/product-surface/canonical-proposal destinations
-```
-
-This covers the first-use job without asking a solo founder to grant broad private-system access or maintain another integration.
-
-The implemented release-evidence handoff does not change this status. Owners may paste or export GitHub Release text into Knowledge Intake and prepare an editable Changelog draft, but Answerlattice does not install a GitHub App, read a repository, call GitHub APIs, receive webhooks, poll releases, or synchronize version history.
 
 ## Decision
 
-Do not build Notion, GitHub, Google Drive, Slack, inbox, or helpdesk-native intake now. Connector count is not a product outcome. The current priority remains proving that imported evidence becomes approved answers and reduces repeated founder support work.
+Implement exactly one read-only native provider: GitHub Change Intake.
 
-## Reconsideration Gate
+The owner installs a repository-scoped GitHub App and selects up to ten repositories. Answerlattice can receive:
 
-Consider one read-only connector only when all are true:
+- published GitHub Releases; and
+- merged pull requests on each repository's default branch, when the owner enables that option.
 
-1. At least three paying workspaces request the same provider.
-2. Their current export/import workflow demonstrably prevents activation or repeated maintenance.
-3. The exact selected spaces/repos/projects and source permissions can be preserved.
-4. Disconnect, token revocation, source deletion, dependent-answer review, and retention are designed before credential intake.
-5. Poll/webhook cost, provider limits, error recovery, and support burden fit pricing.
-6. The connector feeds governed evidence and proposals; it never treats imported tickets or chats as approved truth.
+Each accepted event becomes a bounded, private, unreviewed source in the existing Knowledge Intake flow:
 
-## Smallest Future Scope
+```text
+signed GitHub event
+-> selected repository and event policy check
+-> bounded change summary (no source code or patch)
+-> existing Knowledge Intake job and source
+-> owner-triggered draft analysis
+-> source governance and owner approval
+-> existing release, Answer Test, knowledge, and distribution controls
+```
 
-If approved later, implement one provider only:
+GitHub does not become a source of approved truth by itself. A release or merged pull request is evidence that the product may have changed.
 
-- read-only OAuth;
-- owner-selected containers only;
-- explicit initial import;
-- manual refresh before background sync;
-- source/version metadata and last successful sync;
-- permission-loss and deletion review;
-- no write-back, ticket sync, or automatic publication.
+## Why This Provider
+
+The existing manual GitHub Release handoff proves the product boundary but still requires repeated copying. GitHub is the smallest useful automation because product changes already originate there for the primary solo-founder and small SaaS team ICP. It strengthens Release-to-Truth without expanding Answerlattice into a helpdesk, documentation CMS, issue tracker, or generic connector platform.
+
+## Day-One Scope
+
+- GitHub App installation with repository-level access.
+- Signed, short-lived, session-bound setup state.
+- GitHub user authorization after installation so the setup callback does not trust a spoofable `installation_id`.
+- Stage-specific canonical callback and return URLs; request host headers never select an OAuth destination.
+- Owner selection of up to ten repositories.
+- Active-subscription enforcement during setup, policy changes, and event intake.
+- Published Release intake.
+- Optional merged pull-request intake, restricted to the repository default branch.
+- Optional required pull-request labels to reduce noise.
+- GitHub App repository permissions limited to metadata read, contents read for Release events, and pull-request read for the optional merged-PR path.
+- Webhook subscriptions limited to Release, Pull request, Installation, and Installation repositories events.
+- Signed webhook validation, bounded payloads, replay protection, and a daily workspace cap.
+- Narrow GraphQL file-path lookup for admitted pull requests; the REST file response that includes patches is not used.
+- Deterministic source identity and rolling bounded intake jobs.
+- Disconnect, installation suspension/deletion handling, audit records, and workspace lifecycle cleanup.
+- Reconnect staging that leaves a healthy active connection running until the owner confirms the replacement repository selection.
+- Existing responsive Knowledge Intake review and publication workflow.
+
+## Explicit Non-Goals
+
+- no polling or scheduler;
+- no repository clone, code embedding, patch retention, or source-code search;
+- no commit-by-commit ingestion;
+- no GitHub write-back, issue creation, status update, or pull-request comment;
+- no automatic model call when a webhook arrives;
+- no automatic release creation, canonical-answer mutation, article update, changelog publication, or customer message;
+- no Notion, Drive, Slack, helpdesk, or second provider in this implementation;
+- no shared connector SDK before this provider proves sustained owner value.
+
+The existing outbound GitHub issue adapter remains a separate execution integration. It must not be used for inbound source access.
+
+## Rollout State
+
+The source implementation remains disabled by default until the GitHub App credentials, callback URLs, repository permissions, hosted webhook behavior, and one real workspace are verified. The false flag is a rollout gate, not a partial implementation.
 
 ## Verification
 
 - `npm run verify:answerlattice-native-intake-connectors`
+- `npm run test:answerlattice-github-change-intake`
 - `npm run verify:answerlattice-runtime-truth`
 - `npm run docs:check-links`

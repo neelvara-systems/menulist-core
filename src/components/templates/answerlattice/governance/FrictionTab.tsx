@@ -14,6 +14,7 @@
  */
 
 import { useFrictionInsights } from '@hook/answerlattice/useFrictionInsights';
+import { FEATURE_FLAGS } from '@config/features';
 import {
     ANSWERLATTICE_GOVERNANCE_TABS,
     getAnswerlatticeGovernanceRoute,
@@ -26,11 +27,12 @@ import {
     AnswerlatticeFrictionInsight,
     AnswerlatticeFrictionLevel,
     AnswerlatticeFrictionTrendDirection,
+    AnswerlatticeSupportMetricWindow,
 } from '@type/answerlattice';
 import { Alert, Badge, Button, Card, Empty, Flex, Grid, Skeleton, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuAlertTriangle,
     LuArrowDown,
@@ -43,6 +45,7 @@ import {
     LuTrendingUp,
 } from 'react-icons/lu';
 import FrictionEvidenceBriefDrawer from './FrictionEvidenceBriefDrawer';
+import PostChangeSupportEvidenceReview from './PostChangeSupportEvidenceReview';
 
 const { Text, Paragraph, Title } = Typography;
 const KNOWLEDGE_MAP_ROUTE = getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.MAP);
@@ -50,6 +53,13 @@ const KNOWLEDGE_MAP_ROUTE = getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERN
 interface FrictionTabProps {
     tId: number;
     sId: number;
+}
+
+interface FrictionEvidenceBriefSelection {
+    entity: AnswerlatticeFrictionEntitySummary;
+    metricWindow: AnswerlatticeSupportMetricWindow;
+    scopeKey: string;
+    sourceLastUpdated?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -193,11 +203,13 @@ function TopFrictionTable({
                                 >
                                     Prepare evidence brief
                                 </Button>
-                                <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, entity.entityId)}>
-                                    <Button block icon={<LuGitBranch />} style={{ minHeight: 44 }}>
-                                        Open in Knowledge Map
-                                    </Button>
-                                </Link>
+                                {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? (
+                                    <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, entity.entityId)}>
+                                        <Button block icon={<LuGitBranch />} style={{ minHeight: 44 }}>
+                                            Open in Knowledge Map
+                                        </Button>
+                                    </Link>
+                                ) : null}
                             </Flex>
                         </Flex>
                     </div>
@@ -289,16 +301,18 @@ function TopFrictionTable({
                             type="text"
                         />
                     </Tooltip>
-                    <Tooltip title={`Open ${record.entityName} in Knowledge Map`}>
-                        <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, record.entityId)}>
-                            <Button
-                                aria-label={`Open ${record.entityName} in Knowledge Map`}
-                                icon={<LuGitBranch />}
-                                style={{ minHeight: 44, minWidth: 44 }}
-                                type="text"
-                            />
-                        </Link>
-                    </Tooltip>
+                    {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? (
+                        <Tooltip title={`Open ${record.entityName} in Knowledge Map`}>
+                            <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, record.entityId)}>
+                                <Button
+                                    aria-label={`Open ${record.entityName} in Knowledge Map`}
+                                    icon={<LuGitBranch />}
+                                    style={{ minHeight: 44, minWidth: 44 }}
+                                    type="text"
+                                />
+                            </Link>
+                        </Tooltip>
+                    ) : null}
                 </Space>
             ),
         },
@@ -390,7 +404,7 @@ function WeeklySummaryCard({
             style={{ marginTop: 16 }}
         >
             <Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{summary}</Paragraph>
-            {admittedActions.length > 0 ? (
+            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP && admittedActions.length > 0 ? (
                 <Flex vertical gap={8} style={{ marginTop: 12 }}>
                     {admittedActions.map(suggestion => (
                         <Flex
@@ -426,7 +440,26 @@ function WeeklySummaryCard({
 export default function FrictionTab({ tId, sId }: FrictionTabProps) {
     const { snapshot, insight, loading, error, refresh } = useFrictionInsights(tId, sId);
     const searchParams = useSearchParams();
-    const [briefEntity, setBriefEntity] = useState<AnswerlatticeFrictionEntitySummary | null>(null);
+    const [briefSelection, setBriefSelection] = useState<FrictionEvidenceBriefSelection | null>(null);
+    const scopeKey = `${tId}:${sId}`;
+    const snapshotLastUpdatedDate = snapshot?.lastUpdated?.toDate?.();
+    const snapshotLastUpdatedIso = snapshotLastUpdatedDate
+        && Number.isFinite(snapshotLastUpdatedDate.getTime())
+        ? snapshotLastUpdatedDate.toISOString()
+        : undefined;
+    const activeBriefSelection = briefSelection?.scopeKey === scopeKey ? briefSelection : null;
+    const prepareEvidenceBrief = useCallback((entity: AnswerlatticeFrictionEntitySummary) => {
+        if (!snapshot) return;
+        setBriefSelection({
+            entity,
+            metricWindow: snapshot.window,
+            scopeKey,
+            sourceLastUpdated: snapshotLastUpdatedIso,
+        });
+    }, [scopeKey, snapshot, snapshotLastUpdatedIso]);
+    useEffect(() => {
+        setBriefSelection(null);
+    }, [scopeKey]);
     const focusedEntityId = normalizeAnswerlatticeEntityId(searchParams?.get('entity')) || '';
     const rankedEntities = useMemo(() => {
         const entities = snapshot?.topFrictionEntities || [];
@@ -442,31 +475,46 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
         for (const topic of snapshot?.emergingTopics || []) names.set(topic.entityId, topic.entityName);
         return names;
     }, [snapshot?.emergingTopics, snapshot?.topFrictionEntities]);
+    const postChangeReview = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_POST_CHANGE_EVIDENCE_REVIEW ? (
+        <PostChangeSupportEvidenceReview key={`${tId}:${sId}`} tId={tId} sId={sId} />
+    ) : null;
 
     if (loading) {
         return <Skeleton active paragraph={{ rows: 6 }} />;
     }
 
     if (error) {
-        return <Empty description={`Failed to load friction data: ${error}`} />;
+        return (
+            <Flex vertical gap={8}>
+                <Empty description={`Failed to load friction data: ${error}`} />
+                {postChangeReview}
+            </Flex>
+        );
     }
 
     if (!snapshot) {
         return (
-            <Empty description="No friction data available yet. Data will appear after signals are collected and the nightly aggregation runs." />
+            <Flex vertical gap={8}>
+                <Empty description="No friction data available yet. Data will appear after signals are collected and the nightly aggregation runs." />
+                {postChangeReview}
+            </Flex>
         );
     }
 
     if (snapshot.topFrictionEntities.length === 0 && snapshot.emergingTopics.length === 0) {
-        return snapshot.unmappedEvidenceCount > 0 ? (
-            <Empty description={`${snapshot.unmappedEvidenceCount} support-evidence events need product-topic mapping before friction can be ranked.`} />
-        ) : (
-            <Empty description="No mapped friction evidence in the latest completed seven-day window." />
+        return (
+            <Flex vertical gap={8}>
+                {snapshot.unmappedEvidenceCount > 0 ? (
+                    <Empty description={`${snapshot.unmappedEvidenceCount} support-evidence events need product-topic mapping before friction can be ranked.`} />
+                ) : (
+                    <Empty description="No mapped friction evidence in the latest completed seven-day window." />
+                )}
+                {postChangeReview}
+            </Flex>
         );
     }
 
-    const lastUpdatedDate = snapshot.lastUpdated?.toDate?.();
-    const stale = Boolean(lastUpdatedDate && Date.now() - lastUpdatedDate.getTime() > 36 * 60 * 60 * 1000);
+    const stale = Boolean(snapshotLastUpdatedDate && Date.now() - snapshotLastUpdatedDate.getTime() > 36 * 60 * 60 * 1000);
 
     return (
         <div>
@@ -493,7 +541,7 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
             ) : null}
 
             <Title level={5} style={{ marginBottom: 12 }}>Top Support-Evidence Areas</Title>
-            <TopFrictionTable entities={rankedEntities} onPrepareBrief={setBriefEntity} />
+            <TopFrictionTable entities={rankedEntities} onPrepareBrief={prepareEvidenceBrief} />
 
             <EmergingTopicsCard topics={snapshot.emergingTopics || []} />
 
@@ -518,12 +566,14 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                 </Text>
             )}
 
+            {postChangeReview}
+
             <FrictionEvidenceBriefDrawer
-                entity={briefEntity}
-                metricWindow={snapshot.window}
-                onClose={() => setBriefEntity(null)}
-                open={Boolean(briefEntity)}
-                sourceLastUpdated={lastUpdatedDate?.toISOString()}
+                entity={activeBriefSelection?.entity || null}
+                metricWindow={activeBriefSelection?.metricWindow || null}
+                onClose={() => setBriefSelection(null)}
+                open={Boolean(activeBriefSelection)}
+                sourceLastUpdated={activeBriefSelection?.sourceLastUpdated}
             />
         </div>
     );

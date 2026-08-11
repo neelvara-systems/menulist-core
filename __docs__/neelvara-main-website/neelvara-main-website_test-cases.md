@@ -30,6 +30,7 @@
 | ARCH-06 | Local dev prefix works | `/__neelvara/` rewrites to `/sites/neelvara` |
 | ARCH-07 | Homepage survives catch-all compilation | Root returns `200` after a missing Neelvara route returns `404` |
 | ARCH-08 | Homepage aliases stay canonical | `/__neelvara/home` and `/nv/home` render the same `/sites/neelvara` page |
+| ARCH-09 | Alias hydration is stable | Server markup and the first client render agree before internal links resolve to `/__neelvara` or `/nv`; no hydration mismatch is logged |
 
 ---
 
@@ -90,18 +91,20 @@
 | ID | Check | Expected |
 | --- | --- | --- |
 | VIS-01 | Neelvara mesh/grain | Background mesh and grain are scoped to Neelvara pages |
-| VIS-02 | Glass primitive | Header, cards, policy panels, product band, and CTAs reuse one glass treatment |
+| VIS-02 | Selective glass primitive | Navigation, product cards, and primary actions use restrained glass/gradient treatment; policy and contact rows remain unframed and readable |
 | VIS-03 | No product-funnel import | SaaS pricing/customer/testimonial sections are not copied as-is |
-| VIS-04 | Home section order | Hero, ledger, operating approach, relationship statement, product lineup, surface guide, contact routes, CTA, footer |
+| VIS-04 | Home section order | Brand-first hero, entity ledger, operating approach, relationship statement, product lineup, contact routes, footer |
 | VIS-05 | Homepage transition | Hero flows directly into the entity ledger without a decorative or duplicate company-reference panel |
-| VIS-06 | CTA contrast | Solid CTA text remains dark and readable in normal, visited, and focus states |
+| VIS-06 | CTA contrast | Solid CTA text remains white and readable in normal, visited, and focus states over the supplied blue-to-violet gradient |
 | VIS-07 | Akshar typography | Neelvara content, navigation, buttons, cards, footer, and legal text resolve to Akshar with Inter/system fallback |
 | VIS-08 | Scroll reveal completion | Normal scroll, fast scrollbar jumps, Page Down, and anchor movement cannot leave reached sections transparent |
 | VIS-09 | Reduced motion | Reveal and decorative motion are disabled while all content remains visible |
 | VIS-10 | Header breakpoint separation | Desktop hides the menu toggle and exposes 44px primary links; mobile hides the full nav until the 44px toggle opens it |
 | VIS-11 | Product logo source | Answerlattice product placements reuse `src/components/atoms/answerlatticeLogoMark/index.tsx`, the same mark used by the Answerlattice header and footer, without copied or recolored paths |
 | VIS-12 | Home product layout | The product section uses an unframed header and two equal product cards on desktop, stacks cards on mobile, preserves actual logos and links, and has no horizontal overflow |
-| VIS-13 | Cross-page grid fit | Every repeated-item grid uses the current item count without empty desktop tracks; the two-product map/detail grids use two columns and collapse to one column on mobile |
+| VIS-13 | Cross-page grid fit | Every repeated-item layout uses the current item count without empty tracks; the two-product detail grid uses two columns and collapses to one column on mobile |
+| VIS-14 | No duplicate summary UI | Home has no comparison table or repeated final CTA; Products has no product map; secondary heroes have no right-side summary card |
+| VIS-15 | Company-first hierarchy | The homepage H1 is `Neelvara Systems`; the company identity appears before category explanation or product detail |
 
 ---
 
@@ -115,7 +118,7 @@
 | MOB-04 | Text readability | No viewport-scaled tiny text |
 | MOB-05 | Footer legal links | Legal/privacy/terms visible on mobile |
 | MOB-06 | Collapsed mobile navigation | Products, About, and Contact remain reachable through the 44px menu control |
-| MOB-07 | Secondary page panels | Text/list panels collapse to one column without clipped list content |
+| MOB-07 | Secondary information rows | About, Legal, Privacy, and Terms rows collapse to one column without clipped list content or excessive empty space |
 | A11Y-01 | Keyboard nav | Header, CTAs, and footer links reachable |
 | A11Y-02 | Focus states | Browser focus indicator remains visible |
 | A11Y-03 | Semantic headings | One H1 per page, logical heading order |

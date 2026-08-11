@@ -428,7 +428,8 @@
         "daily": "Előző nap",
         "weekly": "Az elmúlt 7 nap",
         "monthly": "E hónapban",
-        "overall": "Összességében"
+        "overall": "Összességében",
+        "graph": "Grafikonok"
       },
       "today": {
         "noMenuActivityToday": "Ma még nincs menü tevékenység.",
@@ -454,16 +455,16 @@
         "noResultSearches": "Eredmény nélküli keresések",
         "unavailableInterest": "Nem elérhető érdeklődés",
         "topLanguage": "Legnépszerűbb nyelv",
-        "smartPicksShown": "Intelligens választások megjelennek",
+        "smartPicksShown": "Smart Picks bemutató",
         "smartPicksClicks": "Smart Picks kattintások",
         "smartPicksTaps": "A Smart Picks koppintások",
-        "smartPicksUsed": "Használt intelligens választások",
+        "smartPicksUsed": "Smart Picks Használt",
         "smartPicksEngagement": "Smart Picks elkötelezettség",
         "totalMenuScans": "Összes menüvizsgálat",
         "totalItemClicks": "Összes tételkattintás",
         "activeDays": "Aktív napok",
         "daysActive": "Aktív napok",
-        "avgDailyScans": "Átl. Napi vizsgálatok",
+        "avgDailyScans": "A napi szkennelések",
         "smartPicksActive": "A Smart Picks aktív",
         "engagementRate": "Elköteleződési arány",
         "topItem": "Legfelső elem",
@@ -473,8 +474,8 @@
         "itemClicks": "Hányszor koppintottak az ügyfelek az elemekre",
         "engagedSessions": "Olyan munkamenetek, amelyek során az ügyfelek valódi érdeklődést mutattak az étlapról",
         "actionRate": "A végső ügyfél műveletéhez vezető munkamenetek",
-        "smartPicksShown": "Hányszor jelentek meg az Intelligens választások az oldalon",
-        "smartPicksUsed": "Az Intelligens választást használó ügyfelek százalékos aránya",
+        "smartPicksShown": "Hányszor Smart Picks Megjelent az Ön oldalán",
+        "smartPicksUsed": "Az általuk használt ügyfelek aránya Smart Picks",
         "customerActions": "Utolsó műveletek, például hívás, WhatsApp, útvonalterv, foglalás és rendelés",
         "searches": "Duplikált keresési igény eltávolítása a menüből",
         "unavailableInterest": "A nem elérhető elemekre koppint"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Tegnap nem rögzítettünk tevékenységet",
         "noAnalyticsYet": "Még nincsenek adatok. Az elemzések akkor jelennek meg, amikor az ügyfelek elkezdik megtekinteni.",
-        "noItemClicksYet": "Még nincs kattintás az elemre"
+        "noItemClicksYet": "Még nincs kattintás az elemre",
+        "lowActivityTitle": "Alacsony aktivitás",
+        "lowActivityDescription": "Nem volt elég tevékenység ahhoz, hogy hasznos következtetéseket lehessen levonni erről az időszakról.",
+        "noWeeklyData": "Az elmúlt 7 napban még nem állt rendelkezésre rendezett menütevékenység.",
+        "noMonthlyData": "Ebben a hónapban még nincs rendezve a menü tevékenység, ezért ebben a hónapra még nem áll rendelkezésre."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% a múlt héthez képest"
+        "vsLastWeek": "{sign}{change}% a múlt héthez képest",
+        "changeVsLastWeek": "{change} A múlt héten"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# rögzített tevékenység napja} other {# napnyi tevékenység rögzítve}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Igen",
         "no": "Nem",
-        "notAvailable": "N/A N/B N/C N/D",
+        "notAvailable": "N/A",
         "active": "Aktív",
         "lowActivity": "Alacsony aktivitás",
         "noData": "Nincs adat"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Várakozás az első vizsgálatra",
         "weeklyInsights": "Heti statisztikák",
         "last4WeeksComparison": "Az elmúlt 4 hét összehasonlítása",
-        "historicalDataWillAppear": "A korábbi adatok néhány hét múlva jelennek meg"
+        "historicalDataWillAppear": "A korábbi adatok néhány hét múlva jelennek meg",
+        "statusMessages": {
+          "working": "Az ügyfelek a jelenlegi menüt használják.",
+          "low_activity": "Az ügyféltevékenység még mindig növekszik, az aktuális menü továbbra is elérhető marad. A jelenlegi menü elérhetetlenné válik.",
+          "no_data": "A tevékenység akkor jelenik meg, amikor az ügyfelek elkezdik megnyitni a menüt."
+        }
       },
       "aiSummary": {
         "daily": "Az előző nap áttekintése",
         "weekly": "E hét áttekintése",
-        "monthly": "E hónap összegzése"
+        "monthly": "E hónap összegzése",
+        "localized": {
+          "noActivity": "Ebben az időszakban nem regisztráltak beállított ügyfélaktivitást.",
+          "menuViews": "Az ügyfelek {count} alkalommal nyitották meg a menüt.",
+          "itemTaps": "Az ügyfelek {count} alkalommal koppintottak a menüelemekre.",
+          "customerActions": "Az ügyfelek elvégezték a {count} végső műveletet.",
+          "searches": "A vásárlók {count} alkalommal kerestek rá a menüre.",
+          "unavailableInterest": "Az elérhetetlen elemek {count} csapot kaptak."
+        }
       },
       "actions": {
         "call": "Hívás",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} látogatások · {rate}%",
         "markDone": "Megjelölés készként",
         "markDoneFailed": "Ezt a műveletet nem lehetett készként megjelölni. Próbáld újra.",
-        "markDoneSaved": "Készként megjelölve. Az eredmények akkor frissülnek, amikor a következő elemzési összefoglaló elkészül."
+        "markDoneSaved": "Készként megjelölve. Az eredmények akkor frissülnek, amikor a következő elemzési összefoglaló elkészül.",
+        "bestSourceStatsFormatted": "· {visits} látogatás · {rate} művelet aránya",
+        "bestSourceMobileFormatted": "Jelenleg a legjobb forrás: {source} · {visits} látogatás · {rate} cselekvési arány.",
+        "sourceQualityTagFormatted": "{source}: {visits} látogatás · {sessions} művelet munkamenet · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} látogatás · {rate}",
+        "priorities": {
+          "high": "Magas prioritás",
+          "medium": "Közepes prioritás",
+          "low": "Alacsony prioritás"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stabil",
+            "message": "A rendelkezésre álló tevékenység támogatja a menü áttekinthető ellenőrzését."
+          },
+          "watch": {
+            "label": "Tartsa a figyelmét",
+            "message": "Egyes tevékenységeknél előfordulhat, hogy a menü megváltoztatása előtt újra ellenőrizni kell az adatokat."
+          },
+          "no_data": {
+            "label": "Több adatra van szükség.",
+            "message": "Várjon meg egy bizonyosabb ügyféltevékenységet, mielőtt következtetéseket vonna le."
+          }
+        },
+        "localizedActions": {
+          "reason": "A legutoljára elszámolt ügyféltevékenység alapján.",
+          "availability": {
+            "title": "A termék elérhetőségének ellenőrzése.",
+            "description": "Ellenőrizze, hogy a nem elérhető vagy rejtett elemeket vissza kell-e állítani, vagy láthatatlanul kell-a maradniuk.",
+            "action": "Elérhetőség ellenőrzése"
+          },
+          "customerActions": {
+            "title": "Tekintse át az ügyfelek tevékenységeit.",
+            "description": "Ellenőrizze a menü részleteit és az ügyfelek által használt linkeket, mielőtt bármilyen lépést megtenne.",
+            "action": "Tekintse át az ügyfelek tevékenységeit."
+          },
+          "details": {
+            "title": "A tárgyak részleteinek javítása",
+            "description": "Ellenőrizze a termékek neveit, opcióit, leírásait és képeket, amelyek egyértelműbb információt igényelhetnek.",
+            "action": "Áttekintés elem részletek"
+          },
+          "general": {
+            "title": "Várjon egy világosabb jelet.",
+            "description": "Az aktuális menü stabilan tartása addig, amíg több rendezettebb tevékenység nem érhető el.",
+            "action": "Nézze meg később!"
+          },
+          "menuOrder": {
+            "title": "Az étlapok sorrendjének áttekintése",
+            "description": "Ellenőrizze, hogy a fontos termékek és kategóriák könnyen megtalálhatóak-e az ügyfelek számára.",
+            "action": "Az étlapok sorrendjének áttekintése"
+          },
+          "pricing": {
+            "title": "Az árképzés felülvizsgálata",
+            "description": "Ellenőrizze a legutóbbi ügyfél-érdeklődési jelhez kapcsolódó árakat.",
+            "action": "Árak felülvizsgálata"
+          },
+          "search": {
+            "title": "Tekintse át az ügyfelek kereséseit.",
+            "description": "Ellenőrizze azokat a kereséseket, amelyek nem feltétlenül vezetnek az ügyfelek számára hasznos menüeredményhez.",
+            "action": "Keresések áttekintése"
+          },
+          "source": {
+            "title": "Tekintse át az ügyfél beviteli forrásait.",
+            "description": "Ellenőrizze, hogy a nyilvános linkek és a QR elhelyezések az ügyfeleket az aktuális menühöz irányítják-e.",
+            "action": "Nyilvános linkek felülvizsgálata"
+          },
+          "timing": {
+            "title": "A menü időzítésének áttekintése",
+            "description": "Ellenőrizze, hogy az időzített kategóriák és a rendelkezésre állás megegyezik-e, amikor az ügyfelek keresnek rájuk.",
+            "action": "Felülvizsgálat időzítése"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Megjelölve készként.",
+            "message": "Az eredményt azután ellenőrizzük, miután több elszámolt tevékenység áll rendelkezésre."
+          },
+          "improved": {
+            "label": "javítás",
+            "message": "A következő beállított ellenőrzés javulást mutat."
+          },
+          "no_clear_change": {
+            "label": "Nincs egyértelmű változás.",
+            "message": "A következő kiegyenlített csekk nem mutatott egyértelmű változást, így a számlán nem történt változás."
+          },
+          "not_enough_data": {
+            "label": "Több adatra van szükség.",
+            "message": "Még nincs elég stabil aktivitás ahhoz, hogy megítélhessük ezt a változást."
+          },
+          "pending": {
+            "label": "Függőben lévő ellenőrzés",
+            "message": "MenuList ellenőrzi ezt, miután több rendezett tevékenység áll rendelkezésre."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menü részletei",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Nem elérhető érdeklődés",
           "languages": "Nyelvek",
           "filters": "Szűrők",
-          "smartPicks": "Okos választások",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Műveletek munkaidő szerint"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menünézetek",
-          "itemTaps": "Elem érintések",
+          "itemTaps": "Elemkoppintások",
           "menuSessions": "Menümunkamenetek",
           "engagedSessions": "Foglalkozások tevékenységgel",
           "actionSessions": "Műveletmunkamenetek",
@@ -617,6 +729,12 @@
           "unknown": "Műveletek, amikor a nyitvatartási állapot nem volt elérhető",
           "closed": "Műveletek zárva",
           "closedShare": "Az összes rögzített művelet {rate}%-a zárva történt"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} koppintás nem elérhető elemekre",
+          "strongItem": "{count} Elemkoppintások",
+          "needsWork": "{count} Kilátás, nincs csaptelep.",
+          "gettingAttention": "{count} nézetek"
         }
       },
       "smartPicks": {
@@ -642,7 +760,7 @@
         "officialBusinessPage": "Hivatalos üzleti oldal",
         "loadingCurrentActivity": "Aktuális OBP-tevékenység betöltése",
         "loadingActivity": "OBP tevékenység betöltése",
-        "sharedInfo": "A műveletek a hívásra, a WhatsApp-ra, az útvonaltervekre, a foglalásra és a rendelésre vonatkozó utolsó OBP-kattintásokat számítják. A megosztások a hivatalos üzleti linkkártyáról származnak, és a linkekre való koppintások számítanak a Google-értékelésekre, az Instagramra, a Facebookra és a nyilvános OBP webhelylátogatására.",
+        "sharedInfo": "Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.",
         "noActivityToday": "Ma még nincs OBP tevékenység.",
         "noComparison": "Nincs összehasonlítás",
         "sameAsLastWeek": "Ugyanaz, mint a múlt héten",
@@ -681,7 +799,7 @@
         "shareBreakdown": "Megosztási bontás",
         "mobileInfoIntro": "Ez a kártya azt mutatja, hogy az ügyfelek hogyan lépnek kapcsolatba az Ön hivatalos üzleti oldalával a menü megnyitása előtt vagy körül.",
         "mobileInfoActions": "A műveletek a hívásokra, a WhatsApp-ra, az útvonaltervekre, a foglalásra és a rendelésre leadott utolsó kattintásokat számítják.",
-        "mobileInfoLinks": "A megosztások a hivatalos üzleti linkkártyáról származnak, és a linkekre koppintások számítanak a Google-értékelésekre, az Instagramra, a Facebookra és a nyilvános OBP webhelylátogatására.",
+        "mobileInfoLinks": "A részvények a hivatalos üzleti linkkártyából származnak, és a link taps számolnak Google A felülvizsgálat, Instagram, Facebook, és weboldal látogatások a nyilvános OBP.",
         "todayPartialInfo": "Ma eddig csak részleges élő tevékenység van. Ez még nem szerepel az előző nap, az utolsó 7 nap, az e hónapban és az élettartamra vonatkozó összesítésben."
       },
       "customerApp": {
@@ -706,8 +824,7 @@
         "shortcutBreakdown": "Parancsikon lebontása",
         "installsByPlatform": "Telepítések platform szerint",
         "appStickiness": "Az alkalmazás ragadóssága",
-        "returningOpens30d": "Visszatérő megnyílik (30d)",
-        "avgOpensPerInstall": "Átl. megnyitások telepítésenként",
+        "avgOpensPerInstall": "Az AVG a telepítéstől függ",
         "iosManualInstalls": "iOS kézi telepítések",
         "shortcuts": {
           "menu": "Nézet menü",
@@ -715,12 +832,13 @@
           "order": "Rendeljen online"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
-          "iosLong": "iOS (iPhone / iPad) alkalmazások",
-          "android": "Android Android rendszerű eszközök",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "Asztali",
           "other": "Egyéb"
-        }
+        },
+        "tryAgainLater": "Próbálja meg később újra."
       },
       "projectSelector": {
         "deleted": "Törölve",
@@ -760,8 +878,9 @@
         "updateProfileWebsite": "Frissítse Google vállalkozásprofil-webhelyét a következőre: {url}",
         "copied": "Másolva",
         "copy": "Másolás",
-        "openGoogle": "Nyissa meg a Google-t",
-        "done": "Kész"
+        "openGoogle": "Nyitott Google",
+        "done": "Kész",
+        "couldNotOpen": "Nem sikerült megnyitni a(z) Google üzleti profilt."
       },
       "behaviorNudge": {
         "linkCopied": "Link másolva",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Tekintse át a legfontosabb problémát",
         "repairMenu": "Javítás menü",
         "review": "Áttekintés",
-        "repair": "Javítás"
+        "repair": "Javítás",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {A(z) # elemből hiányzik a leírás.} other {A(z) # elem(ek) leírása hiányzik.}}",
+            "ok": "Minden tételnek van leírása.",
+            "help": "A leírások segítenek az ügyfeleknek megérteni az egyes ajánlatokat."
+          },
+          "images": {
+            "warning": "{count, plural, one {A(z) # elemből hiányzik egy kép.} other {# elem hiányzik a képek közül.}}",
+            "ok": "Minden tételnek van képe.",
+            "help": "A képek segíthetnek az ügyfeleknek gyorsabban választani."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {A(z) # kategóriából hiányzik egy ikon.} other {A(z) # kategóriából hiányoznak ikonok.}}",
+            "ok": "Minden kategória rendelkezik ikonokkal.",
+            "help": "Az ikonok megkönnyítik a kategóriák áttekintését."
+          },
+          "prices": {
+            "warning": "{count, plural, one {A(z) # termékből hiányzik az ár.} other {# termék hiányzik az árlistáról.}}",
+            "ok": "Minden tételnek ára van.",
+            "help": "Az ügyfelek összehasonlítják az árakat, mielőtt döntenének."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {A(z) # elem rejtve van az ügyfelek elől.} other {# elem rejtve van az ügyfelek elől.}}",
+            "ok": "Nincsenek rejtett elemek.",
+            "help": "A rejtett elemek nem jelennek meg a nyilvános menüben, és nem is láthatók."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# Árak szükségessé válnak} other {# Árak felülvizsgálatára van szükség}}",
+            "ok": "Az árak a várt tartományon belül vannak.",
+            "help": "A MenuList egy kategórián belüli egyedi árak összehasonlítását végzi. Egy szándékos árat jelöl meg áttekintettnek."
+          },
+          "translations": {
+            "warning": "{count, plural, one {A(z) # elem fordításai hiányoznak.} other {# elem hiányzik a fordítások közül.}}",
+            "ok": "Minden látható elem lefordításra kerül.",
+            "help": "A kiválasztott menünyelvek esetében egyes elemek nem teljesek."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {A # menü részleteinek fordítása hiányzik.} other {A # menü részleteinek fordítása hiányzik.}}",
+            "ok": "A menü részletei le vannak fordítva.",
+            "help": "A kiválasztott menünyelvek esetében a menünév, a leírás vagy a megjegyzések hiányosak."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Kopírozott link",
+        "direct": "Közvetlen",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menü kit",
+        "nativeShare": "Device részesedése",
+        "obp": "Üzleti oldal",
+        "other": "Egyéb",
+        "qr": "QR kód",
+        "shortcut": "Alkalmazás parancsikon",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Üzleti egészség",
+        "open": "Nyílt Üzleti Egészségügyi Egészséges életmód",
+        "today": "Ma",
+        "latestActivity": "Legutóbbi tevékenység",
+        "noActionNeeded": "Nincs teendő",
+        "status": {
+          "stable": "Stabil",
+          "watch": "Figyelmet igényel",
+          "needs_review": "Felülvizsgálatra szorul.",
+          "insufficient_data": "Több adatra van szükség.",
+          "stale": "Szüksége van egy friss ellenőrzésre.",
+          "not_ready": "Készülődés a versenyre"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# ügyfél-felé irányuló részletet felül kell vizsgálni.} other {# ügyfélkapcsolati adatait felül kell vizsgálni.}}",
+          "stable": {
+            "headline": "A nyilvános információ stabil.",
+            "message": "A legutóbbi ellenőrzés során nem merült fel olyan ügyfélprobléma, amely intézkedést igényelt volna."
+          },
+          "watch": {
+            "headline": "Előfordulhat, hogy egy részlet figyelmet igényel.",
+            "message": "A nyilvános adatok módosítása előtt tekintse át a javasolt ellenőrzést."
+          },
+          "needs_review": {
+            "headline": "Tekintse át az ügyfél felé mutató adatokat.",
+            "message": "Egy vagy több nyilvános adatot ellenőrizni kell, és a megfelelőt kiválasztani."
+          },
+          "insufficient_data": {
+            "headline": "Több tevékenységre van szükség.",
+            "message": "Az aktuális információk stabilak maradnak, amíg MenuList hasznos jelet gyűjt."
+          },
+          "stale": {
+            "headline": "Az üzleti egészségnek friss ellenőrzésre van szüksége.",
+            "message": "A legutóbbi ellenőrzés régi, a jelenlegi nyilvános adatok változatlanok maradnak. Az utolsó ellenőrzésed nem történt meg."
+          },
+          "not_ready": {
+            "headline": "Készül a Business Health, az üzleti egészségügyi portál.",
+            "message": "Az első áruház ellenőrzése itt jelenik meg, amikor készen áll."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Menü forrás megtekintése",
+            "message": "Nem található aktív nyilvános menüforrás. Ellenőrizze az étlapot, mielőtt megosztaná.Megosztás előtt ellenőrizzen mindent, ami a menüben szerepel.",
+            "title": "A menüforrást ellenőrizni kell."
+          },
+          "low_latest_activity": {
+            "action": "Ellenőrizze a megosztási linkeket.",
+            "message": "Az ügyfelek aktivitása alacsony. Ellenőrizze, hogy a vásárlói aktivitás alacsonyabb-e. QR, Google, Instagram, WhatsApp, és weboldal linkek.",
+            "title": "Az ügyfelek aktivitása alacsony."
+          },
+          "unavailable_item_taps": {
+            "action": "Ellenőrizze a nem elérhető tételeket.",
+            "message": "A vásárlók érdeklődést mutattak a nem elérhető termékek iránt, így újrakészültek vagy rejtve maradtak.",
+            "title": "A nem elérhető termékek felkeltették a figyelmet."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Tekintse át a vendégek visszajelzéseit.",
+            "message": "A vendég visszajelzésének tulajdonosi ellenőrzésére van szükség, mielőtt a nyilvános adatok megváltoznának.",
+            "title": "A vendégek visszajelzéseit ellenőrizni kell."
+          },
+          "default": {
+            "action": "Részletek ellenőrzése",
+            "message": "Az ügyféllel szembeni részlet tulajdonosi ellenőrzést igényel.",
+            "title": "Egy részletet ellenőrizni kell."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# privát visszajelzés elemet ellenőrizni kell.} other {# privát visszajelzési elemeket ellenőrizni kell.}}",
+          "clear": "A magánjellegű visszajelzések egyértelműek."
+        },
+        "freshness": {
+          "notReady": "Az üzleti állapot nem valós idejű, az első áruházi ellenőrzés dátumát itt fogja megjeleníteni. Az adatokat itt kell megadni.",
+          "throughDate": "A {date}-en keresztül használja az adatokat. Előfordulhat, hogy a mai nap még nem fejeződött be.",
+          "latest": "A legutolsó rendelkezésre álló MenuList adatokat használja. Előfordulhat, hogy a mai nap még nem teljes."
+        },
+        "periods": {
+          "today": "Ma",
+          "yesterday": "Előző nap",
+          "thisWeek": "Ezen a héten",
+          "lastWeek": "Múlt héten",
+          "thisMonth": "Ebben a hónapban",
+          "lastMonth": "Múlt hónapban",
+          "last7Days": "Elmúlt 7 nap",
+          "last30Days": "Elmúlt 30 nap",
+          "overall": "Összességében"
+        },
+        "metrics": {
+          "menuViews": "Menünézetek",
+          "topDemand": "Legnagyobb kereslet",
+          "topDemandDetail": "Előléptetés: {count} {signal}",
+          "bestSource": "Legjobb forrás",
+          "bestSourceDetail": "Link frissítése: {count} látogatása"
+        },
+        "signals": {
+          "views": "nézetek",
+          "clicks": "Koppintások",
+          "attention": "Figyelmeztető jelek"
+        },
+        "page": {
+          "description": "A napi üzleti állapot és az ügyfél arcellenőrzés.",
+          "latestCheck": "AI health check",
+          "loading": "feltöltés",
+          "loadingMessage": "Üzleti egészség betöltése...",
+          "notReady": "Az üzleti egészség még nem készen áll.",
+          "loadErrorTitle": "A Business Health nem tölthető be.",
+          "loadErrorDescription": "Kérjük, frissítse ezt az oldalt, és próbálja meg újra.",
+          "refresh": "Frissítés",
+          "needsAttention": "Figyelmet igényel",
+          "desktopSettingsOnly": "Nyissa meg ezt az asztali beállításokból."
+        },
+        "scope": {
+          "title": "Üzleti Egészségügyi hatókör Üzlet Egészséges életmód",
+          "allMenus": "Minden menüben.",
+          "selectedMenu": "A kiválasztott menü.",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "Helyszínszintű nézet",
+          "inactiveMenu": "Inaktív menü",
+          "thisMenuOnly": "Csak ez a menü.",
+          "allMenusInLocation": "Az összes menü ezen a helyen.",
+          "thisMenuHelper": "A kérdések és a feladatok ezt a menüt használják.",
+          "allMenusHelper": "A kérdések és a tevékenységek az ezen a helyen található összes menüt használják.",
+          "dialogDescription": "Válassza ki az összes menüt vagy egy menüt a tevékenységhez és az ellenőrzésekhez.",
+          "all": "Minden",
+          "close": "Bezárás"
+        },
+        "locations": {
+          "title": "Helyszínek Telephelyek",
+          "loading": "Helyszínek betöltése...",
+          "empty": "Még nincs hely összefoglaló.",
+          "storeFallback": "Helyszín Elhelyezkedés {id}",
+          "checkedOn": "{date} ellenőrizve.",
+          "checkCount": "{count, plural, one {# ellenőrzés} other {# ellenőrzés}}",
+          "checksNeedReview": "{count, plural, one {# ügyfél-ellenőrzés felülvizsgálatra szorul.} other {# ügyfél-ellenőrzéseket felül kell vizsgálni.}}",
+          "statusReason": {
+            "stable": "Az ügyfelekkel kapcsolatos problémák nem igényelnek intézkedést.",
+            "watch": "Egy ügyféllel szembeni részlet figyelmet igényelhet.",
+            "needs_review": "Az ügyféllel szembeni részleteket felül kell vizsgálni.",
+            "insufficient_data": "Több ügyféltevékenységre van szükség ahhoz, hogy egy ellenőrzés hasznos legyen.",
+            "stale": "Ezt a helyet friss ellenőrzésnek kell alávetni.",
+            "not_ready": "Készül az első helyszínellenőrzés, a városi önkormányzat is elkezdte a munkát."
+          }
+        },
+        "assistant": {
+          "title": "Üzleti egészségügy kérdése",
+          "askShort": "Kérdezze meg",
+          "englishOnlyTitle": "A kérdések jelenleg angol nyelven érhetők el.",
+          "englishOnlyDescription": "Az állapot és az ellenőrzések honosításra kerültek. Váltson angolra, ha kérdéseket szeretne feltenni a Business Health szolgáltatással kapcsolatban.",
+          "notReady": "A Business Health a legutóbbi ellenőrzés befejezése után fog válaszolni, és az Ön kérdéseire is válaszolni fog.",
+          "suggestedUnavailable": "A javasolt kérdések jelenleg nem érhetők el.",
+          "freeTextUnavailable": "Az ingyenes szöveges kérdések jelenleg nem érhetők el.",
+          "answerError": "Az üzleti egészség nem tudott erre válaszolni.",
+          "suggestedQuestions": "Javasolt kérdések",
+          "followUps": "A következő kérdést megkérdezheti.",
+          "you": "Önök",
+          "empty": "Válasszon egy kérdést vagy kérdezze meg üzleti tevékenységét.",
+          "placeholderReady": "Kérdezzen a mai napról, a héten, az étlapon szereplő figyelmeztetésekről vagy a következő ellenőrzésekről.",
+          "placeholderMobile": "Kérdezzen a mai vagy az idei hétről.",
+          "placeholderPending": "A legutóbbi ellenőrzés után elérhető.",
+          "send": "Kérdések küldése",
+          "cachedFacts": "A gyorsítótárazott MenuList üzleti tények alapján.",
+          "questions": {
+            "checks": "Mit kell ellenőrizni?",
+            "today_stats": "Hogy megy a nap?",
+            "this_week_stats": "Mi történt a héten?",
+            "top_item": "Melyik elem vonzza a figyelmet?",
+            "last_week_stats": "Mi történt a múlt héten?",
+            "this_month_stats": "Milyen ez a hónap?",
+            "last_month_stats": "Mi történt a múlt hónapban?",
+            "public_menu_status": "Jól működik a nyilvános menü?",
+            "profile_status": "Hiánytalan a céges profilom?",
+            "feedback_reviews": "Van-e ellenőrizni kívánt vendégvisszajelzés?",
+            "feedback_recent": "Mit mondanak a közelmúltban itt megszállt vendégek?",
+            "default": "Mit kell ellenőriznem a következőkben?"
+          }
+        },
+        "sources": {
+          "title": "Adatforrások Adatforrás:",
+          "menuProjects": "Menü projektek",
+          "ownerAnalytics": "Tulajdonosi tevékenység:",
+          "guestFeedback": "Vendég Feedback",
+          "storeSettings": "Üzleti beállítások",
+          "menuListData": "MenuList adatok",
+          "updatedOn": "Frissítve {date}",
+          "latest": "A rendelkezésre álló legfrissebb adatok"
+        },
+        "publicTruth": {
+          "title": "Hivatalos ügyfélforrás.",
+          "checking": "Ellenőrzés",
+          "checkingFacts": "A MenuList nyilvános tényeinek ellenőrzése...",
+          "checkedMenu": "Bejelölt menü: {name}",
+          "boundary": "A külső platformok a tulajdonos által jóváhagyottak maradnak. Az ellenőrzés az aktuális MenuList üzleti és menüadatok alapján történt.",
+          "boundaryShort": "A külső platformok tulajdonos által jóváhagyottak maradnak.",
+          "historyTitle": "A közinformáció története.",
+          "historyBoundary": "Csak a MenuList üzleti és menüadatait használja. A program nem keres külső oldalakat.",
+          "historyBoundaryShort": "MenuList csak tények. Nincsenek külső oldalak ellenőrizve.",
+          "refreshErrorTitle": "Az ügyfélforrás-ellenőrzés nem tudta frissíteni a fájlt.",
+          "refreshErrorDescription": "Az utolsó rendelkezésre álló MenuList tények még mindig alább láthatók.",
+          "historyRefreshError": "A nyilvános információs történelem nem tudta frissíteni.",
+          "historyLoadError": "A nyilvános információs történelem nem terhelhető.",
+          "historyErrorDescription": "A legutóbb mentett jelentés továbbra is megjelenik, ha elérhető.",
+          "notRun": "Nem fut",
+          "lastSaved": "Utoljára mentett {date}",
+          "noSavedReport": "Még nincs elmentett jelentés.",
+          "noSavedReportDescription": "Futtassa az ellenőrzést, hogy mentse az első jelentést erre a helyre.",
+          "downloadEnglishReport": "Töltse le az angol nyelvű jelentést.",
+          "downloadEnglishShort": "Angol nyelvű jelentés angolul",
+          "runCheck": "Futtasson ellenőrzést.",
+          "currentFix": "Jelenlegi javítási elem",
+          "nextFixes": "A következő nyilvános javítások",
+          "none": "None Nincsenek",
+          "attentionCount": "{count, plural, one {A(z) # elemet ellenőrizni kell.} other {# elem(ek) ellenőrzésére van szükség.}}",
+          "readyModuleCount": "Kész {count}/{total}",
+          "missingCount": "Hiányzik a {count}.",
+          "checkCount": "Ellenőrizze {count}",
+          "savedCount": "{count}/{total} mentve.",
+          "modulesReady": "{count}/{total} modul kész.",
+          "status": {
+            "ready": {
+              "label": "Kész!",
+              "message": "Az Ön hivatalos ügyfélforrása rendelkezik az alapokkal, amire az ügyfeleknek szükségük van."
+            },
+            "missing_basics": {
+              "label": "Elveszett alapok",
+              "message": "Az étlapok, nyitvatartási idők, árak, akciók vagy ügyfélkapcsolati adatok figyelmet igényelnek, mielőtt szélesebb körben megosztanák azokat."
+            },
+            "unclear": {
+              "label": "Ellenőrzésre szorul.",
+              "message": "A legtöbb alapvető dolog megvan, de egy vagy több nyilvános tény még ellenőrzésre szorul."
+            }
+          },
+          "metrics": {
+            "readyModules": "Kész modulok Készmodulok",
+            "missingFacts": "Hiányzó tények",
+            "checkedMenu": "Ellenőrzött menüpont.",
+            "savedReports": "Megtakarított jelentések"
+          },
+          "results": {
+            "present": "Kész!",
+            "missing": "Hiányzók:",
+            "unclear": "Ellenőrizze",
+            "not_applicable": "Nem szükséges",
+            "not_checked": "Nem ellenőrzött"
+          },
+          "moduleStatus": {
+            "ready": "Kész!",
+            "needs_attention": "Hiányzók:",
+            "check": "Ellenőrizze",
+            "not_checked": "Nem ellenőrzött"
+          },
+          "facts": {
+            "business_identity": "Üzleti név Cégnév",
+            "menu_or_service_source": "Menü vagy szolgáltatás lista.",
+            "prices": "árak",
+            "hours": "órák",
+            "location": "Helyszín Elhelyezkedés",
+            "contact": "Kapcsolat",
+            "customer_actions": "Ügyfél akciók",
+            "public_link": "Ügyfél link Ügyfelek linkje",
+            "photos": "Fényképek Fénynézetek",
+            "machine_readable_source": "Keresésbarát részletek Keresés-barát adatok"
+          },
+          "evidence": {
+            "owner_entered": "Ebben az ellenőrzésben szerepel.",
+            "owner_selected": "A tulajdonos által kiválasztott",
+            "source_text_hint": "A megadott forrásban található.",
+            "valid_public_url": "A nyilvános link formátum érvényes.",
+            "invalid_public_url": "A közbeszerzésnek korrekcióra van szüksége.",
+            "menulist_store": "Az aktuális MenuList üzleti beállítások ellenőrzése.",
+            "menulist_project": "A kiválasztott vagy alapértelmezett MenuList menü ellenőrizve.",
+            "menulist_summary": "Az aktuális MenuList menüösszefoglaló ellenőrzése befejeződött.",
+            "menulist_public_route": "Az aktuális MenuList ügyfélkapcsolati beállítások ellenőrzése.",
+            "menulist_index_gate": "Az aktuális MenuList nyilvános felderítési szabályok ellenőrzése.",
+            "not_provided": "Ez a tény hiányzik az aktuális MenuList adatokból.",
+            "not_checked": "Ezt a tényt nem lehetett biztonságosan ellenőrizni az aktuális MenuList adatok alapján.",
+            "priceNotLoaded": "A kiválasztott menü megnyitása egyszer, hogy MenuList ellenőrizhesse az árait."
+          },
+          "moduleEvidence": {
+            "ready": "A jelenlegi MenuList adatok azt mutatják, hogy ez a terület készen áll.",
+            "needs_attention": "A jelenlegi MenuList adat azt mutatja, hogy hiányzik a szükséges információ.",
+            "check": "Ellenőrizze ezt a területet, mielőtt az ügyfelek rábíznák magukat.",
+            "not_checked": "A MenuList nem tudta teljes mértékben ellenőrizni ezt a területet az aktuális adatokból."
+          },
+          "setupReason": {
+            "needs_attention": "Hiányoznak a szükséges, az ügyféllel szembeni információk.",
+            "check": "Ellenőrizze ezt, mielőtt az ügyfelek bíznak benne.",
+            "not_checked": "MenuList nem tudta ezt teljes mértékben ellenőrizni az aktuális adatok alapján."
+          },
+          "targetActions": {
+            "basic_settings": "Nyissa meg a cég adatait üzleti adatok megnyitása",
+            "domain_settings": "Ügyféllink megnyitása",
+            "hours_edit": "Nyitvatartási idő:",
+            "menu_tab": "Menü megnyitása",
+            "official_page": "Nyitott üzleti oldal megnyitása",
+            "presence_monitor": "Nyílt elhelyezés ellenőrzése.",
+            "share_tab": "Nyílt megosztási eszközök"
+          },
+          "actions": {
+            "openCustomerSource": "Nyílt ügyfélforrás.",
+            "openShareTools": "Nyílt megosztási eszközök",
+            "fixFact": "{fact} javítása"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "A közvélemény tájékoztatásának alapjai",
+              "description": "Cégnév, aktuális menü vagy szolgáltatásforrás, elérhetőség, műveletek és ügyfél link."
+            },
+            "business_facts_copy_pack": {
+              "title": "Újrafelhasználható üzleti adatok",
+              "description": "A személyzet újra felhasználhatja a nyilvános profilokban, válaszokban és ügyfélkapcsolati átadásokban szereplő aktuális tényeket."
+            },
+            "qr_link_health": {
+              "title": "QR link készségi állapota",
+              "description": "A QR és a nyomtatott elhelyezések aktuális ügyfélhivatkozása."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profil linkkonzisztencia",
+              "description": "Egy aktuális ügyfél link a közösségi profilokhoz és egyéb elhelyezésekhez."
+            },
+            "customer_link_preview": {
+              "title": "Ügyfél link előnézet megtekintése",
+              "description": "A legfontosabb tények, amelyeket az ügyfeleknek látniuk kell, mielőtt cselekednének."
+            },
+            "print_share_assets": {
+              "title": "A kellékek nyomtatása és megosztása",
+              "description": "A QR poszterek, kártyák és képek megosztásához jelenleg elérhető a kapcsolat."
+            },
+            "menu_service_readability": {
+              "title": "A menü vagy a szolgáltatás áttekinthetősége",
+              "description": "Kategóriák, termékek vagy szolgáltatások és árak a kiválasztott menüben."
+            },
+            "price_availability_gap": {
+              "title": "Ár és elérhetőség átláthatósága.",
+              "description": "Az árak, változatok, elfogyott állapot és a rendelkezésre állás az ügyfelek számára látható."
+            },
+            "menu_pdf_cleanup": {
+              "title": "A régi PDF helyettesítése.",
+              "description": "Egy aktuális MenuList forrás és ügyfél link, amely helyettesítheti a régi PDF-eket."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp művelet",
+              "description": "Egy tiszta WhatsApp vagy alternatív ügyfélkapcsolati művelet."
+            },
+            "hours_readiness": {
+              "title": "Készenléti idő órákban",
+              "description": "Rendszeres nyitvatartás, amire az ügyfelek számíthatnak."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp válasza tényeket tartalmaz.",
+              "description": "Aktuális menü, nyitvatartási idő, elérhetőség és link információk a személyzet válaszaihoz."
+            },
+            "photo_visual_identity": {
+              "title": "Fotók és vizuális arculatok készítése.",
+              "description": "Egy logó, borító, üzleti fotó vagy termék- és szolgáltatási vizuális elemek."
+            },
+            "customer_question_coverage": {
+              "title": "Gyakori ügyfélkérdések",
+              "description": "Egyértelmű tények az ajánlathoz, nyitvatartási időhöz, árhoz, helyhez, elérhetőséghez és a következő lépéshez."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Újrafelhasználható ügyfélválaszok",
+              "description": "A személyzet újra felhasználhatja az aktuális tényeket, amikor a vásárlók gyakori kérdéseket tesznek fel."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Foglalási és érdeklődési készség.",
+              "description": "Egyértelmű útvonal a megrendeléshez, foglaláshoz, telefonáláshoz, üzenetküldéshez, árajánlat kéréshez vagy látogatáshoz."
+            },
+            "google_profile_handoff": {
+              "title": "Google profil linkje",
+              "description": "Az aktuális ügyfél linkje elő van készítve a Google Üzleti profilhoz."
+            },
+            "menu_freshness": {
+              "title": "Az étlapok frissessége",
+              "description": "A legutóbbi menüfrissítések, amikor az árak, a termékek vagy a rendelkezésre állás megváltozott."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafikonok",
+        "description": "Az irányítópulton megjelenő vizuális összefoglaló ugyanazon elszámolt tevékenységről.",
+        "ranges": {
+          "days7": "7 nap",
+          "days30": "30 nap"
+        },
+        "metrics": {
+          "menu_activity": "Menü aktivitás",
+          "customer_actions": "Ügyfél akciók",
+          "search_demand": "Keresési",
+          "item_interest": "Tárgy érdeklődés",
+          "unavailable_demand": "Elfogadhatatlan igény",
+          "missing_searches": "Hiányzó keresések"
+        },
+        "trend": {
+          "summary": "Trendösszefoglaló",
+          "updatedAfterClose": "Az áruház napjának zárása után frissítve.",
+          "status": {
+            "up": "magasabb",
+            "down": "Alsó hátsó lábszár",
+            "stable": "Stabil",
+            "not_enough_data": "Nincs elég történelem."
+          },
+          "period": {
+            "week": "Heti ellenőrzés:",
+            "month": "havi ellenőrzés"
+          },
+          "shortPeriod": {
+            "week": "hetek",
+            "month": "hónap"
+          },
+          "needsMoreDays": "Több, kiegyensúlyozottabb napra van szüksége.",
+          "versus": "{current} kontra {previous}",
+          "messages": {
+            "up": "{metric} magasabb a {period} ellenőrzésnél.",
+            "down": "{metric} kisebb ennél a {period} ellenőrzésnél.",
+            "stable": "{metric} stabil a {period} ellenőrzéshez.",
+            "not_enough_data": "Nincs elég kiegyenlített {metric} előzmény ehhez a {period} ellenőrzéshez."
+          },
+          "change": {
+            "gathering": "{period}: összegyűjtés folyamatban.",
+            "newActivity": "{period}: új tevékenység",
+            "steady": "{period}: stabil",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Összehasonlító táblázatok Összegzési táblázat",
+          "description": "Heti és havi mozgás a rögzített napoktól."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menü trend",
+            "days7": "Az elmúlt 7 rendezett nap.",
+            "days30": "Az elmúlt 30 nap kiegyenlített napja."
+          },
+          "customerActions": {
+            "title": "Ügyfél akciók",
+            "description": "Mit érintett meg az ügyfél a menü megnyitása után?"
+          },
+          "sources": {
+            "title": "Honnan érkeztek az ügyfelek?",
+            "description": "Menülátogatások és akciómunkamenet-szám forrás szerinti bontásban"
+          },
+          "items": {
+            "title": "Legtöbbet érdeklő tételek:",
+            "description": "Azok az elemek, amelyeket a legtöbbször nyitottak meg vagy érintettek meg az ügyfelek."
+          },
+          "search": {
+            "title": "Keresési",
+            "description": "Amit az ügyfelek kerestek:"
+          },
+          "officialPage": {
+            "title": "Hivatalos honlap trend",
+            "description": "Nézetek és műveletek a hivatalos üzleti oldalról."
+          }
+        },
+        "legends": {
+          "visits": "látogatások",
+          "actionSessions": "Műveletmunkamenetek",
+          "views": "nézetek",
+          "taps": "Koppintások",
+          "noResult": "Nincs találat."
+        },
+        "empty": {
+          "default": "Ehhez a nézethez még nincsenek grafikon adatok.",
+          "menuActivity": "A menüaktivitás azután jelenik meg, hogy a vásárló megnyitotta a menüt.",
+          "customerActions": "Az ügyfélműveletek akkor jelennek meg, ha az ügyfelek felhívják a szolgáltatót, üzenetet küldenek, rendelnek, foglalnak vagy útbaigazítást kérnek.",
+          "customerActionsPeriod": "Még nem történt ügyféltevékenység ebben az időszakban.",
+          "searchDemand": "A keresési igény akkor jelenik meg, ha az ügyfelek a menükeresést használják.",
+          "itemInterest": "Az elemek iránti érdeklődés akkor jelenik meg, amikor az ügyfelek megnyitják a menüelemeket.",
+          "unavailableDemand": "A nem elérhető kereslet akkor jelenik meg, amikor az ügyfelek a nem elért termékekre koppintanak.",
+          "missingSearches": "A hiányzó keresések akkor jelennek meg, ha az ügyfelek keresést végeznek, de nem találnak egyezést.",
+          "sources": "A forrásadatok akkor jelennek meg, ha az ügyfelek linkekről, QR-ról vagy közösségi oldalakról érkeznek.",
+          "officialPage": "A hivatalos oldal tevékenysége azután jelenik meg, hogy az ügyfelek megnyitották a nyilvános vállalkozási oldalt."
+        },
+        "footer": {
+          "sameData": "Ugyanaz az irányítópult adatai.",
+          "noExtraTracking": "Nincs extra nyomkövetés.",
+          "settledAfterClose": "Az elszámolás a bolt napi vége után történik."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menü",
+          "viewsLabel": "Menünézetek",
+          "viewsTooltip": "Az ügyfelek által megnyitott étlapok száma.",
+          "thisMonthLabel": "A hónap menüje"
+        },
+        "product": {
+          "singular": "Katalógus",
+          "viewsLabel": "Katalógus nézetek",
+          "viewsTooltip": "Az ügyfelek által megnyitott katalógusok száma.",
+          "thisMonthLabel": "Az Ön katalógusa ebben a hónapban"
+        },
+        "service": {
+          "singular": "Szolgáltatások listája",
+          "viewsLabel": "Szolgáltatáslista nézetek",
+          "viewsTooltip": "Az ügyfelek által a szolgáltatáslistádon keresztül megnyitott alkalmak száma.",
+          "thisMonthLabel": "A hónapban igénybe vett szolgáltatások listája."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Figyelmet igényel",
+          "active": "A hivatalos ügyfélforrás aktív.",
+          "readyToPlace": "A hivatalos ügyfélforrás készen áll a helyszínre."
+        },
+        "description": {
+          "needsAttention": "Javítsa ki az étlapot, a nyitvatartási időt vagy az ügyféllinket, mielőtt széles körben megosztaná.",
+          "active": "Nincs szükség semmilyen műveletre. Ügyfelei egy forrásból használhatják az Ön jelenlegi nyilvános adatait.",
+          "readyToPlace": "Az ügyfélkapcsolat készen áll. Add it to Google, Instagram, WhatsApp, QR, vagy nyomtatni, hogy az ügyfelek használják a jelenlegi forrás."
+        },
+        "link": {
+          "ready": "Ügyfélkapcsolat kész",
+          "missing": "Hiányzik az ügyfél linkje."
+        },
+        "states": {
+          "set": "Beállítva",
+          "missing": "Hiányzók:",
+          "ready": "Kész!",
+          "notReady": "Nem áll készen.",
+          "live": "Élő",
+          "hidden": "Inaktív"
+        },
+        "tags": {
+          "menu": "Menü: {status}",
+          "hours": "Órák: {status}",
+          "customerLink": "Ügyfél link: {status}",
+          "link": "Hivatkozás: {status}",
+          "placed": "Elhelyezve: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Javítsa ki, amire figyelmet kell fordítani.",
+          "preview": "A nyilvános menü előnézete",
+          "share": "Megosztás menü"
+        },
+        "updated": {
+          "notUpdated": "Még nem frissítettük.",
+          "recently": "Nemrég frissítettek.",
+          "today": "Ma frissítve",
+          "yesterday": "Tegnap frissítve",
+          "daysAgo": "naprakész {count, plural, one {# nappal ezelőtt} other {# nappal ezelőtt}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Következő tulajdonosi művelet",
+        "open": "Megnyitás",
+        "placement": {
+          "notConfirmed": "Még nem erősítve meg.",
+          "today": "Ma megerősítették",
+          "yesterday": "Tegnap erősítették meg.",
+          "daysAgo": "Megerősített {count, plural, one {# nappal ezelőtt} other {# nappal ezelőtt}}"
+        },
+        "status": {
+          "ready": "Kész!",
+          "missing": "Hiányzók:",
+          "set": "Beállítva",
+          "live": "Élő",
+          "notLive": "Nem élni",
+          "confirmedCount": "{count}/{total} megerősítette a visszaigazolást.",
+          "on": "Be",
+          "off": "Ki",
+          "dailyChanges": "Napi változások",
+          "hoursException": "Idő kivételek",
+          "staffUse": "személyzet használata",
+          "menuPrices": "Menü ár",
+          "openCount": "{count, plural, one {# művelet megnyitása} other {A # műveletek megnyitása}}",
+          "stable": "Stabil"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Ügyfélkapcsolat beállítása",
+            "description": "Hozza létre az ügyfél linket, mielőtt megosztaná a QR-t, a munkatársak válaszait vagy a nyilvános profilokat."
+          },
+          "setHours": {
+            "label": "Állandó órák",
+            "description": "A nyilvános nyitott és zárt állapotot egyértelműen jelezni kell, mielőtt az ügyfelek meglátogatnák."
+          },
+          "publishMenu": {
+            "labelPublish": "Menü közzététele",
+            "labelOpen": "Menü megnyitása",
+            "descriptionVisible": "Az aktuális menü közzététele széles körű megosztás előtt.",
+            "descriptionHidden": "Tegye láthatóvá a menüt, mielőtt az ügyfelek rákattintanának a linkre."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Erősítse meg a link elhelyezését.",
+            "labelPlace": "Ügyfél link elhelyezése az oldalon",
+            "descriptionPlaced": "A Google, Instagram és WhatsApp tartományok ugyanarra a forrásra mutassanak.",
+            "descriptionUnplaced": "Adja hozzá ugyanazt az ügyfélhivatkozást a Google, Instagram WhatsApp és QR könyvtárhoz, majd nyomtassa ki."
+          },
+          "openPrivateFeedback": {
+            "label": "Privát visszajelzés megnyitása",
+            "description": "A vendégek által felvetett kérdések nyilvános értékelése előtt használja a privát visszajelzést."
+          },
+          "captureDailyChange": {
+            "label": "Mondja el MenuList-nak, mi változott.",
+            "description": "Mondd el MenuList-nak, hogy mi változott ma és hagyd jóvá az előkészített menükártyát."
+          },
+          "setTodayStatus": {
+            "label": "A mai állapot beállítása",
+            "description": "A szett ma zárva van, későn nyit, a konyha zárva vagy különleges menüről értesítenek."
+          },
+          "prepareStaffHandoff": {
+            "label": "Készítse elő a személyzet átadásának feltételeit.",
+            "description": "Adja meg a személyzetnek a menü linket, QR-t és az ügyfél válaszvonalait egy helyen."
+          },
+          "updatePrices": {
+            "label": "Árak frissítése",
+            "description": "Használja a Menu Managert az árváltozásokhoz, majd hagyja jóvá közzététel előtt."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menü beállítása",
+        "complete": "A menü beállítása teljes.",
+        "ready": "A menübeállítás készen áll.",
+        "actions": {
+          "openMenu": "Menü megnyitása",
+          "createMenu": "Menü létrehozása",
+          "reviewDetails": "Részletek ellenőrzése",
+          "publishMenu": "Menü közzététele",
+          "openSharingTools": "Nyílt megosztási eszközök",
+          "prepareDescriptions": "Készítsen leírásokat.",
+          "addImages": "Hozzáadása képek",
+          "reviewLanguageText": "Ellenőrizze a szöveget a megfelelő nyelven.",
+          "openMenuCheck": "Nyitott menü ellenőrzés",
+          "updatePublicLinks": "Nyilvános linkek frissítése",
+          "addPublicPhoto": "Nyilvános fénykép hozzáadása"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Hozzáadott forrás:",
+            "doneDescription": "A menü forrása összekapcsolt.",
+            "nextDescription": "Adjon hozzá egy menüfotót, PDF-t, linket vagy indítsa el manuálisan."
+          },
+          "menuImported": {
+            "label": "Importált menü",
+            "doneDescription": "{count, plural, one {# látható elem található.} other {# látható elem található.}}",
+            "nextDescription": "Menüpontok importálása vagy hozzáadása."
+          },
+          "keyDetailsChecked": {
+            "label": "A kulcsfontosságú részletek ellenőrzése",
+            "doneDescription": "Az árak és a kulcsmenü részletek egyértelműek.",
+            "nextDescription": "Ellenőrizze az árakat és a legfontosabb részleteket közzététel előtt."
+          },
+          "menuPublished": {
+            "label": "Megjelent a menü.",
+            "doneDescription": "A nyilvános menüt közzétették.",
+            "nextDescription": "Közzététel, amikor az étlapot készen áll a vendégek számára."
+          },
+          "linkPlaced": {
+            "label": "Link elhelyezve.",
+            "readyLabel": "Link kész",
+            "doneDescription": "A hivatalos link készen áll az ügyfelek számára.",
+            "progressDescription": "{count} a(z) {total} elhelyezési műveletből kész.",
+            "nextDescription": "A menü közzététele után nyissa meg a megosztási eszközöket, majd kattintson a Megosztás gombra."
+          },
+          "descriptionsReady": {
+            "label": "Leírás kész",
+            "doneDescription": "A látható elemekhez leírások tartoznak.",
+            "nextDescription": "Készítsen leírásokat egyértelműbb menüelemekhez."
+          },
+          "imagesReady": {
+            "label": "Képek készen",
+            "doneDescription": "A látható elemek képekkel vannak ellátva.",
+            "nextDescription": "Adjon hozzá vagy generáljon elemképeket, ha szükséges."
+          },
+          "translationsReady": {
+            "label": "Fordítások készen állnak.",
+            "doneDescription": "A kiválasztott menü nyelvek teljesek.",
+            "nextDescription": "Tekintse át a kiválasztott menünyelveket."
+          },
+          "publicLinksAdded": {
+            "label": "Nyilvános linkek hozzáadása.",
+            "doneDescription": "Nyilvános tevékenység vagy szociális kapcsolatok állnak rendelkezésre.",
+            "nextDescription": "Adjon hozzá hasznos nyilvános linkeket a vállalkozás oldalához."
+          },
+          "publicPhotoAdded": {
+            "label": "Nyilvános fénykép hozzáadva.",
+            "doneDescription": "Egy nyilvános fotó áll rendelkezésre.",
+            "nextDescription": "Adjon hozzá egy borítót, logót vagy nyilvános fotót, amikor készen áll."
+          }
+        }
       }
     }
   },
@@ -1584,7 +2444,7 @@
         "spiceMedium": "Közepes",
         "spiceHot": "Forró",
         "spiceVeryHot": "Nagyon meleg",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 15 perc min.",
         "hoursShort": "{count} óra",
         "calories": "{count} kal",
         "protein": "Fehérje {value}g",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Még nincs számlázási előzmény.",
     "perMonth": "/hónap",
     "contactUs": "Lépjen kapcsolatba velünk!"
+  },
+  "StarterActivation": {
+    "activeTitle": "Az Ön menüje online",
+    "endingSoonTitle": "Tartsa online menüjét",
+    "publicMenuQrActive": "Nyilvános menüje és QR kódja aktív.",
+    "activeRemaining": "A menü elérése aktív.",
+    "daysRemaining": "{days, plural, one {Válasszon egy tervet # napon belül, hogy az étlap online maradjon.} other {Válasszon egy tervet # napon belül, hogy az étlap online maradjon.}}",
+    "sharingComplete": "A megosztás beállítása befejeződött.",
+    "sharingProgress": "{target, number}/{count, number} megosztási lépés befejeződött.",
+    "evidenceRecorded": "Automatikusan rögzítve: {systemCount, number}. Ön által megerősített: {ownerCount, number}.",
+    "evidenceEmpty": "Másolja vagy ossza meg a menü hivatkozását, töltse le a QR kódját, vagy ellenőrizze, hogy hol helyezte el.",
+    "keepLiveAction": "Tartsa online menüjét",
+    "noSubscriptionDescription": "Válasszon egy tervet a menüfrissítések és az ügyféloldalak elérhetővé tételéhez.",
+    "choosePlanDescription": "Menüje elmentve. Válasszon egy csomagot, hogy online és naprakészen tartsa."
   },
   "Transactions": {
     "title": "Tranzakciós előzmények Tranzakcijai előzmény",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobilalkalmazás",
     "subscribeTitle": "Feliratkozás a Get Started hírlevélre",
     "subscribeDescription": "Válasszon egy csomagot, és kezdje el létrehozni digitális étlapot és kezelni vállalkozását.",
-    "viewPlans": "Tervek megtekintése Tervek megnézése"
+    "viewPlans": "Tervek megtekintése Tervek megnézése",
+    "returnToMobile": "Az asztali verziót nézi. Vissza a mobilverzióhoz."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Kódok Kódok",

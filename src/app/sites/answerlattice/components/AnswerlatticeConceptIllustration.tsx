@@ -41,7 +41,7 @@ const CONCEPT_COPY: Record<AnswerlatticeConceptIllustrationVariant, {
     'positioning-boundary': {
         eyebrow: 'Category boundary',
         title: 'Reviewed answers sit between tools.',
-        description: 'AnswerLattice is not the chatbot, helpdesk, or docs CMS. It governs the answers those surfaces depend on.',
+        description: 'AnswerLattice is not the chatbot, helpdesk, or docs CMS. It keeps the answers used by your widget, help center, and future AI agents reviewed and current.',
     },
 };
 
@@ -58,8 +58,8 @@ const MOBILE_STEPS: Record<AnswerlatticeConceptIllustrationVariant, Array<{ titl
     ],
     'source-to-answer': [
         { title: 'Add sources', detail: 'Docs, tickets, releases, screenshots, recordings, notes, and feedback enter as evidence.' },
-        { title: 'Approve answers', detail: 'AnswerLattice keeps reviewed support truth in the middle.' },
-        { title: 'Serve support', detail: 'Widget, hosted help, and the review queue use that approved truth.' },
+        { title: 'Approve answers', detail: 'AnswerLattice keeps reviewed support knowledge in the middle.' },
+        { title: 'Serve support', detail: 'Widget, hosted help, and the review queue use those approved answers.' },
     ],
     'governance-loop': [
         { title: 'Fallback appears', detail: 'A missing answer becomes visible support work.' },
@@ -68,7 +68,7 @@ const MOBILE_STEPS: Record<AnswerlatticeConceptIllustrationVariant, Array<{ titl
     ],
     'positioning-boundary': [
         { title: 'Other tools remain tools', detail: 'Chatbots, helpdesks, docs, and tickets keep their jobs.' },
-        { title: 'Approved answers live here', detail: 'AnswerLattice keeps the support truth they depend on.' },
+        { title: 'Approved answers live here', detail: 'AnswerLattice keeps the support knowledge they depend on reviewed.' },
         { title: 'No replacement claim', detail: 'It works with support tools instead of pretending to be all of them.' },
     ],
 };
@@ -283,7 +283,7 @@ function SourceToAnswer() {
             <rect x="388" y="150" width="174" height="220" rx="32" fill="rgba(45,212,191,0.13)" stroke="rgba(94,234,212,0.50)" strokeWidth="1.8" />
             <circle cx="475" cy="220" r="38" fill="rgba(45,212,191,0.18)" stroke="rgba(94,234,212,0.42)" strokeWidth="1.5" />
             <text x="437" y="226" fill="#ecfeff" fontSize="24" fontWeight="900">AL</text>
-            <text x="422" y="284" fill="#ecfeff" fontSize="19" fontWeight="850">Governed</text>
+            <text x="422" y="284" fill="#ecfeff" fontSize="19" fontWeight="850">Reviewed</text>
             <text x="426" y="314" fill="#a7f3d0" fontSize="16" fontWeight="700">answer layer</text>
             <Arrow d="M576 260 C620 260 638 260 678 260" />
             <Card x={664} y={140} width={148} height={76} title="Widget" lines={['page answer']} tone="teal" />
@@ -305,7 +305,7 @@ function GovernanceLoop() {
             <Arrow d="M698 292 C664 354 590 382 522 382" />
             <Arrow d="M338 382 C274 374 210 334 172 292" />
             <rect x="330" y="222" width="200" height="74" rx="24" fill="rgba(45,212,191,0.12)" stroke="rgba(94,234,212,0.48)" strokeWidth="1.7" />
-            <text x="374" y="254" fill="#ecfeff" fontSize="20" fontWeight="850">Canonical first</text>
+            <text x="374" y="254" fill="#ecfeff" fontSize="20" fontWeight="850">Approved first</text>
             <text x="386" y="280" fill="#a7f3d0" fontSize="15" fontWeight="700">no autopublish</text>
         </Shell>
     );
@@ -325,7 +325,7 @@ function PositioningBoundary() {
             <rect x="342" y="204" width="176" height="128" rx="30" fill="rgba(45,212,191,0.14)" stroke="rgba(94,234,212,0.52)" strokeWidth="1.8" />
             <text x="382" y="250" fill="#ecfeff" fontSize="22" fontWeight="900">Answer</text>
             <text x="382" y="278" fill="#ecfeff" fontSize="22" fontWeight="900">review</text>
-            <text x="380" y="306" fill="#a7f3d0" fontSize="15" fontWeight="700">governed layer</text>
+            <text x="380" y="306" fill="#a7f3d0" fontSize="15" fontWeight="700">reviewed layer</text>
             <Pill x={298} y={388} label="Works with support tools" tone="teal" width={264} />
         </Shell>
     );

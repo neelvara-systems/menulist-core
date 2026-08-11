@@ -1,11 +1,15 @@
 # Videos - One Link Everywhere Reel
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; verified owner-placement captures pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 8.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -31,6 +35,15 @@ Required boundaries:
 - Keep external surfaces framed as owner-placed links, not automatic external-platform updates.
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
+
+## Market Role And Asset Gate
+
+- **Market role:** Product-positioning reel that expands MenuList beyond a QR-menu destination.
+- **Opening contract:** Contrast sending files with placing one approved link.
+- **First payoff:** The same current MenuList page opens from owner-placed surfaces.
+- **Asset gate:** Approved link plus accurate QR, print, website, WhatsApp-reply, Instagram-bio, and packaging placement mockups.
+- **Claim gate:** External placements are manual owner choices; no synchronization or platform-management claim.
+- **Native adaptation:** `9:16` is the master; use a vertical sequence rather than a crowded radial diagram.
 
 ## Video 8 - One Link Everywhere Reel
 
@@ -72,19 +85,19 @@ The viewer should feel: "I can stop sending files and place one trusted link."
 1. Hook: Stop sending menu files.
 2. Problem: Files and links spread across channels.
 3. Product entry: One approved customer link.
-4. Proof: WhatsApp, Instagram bio, QR, table card, packaging, website.
+4. Proof: Owner places the link in WhatsApp replies, Instagram bio, QR, table card, packaging, and website.
 5. Outcome: Approved list stays behind those placements.
-6. CTA: Put one trusted customer link online.
+6. Close: MenuList identity and `menulist.ai`; companion CTA is `Put one trusted customer link online`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:03 | 3s | Menu files in chat and downloads | Phone screen clutter | Stop sending menu files. | Stop sending menu files. | Files scatter outward | Show clutter briefly | WhatsApp/PDF mock |
-| 0:03-0:07 | 4s | One MenuList customer link appears | Link card centered | Put one approved customer link where customers look. | One approved customer link. | Link card replaces files | Make link the hero | Customer link card |
-| 0:07-0:13 | 6s | WhatsApp, Instagram bio, QR, table card, packaging, website placement | Rapid placement montage | Use it in WhatsApp replies, Instagram bio, QR, table cards, packaging, and your website. | WhatsApp. Instagram. QR. Print. Website. | Placement cards fan out | Owner-placed surfaces only | Channel mockups |
-| 0:13-0:18 | 5s | Each placement opens same current customer page | Split screen converges to MenuList page | Menu, prices, hours, directions, and actions stay together. | One approved list. Every customer link. | Surfaces converge to customer page | Product proof | Customer page |
-| 0:18-0:20 | 2s | CTA | End card |  | Put one trusted customer link online. | Fade | CTA | Logo, CTA |
+| 0:00-0:03 | 3s | PDF and image files repeat through a chat thread | Native vertical close-up with only two or three files | Stop sending menu files. | Stop sending menu files. | Files stack, then stop | Keep the clutter brief and legible | Fictional chat and menu files |
+| 0:03-0:06 | 3s | One MenuList customer link replaces the file stack | Link becomes the only focal object | Put one approved customer link where customers look. | One approved customer link. | Files collapse into the link | Make the product URL readable | Current customer link card |
+| 0:06-0:12 | 6s | Owner deliberately places the link in a WhatsApp reply, Instagram bio, QR card, packaging, and website | Vertical sequence, one placement per beat | Place it in WhatsApp replies, your Instagram bio, QR, print, packaging, or website. | Owner places the link. | Link copy -> placement -> next placement | Never show platform-side synchronization | Accurate owner-placement mockups |
+| 0:12-0:17 | 5s | Each placement opens the same current MenuList page | Match the same customer-page header across three launches | The current list, prices, hours, directions, and supported actions stay together. | One approved list. Every customer link. | Placements resolve into one customer page | Product proof stays readable | Current customer page |
+| 0:17-0:20 | 3s | MenuList lockup, tagline, and readable URL | Clean identity close |  | MenuList / One approved customer link / menulist.ai | Settle and hold through encoded end | Companion CTA stays outside the MP4 | Approved lockup and URL |
 
 ### I. Full Voiceover Script
 
@@ -93,18 +106,18 @@ Stop sending menu files.
 
 Put one approved customer link where customers look.
 
-Use it in WhatsApp replies, Instagram bio, QR, table cards, packaging, and your website.
+Place it in WhatsApp replies, your Instagram bio, QR, print, packaging, or website.
 
-Menu, prices, hours, directions, and actions stay together.
+The current list, prices, hours, directions, and supported actions stay together.
 ```
 
 ### J. On-Screen Text List
 
 1. Stop sending menu files.
 2. One approved customer link.
-3. WhatsApp. Instagram. QR. Print. Website.
+3. Owner places the link.
 4. One approved list. Every customer link.
-5. Put one trusted customer link online.
+5. menulist.ai
 
 ### K. UI Screens Required
 
@@ -145,7 +158,8 @@ Use a clean rhythmic montage with light link-copy and tap sounds. Voiceover shou
 
 ### P. CTA
 
-Put one trusted customer link online.
+- Encoded close: `menulist.ai`.
+- Companion post/ad CTA: `Put one trusted customer link online`.
 
 ### Q. Conversion Contract
 

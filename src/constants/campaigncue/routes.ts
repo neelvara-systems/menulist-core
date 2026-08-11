@@ -1,3 +1,8 @@
+import {
+    getDeploymentStage,
+    getProductDeploymentTarget,
+    type DeploymentStage,
+} from "@constant/deploymentTargets";
 import { CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM } from "./product";
 
 export const CAMPAIGNCUE_API_BASE_PATH = "/api/campaigncue";
@@ -5,8 +10,11 @@ export const CAMPAIGNCUE_API_BASE_PATH = "/api/campaigncue";
 export const CAMPAIGNCUE_API_ROUTES = {
     ANALYTICS: `${CAMPAIGNCUE_API_BASE_PATH}/analytics`,
     ASSETS: `${CAMPAIGNCUE_API_BASE_PATH}/assets`,
+    ASSET_DOWNLOAD_TEMPLATE: `${CAMPAIGNCUE_API_BASE_PATH}/assets/[assetId]/download`,
     CAMPAIGN_ACTION_TEMPLATE: `${CAMPAIGNCUE_API_BASE_PATH}/campaigns/[campaignId]/actions`,
+    CAMPAIGN_EXPORT_ARCHIVE_TEMPLATE: `${CAMPAIGNCUE_API_BASE_PATH}/campaigns/[campaignId]/export-archive`,
     CAMPAIGNS: `${CAMPAIGNCUE_API_BASE_PATH}/campaigns`,
+    CAMPAIGN_VARIANTS: `${CAMPAIGNCUE_API_BASE_PATH}/campaigns/variants`,
     CUE_LAYERS_DESIGNS: `${CAMPAIGNCUE_API_BASE_PATH}/cue-layers/designs`,
     CUE_LAYERS_UPLOADS: `${CAMPAIGNCUE_API_BASE_PATH}/cue-layers/uploads`,
     DESIGN_CUE_TURNS: `${CAMPAIGNCUE_API_BASE_PATH}/design-cue/turns`,
@@ -20,6 +28,27 @@ export const CAMPAIGNCUE_API_ROUTES = {
 
 export function getCampaignCueCampaignActionApiPath(campaignId: string): string {
     return `${CAMPAIGNCUE_API_ROUTES.CAMPAIGNS}/${encodeURIComponent(campaignId)}/actions`;
+}
+
+export function getCampaignCueExportArchiveApiPath(campaignId: string): string {
+    return `${CAMPAIGNCUE_API_ROUTES.CAMPAIGNS}/${encodeURIComponent(campaignId)}/export-archive`;
+}
+
+export function getCampaignCueOfferPageApiPath(campaignId: string): string {
+    return `${CAMPAIGNCUE_API_ROUTES.CAMPAIGNS}/${encodeURIComponent(campaignId)}/offer-page`;
+}
+
+export function getCampaignCuePublicOfferPath(slug: string, localDevelopment = false): string {
+    const prefix = localDevelopment ? "/__campaigncue" : "";
+    return `${prefix}/offer/${encodeURIComponent(slug)}`;
+}
+
+export function getCampaignCuePublicOfferUrl(
+    slug: string,
+    stage: DeploymentStage = getDeploymentStage(),
+): string {
+    const target = getProductDeploymentTarget("campaigncue", stage);
+    return new URL(getCampaignCuePublicOfferPath(slug, stage === "local"), target.url).toString();
 }
 
 export function getCampaignCueAssetDownloadApiPath(assetId: string): string {

@@ -1391,6 +1391,20 @@
     "perMonth": "/month",
     "contactUs": "Contact Us"
   },
+  "StarterActivation": {
+    "activeTitle": "Your menu is online",
+    "endingSoonTitle": "Keep your menu online",
+    "publicMenuQrActive": "Your public menu and QR code are active.",
+    "activeRemaining": "Your menu access is active.",
+    "daysRemaining": "{days, plural, one {Choose a plan within # day to keep your menu online.} other {Choose a plan within # days to keep your menu online.}}",
+    "sharingComplete": "Your sharing setup is complete.",
+    "sharingProgress": "{count, number} of {target, number} sharing steps complete.",
+    "evidenceRecorded": "Recorded automatically: {systemCount, number}. Confirmed by you: {ownerCount, number}.",
+    "evidenceEmpty": "Copy or share the menu link, download its QR code, or confirm where you placed it.",
+    "keepLiveAction": "Keep your menu online",
+    "noSubscriptionDescription": "Choose a plan to keep menu updates and customer pages available.",
+    "choosePlanDescription": "Your menu is saved. Choose a plan to keep it online and up to date."
+  },
   "Transactions": {
     "title": "Transactions History",
     "subtitle": "Track menu enhancement activity, timing, and credit use.",
@@ -3299,7 +3313,8 @@
     "loadingMobileApp": "Mobile App",
     "subscribeTitle": "Subscribe to Get Started",
     "subscribeDescription": "Choose a plan to start creating your digital menu and managing your business.",
-    "viewPlans": "View Plans"
+    "viewPlans": "View Plans",
+    "returnToMobile": "You're viewing the desktop version. Return to mobile."
   },
   "Dashboard": {
     "title": "Dashboard",
@@ -3329,7 +3344,8 @@
         "daily": "Previous day",
         "weekly": "Last 7 Days",
         "monthly": "This Month",
-        "overall": "Overall"
+        "overall": "Overall",
+        "graph": "Graphs"
       },
       "today": {
         "noMenuActivityToday": "No menu activity yet today.",
@@ -3383,10 +3399,15 @@
       "empty": {
         "noActivityYesterday": "No activity recorded yesterday",
         "noAnalyticsYet": "No data yet. Your analytics will appear once customers start viewing.",
-        "noItemClicksYet": "No item clicks yet"
+        "noItemClicksYet": "No item clicks yet",
+        "lowActivityTitle": "Low activity",
+        "lowActivityDescription": "There was not enough activity to draw a useful conclusion for this period.",
+        "noWeeklyData": "No settled menu activity is available for the last 7 days yet.",
+        "noMonthlyData": "No settled menu activity is available for this month yet."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% vs last week"
+        "vsLastWeek": "{sign}{change}% vs last week",
+        "changeVsLastWeek": "{change} vs last week"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# day of activity recorded} other {# days of activity recorded}}"
@@ -3428,12 +3449,25 @@
         "waitingForFirstScan": "Waiting for first scan",
         "weeklyInsights": "Weekly Insights",
         "last4WeeksComparison": "Last 4 Weeks Comparison",
-        "historicalDataWillAppear": "Historical data will appear after a few weeks"
+        "historicalDataWillAppear": "Historical data will appear after a few weeks",
+        "statusMessages": {
+          "working": "Customers are using your current menu.",
+          "low_activity": "Customer activity is still building. Your current menu remains available.",
+          "no_data": "Activity will appear after customers start opening your menu."
+        }
       },
       "aiSummary": {
         "daily": "Previous day at a glance",
         "weekly": "This week at a glance",
-        "monthly": "This month in summary"
+        "monthly": "This month in summary",
+        "localized": {
+          "noActivity": "No settled customer activity was recorded for this period.",
+          "menuViews": "Customers opened the menu {count} times.",
+          "itemTaps": "Customers tapped menu items {count} times.",
+          "customerActions": "Customers completed {count} final actions.",
+          "searches": "Customers searched the menu {count} times.",
+          "unavailableInterest": "Unavailable items received {count} taps."
+        }
       },
       "actions": {
         "call": "Call",
@@ -3450,14 +3484,107 @@
         "proDescription": "Pro adds menu intelligence, owner action lists, and plain-language summaries from your menu activity.",
         "bestSourcePrefix": "Best source right now:",
         "bestSourceStats": " · {visits} visits · {rate}% action rate",
+        "bestSourceStatsFormatted": " · {visits} visits · {rate} action rate",
         "bestSourceMobile": "Best source right now: {source} · {visits} visits · {rate}% action rate",
+        "bestSourceMobileFormatted": "Best source right now: {source} · {visits} visits · {rate} action rate",
         "noActionNeeded": "No action needed. Menu state is stable.",
         "actionRateBySource": "Action rate by source",
         "sourceQualityTag": "{source}: {visits} visits · {sessions} action sessions · {rate}%",
         "sourceQualityTagCompact": "{source}: {visits} visits · {rate}%",
+        "sourceQualityTagFormatted": "{source}: {visits} visits · {sessions} action sessions · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} visits · {rate}",
         "markDone": "Mark as done",
         "markDoneSaved": "Marked as done. Results will update when the next analytics summary is ready.",
-        "markDoneFailed": "This action could not be marked done. Try again."
+        "markDoneFailed": "This action could not be marked done. Try again.",
+        "priorities": {
+          "high": "High priority",
+          "medium": "Medium priority",
+          "low": "Low priority"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Stable",
+            "message": "The available activity supports a clear menu check."
+          },
+          "watch": {
+            "label": "Keep watching",
+            "message": "Some activity may need another check before changing the menu."
+          },
+          "no_data": {
+            "label": "More data needed",
+            "message": "Wait for more settled customer activity before drawing a conclusion."
+          }
+        },
+        "localizedActions": {
+          "reason": "Based on the latest settled customer activity.",
+          "availability": {
+            "title": "Review item availability",
+            "description": "Check whether unavailable or hidden items should be restored or kept out of view.",
+            "action": "Review availability"
+          },
+          "customerActions": {
+            "title": "Review customer actions",
+            "description": "Check the menu details and links customers use before taking action.",
+            "action": "Review customer actions"
+          },
+          "details": {
+            "title": "Improve item details",
+            "description": "Review item names, options, descriptions, and images that may need clearer information.",
+            "action": "Review item details"
+          },
+          "general": {
+            "title": "Wait for a clearer signal",
+            "description": "Keep the current menu stable until more settled activity is available.",
+            "action": "Review later"
+          },
+          "menuOrder": {
+            "title": "Review menu order",
+            "description": "Check whether important items and categories are easy for customers to find.",
+            "action": "Review menu order"
+          },
+          "pricing": {
+            "title": "Review pricing",
+            "description": "Check the prices connected to the latest customer-interest signal.",
+            "action": "Review prices"
+          },
+          "search": {
+            "title": "Review customer searches",
+            "description": "Check searches that may not lead customers to a useful menu result.",
+            "action": "Review searches"
+          },
+          "source": {
+            "title": "Review customer entry sources",
+            "description": "Check whether public links and QR placements point customers to the current menu.",
+            "action": "Review public links"
+          },
+          "timing": {
+            "title": "Review menu timing",
+            "description": "Check whether timed categories and availability match when customers look for them.",
+            "action": "Review timing"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Marked done",
+            "message": "The result will be checked after more settled activity is available."
+          },
+          "improved": {
+            "label": "Improved",
+            "message": "The next settled check shows an improvement."
+          },
+          "no_clear_change": {
+            "label": "No clear change",
+            "message": "The next settled check did not show a clear change."
+          },
+          "not_enough_data": {
+            "label": "More data needed",
+            "message": "There is not enough settled activity to judge this change yet."
+          },
+          "pending": {
+            "label": "Pending check",
+            "message": "MenuList will check this after more settled activity is available."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menu Details",
@@ -3518,7 +3645,13 @@
         "searchTerm": "Search term",
         "noResultTerm": "No-result term",
         "languageStayedAfterSwitching": "{count} stayed after switching",
-        "filterRowDetail": "{taps} item taps - {searches} searches - {actions} actions"
+        "filterRowDetail": "{taps} item taps - {searches} searches - {actions} actions",
+        "itemStatus": {
+          "unavailableDemand": "{count} unavailable taps",
+          "strongItem": "{count} item taps",
+          "needsWork": "{count} views, no taps",
+          "gettingAttention": "{count} views"
+        }
       },
       "smartPicks": {
         "popularItems": "Popular Items",
@@ -3588,6 +3721,7 @@
       "customerApp": {
         "title": "Customer App",
         "couldNotLoad": "Could not load Customer App analytics",
+        "tryAgainLater": "Try again later.",
         "noInstallsYet": "No installs yet.",
         "noInstallsDescription": "Numbers appear here after customers start installing your menu app.",
         "mobileNoInstallsDescription": "No installs yet. Numbers appear here once customers start installing your menu app.",
@@ -3607,7 +3741,6 @@
         "shortcutBreakdown": "Shortcut breakdown",
         "installsByPlatform": "Installs by platform",
         "appStickiness": "App stickiness",
-        "returningOpens30d": "Returning opens (30d)",
         "avgOpensPerInstall": "Avg opens per install",
         "iosManualInstalls": "iOS manual installs",
         "shortcuts": {
@@ -3653,6 +3786,7 @@
       "googleListing": {
         "linkCopied": "Link copied",
         "couldNotCopy": "Could not copy link",
+        "couldNotOpen": "Could not open Google Business Profile",
         "markedUpdated": "Google listing marked as updated",
         "couldNotSave": "Could not save",
         "title": "Google listing",
@@ -3678,6 +3812,502 @@
         "riskyMessage": "Your hours may be outdated. Update them to show accurate open status to customers.",
         "brokenMessage": "Your hours are missing or invalid. Update them so customers can see when you're open."
       },
+      "sources": {
+        "copyLink": "Copied link",
+        "direct": "Direct",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menu kit",
+        "nativeShare": "Device share",
+        "obp": "Business page",
+        "other": "Other",
+        "qr": "QR code",
+        "shortcut": "App shortcut",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Business Health",
+        "open": "Open Business Health",
+        "today": "Today",
+        "latestActivity": "Latest activity",
+        "noActionNeeded": "No action needed",
+        "status": {
+          "stable": "Stable",
+          "watch": "Needs attention",
+          "needs_review": "Needs review",
+          "insufficient_data": "More data needed",
+          "stale": "Needs a fresh check",
+          "not_ready": "Getting ready"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# customer-facing detail needs review.} other {# customer-facing details need review.}}",
+          "stable": {
+            "headline": "Your public information is stable",
+            "message": "No customer-facing issue needs action in the latest check."
+          },
+          "watch": {
+            "headline": "A detail may need attention",
+            "message": "Review the suggested check before changing public information."
+          },
+          "needs_review": {
+            "headline": "Review customer-facing details",
+            "message": "One or more public details should be checked."
+          },
+          "insufficient_data": {
+            "headline": "More activity is needed",
+            "message": "Keep the current information stable while MenuList gathers a useful signal."
+          },
+          "stale": {
+            "headline": "Business Health needs a fresh check",
+            "message": "The last check is old. Your current public information remains unchanged."
+          },
+          "not_ready": {
+            "headline": "Business Health is getting ready",
+            "message": "The first store check will appear here when it is ready."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "title": "Menu source needs checking",
+            "action": "Check menu source",
+            "message": "No active public menu source was found. Check the menu before sharing it."
+          },
+          "low_latest_activity": {
+            "title": "Customer activity is low",
+            "action": "Check sharing links",
+            "message": "Customer activity is low. Check QR, Google, Instagram, WhatsApp, and website links."
+          },
+          "unavailable_item_taps": {
+            "title": "Unavailable items got attention",
+            "action": "Check unavailable items",
+            "message": "Customers showed interest in unavailable items. Restock them or keep them hidden."
+          },
+          "guest_feedback_needs_attention": {
+            "title": "Guest feedback needs checking",
+            "action": "Review guest feedback",
+            "message": "Guest feedback needs an owner check before public details are changed."
+          },
+          "default": {
+            "title": "A detail needs checking",
+            "action": "Review details",
+            "message": "A customer-facing detail needs an owner check."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# private feedback item needs checking.} other {# private feedback items need checking.}}",
+          "clear": "Private feedback is clear."
+        },
+        "freshness": {
+          "notReady": "Business Health is not real time. The first store check will show the data date here.",
+          "throughDate": "Uses data through {date}. Today may not be complete yet.",
+          "latest": "Uses the latest available MenuList data. Today may not be complete yet."
+        },
+        "periods": {
+          "today": "Today",
+          "yesterday": "Previous day",
+          "thisWeek": "This week",
+          "lastWeek": "Last week",
+          "thisMonth": "This month",
+          "lastMonth": "Last month",
+          "last7Days": "Last 7 days",
+          "last30Days": "Last 30 days",
+          "overall": "Overall"
+        },
+        "metrics": {
+          "menuViews": "Menu views",
+          "topDemand": "Top demand",
+          "topDemandDetail": "Promote: {count} {signal}",
+          "bestSource": "Best source",
+          "bestSourceDetail": "Update link: {count} visits"
+        },
+        "signals": {
+          "views": "views",
+          "clicks": "taps",
+          "attention": "attention signals"
+        },
+        "page": {
+          "description": "Daily business status and customer-facing checks.",
+          "latestCheck": "Latest check",
+          "loading": "Loading",
+          "loadingMessage": "Loading Business Health...",
+          "notReady": "Business Health is not ready yet.",
+          "loadErrorTitle": "Business Health could not load",
+          "loadErrorDescription": "Please refresh this page and try again.",
+          "refresh": "Refresh",
+          "needsAttention": "Needs attention",
+          "desktopSettingsOnly": "Open this from desktop settings."
+        },
+        "scope": {
+          "title": "Business Health scope",
+          "allMenus": "All menus",
+          "selectedMenu": "Selected menu",
+          "menuCount": "{count, plural, one {# menu in this location} other {# menus in this location}}",
+          "locationLevel": "Location-level view",
+          "inactiveMenu": "Inactive menu",
+          "thisMenuOnly": "This menu only",
+          "allMenusInLocation": "All menus in this location",
+          "thisMenuHelper": "Questions and activity use this menu.",
+          "allMenusHelper": "Questions and activity use all menus in this location.",
+          "dialogDescription": "Choose all menus or one menu for activity and checks.",
+          "all": "All",
+          "close": "Close"
+        },
+        "locations": {
+          "title": "Locations",
+          "loading": "Loading locations...",
+          "empty": "No location summary yet",
+          "storeFallback": "Location {id}",
+          "checkedOn": "Checked {date}",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# customer-facing check needs review.} other {# customer-facing checks need review.}}",
+          "statusReason": {
+            "stable": "No customer-facing issue needs action.",
+            "watch": "A customer-facing detail may need attention.",
+            "needs_review": "Customer-facing details need review.",
+            "insufficient_data": "More customer activity is needed for a useful check.",
+            "stale": "This location needs a fresh check.",
+            "not_ready": "The first location check is getting ready."
+          }
+        },
+        "assistant": {
+          "title": "Ask Business Health",
+          "askShort": "Ask",
+          "englishOnlyTitle": "Questions are currently available in English",
+          "englishOnlyDescription": "Your status and checks are localized. Switch the app language to English to ask Business Health questions.",
+          "notReady": "Business Health will answer after the latest check finishes.",
+          "suggestedUnavailable": "Suggested questions are not available right now.",
+          "freeTextUnavailable": "Free-text questions are not available right now.",
+          "answerError": "Business Health could not answer that.",
+          "suggestedQuestions": "Suggested questions",
+          "followUps": "You can ask next",
+          "you": "You",
+          "empty": "Choose a question or ask about your business.",
+          "placeholderReady": "Ask about today, this week, menu attention, or next checks",
+          "placeholderMobile": "Ask about today or this week",
+          "placeholderPending": "Available after the latest check",
+          "send": "Send question",
+          "cachedFacts": "Based on cached MenuList business facts",
+          "questions": {
+            "checks": "What needs checking?",
+            "today_stats": "How is today going?",
+            "this_week_stats": "What happened this week?",
+            "top_item": "Which item is getting attention?",
+            "last_week_stats": "What happened last week?",
+            "this_month_stats": "How is this month?",
+            "last_month_stats": "What happened last month?",
+            "public_menu_status": "Is my public menu okay?",
+            "profile_status": "Is my business profile complete?",
+            "feedback_reviews": "Any guest feedback to check?",
+            "feedback_recent": "What did guests say recently?",
+            "default": "What should I check next?"
+          }
+        },
+        "sources": {
+          "title": "Data sources",
+          "menuProjects": "Menu projects",
+          "ownerAnalytics": "Owner activity",
+          "guestFeedback": "Guest feedback",
+          "storeSettings": "Business settings",
+          "menuListData": "MenuList data",
+          "updatedOn": "Updated {date}",
+          "latest": "Latest available data"
+        },
+        "publicTruth": {
+          "title": "Official customer source",
+          "checking": "Checking",
+          "checkingFacts": "Checking MenuList public facts...",
+          "checkedMenu": "Checked menu: {name}",
+          "boundary": "Checked from current MenuList business and menu data. External platforms stay owner-confirmed.",
+          "boundaryShort": "External platforms stay owner-confirmed.",
+          "historyTitle": "Public information history",
+          "historyBoundary": "Uses MenuList business and menu facts only. No external sites are scanned.",
+          "historyBoundaryShort": "MenuList facts only. No external sites scanned.",
+          "refreshErrorTitle": "Customer-source check could not refresh",
+          "refreshErrorDescription": "The last available MenuList facts are still shown below.",
+          "historyRefreshError": "Public information history could not refresh.",
+          "historyLoadError": "Public information history could not load.",
+          "historyErrorDescription": "The last saved report is still shown when available.",
+          "notRun": "Not run",
+          "lastSaved": "Last saved {date}",
+          "noSavedReport": "No saved report yet",
+          "noSavedReportDescription": "Run the check to save the first report for this location.",
+          "downloadEnglishReport": "Download English report",
+          "downloadEnglishShort": "English report",
+          "runCheck": "Run check",
+          "currentFix": "Current fix item",
+          "nextFixes": "Next public fixes",
+          "none": "None",
+          "attentionCount": "{count, plural, one {# item needs checking} other {# items need checking}}",
+          "readyModuleCount": "Ready {count}/{total}",
+          "missingCount": "Missing {count}",
+          "checkCount": "Check {count}",
+          "savedCount": "Saved {count}/{total}",
+          "modulesReady": "{count}/{total} modules ready",
+          "status": {
+            "ready": {
+              "label": "Ready",
+              "message": "Your official customer source has the basics customers need."
+            },
+            "missing_basics": {
+              "label": "Missing basics",
+              "message": "Menu, hours, prices, actions, or customer-link details need attention before wider sharing."
+            },
+            "unclear": {
+              "label": "Needs checking",
+              "message": "Most basics are present, but one or more public facts still need checking."
+            }
+          },
+          "metrics": {
+            "readyModules": "Ready modules",
+            "missingFacts": "Missing facts",
+            "checkedMenu": "Checked menu",
+            "savedReports": "Saved reports"
+          },
+          "results": {
+            "present": "Ready",
+            "missing": "Missing",
+            "unclear": "Check",
+            "not_applicable": "Not needed",
+            "not_checked": "Not checked"
+          },
+          "moduleStatus": {
+            "ready": "Ready",
+            "needs_attention": "Missing",
+            "check": "Check",
+            "not_checked": "Not checked"
+          },
+          "facts": {
+            "business_identity": "Business name",
+            "menu_or_service_source": "Menu or service list",
+            "prices": "Prices",
+            "hours": "Hours",
+            "location": "Location",
+            "contact": "Contact",
+            "customer_actions": "Customer actions",
+            "public_link": "Customer link",
+            "photos": "Photos",
+            "machine_readable_source": "Search-friendly details"
+          },
+          "evidence": {
+            "owner_entered": "Entered in this check.",
+            "owner_selected": "Selected by the owner.",
+            "source_text_hint": "Found in the provided source.",
+            "valid_public_url": "The public link format is valid.",
+            "invalid_public_url": "The public link needs correction.",
+            "menulist_store": "Checked current MenuList business settings.",
+            "menulist_project": "Checked the selected or default MenuList menu.",
+            "menulist_summary": "Checked the current MenuList menu summary.",
+            "menulist_public_route": "Checked current MenuList customer-link settings.",
+            "menulist_index_gate": "Checked current MenuList public-discovery rules.",
+            "not_provided": "This fact is missing from current MenuList data.",
+            "not_checked": "This fact was not safely checked from current MenuList data.",
+            "priceNotLoaded": "Open the selected menu once so MenuList can check its prices."
+          },
+          "moduleEvidence": {
+            "ready": "Current MenuList data shows this area is ready.",
+            "needs_attention": "Current MenuList data shows required information is missing.",
+            "check": "Check this area before customers rely on it.",
+            "not_checked": "MenuList could not fully check this area from the current data."
+          },
+          "setupReason": {
+            "needs_attention": "Required customer-facing information is missing.",
+            "check": "Check this before customers rely on it.",
+            "not_checked": "MenuList could not fully check this from the current data."
+          },
+          "targetActions": {
+            "basic_settings": "Open business details",
+            "domain_settings": "Open customer link",
+            "hours_edit": "Open hours",
+            "menu_tab": "Open menu",
+            "official_page": "Open business page",
+            "presence_monitor": "Open placement check",
+            "share_tab": "Open share tools"
+          },
+          "actions": {
+            "openCustomerSource": "Open customer source",
+            "openShareTools": "Open sharing tools",
+            "fixFact": "Fix {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Public information basics",
+              "description": "Business name, current menu or service source, contact, actions, and customer link."
+            },
+            "business_facts_copy_pack": {
+              "title": "Reusable business details",
+              "description": "Current facts staff can reuse in public profiles, replies, and customer-link handoffs."
+            },
+            "qr_link_health": {
+              "title": "QR link readiness",
+              "description": "A current customer link for QR and printed placements."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profile link consistency",
+              "description": "One current customer link for social profiles and other placements."
+            },
+            "customer_link_preview": {
+              "title": "Customer link preview",
+              "description": "The main facts customers should see before they act."
+            },
+            "print_share_assets": {
+              "title": "Print and share assets",
+              "description": "Current-link readiness for QR posters, counter cards, and share images."
+            },
+            "menu_service_readability": {
+              "title": "Menu or service clarity",
+              "description": "Categories, items or services, and prices in the selected menu."
+            },
+            "price_availability_gap": {
+              "title": "Price and availability clarity",
+              "description": "Prices, variants, sold-out state, and availability shown to customers."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Old PDF replacement",
+              "description": "A current MenuList source and customer link that can replace old PDFs."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp action",
+              "description": "A clear WhatsApp or alternate customer contact action."
+            },
+            "hours_readiness": {
+              "title": "Hours readiness",
+              "description": "Regular hours customers can rely on."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp reply facts",
+              "description": "Current menu, hours, contact, and link facts for staff replies."
+            },
+            "photo_visual_identity": {
+              "title": "Photos and visual identity",
+              "description": "A logo, cover, business photo, or item and service visuals."
+            },
+            "customer_question_coverage": {
+              "title": "Common customer questions",
+              "description": "Clear facts for offer, hours, price, location, contact, and next action."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Reusable customer answers",
+              "description": "Current facts staff can reuse when customers ask common questions."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Booking and inquiry readiness",
+              "description": "A clear path to order, book, reserve, call, message, request a quote, or visit."
+            },
+            "google_profile_handoff": {
+              "title": "Google profile link",
+              "description": "The current customer link prepared for Google Business Profile."
+            },
+            "menu_freshness": {
+              "title": "Menu freshness",
+              "description": "A recent menu update when prices, items, or availability changed."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Graphs",
+        "description": "A visual summary from the same settled activity shown in the dashboard.",
+        "ranges": {
+          "days7": "7 days",
+          "days30": "30 days"
+        },
+        "metrics": {
+          "menu_activity": "Menu activity",
+          "customer_actions": "Customer actions",
+          "search_demand": "Search demand",
+          "item_interest": "Item interest",
+          "unavailable_demand": "Unavailable demand",
+          "missing_searches": "Missing searches"
+        },
+        "trend": {
+          "summary": "Trend summary",
+          "updatedAfterClose": "Updated after your store day closes.",
+          "status": {
+            "up": "Higher",
+            "down": "Lower",
+            "stable": "Steady",
+            "not_enough_data": "Not enough history"
+          },
+          "period": {
+            "week": "Week check",
+            "month": "Month check"
+          },
+          "shortPeriod": {
+            "week": "Week",
+            "month": "Month"
+          },
+          "needsMoreDays": "Needs more settled days",
+          "versus": "{current} vs {previous}",
+          "messages": {
+            "up": "{metric} is higher for this {period} check.",
+            "down": "{metric} is lower for this {period} check.",
+            "stable": "{metric} is steady for this {period} check.",
+            "not_enough_data": "There is not enough settled {metric} history for this {period} check."
+          },
+          "change": {
+            "gathering": "{period}: gathering",
+            "newActivity": "{period}: new activity",
+            "steady": "{period}: steady",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Comparison charts",
+          "description": "Week and month movement from settled days."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menu trend",
+            "days7": "Last 7 settled days",
+            "days30": "Last 30 settled days"
+          },
+          "customerActions": {
+            "title": "Customer actions",
+            "description": "What customers tapped after opening the menu"
+          },
+          "sources": {
+            "title": "Where customers came from",
+            "description": "Menu visits and action sessions by source"
+          },
+          "items": {
+            "title": "Top item interest",
+            "description": "Items customers opened or tapped most"
+          },
+          "search": {
+            "title": "Search demand",
+            "description": "What customers searched for"
+          },
+          "officialPage": {
+            "title": "Official page trend",
+            "description": "Views and actions from the Official Business Page"
+          }
+        },
+        "legends": {
+          "visits": "Visits",
+          "actionSessions": "Action sessions",
+          "views": "Views",
+          "taps": "Taps",
+          "noResult": "No result"
+        },
+        "empty": {
+          "default": "No graph data for this view yet.",
+          "menuActivity": "Menu activity will appear after customers open the menu.",
+          "customerActions": "Customer actions will appear after customers call, message, order, reserve, or ask for directions.",
+          "customerActionsPeriod": "No customer actions in this period yet.",
+          "searchDemand": "Search demand will appear after customers use menu search.",
+          "itemInterest": "Item interest will appear after customers open menu items.",
+          "unavailableDemand": "Unavailable demand will appear when customers tap unavailable items.",
+          "missingSearches": "Missing searches will appear when customers search but find no match.",
+          "sources": "Source details will appear after customers arrive from links, QR, or social pages.",
+          "officialPage": "Official page activity will appear after customers open the public business page."
+        },
+        "footer": {
+          "sameData": "Same dashboard data",
+          "noExtraTracking": "No extra tracking",
+          "settledAfterClose": "Settled after store day-end"
+        }
+      },
       "menuQuality": {
         "menuCheck": "Menu trust check",
         "checkedJustNow": "Checked just now",
@@ -3687,7 +4317,252 @@
         "reviewTopIssue": "Review the top issue",
         "repairMenu": "Repair Menu",
         "review": "Review",
-        "repair": "Repair"
+        "repair": "Repair",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# item is missing a description} other {# items are missing descriptions}}",
+            "ok": "All items have descriptions",
+            "help": "Descriptions help customers understand each offering."
+          },
+          "images": {
+            "warning": "{count, plural, one {# item is missing an image} other {# items are missing images}}",
+            "ok": "All items have images",
+            "help": "Images can help customers choose faster."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# category is missing an icon} other {# categories are missing icons}}",
+            "ok": "All categories have icons",
+            "help": "Icons make categories easier to scan."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# item is missing a price} other {# items are missing prices}}",
+            "ok": "All items have prices",
+            "help": "Customers compare prices before deciding."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# item is hidden from customers} other {# items are hidden from customers}}",
+            "ok": "No items are hidden",
+            "help": "Hidden items do not appear on the public menu."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# price needs review} other {# prices need review}}",
+            "ok": "Prices are within the expected range",
+            "help": "MenuList compares single-item prices inside the same category. Mark an intentional price as reviewed."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# item is missing translations} other {# items are missing translations}}",
+            "ok": "All visible items are translated",
+            "help": "Some items are incomplete in selected menu languages."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menu detail is missing translations} other {# menu details are missing translations}}",
+            "ok": "Menu details are translated",
+            "help": "The menu name, description, or notes are incomplete in selected menu languages."
+          }
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "menu",
+          "viewsLabel": "Menu views",
+          "viewsTooltip": "Number of times customers opened your menu",
+          "thisMonthLabel": "Your menu this month"
+        },
+        "product": {
+          "singular": "catalog",
+          "viewsLabel": "Catalog views",
+          "viewsTooltip": "Number of times customers opened your catalog",
+          "thisMonthLabel": "Your catalog this month"
+        },
+        "service": {
+          "singular": "service list",
+          "viewsLabel": "Service-list views",
+          "viewsTooltip": "Number of times customers opened your service list",
+          "thisMonthLabel": "Your service list this month"
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Needs attention",
+          "active": "Official customer source is active",
+          "readyToPlace": "Official customer source is ready to place"
+        },
+        "description": {
+          "needsAttention": "Fix the menu, hours, or customer link before sharing it widely.",
+          "active": "No action needed. Customers can use your current public details from one source.",
+          "readyToPlace": "Your customer link is ready. Add it to Google, Instagram, WhatsApp, QR, or print so customers use the current source."
+        },
+        "link": {
+          "ready": "Customer link ready",
+          "missing": "Customer link missing"
+        },
+        "states": {
+          "set": "Set",
+          "missing": "Missing",
+          "ready": "Ready",
+          "notReady": "Not ready",
+          "live": "Live",
+          "hidden": "Hidden"
+        },
+        "tags": {
+          "menu": "Menu: {status}",
+          "hours": "Hours: {status}",
+          "customerLink": "Customer link: {status}",
+          "link": "Link: {status}",
+          "placed": "Placed: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Fix what needs attention",
+          "preview": "Preview public menu",
+          "share": "Share menu"
+        },
+        "updated": {
+          "notUpdated": "Not updated yet",
+          "recently": "Recently updated",
+          "today": "Updated today",
+          "yesterday": "Updated yesterday",
+          "daysAgo": "Updated {count, plural, one {# day ago} other {# days ago}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Next owner action",
+        "open": "Open",
+        "placement": {
+          "notConfirmed": "Not confirmed yet",
+          "today": "Confirmed today",
+          "yesterday": "Confirmed yesterday",
+          "daysAgo": "Confirmed {count, plural, one {# day ago} other {# days ago}}"
+        },
+        "status": {
+          "ready": "Ready",
+          "missing": "Missing",
+          "set": "Set",
+          "live": "Live",
+          "notLive": "Not live",
+          "confirmedCount": "{count}/{total} confirmed",
+          "on": "On",
+          "off": "Off",
+          "dailyChanges": "Daily changes",
+          "hoursException": "Hours exception",
+          "staffUse": "Staff use",
+          "menuPrices": "Menu prices",
+          "openCount": "{count, plural, one {# action open} other {# actions open}}",
+          "stable": "Stable"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Set customer link",
+            "description": "Create the customer link before sharing QR, staff replies, or public profiles."
+          },
+          "setHours": {
+            "label": "Set hours",
+            "description": "Keep public open and closed status clear before customers visit."
+          },
+          "publishMenu": {
+            "labelPublish": "Publish menu",
+            "labelOpen": "Open menu",
+            "descriptionVisible": "Publish the current menu before wide sharing.",
+            "descriptionHidden": "Make the menu visible before customers use the link."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Confirm link placement",
+            "labelPlace": "Place customer link",
+            "descriptionPlaced": "Keep Google, Instagram, and WhatsApp pointing to the same source.",
+            "descriptionUnplaced": "Add the same customer link to Google, Instagram, WhatsApp, QR, and print."
+          },
+          "openPrivateFeedback": {
+            "label": "Open private feedback",
+            "description": "Use private feedback before guest issues turn into public reviews."
+          },
+          "captureDailyChange": {
+            "label": "Tell MenuList what changed",
+            "description": "Tell MenuList what changed today and approve the prepared menu card."
+          },
+          "setTodayStatus": {
+            "label": "Set today's status",
+            "description": "Set closed today, opening late, kitchen closed, or a special-menu notice."
+          },
+          "prepareStaffHandoff": {
+            "label": "Prepare staff handoff",
+            "description": "Give staff the menu link, QR, and customer reply lines from one place."
+          },
+          "updatePrices": {
+            "label": "Update prices",
+            "description": "Use Menu Manager for price changes, then approve before publishing."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menu setup",
+        "complete": "Menu setup is complete.",
+        "ready": "Menu setup is ready.",
+        "actions": {
+          "openMenu": "Open menu",
+          "createMenu": "Create menu",
+          "reviewDetails": "Review details",
+          "publishMenu": "Publish menu",
+          "openSharingTools": "Open sharing tools",
+          "prepareDescriptions": "Prepare descriptions",
+          "addImages": "Add images",
+          "reviewLanguageText": "Review language text",
+          "openMenuCheck": "Open menu check",
+          "updatePublicLinks": "Update public links",
+          "addPublicPhoto": "Add public photo"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Source added",
+            "doneDescription": "Menu source is connected.",
+            "nextDescription": "Add a menu photo, PDF, link, or start manually."
+          },
+          "menuImported": {
+            "label": "Menu imported",
+            "doneDescription": "{count, plural, one {# visible item found.} other {# visible items found.}}",
+            "nextDescription": "Import or add menu items."
+          },
+          "keyDetailsChecked": {
+            "label": "Key details checked",
+            "doneDescription": "Prices and key menu details are clear.",
+            "nextDescription": "Check prices and key details before publishing."
+          },
+          "menuPublished": {
+            "label": "Menu published",
+            "doneDescription": "The public menu has been published.",
+            "nextDescription": "Publish when the menu is ready for customers."
+          },
+          "linkPlaced": {
+            "label": "Link placed",
+            "readyLabel": "Link ready",
+            "doneDescription": "The official link is ready for customers.",
+            "progressDescription": "{count} of {total} placement actions done.",
+            "nextDescription": "Open the sharing tools when the menu is published."
+          },
+          "descriptionsReady": {
+            "label": "Descriptions ready",
+            "doneDescription": "Visible items have descriptions.",
+            "nextDescription": "Prepare descriptions for clearer menu items."
+          },
+          "imagesReady": {
+            "label": "Images ready",
+            "doneDescription": "Visible items have images.",
+            "nextDescription": "Add or generate item images when useful."
+          },
+          "translationsReady": {
+            "label": "Translations ready",
+            "doneDescription": "Selected menu languages are complete.",
+            "nextDescription": "Review selected menu languages."
+          },
+          "publicLinksAdded": {
+            "label": "Public links added",
+            "doneDescription": "Public action or social links are available.",
+            "nextDescription": "Add useful public links for the business page."
+          },
+          "publicPhotoAdded": {
+            "label": "Public photo added",
+            "doneDescription": "A public photo is available.",
+            "nextDescription": "Add a cover, logo, or public photo when ready."
+          }
+        }
       }
     }
   },
@@ -4345,13 +5220,13 @@
         "heroEyebrow": "Menu import",
         "heroTitle": "Start from the menu you already use.",
         "heroHighlight": "menu you already use",
-        "heroSubtitle": "Upload a photo, PDF, typed menu, or permission-confirmed public menu link. MenuList prepares a review-ready draft so the owner approves the version before anything becomes public.",
+        "heroSubtitle": "Upload a photo or PDF, or paste a permission-confirmed public menu, service-list, image, or PDF link. MenuList prepares a review-ready draft so the owner approves the version before anything becomes public.",
         "primaryCta": "Create customer link →",
         "secondaryCta": "See all features",
         "previewLabel": "Menu import preview",
         "previewMeta": "Review protected",
         "previewStatus": "Review before publish",
-        "previewTitle": "Photo, PDF, text, or owned link becomes a draft",
+        "previewTitle": "Photo, PDF, or owned public link becomes a draft",
         "previewBody": "The create flow can accept supported menu inputs, including an existing public menu link when the owner confirms permission to use it.",
         "previewPill0": "Photo",
         "previewPill1": "PDF",
@@ -4361,7 +5236,7 @@
         "storyHighlight": "Less setup work",
         "storySubtitle": "The import flow is built for owners who need the current menu online without spending hours formatting it.",
         "story0Title": "Use a real menu",
-        "story0Desc": "Start from a menu photo, PDF, typed list, or public menu link you own or have permission to use.",
+        "story0Desc": "Start from a menu photo or PDF, or a public menu or service-list link you own or have permission to use.",
         "story1Title": "Review the prepared structure",
         "story1Desc": "MenuList organizes sections, items, and prices so the owner can review instead of starting from a blank screen.",
         "story2Title": "Add language and content support",
@@ -4397,7 +5272,7 @@
         "journey0Summary": "Use the menu you already have instead of a blank setup screen.",
         "journey0Eyebrow": "Start from your menu",
         "journey0Title": "Use a real menu.",
-        "journey0Desc": "A photo, PDF, typed list, or permission-confirmed public menu link can become the starting point for setup without rebuilding from a blank screen.",
+        "journey0Desc": "A photo or PDF, or a permission-confirmed public menu or service-list link, can become the starting point without rebuilding from a blank screen.",
         "journey0Pill0": "Photo",
         "journey0Pill1": "PDF",
         "journey0Pill2": "Link",
@@ -4452,7 +5327,7 @@
         "supportEyebrow": "What this replaces",
         "supportTitle": "The hidden setup work stays lighter.",
         "supportHighlight": "setup work",
-        "supportSubtitle": "This folds link import, photo/PDF intake, typed menus, and owner-review anxiety into one owner-readable path.",
+        "supportSubtitle": "This folds public-link import, photo/PDF intake, and owner review into one clear path.",
         "support0Title": "Accept the menu owners already have",
         "support0Desc": "A business should not need a spreadsheet, design file, or technical setup before MenuList can prepare a review draft.",
         "support0Item0": "Menu photos",
@@ -5918,7 +6793,8 @@
       "pipelinePhoto": "Photo",
       "pipelinePdf": "PDF",
       "pipelineLink": "Existing link",
-      "pipelineText": "Text",
+      "pipelineText": "Service-list link",
+      "pipelineServiceListLink": "Service-list link",
       "pipelineInputLabel": "Start with",
       "pipelinePrepares": "Review",
       "pipelinePublished": "Published",
@@ -5933,7 +6809,7 @@
       "storyTitle": "Start → Prepare → Publish → Place → Operate → Improve",
       "storyDesc": "The same approved list moves through six owner-readable stages: start, prepare, publish, place, operate, and improve.",
       "step0Title": "Start with the list you already use",
-      "step0Desc": "Photo, PDF, existing list link, or typed menu/services. Start with what your business already uses.",
+      "step0Desc": "Photo, PDF, or an owned public menu or service-list link. Start with what your business already uses.",
       "step1Title": "Prepare the customer-ready version",
       "step1Desc": "Items, sections, prices, descriptions, images, languages, and business details are prepared for review.",
       "step2Title": "Publish the approved list and page",
@@ -5956,7 +6832,7 @@
       "coreTitle": "One approved list",
       "coreDesc": "Every public output starts from the version the owner reviewed.",
       "step0Title": "Current public list",
-      "step0Desc": "Photo, PDF, existing link, or typed menu/services starts the record.",
+      "step0Desc": "A photo, PDF, or owned public menu or service-list link starts the record.",
       "step1Title": "Owner approval",
       "step1Desc": "Nothing becomes public until the owner reviews it.",
       "step2Title": "Customer places",
@@ -6454,24 +7330,29 @@
       "previewTagOrganic": "Organic"
     },
     "CreateMenuSuccess": {
-      "defaultBusinessName": "Your business",
-      "title": "Your menu is",
-      "titleHighlight": "publicly ready.",
-      "liveSubtitle": "{businessName} now has a starter public menu. Keep this same link when you activate your plan.",
-      "pendingSubtitle": "Your starter setup is ready.",
-      "linkLabel": "Your public menu link",
-      "officialPageLabel": "Your official business page",
-      "copied": "Copied",
+      "defaultBusinessName": "your business",
+      "title": "Your menu is online.",
+      "titleHighlight": "online",
+      "pendingTitle": "Your menu link is not ready yet.",
+      "pendingTitleHighlight": "not ready yet",
+      "liveSubtitle": "Customers can now open the menu for {businessName} at this link.",
+      "pendingSubtitle": "Continue to MenuList to check your menu status.",
+      "linkLabel": "Public menu link",
+      "officialPageLabel": "Business page",
+      "copied": "Link copied",
       "copyLink": "Copy link",
       "copyFailed": "Could not copy the link. Try again.",
       "whatsAppCta": "Share on WhatsApp",
       "whatsAppFailed": "Could not open WhatsApp. Try again.",
       "whatsAppMessage": "Here is our current menu: {menuUrl}",
-      "qrTitle": "QR stays the same",
-      "qrBody": "Use this link for your QR and customer sharing. The link stays the same after payment.",
-      "mapsTitle": "Place the link where customers look",
-      "mapsBody": "Add the public menu link to Google profile, WhatsApp, Instagram, packaging, or any customer-facing place where customers check before visiting.",
-      "dashboardCta": "Open setup workspace"
+      "qrTitle": "Your QR code stays the same",
+      "qrBody": "Use this link in your QR code and when you share your menu. It stays the same after you choose a plan.",
+      "keepLiveTitle": "Keep this menu online",
+      "keepLiveBody": "This menu is online for 7 days. Choose a plan to keep this customer link online after setup.",
+      "keepLiveCta": "Keep this menu online",
+      "mapsTitle": "Share the link where customers look",
+      "mapsBody": "Add the menu link to your Google Business Profile, WhatsApp, Instagram, packaging, and other places customers check.",
+      "dashboardCta": "Continue to MenuList"
     },
     "Features": {
       "heroEyebrow": "Full lifecycle",
@@ -6484,7 +7365,7 @@
       "lifecycleAria": "MenuList lifecycle stages",
       "lifecycle0Label": "Start",
       "lifecycle0Title": "Use the menu you have",
-      "lifecycle0Desc": "Photo, PDF, link, or typed menu.",
+      "lifecycle0Desc": "Photo, PDF, or owned public list link.",
       "lifecycle1Label": "Prepare",
       "lifecycle1Title": "Make it review-ready",
       "lifecycle1Desc": "Items, content, images, and languages.",
@@ -6881,6 +7762,9 @@
       "ctaTitle": "Built to be trusted.",
       "ctaSubtitle": "The same care that protects your account also protects the public information your customers see.",
       "cta": "Create customer link →"
+    },
+    "Accessibility": {
+      "skipToContent": "Skip to main content"
     },
     "LanguageSwitcher": {
       "label": "Language"

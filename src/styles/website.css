@@ -1604,7 +1604,7 @@ body[data-menulist-website="true"] {
   color: inherit;
   cursor: pointer;
   font: inherit;
-  text-align: left;
+  text-align: start;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, background 0.16s ease;
 }
 
@@ -1845,13 +1845,13 @@ body[data-menulist-website="true"] {
   gap: var(--ws-space-2);
   align-items: start;
   min-width: 0;
-  padding-right: var(--ws-space-3);
+  padding-inline-end: var(--ws-space-3);
 }
 
 .ws-create-preview__preview-step:not(:last-child)::after {
   position: absolute;
   top: 1rem;
-  right: 0.375rem;
+  inset-inline-end: 0.375rem;
   width: 0.75rem;
   height: 1px;
   background: var(--ws-border-strong);
@@ -4305,6 +4305,35 @@ body[data-menulist-website="true"] {
    Header Responsive
    ============================================ */
 
+@media (min-width: 1280px) {
+  .ws-header__nav {
+    max-width: 90rem;
+    gap: var(--ws-space-4);
+  }
+
+  .ws-header__brand,
+  .ws-desktop-nav {
+    flex: 0 0 auto;
+  }
+
+  .ws-desktop-nav--primary {
+    gap: var(--ws-space-4) !important;
+    margin-inline: var(--ws-space-2);
+  }
+
+  .ws-desktop-nav--actions {
+    gap: var(--ws-space-2) !important;
+  }
+
+  .ws-desktop-nav--primary > a,
+  .ws-desktop-nav--primary .ws-header-feature-menu__trigger,
+  .ws-desktop-nav--primary .ws-header-resource-menu__trigger,
+  .ws-desktop-nav--actions > a,
+  .ws-desktop-nav--actions > button {
+    white-space: nowrap;
+  }
+}
+
 .ws-mobile-nav-toggle {
   display: none !important;
 }
@@ -4930,7 +4959,7 @@ body[data-menulist-website="true"] {
   color: var(--ws-brand-secondary);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1279px) {
   .ws-desktop-nav {
     display: none !important;
   }
@@ -10214,6 +10243,7 @@ body[data-menulist-website="true"] {
 }
 
 .ws-industry-hero {
+  --ws-industry-hero-image: url('/images/website/menulist-hero-official-source.webp');
   position: relative;
   display: flex;
   align-items: center;
@@ -10223,7 +10253,11 @@ body[data-menulist-website="true"] {
   color: #fff;
   background:
     linear-gradient(90deg, rgba(10, 27, 54, 0.9) 0%, rgba(10, 27, 54, 0.72) 54%, rgba(10, 27, 54, 0.42) 100%),
-    url('/images/website/menulist-hero-official-source.webp') center / cover no-repeat;
+    var(--ws-industry-hero-image) center / cover no-repeat;
+}
+
+.ws-industry-hero[data-visual="service"] {
+  --ws-industry-hero-image: url('/images/website/menulist-hero-service-source.webp');
 }
 
 .ws-industry-hero::after {
@@ -10272,6 +10306,14 @@ body[data-menulist-website="true"] {
 
 .ws-industry-hero__actions .ws-btn--ghost {
   border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(10, 27, 54, 0.26);
+  color: #fff;
+}
+
+.ws-industry-hero__actions .ws-btn--ghost:hover,
+.ws-industry-hero__actions .ws-btn--ghost:focus-visible {
+  border-color: rgba(255, 255, 255, 0.68);
+  background: rgba(10, 27, 54, 0.44);
   color: #fff;
 }
 
@@ -11049,7 +11091,7 @@ body[data-menulist-website="true"] {
     padding: var(--ws-space-18) var(--ws-space-4) var(--ws-space-12);
     background:
       linear-gradient(180deg, rgba(10, 27, 54, 0.92) 0%, rgba(10, 27, 54, 0.72) 100%),
-      url('/images/website/menulist-hero-official-source.webp') center / cover no-repeat;
+      var(--ws-industry-hero-image) center / cover no-repeat;
   }
 
   .ws-industry-summary,
@@ -11148,7 +11190,7 @@ body[data-menulist-website="true"] {
 .ws-drawer-panel {
   position: fixed;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   bottom: 0;
   width: min(320px, 85vw);
   background: var(--ws-bg-primary);
@@ -11164,7 +11206,15 @@ body[data-menulist-website="true"] {
   overflow-y: auto;
 }
 
+[dir="rtl"] .ws-drawer-panel {
+  transform: translateX(-100%);
+}
+
 .ws-drawer-panel--open {
+  transform: translateX(0);
+}
+
+[dir="rtl"] .ws-drawer-panel--open {
   transform: translateX(0);
 }
 
@@ -13511,7 +13561,7 @@ body[data-menulist-website="true"] {
 .ws-create-menu-title {
   max-width: 12ch;
   margin: 0;
-  text-align: left;
+  text-align: start;
 }
 
 .ws-create-menu-subtitle {
@@ -13520,7 +13570,7 @@ body[data-menulist-website="true"] {
   color: var(--ws-text-secondary);
   font-size: clamp(1.05rem, 1.6vw, 1.2rem);
   line-height: 1.65;
-  text-align: left;
+  text-align: start;
 }
 
 .ws-create-menu-action {

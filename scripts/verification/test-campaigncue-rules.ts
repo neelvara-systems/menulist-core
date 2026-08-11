@@ -15,7 +15,11 @@ const NOW = Timestamp.fromMillis(1_700_000_000_000);
 
 const workspaceId = (tId: string, sId: string) => `cc_${tId}_${sId}`;
 
-const workspaceDoc = (tId: string, sId: string) => ({
+const workspaceDoc = (
+    tId: string,
+    sId: string,
+    extraMembers: Record<string, { locationIds?: string[]; role: string }> = {},
+) => ({
     createdAt: NOW,
     defaultLocale: 'en-IN',
     defaultTimezone: 'Asia/Kolkata',
@@ -25,6 +29,7 @@ const workspaceDoc = (tId: string, sId: string) => ({
             joinedAt: NOW,
             role: 'owner',
         },
+        ...extraMembers,
     },
     ownerEmail: `owner-${tId}-${sId}@example.test`,
     ownerName: `Owner ${tId}/${sId}`,
@@ -77,14 +82,15 @@ const platformCatalog = (catalogId: string) => ({
     catalogStatus: 'active',
     data: [],
     schemaVersion: 1,
-    updatedAt: NOW,
+    updatedAt: 1_700_000_000_000,
+    updatedBy: 'platform-test',
 });
 
 const workspaceIndex = (workspace: string) => ({
     data: [],
     id: 'default',
     schemaVersion: 1,
-    updatedAt: NOW,
+    updatedAt: 1_700_000_000_000,
     workspaceId: workspace,
 });
 
@@ -107,7 +113,13 @@ async function run(): Promise<void> {
     try {
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const db = context.firestore();
-            await setDoc(doc(db, 'campaigncueWorkspaces', ownerWorkspaceId), workspaceDoc('1', '101'));
+            await setDoc(doc(db, 'campaigncueWorkspaces', ownerWorkspaceId), workspaceDoc('1', '101', {
+                'agency-1-101': { role: 'agency_member' },
+                'billing-1-101': { role: 'billing_admin' },
+                'local-1-101': { locationIds: ['location-1'], role: 'local_manager' },
+                'marketer-1-101': { role: 'marketer' },
+                'reviewer-1-101': { role: 'reviewer' },
+            }));
             await setDoc(doc(db, 'campaigncueWorkspaces', otherWorkspaceId), workspaceDoc('2', '202'));
             await setDoc(doc(db, 'campaigncueWorkspaces', disabledWorkspaceId), {
                 ...workspaceDoc('3', '303'),
@@ -167,13 +179,26 @@ async function run(): Promise<void> {
                 doc(db, 'campaigncuePlatformPackTemplates', 'not_allowed'),
                 platformCatalog('not_allowed'),
             );
+            await setDoc(
+                doc(db, 'campaigncuePublicOffers', '0123456789abcdefabcd'),
+                { status: 'published', title: 'Private server record' },
+            );
         });
 
-        const ownerDb = testEnv.authenticatedContext('owner-1-101', {
+        const ownerClaims = {
             role: 'OWNER',
             storeId: '101',
             tenantId: '1',
             uId: 'owner-1-101',
+        };
+        const ownerDb = testEnv.authenticatedContext('owner-1-101', ownerClaims).firestore();
+        const ownerTemplateReadDb = testEnv.authenticatedContext('owner-1-101', {
+            ...ownerClaims,
+            firebasePurpose: 'template_read',
+        }).firestore();
+        const ownerTemplateWriteDb = testEnv.authenticatedContext('owner-1-101', {
+            ...ownerClaims,
+            firebasePurpose: 'workspace_template_write',
         }).firestore();
         const otherDb = testEnv.authenticatedContext('owner-2-202', {
             role: 'OWNER',
@@ -181,13 +206,109 @@ async function run(): Promise<void> {
             tenantId: '2',
             uId: 'owner-2-202',
         }).firestore();
+        const otherTemplateWriteDb = testEnv.authenticatedContext('owner-2-202', {
+            firebasePurpose: 'workspace_template_write',
+            role: 'OWNER',
+            storeId: '202',
+            tenantId: '2',
+            uId: 'owner-2-202',
+        }).firestore();
+        const marketerClaims = {
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'marketer-1-101',
+        };
+        const marketerDb = testEnv.authenticatedContext('marketer-1-101', marketerClaims).firestore();
+        const marketerTemplateReadDb = testEnv.authenticatedContext('marketer-1-101', {
+            ...marketerClaims,
+            firebasePurpose: 'template_read',
+        }).firestore();
+        const marketerTemplateWriteDb = testEnv.authenticatedContext('marketer-1-101', {
+            ...marketerClaims,
+            firebasePurpose: 'workspace_template_write',
+        }).firestore();
+        const reviewerDb = testEnv.authenticatedContext('reviewer-1-101', {
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'reviewer-1-101',
+        }).firestore();
+        const reviewerTemplateReadDb = testEnv.authenticatedContext('reviewer-1-101', {
+            firebasePurpose: 'template_read',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'reviewer-1-101',
+        }).firestore();
+        const reviewerTemplateWriteDb = testEnv.authenticatedContext('reviewer-1-101', {
+            firebasePurpose: 'workspace_template_write',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'reviewer-1-101',
+        }).firestore();
+        const localManagerDb = testEnv.authenticatedContext('local-1-101', {
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'local-1-101',
+        }).firestore();
+        const localManagerTemplateReadDb = testEnv.authenticatedContext('local-1-101', {
+            firebasePurpose: 'template_read',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'local-1-101',
+        }).firestore();
+        const localManagerTemplateWriteDb = testEnv.authenticatedContext('local-1-101', {
+            firebasePurpose: 'workspace_template_write',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'local-1-101',
+        }).firestore();
+        const billingDb = testEnv.authenticatedContext('billing-1-101', {
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'billing-1-101',
+        }).firestore();
+        const billingTemplateReadDb = testEnv.authenticatedContext('billing-1-101', {
+            firebasePurpose: 'template_read',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'billing-1-101',
+        }).firestore();
+        const billingTemplateWriteDb = testEnv.authenticatedContext('billing-1-101', {
+            firebasePurpose: 'workspace_template_write',
+            role: 'STAFF',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'billing-1-101',
+        }).firestore();
         const sameScopeNonmemberDb = testEnv.authenticatedContext('former-member-1-101', {
             role: 'OWNER',
             storeId: '101',
             tenantId: '1',
             uId: 'former-member-1-101',
         }).firestore();
+        const sameScopeNonmemberTemplateWriteDb = testEnv.authenticatedContext('former-member-1-101', {
+            firebasePurpose: 'workspace_template_write',
+            role: 'OWNER',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'former-member-1-101',
+        }).firestore();
         const disabledOwnerDb = testEnv.authenticatedContext('owner-3-303', {
+            role: 'OWNER',
+            storeId: '303',
+            tenantId: '3',
+            uId: 'owner-3-303',
+        }).firestore();
+        const disabledOwnerTemplateWriteDb = testEnv.authenticatedContext('owner-3-303', {
+            firebasePurpose: 'workspace_template_write',
             role: 'OWNER',
             storeId: '303',
             tenantId: '3',
@@ -203,10 +324,22 @@ async function run(): Promise<void> {
         }).firestore();
         const publicDb = testEnv.unauthenticatedContext().firestore();
 
-        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
-        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
-        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
-        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
+        await assertFails(getDoc(doc(marketerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(reviewerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(localManagerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'analyticsSummaries', 'dashboard')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'usageLedger', 'usage-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'assets', 'asset-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'providerConnections', 'provider-1')));
+        await assertFails(getDoc(doc(billingDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerDesigns', 'design-1')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', otherWorkspaceId)));
         await assertFails(getDoc(doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
         await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'videoProjects', 'video-1')));
@@ -218,6 +351,15 @@ async function run(): Promise<void> {
         await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId)));
         await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'sourceInputs', 'source-disabled')));
         await assertFails(getDoc(doc(publicDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
+        await assertSucceeds(getDoc(doc(platformDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
+        await assertSucceeds(getDoc(doc(platformDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
+        await assertFails(getDoc(doc(publicDb, 'campaigncuePublicOffers', '0123456789abcdefabcd')));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncuePublicOffers', '0123456789abcdefabcd')));
+        await assertFails(getDoc(doc(platformDb, 'campaigncuePublicOffers', '0123456789abcdefabcd')));
+        await assertFails(setDoc(
+            doc(ownerDb, 'campaigncuePublicOffers', 'ffffffffffffffffffff'),
+            { status: 'published', title: 'Forged offer' },
+        ));
 
         await assertFails(getDoc(doc(missingClaimsDb, 'campaigncueWorkspaces', 'cc_null_null')));
         await assertFails(getDoc(doc(missingClaimsDb, 'campaigncueWorkspaces', 'cc_null_null', 'sourceInputs', 'source-null')));
@@ -243,12 +385,23 @@ async function run(): Promise<void> {
         await assertSucceeds(getDoc(doc(platformDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1')));
 
-        await assertSucceeds(getDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertSucceeds(getDoc(doc(ownerTemplateReadDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertSucceeds(getDoc(doc(marketerTemplateReadDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(ownerTemplateWriteDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(reviewerTemplateReadDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(localManagerTemplateReadDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(billingTemplateReadDb, 'campaigncuePlatformPackTemplates', 'food')));
         await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncuePlatformPackTemplates', 'food')));
         await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncuePlatformPackTemplates', 'food')));
-        await assertFails(getDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'not_allowed')));
-        await assertFails(setDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'food_2'), platformCatalog('food_2')));
+        await assertFails(getDoc(doc(ownerTemplateReadDb, 'campaigncuePlatformPackTemplates', 'not_allowed')));
+        await assertFails(setDoc(doc(ownerTemplateWriteDb, 'campaigncuePlatformPackTemplates', 'food_2'), platformCatalog('food_2')));
         await assertSucceeds(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'food_2'), platformCatalog('food_2')));
+        await assertFails(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'retail_2'), platformCatalog('retail_2')));
+        await assertFails(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'food_2'), {
+            ...platformCatalog('food_2'),
+            overflowDocIds: ['food_3'],
+        }));
         await assertFails(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'not_allowed'), platformCatalog('not_allowed')));
         await assertFails(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'food_3'), {
             ...platformCatalog('food_3'),
@@ -256,27 +409,52 @@ async function run(): Promise<void> {
         }));
 
         await assertSucceeds(setDoc(
+            doc(ownerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertSucceeds(setDoc(
+            doc(marketerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertSucceeds(getDoc(
+            doc(ownerTemplateReadDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+        ));
+        await assertSucceeds(getDoc(
+            doc(ownerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+        ));
+        await assertFails(getDoc(
             doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+        ));
+        await assertFails(setDoc(
+            doc(reviewerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(ownerWorkspaceId),
         ));
         await assertFails(setDoc(
-            doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'other'),
+            doc(localManagerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertFails(setDoc(
+            doc(billingTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertFails(setDoc(
+            doc(ownerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'other'),
             { ...workspaceIndex(ownerWorkspaceId), id: 'other' },
         ));
         await assertFails(setDoc(
-            doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            doc(ownerTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(otherWorkspaceId),
         ));
         await assertFails(setDoc(
-            doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            doc(otherTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(ownerWorkspaceId),
         ));
         await assertFails(setDoc(
-            doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            doc(sameScopeNonmemberTemplateWriteDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(ownerWorkspaceId),
         ));
         await assertFails(setDoc(
-            doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'packTemplateIndexes', 'default'),
+            doc(disabledOwnerTemplateWriteDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(disabledWorkspaceId),
         ));
     } finally {

@@ -338,11 +338,12 @@ FIREBASE_CLIENT_EMAIL=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa   # local/preview
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice      # production
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa               # local/preview
-ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice                  # production
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=...
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=...
 ```
+
+The server reuses the canonical public project identifier. Do not manage a
+second private project-ID alias.
 
 **5. Answerlattice DAL files use Answerlattice Firestore:**
 

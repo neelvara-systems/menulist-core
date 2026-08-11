@@ -56,6 +56,10 @@ HyperFrames docs and official release material reviewed through August 8, 2026:
 - HyperFrames v0.7.99 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.99
 - HyperFrames v0.7.100 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.100
 - HyperFrames v0.7.101 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.101
+- HyperFrames v0.7.102 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.102
+- HyperFrames v0.7.103 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.103
+- HyperFrames v0.7.104 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.104
+- HyperFrames v0.7.105 release: https://github.com/heygen-com/hyperframes/releases/tag/v0.7.105
 - HyperFrames Day 21 - Cloud Rendering: https://x.com/HyperFrames_/status/2081491370485952790
 - HyperFrames Day 22 - Components Catalog: https://x.com/HyperFrames_/status/2081798071353278651
 - HyperFrames Day 23 - Templates and Variables: https://x.com/HyperFrames_/status/2082197435246600341
@@ -114,7 +118,30 @@ npx hyperframes skills update
 
 HyperFrames requires Node 22 or newer and FFmpeg. Use Node 22 only for HyperFrames work; do not change the MenuList app runtime.
 
-The last verified production baseline used HyperFrames `0.7.62`, Node `22.23.1`, FFmpeg `7.1`, local headless Chrome, and `whisper-cpp`. As of August 8, 2026, npm latest is `0.7.101`, but that version has not yet passed a MenuList isolated smoke test and is not the production authority. The current interactive shell may not be on Node 22 and may not expose a persistent global HyperFrames command; always activate Node `22.23.1` and use an explicit version during the next controlled smoke test. The Mac has an M5 Pro, 48 GB unified memory, and enough available memory for the smaller optional local model tiers. Local rendering, Motion Graphics, Talking Head Recut, bundled SFX, deterministic grades, and FFmpeg media operations remain the approved path. HeyGen CLI authentication, Kokoro, Parakeet MLX, mflux, LTX, real-ESRGAN, MusicGen, `uvx`, `gh`, Figma credentials, Docker, and Lambda are not currently required or installed for the launch queue.
+The last verified production baseline used HyperFrames `0.7.62`, Node `22.23.1`, FFmpeg `7.1`, local headless Chrome, and `whisper-cpp`. On August 10, 2026, npm reported `0.7.105` as latest with Node `>=22` and Apache-2.0 metadata. Release notes through `0.7.105` have been reviewed, but that version has not passed a MenuList isolated smoke test and is not the production authority. The current interactive shell may not be on Node 22 and may not expose a persistent global HyperFrames command; always activate Node `22.23.1` and use an explicit version during the next controlled smoke test. The Mac has an M5 Pro, 48 GB unified memory, and enough available memory for the smaller optional local model tiers. Local rendering, Motion Graphics, Talking Head Recut, bundled SFX, deterministic grades, and FFmpeg media operations remain the approved path. HeyGen CLI authentication, Kokoro, Parakeet MLX, mflux, LTX, real-ESRGAN, MusicGen, `uvx`, `gh`, Figma credentials, Docker, and Lambda are not currently required or installed for the launch queue.
+
+A read-only `hyperframes@0.7.62 skills check` on August 10 reported two current and 17 outdated skills under `~/.claude/skills`. That path-specific result does not prove the active Codex plugin skill bundle is stale. Do not bulk-update global skills during documentation or frozen-video work. Before the next new render project, run the pinned `0.7.105` disposable smoke gate, then refresh only the owning workflow and required domain skills after the candidate passes.
+
+## Market-Derived HyperFrames Decisions
+
+The maintained [launch-video market study](./videos_launch-video-conversion-research.md#august-2026-market-study-what-teams-are-actually-shipping) is the evidence source for these production decisions.
+
+As of August 10, 2026, the official open HyperFrames launch repository contains 17 source projects. Its median source duration is approximately `39.5s`, and its median project uses nine scene-level compositions. The sample is predominantly landscape and includes no native vertical project. Treat this as evidence for modular source and explicit vertical recomposition, not as a universal duration or aspect-ratio benchmark.
+
+For MenuList:
+
+1. Begin with an owner problem, relief, or recognizable menu source; do not spend the opening on a logo-only slate.
+2. Show a real MenuList transformation by approximately `5s`: existing menu source to private preview is the default first proof.
+3. Give each cut one job-to-be-done and one belief change. Do not compress the full product into every reel.
+4. Use real captured product UI when the product surface is stable. Use an exact HTML mock only when capture is unavailable, and label it internally as a mock.
+5. Split serious 30-75 second videos into coherent beat-level compositions. Keep `conversion.md`, `frame.md`, `STORYBOARD.md`, and a production handoff beside the source.
+6. Build native `16:9` and `9:16` layouts from shared scene logic. Produce `1:1` only for a named placement. Do not rely on crop-only exports.
+7. Use the approved MenuList music system, voice-reactive ducking, and motivated interaction cues. Audio must explain or emphasize the product event.
+8. Pair polished product assets with founder or human-reviewed voice assets when the channel benefits from visible expertise and trust.
+9. End the encoded MP4 with the logo, `MenuList`, `One approved customer link`, and a readable `menulist.ai`. Keep clickable CTAs in the website player or companion post.
+10. Preserve editable local source and immutable approved renders so a product or copy change can be updated without rebuilding the creative system from zero.
+
+Do not copy launch-project code or media from the HyperFrames launch repository without separate rights verification. The repository is a production-pattern reference; the MenuList system must continue to use MenuList-owned assets, local generated audio with retained provenance, and locally authored compositions.
 
 ## Skill Routing And Local Cost
 
@@ -166,15 +193,15 @@ The following changes are materially useful to MenuList:
 
 These releases improve production reliability. They do not change MenuList positioning, the local-render default, the founder-approved logo/audio system, or the requirement to verify rights before public distribution.
 
-## HyperFrames 0.7.63-0.7.101 Review
+## HyperFrames 0.7.63-0.7.105 Review
 
-The upstream patch train from the last verified `0.7.62` production baseline to npm latest `0.7.101` contains useful production changes, but it has not yet been admitted into the MenuList toolchain. Frozen videos and their source projects remain unchanged.
+The upstream patch train from the last verified `0.7.62` production baseline to npm latest `0.7.105` contains useful production changes, but it has not yet been admitted into the MenuList toolchain. Frozen videos and their source projects remain unchanged.
 
 | Release area | Upstream change | MenuList decision |
 | --- | --- | --- |
 | Prompting and continuity | `0.7.85` adds a seven-level Prompt Guide, an intent interview persisted in `BRIEF.md`, an eight-rule motion grammar, an explicit avoid-the-slideshow continuity contract, and end-to-end product-launch-video fixes | Adopt the guidance now in briefs and reviews; verify the CLI behavior in an isolated project before changing production commands |
 | Product proof | `0.7.83` tells product-launch workflows to use real screenshots and detect motion jumps at frame cuts | Adopt as a permanent MenuList rule; it directly supports product truth and addresses prior flicker feedback |
-| Audio | `0.7.83` avoids weak music openings, excludes hidden audio from the render mix, and preserves plateaus in sampled volume automation | Adopt the review rules; verify that our voice-reactive ducking and frozen tracks render identically under `0.7.101` |
+| Audio | `0.7.83` avoids weak music openings, excludes hidden audio from the render mix, and preserves plateaus in sampled volume automation | Adopt the review rules; verify that our voice-reactive ducking and frozen tracks render identically under the admitted candidate |
 | Captions and mobile layout | `0.7.79` adds a narrow caption-zone layout waiver | Use only for intentional native `9:16` layouts after visual validation; it does not permit arbitrary overlap |
 | Output resolution | `0.7.82` preserves the selected orientation-aware render resolution, including 4K | Useful for native 1920 x 1080, 1080 x 1920, and later 4K exports; verify dimensions from the encoded file |
 | Render reliability | `0.7.70` self-verifies experimental fast-capture frames and falls back when GPU or memory pressure corrupts them | Useful safety net, but keep `--experimental-fast-capture=false` for founder masters until an isolated comparison proves parity |
@@ -184,7 +211,10 @@ The upstream patch train from the last verified `0.7.62` production baseline to 
 | Long-source efficiency | `0.7.89` stops generated caches from retriggering Studio reloads; `0.7.90` limits extraction to the playable interval and bounds HDR scratch use | Useful on the 48 GB Mac when trimming long captures into short MenuList scenes; still render with conservative worker settings first |
 | Preview and render parity | `0.7.93` and `0.7.100` fix timing, rooted or sibling media, mounted-composition styles, font-family parsing, and SwiftShader screenshot ghosting | High-value reliability work; verify real MenuList sub-compositions and the final encoded frames in the smoke test |
 | Registry design families | `0.7.92` adds local minimal, creator-broadcast, and hand-drawn families plus the first beat-freeze-cut block; the catalog now exposes 132 blocks and 36 components | Selectively inspect the minimal `mk` family. Reject creator-broadcast, CRT, hand-drawn, and freeze-cut styling unless a specific brief justifies it. Prefer MenuList-owned blocks after review |
-| Parallel drawElement capture | `0.7.101` begins a five-percent canary rollout with a per-install circuit breaker | Do not allow a canary to define founder-master output. Set `HF_DE_PARALLEL_ROUTER=false` during the first `0.7.101` comparison and reopen only after deterministic parity evidence |
+| Parallel drawElement capture | `0.7.101` began a canary rollout; `0.7.103` removed the canary gate and ships the faster parallel router fleet-wide | Do not let a new default define a founder master without comparison. Test the pinned candidate in default and explicitly disabled-router modes where supported, then retain only the path with encoded parity |
+| Composition variables and captions | `0.7.102` preserves query values with spaces, serves the runtime before author scripts, and lets a composition declare caption color states | High-value for controlled variants and the MenuList no-pill caption system; verify query-driven copy and caption colors in the disposable smoke project |
+| Studio manipulation | `0.7.104` fixes canvas selection, group movement, resize persistence, and preview flashes after edits | Useful for polishing cards and layouts; encoded snapshots still decide whether the flicker is actually gone |
+| Local catalog discovery | `0.7.105` adds on-device meaning-based catalog search and improves redirect and capture-mode diagnostics | Compatible with the local-only policy. Use it only after the CLI smoke test; inspect and freeze any selected block source before use |
 | Account and publish paths | `0.7.94` adds device authorization and `0.7.99` retries hosted publish uploads | Do not use for MenuList. Login, hosted publishing, and account-backed workflows remain outside the local-only production path |
 | Templates and variables | The Day 23 workflow turns one reviewed composition into controlled variants | High value for the 12-video system and native aspect-ratio families; use only after the master scene and copy are approved |
 | Components catalog | The Day 22 workflow provides editable local registry blocks | Selective use only after source, license, fit, and visual review; prefer MenuList-owned reusable blocks |
@@ -202,13 +232,13 @@ The upstream patch train from the last verified `0.7.62` production baseline to 
 Do not upgrade inside a frozen video project. The next admitted-toolchain test must:
 
 1. activate Node `22.23.1`;
-2. run an explicitly pinned `hyperframes@0.7.101` in a disposable copy of one short composition;
-3. set `DO_NOT_TRACK=1` and `HF_DE_PARALLEL_ROUTER=false`, and avoid login, hosted media, cloud rendering, publishing, or account-backed generation;
+2. run an explicitly pinned `hyperframes@0.7.105` in a disposable copy of one short composition;
+3. set `DO_NOT_TRACK=1`, compare default and `HF_DE_PARALLEL_ROUTER=false` modes where the release accepts that override, and avoid login, hosted media, cloud rendering, publishing, or account-backed generation;
 4. run skills check, doctor, project check, snapshots, a 1080p render, and encoded MP4 QA;
 5. compare frame zero, transitions, captions, ducking, final-frame hold, duration, dimensions, loudness, and hashes against the known baseline;
 6. update this guide only after the smoke result is recorded.
 
-Until that gate passes, `0.7.62` remains the last verified production baseline and `0.7.101` remains the reviewed upstream candidate.
+Until that gate passes, `0.7.62` remains the last verified production baseline and `0.7.105` remains the reviewed upstream candidate.
 
 ## MenuList Media-Use Policy
 

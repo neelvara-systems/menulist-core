@@ -10,10 +10,11 @@
  * - Monthly: Calm, reassuring, 3 bullets
  */
 
-import { AISummary } from '@template/main-app/projects/types';
+import { getDashboardSummaryBullets } from '@lib/analytics/ownerDashboardPresentation';
+import { AISummary, OwnerDashboardMetrics } from '@template/main-app/projects/types';
 import { Card, List, Typography } from 'antd';
-import { useTranslations } from 'next-intl';
-import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import React, { useMemo } from 'react';
 import { LuLightbulb } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
@@ -21,12 +22,21 @@ const { Text, Title } = Typography;
 
 interface AISummaryCardProps {
     summary: AISummary;
+    metrics?: OwnerDashboardMetrics | null;
     period: 'daily' | 'weekly' | 'monthly';
 }
 
-const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, period }) => {
+const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, metrics, period }) => {
     const t = useTranslations('Dashboard.owner');
-    if (!summary?.bulletPoints?.length) {
+    const locale = useLocale();
+    const bullets = useMemo(() => getDashboardSummaryBullets({
+        locale,
+        metrics,
+        summary,
+        t,
+        limit: period === 'daily' ? 2 : period === 'monthly' ? 3 : 5,
+    }), [locale, metrics, period, summary, t]);
+    if (!bullets.length) {
         return null;
     }
 
@@ -40,7 +50,7 @@ const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, period }) => {
             </div>
             <List
                 className={styles.aiBulletList}
-                dataSource={summary.bulletPoints}
+                dataSource={bullets}
                 renderItem={(bullet) => (
                     <List.Item className={styles.aiBulletItem}>
                         <Text>{bullet}</Text>

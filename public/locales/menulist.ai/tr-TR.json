@@ -428,7 +428,8 @@
         "daily": "Önceki gün",
         "weekly": "Son 7 Gün",
         "monthly": "Bu Ay",
-        "overall": "Genel"
+        "overall": "Genel",
+        "graph": "Grafikler"
       },
       "today": {
         "noMenuActivityToday": "Bugün henüz menü etkinliği yok.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Sonuçsuz Aramalar",
         "unavailableInterest": "Kullanılamayan Faiz",
         "topLanguage": "En Popüler Dil",
-        "smartPicksShown": "Akıllı Seçimler Gösteriliyor",
-        "smartPicksClicks": "Akıllı Seçim Tıklamaları",
-        "smartPicksTaps": "Akıllı Seçimler dokunuşları",
-        "smartPicksUsed": "Kullanılan Akıllı Seçimler",
-        "smartPicksEngagement": "Akıllı Seçimlerle Etkileşim",
+        "smartPicksShown": "Smart Picks Gösterim",
+        "smartPicksClicks": "Smart Picks tıklama",
+        "smartPicksTaps": "Smart Picks TAPS",
+        "smartPicksUsed": "Smart Picks Kullanılan",
+        "smartPicksEngagement": "Smart Picks Engellilik",
         "totalMenuScans": "Toplam Menü Taramaları",
         "totalItemClicks": "Toplam Öğe Tıklamaları",
         "activeDays": "Etkin Günler",
         "daysActive": "Etkin Gün Sayısı",
-        "avgDailyScans": "Ort. Günlük Taramalar",
-        "smartPicksActive": "Akıllı Seçimler Etkin",
+        "avgDailyScans": "Günlük Scanlar",
+        "smartPicksActive": "Smart Picks Aktif",
         "engagementRate": "Etkileşim Oranı",
         "topItem": "En İyi Öğe",
         "topCategory": "Üst Kategori"
@@ -473,8 +474,8 @@
         "itemClicks": "Müşterilerin öğelere dokunma sayısı",
         "engagedSessions": "Müşterilerin menüye gerçek ilgi gösterdiği oturumlar",
         "actionRate": "Nihai müşteri işlemiyle sonuçlanan oturumlar",
-        "smartPicksShown": "Akıllı Seçimler sayfanızda kaç kez göründü?",
-        "smartPicksUsed": "Akıllı Seçimleri kullanan müşterilerin yüzdesi",
+        "smartPicksShown": "kaç kez Smart Picks sayfanızda ortaya çıktı",
+        "smartPicksUsed": "Kullanılan müşterilerin yüzde Smart Picks",
         "customerActions": "Arama, WhatsApp, yol tarifi, rezervasyon ve sipariş gibi son işlemler",
         "searches": "Menüden yinelenen arama talebi",
         "unavailableInterest": "Kullanılamayan öğelere dokunur"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Dün hiçbir etkinlik kaydedilmedi",
         "noAnalyticsYet": "Henüz veri yok. Analizleriniz, müşteriler görüntülemeye başladığında görünecektir.",
-        "noItemClicksYet": "Henüz öğe tıklaması yok"
+        "noItemClicksYet": "Henüz öğe tıklaması yok",
+        "lowActivityTitle": "Düşük etkinlik",
+        "lowActivityDescription": "Bu dönem için yararlı bir sonuç çıkarmak için yeterli aktivite görülmedi.",
+        "noWeeklyData": "Son 7 gün içinde henüz herhangi bir menü aktivitesi yapılmadı.",
+        "noMonthlyData": "Bu ay için ayarlanmış menü faaliyetleri henüz mevcut değildir."
       },
       "weekly": {
-        "vsLastWeek": "Geçen haftaya kıyasla %{sign}{change}"
+        "vsLastWeek": "Geçen haftaya kıyasla %{sign}{change}",
+        "changeVsLastWeek": "{change} vs geçen hafta"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# etkinliğin kaydedildiği gün} other {# günlük etkinlik kaydedildi}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Evet",
         "no": "Hayır",
-        "notAvailable": "Yok",
+        "notAvailable": "N/A",
         "active": "Etkin",
         "lowActivity": "Düşük Etkinlik",
         "noData": "Veri Yok"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "İlk tarama bekleniyor",
         "weeklyInsights": "Haftalık Analizler",
         "last4WeeksComparison": "Son 4 Haftanın Karşılaştırması",
-        "historicalDataWillAppear": "Geçmiş verileri birkaç hafta sonra görünecek"
+        "historicalDataWillAppear": "Geçmiş verileri birkaç hafta sonra görünecek",
+        "statusMessages": {
+          "working": "Müşteriler mevcut menüsünü kullanıyor.",
+          "low_activity": "Müşteri faaliyeti hâlâ devam ediyor. Mevcut menü kullanıma açık kalacak.",
+          "no_data": "Müşteriler menünüze açıldıktan sonra etkinlik görünecek."
+        }
       },
       "aiSummary": {
         "daily": "Bir bakışta önceki gün",
         "weekly": "Bu haftaya ilk bakışta",
-        "monthly": "Özet olarak bu ayın"
+        "monthly": "Özet olarak bu ayın",
+        "localized": {
+          "noActivity": "Bu dönemde müşteri faaliyeti kaydedildi.",
+          "menuViews": "Müşteriler menüyü açtı {count} Zamanlar için.",
+          "itemTaps": "Müşteriler {count} kez menü öğelerine dokunmuşlardır.",
+          "customerActions": "Müşteriler tamamlandı {count} Son eylemler için.",
+          "searches": "Müşteriler menüyü aradı {count} Zamanlar için.",
+          "unavailableInterest": "Ulaşılamayan nesneler {count} kez dokunmuştur."
+        }
       },
       "actions": {
         "call": "Ara",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} ziyaretleri · {rate}%",
         "markDoneSaved": "Tamamlandı olarak işaretlendi. Bir sonraki analiz özeti hazır olduğunda sonuçlar güncellenecektir.",
         "markDoneFailed": "Bu işlem tamamlandı olarak işaretlenemedi. Tekrar deneyin.",
-        "markDone": "Tamamlandı olarak işaretle"
+        "markDone": "Tamamlandı olarak işaretle",
+        "bestSourceStatsFormatted": "· {visits} ziyaretçi · {rate} eylem oranı",
+        "bestSourceMobileFormatted": "Şu anda en iyi kaynak: {source} · {visits} ziyaretçi · {rate} eylem oranı.",
+        "sourceQualityTagFormatted": "{source}: {visits} Ziyaret · {sessions} eylem toplantıları · {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} ziyaretçi · {rate} sayfa",
+        "priorities": {
+          "high": "Yüksek öncelik",
+          "medium": "Orta öncelik",
+          "low": "Düşük öncelik"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Kararlı",
+            "message": "Kullanılan aktivite açık bir menü kontrolünü destekler."
+          },
+          "watch": {
+            "label": "İzlemeye devam edin.",
+            "message": "Bazı aktiviteler menü değiştirmeden önce başka bir kontrol gerektirebilir."
+          },
+          "no_data": {
+            "label": "Daha fazla veri gerekiyor.",
+            "message": "Sonuca varmadan önce daha çok müşteri aktivitesi bekleyin."
+          }
+        },
+        "localizedActions": {
+          "reason": "En son yapılandırılan müşteri faaliyetine dayanarak.",
+          "availability": {
+            "title": "Ürünlerin mevcutluğunu inceleyin.",
+            "description": "Ulaşılamayan veya gizli olan elementlerin geri yüklenip getirilmemesi gerektiğini kontrol edin.",
+            "action": "Kullanılabilirliği kontrol et"
+          },
+          "customerActions": {
+            "title": "Müşteri eylemlerini gözden geçirin.",
+            "description": "Bir şey yapmadan önce müşterilerin kullandığı menü ayrıntılarını ve bağlantıları kontrol edin.",
+            "action": "Müşteri eylemlerini gözden geçirin."
+          },
+          "details": {
+            "title": "Ürün detaylarını iyileştirin.",
+            "description": "Daha net bilgiye ihtiyaç duyabilecek ürünlerin isimlerini, seçeneklerini, tanımlarını ve resimlerini inceleyin.",
+            "action": "Ürün ayrıntılarını inceleyin."
+          },
+          "general": {
+            "title": "Daha net bir sinyal için bekleyin.",
+            "description": "Daha fazla düzenli aktivite mevcut olana kadar mevcut menüyü istikrarlı tutun.",
+            "action": "Daha sonra inceleme"
+          },
+          "menuOrder": {
+            "title": "Menü sıralamasını gözden geçirin.",
+            "description": "Önemli ürünlerin ve kategorilerin müşteriler için kolayca bulunabildiğini kontrol edin.",
+            "action": "Menü sıralamasını gözden geçirin."
+          },
+          "pricing": {
+            "title": "İnceleme Fiyatları",
+            "description": "En son müşteri ilgi sinyaline bağlı fiyatları kontrol edin.",
+            "action": "Fiyatları inceleyin."
+          },
+          "search": {
+            "title": "Müşteri aramalarını inceleyin.",
+            "description": "Müşterileri yararlı bir menü sonucuna götüremeyen aramaları kontrol edin.",
+            "action": "İnceleme arama"
+          },
+          "source": {
+            "title": "Müşteri giriş kaynaklarını inceleyin.",
+            "description": "Kamusal bağlantıların ve QR konumlandırmalarının müşterileri mevcut menüye yönlendirip yönlendirmediğini kontrol edin.",
+            "action": "Kamuya açık bağlantıları inceleyin."
+          },
+          "timing": {
+            "title": "Menü zamanlamasını gözden geçirin.",
+            "description": "Zamanlanmış kategorilerin ve müşteriler aradığında mevcut olup olmadığını kontrol edin.",
+            "action": "İnceleme Zamanlaması"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Bitti işareti konuldu.",
+            "message": "Daha fazla belirlenmiş faaliyet elde edildikten sonra sonuç kontrol edilecek."
+          },
+          "improved": {
+            "label": "İyileştirilmiş",
+            "message": "Bir sonraki düzenlenmiş kontrol bir iyileşme gösterir."
+          },
+          "no_clear_change": {
+            "label": "Açık bir değişiklik yok.",
+            "message": "Bir sonraki düzenlenmiş kontrol, açık bir değişiklik göstermedi."
+          },
+          "not_enough_data": {
+            "label": "Daha fazla veri gerekiyor.",
+            "message": "Bu değişikliği değerlendirecek kadar kalıcı bir faaliyet henüz yok."
+          },
+          "pending": {
+            "label": "Sürekli kontrol",
+            "message": "MenuList bunu daha fazla belirlenmiş faaliyet mevcut olduktan sonra kontrol edecektir."
+          }
+        }
       },
       "details": {
         "menuDetails": "Menü Ayrıntıları",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Kullanılamayan Faiz",
           "languages": "Diller",
           "filters": "Filtreler",
-          "smartPicks": "Akıllı Seçimler",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Çalışma saatlerine göre işlemler"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Menü görünümleri",
-          "itemTaps": "Öğe dokunuşları",
+          "itemTaps": "Öğe dokunmaları",
           "menuSessions": "Menü oturumları",
           "engagedSessions": "Etkinlik içeren oturumlar",
           "actionSessions": "Eylem oturumları",
@@ -617,6 +729,12 @@
           "closed": "Kapatıldığında yapılacak işlemler",
           "open": "Açıldığında yapılacak işlemler",
           "closedShare": "Kaydedilen tüm eylemlerin {rate}%'si kapalıyken gerçekleşti"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} Ulaşılamaz tuşlara dokunmayın.",
+          "strongItem": "{count} Öğe dokunmaları",
+          "needsWork": "{count} görüntülenme, tıklama yok.",
+          "gettingAttention": "{count} görüntülemeler"
         }
       },
       "smartPicks": {
@@ -650,11 +768,11 @@
         "copyLink": "Bağlantıyı Kopyala",
         "copyMessage": "Mesajı Kopyala",
         "googleReviews": "Google İncelemeleri",
-        "instagram": "instagram",
+        "instagram": "Instagram",
         "facebook": "Facebook",
         "website": "Web sitesi",
         "sourceViews": "{count} görüntülemeler",
-        "sourceMenu": "{count} menüsü",
+        "sourceMenu": "{count} Menü",
         "sourceActions": "{count} işlemleri",
         "sourceLinks": "{count} bağlantıları",
         "languages": "OBP dilleri",
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "Kısayol dökümü",
         "installsByPlatform": "Platforma göre yükleme sayısı",
         "appStickiness": "Uygulama yapışkanlığı",
-        "returningOpens30d": "Geri dönüş açılışları (30 gün)",
         "avgOpensPerInstall": "Yükleme başına ortalama açılış sayısı",
         "iosManualInstalls": "iOS manuel yüklemeleri",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "Çevrimiçi Sipariş Ver"
         },
         "platforms": {
-          "ios": "iOS için iOS 10.3.2 sürümü yayınlandı.",
-          "iosLong": "iOS (iPhone / iPad) için uygulamalar",
-          "android": "Android için Android",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "Masaüstü",
           "other": "Diğer"
-        }
+        },
+        "tryAgainLater": "Daha sonra tekrar deneyin."
       },
       "projectSelector": {
         "deleted": "Silindi",
@@ -761,7 +879,8 @@
         "copied": "Kopyalandı",
         "copy": "Kopyala",
         "openGoogle": "Google'ı açın",
-        "done": "Bitti"
+        "done": "Bitti",
+        "couldNotOpen": "Google İş Profili açılamadı."
       },
       "behaviorNudge": {
         "linkCopied": "Bağlantı kopyalandı",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "En önemli sorunu inceleyin",
         "repairMenu": "Onarım Menüsü",
         "review": "İncele",
-        "repair": "Onarım"
+        "repair": "Onarım",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# öğesinde tanım eksik.} other {# öğenin tanımları eksiktir.}}",
+            "ok": "Tüm eşyaların bir tanımları vardır.",
+            "help": "Açıklamalar müşterilerin her bir teklifi anlamasına yardımcı olur."
+          },
+          "images": {
+            "warning": "{count, plural, one {# öğesinde bir resim eksik.} other {# öğe kayıp resimlerdir.}}",
+            "ok": "Tüm ürünlerin resimleri vardır.",
+            "help": "Resimler müşterilerin daha hızlı seçim yapmalarına yardımcı olabilir."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {# kategorisinde bir ikon eksik.} other {# kategorisinde eksik simgeler var.}}",
+            "ok": "Tüm kategoriler ikonlara sahiptir.",
+            "help": "İkonlar kategorilerin taramasını kolaylaştırır."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# ürünün fiyatını belirten bir bilgi eksik.} other {# ürünün eksik fiyatları var.}}",
+            "ok": "Tüm ürünlerin fiyatları vardır.",
+            "help": "Müşteriler karar vermeden önce fiyatları karşılaştırırlar."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# öğesi müşterilerden gizli tutuldu.} other {# ürün müşterilerden gizli tutuldu.}}",
+            "ok": "Hiçbir şey gizli değildir.",
+            "help": "Gizli öğeler kamu menüsünde görünmüyor."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {# fiyatı gözden geçirilmelidir.} other {# fiyatlar gözden geçirilmelidir.}}",
+            "ok": "Fiyatlar beklenen aralığın içindedir.",
+            "help": "MenuList aynı kategorideki tek parça fiyatlarını karşılaştırıyor. İstenilen bir fiyatı incelenmiş olarak işaretle."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# maddesinin çevirileri eksiktir.} other {# maddenin eksik çevirileri var.}}",
+            "ok": "Görünür olan tüm öğeler tercüme edilir.",
+            "help": "Bazı öğeler seçilmiş menü dillerinde eksiktir."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# menü detayı eksik çevirilerdedir.} other {# menü detayları eksik çevirilerdedir.}}",
+            "ok": "Menüsün ayrıntıları tercüme edilir.",
+            "help": "Seçili menü dillerinde menüsün adı, tanımı veya notları eksiktir."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Link kopyalandı.",
+        "direct": "Doğrudan",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Menü Kit",
+        "nativeShare": "Device paylaşımı",
+        "obp": "İşletme sayfası",
+        "other": "Diğer",
+        "qr": "QR Kodu",
+        "shortcut": "Uygulama kısayolları",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "İş Sağlığı",
+        "open": "Açık İş Sağlık Aç İş Sağlığı",
+        "today": "Bugün",
+        "latestActivity": "Son etkinlik",
+        "noActionNeeded": "Herhangi bir işlem yapılmasına gerek yok",
+        "status": {
+          "stable": "Kararlı",
+          "watch": "Dikkat edilmesi gerekiyor",
+          "needs_review": "İnceleme gerektirir.",
+          "insufficient_data": "Daha fazla veri gerekiyor.",
+          "stale": "Taze bir kontrole ihtiyacı var.",
+          "not_ready": "Hazırlanıyor."
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# müşteriye yönelik detayın gözden geçirilmesi gerekiyor.} other {# müşteriye yönelik ayrıntıları gözden geçirmeniz gerekiyor.}}",
+          "stable": {
+            "headline": "Kamuya açık bilgileriniz sabitdir.",
+            "message": "Son kontrolde müşteriye yönelik herhangi bir sorunun çözülmesi gerekmiyor."
+          },
+          "watch": {
+            "headline": "Bir detay dikkat gerektirebilir.",
+            "message": "Kamuya açık bilgileri değiştirmeden önce önerilen kontrolü inceleyin."
+          },
+          "needs_review": {
+            "headline": "Müşteriye yönelik ayrıntıları gözden geçirin.",
+            "message": "Bir veya daha fazla bilgi kontrol edilmelidir."
+          },
+          "insufficient_data": {
+            "headline": "Daha fazla faaliyete ihtiyaç var.",
+            "message": "MenuList kullanışlı bir sinyal toplarken mevcut bilgiyi istikrarlı tutmak."
+          },
+          "stale": {
+            "headline": "İş Sağlığı'nın yeni bir kontrolden geçmesi gerekiyor.",
+            "message": "Son kontrol eski. Mevcut kamusal bilgileriniz değişmez. Son kontrol tarihi geçmiştir."
+          },
+          "not_ready": {
+            "headline": "İş Sağlığı hazırlıklarını sürdürüyor.",
+            "message": "İlk mağaza kontrolü hazır olduğunda burada görünür."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Menü kaynaklarını kontrol edin.",
+            "message": "Aktif bir kamu menü kaynağı bulunamamıştır. Menüyü paylaşmadan önce kontrol edin. Menü paylaşılmadan önce kontrol edilmelidir.",
+            "title": "Menü kaynağının kontrol edilmesi gerekiyor."
+          },
+          "low_latest_activity": {
+            "action": "Paylaşma linklerini kontrol edin.",
+            "message": "Müşteri etkinliği düşük. QR, Google, Instagram, WhatsApp ve web sitesi bağlantılarını kontrol edin.",
+            "title": "Müşteri aktivitesi düşüktür."
+          },
+          "unavailable_item_taps": {
+            "action": "Ulaşılamayan ürünleri kontrol edin.",
+            "message": "Müşteriler, mevcut olmayan ürünlere ilgi gösterdi. stoklarını yenilediler veya gizli tuttular.",
+            "title": "Ulaşılamayan ürünler dikkat çekti ve satışa sunuldu."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Misafir geri bildirimlerini inceleyin.",
+            "message": "Misafir geri bildirimi, kamusal bilgiler değiştirilmeden önce sahibi tarafından kontrol edilmesi gerekmektedir.",
+            "title": "Misafir geri bildirimlerinin kontrol edilmesi gerekiyor."
+          },
+          "default": {
+            "action": "Ayrıntıları incele",
+            "message": "Müşteriye yönelik bir detayın sahibinin kontrolüne ihtiyacı vardır.",
+            "title": "Bir detayın kontrol edilmesi gerekiyor."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# özel geri bildirim öğesinin kontrol edilmesi gerekiyor.} other {# özel geri bildirim maddelerinin kontrol edilmesi gerekiyor.}}",
+          "clear": "Özel geri bildirim açıktır."
+        },
+        "freshness": {
+          "notReady": "İş Sağlığı gerçek zamanlı değildir. İlk depo kontrolü buradaki veri tarihi gösterecektir. İş Sağlık'ı kullanarak, iş sağlığınız hakkında bilgi edinebilirsiniz.",
+          "throughDate": "{date} üzerinden veri kullanılıyor. Bugün henüz tamamlanmış değil olabilir. Bu gün henüz bitmemiştir.",
+          "latest": "En son mevcut olanı kullanın MenuList Bilgiler: Bugün henüz tamamlanmamış olabilir."
+        },
+        "periods": {
+          "today": "Bugün",
+          "yesterday": "Önceki gün",
+          "thisWeek": "Bu hafta",
+          "lastWeek": "Geçen hafta",
+          "thisMonth": "Bu ay",
+          "lastMonth": "Geçen ay",
+          "last7Days": "Son 7 gün",
+          "last30Days": "Son 30 gün",
+          "overall": "Genel"
+        },
+        "metrics": {
+          "menuViews": "Menü görünümleri",
+          "topDemand": "En yüksek talep",
+          "topDemandDetail": "Terfi: {count} {signal}",
+          "bestSource": "En İyi Kaynak",
+          "bestSourceDetail": "Güncelleme bağlantısı: {count} ziyaretçi."
+        },
+        "signals": {
+          "views": "Görüşler",
+          "clicks": "Dokunmalar",
+          "attention": "Dikkat İşaretleri"
+        },
+        "page": {
+          "description": "Günlük iş durumunu ve müşteriye yönelik kontrolleri.",
+          "latestCheck": "AI health check",
+          "loading": "Yükleme",
+          "loadingMessage": "İş Sağlığı yükleniyor...",
+          "notReady": "İş Sağlığı henüz hazır değil.",
+          "loadErrorTitle": "Business Health yüklenemedi.",
+          "loadErrorDescription": "Lütfen bu sayfayı güncelleyin ve tekrar deneyin.",
+          "refresh": "Yenile",
+          "needsAttention": "Dikkat edilmesi gerekiyor",
+          "desktopSettingsOnly": "Bunu masaüstü ayarlarından açabilirsiniz."
+        },
+        "scope": {
+          "title": "İş Sağlık kapsamı İş Sağlığı kapsamındakiler",
+          "allMenus": "Tüm menülerde.",
+          "selectedMenu": "Seçili menü.",
+          "menuCount": "{count, plural, one {# Menü bu konumda} other {# menüsü bu konumda}}",
+          "locationLevel": "Konum-düzeyindeki görüntü",
+          "inactiveMenu": "Aktif Menü",
+          "thisMenuOnly": "Bu menü sadece bu.",
+          "allMenusInLocation": "Bu konumdaki tüm menüler bu yerde.",
+          "thisMenuHelper": "Sorular ve etkinlikler bu menüyü kullanır.",
+          "allMenusHelper": "Sorular ve aktiviteler bu konumdaki tüm menüleri kullanır.",
+          "dialogDescription": "Tüm menüleri veya aktivite ve kontroller için bir menü seçebilirsiniz.",
+          "all": "Herşey",
+          "close": "Kapat"
+        },
+        "locations": {
+          "title": "Konumlar Konumları",
+          "loading": "Konumlar yükleniyor...",
+          "empty": "Henüz bir konum özeti yok.",
+          "storeFallback": "Yerleştirme {id}",
+          "checkedOn": "{date} kontrol edildi.",
+          "checkCount": "{count, plural, one {# kontrol} other {# kontrol}}",
+          "checksNeedReview": "{count, plural, one {# müşteriye yönelik kontrolün gözden geçirilmesi gerekiyor.} other {# müşteriye yönelik kontrollerin gözden geçirilmesi gerekiyor.}}",
+          "statusReason": {
+            "stable": "Müşterilerle ilgili hiçbir sorun harekete geçmek zorunda değildir.",
+            "watch": "Müşteriye yönelik bir detay dikkat gerektirebilir.",
+            "needs_review": "Müşteriye yönelik ayrıntıları gözden geçirmeniz gerekiyor.",
+            "insufficient_data": "Faydalı bir kontrol için daha fazla müşteri aktivitesi gereklidir.",
+            "stale": "Bu konumun yeni bir kontrolüne ihtiyacı var.",
+            "not_ready": "İlk yer kontrolü hazırlanıyor."
+          }
+        },
+        "assistant": {
+          "title": "İş Sağlığı Sor",
+          "askShort": "sormak",
+          "englishOnlyTitle": "Sorular şu anda İngilizce olarak mevcuttur.",
+          "englishOnlyDescription": "Durumunuz ve kontrolleriniz yerelleştirilmiştir. İş Sağlığı sorularını sormak için uygulama dilini İngilizce'ye değiştirin. İş sağlığı soruları sormak için uygulama dili İngilizce olarak ayarlanır.",
+          "notReady": "İş Sağlığı son kontrol bittikten sonra cevap verecektir.",
+          "suggestedUnavailable": "Önerilen sorular şu anda mevcut değildir.",
+          "freeTextUnavailable": "Ücretsiz metin soruları şu anda mevcut değildir.",
+          "answerError": "İş Sağlığı buna cevap veremedi.",
+          "suggestedQuestions": "Önerilen sorular",
+          "followUps": "Sonra sorabilirsiniz.",
+          "you": "Sen",
+          "empty": "Bir soru veya işiniz hakkında soru seçin.",
+          "placeholderReady": "Bugün, bu hafta, menüsün dikkatini çekenler veya bir sonraki kontroller hakkında sorular sor.",
+          "placeholderMobile": "Bugün veya bu hafta hakkında soru sor.",
+          "placeholderPending": "Son kontrolden sonra kullanılabilir.",
+          "send": "Soru Gönder",
+          "cachedFacts": "Önbelleğe alınmış MenuList iş gerçeklerine dayanarak.",
+          "questions": {
+            "checks": "Neyi kontrol etmeliyim?",
+            "today_stats": "Bugün nasıl gidiyor?",
+            "this_week_stats": "Bu hafta ne oldu?",
+            "top_item": "Hangi ürün dikkat çekiyor?",
+            "last_week_stats": "Geçen hafta ne oldu?",
+            "this_month_stats": "Bu ay nasıl?",
+            "last_month_stats": "Geçen ay ne oldu?",
+            "public_menu_status": "Halka açık menümde sorun var mı?",
+            "profile_status": "İş profilim eksiksiz mi?",
+            "feedback_reviews": "Kontrol etmek istediğiniz misafir geri bildirimi var mı?",
+            "feedback_recent": "Misafirler yakın zamanda ne söyledi?",
+            "default": "Bir sonraki adımı ne yapmalıyım?"
+          }
+        },
+        "sources": {
+          "title": "Veri kaynakları Veriler kaynağı",
+          "menuProjects": "Menu Projeleri",
+          "ownerAnalytics": "Sahibi faaliyetleri",
+          "guestFeedback": "Misafir Feedback",
+          "storeSettings": "İş Yöntemleri",
+          "menuListData": "MenuList verileri",
+          "updatedOn": "{date} güncellendi",
+          "latest": "Mevcut en son veriler."
+        },
+        "publicTruth": {
+          "title": "Resmi müşteri kaynağı.",
+          "checking": "Değerlendiriliyor",
+          "checkingFacts": "kontrolü MenuList Halkla İlişkiler...",
+          "checkedMenu": "Kontrol edilen menü: {name}",
+          "boundary": "Geçerli MenuList iş ve menü verilerinden kontrol edildi. Dış platformlar sahibi tarafından onaylanmış kalır.",
+          "boundaryShort": "Dış platformlar sahip tarafından onaylanmış olarak kalır.",
+          "historyTitle": "Halka açık bilgilendirme tarihi",
+          "historyBoundary": "MenuList sadece iş ve menü bilgilerini kullanıyor. Dış siteler taranmıyor.",
+          "historyBoundaryShort": "MenuList sadece gerçekler. Dış siteler taranmadı.",
+          "refreshErrorTitle": "Müşteri kaynak kontrolü yenilemeyi gerçekleştiremedi.",
+          "refreshErrorDescription": "Son mevcut MenuList Gerçekler aşağıda gösteriliyor.",
+          "historyRefreshError": "Bilgi tarihinin yenilenmesi mümkün değil.",
+          "historyLoadError": "Toplumsal bilgi geçmişi yükleyemiyordu.",
+          "historyErrorDescription": "Son kaydedilen rapor hala mevcut olduğunda gösteriliyor.",
+          "notRun": "Yapılmadı Runn't",
+          "lastSaved": "Son kaydedilen {date}",
+          "noSavedReport": "Henüz kaydedilmiş bir rapor yok.",
+          "noSavedReportDescription": "Bu konum için ilk raporu kaydetmek için kontrolü çalıştırın.",
+          "downloadEnglishReport": "Download İngilizce raporu",
+          "downloadEnglishShort": "İngilizce raporu",
+          "runCheck": "Değerlendirmeyi yürüt:",
+          "currentFix": "Şimdiki fix item",
+          "nextFixes": "Bir sonraki kamu düzeltmeleri.",
+          "none": "Hiç",
+          "attentionCount": "{count, plural, one {# öğesinin kontrol edilmesi gerekiyor.} other {# öğenin kontrol edilmesi gerekiyor.}}",
+          "readyModuleCount": "{count}/{total} hazır.",
+          "missingCount": "{count} eksik.",
+          "checkCount": "kontrolü {count}",
+          "savedCount": "{count}/{total} kaydedildi.",
+          "modulesReady": "{count}/{total} modül hazırdır.",
+          "status": {
+            "ready": {
+              "label": "Hazır",
+              "message": "Resmi müşteri kaynağınız, müşterilerin ihtiyacı olan temellere sahiptir."
+            },
+            "missing_basics": {
+              "label": "Eksik temeller.",
+              "message": "Menü, saatler, fiyatlar, kampanyalar veya müşteri bağlantı detayları daha geniş bir şekilde paylaşılmadan önce dikkat edilmesi gerekir."
+            },
+            "unclear": {
+              "label": "kontrol gerektirir",
+              "message": "Çoğu temel bilgi mevcuttur, ancak bir veya daha fazla kamusal gerçek hâlâ kontrol edilmesi gerekmektedir."
+            }
+          },
+          "metrics": {
+            "readyModules": "Modüller hazır",
+            "missingFacts": "Eksik olan gerçekler",
+            "checkedMenu": "Kontrol edilen menü.",
+            "savedReports": "Kayıtlı raporlar kaydedildi."
+          },
+          "results": {
+            "present": "Hazır",
+            "missing": "Kayıp",
+            "unclear": "kontrolü",
+            "not_applicable": "Gereksizdir.",
+            "not_checked": "Kontrol edilmedi:"
+          },
+          "moduleStatus": {
+            "ready": "Hazır",
+            "needs_attention": "Kayıp",
+            "check": "kontrolü",
+            "not_checked": "Kontrol edilmedi:"
+          },
+          "facts": {
+            "business_identity": "İş adı İş yerinin ismi",
+            "menu_or_service_source": "Menü veya hizmet listesi.",
+            "prices": "Fiyatlar",
+            "hours": "Saatler",
+            "location": "Yerleştirme",
+            "contact": "İletişime geçin",
+            "customer_actions": "Müşteri eylemleri",
+            "public_link": "Müşteri bağlantısı:",
+            "photos": "Fotoğraflar Fotoğrafları",
+            "machine_readable_source": "Arama dostu ayrıntılara sahip detaylar."
+          },
+          "evidence": {
+            "owner_entered": "Bu çekte girdi.",
+            "owner_selected": "Sahibi tarafından seçilmiştir.",
+            "source_text_hint": "Verilen kaynakta bulundu.",
+            "valid_public_url": "Toplumsal bağlantı formatı geçerlidir.",
+            "invalid_public_url": "Halka açık bağlantının düzeltilmesi gerekiyor.",
+            "menulist_store": "Mevcut MenuList iş ayarları kontrol edildi.",
+            "menulist_project": "Seçili veya varsayılan MenuList menü kontrol edildi.",
+            "menulist_summary": "Mevcut MenuList menü özeti kontrol edildi.",
+            "menulist_public_route": "Mevcut MenuList müşteri bağlantı ayarları kontrol edildi.",
+            "menulist_index_gate": "Mevcut MenuList kamu-keşfetme kuralları kontrol edildi.",
+            "not_provided": "Bu gerçek şu anda eksik MenuList veriler için.",
+            "not_checked": "Bu gerçek mevcut MenuList verilerinden güvenli bir şekilde kontrol edilmedi.",
+            "priceNotLoaded": "Seçilen menüyü bir kez açın MenuList Fiyatlarını kontrol edebilirsiniz."
+          },
+          "moduleEvidence": {
+            "ready": "Şimdiki MenuList Bilgiler bu bölgenin hazır olduğunu gösteriyor.",
+            "needs_attention": "Şimdiki MenuList İhtiyaç duyulan bilgilerin eksik olduğunu göstermektedir.",
+            "check": "Müşterilerinize güvenmeden önce bu bölgeyi kontrol edin.",
+            "not_checked": "MenuList Bu alanı mevcut veriler ile tam olarak kontrol edilemedi."
+          },
+          "setupReason": {
+            "needs_attention": "Gerekli müşteriye yönelik bilgi eksiktir.",
+            "check": "Müşteriler buna güvenmeden önce bunu kontrol edin.",
+            "not_checked": "MenuList Şu anki verilerden bunu tam olarak kontrol edemiyoruz."
+          },
+          "targetActions": {
+            "basic_settings": "Açık iş detayları açma",
+            "domain_settings": "Açık müşteri bağlantısını açın.",
+            "hours_edit": "Açılış saatleri:",
+            "menu_tab": "Açık menü açma",
+            "official_page": "Açık iş sayfası açma",
+            "presence_monitor": "Açık yerleştirme kontrolü aç.",
+            "share_tab": "Açık paylaşım araçlarını kullanın."
+          },
+          "actions": {
+            "openCustomerSource": "Açık müşteri kaynağı.",
+            "openShareTools": "Açık paylaşım araçları.",
+            "fixFact": "{fact}yi düzeltin."
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Halkı bilgilendirmenin temelleri.",
+              "description": "İş yeri adı, mevcut menü veya hizmet kaynağı, iletişimi, eylemleri ve müşteri bağlantısı."
+            },
+            "business_facts_copy_pack": {
+              "title": "Tekrar kullanılabilir iş bilgileri",
+              "description": "Personel, mevcut gerçekleri kamusal profillerde, cevaplarda ve müşteri bağlantılarında tekrar kullanabilir."
+            },
+            "qr_link_health": {
+              "title": "QR bağlantı hazırlığı",
+              "description": "QR ve baskı yerleştirilmeleri için mevcut bir müşteri bağlantısı."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profil bağlantı tutarlılığı uyumluluğu",
+              "description": "Sosyal profiller ve diğer yerleştirmeler için mevcut bir müşteri bağlantısı."
+            },
+            "customer_link_preview": {
+              "title": "Müşteri bağlantısı önizlemesi",
+              "description": "Müşterilerin harekete geçmeden önce görmeleri gereken ana gerçekler."
+            },
+            "print_share_assets": {
+              "title": "Varlıkları bastır ve paylaş.",
+              "description": "QR posterler, sandık kartları ve paylaşım resimleri için mevcut bağlantı hazırlığı."
+            },
+            "menu_service_readability": {
+              "title": "Menü veya hizmet netliği",
+              "description": "Kategoriler, ürünler veya hizmetler ve fiyatlar seçilen menüde."
+            },
+            "price_availability_gap": {
+              "title": "Fiyatın ve mevcutluğun netliği açıklığı",
+              "description": "Müşterilere fiyatlar, çeşitler, tükenmişlik durumu ve mevcutluk gösterilir."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Eski PDF yerini aldı.",
+              "description": "Eski PDF'lerin yerini alacak olan mevcut MenuList kaynak ve müşteri bağlantısı."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp eylem",
+              "description": "Açık bir WhatsApp veya alternatif müşteri iletişim eylemi."
+            },
+            "hours_readiness": {
+              "title": "Saatler hazırlık saatleri.",
+              "description": "Müşterilerin güvenebileceği düzenli çalışma saatleri."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp cevap gerçekleri bildirir.",
+              "description": "Mevcut menü, saatler, iletişim ve personel cevapları için bağlantı bilgileri."
+            },
+            "photo_visual_identity": {
+              "title": "Fotoğraflar ve görsel kimlik.",
+              "description": "Logo, kapağı, iş fotoğrafı veya ürün ve hizmet görselleri."
+            },
+            "customer_question_coverage": {
+              "title": "Müşterilerin sıkça sorduğu sorular şunlardır:",
+              "description": "Teklif, saatler, fiyat, yer, iletişime geçme ve bir sonraki eylem için net gerçekler."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Tekrar kullanılabilir müşteri cevapları.",
+              "description": "Müşteriler genel sorular sorduğunda personel mevcut gerçekleri tekrar kullanabilir."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Rezervasyon ve sorgulama hazırlığı.",
+              "description": "Siparişi vermek, rezervasyon yapmak, aramak, mesaj göndermek, teklif istemek veya ziyaret etmek için net bir yol."
+            },
+            "google_profile_handoff": {
+              "title": "Google profil bağlantısı",
+              "description": "Mevcut müşteri bağlantısı hazırlanmıştır Google İş Profili"
+            },
+            "menu_freshness": {
+              "title": "Menü tazeliği",
+              "description": "Fiyatlar, ürünler veya mevcutluk değiştiğinde son menüsün güncelleştirilmesi."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafikler",
+        "description": "Dashboard'da gösterildiği gibi aynı belirlenmiş faaliyetten bir görsel özet.",
+        "ranges": {
+          "days7": "7 gün",
+          "days30": "30 gün"
+        },
+        "metrics": {
+          "menu_activity": "Menu Etkinlikleri",
+          "customer_actions": "Müşteri eylemleri",
+          "search_demand": "İhtiyaç arama",
+          "item_interest": "İlgi çeken maddeler",
+          "unavailable_demand": "Uygunsuz talep",
+          "missing_searches": "Eksik arama sonuçları"
+        },
+        "trend": {
+          "summary": "Trend Özetleri",
+          "updatedAfterClose": "Mağazanız kapandıktan sonra güncellenir.",
+          "status": {
+            "up": "daha yüksek",
+            "down": "Düşük",
+            "stable": "Sabit",
+            "not_enough_data": "Tarih yeteri kadar yok."
+          },
+          "period": {
+            "week": "Haftalık kontrol",
+            "month": "ay kontrolü"
+          },
+          "shortPeriod": {
+            "week": "Haftalık",
+            "month": "Aylık"
+          },
+          "needsMoreDays": "Daha düzenli günlere ihtiyacı var.",
+          "versus": "{current}, önceki {previous}",
+          "messages": {
+            "up": "{metric} Bunun için daha yüksek {period} kontrol için.",
+            "down": "{metric} Bunun için daha düşük {period} kontrol için.",
+            "stable": "{metric} Bu konuda istikrarlı {period} kontrol için.",
+            "not_enough_data": "Yeterince düzeltilmemiş {metric} Tarih bunun için {period} kontrol için."
+          },
+          "change": {
+            "gathering": "{period}: toplanıyor",
+            "newActivity": "{period}: yeni aktivite",
+            "steady": "{period}: sabit.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Karşılaştırma tabloları",
+          "description": "Hafta ve ay hareketleri sabit günlerden."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menü eğilimi",
+            "days7": "Son 7 gün düzenlenmiş",
+            "days30": "Son 30 gün düzenlenmiş"
+          },
+          "customerActions": {
+            "title": "Müşteri eylemleri",
+            "description": "Müşteriler menüyü açtıktan sonra neye dokundular?"
+          },
+          "sources": {
+            "title": "Müşterilerin nereden geldiği.",
+            "description": "Kaynaklara göre menü ziyaretleri ve eylem oturumları"
+          },
+          "items": {
+            "title": "İlgi çeken en popüler ürünler",
+            "description": "Müşterilerin en çok açtıkları veya tıklama yaptıkları ürünler"
+          },
+          "search": {
+            "title": "İhtiyaç arama",
+            "description": "Müşterilerin ne aradığını bulmak için arama yaptılar."
+          },
+          "officialPage": {
+            "title": "Resmi sayfa trendi",
+            "description": "Resmi İş Sayfasından Görüşler ve Etkinlikler"
+          }
+        },
+        "legends": {
+          "visits": "Ziyaret",
+          "actionSessions": "Eylem oturumları",
+          "views": "Görüşler",
+          "taps": "Dokunmalar",
+          "noResult": "Hiçbir sonuç yok."
+        },
+        "empty": {
+          "default": "Bu görünüm için henüz grafik verileri yoktur.",
+          "menuActivity": "Menü aktivitesi, müşteriler menüyü açtıktan sonra görünür.",
+          "customerActions": "Müşteri eylemleri, müşteriler aradıktan, mesaj gönderdikten, sipariş verdikten, rezervasyon yaptıktan veya yol tarifi istedikten sonra görüntülenecektir.",
+          "customerActionsPeriod": "Bu dönemde henüz müşteri eylemleri yapılmadı.",
+          "searchDemand": "Arama talebi, müşteriler menü aramalarını kullandıktan sonra ortaya çıkacaktır.",
+          "itemInterest": "Ürün ilgisi, müşteriler menü maddelerini açtıktan sonra ortaya çıkacaktır.",
+          "unavailableDemand": "Müşteriler mevcut olmayan ürünlere dokunduğunda, mevcut olmayan talep görünecektir.",
+          "missingSearches": "Müşteriler arama yaptıkları halde eşleşme bulamadıklarında eksik arama sonuçları görünecektir.",
+          "sources": "Müşteriler bağlantılardan, QR'dan veya sosyal medya sayfalarından geldikten sonra kaynak ayrıntıları görünür.",
+          "officialPage": "Resmi sayfa faaliyeti, müşteriler kamu iş sayfasını açtıktan sonra görünecektir."
+        },
+        "footer": {
+          "sameData": "Aynı tablo verileri.",
+          "noExtraTracking": "Ek takip yok.",
+          "settledAfterClose": "Depo gününden sonra yapılandırılmıştır."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "menü",
+          "viewsLabel": "Menü görünümleri",
+          "viewsTooltip": "Müşterilerin menünüze açılan defa sayısı.",
+          "thisMonthLabel": "Bu ayki menünüz."
+        },
+        "product": {
+          "singular": "Kataloğu",
+          "viewsLabel": "Katalog Görüşleri",
+          "viewsTooltip": "Müşterilerinizin katalogunuzu ne kadar kez açtığı.",
+          "thisMonthLabel": "Bu ayki katalogunuz."
+        },
+        "service": {
+          "singular": "Hizmet Listesi",
+          "viewsLabel": "Hizmet-listesi görüntüleri",
+          "viewsTooltip": "Müşterilerin hizmet listenize ne kadar kez erişim sağladığı.",
+          "thisMonthLabel": "Bu ayki hizmet listeniz."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Dikkat edilmesi gerekiyor",
+          "active": "Resmi müşteri kaynağı aktiftir.",
+          "readyToPlace": "Resmi müşteri kaynağı, yerlendirmeye hazırdır."
+        },
+        "description": {
+          "needsAttention": "Menü, saatler veya müşteri linkini geniş çapta paylaşmadan önce düzeltin.",
+          "active": "Hiçbir eylem gerekmez. Müşteriler mevcut kamusal bilgilerinizi tek bir kaynaktan kullanabilirler.",
+          "readyToPlace": "Müşteri bağlantınız hazır. ekleyin Google, Instagram, WhatsApp, QR, ya da yazdırın böylece müşteriler mevcut kaynağı kullanır."
+        },
+        "link": {
+          "ready": "Müşteri bağlantısı hazır",
+          "missing": "Müşteri bağlantısı eksik."
+        },
+        "states": {
+          "set": "Ayarlandı",
+          "missing": "Kayıp",
+          "ready": "Hazır",
+          "notReady": "Hazır değilim.",
+          "live": "Yayında",
+          "hidden": "Etkin değil"
+        },
+        "tags": {
+          "menu": "Menü: {status}",
+          "hours": "Saatler: {status}",
+          "customerLink": "Müşteri bağlantısı: {status}",
+          "link": "Bağlantı: {status}",
+          "placed": "Yerleştirildi: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Dikkat edilmesi gerekenleri düzeltin.",
+          "preview": "Halka açık menüyü önizle.",
+          "share": "Paylaşım Menüsü"
+        },
+        "updated": {
+          "notUpdated": "Henüz güncellenmemiştir.",
+          "recently": "Son zamanlarda güncellenenler",
+          "today": "Bugün güncellendi",
+          "yesterday": "Dün güncellendi.",
+          "daysAgo": "Güncellenmiş {count, plural, one {# gün önce} other {# Günler önce}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Sonraki Sahibi Aksiyon",
+        "open": "Aç",
+        "placement": {
+          "notConfirmed": "Henüz doğrulanmamıştır.",
+          "today": "Bugün doğrulandı.",
+          "yesterday": "Dün doğrulandı.",
+          "daysAgo": "Onaylandı {count, plural, one {# gün önce} other {# Günler önce}}"
+        },
+        "status": {
+          "ready": "Hazır",
+          "missing": "Kayıp",
+          "set": "Ayarlandı",
+          "live": "Yayında",
+          "notLive": "Yaşamak değildir.",
+          "confirmedCount": "{count}/{total} onaylandı.",
+          "on": "Açık",
+          "off": "Kapalı",
+          "dailyChanges": "Günlük değişiklikler.",
+          "hoursException": "Saatler hariç",
+          "staffUse": "Personel kullanır.",
+          "menuPrices": "menü fiyatları",
+          "openCount": "{count, plural, one {# Açık Aksiyon} other {# açık eylemler}}",
+          "stable": "Kararlı"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Müşteri bağlantısını ayarla",
+            "description": "QR, personel cevapları veya kamusal profilleri paylaşmadan önce müşteri bağlantısını oluşturun."
+          },
+          "setHours": {
+            "label": "Saatleri ayarlayın.",
+            "description": "Müşteriler ziyaret etmeden önce açık ve kapalı durumunu açıkça gösterin."
+          },
+          "publishMenu": {
+            "labelPublish": "Menüyü yayınla",
+            "labelOpen": "Açık menü açma",
+            "descriptionVisible": "Mevcut menüyü geniş çapta paylaşmadan önce yayınla.",
+            "descriptionHidden": "Müşteriler bağlantıyı kullanmadan önce menüyü görünür hale getirin."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Link yerleştirmesini doğrulayın.",
+            "labelPlace": "Müşteri linkini koyun.",
+            "descriptionPlaced": "Google, Instagram ve WhatsApp bağlantılarının aynı kaynağı göstermesini sağlayın.",
+            "descriptionUnplaced": "Aynı müşteri bağlantısını Google, Instagram, WhatsApp, QR ve basılı materyallere ekleyin."
+          },
+          "openPrivateFeedback": {
+            "label": "Açık özel geribildirim.",
+            "description": "Konukların sorunları kamuoyuna açık yorumlara dönüşmeden önce özel geri bildirim kullanın."
+          },
+          "captureDailyChange": {
+            "label": "Söyle MenuList Ne Değişti",
+            "description": "Söyle MenuList Bugün ne değişti ve hazırlanan menü kartını onaylayın."
+          },
+          "setTodayStatus": {
+            "label": "Bugünün durumunu ayarlayabilirsiniz.",
+            "description": "Bugün kapalı, geç açılıyor, mutfak kapanıyor veya özel menü haberi."
+          },
+          "prepareStaffHandoff": {
+            "label": "Personelin görev değişimini hazırlayın.",
+            "description": "Personele menü bağlantısını, QR ve müşteri cevap hatlarını tek bir yerden verin."
+          },
+          "updatePrices": {
+            "label": "Fiyatları güncelle",
+            "description": "Fiyat değişiklikleri için Menü Yöneticisi'ni kullanın, sonra yayınlamadan önce onaylayın."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Menü kurulumu",
+        "complete": "Menu ayarları tamamlanmıştır.",
+        "ready": "Menü ayarları hazır.",
+        "actions": {
+          "openMenu": "Açık menü açma",
+          "createMenu": "Menü oluştur",
+          "reviewDetails": "Ayrıntıları incele",
+          "publishMenu": "Menüyü yayınla",
+          "openSharingTools": "Açık paylaşım araçları.",
+          "prepareDescriptions": "Tabloları hazırlayın.",
+          "addImages": "Resimleri ekleyin",
+          "reviewLanguageText": "Dildeki metni gözden geçirin.",
+          "openMenuCheck": "açık menü kontrolü",
+          "updatePublicLinks": "Halka açık bağlantıları güncelle.",
+          "addPublicPhoto": "Halka açık fotoğraf ekleyebilirsiniz."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Kaynak eklendi",
+            "doneDescription": "Menü kaynağı bağlantılıdır.",
+            "nextDescription": "Bir menü fotoğrafı, PDF, bağlantı veya el ile başlat ekleyebilirsiniz."
+          },
+          "menuImported": {
+            "label": "Menü ithal edildi.",
+            "doneDescription": "{count, plural, one {Görünür # öğe bulundu.} other {Görünür # öğe bulundu.}}",
+            "nextDescription": "Giriş veya menü öğeleri ekleyin."
+          },
+          "keyDetailsChecked": {
+            "label": "Ana ayrıntıları kontrol edildi.",
+            "doneDescription": "Fiyatlar ve ana menüsün ayrıntıları açıktır.",
+            "nextDescription": "Yayınlamadan önce fiyatlar ve önemli ayrıntıları kontrol edin."
+          },
+          "menuPublished": {
+            "label": "Menü yayınlandı.",
+            "doneDescription": "Halka açık menü yayınlandı.",
+            "nextDescription": "Menü müşterilere hazır olduğunda yayınla."
+          },
+          "linkPlaced": {
+            "label": "Link konuldu.",
+            "readyLabel": "Bağlantı hazırdır.",
+            "doneDescription": "Müşteriler için resmi link hazır.",
+            "progressDescription": "{count}den {total} yerleştirme eylemi tamamlandı.",
+            "nextDescription": "Menü yayınlandığında paylaşım araçlarını açın."
+          },
+          "descriptionsReady": {
+            "label": "Açıklamalar hazırdır.",
+            "doneDescription": "Görünür nesnelerin açıklamaları vardır.",
+            "nextDescription": "Daha net menü maddeleri için açıklamalar hazırlayın."
+          },
+          "imagesReady": {
+            "label": "Resimler hazırdır.",
+            "doneDescription": "Görünür nesnelerin resimleri vardır.",
+            "nextDescription": "Kullanımlı olduğunda, öğe resimlerini ekleyebilirsiniz veya oluşturabilirsiniz."
+          },
+          "translationsReady": {
+            "label": "Çeviriler hazırdır.",
+            "doneDescription": "Seçilen menü dilleri tamamlanmıştır.",
+            "nextDescription": "Seçili menü dillerini inceleyin."
+          },
+          "publicLinksAdded": {
+            "label": "Kamuya açık bağlantılar eklendi.",
+            "doneDescription": "Toplumsal etkinlik veya sosyal bağlantılar mevcuttur.",
+            "nextDescription": "İş sayfası için yararlı kamu bağlantıları ekleyin."
+          },
+          "publicPhotoAdded": {
+            "label": "Kamusal fotoğraf eklendi.",
+            "doneDescription": "Bir resim mevcuttur.",
+            "nextDescription": "Hazır olduğunuzda bir kapak, logo veya kamusal fotoğraf ekleyin."
+          }
+        }
       }
     }
   },
@@ -1586,8 +2446,8 @@
         "spiceVeryHot": "Çok sıcak",
         "minutesShort": "{count} dk",
         "hoursShort": "{count} saat",
-        "calories": "{count} cal",
-        "protein": "Protein {value}g",
+        "calories": "{count} cal cal cal",
+        "protein": "Protein miktarı: {value} g",
         "carbs": "Karbonhidrat {value}g",
         "fat": "Yağ {value}g",
         "serving": "{value} sunuluyor",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Hesaplama geçmişi henüz yok. Fatura tarihi yok.",
     "perMonth": "/ay 12 aylık 36 aylık",
     "contactUs": "Bize İletişim Kurunuz"
+  },
+  "StarterActivation": {
+    "activeTitle": "Menünüz yayında",
+    "endingSoonTitle": "Menünüzü çevrimiçi tutun",
+    "publicMenuQrActive": "Genel menünüz ve QR kodunuz aktif.",
+    "activeRemaining": "Menü erişiminiz aktif.",
+    "daysRemaining": "{days, plural, one {Menünüzü çevrimiçi tutmak için # gün içinde bir plan seçin.} other {Menünüzü çevrimiçi tutmak için # gün içinde bir plan seçin.}}",
+    "sharingComplete": "Paylaşım kurulumunuz tamamlandı.",
+    "sharingProgress": "{target, number} paylaşım adımından {count, number} tamamlandı.",
+    "evidenceRecorded": "Otomatik olarak kaydedildi: {systemCount, number}. Sizin tarafınızdan onaylandı: {ownerCount, number}.",
+    "evidenceEmpty": "Menü bağlantısını kopyalayın veya paylaşın, QR kodunu indirin veya nereye yerleştirdiğinizi onaylayın.",
+    "keepLiveAction": "Menünüzü çevrimiçi tutun",
+    "noSubscriptionDescription": "Menü güncellemelerini ve müşteri sayfalarını kullanılabilir durumda tutmak için bir plan seçin.",
+    "choosePlanDescription": "Menünüz kaydedildi. Çevrimiçi ve güncel tutmak için bir plan seçin."
   },
   "Transactions": {
     "title": "İşlem Tarihi İşlemler Tarihi",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobil Uygulama Mobil Uygulaması",
     "subscribeTitle": "Başlamaya Başla'ya abone olun.",
     "subscribeDescription": "Dijital menünüz oluşturmaya ve işinizi yönetmeye başlamak için bir plan seçin.",
-    "viewPlans": "Planları Gör Planları Göster"
+    "viewPlans": "Planları Gör Planları Göster",
+    "returnToMobile": "Masaüstü versiyonunu görüyorsunuz. Mobile dönün."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Kodular Kodlular",

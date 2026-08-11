@@ -74,6 +74,7 @@ import {
     LuX,
 } from 'react-icons/lu';
 import type { IconType } from 'react-icons';
+import GitHubChangeIntakeCard from './GitHubChangeIntakeCard';
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
@@ -510,6 +511,7 @@ export default function AnswerlatticeKnowledgeIntake() {
         jobs,
         loading,
         publishJob,
+        refreshJobs,
         saving,
         searchEntityOptions,
         setActiveJobId,
@@ -540,6 +542,19 @@ export default function AnswerlatticeKnowledgeIntake() {
 
     const repeatedReplyEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT === true;
     const sourceGovernanceEnabled: boolean = Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE);
+    const sourceGovernanceSummary = useMemo(() => {
+        const today = dayjs().format('YYYY-MM-DD');
+        return bundle.sources.reduce((summary, source) => {
+            const governance = source.governance;
+            if (!governance) summary.unreviewed += 1;
+            if (governance?.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED) {
+                summary.approved += 1;
+            }
+            if (governance?.reviewDate && governance.reviewDate <= today) summary.reviewDue += 1;
+            if (governance?.conflictSourceIds.length) summary.conflicts += 1;
+            return summary;
+        }, { approved: 0, conflicts: 0, reviewDue: 0, unreviewed: 0 });
+    }, [bundle.sources]);
     const governanceConflictOptions = useMemo(() => (
         bundle.sources
             .filter(source => source.id !== governingSource?.id)
@@ -971,6 +986,15 @@ export default function AnswerlatticeKnowledgeIntake() {
 
             {error ? <Alert type="error" showIcon message={error} /> : null}
 
+            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS ? (
+                <GitHubChangeIntakeCard
+                    onOpenJob={async (jobId) => {
+                        await refreshJobs();
+                        setActiveJobId(jobId);
+                    }}
+                />
+            ) : null}
+
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={7}>
                     <Card title="Intake jobs" loading={loading} style={{ borderRadius: 8 }}>
@@ -1041,7 +1065,14 @@ export default function AnswerlatticeKnowledgeIntake() {
                                 {sourceGovernanceEnabled && bundle.sources.length ? (
                                     <Card
                                         title={<Space><LuShieldCheck /> Source governance</Space>}
-                                        extra={<Tag>{bundle.sources.filter(source => source.governance?.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED).length}/{bundle.sources.length} approved evidence</Tag>}
+                                        extra={(
+                                            <Space size={[4, 4]} wrap>
+                                                <Tag>{sourceGovernanceSummary.approved}/{bundle.sources.length} approved</Tag>
+                                                {sourceGovernanceSummary.reviewDue > 0 ? <Tag color="orange">{sourceGovernanceSummary.reviewDue} review due</Tag> : null}
+                                                {sourceGovernanceSummary.conflicts > 0 ? <Tag color="red">{sourceGovernanceSummary.conflicts} with conflicts</Tag> : null}
+                                                {sourceGovernanceSummary.unreviewed > 0 ? <Tag>{sourceGovernanceSummary.unreviewed} unreviewed</Tag> : null}
+                                            </Space>
+                                        )}
                                         style={{ borderRadius: 8 }}
                                     >
                                         <Paragraph type="secondary">

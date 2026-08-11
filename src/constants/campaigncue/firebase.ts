@@ -40,7 +40,7 @@ export const CAMPAIGNCUE_FIREBASE_MODE_ENV_KEYS = [
 ] as const;
 
 export const CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS = [
-    CAMPAIGNCUE_FIREBASE_ENV.PROJECT_ID,
+    CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_PROJECT_ID,
     CAMPAIGNCUE_FIREBASE_ENV.CLIENT_EMAIL,
     CAMPAIGNCUE_FIREBASE_ENV.PRIVATE_KEY,
 ] as const;
@@ -49,4 +49,3 @@ export const CAMPAIGNCUE_FIREBASE_MODE_ALIASES: Record<CampaignCueFirebaseMode, 
     shared: ["shared", "same", "default"],
     separate: ["separate", "isolated", "dedicated"],
 };
-

@@ -217,7 +217,7 @@ Admin script responsibilities:
 3. Reject summaries without payload paths.
 4. Write content-hashed immutable Storage payloads first with a create-only generation precondition; reruns reuse an existing hash object instead of overwriting it.
 5. Switch all affected category catalog docs in one Firestore batch after every payload upload succeeds.
-6. Require explicit `CAMPAIGNCUE_FIREBASE_PROJECT_ID` and `CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`; honor the optional named database id.
+6. Require canonical `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID` and `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`; honor the optional canonical named database id.
 7. Preserve `schemaVersion`, `updatedAt`, and `updatedBy`.
 8. Produce a dry-run cost summary before writes.
 
@@ -239,14 +239,21 @@ Workspace template Storage cleanup is best-effort but not silent. If a save uplo
 
 | Surface | Requirement |
 | --- | --- |
-| Platform category docs | Owner read allowed; writes platform/admin only. |
-| Workspace template index | Read/write only for users with workspace access. |
-| Storage platform payloads | Owner read allowed through scoped path/rules; writes admin only. |
-| Storage workspace payloads | Read/write only for workspace users. |
+| Platform category docs | Platform admin, or current workspace content manager with short-lived `template_read` purpose; writes platform/admin only. |
+| Workspace template index | Current workspace content manager plus `template_read` for reads or `workspace_template_write` for writes; strict summary schema and tenant/store scope remain authoritative. |
+| Storage platform payloads | Platform admin, or current workspace content manager with `template_read`; writes admin only. |
+| Storage workspace payloads | Current workspace content manager with `template_read` for reads or `workspace_template_write` for writes/deletes. |
 | Template application | Recompute trust/missing inputs on server before campaign pack creation. |
 | Output intent | Accept only a registry id, resolve requirements/channels server-side, reject editor-only intents on the campaign API, and persist intent/output provenance in the existing campaign pack. |
 | URL persistence | No signed URLs, external URLs, or base64 payloads in saved template metadata or layout artifacts. |
 | Artifact admission | Catalog, index, payload id/schema, and exact owned Storage paths must agree before hydration. Downloads are size-bounded by the Storage SDK. |
+| Session isolation | Firebase Auth uses in-memory persistence, signs out after the operation group, and binds the cached/concurrent session key to workspace plus purpose. Media upload scope cannot access templates. |
+
+Catalog and overflow loaders carry a request-generation fence. If business
+category, workspace membership, or the active catalog changes while a request
+is in flight, the obsolete response is discarded rather than merged into the
+new owner view. Loading is retried when the signed-in member role becomes
+available.
 
 ## Verification
 

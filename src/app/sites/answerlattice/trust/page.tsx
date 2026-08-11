@@ -43,7 +43,7 @@ const PROVIDER_FACTS = [
         area: 'AI-assisted processing',
         provider: 'Google Gemini',
         use: 'Supports configured drafting, extraction, embedding, fallback, and review-assistance paths.',
-        dataBoundary: 'Generated output remains draft or fallback material until the applicable review path approves it as support truth.',
+        dataBoundary: 'Generated output remains draft or fallback material until the applicable review path approves it as official support.',
     },
     {
         area: 'Billing',
@@ -135,7 +135,7 @@ export default async function AnswerlatticeTrustPage() {
                             className="mx-auto mt-8 max-w-5xl text-left"
                             items={[
                                 { label: 'Infrastructure', value: 'Separate QA runtime; production certification still pending' },
-                                { label: 'Authority', value: 'Reviewed answers before official support guidance' },
+                                { label: 'Official answers', value: 'Reviewed before users receive support guidance' },
                                 { label: 'Disclosure', value: 'No unsupported certification, DPA, or residency claim' },
                             ]}
                         />

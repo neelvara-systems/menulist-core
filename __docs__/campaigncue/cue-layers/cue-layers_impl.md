@@ -627,6 +627,14 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 | Repair | Restore original, keep text as image, replace image, rerun selected area, downgrade vector. |
 | Export | Save/download from saved runtime state; rendered PNG bytes must be stored before Asset Library registration; no social posting. |
 
+Browser autosaves are debounced and serialized. Each queued save resolves the
+current authoritative revision only after the previous save settles, advances a
+revision ref before the next save starts, and carries an editor-session fence.
+Opening another design or leaving CueLayers invalidates queued work so an old
+response cannot overwrite the active editor state. The design list has the same
+request-generation fence and reloads when the signed-in member role becomes
+available.
+
 ## Security Requirements
 
 - Treat uploaded files, model observations, SVG, Fabric runtime serialization, editor document snapshots, and export requests as untrusted.

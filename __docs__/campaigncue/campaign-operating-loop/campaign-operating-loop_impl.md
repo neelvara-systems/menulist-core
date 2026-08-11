@@ -49,7 +49,7 @@ The editor and workspace export buttons all call the protected campaign action b
 - `POST /api/campaigncue/campaigns` recomputes decisions server-side and persists freshness, commercial gate, and experiment metadata in `campaign.pack`.
 - The same create route accepts an optional `reuseCampaignId` and rebuilds that pack's recipe from current truth.
 - `POST /api/campaigncue/campaigns/{campaignId}/actions` rechecks truth for public-use actions, writes result receipts, and stores staff task metadata on the existing schedule document.
-- Non-approval actions atomically re-read the current campaign, derive updates from that snapshot, and write campaign, event, summary, optional schedule, and idempotency completion together. Public-use actions additionally re-read current workspace truth and the compact source snapshot when required.
+- Non-approval actions atomically re-read the current campaign, derive updates from that snapshot, and write campaign, event, summary, optional schedule, and idempotency completion together. Public-use, result, copied-evidence, and experiment-acceptance actions additionally re-read current workspace authority; public-use actions also read the compact source snapshot when required.
 - The action route resolves approval requests and decisions without a new API surface.
 
 No new API route was required.

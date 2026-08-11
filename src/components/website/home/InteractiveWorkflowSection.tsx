@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { LuCamera, LuFileText, LuGlobe, LuLink, LuQrCode, LuType, LuZap } from 'react-icons/lu';
+import { LuCamera, LuFileText, LuGlobe, LuLink, LuQrCode, LuZap } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import LogoMark from '../shared/LogoMark';
 import SectionHeading from '../shared/SectionHeading';
@@ -12,7 +12,7 @@ const inputItems = [
   { key: 'pipelinePhoto', Icon: LuCamera },
   { key: 'pipelinePdf', Icon: LuFileText },
   { key: 'pipelineLink', Icon: LuLink },
-  { key: 'pipelineText', Icon: LuType },
+  { key: 'pipelineServiceListLink', Icon: LuGlobe },
 ];
 const outputItems = [
   { key: 'pipelineOfficialPage', Icon: LuGlobe, pulseClass: 'ws-map-card-output-arrival-0' },

@@ -53,6 +53,7 @@ CueLayers currently supports the conservative production path:
 | Export accepted a current revision with a different submitted document or canvas size. | Export now reads the saved snapshot, compares a canonical durable fingerprint, and rejects rendered dimensions that do not match the saved canvas. |
 | Image probes accepted trailing bytes and export pixel count was not bounded. | PNG/JPEG/WebP container endings and all WebP dimension encodings are checked; upload and export enforce long-edge and pixel-count limits. |
 | A transient failure after creating an idempotency row left the key permanently `in_progress`; completion had no worker ownership token. | Claims now use a five-minute transaction lease. Live work conflicts, completed work replays, abandoned legacy/malformed/expired rows recover, and every upload/autosave/repair/export completion proves exact claim ownership. |
+| Slow client autosaves could overlap with the same expected revision, and an old design/list response could settle after the owner session changed. | The owner UI now serializes autosaves, advances an authoritative revision ref between saves, fences responses to the active editor session, ignores obsolete list responses, and retries loading after the member role becomes available. |
 | The public feature page showed automatic text, offer, and photo layer candidates even though active v1 produces one locked flat-safe image. | Public code and website docs now show the implemented upload, locked source, owner-added editor elements, saved revision, and export flow. Automatic decomposition remains a gated expansion. |
 
 ## Security Result
@@ -75,7 +76,7 @@ CueLayers currently supports the conservative production path:
 | Design list | One bounded query ordered by `updatedAt`, limited by `CAMPAIGNCUE_PAGE_SIZE`. |
 | Upload | Client blocks images over 3 MB before base64 conversion. Server uses one workspace bootstrap/read path, one optional one-document idempotency lease transaction, one original-image Storage object, three JSON artifacts, and a claim-owned design/job/version/idempotency transaction. No quality/event/cost collection writes and no provider calls. |
 | Boot | One design read, two bounded Storage JSON reads, and signed URL generation only for document-referenced assets. No Firestore broad scans. |
-| Autosave | Debounced client save; initial design read, one layer-index Storage read, one editor-snapshot Storage write, then a transaction re-read and batched design/version/idempotency writes. The layer index is not rewritten. |
+| Autosave | Debounced, serialized client save; initial design read, one layer-index Storage read, one editor-snapshot Storage write, then a transaction re-read and batched design/version/idempotency writes. The layer index is not rewritten, and overlapping edits cannot start two writes against the same revision. |
 | Repair | Initial design read; optional layer-index Storage read; final transaction re-read; one compact restore-fallback request. No patch artifact, correction event, model call, or worker cost. |
 | Export | Initial design read, one saved-snapshot Storage read, one immutable output write, then a transaction re-read and atomic Asset Library/export/audit/idempotency writes. No export report artifact, job event, direct provider posting, or social integration cost. |
 

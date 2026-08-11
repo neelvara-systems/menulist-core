@@ -20,7 +20,7 @@ const COMPARISON_ROWS = [
         chatbot: 'Usually no',
         helpdesk: 'Agent-dependent',
         kb: 'Static docs',
-        answerlattice: 'Yes: approved answers are authoritative after review',
+        answerlattice: 'Yes: approved answers become official after owner review',
     },
     {
         feature: 'Detects stale support',
@@ -48,7 +48,7 @@ const COMPARISON_ROWS = [
         chatbot: 'Weak',
         helpdesk: 'Manual by agents',
         kb: 'Manual publishing',
-        answerlattice: 'Reviewed drafts and proposals before official support',
+        answerlattice: 'Reviewed drafts and suggested changes before official support',
     },
     {
         feature: 'Helps after releases',

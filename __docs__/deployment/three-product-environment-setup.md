@@ -707,11 +707,9 @@ For each Firebase-backed project:
 
 Storage bucket env variables:
 
-- MenuList: `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `FIREBASE_STORAGE_BUCKET`
-- Answerlattice: `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`,
-  `ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
-- CampaignCue: `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`,
-  `CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`
+- MenuList: `NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET`
+- Answerlattice: `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
+- CampaignCue: `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`
 - SignalDesk: `NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET`,
   `SIGNALDESK_FIREBASE_STORAGE_BUCKET`
 
@@ -766,9 +764,9 @@ CampaignCue staging uses:
 CampaignCue production uses the same key names with
 `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue`.
 
-CampaignCue production/preview cannot opt into shared Firebase mode. Both
-public and Admin project identifiers, including a service-account file's
-`project_id`, must exactly match the stage target. A mismatch is a setup error,
+CampaignCue production/preview cannot opt into shared Firebase mode. The
+canonical project identifier and any service-account file's `project_id` must
+exactly match the stage target. A mismatch is a setup error,
 not permission to fall back to MenuList Firebase.
 
 SignalDesk staging uses:
@@ -827,41 +825,37 @@ For each Firebase-backed project:
 
 MenuList env:
 
-- `MENULIST_FIREBASE_PROJECT_ID`
-- `MENULIST_FIREBASE_STORAGE_BUCKET`
-- `MENULIST_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY`
 - `MENULIST_FIREBASE_CLIENT_EMAIL`
 - `MENULIST_FIREBASE_PRIVATE_KEY`
 - `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1`
 
-Keep these current runtime aliases identical to the canonical values:
-
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_STORAGE_BUCKET`
-- `FIREBASE_API_KEY`
-- `FIREBASE_CLIENT_EMAIL`
+The project ID, bucket, and Web API key are already public Firebase Web config.
+Server code reuses those canonical values. Do not add server or generic aliases.
 - `FIREBASE_PRIVATE_KEY`
 - `FIREBASE_PROJECT_LOCATION=us-central1`
 
 Answerlattice env:
 
-- `ANSWERLATTICE_FIREBASE_MODE=separate`
-- `ANSWERLATTICE_FIREBASE_PROJECT_ID`
-- `ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
 - `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`
 - `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`
 - `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS`
-- `ANSWERLATTICE_FIRESTORE_DATABASE_ID`
+
+The server reuses `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, project ID,
+storage bucket, and optional Firestore database ID. Do not add private copies
+of those non-secret Firebase identifiers.
 
 CampaignCue env:
 
-- `CAMPAIGNCUE_FIREBASE_MODE=separate`
-- `CAMPAIGNCUE_FIREBASE_PROJECT_ID`
-- `CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`
 - `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL`
 - `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY`
 - `CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS`
-- `CAMPAIGNCUE_FIRESTORE_DATABASE_ID`
+
+The server reuses `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_MODE`, project ID,
+storage bucket, and optional Firestore database ID. Do not add private copies
+of those non-secret Firebase identifiers.
 
 SignalDesk env:
 
@@ -1031,13 +1025,13 @@ from.
 | --- | --- | --- |
 | Runtime identity | `NEXT_PUBLIC_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DEPLOYMENT_URL`, `NEXT_PUBLIC_PLATFORM_DOMAIN`, `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`, `NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_BUILD_CREATED_AT`, `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE` | repo contract plus Vercel build metadata |
 | Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `NEXTAUTH_URL` | OpenSSL plus Google Cloud OAuth |
-| MenuList Firebase client | canonical `NEXT_PUBLIC_MENULIST_FIREBASE_*` and matching current `NEXT_PUBLIC_FIREBASE_*`/`NEXT_PUBLIC_FB_DATABASE_URL` aliases | Firebase Web App config |
-| MenuList Firebase Admin | canonical `MENULIST_FIREBASE_PROJECT_ID`, `MENULIST_FIREBASE_STORAGE_BUCKET`, `MENULIST_FIREBASE_API_KEY`, `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION`; matching current `FIREBASE_*` aliases include `FIREBASE_API_KEY` | Firebase service account plus Firebase Web API key |
+| MenuList Firebase client | `NEXT_PUBLIC_MENULIST_FIREBASE_*` only | Firebase Web App config |
+| MenuList Firebase Admin | `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION`; reuse public MenuList project ID, bucket, and Web API key | Firebase service account plus Firebase Web config |
 | Answerlattice Firebase client | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*`, `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Answerlattice Firebase Web App config |
-| Answerlattice Firebase Admin | `ANSWERLATTICE_FIREBASE_*`, `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS`, `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Answerlattice Firebase service account |
+| Answerlattice Firebase Admin | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS`; reuse canonical public identifiers | Answerlattice Firebase service account plus Firebase Web config |
 | Answerlattice runtime | `ANSWERLATTICE_CRON_SECRET`, `ANSWERLATTICE_MCP_SESSION_SECRET`, `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`, `ANSWERLATTICE_NIGHTLY_TRIGGER_URL`, `ANSWERLATTICE_TRIGGER_NIGHTLY_URL`, `ANSWERLATTICE_PUBLIC_API_DEBUG`, `ANSWERLATTICE_TEST_URL`, `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` | generated secrets plus deployed function URL and product URL |
 | CampaignCue Firebase client | `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_*`, `NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase Web App config |
-| CampaignCue Firebase Admin | `CAMPAIGNCUE_FIREBASE_*`, `CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS`, `CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase service account |
+| CampaignCue Firebase Admin | `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL`, `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY`, `CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS`; reuse canonical public identifiers | CampaignCue Firebase service account plus Firebase Web config |
 | CampaignCue CueLayers | `CAMPAIGNCUE_CUE_LAYERS_LOW_COST_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_ROLLOUT_PERCENT`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_ROLLOUT_PERCENT`, `CAMPAIGNCUE_TEMPLATE_SEED_ACTOR` | explicit premium boolean, real segmentation model ID or blank, and bounded 0-100 rollout |
 | SignalDesk Firebase client | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase Web App config |
 | SignalDesk Firebase Admin | `SIGNALDESK_FIREBASE_*`, `SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS`, `SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase service account |
@@ -1050,10 +1044,10 @@ from.
 | Cache and revalidation | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REVALIDATION_SECRET` | Upstash plus generated secret |
 | Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
 | Analytics/media | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_UNSPLASH_API_CLIENTID`, `NEXT_PUBLIC_PIXABAY_API_CLIENTID`, `NEXT_PUBLIC_PEXELS_API_CLIENTID`, `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` | GA4, Clarity, media APIs, Maps |
-| Sentry | `SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR` | Sentry |
+| Sentry | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR`; Firebase Functions use project-local `SENTRY_DSN` Secret Manager | Sentry |
 | App Check and emulators | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN`, `NEXT_PUBLIC_USE_EMULATORS`, `FUNCTIONS_EMULATOR`, `FIRESTORE_EMULATOR_HOST`, `FIREBASE_STORAGE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST` | reCAPTCHA/App Check and local emulator settings |
 | Email and alerts | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `INTERNAL_NOTIFICATION_EMAIL`, `INTERNAL_NOTIFICATION_WHATSAPP`, `PLATFORM_ALERT_EMAIL_TO`, `PLATFORM_ALERT_WHATSAPP_TO`, `PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME`, `PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE`, `PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL` | SMTP provider, Telegram, Slack |
-| WhatsApp and OTP | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_OTP_TEMPLATE_NAME`, `WHATSAPP_OTP_TEMPLATE_LANGUAGE`, `WHATSAPP_OTP_ALLOW_TEXT_FALLBACK`, `PHONE_OTP_DEV_CODE`, `PHONE_OTP_DEV_SKIP_SEND`, `PHONE_OTP_DEBUG_RESPONSE`, `MESSAGING_ONBOARDING_PROVIDERS`, `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Meta WhatsApp and internal OTP policy |
+| WhatsApp and OTP | Root app: optional `MENULIST_WHATSAPP_PHONE_NUMBER_ID`, `MENULIST_WHATSAPP_ACCESS_TOKEN`, `MENULIST_WHATSAPP_OTP_TEMPLATE_NAME`, `MENULIST_WHATSAPP_OTP_TEMPLATE_LANGUAGE`, `MENULIST_WHATSAPP_OTP_ALLOW_TEXT_FALLBACK`, plus phone dev controls and `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL`. Firebase Functions: project-local `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` Secret Manager values and messaging-onboarding flags in the product Functions env file | Meta WhatsApp and internal OTP policy; do not duplicate Functions-only values into root/Vercel env |
 | MenuList Answerlattice widget | `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY`, `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` | Answerlattice widget setup |
 | Menu link import | `MENU_LINK_IMPORT_CHROME_PATH`, `MENU_LINK_IMPORT_CHROME_NO_SANDBOX` | local/server browser capability |
 | Vercel API | `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | Vercel project settings/API tokens |
@@ -1288,8 +1282,9 @@ Use only the Gemini env names already present in code and templates:
 - MenuList Vercel/setup records: `MENULIST_GEMINI_AI_KEY` plus
   `MENULIST_GEMINI_AI_KEY_2`, `MENULIST_GEMINI_AI_KEY_3`, and
   `MENULIST_GEMINI_AI_KEY_4`.
-- Current MenuList app/Functions compatibility aliases: `GEMINI_AI_KEY` plus
-  `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`.
+- MenuList Firebase Functions Secret Manager: project-local `GEMINI_AI_KEY`
+  plus `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`. Do not add
+  those names to Vercel/local; the separate Firebase project owns them.
 - Answerlattice app/Functions: `ANSWERLATTICE_GEMINI_AI_KEY` plus
   `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
   `ANSWERLATTICE_GEMINI_AI_KEY_4`.
@@ -1381,10 +1376,10 @@ Checklist:
 - [ ] Create or confirm the Sentry organization.
 - [ ] Create a project for this app, or separate staging/production projects if
       you want strict error separation.
-- [ ] Copy browser DSN into `NEXT_PUBLIC_SENTRY_DSN`.
-- [ ] Copy staging browser DSN into `NEXT_PUBLIC_SENTRY_DEV_DSN` if staging uses
-      a separate Sentry project.
-- [ ] Copy server DSN into `SENTRY_DSN`.
+- [ ] Copy the environment-specific shared-app DSN once into
+      `NEXT_PUBLIC_SENTRY_DSN`; Vercel scope selects staging or production.
+- [ ] Do not duplicate that value into root `SENTRY_DSN`, `SENTRY_DEV_DSN`, or
+      `NEXT_PUBLIC_SENTRY_DEV_DSN` rows.
 - [ ] Create source-map upload token.
 - [ ] Set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 - [ ] Set MenuList Functions `SENTRY_DSN` secret for `menulist-qa` and

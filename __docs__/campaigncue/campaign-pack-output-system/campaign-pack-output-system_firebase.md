@@ -1,8 +1,8 @@
 # Campaign Pack Output System — Firebase Cost
 
-## Cost Verdict
+## Core Cost Verdict
 
-The Campaign Pack Output System adds no Firestore collection, Storage path, Cloud Function, realtime listener, provider call, or paid model call.
+The derived Campaign Pack Output System adds no Firestore collection, Storage path, Cloud Function, realtime listener, provider call, or paid model call by itself.
 
 It is derived from the existing CampaignCue overview and generated as a browser-local ZIP.
 
@@ -40,4 +40,6 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 
 ## Future Boundary
 
-If hosted mini-pages or server-rendered bundle files are activated later, they require a separate Firebase cost plan covering public route reads, Storage writes, cache invalidation, QR/link tracking, owner approval, retention, and abuse controls.
+The optional [Durable Cloud Export Archive](../durable-cloud-export-archive/durable-cloud-export-archive_firebase.md) is now a separate bounded persistence extension: one compact campaign pointer, one deterministic existing Asset Library record, and two rotating private ZIP object names. It is never part of the default overview read beyond the pointer already on a returned campaign.
+
+Other hosted or server-rendered outputs still require separate Firebase cost plans covering reads, writes, cache invalidation, owner approval, retention, and abuse controls.

@@ -21,7 +21,7 @@ Content repurposing tools prove the "one source to many channel assets" mental m
 - direct social publishing
 - direct WhatsApp sending
 - automated ad spend
-- hosted offer pages
+- automatic page publication, generic landing-page building, checkout, or visitor tracking; only the separately gated owner-published CampaignCue offer page may be described
 - guaranteed sales, bookings, ranking, or ROI
 - predicted engagement, reach, or best posting time
 - automatic repetition of a past campaign

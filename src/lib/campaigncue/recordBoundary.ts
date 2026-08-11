@@ -1,5 +1,17 @@
 import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
+import {
+    CAMPAIGNCUE_CAMPAIGN_MEMORY_MAX_RECIPE_SIGNALS,
+    CAMPAIGNCUE_CAMPAIGN_MEMORY_SCHEMA_VERSION,
+} from "@constant/campaigncue/campaignMemory";
 import { CAMPAIGNCUE_EXPORT_ACTIONS } from "@constant/campaigncue/delivery";
+import {
+    CAMPAIGNCUE_EXPORT_ARCHIVE,
+    buildCampaignCueExportArchiveStoragePath,
+} from "@constant/campaigncue/exportArchive";
+import {
+    CAMPAIGNCUE_RESULT_EVIDENCE_PROVIDERS,
+    CAMPAIGNCUE_RESULT_EVIDENCE_SCOPES,
+} from "@constant/campaigncue/resultEvidence";
 import { normalizeCampaignCuePatternCueUrl } from "@lib/campaigncue/patternCue";
 import type {
     CampaignCueAnalyticsSummary,
@@ -80,6 +92,72 @@ const experiment = z.object({
     variable: z.enum(["channel", "timing", "offer", "photo", "cta", "format"]),
     instruction: boundedText(2000),
     reason: boundedText(2000),
+    status: z.enum(["suggested", "accepted", "completed"]).optional(),
+    source: z.literal("deterministic_rules").optional(),
+    confidence: z.enum(["guidance_only", "owner_history"]).optional(),
+    baselineCampaignId: boundedId.optional(),
+    keepConstant: z.array(z.enum(["channel", "timing", "offer", "photo", "cta", "format"])).max(5).optional(),
+    evidence: z.array(boundedText(400)).max(6).optional(),
+    measurement: z.object({
+        question: boundedText(2000),
+        resultSignalIds: z.array(boundedId).min(1).max(12),
+    }).strict().optional(),
+    predictionBoundary: z.literal("no_performance_prediction").optional(),
+    acceptedAt: z.unknown().optional(),
+    completedAt: z.unknown().optional(),
+    completedResultSignalId: boundedId.optional(),
+}).strict();
+const approvalComment = z.object({
+    id: boundedId,
+    requestRevision: z.number().int().min(1).max(1000),
+    authorId: boundedId,
+    authorRole: z.enum(["owner", "admin", "marketer", "reviewer", "local_manager", "agency_member", "billing_admin"]),
+    note: boundedNonEmptyText(400),
+    status: z.enum(["open", "resolved"]),
+    outputId: boundedId.optional(),
+    locationId: boundedId.optional(),
+    createdAt: requiredTimestamp,
+    resolvedAt: z.unknown().optional(),
+    resolvedBy: boundedId.optional(),
+}).strict();
+const approvalInbox = z.object({
+    requestId: boundedId,
+    requestRevision: z.number().int().min(1).max(1000),
+    status: z.enum(["requested", "approved", "rejected"]),
+    requestedBy: boundedId,
+    requestedAt: requiredTimestamp,
+    outputId: boundedId.optional(),
+    locationId: boundedId.optional(),
+    comments: z.array(approvalComment).max(20),
+    decidedBy: boundedId.optional(),
+    decidedAt: z.unknown().optional(),
+    decisionNote: boundedText(400).optional(),
+    updatedAt: requiredTimestamp,
+}).strict();
+
+const readOnlyResultEvidence = z.object({
+    schemaVersion: z.literal(1),
+    source: z.enum(["owner_copied_report", "provider_api"]),
+    confidence: z.enum(["manual", "imported"]),
+    attribution: z.literal("directional_not_campaign_attribution"),
+    provider: z.enum(CAMPAIGNCUE_RESULT_EVIDENCE_PROVIDERS),
+    scope: z.enum(CAMPAIGNCUE_RESULT_EVIDENCE_SCOPES),
+    periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    metrics: z.object({
+        impressions: nonNegativeCount.optional(),
+        reach: nonNegativeCount.optional(),
+        profileViews: nonNegativeCount.optional(),
+        websiteClicks: nonNegativeCount.optional(),
+        callClicks: nonNegativeCount.optional(),
+        directionRequests: nonNegativeCount.optional(),
+        messages: nonNegativeCount.optional(),
+        linkClicks: nonNegativeCount.optional(),
+    }).strict(),
+    note: boundedText(200).optional(),
+    sourceFingerprint: z.string().regex(/^[a-f0-9]{24}$/),
+    connectionId: boundedId.optional(),
+    recordedAt: z.unknown().optional(),
 }).strict();
 
 const sourceFact = z.object({
@@ -224,7 +302,36 @@ const campaignRecord = z.object({
     }).strict(),
     actionCounts: z.record(z.enum(CAMPAIGNCUE_EXPORT_ACTIONS), nonNegativeCount),
     ownerApprovalState: z.enum(["not_requested", "requested", "approved", "rejected"]),
+    approvalInbox: approvalInbox.optional(),
     locationId: boundedId.optional(),
+    variantGroupId: boundedId.optional(),
+    variantRootCampaignId: boundedId.optional(),
+    exportArchive: z.object({
+        schemaVersion: z.literal(1),
+        assetId: boundedId,
+        crc32c: z.string().regex(/^[A-Za-z0-9+/]{6}==$/),
+        filename: boundedText(120),
+        mimeType: z.literal("application/zip"),
+        retentionPolicy: z.literal("two_slot_current_per_campaign"),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        sizeBytes: z.number().int().min(1).max(CAMPAIGNCUE_EXPORT_ARCHIVE.maxBytes),
+        slot: z.enum(["a", "b"]),
+        storageGeneration: z.string().regex(/^[1-9][0-9]{0,29}$/),
+        storagePath: boundedText(500),
+        archivedAt: requiredTimestamp,
+    }).strict().optional(),
+    exportArchiveUploadLease: z.object({
+        crc32c: z.string().regex(/^[A-Za-z0-9+/]{6}==$/),
+        filename: boundedText(120),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        sizeBytes: z.number().int().min(1).max(CAMPAIGNCUE_EXPORT_ARCHIVE.maxBytes),
+        slot: z.enum(["a", "b"]),
+        storagePath: boundedText(500),
+        uploadToken: boundedId,
+        createdBy: boundedId,
+        createdAt: requiredTimestamp,
+        expiresAt: requiredTimestamp,
+    }).strict().optional(),
     pack: z.object({
         ownerGoal,
         reason: boundedText(4000),
@@ -237,6 +344,8 @@ const campaignRecord = z.object({
         patternCueSourceInputId: boundedId.optional(),
         patternCueSourceHash: boundedText(160).optional(),
         reusedFromCampaignId: boundedId.optional(),
+        reuseRootCampaignId: boundedId.optional(),
+        refreshGeneration: z.number().int().min(1).max(100).optional(),
         reuseMode: z.literal("rebuild_from_current_truth").optional(),
         sourceTemplateId: boundedId.optional(),
         outputIntentId: z.enum([
@@ -255,15 +364,35 @@ const campaignRecord = z.object({
             "custom_size",
         ]).optional(),
         requestedOutputTypes: z.array(decisionOutputType).max(14).optional(),
+        locationSnapshot: z.object({
+            locationId: boundedId,
+            name: boundedText(240),
+            locality: boundedText(240).optional(),
+            contacts: z.object({
+                phone: boundedText(160).optional(),
+                whatsapp: boundedText(160).optional(),
+                bookingUrl: boundedText(1000).optional(),
+                publicMenuUrl: boundedText(1000).optional(),
+                website: boundedText(1000).optional(),
+            }).strict(),
+            sourceHash: boundedText(160),
+        }).strict().optional(),
         freshness: z.object({
             sourceHash: boundedText(160),
             status: z.enum(["current", "stale", "expired", "unknown"]),
             validatedAt: z.unknown().optional(),
             expiresAt: z.unknown().optional(),
-            recheckActions: z.array(z.enum(["download", "export", "mark_used", "schedule"])).max(4),
+            recheckActions: z.array(z.enum(["download", "export", "archive_export", "mark_used", "schedule"])).max(5),
         }).strict().optional(),
         commercialGate: commercialGate.optional(),
         experiment: experiment.optional(),
+        offerPage: z.object({
+            slug: boundedText(40),
+            status: z.enum(["published", "unpublished"]),
+            publishedAt: z.unknown().optional(),
+            unpublishedAt: z.unknown().optional(),
+            expiresAt: z.unknown().optional(),
+        }).strict().optional(),
     }).strict().optional(),
     resultMemory: z.object({
         lastSignalId: boundedId.optional(),
@@ -271,6 +400,8 @@ const campaignRecord = z.object({
         lastRecordedAt: z.unknown().optional(),
         usefulCount: nonNegativeCount.optional(),
         notUsefulCount: nonNegativeCount.optional(),
+        externalEvidenceCount: nonNegativeCount.optional(),
+        latestExternalEvidence: readOnlyResultEvidence.optional(),
         lastReceipt: z.object({
             signalId: boundedId.optional(),
             channel: channel.optional(),
@@ -289,6 +420,8 @@ const campaignRecord = z.object({
             recordedAt: z.unknown().optional(),
             videoProjectId: boundedId.optional(),
             videoRenderReceiptId: boundedId.optional(),
+            videoProjectVersion: z.number().int().min(1).max(10_000).optional(),
+            videoFormatSignature: boundedText(500).optional(),
         }).strict().optional(),
     }).strict().optional(),
     createdAt: timestamp,
@@ -334,6 +467,13 @@ const locationRecord = z.object({
     workspaceId: boundedId,
     name: boundedText(240),
     locality: boundedText(240).optional(),
+    contacts: z.object({
+        phone: boundedText(160).optional(),
+        whatsapp: boundedText(160).optional(),
+        bookingUrl: boundedText(1000).optional(),
+        publicMenuUrl: boundedText(1000).optional(),
+        website: boundedText(1000).optional(),
+    }).strict().optional(),
     status: z.enum(["active", "draft", "disabled"]),
     sourceRefs: z.array(boundedText(500)).max(40),
     createdAt: timestamp,
@@ -375,6 +515,97 @@ const sourceSnapshotRecord = z.object({
     updatedAt: timestamp,
 }).strict();
 
+const campaignMemoryMetricsRecord = z.object({
+    replies: nonNegativeCount.optional(),
+    calls: nonNegativeCount.optional(),
+    bookings: nonNegativeCount.optional(),
+    orders: nonNegativeCount.optional(),
+    walkIns: nonNegativeCount.optional(),
+    linkClicks: nonNegativeCount.optional(),
+}).strict();
+
+const campaignMemoryConfidence = z.enum([
+    "not_enough_results",
+    "early_signal",
+    "repeated_signal",
+]);
+
+const campaignMemorySignalFields = {
+    sampleCount: nonNegativeCount,
+    usefulCount: nonNegativeCount,
+    notUsefulCount: nonNegativeCount,
+    notUsedCount: nonNegativeCount,
+    metrics: campaignMemoryMetricsRecord,
+    confidence: campaignMemoryConfidence,
+    lastCampaignId: boundedId.optional(),
+    lastSignalId: boundedId.optional(),
+    lastRecordedAt: z.unknown().optional(),
+};
+
+const validateMemorySignalCounts = (
+    signal: { sampleCount: number; usefulCount: number; notUsefulCount: number; notUsedCount: number },
+    context: z.RefinementCtx,
+) => {
+    if (signal.sampleCount !== signal.usefulCount + signal.notUsefulCount + signal.notUsedCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign memory sample count is inconsistent.",
+            path: ["sampleCount"],
+        });
+    }
+};
+
+const campaignMemoryRecipeSignalRecord = z.object({
+    dimension: z.literal("recipe"),
+    key: boundedId,
+    ...campaignMemorySignalFields,
+}).strict().superRefine(validateMemorySignalCounts);
+
+const campaignMemoryChannelSignalRecord = z.object({
+    dimension: z.literal("channel"),
+    key: channel,
+    ...campaignMemorySignalFields,
+}).strict().superRefine(validateMemorySignalCounts);
+
+const campaignMemorySummaryRecord = z.object({
+    schemaVersion: z.literal(CAMPAIGNCUE_CAMPAIGN_MEMORY_SCHEMA_VERSION),
+    sourceConfidence: z.literal("owner_reported"),
+    coverage: z.enum(["from_activation", "bounded_recent_campaigns"]),
+    totalReceiptCount: nonNegativeCount,
+    usefulCount: nonNegativeCount,
+    notUsefulCount: nonNegativeCount,
+    notUsedCount: nonNegativeCount,
+    metrics: campaignMemoryMetricsRecord,
+    confidence: campaignMemoryConfidence,
+    recipeSignals: z.array(campaignMemoryRecipeSignalRecord).max(CAMPAIGNCUE_CAMPAIGN_MEMORY_MAX_RECIPE_SIGNALS),
+    channelSignals: z.array(campaignMemoryChannelSignalRecord).max(CAMPAIGNCUE_CHANNELS.length),
+    lastCampaignId: boundedId.optional(),
+    lastSignalId: boundedId.optional(),
+    lastRecordedAt: z.unknown().optional(),
+}).strict().superRefine((summary, context) => {
+    if (summary.totalReceiptCount !== summary.usefulCount + summary.notUsefulCount + summary.notUsedCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign memory receipt count is inconsistent.",
+            path: ["totalReceiptCount"],
+        });
+    }
+    if (new Set(summary.recipeSignals.map((signal) => signal.key)).size !== summary.recipeSignals.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign memory recipe signals must be unique.",
+            path: ["recipeSignals"],
+        });
+    }
+    if (new Set(summary.channelSignals.map((signal) => signal.key)).size !== summary.channelSignals.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign memory channel signals must be unique.",
+            path: ["channelSignals"],
+        });
+    }
+});
+
 const analyticsSummaryRecord = z.object({
     id: z.literal("dashboard"),
     workspaceId: boundedId,
@@ -386,6 +617,7 @@ const analyticsSummaryRecord = z.object({
     ownerReportedOutcomeCount: nonNegativeCount,
     latestEventAt: z.unknown().optional(),
     confidence,
+    campaignMemory: campaignMemorySummaryRecord.optional(),
     createdAt: timestamp,
     updatedAt: timestamp,
 }).strict();
@@ -439,10 +671,25 @@ const parseScoped = <T>(
 export const parseCampaignCueCampaignRecord = (
     value: unknown,
     expected: { campaignId?: string; workspaceId: string },
-) => parseScoped<CampaignCueCampaign>(campaignRecord, value, {
-    id: expected.campaignId,
-    workspaceId: expected.workspaceId,
-});
+) => {
+    const parsed = parseScoped<CampaignCueCampaign>(campaignRecord, value, {
+        id: expected.campaignId,
+        workspaceId: expected.workspaceId,
+    });
+    for (const archive of [parsed.exportArchive, parsed.exportArchiveUploadLease]) {
+        if (
+            archive
+            && archive.storagePath !== buildCampaignCueExportArchiveStoragePath(
+                parsed.workspaceId,
+                parsed.id,
+                archive.slot,
+            )
+        ) {
+            throw new Error("CampaignCue export archive Storage scope is invalid.");
+        }
+    }
+    return parsed;
+};
 
 export const parseCampaignCueSourceInputRecord = (value: unknown, workspaceId: string) => (
     parseScoped<CampaignCueSourceInput>(sourceInputRecord, value, { workspaceId })

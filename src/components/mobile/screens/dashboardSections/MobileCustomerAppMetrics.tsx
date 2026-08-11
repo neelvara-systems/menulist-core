@@ -15,6 +15,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { formatNumber } from '@util/formatters';
+import { formatDashboardPercent } from '@lib/analytics/ownerDashboardPresentation';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
@@ -156,9 +157,9 @@ export default function MobileCustomerAppMetrics() {
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuRocket color={conversionPct >= 20 ? token.colorSuccess : conversionPct >= 5 ? token.colorWarning : token.colorError} size={14} />
-                        <Text type="secondary">{t('customerApp.conversion')}</Text>
+                        <Text type="secondary">{t('customerApp.installConversion')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{conversionPct}%</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatDashboardPercent(conversionPct)}</Title>
                 </Card>
             </Flex>
 
@@ -196,7 +197,7 @@ export default function MobileCustomerAppMetrics() {
                             return (
                                 <Flex key={key} align="center" justify="space-between">
                                     <Text type="secondary" style={{ fontSize: 12 }}>{shortcutLabel(key, t)}</Text>
-                                    <Text style={{ fontSize: 12 }}>{count}</Text>
+                                    <Text style={{ fontSize: 12 }}>{formatNumber(count)}</Text>
                                 </Flex>
                             );
                         })}
@@ -217,7 +218,7 @@ export default function MobileCustomerAppMetrics() {
                             return (
                                 <Flex key={key} align="center" justify="space-between">
                                     <Text type="secondary" style={{ fontSize: 12 }}>{platformLabel(key, t)}</Text>
-                                    <Text style={{ fontSize: 12 }}>{count}</Text>
+                                    <Text style={{ fontSize: 12 }}>{formatNumber(count)}</Text>
                                 </Flex>
                             );
                         })}
@@ -225,29 +226,25 @@ export default function MobileCustomerAppMetrics() {
                 </div>
             ) : null}
 
-            {/* App stickiness — directional retention read */}
+            {/* Directional repeat-use read from the existing install/open totals. */}
             {installedCustomers > 0 ? (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                        {t('customerApp.appStickiness')}
-                    </Text>
                     <Flex gap={4} vertical>
-                        <Flex align="center" justify="space-between">
-                            <Text type="secondary" style={{ fontSize: 12 }}>{t('customerApp.returningOpens30d')}</Text>
-                            <Text style={{ fontSize: 12 }}>{appOpens30d}</Text>
-                        </Flex>
                         <Flex align="center" justify="space-between">
                             <Text type="secondary" style={{ fontSize: 12 }}>{t('customerApp.avgOpensPerInstall')}</Text>
                             <Text style={{ fontSize: 12 }}>
                                 {(summary?.lifetimeTotalAppOpens ?? 0) > 0 && installedCustomers > 0
-                                    ? ((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers).toFixed(1)
-                                    : '0.0'}
+                                    ? formatNumber((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers, {
+                                        maximumFractionDigits: 1,
+                                        minimumFractionDigits: 1,
+                                    })
+                                    : formatNumber(0, { minimumFractionDigits: 1 })}
                             </Text>
                         </Flex>
                         {iosManualInstalls > 0 ? (
                             <Flex align="center" justify="space-between">
                                 <Text type="secondary" style={{ fontSize: 12 }}>{t('customerApp.iosManualInstalls')}</Text>
-                                <Text style={{ fontSize: 12 }}>{iosManualInstalls}</Text>
+                                <Text style={{ fontSize: 12 }}>{formatNumber(iosManualInstalls)}</Text>
                             </Flex>
                         ) : null}
                     </Flex>

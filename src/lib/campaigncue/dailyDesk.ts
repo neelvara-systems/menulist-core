@@ -10,7 +10,18 @@ import {
     CAMPAIGNCUE_DAILY_DESK_RECIPES,
 } from "@constant/campaigncue/dailyDesk";
 import { getCampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
+import {
+    getCampaignCuePublicOfferPath,
+    getCampaignCuePublicOfferUrl,
+} from "@constant/campaigncue/routes";
+import { FEATURE_FLAGS } from "@config/features";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
+import { buildCampaignCueLocalVisibilityActions } from "@lib/campaigncue/localVisibility";
+import {
+    isCampaignCueReadyVisualAsset,
+    isCampaignCueRestrictedVisualAsset,
+    isCampaignCueReviewVisualAsset,
+} from "@lib/campaigncue/mediaMissions";
 import {
     buildCampaignCueCampaignRhythm,
     buildCampaignCueExperimentSuggestion,
@@ -52,6 +63,18 @@ const compactString = (value: unknown, fallback = ""): string => {
     if (typeof value === "string") return value.trim() || fallback;
     if (value == null) return fallback;
     return String(value).trim() || fallback;
+};
+
+const dateLikeToTime = (value: unknown): number => {
+    if (!value) return 0;
+    const date = value instanceof Date
+        ? value
+        : typeof value === "string" || typeof value === "number"
+            ? new Date(value)
+            : typeof (value as { toDate?: unknown }).toDate === "function"
+                ? (value as { toDate: () => Date }).toDate()
+                : null;
+    return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
 };
 
 export const uniqueCompactStrings = (values: Array<string | undefined>, limit: number) => (
@@ -240,104 +263,10 @@ function buildLocalVisibilityCues(params: {
     businessBrain: CampaignCueBusinessBrain;
     campaigns: CampaignCueCampaign[];
     locations: CampaignCueLocation[];
+    now?: Date;
     sourceInputs: CampaignCueSourceInput[];
 }): CampaignCueLocalVisibilityCue[] {
-    const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
-    const activeLocations = params.locations.filter((location) => location.status === "active");
-    const hasGoogleOutput = params.campaigns.some((campaign) => campaign.outputs.some((output) => output.channel === "google_local"));
-    const hasCurrentInput = params.sourceInputs.some((input) => isCampaignCueDecisionSourceInput(input));
-    const presencePassport = buildCampaignCuePresencePassport(params.businessBrain);
-    const readyPresenceCount = presencePassport.filter((profile) => profile.status === "ready").length;
-    const reviewDestination = presencePassport.find((profile) => profile.id === "presence_google_review");
-    const expiredInputs = params.sourceInputs.filter((input) => {
-        const value = input.expiresAt;
-        if (!value) return false;
-        const date = typeof value === "string" || typeof value === "number" || value instanceof Date
-            ? new Date(value)
-            : typeof (value as { toDate?: unknown }).toDate === "function"
-                ? (value as { toDate: () => Date }).toDate()
-                : null;
-        return Boolean(date && !Number.isNaN(date.getTime()) && date.getTime() < Date.now());
-    });
-    return [
-        {
-            id: "visibility_locality",
-            label: "Local area is clear",
-            detail: params.businessBrain.locality || activeLocations.length
-                ? "Campaigns can mention the saved area or branch when needed."
-                : "Add area, city, or active branch so local posts do not feel generic.",
-            actionLabel: params.businessBrain.locality || activeLocations.length ? "Review details" : "Add area",
-            status: params.businessBrain.locality || activeLocations.length ? "ready" : "missing",
-            targetTab: params.businessBrain.locality || activeLocations.length ? "details" : "details",
-            sourceReferences: activeLocations.map((location) => location.id),
-        },
-        {
-            id: "visibility_recent_update",
-            label: "Fresh Google update",
-            detail: hasGoogleOutput
-                ? "A Google-ready draft exists in the latest packs."
-                : "Prepare a Google update, offer, or event draft from current facts.",
-            actionLabel: hasGoogleOutput ? "Open Google" : "Create visibility pack",
-            status: hasGoogleOutput ? "ready" : "needs_review",
-            targetTab: hasGoogleOutput ? "google" : "cues",
-            sourceReferences: params.campaigns.slice(0, 2).map((campaign) => campaign.id),
-        },
-        {
-            id: "visibility_current_fact",
-            label: "Current fact available",
-            detail: hasCurrentInput
-                ? "A current owner input can support today's update."
-                : "Add one current offer, service, event, or owner note before a local visibility update.",
-            actionLabel: hasCurrentInput ? "Review inputs" : "Add input",
-            status: hasCurrentInput ? "ready" : "missing",
-            targetTab: "sources",
-            sourceReferences: params.sourceInputs.slice(0, 3).map((input) => input.id),
-        },
-        {
-            id: "visibility_expired_offer",
-            label: "Expired offers checked",
-            detail: expiredInputs.length
-                ? `${expiredInputs.length} saved input${expiredInputs.length === 1 ? "" : "s"} may be expired. Review before reuse.`
-                : "No expired offer or event input is currently blocking local visibility.",
-            actionLabel: expiredInputs.length ? "Review inputs" : "Open inputs",
-            status: expiredInputs.length ? "needs_review" : "ready",
-            targetTab: "sources",
-            sourceReferences: expiredInputs.map((input) => input.id),
-        },
-        {
-            id: "visibility_approved_image",
-            label: "Approved image ready",
-            detail: confirmedAssets.length
-                ? "A confirmed image or logo can be reused in a local update."
-                : "Add or confirm one real business photo, logo, or storefront image.",
-            actionLabel: confirmedAssets.length ? "Open assets" : "Add photo",
-            status: confirmedAssets.length ? "ready" : "needs_review",
-            targetTab: "assets",
-            sourceReferences: confirmedAssets.slice(0, 3).map((asset) => asset.id),
-        },
-        {
-            id: "visibility_presence_passport",
-            label: "Local presence passport",
-            detail: readyPresenceCount
-                ? `${readyPresenceCount} owner-managed destination${readyPresenceCount === 1 ? " is" : "s are"} saved for manual handoff.`
-                : "Add the owner-managed profiles customers use to find, contact, or review the business.",
-            actionLabel: "Review destinations",
-            status: readyPresenceCount ? "ready" : "missing",
-            targetTab: "visibility",
-            sourceReferences: presencePassport.filter((profile) => profile.destination).map((profile) => profile.id),
-        },
-        {
-            id: "visibility_review_destination",
-            label: "Review destination verified",
-            detail: reviewDestination?.destination
-                ? "A saved review destination can be used in the reputation pack after owner review."
-                : "Add the exact customer review destination before preparing a review request.",
-            actionLabel: reviewDestination?.destination ? "Review link" : "Add review link",
-            status: reviewDestination?.destination ? "ready" : "missing",
-            targetTab: "visibility",
-            sourceReferences: reviewDestination?.destination ? [reviewDestination.id] : [],
-        },
-    ];
+    return buildCampaignCueLocalVisibilityActions(params);
 }
 
 function buildTrustSummary(params: {
@@ -718,8 +647,8 @@ function buildCampaignCueAIAssistancePlan(params: {
 }): CampaignCueAIAssistancePlan {
     const activeInputs = params.sourceInputs.filter((input) => isCampaignCueDecisionSourceInput(input));
     const reviewInputs = params.sourceInputs.filter((input) => input.status === "needs_review");
-    const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
-    const reviewAssets = params.assets.filter((asset) => asset.rights.status === "needs_review");
+    const confirmedAssets = params.assets.filter(isCampaignCueReadyVisualAsset);
+    const reviewAssets = params.assets.filter(isCampaignCueReviewVisualAsset);
     const primaryMissingInput = params.missingInputs.find((task) => task.severity === "needs_fix")
         || params.missingInputs.find((task) => task.severity === "warning")
         || params.missingInputs[0];
@@ -895,6 +824,7 @@ function buildCampaignCueOutputPack(params: {
     now?: Date;
 }): CampaignCueOutputPack {
     const slug = slugifyPackPart(params.campaign.title);
+    const now = params.now || new Date();
     const decision = params.decision;
     const outputIntent = getCampaignCueOutputPickerItem(params.campaign.pack?.outputIntentId);
     const freshness = evaluateCampaignCuePackFreshness({
@@ -1019,6 +949,19 @@ function buildCampaignCueOutputPack(params: {
             value: "Use only the checked details in this pack. Do not add prices, dates, or claims that are not confirmed.",
         }),
     ];
+    const offerPagePointer = params.campaign.pack?.offerPage;
+    const offerPageIsLive = Boolean(
+        FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_HOSTED_OFFER_PAGES
+        && offerPagePointer?.status === "published"
+        && dateLikeToTime(offerPagePointer.expiresAt) > now.getTime()
+    );
+    const offerPageSlug = offerPagePointer?.slug || `${slug}-offer`;
+    const offerPagePublicPath = offerPageIsLive
+        ? getCampaignCuePublicOfferPath(offerPageSlug)
+        : undefined;
+    const offerPagePublicUrl = offerPageIsLive
+        ? getCampaignCuePublicOfferUrl(offerPageSlug)
+        : undefined;
     const miniPageBlocks: CampaignCueOutputPackCopyBlock[] = [
         outputPackCopyBlock({
             channel: "mini_page",
@@ -1051,6 +994,12 @@ function buildCampaignCueOutputPack(params: {
             label: "Terms",
             value: primaryOutput?.fields.policyNote || "Check terms before sharing.",
         }),
+        ...(offerPagePublicUrl ? [outputPackCopyBlock({
+            channel: "mini_page",
+            id: "mini_page_public_url",
+            label: "Published page link",
+            value: offerPagePublicUrl,
+        })] : []),
     ];
     const instructionBlocks: CampaignCueOutputPackCopyBlock[] = [
         outputPackCopyBlock({
@@ -1124,7 +1073,7 @@ function buildCampaignCueOutputPack(params: {
             value: [
                 `Trust status: ${trustBlocked.length ? "blocked" : trustWarnings.length ? "needs review" : "ready"}`,
                 "Confirm business facts, CTA, dates, prices, photo rights, brand direction, avoid list, and manual delivery boundary.",
-                "Keep hosted mini-page publishing, provider posting, WhatsApp sending, and ad spend off until their separate gates are enabled.",
+                "Publish a hosted offer page only through its explicit checked owner action. Keep provider posting, WhatsApp sending, and ad spend off.",
             ].join("\n"),
         }),
         outputPackCopyBlock({
@@ -1492,12 +1441,18 @@ function buildCampaignCueOutputPack(params: {
             ],
         },
         miniPage: {
-            status: destination ? "needs_review" : "needs_input",
-            slug: `${slug}-offer`,
+            status: offerPageIsLive ? "ready" : destination ? "needs_review" : "needs_input",
+            slug: offerPageSlug,
+            publicPath: offerPagePublicPath,
+            publicUrl: offerPagePublicUrl,
             title: params.campaign.title,
             fields: miniPageBlocks,
-            qrCodeStatus: destination ? "needs_review" : "needs_input",
-            manualNote: "This runtime prepares the mini-page and QR content brief only. Hosted public mini-page publishing stays off until a dedicated route, approval gate, and tracking policy are enabled.",
+            qrCodeStatus: offerPageIsLive ? "ready" : destination ? "needs_review" : "needs_input",
+            manualNote: offerPageIsLive
+                ? "This owner-published page is live until its bounded expiry. CampaignCue adds no visitor tracking or automatic posting."
+                : FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_HOSTED_OFFER_PAGES
+                    ? "This pack prepares the page and QR brief. Publish explicitly from CampaignCue after the current trust, fact, commercial, freshness, and approval checks pass."
+                    : "This pack prepares the page and QR brief only. Hosted publishing is disabled.",
         },
         proofDeck: {
             status: proofDeckStatus,
@@ -1574,9 +1529,9 @@ export function buildCampaignCueDailyDesk(params: {
             || input.sourceType === "event"
             || /(\$|₹|rs\.?|price|offer|off|discount|stock|slot|today|tomorrow|weekend|date|time|\b\d{1,2}\s?(am|pm)\b|\b\d{1,3}%\b)/.test(text);
     });
-    const confirmedAssets = params.assets.filter((asset) => asset.status === "ready" && asset.rights.status === "confirmed");
-    const reviewAssets = params.assets.filter((asset) => asset.rights.status === "needs_review");
-    const restrictedAssets = params.assets.filter((asset) => asset.status === "blocked" || asset.rights.status === "restricted");
+    const confirmedAssets = params.assets.filter(isCampaignCueReadyVisualAsset);
+    const reviewAssets = params.assets.filter(isCampaignCueReviewVisualAsset);
+    const restrictedAssets = params.assets.filter(isCampaignCueRestrictedVisualAsset);
     const missingInputs: CampaignCueDailyDeskTask[] = [];
 
     buildMissingDailyDeskFacts(params.businessBrain).forEach((message, index) => {
@@ -1774,7 +1729,7 @@ export function buildCampaignCueDailyDesk(params: {
         kind: "photo_task",
         label: index === 0 ? "Take one useful photo" : "Photo check",
         detail: task,
-        actionLabel: confirmedAssets.length ? "Review assets" : "Add photo note",
+        actionLabel: confirmedAssets.length ? "Review assets" : "Add photo",
         targetTab: "assets",
         severity: confirmedAssets.length ? "ready" : "info",
         sourceReferences: confirmedAssets.slice(0, 3).map((asset) => asset.id),
@@ -1841,7 +1796,11 @@ export function buildCampaignCueDailyDesk(params: {
         : undefined;
 
     const rhythm = buildCampaignCueCampaignRhythm({
+        businessBrain: params.businessBrain,
+        campaignMemory: params.analytics.campaignMemory,
         campaigns: params.campaigns,
+        enableReuse: FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_WINNING_PACK_REFRESH,
+        recommendedRecipeId: decision?.recipeId,
         recipe: packRecipe,
         schedules: params.schedules,
         workspace: params.workspace,
@@ -1853,6 +1812,7 @@ export function buildCampaignCueDailyDesk(params: {
         businessBrain: params.businessBrain,
         campaigns: params.campaigns,
         locations: params.locations,
+        now: params.now,
         sourceInputs: params.sourceInputs,
     });
     const deliveryCards = latestCampaign

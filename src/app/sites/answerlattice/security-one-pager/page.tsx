@@ -32,7 +32,7 @@ const ONE_PAGER = [
     ['Safe source intake', 'Import only owner-selected public pages, supported files, screenshots, or short recordings. Raw media is not retained by default, and generated output requires owner review.'],
     ['Screenshot attachments', 'Screenshots are user-initiated upload or paste only. The widget does not automatically capture the host app screen or scrape the DOM.'],
     ['Widget key handling', 'AnswerLattice validates widget keys by hash and can copy recoverable widget keys only from encrypted server-side key material.'],
-    ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
+    ['Owner approval', 'Drafts, generated answers, and suggested changes do not become official support until reviewed.'],
     ['Support-truth export', 'Authorized owners can export a complete bounded package of approved knowledge. Tickets, chats, visitor details, keys, credentials, and audit logs are excluded.'],
     ['Runtime rate limits', 'Public widget config, search, feedback, predictive, and API paths are bounded and validated before expensive work.'],
     ['Tenant scope', 'Dashboard and runtime reads resolve AnswerLattice workspace scope server-side; client context is never trusted as tenant identity.'],

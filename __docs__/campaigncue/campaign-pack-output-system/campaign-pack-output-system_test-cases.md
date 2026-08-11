@@ -29,12 +29,15 @@
 | Legacy pack without stored decision | It never borrows decision evidence or missing-input questions from a different recipe. |
 | WhatsApp output exists | ZIP includes WhatsApp message/status/reply/catalog reminder files. |
 | Google output exists | ZIP includes title/description/date/link/terms files. |
-| No hosted mini-page route | ZIP includes mini-page/QR brief only, not a public URL claim. |
+| Page not published, unpublished, or expired | ZIP includes the mini-page/QR brief but no public path claim. |
+| Current page explicitly published | Pack and ZIP retain the opaque published slug, route path, and current-stage absolute URL; they never invent a second slug. |
 | Brand Playbook exists | ZIP includes Campaign Proof Deck brief with brand system, creative set, focus, UGC/reel dialogue-action and shot-plan references, checklist, and source trace. |
 | UGC/video output exists | ZIP includes creator persona, camera plan, product-placement, dialogue/action beats or B-roll checklist, consent, and disclosure handoff fields. |
 | Brand Playbook is missing | Proof deck is Needs review, not blocked, and campaign output can still proceed if other trust gates allow it. |
 | No rendered visual exists | ZIP includes image/print briefs, not fake PNG/PDF binaries. |
 | Result options exist | ZIP includes result-memory file and UI keeps one-tap result actions. |
+| Cloud copy enabled | Same deterministic ZIP can be checksum-validated, saved, replaced through two rotating slots, and downloaded through the current generation only. |
+| Cloud copy unavailable | Local ZIP download remains available and no archive pointer is written. |
 | Owner selects an output focus | Campaign stores canonical intent id, requested output types, and optional source-template provenance; Output Pack summary and bundle manifest retain the focus. |
 | Output focus has missing grouped facts | Browser routes to Missing Input Inbox and server independently rejects a forged request. Any confirmed alternative can satisfy an any-of group. |
 | Goal-specific focus conflicts with current decisions | A compatible Decision Engine candidate is selected, or creation is rejected; the system never relabels an unrelated recipe. |

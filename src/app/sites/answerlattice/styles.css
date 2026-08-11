@@ -3684,11 +3684,10 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
     margin-right: 0;
     font-weight: inherit;
     opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(-0.8rem, 1.35rem, 0) scale(0.985);
-    animation: al-hero-word-reveal 940ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: var(--al-hero-word-delay, 80ms);
-    will-change: opacity, transform, filter;
+    transform: translate3d(-0.2rem, 0.45rem, 0);
+    animation: al-hero-word-reveal 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--al-hero-word-delay, 18ms);
+    will-change: opacity, transform;
 }
 
 .al-home-hero-title__word--gradient {
@@ -3707,16 +3706,15 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
     color: transparent;
     font-weight: inherit;
     opacity: 0;
-    filter: blur(14px);
     line-height: 1.2;
     overflow: visible;
     padding-bottom: 0.16em;
-    transform: translate3d(-0.8rem, 1.35rem, 0) scale(0.985);
-    animation: al-hero-word-reveal 940ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: var(--al-hero-word-delay, 80ms);
+    transform: translate3d(-0.2rem, 0.45rem, 0);
+    animation: al-hero-word-reveal 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--al-hero-word-delay, 18ms);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    will-change: opacity, transform, filter;
+    will-change: opacity, transform;
 }
 
 .al-home-hero-title__word:last-child {
@@ -3730,36 +3728,36 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
 .al-home-hero__image,
 .al-home-hero__proof {
     opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(0, 1.8rem, 0) scale(0.982);
-    animation: al-hero-block-reveal 960ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    will-change: opacity, transform, filter;
+    transform: translate3d(0, 0.6rem, 0);
+    animation: al-hero-block-reveal 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: opacity, transform;
 }
 
 .al-home-hero__eyebrow {
-    animation-delay: 70ms;
+    animation-delay: 0ms;
 }
 
 .al-home-hero__subtitle {
-    animation-delay: 760ms;
+    animation-delay: 40ms;
 }
 
 .al-home-hero__actions {
-    animation-delay: 900ms;
+    animation-delay: 80ms;
 }
 
 .al-home-hero__chips {
-    animation-delay: 1040ms;
+    animation-delay: 120ms;
 }
 
 .al-home-hero__image {
     animation-name: al-hero-image-reveal;
-    animation-delay: 1160ms;
+    animation-duration: 520ms;
+    animation-delay: 160ms;
     transform-origin: center top;
 }
 
 .al-home-hero__proof {
-    animation-delay: 1260ms;
+    animation-delay: 200ms;
 }
 
 .al-site-footer {
@@ -5258,42 +5256,36 @@ html[data-answerlattice-theme='light'] .answerlattice-site .al-support-map {
 @keyframes al-hero-word-reveal {
     from {
         opacity: 0;
-        filter: blur(14px);
-        transform: translate3d(-0.8rem, 1.35rem, 0) scale(0.985);
+        transform: translate3d(-0.2rem, 0.45rem, 0);
     }
 
     to {
         opacity: 1;
-        filter: blur(0);
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes al-hero-block-reveal {
     from {
         opacity: 0;
-        filter: blur(14px);
-        transform: translate3d(0, 1.8rem, 0) scale(0.982);
+        transform: translate3d(0, 0.6rem, 0);
     }
 
     to {
         opacity: 1;
-        filter: blur(0);
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes al-hero-image-reveal {
     from {
         opacity: 0;
-        filter: blur(18px);
-        transform: translate3d(0, 2.4rem, 0) scale(0.972);
+        transform: translate3d(0, 1rem, 0);
     }
 
     to {
         opacity: 1;
-        filter: blur(0);
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: translate3d(0, 0, 0);
     }
 }
 

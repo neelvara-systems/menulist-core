@@ -1,19 +1,35 @@
-# Multi-Location Center - Help Doc
+# Multi-Location Center - Help
 
-## What This Does
+## Add A Branch
 
-Multi-Location Center helps create and manage campaigns across more than one branch.
+1. Open **Locations**.
+2. Add the branch name and area or city.
+3. Add a branch phone, WhatsApp number, booking link, menu/service link, or website only when it differs from the main business details.
+4. Set the branch to **Active** when its details are ready.
 
-## How To Use It
+Blank branch contacts use the confirmed business-wide contact.
 
-1. Create or open a campaign idea.
-2. Select the locations.
-3. Review facts for each location.
-4. Create localized drafts.
-5. Approve or request changes per location.
-6. Schedule or export per location.
-7. Compare results by location.
+## Create Branch Packs
 
-## Important
+1. Create or open one current workspace campaign pack.
+2. Open **Locations**.
+3. Select up to eight active branches with an area or city.
+4. Choose **Create branch packs**.
+5. Review each returned pack separately.
 
-Check each location before manual posting. Hours, services, prices, addresses, and channel instructions can differ by branch.
+Each branch pack has its own trust status, approval comments, manual delivery actions, hosted offer page, export history, and result question.
+
+## When CampaignCue Blocks Use
+
+Create a fresh branch pack when:
+
+- the branch was disabled or removed;
+- its area, phone, WhatsApp, booking/menu link, or website changed;
+- shared Business Brain facts changed;
+- the source pack's example pattern changed;
+- the pack expired;
+- trust checks or approval are unresolved.
+
+## Important Boundary
+
+CampaignCue prepares files, copy, print material, and manual handoff instructions. It does not publish one campaign to every branch or provider account automatically.

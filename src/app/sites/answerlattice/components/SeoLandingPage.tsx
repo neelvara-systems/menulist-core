@@ -64,8 +64,8 @@ export default function SeoLandingPage({
                 ]}
                 proofClassName="max-w-5xl"
                 proofItems={[
-                    { label: 'Page context', value: 'Route, feature, workflow, role, and plan hints guide the answer.' },
-                    { label: 'Answer order', value: 'Approved answers and owner answers before fallback.' },
+                    { label: 'Support context', value: 'Route, feature, workflow, role, and plan hints guide relevant help.' },
+                    { label: 'Support path', value: 'Approved answers and owner answers come before fallback.' },
                     { label: 'Safety boundary', value: 'Screenshots are user-attached; context never decides workspace identity.' },
                 ]}
             />
@@ -73,14 +73,14 @@ export default function SeoLandingPage({
             <section className="border-t border-white/[0.06] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
-                        eyebrow="Question flow"
+                        eyebrow="Support path"
                         title={question}
-                        description="AnswerLattice turns a generic support gap into a reviewed answer that matches the current product page."
+                        description="See how AnswerLattice uses reviewed knowledge, safe page context, owner review, and fallback to give the user a useful next step."
                     />
                     <AnswerlatticeHubDiagram
                         idPrefix={`${diagramId}-question`}
                         inputLabel="Before AnswerLattice"
-                        outputLabel="Reviewed output"
+                        outputLabel="With AnswerLattice"
                         inputs={[
                             {
                                 title: 'Problem',
@@ -93,7 +93,7 @@ export default function SeoLandingPage({
                         ]}
                         outputs={[
                             {
-                                title: 'AnswerLattice answer',
+                                title: 'Reviewed support',
                                 detail: answerlatticeAnswer,
                             },
                             {
@@ -109,8 +109,8 @@ export default function SeoLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Setup path"
-                        title="Reviewed support stays official."
-                        description="The setup path turns scattered product material, page context, and owner approval into official answers only after review."
+                        title="Turn what you already know into reviewed support."
+                        description="The setup path turns scattered product material and page context into customer-facing support only after owner review."
                     />
                     <div className="al-linear-proof__grid al-linear-proof__grid--compact">
                         <article className="al-linear-proof__copy" data-answerlattice-reveal>

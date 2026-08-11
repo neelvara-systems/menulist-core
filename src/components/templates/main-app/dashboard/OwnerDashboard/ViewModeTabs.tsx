@@ -59,7 +59,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         ...(hasGraph ? [{
             label: (
                 <span className={activeMode === 'graph' ? styles.activeTab : styles.secondaryTab}>
-                    <LuAreaChart size={15} /> Graphs
+                    <LuAreaChart size={15} /> {t('graph')}
                 </span>
             ),
             value: 'graph',

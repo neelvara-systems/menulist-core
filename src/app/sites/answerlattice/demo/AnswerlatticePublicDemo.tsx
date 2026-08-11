@@ -16,11 +16,11 @@ const DEMO_STAGES = [
     {
         key: 'conflict',
         label: 'Source conflict',
-        action: 'Prepare governed proposal',
+        action: 'Prepare draft answer',
     },
     {
         key: 'proposal',
-        label: 'Pending proposal',
+        label: 'Draft awaiting review',
         action: 'Approve sample answer',
     },
     {
@@ -31,7 +31,7 @@ const DEMO_STAGES = [
     {
         key: 'release',
         label: 'Release detected',
-        action: 'Inspect affected surfaces',
+        action: 'Inspect affected support',
     },
     {
         key: 'fallback',
@@ -40,7 +40,7 @@ const DEMO_STAGES = [
     },
     {
         key: 'updated',
-        label: 'Truth restored',
+        label: 'Answer updated',
         action: 'Run demo again',
     },
 ] as const;
@@ -155,7 +155,7 @@ export default function AnswerlatticePublicDemo() {
                                         </div>
                                         <h3 className="mt-3 text-2xl font-semibold text-white">No answer is approved while sources disagree.</h3>
                                         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#a6a6c1]">
-                                            AnswerLattice preserves both claims as evidence and prepares one reviewable proposal. It does not guess which source is correct.
+                                            AnswerLattice preserves both claims as evidence and prepares one draft answer for review. It does not guess which source is correct.
                                         </p>
                                     </>
                                 )}
@@ -166,11 +166,11 @@ export default function AnswerlatticePublicDemo() {
                                             <LuFileClock aria-hidden="true" />
                                             Pending human review
                                         </div>
-                                        <h3 className="mt-3 text-2xl font-semibold text-white">Proposed canonical answer</h3>
+                                        <h3 className="mt-3 text-2xl font-semibold text-white">Draft answer for review</h3>
                                         <p className="mt-3 rounded-xl border border-white/[0.08] bg-black/15 p-4 text-sm leading-6 text-[#e2e2ef]">
                                             Refund requests are accepted within 7 calendar days of purchase. Eligibility is confirmed against the payment record.
                                         </p>
-                                        <p className="mt-3 text-xs text-[#8585a2]">Authority: billing policy. Conflicting launch guide remains attached for review.</p>
+                                        <p className="mt-3 text-xs text-[#8585a2]">Official source: billing policy. The conflicting launch guide remains attached for review.</p>
                                     </>
                                 )}
 
@@ -180,7 +180,7 @@ export default function AnswerlatticePublicDemo() {
                                             <LuShieldCheck aria-hidden="true" />
                                             Approved for release 2.4
                                         </div>
-                                        <h3 className="mt-3 text-2xl font-semibold text-white">One answer now governs every support surface.</h3>
+                                        <h3 className="mt-3 text-2xl font-semibold text-white">One reviewed answer now serves the widget, help center, and AI context.</h3>
                                         <p className="mt-3 rounded-xl border border-teal-300/20 bg-teal-300/[0.05] p-4 text-sm leading-6 text-[#e2e2ef]">
                                             Refund requests are accepted within 7 calendar days of purchase. Eligibility is confirmed against the payment record.
                                         </p>
@@ -196,7 +196,7 @@ export default function AnswerlatticePublicDemo() {
                                         </div>
                                         <h3 className="mt-3 text-2xl font-semibold text-white">The approved answer is now marked as drifted.</h3>
                                         <p className="mt-3 text-sm leading-6 text-[#a6a6c1]">
-                                            The billing policy changed from 7 days to 5 days. AnswerLattice keeps the old answer visible to reviewers, blocks it from acting as current truth, and identifies every affected surface.
+                                            The billing policy changed from 7 days to 5 days. AnswerLattice keeps the old answer visible to reviewers, stops it from acting as current guidance, and identifies every affected support path.
                                         </p>
                                     </>
                                 )}
@@ -225,27 +225,27 @@ export default function AnswerlatticePublicDemo() {
                                     <>
                                         <div className="flex items-center gap-2 text-sm font-semibold text-teal-200">
                                             <LuShieldCheck aria-hidden="true" />
-                                            Truth restored for release 2.5
+                                            Answer updated for release 2.5
                                         </div>
                                         <h3 className="mt-3 text-2xl font-semibold text-white">The corrected answer is approved and distributed.</h3>
                                         <p className="mt-3 rounded-xl border border-teal-300/20 bg-teal-300/[0.05] p-4 text-sm leading-6 text-[#e2e2ef]">
                                             Refund requests are accepted within 5 calendar days of purchase. Eligibility is confirmed against the payment record.
                                         </p>
-                                        <p className="mt-3 text-xs text-[#8585a2]">New validation event recorded. All affected surfaces can use the current answer again.</p>
+                                        <p className="mt-3 text-xs text-[#8585a2]">New validation event recorded. The widget, help center, and AI context can use the current answer again.</p>
                                     </>
                                 )}
                             </section>
                         </div>
 
-                        <aside className="rounded-2xl border border-white/[0.08] bg-[#101026] p-5" aria-label="Governance trace">
-                            <p className="text-sm font-semibold text-white">Governance trace</p>
+                        <aside className="rounded-2xl border border-white/[0.08] bg-[#101026] p-5" aria-label="Answer review trace">
+                            <p className="text-sm font-semibold text-white">Answer review trace</p>
                             <dl className="mt-5 space-y-4 text-sm">
                                 <div className="border-b border-white/[0.07] pb-4">
                                     <dt className="text-xs text-[#737391]">Current state</dt>
                                     <dd className="mt-1 font-semibold text-white">{stage.label}</dd>
                                 </div>
                                 <div className="border-b border-white/[0.07] pb-4">
-                                    <dt className="text-xs text-[#737391]">Answer authority</dt>
+                                    <dt className="text-xs text-[#737391]">Official answer source</dt>
                                     <dd className="mt-1 text-[#d2d2e3]">{stageIndex === 0 ? 'No approved answer' : stageIndex >= 3 && stageIndex < 5 ? 'Review required' : 'Billing policy'}</dd>
                                 </div>
                                 <div className="border-b border-white/[0.07] pb-4">
@@ -258,7 +258,7 @@ export default function AnswerlatticePublicDemo() {
                                         {stageIndex === 0
                                             ? 'Conflict preserved'
                                             : stageIndex === 1
-                                                ? 'Proposal created'
+                                                ? 'Draft created'
                                                 : stageIndex < 3
                                                     ? 'Approval recorded'
                                                     : stageIndex < 5

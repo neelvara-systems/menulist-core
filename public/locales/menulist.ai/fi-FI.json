@@ -428,7 +428,8 @@
         "daily": "Edellinen päivä",
         "weekly": "Viimeiset 7 päivää",
         "monthly": "Tässä kuussa",
-        "overall": "Yleensä"
+        "overall": "Yleensä",
+        "graph": "Kaaviot"
       },
       "today": {
         "noMenuActivityToday": "Ei valikkotoimintoa vielä tänään.",
@@ -454,16 +455,16 @@
         "noResultSearches": "Tuottomat haut",
         "unavailableInterest": "Ei saatavilla oleva korko",
         "topLanguage": "Suosituin kieli",
-        "smartPicksShown": "Älykkäät valinnat näkyvät",
+        "smartPicksShown": "Smart Picks Näyttely",
         "smartPicksClicks": "Smart Picks -klikkaukset",
         "smartPicksTaps": "Smart Picks -napautukset",
-        "smartPicksUsed": "Käytetyt älykkäät valinnat",
+        "smartPicksUsed": "Smart Picks Käytetty",
         "smartPicksEngagement": "Smart Picks -toiminta",
         "totalMenuScans": "Valikkotarkistukset yhteensä",
         "totalItemClicks": "Tuoteklikkaukset yhteensä",
         "activeDays": "Aktiiviset päivät",
         "daysActive": "Päiviä aktiivisia",
-        "avgDailyScans": "Keskim. Päivittäiset skannaukset",
+        "avgDailyScans": "Päivittäiset skannat",
         "smartPicksActive": "Smart Picks aktiivinen",
         "engagementRate": "Sitoutumisprosentti",
         "topItem": "Suosituin kohde",
@@ -473,8 +474,8 @@
         "itemClicks": "Kuinka monta kertaa asiakkaat naputtivat kohteita",
         "engagedSessions": "Istunnot, joissa asiakkaat osoittivat todellista kiinnostusta ruokalistalle",
         "actionRate": "Istunnot, jotka johtivat lopulliseen asiakkaan toimintaan",
-        "smartPicksShown": "Kuinka monta kertaa Älykkäät valinnat näkyivät sivullasi",
-        "smartPicksUsed": "Prosenttiosuus asiakkaista, jotka käyttivät Smart Picksiä",
+        "smartPicksShown": "Kuinka monta kertaa Smart Picks ilmestyi sivuillasi",
+        "smartPicksUsed": "Käytettyjen asiakkaiden prosenttiosuus Smart Picks",
         "customerActions": "Viimeiset toimet, kuten soitto, WhatsApp, reittiohjeet, varaus ja tilaaminen",
         "searches": "Poista hakupyyntö valikosta",
         "unavailableInterest": "Napauttaa kohteita, jotka eivät ole käytettävissä"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Ei tallennettua toimintaa eilen",
         "noAnalyticsYet": "Ei vielä tietoja. Analytiikkasi tulevat näkyviin, kun asiakkaat alkavat katsella.",
-        "noItemClicksYet": "Ei vielä napsautettuja kohteita"
+        "noItemClicksYet": "Ei vielä napsautettuja kohteita",
+        "lowActivityTitle": "Alhainen aktiivisuus",
+        "lowActivityDescription": "Tällä kaudella ei ollut tarpeeksi toimintaa, jotta tästä ajanjaksosta voitaisiin tehdä hyödyllinen johtopäätös.",
+        "noWeeklyData": "Edellisten 7 päivän aikana ei ole vielä saatavilla mitään valikkoaktiviteettia.",
+        "noMonthlyData": "Tälle kuukaudelle ei ole vielä saatavilla mitään ruokalistan toimintoja, joten voitte valita haluamasi."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change} % vs. viime viikko"
+        "vsLastWeek": "{sign} {change}% vs viime viikolla",
+        "changeVsLastWeek": "{change} VS viime viikolla"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# toimintapäivä kirjattu} other {# päivän aktiivisuus kirjattu}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Kyllä",
         "no": "Ei",
-        "notAvailable": "Ei käytössä",
+        "notAvailable": "N/A",
         "active": "Aktiivinen",
         "lowActivity": "Alhainen aktiivisuus",
         "noData": "Ei tietoja"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Odotetaan ensimmäistä tarkistusta",
         "weeklyInsights": "Viikoittaiset tilastot",
         "last4WeeksComparison": "Viimeisten 4 viikon vertailu",
-        "historicalDataWillAppear": "Historiatiedot tulevat näkyviin muutaman viikon kuluttua"
+        "historicalDataWillAppear": "Historiatiedot tulevat näkyviin muutaman viikon kuluttua",
+        "statusMessages": {
+          "working": "Asiakkaat käyttävät nykyistä valikkoa.",
+          "low_activity": "Asiakastoimintaa on edelleen kasvussa. Nykyinen valikkosi pysyy käytettävissä, mutta se ei ole enää saatavilla.",
+          "no_data": "Aktiivisuus näkyy, kun asiakkaat alkavat avata valikkoasi."
+        }
       },
       "aiSummary": {
         "daily": "Edellinen päivä yhdellä silmäyksellä",
         "weekly": "Tämän viikon yhteenveto",
-        "monthly": "Tämän kuun yhteenveto"
+        "monthly": "Tämän kuun yhteenveto",
+        "localized": {
+          "noActivity": "Tällä ajanjaksolla ei kirjattu selvitettyä asiakastoimintaa, joten tätä ajanjaksoa ei voida pitää selvitetynä.",
+          "menuViews": "Asiakkaat avasivat valikon {count} kertaa.",
+          "itemTaps": "Asiakkaat napauttivat valikkokohtia {count} kertaa.",
+          "customerActions": "Asiakkaat valmistuneet {count} Lopulliset toimet .",
+          "searches": "Asiakkaat etsivät valikosta {count} kertaa.",
+          "unavailableInterest": "Käytettävissä olevat kohteet saivat {count} napautusta."
+        }
       },
       "actions": {
         "call": "Soita",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: {visits} käynnit · {rate} %",
         "markDone": "Merkitse valmiiksi",
         "markDoneFailed": "Tätä toimintoa ei voitu merkitä valmiiksi. Yritä uudelleen.",
-        "markDoneSaved": "Merkitty valmiiksi. Tulokset päivitetään, kun seuraava analytiikkayhteenveto on valmis."
+        "markDoneSaved": "Merkitty valmiiksi. Tulokset päivitetään, kun seuraava analytiikkayhteenveto on valmis.",
+        "bestSourceStatsFormatted": "· {visits} käyntiä · {rate} toimintaprosenttia",
+        "bestSourceMobileFormatted": "Paras lähde juuri nyt: {source} · {visits} käyntiä · {rate} toimintaprosentti",
+        "sourceQualityTagFormatted": "{source}: {visits} käyntiä · {sessions} toimintaistuntoa · {rate} vierailua",
+        "sourceQualityTagCompactFormatted": "{source}: {visits} käyntiä · {rate}",
+        "priorities": {
+          "high": "Korkea prioriteetti",
+          "medium": "Keskitasoinen prioriteetti",
+          "low": "Matala prioriteetti"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Vakaa",
+            "message": "Käytettävissä oleva toiminta tukee selkeää valikkotarkastusta."
+          },
+          "watch": {
+            "label": "Jatka katselua.",
+            "message": "Jotkin toiminnot saattavat vaatia toisen tarkistuksen ennen kuin valikkoa voidaan muuttaa."
+          },
+          "no_data": {
+            "label": "Tarvitaan lisää tietoa.",
+            "message": "Odota, kunnes asiakastoiminta on vakiintunutta ennen kuin teet johtopäätöksiä."
+          }
+        },
+        "localizedActions": {
+          "reason": "Perustuu viimeisimpään selvitettyyn asiakastoimintaan.",
+          "availability": {
+            "title": "Tarkista tuotteen saatavuus.",
+            "description": "Tarkista, pitäisikö käytettävissä olevat tai piilotetut kohteet palauttaa vai pitää ne poissa näkymästä.",
+            "action": "Tarkista saatavuus"
+          },
+          "customerActions": {
+            "title": "Tarkista asiakkaan toimet.",
+            "description": "Tarkista valikon tiedot ja linkit, joita asiakkaat käyttävät ennen kuin he ryhtyvät toimiin.",
+            "action": "Tarkista asiakkaan toimet."
+          },
+          "details": {
+            "title": "Parannetaan kohteen yksityiskohtia",
+            "description": "Tarkista tuotteiden nimet, lisävarusteet, kuvaukset ja kuvat, joissa voi olla selkeämpää tietoa.",
+            "action": "Tarkista kohteen tiedot."
+          },
+          "general": {
+            "title": "Odota selkeämpää signaalia.",
+            "description": "Pidä nykyinen valikko vakaana, kunnes toimintaa on enemmän saatavilla.",
+            "action": "Tarkista myöhemmin."
+          },
+          "menuOrder": {
+            "title": "Valitse menyn tilaukset",
+            "description": "Tarkista, että asiakkaat löytävät helposti tärkeät tuotteet ja kategoriat.",
+            "action": "Valitse menyn tilaukset"
+          },
+          "pricing": {
+            "title": "Arviointi hinnat",
+            "description": "Tarkista hinnat, jotka liittyvät viimeisimpään asiakkaan kiinnostuksen signaalin.",
+            "action": "Tarkista hinnat Tarkistä hinnat"
+          },
+          "search": {
+            "title": "Tarkastele asiakkaiden hakuja.",
+            "description": "Tarkista hakut, jotka eivät ehkä johda asiakkaita hyödylliseen valikon tulokseen.",
+            "action": "Tarkista haut Tarkastele hakuja"
+          },
+          "source": {
+            "title": "Tarkista asiakkaiden syöttölähteet.",
+            "description": "Tarkista, että julkiset linkit ja QR-sijoittelut ohjaavat asiakkaat nykyiseen valikkoon.",
+            "action": "Tarkista julkiset linkit."
+          },
+          "timing": {
+            "title": "Tarkista valikon ajoitus.",
+            "description": "Tarkista, että ajoitetut luokat ja saatavuus vastaavat toisiaan silloin, kun asiakkaat etsivät niitä.",
+            "action": "Tarkistuksen ajoitus"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Merkitty valmiiksi.",
+            "message": "Tulos tarkistetaan, kun selvitettyä toimintaa on saatavilla enemmän."
+          },
+          "improved": {
+            "label": "Parannettu",
+            "message": "Seuraava tarkastus osoittaa parannuksen."
+          },
+          "no_clear_change": {
+            "label": "Ei selvää muutosta.",
+            "message": "Seuraava selvitetty sekki ei osoittanut selkeää muutosta, joten sekin oli selvä."
+          },
+          "not_enough_data": {
+            "label": "Tarvitaan lisää tietoa.",
+            "message": "Vakiintunutta toimintaa ei ole vielä tarpeeksi, jotta tätä muutosta voitaisiin arvioida."
+          },
+          "pending": {
+            "label": "Pitkän tarkastuksen",
+            "message": "MenuList tarkistaa tämän, kun lisää selvitettyä toimintaa on saatavilla."
+          }
+        }
       },
       "details": {
         "menuDetails": "Valikon tiedot",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Ei saatavilla oleva korko",
           "languages": "Kielet",
           "filters": "Suodattimet",
-          "smartPicks": "Älykkäät valinnat",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Toimenpiteet aukioloaikojen mukaan"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Valikkonäkymät",
-          "itemTaps": "Kohteen napautukset",
+          "itemTaps": "Tuotenapautukset",
           "menuSessions": "Valikkoistunnot",
           "engagedSessions": "Istunnot, joissa on toimintaa",
           "actionSessions": "Toimintoistunnot",
@@ -617,6 +729,12 @@
           "closed": "Toiminnot suljettuna",
           "unknown": "Toiminnot, kun aukioloaikojen tila ei ollut käytettävissä",
           "closedShare": "{rate}% kaikista tallennetuista toimista tapahtui suljettuna"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} ei ole käytettävissä taps-tapauksissa.",
+          "strongItem": "{count} Tuotenapautukset",
+          "needsWork": "{count} katselukertaa, ei napautuksia",
+          "gettingAttention": "{count}-näkymät"
         }
       },
       "smartPicks": {
@@ -642,7 +760,7 @@
         "officialBusinessPage": "Virallinen yrityssivu",
         "loadingCurrentActivity": "Ladataan nykyistä OBP-toimintaa",
         "loadingActivity": "Ladataan OBP-toimintaa",
-        "sharedInfo": "Toiminnot laskevat viimeiset OBP-klikkaukset puheluissa, WhatsAppissa, reittiohjeissa, varauksessa ja tilauksessa. Osuudet tulevat viralliselta yrityslinkkikortilta, ja linkkien napautukset laskevat Google-arvostelun, Instagramin, Facebookin ja julkisen OBP:n verkkosivustokäynnit.",
+        "sharedInfo": "Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.",
         "noActivityToday": "Ei OBP-toimintaa vielä tänään.",
         "noComparison": "Ei vertailua",
         "sameAsLastWeek": "Sama kuin viime viikolla",
@@ -680,7 +798,7 @@
         "actionBreakdown": "Toimenpiteiden erittely",
         "shareBreakdown": "Jakamisen erittely",
         "mobileInfoIntro": "Tämä kortti näyttää, kuinka asiakkaat ovat vuorovaikutuksessa virallisen yrityssivusi kanssa ennen valikon avaamista tai sen yhteydessä.",
-        "mobileInfoActions": "Toiminnot laskevat puhelun, WhatsAppin, reittiohjeiden, varauksen ja tilauksen viimeiset napsautukset.",
+        "mobileInfoActions": "Toiminnot laskevat lopulliset klikkaukset Call, WhatsApp, Ohjeet, varaus ja tilaus.",
         "mobileInfoLinks": "Osuudet tulevat viralliselta yrityslinkkikortilta, ja linkkien napautukset laskevat julkisen OBP:n Google-arvostelut, Instagram-, Facebook- ja verkkosivustokäynnit.",
         "todayPartialInfo": "Tänään toistaiseksi vain osittainen live-toimintaa. Se ei vielä sisälly edelliseen päivään, viimeisiin 7 päivään, tähän kuukauteen tai elinkaaren kokonaismääriin."
       },
@@ -706,7 +824,6 @@
         "shortcutBreakdown": "Pikanäppäinten erittely",
         "installsByPlatform": "Asennukset alustan mukaan",
         "appStickiness": "Sovellusten tahmeus",
-        "returningOpens30d": "Palautus aukeaa (30p)",
         "avgOpensPerInstall": "Keskimääräinen avautumisten määrä asennusta kohti",
         "iosManualInstalls": "iOS:n manuaaliset asennukset",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "Tilaa verkosta"
         },
         "platforms": {
-          "ios": "iOS iOS iOS",
-          "iosLong": "iOS (iPhone / iPad) -sovellukset",
-          "android": "Android-käyttöjärjestelmälle.",
+          "ios": "iOS",
+          "iosLong": "iOS (iPhone / iPad)",
+          "android": "Android",
           "desktop": "Työpöytä",
           "other": "Muu"
-        }
+        },
+        "tryAgainLater": "Yritä myöhemmin uudelleen."
       },
       "projectSelector": {
         "deleted": "Poistettu",
@@ -756,12 +874,13 @@
         "couldNotSave": "Ei voitu tallentaa",
         "title": "Google-listaus",
         "updatedDescription": "Verkkosivuston linkki asetettu viralliselle sivullesi",
-        "setOfficialLink": "Aseta virallinen linkkisi Googleen",
+        "setOfficialLink": "Aseta virallinen linkki Google",
         "updateProfileWebsite": "Päivitä Google-yritysprofiilisivustosi muotoon {url}",
         "copied": "Kopioitu",
         "copy": "Kopioi",
         "openGoogle": "Avaa Google",
-        "done": "Valmis"
+        "done": "Valmis",
+        "couldNotOpen": "Google-yritysprofiilia ei voitu avata."
       },
       "behaviorNudge": {
         "linkCopied": "Linkki kopioitu",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Tarkista yleisin ongelma",
         "repairMenu": "Korjausvalikko",
         "review": "Tarkista",
-        "repair": "Korjaus"
+        "repair": "Korjaus",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {#-kohdasta puuttuu kuvaus.} other {#-kohteiden kuvaukset puuttuvat.}}",
+            "ok": "Kaikilla kohteilla on kuvaus.",
+            "help": "Kuvaukset auttavat asiakkaita ymmärtämään kunkin tarjouksen."
+          },
+          "images": {
+            "warning": "{count, plural, one {#-kohdasta puuttuu kuva.} other {# items are missing images -kohdetta ei löydy.}}",
+            "ok": "Kaikissa kohteissa on kuvia.",
+            "help": "Kuvat voivat auttaa asiakkaita valitsemaan nopeammin."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Luokasta # puuttuu kuvake.} other {#-luokista puuttuu kuvakkeita.}}",
+            "ok": "Kaikissa luokissa on kuvakkeet.",
+            "help": "Kuvakkeet tekevät kategorioista helpommin selattavia."
+          },
+          "prices": {
+            "warning": "{count, plural, one {#-tuotteesta puuttuu hinta.} other {# tuotteista puuttuu hintoja.}}",
+            "ok": "Kaikilla tuotteilla on hinta.",
+            "help": "Asiakkaat vertailevat hintoja ennen kuin tekevät ostoksen."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {#-kohde on piilotettu asiakkailta.} other {# tuotetta on piilotettu asiakkailta.}}",
+            "ok": "Mitään kohteita ei ole piilotettu.",
+            "help": "Piilotetut kohteet eivät näy julkisessa valikossa, vaan ne näkyvät vain valikkoikkunassa."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {#-hinta tarvitsee tarkistuksen.} other {# hinnat tarvitsevat tarkistuksen.}}",
+            "ok": "Hinnat ovat odotetun alueen sisällä.",
+            "help": "MenuList vertaa yhden tuotteen hintoja samassa luokassa. Merkitse tarkoituksellinen hinta tarkistettuna."
+          },
+          "translations": {
+            "warning": "{count, plural, one {#-kohdasta puuttuu käännöksiä.} other {#-kohdasta puuttuu käännöksiä.}}",
+            "ok": "Kaikki näkyvät kohteet on käännetty.",
+            "help": "Jotkin kohteet ovat puutteellisia valikoissa tietyillä kielillä."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {#-valikon yksityiskohtaisesta käännöksestä puuttuu käännös.} other {#-valikon tiedot puuttuvat käännöksistä.}}",
+            "ok": "Valikkotiedot on käännetty.",
+            "help": "Valikkojen nimi, kuvaus tai huomautukset ovat puutteellisia valituilla valikkokielillä."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Kopioitu linkki",
+        "direct": "suoraan",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Myyjä Kit",
+        "nativeShare": "Laitejaon jakaminen",
+        "obp": "Yrityssivu",
+        "other": "Muu",
+        "qr": "QR koodi",
+        "shortcut": "Sovelluksen pikakuvake",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Liiketoiminnan terveys",
+        "open": "Avoin liiketoiminta terveys",
+        "today": "Tänään",
+        "latestActivity": "Viimeisin toiminta",
+        "noActionNeeded": "Ei vaadi toimia",
+        "status": {
+          "stable": "Vakaa",
+          "watch": "Vaatii huomiota",
+          "needs_review": "Tarvitsee tarkistuksen.",
+          "insufficient_data": "Tarvitaan lisää tietoa.",
+          "stale": "Tarvitsee uuden tarkistuksen.",
+          "not_ready": "Valmistautuminen"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {#:n asiakaskohtainen yksityiskohta on tarkistettava.} other {#:n asiakastiedot on tarkistettava.}}",
+          "stable": {
+            "headline": "Julkiset tietosi ovat vakaita.",
+            "message": "Viimeisimmässä tarkistuksessa ei ollut yhtään asiakaskohtaista ongelmaa, johon tarvittaisiin toimenpiteitä."
+          },
+          "watch": {
+            "headline": "Yksityiskohta saattaa vaatia huomiota.",
+            "message": "Tarkista ehdotettu tarkistus ennen julkisten tietojen muuttamista."
+          },
+          "needs_review": {
+            "headline": "Tarkista asiakaskohtaiset tiedot.",
+            "message": "Yksi tai useampi julkinen tieto tulisi tarkistaa, jotta se on oikein."
+          },
+          "insufficient_data": {
+            "headline": "Tarvitaan lisää toimintaa.",
+            "message": "Pidä nykyinen tieto vakaana, kun MenuList kerää hyödyllisen signaalin."
+          },
+          "stale": {
+            "headline": "Yritystoiminta tarvitsee uuden tarkistuksen.",
+            "message": "Viimeisin tarkistus on vanha. Nykyiset julkiset tietosi pysyvät ennallaan."
+          },
+          "not_ready": {
+            "headline": "Business Health on valmistumassa.",
+            "message": "Ensimmäinen myymälätarkistus tulee näkyviin tähän, kun se on valmis."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Tarkista valikon lähdekoodi.",
+            "message": "Aktiivista julkista valikkolähdettä ei löytynyt. Tarkista ruokalista ennen sen jakamista, jos se on jo olemassa.",
+            "title": "Valikkolähde on tarkistettava."
+          },
+          "low_latest_activity": {
+            "action": "Tarkista jakamislinkit.",
+            "message": "Asiakasaktiivisuus on alhainen. Tarkista asiakasaktiviteetti QR, Google, Instagram, WhatsApp, ja verkkosivustojen linkkejä.",
+            "title": "Asiakasaktiivisuus on vähäistä."
+          },
+          "unavailable_item_taps": {
+            "action": "Tarkista saatavilla olevat tuotteet.",
+            "message": "Asiakkaat osoittivat kiinnostusta tuotteisiin, joita ei ollut saatavilla. Täydennä varastoa tai pidä ne piilotettuina.",
+            "title": "Saatavilla ei olevia tuotteita kiinnitti huomiota."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Lue asiakkaiden palautetta.",
+            "message": "Asiakaspalaute vaatii omistajan tarkistuksen ennen kuin julkisia tietoja voidaan muuttaa.",
+            "title": "Asiakaspalaute on tarkistettava."
+          },
+          "default": {
+            "action": "Tarkista tiedot",
+            "message": "Asiakaslähtöinen yksityiskohta tarvitsee omistajan tarkistuksen.",
+            "title": "Yksityiskohta on tarkistettava."
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# yksityinen palautekohde on tarkistettava.} other {# yksityiset palautekohteet on tarkistettava.}}",
+          "clear": "Yksityinen palaute on selvä."
+        },
+        "freshness": {
+          "notReady": "Business Health ei ole reaaliaikainen, vaan ensimmäinen varaston tarkistus näyttää tiedot täällä. Tässä näkyy tietojen päiväys.",
+          "throughDate": "Käyttää {date}:n kautta saatuja tietoja. Tänään ei ehkä ole vielä valmis.",
+          "latest": "Käyttää viimeisintä saatavilla olevaa MenuList-tietoa. Tänään ei ehkä ole vielä valmis."
+        },
+        "periods": {
+          "today": "Tänään",
+          "yesterday": "Edellinen päivä",
+          "thisWeek": "Tämä viikko",
+          "lastWeek": "Viime viikko",
+          "thisMonth": "Tämä kuukausi",
+          "lastMonth": "Viime kuukausi",
+          "last7Days": "Viimeiset 7 päivää",
+          "last30Days": "Viimeiset 30 päivää",
+          "overall": "Yleensä"
+        },
+        "metrics": {
+          "menuViews": "Valikkonäkymät",
+          "topDemand": "Suurin kysyntä",
+          "topDemandDetail": "Ylennä: {count} {signal}",
+          "bestSource": "Paras lähde",
+          "bestSourceDetail": "Päivitä linkki: {count} vierailee sivulla"
+        },
+        "signals": {
+          "views": "näkemyksiä",
+          "clicks": "Napautukset",
+          "attention": "Varoitusmerkkejä"
+        },
+        "page": {
+          "description": "Päivittäinen liiketoiminnan tila ja asiakaskohtaiset tarkistukset.",
+          "latestCheck": "AI health check",
+          "loading": "Lataa",
+          "loadingMessage": "Ladataan liiketoiminnan terveyttä...",
+          "notReady": "Business Health ei ole vielä valmis, sillä se on vielä kehitysvaiheessa.",
+          "loadErrorTitle": "Business Health ei voitu ladata.",
+          "loadErrorDescription": "Lue tämä sivu ja yritä uudelleen.",
+          "refresh": "Päivitä",
+          "needsAttention": "Vaatii huomiota",
+          "desktopSettingsOnly": "Avaa tämä työpöydän asetuksista."
+        },
+        "scope": {
+          "title": "Liiketoiminnan terveydenhuolto",
+          "allMenus": "Kaikki valikot",
+          "selectedMenu": "Valittu valikko.",
+          "menuCount": "{count, plural, one {#-valikko tässä sijainnissa} other {#-valikot tässä sijainnissa}}",
+          "locationLevel": "Sijaintitason näkymä",
+          "inactiveMenu": "Inaktiivinen menu",
+          "thisMenuOnly": "Vain tämä valikko.",
+          "allMenusInLocation": "Kaikki tämän sijainnin valikot.",
+          "thisMenuHelper": "Kysymykset ja toiminnot käyttävät tätä valikkoa.",
+          "allMenusHelper": "Kysymykset ja tehtävät käyttävät kaikkia tämän sijainnin valikoita.",
+          "dialogDescription": "Valitse kaikki valikot tai yksi valikko aktiivisuudelle ja tarkastuksille.",
+          "all": "Kaikki",
+          "close": "Sulje"
+        },
+        "locations": {
+          "title": "paikkoja",
+          "loading": "Sijainnit ladataan...",
+          "empty": "Ei vielä sijaintiyhteenvetoa.",
+          "storeFallback": "Sijainti {id}",
+          "checkedOn": "Tarkistettu {date}.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {#:n asiakaskohtainen tarkistus on tarkistettava.} other {#:n asiakaskohtaiset tarkistukset on tarkistettava.}}",
+          "statusReason": {
+            "stable": "Mikään asiakasongelma ei vaadi toimenpiteitä.",
+            "watch": "Asiakkaan näkökulmasta yksityiskohta saattaa vaatia huomiota.",
+            "needs_review": "Asiakkaisiin liittyvät yksityiskohdat on tarkistettava.",
+            "insufficient_data": "Tarkistamiseen tarvitaan enemmän asiakastoimintaa, jotta tarkistuksesta olisi hyötyä.",
+            "stale": "Tämä sijainti tarvitsee tuoretta tarkastusta.",
+            "not_ready": "Ensimmäinen sijaintitarkastus on valmistumassa, joten ensimmäiset työt ovat jo käynnissä."
+          }
+        },
+        "assistant": {
+          "title": "Kysy terveydenhuollosta",
+          "askShort": "Kysy",
+          "englishOnlyTitle": "Kysymykset ovat tällä hetkellä saatavilla englanniksi.",
+          "englishOnlyDescription": "Tilasi ja tarkistuksesi on lokalisoitu. Vaihda sovelluksen kieli englanniksi, jos haluat esittää kysymyksiä Business Health -palvelusta.",
+          "notReady": "Business Health vastaa viimeisimmän tarkastuksen päätyttyä, mutta vastaus on odotettavissa heti.",
+          "suggestedUnavailable": "Ehdotettuja kysymyksiä ei ole tällä hetkellä saatavilla.",
+          "freeTextUnavailable": "Ilmaisia kysymyksiä ei ole tällä hetkellä saatavilla.",
+          "answerError": "Liiketoiminnan terveys ei voinut vastata siihen.",
+          "suggestedQuestions": "Ehdotettuja kysymyksiä",
+          "followUps": "Voit kysyä seuraavaksi.",
+          "you": "Sinä",
+          "empty": "Valitse kysymys tai kysy yrityksestäsi.",
+          "placeholderReady": "Kysy tänään, tällä viikolla, ruokalista huomiota tai seuraavat tarkastukset.",
+          "placeholderMobile": "Kysy tänään tai tällä viikolla.",
+          "placeholderPending": "Saatavilla viimeisimmän tarkistuksen jälkeen.",
+          "send": "Lähetä kysymys Lähettä kysymys",
+          "cachedFacts": "Perustuu välimuistiin tallennettuihin MenuList-liiketoimintatietoihin.",
+          "questions": {
+            "checks": "Mitä on tarkistettava?",
+            "today_stats": "Miten tänään menee?",
+            "this_week_stats": "Mitä tapahtui tällä viikolla?",
+            "top_item": "Mikä kohde saa huomiota?",
+            "last_week_stats": "Mitä tapahtui viime viikolla?",
+            "this_month_stats": "Millainen tämä kuukausi on?",
+            "last_month_stats": "Mitä tapahtui viime kuussa?",
+            "public_menu_status": "Onko julkinen ruokalistani kunnossa?",
+            "profile_status": "Onko yritysprofiilini täydellinen?",
+            "feedback_reviews": "Tarkistaisitko vieraiden palautetta?",
+            "feedback_recent": "Mitä asiakkaat ovat sanoneet viime aikoina?",
+            "default": "Mitä minun pitäisi tarkistaa seuraavaksi?"
+          }
+        },
+        "sources": {
+          "title": "Tietolähteet",
+          "menuProjects": "Menu projektit Valikkoprojektit",
+          "ownerAnalytics": "Omistajan toimintaa.",
+          "guestFeedback": "Asiakaspalaute Vieraiden palaute",
+          "storeSettings": "Liiketoimintaympäristöt",
+          "menuListData": "MenuList-tietojen tiedot",
+          "updatedOn": "Päivitetty {date}",
+          "latest": "Viimeisimmät saatavilla olevat tiedot"
+        },
+        "publicTruth": {
+          "title": "Virallinen asiakaslähde",
+          "checking": "Tutustu",
+          "checkingFacts": "Tarkistetaan MenuList:n julkisia tietoja...",
+          "checkedMenu": "Valittu valikko: {name}",
+          "boundary": "Tarkistettu nykyisistä MenuList-liiketoiminta- ja ruokalistatiedoista. Ulkoiset alustat pysyvät omistajan vahvistamina.",
+          "boundaryShort": "Ulkoiset alustat pysyvät omistajan vahvistamina.",
+          "historyTitle": "Julkisen tiedon historiaa.",
+          "historyBoundary": "Käyttää vain MenuList-liiketoimintaa ja ruokalistatietoja. Ulkoisia sivustoja ei tarkisteta.",
+          "historyBoundaryShort": "MenuList Vain faktat. Ulkoisia sivustoja ei skannattu.",
+          "refreshErrorTitle": "Asiakaslähteen tarkistus ei voinut päivittää tietoja.",
+          "refreshErrorDescription": "Viimeisimmät saatavilla olevat MenuList-tosiasiat näkyvät edelleen alla.",
+          "historyRefreshError": "Julkisen tiedon historiaa ei voitu uudistaa.",
+          "historyLoadError": "Julkisen tiedon historiaa ei voi ladata.",
+          "historyErrorDescription": "Viimeksi tallennettu raportti näytetään edelleen, jos se on saatavilla.",
+          "notRun": "Ei käynnissä.",
+          "lastSaved": "Viimeksi tallennettu {date}",
+          "noSavedReport": "Ei vielä tallennettuja raportteja.",
+          "noSavedReportDescription": "Suorita tarkistus, jotta voit tallentaa ensimmäisen raportin tästä sijainnista.",
+          "downloadEnglishReport": "Lataa englanninkielinen raportti",
+          "downloadEnglishShort": "Englanninkielinen raportti englanniksi",
+          "runCheck": "Suorita tarkistus.",
+          "currentFix": "Nykyinen korjauskohde",
+          "nextFixes": "Seuraava julkinen korjaus",
+          "none": "Ei mitään.",
+          "attentionCount": "{count, plural, one {# kohde on tarkistettava.} other {# kohteiden tarkistaminen on tarpeen.}}",
+          "readyModuleCount": "Valmis {count}/{total}",
+          "missingCount": "Puuttuu {count}.",
+          "checkCount": "Tarkista {count}:sta.",
+          "savedCount": "Tallennetut {count}/{total}",
+          "modulesReady": "{count}/{total} moduulit valmiina",
+          "status": {
+            "ready": {
+              "label": "Valmis",
+              "message": "Virallinen asiakaslähteesi tarjoaa asiakkaillesi kaiken, mitä he tarvitsevat."
+            },
+            "missing_basics": {
+              "label": "Puuttuvat perusasiat",
+              "message": "Ruokalista, aukioloajat, hinnat, kampanjat tai asiakaslinkin tiedot vaativat huomiota ennen kuin ne jaetaan laajemmalle."
+            },
+            "unclear": {
+              "label": "Tarvitsee tarkistuksen.",
+              "message": "Useimmat perusasiat ovat kunnossa, mutta yksi tai useampi julkinen tosiasia kaipaa vielä tarkistusta."
+            }
+          },
+          "metrics": {
+            "readyModules": "Valmiit moduulit",
+            "missingFacts": "Puuttuvat tosiasiat",
+            "checkedMenu": "Tarkistettu menu",
+            "savedReports": "Tallennettujen raporttien tarkastus"
+          },
+          "results": {
+            "present": "Valmis",
+            "missing": "puuttuu",
+            "unclear": "Tarkista",
+            "not_applicable": "Ei tarvita Ei tarvittu",
+            "not_checked": "Ei valittu Ei valittuna"
+          },
+          "moduleStatus": {
+            "ready": "Valmis",
+            "needs_attention": "puuttuu",
+            "check": "Tarkista",
+            "not_checked": "Ei valittu Ei valittuna"
+          },
+          "facts": {
+            "business_identity": "Yrityksen nimi Yritysnimi",
+            "menu_or_service_source": "Valikko- tai palvelulistaus.",
+            "prices": "Hinnat",
+            "hours": "Aukioloajat:",
+            "location": "Sijainti",
+            "contact": "Yhteydenotto",
+            "customer_actions": "Asiakkaan toimet",
+            "public_link": "Asiakaslinkki Asiakas linkki",
+            "photos": "Valokuvat Valokuvia",
+            "machine_readable_source": "Hakuystävälliset tiedot"
+          },
+          "evidence": {
+            "owner_entered": "Syötetty tähän tarkistustaulukkoon.",
+            "owner_selected": "Omistajan valitsema.",
+            "source_text_hint": "Löytyi annettuun lähteeseen.",
+            "valid_public_url": "Julkinen linkki on voimassa.",
+            "invalid_public_url": "Julkinen linkki tarvitsee korjausta.",
+            "menulist_store": "Tarkistettu nykyiset MenuList-yrityksen asetukset.",
+            "menulist_project": "Tarkistettu valittu tai oletus MenuList-valikko.",
+            "menulist_summary": "Tarkistettu nykyinen MenuList-valikon yhteenveto.",
+            "menulist_public_route": "Tarkistettu nykyiset MenuList customer-link -asetukset.",
+            "menulist_index_gate": "Tarkistettu nykyiset MenuList:n julkiset löytösäännöt.",
+            "not_provided": "Tämä tosiasia puuttuu nykyisistä MenuList-tiedoista.",
+            "not_checked": "Tätä tosiasiaa ei voitu turvallisesti tarkistaa nykyisistä MenuList-tiedoista.",
+            "priceNotLoaded": "Avaa valittu ruokalista kerran, jotta MenuList voi tarkistaa sen hinnat."
+          },
+          "moduleEvidence": {
+            "ready": "Nykyiset MenuList-tiedot osoittavat, että tämä alue on valmis.",
+            "needs_attention": "Nykyiset MenuList-tiedot osoittavat, että vaaditut tiedot puuttuvat.",
+            "check": "Tarkista tämä alue ennen kuin asiakkaat luottavat siihen.",
+            "not_checked": "MenuList ei voinut tarkistaa tätä aluetta täysin nykyisistä tiedoista."
+          },
+          "setupReason": {
+            "needs_attention": "Tarvittavat asiakastiedot puuttuvat.",
+            "check": "Tarkista tämä ennen kuin asiakkaat luottavat tähän.",
+            "not_checked": "MenuList ei voinut tarkistaa tätä täysin nykyisistä tiedoista."
+          },
+          "targetActions": {
+            "basic_settings": "Avaa yrityksen tiedot",
+            "domain_settings": "Avaa asiakaslinkki.",
+            "hours_edit": "Aukioloajat:",
+            "menu_tab": "Avoin menu",
+            "official_page": "Avaa yrityksen sivu",
+            "presence_monitor": "Avoin sijoittumisen tarkistus.",
+            "share_tab": "Avaa jakotyökalut."
+          },
+          "actions": {
+            "openCustomerSource": "Avoin asiakaslähde",
+            "openShareTools": "Avoimet jakotyökalut",
+            "fixFact": "Korjaa {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Julkisen tiedon perusteet",
+              "description": "Yrityksen nimi, nykyinen valikko tai palvelulähde, yhteystiedot, toiminnot ja asiakaslinkki."
+            },
+            "business_facts_copy_pack": {
+              "title": "Uudelleenkäytettävät yrityksen tiedot",
+              "description": "Henkilökunta voi käyttää ajankohtaisia tietoja uudelleen julkisissa profiileissa, vastauksissa ja asiakaslinkkien välittämisessä."
+            },
+            "qr_link_health": {
+              "title": "QR linkin valmius",
+              "description": "Nykyinen asiakaslinkki QR:lle ja painetuille sijoitteluille."
+            },
+            "social_bio_link_consistency": {
+              "title": "Profiililinkkien johdonmukaisuus",
+              "description": "Yksi nykyinen asiakaslinkki sosiaalisen median profiileihin ja muihin sijoitteluihin."
+            },
+            "customer_link_preview": {
+              "title": "Asiakaslinkin esikatselu",
+              "description": "Tärkeimmät seikat, jotka asiakkaiden tulisi nähdä ennen kuin he toimivat."
+            },
+            "print_share_assets": {
+              "title": "Tulosta ja jaa resursseja.",
+              "description": "Nykyinen linkkivalmius QR julisteille, laskurikorteille ja jakamiskuville."
+            },
+            "menu_service_readability": {
+              "title": "Ruokavalion tai palvelun selkeys",
+              "description": "Luokat, tuotteet tai palvelut ja hinnat valitussa valikossa."
+            },
+            "price_availability_gap": {
+              "title": "Hinnan ja saatavuuden selkeys.",
+              "description": "Hinnat, vaihtoehdot, loppuunmyyty-tila ja saatavuus näytetään asiakkaille."
+            },
+            "menu_pdf_cleanup": {
+              "title": "Vanha PDF-korvaus",
+              "description": "Nykyinen MenuList-lähde ja asiakaslinkki, joka voi korvata vanhat PDF:t."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp toimintaa.",
+              "description": "Selkeä WhatsApp tai vaihtoehtoinen asiakaspalvelutoiminto."
+            },
+            "hours_readiness": {
+              "title": "Valmiusajat valmiustilassa",
+              "description": "Säännöllisiin aukioloihin asiakkaat voivat luottaa."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp vastaa tosiasioihin.",
+              "description": "Nykyinen ruokalista, aukioloajat, yhteystiedot ja linkkitiedot henkilökunnan vastauksiin."
+            },
+            "photo_visual_identity": {
+              "title": "Valokuvia ja visuaalinen identiteetti.",
+              "description": "Logo, kansikuva, yrityksen valokuva tai tuotteen ja palvelun visuaalinen ilme."
+            },
+            "customer_question_coverage": {
+              "title": "Yleisiä kysymyksiä asiakkailta",
+              "description": "Tarjouksen, aukioloajat, hinnan, sijainnin, yhteystiedot ja seuraavat toimet on esitetty selkeästi."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Uudelleenkäytettävät asiakasvastaukset",
+              "description": "Ajankohtaisia faktoja henkilökunta voi käyttää uudelleen, kun asiakkaat esittävät yleisiä kysymyksiä."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Varaus- ja tiedusteluvalmius.",
+              "description": "Selkeä polku tilaukseen, varaukseen, puheluun, viestiin, tarjouspyyntöön tai vierailuun."
+            },
+            "google_profile_handoff": {
+              "title": "Google profiililinkki",
+              "description": "Nykyinen asiakaslinkki on valmisteltu Google:n yritysprofiiliin."
+            },
+            "menu_freshness": {
+              "title": "Ruokalistan tuoreus",
+              "description": "Viimeaikainen ruokalistapäivitys, kun hinnat, tuotteet tai saatavuus ovat muuttuneet."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Kaaviot",
+        "description": "Visuaalinen yhteenveto samasta selvitetystä tapahtumasta, joka näkyy koontinäytössä.",
+        "ranges": {
+          "days7": "7 päivää",
+          "days30": "30 päivää"
+        },
+        "metrics": {
+          "menu_activity": "Menu toimintaa",
+          "customer_actions": "Asiakkaan toimet",
+          "search_demand": "Etsi kysyntää",
+          "item_interest": "kohteen kiinnostus",
+          "unavailable_demand": "Riittämätön kysyntä",
+          "missing_searches": "Puuttuvat haut"
+        },
+        "trend": {
+          "summary": "Trendien yhteenveto",
+          "updatedAfterClose": "Päivitetty myymäläsi sulkeutumispäivän jälkeen.",
+          "status": {
+            "up": "korkeampi",
+            "down": "Alempi",
+            "stable": "Vakaa",
+            "not_enough_data": "Ei riittävästi historiaa."
+          },
+          "period": {
+            "week": "Viikkokatsaus",
+            "month": "Kuukausitarkistus"
+          },
+          "shortPeriod": {
+            "week": "Viikko",
+            "month": "Kuukausi"
+          },
+          "needsMoreDays": "Tarvitsee enemmän vakiintuneita päiviä.",
+          "versus": "{current} verrattuna {previous}",
+          "messages": {
+            "up": "{metric} on korkeampi tässä {period}-tarkistuksessa.",
+            "down": "{metric} on pienempi tässä {period}-tarkistuksessa.",
+            "stable": "{metric} Tämä on vakaa {period} ja tarkistaa.",
+            "not_enough_data": "Tätä {period}-tarkistusta varten ei ole riittävästi selvitettyä {metric} historiaa."
+          },
+          "change": {
+            "gathering": "{period}: kerätään tietoja",
+            "newActivity": "{period}: uusi aktiviteetti",
+            "steady": "{period}: vakaa.",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Vertailukelpoiset kartat",
+          "description": "Viikon ja kuukauden liikkuvuus määriteltyjä päiviä."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Menutrendi",
+            "days7": "Viimeiset 7 selvitettyä päivää",
+            "days30": "Viimeiset 30 selvitettyä päivää"
+          },
+          "customerActions": {
+            "title": "Asiakkaan toimet",
+            "description": "Mitä asiakkaat napauttivat valikon avaamisen jälkeen?"
+          },
+          "sources": {
+            "title": "Mistä asiakkaat tulivat?",
+            "description": "Valikkokäynnit ja toimintaistunnot lähteen mukaan"
+          },
+          "items": {
+            "title": "Suosituin kohde kiinnostaa sinua?",
+            "description": "Kohteet, jotka asiakkaat avasivat tai napauttivat eniten"
+          },
+          "search": {
+            "title": "Etsi kysyntää",
+            "description": "Mitä asiakkaat etsivät?"
+          },
+          "officialPage": {
+            "title": "Viralliset trendit",
+            "description": "Näkymät ja toimet viralliselta yrityssivulta."
+          }
+        },
+        "legends": {
+          "visits": "Vierailut Käynnit",
+          "actionSessions": "Toimintoistunnot",
+          "views": "näkymät",
+          "taps": "Napautukset",
+          "noResult": "Ei tuloksia."
+        },
+        "empty": {
+          "default": "Tätä näkymää varten ei ole vielä graafitietoja.",
+          "menuActivity": "Valikkotoiminta näkyy sen jälkeen, kun asiakas on avannut valikon.",
+          "customerActions": "Asiakkaiden toimet näkyvät sen jälkeen, kun asiakkaat ovat soittaneet, lähettäneet viestin, tehneet tilauksen, tehneen varauksen tai pyytäneet reittiohjeita.",
+          "customerActionsPeriod": "Asiakkaiden toimia ei ole vielä tänä ajanjaksona.",
+          "searchDemand": "Hakukysyntä tulee näkyviin sen jälkeen, kun asiakas on käyttänyt valikkohakua.",
+          "itemInterest": "Tuotteisiin kohdistuva kiinnostus ilmenee sen jälkeen, kun asiakkaat ovat avanneet valikon kohteet.",
+          "unavailableDemand": "Saatavilla ei ole kysyntää -merkki tulee näkyviin, kun asiakkaat napauttavat saatavilla olevia tuotteita.",
+          "missingSearches": "Puuttuvat haut näkyvät, kun asiakkaat tekevät haun mutta eivät löydä osumaa.",
+          "sources": "Lähdetiedot tulevat näkyviin, kun asiakkaat saapuvat linkkien, QR:n tai sosiaalisten sivujen kautta.",
+          "officialPage": "Virallisen sivun toiminta näkyy sen jälkeen, kun asiakkaat ovat avanneet julkisen yrityssivun."
+        },
+        "footer": {
+          "sameData": "Samat kojelaudan tiedot.",
+          "noExtraTracking": "Ei ylimääräistä seurantaa.",
+          "settledAfterClose": "Selvitys tapahtuu kaupan päivän päättymisen jälkeen."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menu",
+          "viewsLabel": "Valikkonäkymät",
+          "viewsTooltip": "Kuinka monta kertaa asiakkaat ovat avanneet ruokalistasi.",
+          "thisMonthLabel": "Tämän kuun ruokalistasi"
+        },
+        "product": {
+          "singular": "Katalonian",
+          "viewsLabel": "Luettelonäkymät",
+          "viewsTooltip": "Asiakkaiden lukumäärä, jotka ovat avanneet luettelosi.",
+          "thisMonthLabel": "Tämän kuun kuvastosi"
+        },
+        "service": {
+          "singular": "Palveluluettelo",
+          "viewsLabel": "Palveluluettelonäkymät",
+          "viewsTooltip": "Palveluluettelosi avaamisien määrä.",
+          "thisMonthLabel": "Tämän kuun palvelulistasi."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Vaatii huomiota",
+          "active": "Virallinen asiakaslähde on aktiivinen.",
+          "readyToPlace": "Virallinen asiakaslähde on valmis sijoittamaan."
+        },
+        "description": {
+          "needsAttention": "Korjaa ruokalista, aukioloajat tai asiakaslinkki ennen kuin jaat sen laajasti.",
+          "active": "Toimenpiteitä ei tarvita. Asiakkaat voivat käyttää nykyisiä julkisia tietojasi yhdestä lähteestä.",
+          "readyToPlace": "Asiakaslinkkisi on valmis. Lisää se Google, Instagram-, WhatsApp - tai QR:ään tai tulosta se, jotta asiakkaat voivat käyttää nykyistä lähdettä."
+        },
+        "link": {
+          "ready": "Asiakas linkki valmiina",
+          "missing": "Asiakaslinkki puuttuu."
+        },
+        "states": {
+          "set": "Asetettu",
+          "missing": "puuttuu",
+          "ready": "Valmis",
+          "notReady": "Ei valmis.",
+          "live": "Julkaistu",
+          "hidden": "Ei-aktiivinen"
+        },
+        "tags": {
+          "menu": "Valikko: {status}",
+          "hours": "Tuntia: {status}",
+          "customerLink": "Asiakaslinkki: {status}",
+          "link": "Linkki: {status}",
+          "placed": "Sijoitettu: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Korjaa se, mikä tarvitsee huomiota.",
+          "preview": "Esikatsele julkista valikkoa",
+          "share": "Jaa valikko Jaa menu"
+        },
+        "updated": {
+          "notUpdated": "Ei vielä päivitetty.",
+          "recently": "Viimeksi päivitetty Äskettäin päivitettu",
+          "today": "Päivitetty tänään",
+          "yesterday": "Päivitetty eilen.",
+          "daysAgo": "Päivitetty {count, plural, one {# Päivä sitten} other {# Päiviä sitten}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Seuraava omistajan toiminta",
+        "open": "Avaa",
+        "placement": {
+          "notConfirmed": "Ei vielä vahvistettu.",
+          "today": "Vahvistettiin tänään.",
+          "yesterday": "Vahvistettiin eilen.",
+          "daysAgo": "vahvistettu {count, plural, one {# Päivä sitten} other {# Päiviä sitten}}"
+        },
+        "status": {
+          "ready": "Valmis",
+          "missing": "puuttuu",
+          "set": "Asetettu",
+          "live": "Julkaistu",
+          "notLive": "Ei elävä.",
+          "confirmedCount": "{count}/{total} vahvisti.",
+          "on": "Päällä",
+          "off": "Pois päältä",
+          "dailyChanges": "Päivittäiset muutokset",
+          "hoursException": "Poikkeusajat",
+          "staffUse": "Henkilöstön käyttö",
+          "menuPrices": "Menu hinnat",
+          "openCount": "{count, plural, one {#-toiminnon avaaminen} other {# Toiminnot avautuvat}}",
+          "stable": "Vakaa"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Aseta asiakaslinkki.",
+            "description": "Luo asiakaslinkki ennen kuin jaat QR-tiedostoja, henkilökunnan vastauksia tai julkisia profiileja."
+          },
+          "setHours": {
+            "label": "Aseta tunnit.",
+            "description": "Pidä julkinen avoin ja suljettu tila selvänä ennen asiakkaiden käyntiä."
+          },
+          "publishMenu": {
+            "labelPublish": "Julkaise menu",
+            "labelOpen": "Avoin menu",
+            "descriptionVisible": "Julkaise nykyinen valikko ennen laajamittaista jakamista.",
+            "descriptionHidden": "Tee valikosta näkyvä ennen kuin asiakkaat käyttävät linkkiä."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Vahvista linkin sijoittelu.",
+            "labelPlace": "Sijoita asiakaslinkki.",
+            "descriptionPlaced": "Pidä Google, Instagram ja WhatsApp osoittamassa samaan lähteeseen.",
+            "descriptionUnplaced": "Lisää sama asiakaslinkki palveluihin Google, Instagram ja WhatsApp sekä QR-koodiin ja painettuihin materiaaleihin."
+          },
+          "openPrivateFeedback": {
+            "label": "Avaa yksityinen palaute.",
+            "description": "Käytä yksityistä palautetta ennen kuin asiakkaiden kysymykset muuttuvat julkisiksi arvosteluiksi."
+          },
+          "captureDailyChange": {
+            "label": "Kerro MenuList:lle, mitä muutoksia on tapahtunut.",
+            "description": "Kerro MenuList:lle, mitä tänään on muuttunut ja hyväksy valmiiksi valmistettu valikkokortti."
+          },
+          "setTodayStatus": {
+            "label": "Aseta tämän päivän tila.",
+            "description": "Tarjolla suljettu tänään, aukeaa myöhään, keittiö suljettavissa tai erikoismenu-ilmoitus."
+          },
+          "prepareStaffHandoff": {
+            "label": "Valmistaudu henkilöstön luovutukseen.",
+            "description": "Anna henkilökunnalle valikkolinkki, QR ja asiakkaan vastausrivit yhdestä paikasta."
+          },
+          "updatePrices": {
+            "label": "Päivitä hinnat",
+            "description": "Käytä Menu Manageria hinnanmuutosten tekemiseen ja hyväksy ne ennen julkaisua."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Valikon määritys",
+        "complete": "Valikkoasetukset ovat valmiit.",
+        "ready": "Valikkoasetukset ovat valmiina.",
+        "actions": {
+          "openMenu": "Avoin menu",
+          "createMenu": "Luo menu",
+          "reviewDetails": "Tarkista tiedot",
+          "publishMenu": "Julkaise menu",
+          "openSharingTools": "Avoimet jakotyökalut",
+          "prepareDescriptions": "Valmistele kuvaukset.",
+          "addImages": "Lisää kuvia",
+          "reviewLanguageText": "Tarkista kieliteksti.",
+          "openMenuCheck": "Avaa valikko check-avain.",
+          "updatePublicLinks": "Päivitä julkisia linkkejä.",
+          "addPublicPhoto": "Lisää julkista valokuvaa"
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "Lähde lisää",
+            "doneDescription": "Menu lähde on liitetty.",
+            "nextDescription": "Lisää valikkokuva, PDF, linkki tai käynnistä manuaalisesti."
+          },
+          "menuImported": {
+            "label": "Valikko tuotiin.",
+            "doneDescription": "{count, plural, one {# näkyvä kohde löytyi.} other {# näkyvää kohdetta löytyi.}}",
+            "nextDescription": "Tuoda tai lisätä menu kohteita."
+          },
+          "keyDetailsChecked": {
+            "label": "Tärkeimmät tiedot tarkistettu.",
+            "doneDescription": "Hinnat ja avaimen yksityiskohdat ovat selkeitä.",
+            "nextDescription": "Tarkista hinnat ja muut tärkeät tiedot ennen julkaisua."
+          },
+          "menuPublished": {
+            "label": "Menu julkaistu",
+            "doneDescription": "Julkinen valikko on julkaistu.",
+            "nextDescription": "Julkaise, kun ruokalista on valmis asiakkaille."
+          },
+          "linkPlaced": {
+            "label": "Linkki sijoitettu.",
+            "readyLabel": "Linkki valmiina",
+            "doneDescription": "Virallinen linkki on asiakkaille valmis.",
+            "progressDescription": "{count} of {total} sijoittelutoimintoa suoritettu.",
+            "nextDescription": "Kun valikkosi on julkaistu, avaa jakamistyökalut."
+          },
+          "descriptionsReady": {
+            "label": "Kuvaukset valmiina.",
+            "doneDescription": "Näkyvillä esineillä on kuvauksia.",
+            "nextDescription": "Valmista kuvaukset selkeämmille valikkokohdille."
+          },
+          "imagesReady": {
+            "label": "Kuvia valmiina",
+            "doneDescription": "Näkyvissä olevissa kohteissa on kuvia.",
+            "nextDescription": "Lisää tai luo kohteen kuvia, kun se on hyödyllistä."
+          },
+          "translationsReady": {
+            "label": "Käännökset valmiina.",
+            "doneDescription": "Valitut valikon kielet ovat täydellisiä.",
+            "nextDescription": "Tarkista valittujen valikkokielten asetukset."
+          },
+          "publicLinksAdded": {
+            "label": "Julkiset linkit lisätty.",
+            "doneDescription": "Julkiset toiminnot tai sosiaaliset linkit ovat käytettävissä.",
+            "nextDescription": "Lisää hyödyllisiä julkisia linkkejä yrityssivulle."
+          },
+          "publicPhotoAdded": {
+            "label": "Julkinen kuva lisätty.",
+            "doneDescription": "Julkinen kuva on saatavilla.",
+            "nextDescription": "Lisää kansikuva, logo tai julkinen kuva, kun olet valmis."
+          }
+        }
       }
     }
   },
@@ -1584,7 +2444,7 @@
         "spiceMedium": "Keskikokoinen",
         "spiceHot": "Kuuma",
         "spiceVeryHot": "Erittäin kuuma",
-        "minutesShort": "{count} min",
+        "minutesShort": "{count} 15 min min min",
         "hoursShort": "{count} t",
         "calories": "{count} kal",
         "protein": "Proteiinia {value}g",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Ei laskutushistoriaa vielä. Laskutus historia",
     "perMonth": "/kk /kk",
     "contactUs": "Ota yhteyttä Ota yhteys"
+  },
+  "StarterActivation": {
+    "activeTitle": "Valikkosi on online-tilassa",
+    "endingSoonTitle": "Pidä ruokalistasi verkossa",
+    "publicMenuQrActive": "Julkinen valikkosi ja QR-koodisi ovat aktiivisia.",
+    "activeRemaining": "Pääsy valikkoon on aktiivinen.",
+    "daysRemaining": "{days, plural, one {Valitse suunnitelma # päivän sisällä pitääksesi ruokalistasi verkossa.} other {Valitse suunnitelma # päivän kuluessa pitääksesi ruokalistasi verkossa.}}",
+    "sharingComplete": "Jakamisasetukset on valmis.",
+    "sharingProgress": "{count, number}/{target, number} jakamisvaihetta suoritettu.",
+    "evidenceRecorded": "Tallennettu automaattisesti: {systemCount, number}. Vahvistit: {ownerCount, number}.",
+    "evidenceEmpty": "Kopioi tai jaa valikkolinkki, lataa sen QR-koodi tai vahvista, minne olet sen sijoittanut.",
+    "keepLiveAction": "Pidä ruokalistasi verkossa",
+    "noSubscriptionDescription": "Valitse suunnitelma pitääksesi ruokalistapäivitykset ja asiakassivut saatavilla.",
+    "choosePlanDescription": "Valikkosi on tallennettu. Valitse suunnitelma pitääksesi sen verkossa ja ajan tasalla."
   },
   "Transactions": {
     "title": "Tapahtumahistoria Tapahtumat Historia",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mobiilisovellus.",
     "subscribeTitle": "Tilaa Get Started -uutiskirje",
     "subscribeDescription": "Valitse tilaus, jolla voit aloittaa digitaalisen ruokalistan luomisen ja liiketoiminnan hallinnan.",
-    "viewPlans": "Katso suunnitelmia Tarkastele suunnitelmiasi"
+    "viewPlans": "Katso suunnitelmia Tarkastele suunnitelmiasi",
+    "returnToMobile": "Tarkastelet pöytäkoneversiota. Palaa mobiiliin."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Koodit Koodit Koodit",

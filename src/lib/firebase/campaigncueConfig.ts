@@ -3,10 +3,7 @@ import {
     getExpectedFirebaseProjectId,
 } from "@constant/deploymentTargets";
 import {
-    CAMPAIGNCUE_FIREBASE_ENV,
     CAMPAIGNCUE_FIREBASE_MODE_ALIASES,
-    CAMPAIGNCUE_FIREBASE_MODE_ENV_KEYS,
-    CAMPAIGNCUE_FIRESTORE_DATABASE_ID_ENV_KEYS,
     type CampaignCueFirebaseMode,
 } from "@constant/campaigncue/firebase";
 import firebaseConfig from "./config";
@@ -20,10 +17,6 @@ const normalizeCampaignCueFirebaseMode = (value?: string): CampaignCueFirebaseMo
 };
 
 const expectedCampaignCueProjectId = getExpectedFirebaseProjectId("campaigncue", getDeploymentStage());
-const readNonEmptyEnv = (key: string): string | undefined => {
-    const value = process.env[key]?.trim();
-    return value || undefined;
-};
 
 export function isExpectedCampaignCueProjectId(value: unknown, expectedProjectId: string): boolean {
     return typeof value === "string"
@@ -43,29 +36,31 @@ export function resolveCampaignCueFirebaseMode(params: {
     return params.defaultProjectId === params.productProjectId ? "shared" : "separate";
 }
 
-const configuredCampaignCueProjectId = readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_PROJECT_ID)
-    || readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.PROJECT_ID);
+const configuredCampaignCueProjectId = process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID?.trim()
+    || process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID?.trim();
 const isCampaignCueProjectIdValid = configuredCampaignCueProjectId === undefined
     || isExpectedCampaignCueProjectId(configuredCampaignCueProjectId, expectedCampaignCueProjectId);
 
 const campaigncueFirebaseConfig = {
-    apiKey: readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.API_KEY),
-    authDomain: readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.AUTH_DOMAIN),
+    apiKey: process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_API_KEY?.trim(),
+    authDomain: process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_AUTH_DOMAIN?.trim(),
     projectId: isCampaignCueProjectIdValid ? expectedCampaignCueProjectId : undefined,
-    storageBucket: readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET),
-    messagingSenderId: readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.MESSAGING_SENDER_ID),
-    appId: readNonEmptyEnv(CAMPAIGNCUE_FIREBASE_ENV.APP_ID),
+    storageBucket: process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET?.trim(),
+    messagingSenderId: process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_MESSAGING_SENDER_ID?.trim(),
+    appId: process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_APP_ID?.trim(),
 };
 
 const campaigncueFirestoreDatabaseId =
-    CAMPAIGNCUE_FIRESTORE_DATABASE_ID_ENV_KEYS.map(readNonEmptyEnv).find(Boolean) ||
+    process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_DATABASE_ID?.trim() ||
+    process.env.CAMPAIGNCUE_FIRESTORE_DATABASE_ID?.trim() ||
     undefined;
 
 const campaigncueFirebaseModeOverride = normalizeCampaignCueFirebaseMode(
-    CAMPAIGNCUE_FIREBASE_MODE_ENV_KEYS.map(readNonEmptyEnv).find(Boolean),
+    process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_MODE?.trim()
+        || process.env.CAMPAIGNCUE_FIREBASE_MODE?.trim(),
 );
 
-const defaultFirebaseProjectId = firebaseConfig.projectId || readNonEmptyEnv("FIREBASE_PROJECT_ID");
+const defaultFirebaseProjectId = firebaseConfig.projectId;
 const campaigncueFirebaseProjectId = expectedCampaignCueProjectId;
 
 const hasDefaultFirebaseConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);

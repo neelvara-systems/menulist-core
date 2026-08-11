@@ -122,6 +122,33 @@ and selection, use a safe bounded filename, and stay local to the browser. It
 must not create a document, call a provider, query raw evidence, invoke an
 integration, or persist the selected review path.
 
+Opening the drawer captures the entity summary, complete metric window, source
+timestamp, and `tId:sId` scope as one immutable browser selection. A later
+snapshot refresh must not mix new window metadata into that open brief. A
+workspace-scope change must make the prior selection inactive immediately and
+clear it without a cross-scope render.
+
+The selected path also resolves to one deterministic next action:
+
+- investigate further opens the Knowledge Map with the validated entity;
+- support-knowledge, known-limitation, and plan-or-permission review open
+  trusted answers filtered to the validated entity;
+- product-behavior review copies the local packet for the owner's existing
+  product or engineering system;
+- watch and no-action close the drawer without creating a reminder, decision,
+  or mutation.
+
+Invalid entity context or an unknown runtime path fails closed to local copy.
+The route helper must never generate a broad or unscoped internal destination.
+Opening an internal destination uses that surface's existing read contract; the
+selection and navigation add no write or delivery claim.
+
+When `ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP` is disabled, all direct friction-map
+controls are hidden and investigate-further fails closed to local copy. If a
+valid requested entity is absent from the current governed graph, Knowledge Map
+must show an explicit unavailable state and must not select another entity as a
+substitute.
+
 ## Owner Experience
 
 - show an unavailable state when no valid snapshot exists;
@@ -139,6 +166,9 @@ integration, or persist the selected review path.
   admitted advisory actions to open that entity in the read-only Knowledge Map.
 - let the owner prepare, copy, or download the bounded evidence brief from each
   ranked entity without claiming a diagnosis or creating a second task system.
+- explain the consequence of the selected review path before the primary action
+  and preserve the entity when continuing into an existing governed surface.
+- never imply that watch creates a reminder or that no action is persisted.
 
 ## Customer Friction Map Proposal Decision
 
@@ -150,7 +180,7 @@ integration, or persist the selected review path.
 | Show a product journey tree | Validate first. Current ontology relations do not prove a canonical customer journey. |
 | Add eight automatic friction types | Reject as automatic truth. Product UX, bug, policy, and expectation claims require owner-confirmed evidence. |
 | Add root-cause percentages | Reject. The advisory model may summarize admitted evidence but cannot establish causal percentages. |
-| Add release-before/after attribution | Validate separately. Temporal correlation must not be presented as release causation. |
+| Add release-before/after attribution | Reject attribution. Admit only an explicit complete-window event comparison with direct links and correlation-only language. |
 | Add 7/30/90-day controls | Reject for now. The completed 7-day comparison is bounded and comparable. |
 | Add heatmap or giant tree | Reject. Ranked evidence is more legible for the founder ICP and mobile. |
 | Add suggested fixes | Implement only as validated entity-bound advisory links to Knowledge Map review; no product or knowledge mutation. |
@@ -160,15 +190,20 @@ integration, or persist the selected review path.
 
 ## Validation Gates
 
-Workflow hierarchy or release comparison enters implementation only after:
+Workflow hierarchy remains validation-only until:
 
 1. three real founder workspaces demonstrate that entity ranking is
    insufficient for the same repeated decision;
-2. mapped workflow or release identifiers are complete enough to avoid guessed
-   attribution;
+2. mapped workflow identifiers are complete enough to avoid guessed structure;
 3. the calculation can remain summary-first and bounded;
 4. the owner can inspect the evidence and mark the interpretation wrong;
-5. public claims use correlation language unless causal evidence exists.
+5. public claims remain inside the support-evidence boundary.
+
+The August 10 owner-relief decision separately admitted Post-Change Support
+Evidence Review. Its implementation does not satisfy or bypass the workflow
+hierarchy gate: it uses stored direct release/correction entity links, complete
+UTC windows, explicit owner intent, and non-causal count language. Authenticated
+workspace usefulness remains required before broader claims or expansion.
 
 ## Limits and Failure Rules
 

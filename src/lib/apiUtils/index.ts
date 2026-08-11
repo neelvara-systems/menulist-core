@@ -5,6 +5,8 @@ import {
 } from "@lib/security/boundedResponseBody";
 import { UserUploadedFileType } from "@type/common";
 import { validateMagicBytes } from "@lib/security/magicBytesValidator";
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 const MAX_AI_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const SUPPORTED_AI_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
@@ -29,10 +31,10 @@ function getApproximateBase64Bytes(base64: string) {
 }
 
 function getProjectStorageBucketFallback(): string {
-    const projectId = process.env.FIREBASE_PROJECT_ID
+    const projectId = menulistServerEnv.firebaseProjectId
         || process.env.GCLOUD_PROJECT
         || process.env.GCP_PROJECT
-        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        || menulistPublicEnv.firebaseProjectId;
     return projectId ? `${projectId}.appspot.com` : "";
 }
 
@@ -60,8 +62,8 @@ function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType
 }
 
 function getAllowedStorageBucket(): string {
-    return process.env.FIREBASE_STORAGE_BUCKET
-        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    return menulistServerEnv.firebaseStorageBucket
+        || menulistPublicEnv.firebaseStorageBucket
         || getProjectStorageBucketFallback();
 }
 

@@ -43,19 +43,28 @@ Use product-scoped paths such as:
 | `/api/campaigncue/workspace` | `PATCH` | Update CampaignCue Business Brain fields. |
 | `/api/campaigncue/campaigns` | `GET` | Bounded campaign list through a direct workspace-only collection read. |
 | `/api/campaigncue/campaigns` | `POST` | Create deterministic structured export/download-first campaign pack with trust report, cue evidence, bounded source context, and atomic idempotency key support. |
-| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record download, pack export, schedule, approval, manual-use, or owner-reported outcome action with atomic idempotency. Direct publish/send actions are not part of the accepted schema. |
+| `/api/campaigncue/campaigns/variants` | `POST` | Create one independently checked ordinary campaign per selected active location from an original current campaign. The batch is capped at eight locations and uses existing campaign/trust records. |
+| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record download, pack export, schedule, approval, manual use, owner-reported outcome, or owner-copied directional report evidence with atomic idempotency. Direct publish/send and provider-import actions are not part of the accepted schema. |
 | `/api/campaigncue/assets` | `GET` | Bounded asset metadata list through a direct workspace-only collection read. |
 | `/api/campaigncue/assets` | `POST` | Strictly register asset metadata, rights, deduplicated tags, optional workspace Storage identity, and server-verified campaign usage refs; external/download URLs are not accepted. |
 | `/api/campaigncue/analytics` | `GET` | Read one workspace doc, one dashboard summary doc, provider posture, and cost model. |
 | `/api/campaigncue/sources` | `GET` | Bounded owner source input list through a direct workspace-only collection read. |
-| `/api/campaigncue/sources` | `POST` | Save owner source input with optional expiry, derive source facts, and refresh source snapshot. |
+| `/api/campaigncue/sources` | `POST` | Save one owner source input with optional expiry, or confirm a strict Campaign Inbox batch of up to eight reviewed inputs; derive facts and refresh the current source snapshot. |
 | `/api/campaigncue/integrations` | `GET` | Read-only future provider posture. The active runtime does not read provider connection records, call Meta Ads MCP, import provider metrics, or write setup requests. |
 | `/api/campaigncue/locations` | `GET` | Bounded location list through a direct workspace-only collection read. |
-| `/api/campaigncue/locations` | `POST` | Add active/draft location record. |
+| `/api/campaigncue/locations` | `POST` | Add an active/draft location record. Only owner, admin, marketer, and agency-member roles may manage location records. |
 | `/api/campaigncue/video-projects` | `GET` | Read one bounded list of admitted source-linked video projects. |
 | `/api/campaigncue/video-projects` | `POST` | Create, version-save, approve/reject, or record one local render receipt with strict action validation and idempotency. No media bytes or provider payload are accepted. |
+| `/api/campaigncue/firebase-token` | `GET` | Issue a short-lived in-memory Firebase token for exactly one admitted purpose: `template_read`, `workspace_template_write`, or one exact `media_upload` folder/source filename. Purpose, workspace, role, rate limit, and feature gates are checked server-side. |
 
 All current runtime endpoints use the CampaignCue `withAuth` wrapper, exact agreeing numeric session aliases, current shared-store tenant/active-state verification, exact CampaignCue product/workspace membership, Zod validation on writes, fail-closed shared rate limiting, and the dedicated `campaigncueFirestoreAdmin` boundary. The wrapper applies private/no-store/nosniff response policy to auth, CORS, scope, validation, rate, success, and failure branches; limiter infrastructure outage returns 503 without quota metadata, while actual exhaustion returns 429. Every campaign, campaign-action, Video Studio, and CueLayers upload/autosave/repair/export mutation requires a bounded idempotency key. Standalone list/analytics endpoints do not call the full workspace overview loader, but they still revalidate shared-store and CampaignCue membership before product data access. Persisted campaign, source-input, source-snapshot, location, schedule, analytics-summary, asset, trust-report, video-project, workspace, Business Brain and CueLayers records are runtime-admitted before owner or mutation use.
+
+Raw CampaignCue workspace, campaign, asset, video, analytics, and CueLayers
+documents are not direct owner-client Firestore surfaces. The only direct SDK
+exceptions are the purpose-scoped template catalog/index flow and exact-folder
+private media creates. Tokens use in-memory Firebase Auth persistence and are
+signed out after the operation group; no token authorizes direct private media
+reads or broad workspace collection reads.
 
 ## Runtime Error Contract
 
@@ -75,9 +84,9 @@ The workspace app must map `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` to a setup-blocked
 
 Security events from the shared CampaignCue API guard use bounded route/session metadata. Tenant violations, rate-limit rejections, malformed JSON, and Design Cue validation failures log endpoint/method/scope/error presence-length fields instead of raw `buildSecurityContext()` output or raw validation messages.
 
-Browser callers must not treat HTTP success or a parsed object as acknowledgement by itself. The CampaignCue workspace app parses route responses through a 4 MB bounded reader and requires the documented `{ data }` envelope for workspace load, CueLayers boot/save/upload/repair/export, campaign create/action, business details, source input, location, asset registration, asset download, and editor-export flows before mutating local state. Parse, rejection, and invalid-shape failures log fixed CampaignCue workspace diagnostics and keep fixed product copy.
+Browser callers must not treat HTTP success or a parsed object as acknowledgement by itself. The CampaignCue workspace app parses route responses through a 4 MB bounded reader and requires the documented `{ data }` envelope for workspace load, CueLayers boot/save/upload/repair/export, campaign create/action, business details, source input, Campaign Inbox confirmation, location, asset registration, asset download, and editor-export flows before mutating local state. Parse, rejection, and invalid-shape failures log fixed CampaignCue workspace diagnostics and keep fixed product copy.
 
-For campaign create/action and CueLayers mutations, the browser binds one idempotency key to the exact request fingerprint and retires it only after an authoritative bounded response. A lost, truncated, or unparseable response therefore retries the same server claim rather than creating a second effect. Campaign creation also rereads the exact bounded workspace, Business Brain, source, asset, location, schedule, campaign-memory and analytics authority inside its final transaction; any concurrent change completes the retry record with a safe `409` and commits no campaign/trust/event/summary effect.
+For campaign create/action, location-variant creation, and CueLayers mutations, the browser binds one idempotency key to the exact request fingerprint and retires it only after an authoritative bounded response. A lost, truncated, or unparseable response therefore retries the same server claim rather than creating a second effect. Campaign creation also rereads the exact bounded workspace, Business Brain, durable current source snapshot, source-input, asset, location, schedule, campaign-memory and analytics authority inside its final transaction; any concurrent change completes the retry record with a safe `409` and commits no campaign/trust/event/summary effect. The durable source snapshot is the freshness authority; the bounded source-input query is decision context and must not replace older retained snapshot truth.
 
 ## Acceptance
 

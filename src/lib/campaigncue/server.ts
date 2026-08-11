@@ -1,32 +1,74 @@
-import { CAMPAIGNCUE_APPROVAL_ID_PREFIX, CAMPAIGNCUE_ASSET_ID_PREFIX, CAMPAIGNCUE_CAMPAIGN_ID_PREFIX, CAMPAIGNCUE_COLLECTIONS, CAMPAIGNCUE_DASHBOARD_SUMMARY_ID, CAMPAIGNCUE_EVENT_ID_PREFIX, CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS, CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES, CAMPAIGNCUE_PAGE_SIZE, CAMPAIGNCUE_SCHEDULE_ID_PREFIX, CAMPAIGNCUE_WORKSPACE_ID_PREFIX, } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_APPROVAL_ID_PREFIX, CAMPAIGNCUE_ASSET_ID_PREFIX, CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES, CAMPAIGNCUE_CAMPAIGN_ID_PREFIX, CAMPAIGNCUE_COLLECTIONS, CAMPAIGNCUE_DASHBOARD_SUMMARY_ID, CAMPAIGNCUE_EVENT_ID_PREFIX, CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS, CAMPAIGNCUE_PAGE_SIZE, CAMPAIGNCUE_SCHEDULE_ID_PREFIX, CAMPAIGNCUE_WORKSPACE_ID_PREFIX, } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_CHANNEL_LABELS } from "@constant/campaigncue/channels";
 import { CAMPAIGNCUE_DAY_ONE_DELIVERY, CAMPAIGNCUE_DELIVERY_MODE, CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS, CAMPAIGNCUE_EXPORT_ACTIONS, CAMPAIGNCUE_FUTURE_PROVIDER_LAYER, CAMPAIGNCUE_PROVIDER_POSTURES, } from "@constant/campaigncue/delivery";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
+import {
+    CAMPAIGNCUE_EXPORT_ARCHIVE,
+    buildCampaignCueExportArchiveStoragePath,
+    getNextCampaignCueExportArchiveSlot,
+    type CampaignCueExportArchiveSlot,
+} from "@constant/campaigncue/exportArchive";
 import { campaignCueOutputIntentSupportsOwnerGoal, getCampaignCueOutputPickerItem, } from "@constant/campaigncue/outputPicker";
 import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
+import { CAMPAIGNCUE_RESULT_EVIDENCE_ROLES } from "@constant/campaigncue/resultEvidence";
+import { CAMPAIGNCUE_WINNING_PACK_MAX_REFRESH_GENERATION } from "@constant/campaigncue/winningPackRefresh";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
 import { CAMPAIGNCUE_VIDEO_PROJECT_ID_PREFIX, CAMPAIGNCUE_VIDEO_STUDIO, } from "@constant/campaigncue/videoReel";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 import { CAMPAIGNCUE_DEFAULT_LOCALE, CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR, CAMPAIGNCUE_DEFAULT_TIMEZONE, } from "@constant/campaigncue/workspace";
 import { DB_COLLECTIONS } from "@constant/database";
 import { MENULIST_TENANT_BASE_DOMAIN, SIGNIN_URL } from "@constant/urls";
+import { isOwnerRole } from "@data/defaultRoles";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildCampaignCueDailyDesk, dailyDeskRecipeForBusiness, uniqueCompactStrings, } from "@lib/campaigncue/dailyDesk";
+import { buildCampaignCueInboxBatchId, buildCampaignCueInboxSourceInputIds, } from "@lib/campaigncue/campaignInbox";
+import { applyCampaignCueCampaignMemoryResult, buildCampaignCueCampaignMemoryView, buildCampaignCueVisibleCampaignAnalytics, emptyCampaignCueCampaignMemorySummary, isCampaignCueResultSignalAllowed, resolveCampaignCueCampaignMemorySummary, } from "@lib/campaigncue/campaignMemory";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
+import { acceptCampaignCueExperiment, completeCampaignCueExperimentForResult } from "@lib/campaigncue/experimentCoach";
+import {
+    addCampaignCueApprovalComment,
+    campaignCueCanCommentOnApproval,
+    campaignCueCanRequestApproval,
+    campaignCueCanResolveApproval,
+    CampaignCueApprovalInboxError,
+    decideCampaignCueApproval,
+    resolveCampaignCueApprovalComment,
+    startCampaignCueApprovalRequest,
+} from "@lib/campaigncue/approvalInbox";
 import { isCampaignCueWorkspaceStoragePath, parseCampaignCueAssetRecord, } from "@lib/campaigncue/assetBoundary";
+import { filterCampaignCueAssetsForMember } from "@lib/campaigncue/assetVisibility";
+import {
+    campaignCueCanManageCampaignLocation,
+    campaignCueCanManageSomeCampaignOutput,
+    campaignCueCanManageWorkspaceContent,
+    campaignCueCanMutateVideoProject,
+    campaignCueCanPerformCampaignOutputAction,
+    campaignCueCanReadCreativeWorkspace,
+    campaignCueCanRegisterAsset,
+} from "@lib/campaigncue/permissions";
 import { assertCampaignCueIdempotencyClaimOwnership, buildCampaignCueIdempotencyRequestHash, CampaignCueIdempotencyIdentityError, getCampaignCueIdempotencyClaimDecision, type CampaignCueIdempotencyRecord, } from "@lib/campaigncue/idempotency";
 import { assertCampaignCueBusinessBrainRecordScope, assertCampaignCueStoreRecordScope, assertCampaignCueWorkspaceRecordScope, CampaignCueWorkspaceScopeError, } from "@lib/campaigncue/workspaceScope";
 import { parseCampaignCueAnalyticsSummaryRecord, parseCampaignCueCampaignRecord, parseCampaignCueLocationRecord, parseCampaignCueScheduleRecord, parseCampaignCueSourceInputRecord, parseCampaignCueSourceSnapshotRecord, parseCampaignCueTrustReportRecord, } from "@lib/campaigncue/recordBoundary";
 import { getUnresolvedCampaignCueOutputIntentRequirements } from "@lib/campaigncue/pack-templates/factSlotReadiness";
+import {
+    applyCampaignCueLocationToBusinessBrain,
+    buildCampaignCueLocationRecordSourceHash,
+    buildCampaignCueLocationSourceHash,
+    buildCampaignCueLocationTruthSnapshot,
+    buildCampaignCueLocationVariantCampaignId,
+    buildCampaignCueLocationVariantGroupId,
+} from "@lib/campaigncue/locationVariants";
 import { buildCampaignCuePatternCueBrief, buildCampaignCuePatternCueObservation, getLatestCampaignCuePatternCueSource, isCampaignCuePatternCueSourceInput, } from "@lib/campaigncue/patternCue";
-import { buildCampaignCueExperimentSuggestion, buildCampaignCuePackFreshness, evaluateCampaignCuePackFreshness, isCampaignCueDecisionSourceInput, isCampaignCueOperatingPulseCurrent, normalizeCampaignCueCommercialPolicy, normalizeCampaignCueLanguagePolicy, normalizeCampaignCueOperatingPulse, normalizeCampaignCuePresenceProfile, } from "@lib/campaigncue/operatingLoop";
-import { buildCampaignCueVideoProject, canApplyCampaignCueVideoRenderReceipt, evaluateCampaignCueVideoTrust, getCampaignCueVideoAssetIds, getCampaignCueVideoSourceTrustGate, parseCampaignCueVideoProjectRecord, } from "@lib/campaigncue/videoReel";
+import { buildCampaignCueExperimentSuggestion, buildCampaignCuePackFreshness, evaluateCampaignCueCommercialGate, evaluateCampaignCuePackFreshness, isCampaignCueDecisionSourceInput, isCampaignCueOperatingPulseCurrent, normalizeCampaignCueCommercialPolicy, normalizeCampaignCueLanguagePolicy, normalizeCampaignCueOperatingPulse, normalizeCampaignCuePresenceProfile, } from "@lib/campaigncue/operatingLoop";
+import { buildCampaignCueReadOnlyResultEvidence } from "@lib/campaigncue/resultEvidence";
+import { getStoreLocalDateKey } from "@lib/hours/hoursBoundary";
+import { buildCampaignCueVideoFormatSignature, buildCampaignCueVideoFormatSnapshot, buildCampaignCueVideoProject, canApplyCampaignCueVideoRenderReceipt, evaluateCampaignCueVideoTrust, getCampaignCueVideoAssetIds, getCampaignCueVideoResultCounterDelta, getCampaignCueVideoSourceTrustGate, isCampaignCueVideoRenderEvidenceConsistent, parseCampaignCueVideoProjectRecord, } from "@lib/campaigncue/videoReel";
 import { admin, campaigncueAuthAdmin, campaigncueFirestoreAdmin as firestoreAdmin, campaigncueStorageAdmin, requireCampaignCueAuthAdmin, requireCampaignCueFirestoreAdmin, requireCampaignCueStorageAdmin, } from "@lib/firebase/campaigncueFirebaseAdmin";
 import { firestoreAdmin as menuListFirestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { logger } from "@lib/monitoring/logger";
-import type { CampaignCueActionType, CampaignCueAnalyticsSummary, CampaignCueAsset, CampaignCueBrandPlaybook, CampaignCueBusinessBrain, CampaignCueCampaign, CampaignCueChannel, CampaignCueCommercialGate, CampaignCueDeliveryPolicy, CampaignCueLaunchReadiness, CampaignCueLocation, CampaignCueMetricConfidence, CampaignCueOutput, CampaignCueOutputFields, CampaignCueOverview, CampaignCueOpportunity, CampaignCueProviderConnection, CampaignCueProviderMode, CampaignCueProviderStatus, CampaignCueSchedule, CampaignCueSourceFact, CampaignCueSourceInput, CampaignCueSourceSnapshot, CampaignCueTrustFinding, CampaignCueTrustGate, CampaignCueTrustReport, CampaignCueWorkspace, } from "@type/campaigncue";
-import type { CampaignCueAssetInput, CampaignCueBusinessPatchInput, CampaignCueCampaignActionInput, CampaignCueCreateCampaignInput, CampaignCueLocationInput, CampaignCueSourceInputData, } from "@lib/validation/campaigncueSchemas";
+import type { CampaignCueActionType, CampaignCueAnalyticsSummary, CampaignCueAsset, CampaignCueBrandPlaybook, CampaignCueBusinessBrain, CampaignCueCampaign, CampaignCueChannel, CampaignCueCommercialGate, CampaignCueDeliveryPolicy, CampaignCueExportArchivePointer, CampaignCueInboxConfirmResult, CampaignCueLaunchReadiness, CampaignCueLocation, CampaignCueMetricConfidence, CampaignCueOutput, CampaignCueOutputFields, CampaignCueOverview, CampaignCueOpportunity, CampaignCueProviderConnection, CampaignCueProviderMode, CampaignCueProviderStatus, CampaignCueSchedule, CampaignCueSourceFact, CampaignCueSourceInput, CampaignCueSourceSnapshot, CampaignCueTrustFinding, CampaignCueTrustGate, CampaignCueTrustReport, CampaignCueWorkspace, } from "@type/campaigncue";
+import type { CampaignCueAssetInput, CampaignCueBusinessPatchInput, CampaignCueCampaignActionInput, CampaignCueCreateCampaignInput, CampaignCueExportArchivePrepareInput, CampaignCueFirebaseSessionAuthorization, CampaignCueInboxConfirmData, CampaignCueLocationInput, CampaignCueLocationVariantBatchInput, CampaignCueSourceInputData, } from "@lib/validation/campaigncueSchemas";
 import type { CampaignCueVideoProjectMutationData } from "@lib/validation/campaigncueVideoSchemas";
 import type { CampaignCueVideoProject, CampaignCueVideoScene, } from "@type/campaigncueVideo";
 import { createHash } from "crypto";
@@ -36,18 +78,36 @@ export interface CampaignCueSessionScope {
     email?: string;
     name?: string;
     sId: string;
+    sourceStoreRole?: string;
     tId: string;
     userId: string;
 }
 
-export async function createCampaignCueFirebaseTokenServer(scope: CampaignCueSessionScope) {
-    const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
+export async function createCampaignCueFirebaseTokenServer(
+    scope: CampaignCueSessionScope,
+    authorization: CampaignCueFirebaseSessionAuthorization,
+) {
+    const workspaceId = buildCampaignCueWorkspaceId(scope);
     const token = await requireCampaignCueAuthAdmin().createCustomToken(scope.userId, {
+        firebasePurpose: authorization.purpose,
+        ...(authorization.purpose === "media_upload" ? {
+            mediaSourceFileName: authorization.sourceFileName,
+            mediaUploadId: authorization.uploadId,
+        } : {}),
         productId: CAMPAIGNCUE_PRODUCT_CODE,
         tenantId: scope.tId,
         storeId: scope.sId,
     });
-    return { token, workspaceId: workspace.workspaceId, expiresInSeconds: 3600 };
+    return {
+        token,
+        workspaceId,
+        purpose: authorization.purpose,
+        ...(authorization.purpose === "media_upload" ? {
+            sourceFileName: authorization.sourceFileName,
+            uploadId: authorization.uploadId,
+        } : {}),
+        expiresInSeconds: 3600,
+    };
 }
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
@@ -60,6 +120,21 @@ const compactString = (value: unknown, fallback = ""): string => {
     if (typeof value === "string") return value.trim() || fallback;
     if (value == null) return fallback;
     return String(value).trim() || fallback;
+};
+
+type CampaignCueStoreData = Record<string, unknown>;
+
+const isUnknownRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === "object" && value !== null && !Array.isArray(value)
+);
+
+const getNestedStoreValue = (
+    storeData: CampaignCueStoreData,
+    parentKey: string,
+    childKey: string,
+): unknown => {
+    const parent = storeData[parentKey];
+    return isUnknownRecord(parent) ? parent[childKey] : undefined;
 };
 
 type CampaignCueLogMetadata = Record<string, boolean | number | string | null | undefined>;
@@ -293,13 +368,13 @@ async function assertCurrentCampaignCueWorkspaceAccess(
 const defaultBusinessBrainId = "default";
 const defaultSourceSnapshotId = "current";
 
-async function readStoreData(scope: CampaignCueSessionScope): Promise<any | null> {
+async function readStoreData(scope: CampaignCueSessionScope): Promise<CampaignCueStoreData> {
     const snap = await menuListFirestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(scope.sId).get();
     if (!snap.exists) throw new CampaignCueWorkspaceScopeError();
     return assertCampaignCueStoreRecordScope(snap.data(), scope);
 }
 
-function buildPublicMenuUrl(storeData: any): string | undefined {
+function buildPublicMenuUrl(storeData: CampaignCueStoreData): string | undefined {
     const directUrl = compactString(storeData?.publicMenuUrl || storeData?.menuUrl || storeData?.storeUrl);
     if (directUrl.startsWith("http://") || directUrl.startsWith("https://")) return directUrl;
     const subdomain = compactString(storeData?.subdomain || storeData?.storeUrlSlug || storeData?.slug);
@@ -307,7 +382,7 @@ function buildPublicMenuUrl(storeData: any): string | undefined {
     return `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`;
 }
 
-function buildDefaultItems(storeData: any) {
+function buildDefaultItems(storeData: CampaignCueStoreData) {
     const candidates = [
         storeData?.featuredItemName,
         storeData?.bestSellerName,
@@ -326,7 +401,7 @@ function buildDefaultItems(storeData: any) {
     }));
 }
 
-function inferBusinessType(storeData: any): CampaignCueBusinessBrain["businessType"] {
+function inferBusinessType(storeData: CampaignCueStoreData): CampaignCueBusinessBrain["businessType"] {
     const raw = compactString(
         storeData?.businessType || storeData?.type || storeData?.category || storeData?.storeType,
     ).toLowerCase();
@@ -361,7 +436,7 @@ function primaryServiceLabelForBusiness(businessType: CampaignCueBusinessBrain["
 
 function buildBusinessBrain(params: {
     scope: CampaignCueSessionScope;
-    storeData: any;
+    storeData: CampaignCueStoreData;
     workspaceId: string;
 }): CampaignCueBusinessBrain {
     const { scope, storeData, workspaceId } = params;
@@ -371,13 +446,18 @@ function buildBusinessBrain(params: {
         storeData?.businessName || storeData?.name || storeData?.storeName,
         scope.name || "CampaignCue business",
     );
-    const locality = compactString(storeData?.locality || storeData?.city || storeData?.area || storeData?.address?.city);
+    const locality = compactString(
+        storeData.locality
+        || storeData.city
+        || storeData.area
+        || getNestedStoreValue(storeData, "address", "city"),
+    );
     const website = compactString(storeData?.website || storeData?.websiteUrl || storeData?.domain || "");
     const phone = compactString(storeData?.phone || storeData?.phoneNumber || storeData?.contactNumber || "");
     const whatsapp = compactString(
         storeData?.whatsapp
         || storeData?.whatsappNumber
-        || storeData?.publicPresence?.whatsappNumber
+        || getNestedStoreValue(storeData, "publicPresence", "whatsappNumber")
         || storeData?.phoneNumber
         || storeData?.phone
         || storeData?.contactNumber
@@ -479,27 +559,44 @@ function buildSourceSnapshotFromExistingSnapshot(params: {
     businessBrain: CampaignCueBusinessBrain;
     existingSnapshot?: CampaignCueSourceSnapshot | null;
     sourceInput?: CampaignCueSourceInput;
+    sourceInputs?: CampaignCueSourceInput[];
 }): CampaignCueSourceSnapshot {
     const baseFacts = buildSourceFacts(params.businessBrain);
     const baseFactIds = new Set(baseFacts.map((fact) => fact.id));
-    const previousInputFacts = (params.existingSnapshot?.facts || [])
-        .filter((fact) => isCampaignSourceInputRef(fact.sourceRef) && !baseFactIds.has(fact.id));
-    const nextFacts = params.sourceInput ? sourceInputToFacts(params.sourceInput) : [];
-    const factsById = new Map<string, CampaignCueSourceFact>();
-    [...baseFacts, ...previousInputFacts, ...nextFacts].forEach((fact) => {
-        factsById.set(fact.id, fact);
-    });
-    const facts = Array.from(factsById.values()).sort((a, b) => a.id.localeCompare(b.id));
+    const incomingSourceInputs = params.sourceInputs || (params.sourceInput ? [params.sourceInput] : []);
+    const incomingPattern = incomingSourceInputs.some((input) => input.sourceType === "inspiration_pattern");
+    const existingSourceOrder = new Map(
+        (params.existingSnapshot?.sourceRefs || []).map((sourceRef, index) => [sourceRef, index]),
+    );
+    const previousSourceRefs = (params.existingSnapshot?.sourceRefs || [])
+        .filter((sourceRef) => isCampaignSourceInputRef(sourceRef) && !(incomingPattern && isCampaignPatternSourceRef(sourceRef)));
     const sourceRefs = Array.from(new Set([
         "store_profile",
         ...brandPlaybookSourceRefs(params.businessBrain),
-        ...(params.existingSnapshot?.sourceRefs || []).filter((sourceRef) => (
-            isCampaignSourceInputRef(sourceRef)
-            && !(params.sourceInput?.sourceType === "inspiration_pattern" && isCampaignPatternRef(sourceRef))
-        )),
-        params.sourceInput?.id,
-        ...(params.sourceInput?.sourceRefs || []).filter(isCampaignPatternRef),
-    ].filter(Boolean) as string[]));
+        ...incomingSourceInputs.map((input) => input.id),
+        ...incomingSourceInputs.flatMap((input) => input.sourceRefs.filter(isCampaignPatternRef)),
+        ...previousSourceRefs,
+    ].filter(Boolean) as string[])).slice(0, 120);
+    const retainedSourceRefs = new Set(sourceRefs);
+    const previousInputFacts = (params.existingSnapshot?.facts || [])
+        .filter((fact) => (
+            isCampaignSourceInputRef(fact.sourceRef)
+            && retainedSourceRefs.has(fact.sourceRef)
+            && !baseFactIds.has(fact.id)
+        ))
+        .sort((left, right) => (
+            (existingSourceOrder.get(left.sourceRef) ?? Number.MAX_SAFE_INTEGER)
+            - (existingSourceOrder.get(right.sourceRef) ?? Number.MAX_SAFE_INTEGER)
+        ));
+    const nextFacts = incomingSourceInputs
+        .flatMap(sourceInputToFacts)
+        .filter((fact) => retainedSourceRefs.has(fact.sourceRef));
+    const factsById = new Map<string, CampaignCueSourceFact>();
+    [...baseFacts, ...nextFacts, ...previousInputFacts].forEach((fact) => {
+        if (factsById.size >= 200 || factsById.has(fact.id)) return;
+        factsById.set(fact.id, fact);
+    });
+    const facts = Array.from(factsById.values()).sort((a, b) => a.id.localeCompare(b.id));
     const hasManualSourceInput = sourceRefs.some((sourceRef) => (
         isCampaignSourceInputRef(sourceRef) && !isCampaignPatternSourceRef(sourceRef)
     ));
@@ -802,6 +899,35 @@ function buildSourceFacts(
     ];
 }
 
+function buildCampaignCueLocationSourceFacts(params: {
+    businessBrain: CampaignCueBusinessBrain;
+    location: CampaignCueLocation;
+    sourceInputs: CampaignCueSourceInput[];
+}): CampaignCueSourceFact[] {
+    const locationBrain = applyCampaignCueLocationToBusinessBrain(params.businessBrain, params.location);
+    const locationFactIds = new Set([
+        "business_area",
+        "business_phone",
+        "business_whatsapp",
+        "business_booking",
+        "business_menu",
+    ]);
+    const baseFacts = buildSourceFacts(locationBrain, params.sourceInputs).map((fact) => (
+        locationFactIds.has(fact.id)
+            ? { ...fact, sourceRef: params.location.id, confidence: "manual" as const }
+            : fact
+    ));
+    const branchName = buildSourceFact({
+        id: `location_${params.location.id}_name`,
+        label: "Branch name",
+        value: params.location.name,
+        sourceRef: params.location.id,
+        sourceType: "business_profile",
+        confidence: "manual",
+    });
+    return branchName ? [branchName, ...baseFacts] : baseFacts;
+}
+
 function campaignCueBusinessHasCta(businessBrain: CampaignCueBusinessBrain) {
     return Boolean(
         businessBrain.contacts.bookingUrl
@@ -880,7 +1006,7 @@ function buildVerticalRisks(businessBrain: CampaignCueBusinessBrain): string[] {
 
 function buildWorkspace(params: {
     scope: CampaignCueSessionScope;
-    storeData: any;
+    storeData: CampaignCueStoreData;
     workspaceId: string;
 }): CampaignCueWorkspace {
     const createdAt = nowTimestamp();
@@ -988,20 +1114,37 @@ function dashboardSummarySeed(workspaceId: string): CampaignCueAnalyticsSummary 
 
 export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSessionScope) {
     const workspaceId = buildCampaignCueWorkspaceId(scope);
-    const storeData = await readStoreData(scope);
     const ref = workspaceRef(workspaceId);
-    const workspace = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const workspaceSnap = await transaction.get(ref);
-        if (workspaceSnap.exists) {
-            return normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
-                workspaceSnap.data(),
-                { ...scope, workspaceId },
-            ));
+    const initialWorkspaceSnap = await ref.get();
+    let bootstrapStoreData: CampaignCueStoreData | null = null;
+    let workspace: CampaignCueWorkspace;
+    if (initialWorkspaceSnap.exists) {
+        workspace = normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
+            initialWorkspaceSnap.data(),
+            { ...scope, workspaceId },
+        ));
+    } else {
+        if (!isOwnerRole(scope.sourceStoreRole || "")) {
+            throw new CampaignCueWorkspaceScopeError();
         }
-        const created = buildWorkspace({ scope, storeData, workspaceId });
-        transaction.create(ref, sanitizeForAdminFirestore(created));
-        return created;
-    });
+        const ownerStoreData = await readStoreData(scope);
+        bootstrapStoreData = ownerStoreData;
+        workspace = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
+            const workspaceSnap = await transaction.get(ref);
+            if (workspaceSnap.exists) {
+                return normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
+                    workspaceSnap.data(),
+                    { ...scope, workspaceId },
+                ));
+            }
+            const created = buildWorkspace({ scope, storeData: ownerStoreData, workspaceId });
+            transaction.create(ref, sanitizeForAdminFirestore(created));
+            return created;
+        });
+    }
+    if (!campaignCueCanReadCreativeWorkspace(workspace.members?.[scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
 
     const businessRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
         .doc(defaultBusinessBrainId);
@@ -1014,6 +1157,8 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
             ),
         };
     }
+
+    const storeData = bootstrapStoreData ?? await readStoreData(scope);
 
     return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const sourceRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
@@ -1050,7 +1195,6 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
 
 async function ensureCampaignCueWorkspaceOnlyServer(scope: CampaignCueSessionScope): Promise<CampaignCueWorkspace> {
     const workspaceId = buildCampaignCueWorkspaceId(scope);
-    await readStoreData(scope);
     const snap = await workspaceRef(workspaceId).get();
     if (snap.exists) {
         return normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
@@ -1546,6 +1690,7 @@ const campaignCueDecisionAuthorityHash = (params: {
     campaigns: FirebaseFirestore.QuerySnapshot;
     locations: FirebaseFirestore.QuerySnapshot;
     schedules: FirebaseFirestore.QuerySnapshot;
+    sourceSnapshot: FirebaseFirestore.DocumentSnapshot;
     sourceInputs: FirebaseFirestore.QuerySnapshot;
     workspace: FirebaseFirestore.DocumentSnapshot;
 }) => stableHash({
@@ -1555,6 +1700,7 @@ const campaignCueDecisionAuthorityHash = (params: {
     campaigns: params.campaigns.docs.map((doc) => ({ id: doc.id, value: doc.data() })),
     locations: params.locations.docs.map((doc) => ({ id: doc.id, value: doc.data() })),
     schedules: params.schedules.docs.map((doc) => ({ id: doc.id, value: doc.data() })),
+    sourceSnapshot: params.sourceSnapshot.exists ? params.sourceSnapshot.data() : null,
     sourceInputs: params.sourceInputs.docs.map((doc) => ({ id: doc.id, value: doc.data() })),
     workspace: params.workspace.exists ? params.workspace.data() : null,
 });
@@ -1568,9 +1714,12 @@ async function loadCampaignCueDecisionAuthority(
         .doc(defaultBusinessBrainId);
     const analyticsDocument = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
-    const [workspaceSnap, businessSnap, sourceInputsSnap, assetsSnap, locationsSnap, schedulesSnap, campaignsSnap, analyticsSnap] = await Promise.all([
+    const sourceSnapshotDocument = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
+        .doc(defaultSourceSnapshotId);
+    const [workspaceSnap, businessSnap, sourceSnapshotSnap, sourceInputsSnap, assetsSnap, locationsSnap, schedulesSnap, campaignsSnap, analyticsSnap] = await Promise.all([
         workspaceDocument.get(),
         businessDocument.get(),
+        sourceSnapshotDocument.get(),
         campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS).get(),
         campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS).get(),
         campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS).get(),
@@ -1602,6 +1751,7 @@ async function loadCampaignCueDecisionAuthority(
             campaigns: campaignsSnap,
             locations: locationsSnap,
             schedules: schedulesSnap,
+            sourceSnapshot: sourceSnapshotSnap,
             sourceInputs: sourceInputsSnap,
             workspace: workspaceSnap,
         }),
@@ -1609,23 +1759,57 @@ async function loadCampaignCueDecisionAuthority(
         campaigns: campaignsSnap.docs.map((doc) => parseCampaignCueCampaignRecord(doc.data(), { workspaceId })),
         locations: locationsSnap.docs.map((doc) => parseCampaignCueLocationRecord(doc.data(), workspaceId)),
         schedules: schedulesSnap.docs.map((doc) => parseCampaignCueScheduleRecord(doc.data(), workspaceId)),
+        sourceSnapshot: sourceSnapshotSnap.exists
+            ? parseCampaignCueSourceSnapshotRecord(sourceSnapshotSnap.data(), workspaceId)
+            : buildSourceSnapshot(businessBrain, sourceInputsSnap.docs.map((doc) => (
+                parseCampaignCueSourceInputRecord(doc.data(), workspaceId)
+            ))),
+        sourceSnapshotPresent: sourceSnapshotSnap.exists,
         storedSourceInputs: sourceInputsSnap.docs.map((doc) => parseCampaignCueSourceInputRecord(doc.data(), workspaceId)),
         workspace,
     };
 }
 
+const campaignCueVisibleLocationsForMember = (
+    workspace: CampaignCueWorkspace,
+    userId: string,
+    locations: CampaignCueLocation[],
+) => {
+    const member = workspace.members?.[userId];
+    if (!campaignCueCanReadCreativeWorkspace(member?.role)) return [];
+    if (member?.role !== "local_manager") return locations;
+    const assignedLocationIds = new Set(member.locationIds || []);
+    return locations.filter((location) => assignedLocationIds.has(location.id));
+};
+
+const campaignCueVisibleCampaignsForMember = (
+    workspace: CampaignCueWorkspace,
+    userId: string,
+    campaigns: CampaignCueCampaign[],
+) => {
+    const member = workspace.members?.[userId];
+    if (!campaignCueCanReadCreativeWorkspace(member?.role)) return [];
+    if (member?.role !== "local_manager") return campaigns;
+    const assignedLocationIds = new Set(member.locationIds || []);
+    return campaigns.filter((campaign) => (
+        !campaign.locationId || assignedLocationIds.has(campaign.locationId)
+    ));
+};
+
 export async function listCampaignCueCampaignsServer(scope: CampaignCueSessionScope): Promise<CampaignCueCampaign[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    return listSubcollection(
+    const campaigns = await listSubcollection(
         workspace.workspaceId,
         CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS,
         (value, workspaceId) => parseCampaignCueCampaignRecord(value, { workspaceId }),
     );
+    return campaignCueVisibleCampaignsForMember(workspace, scope.userId, campaigns);
 }
 
 export async function listCampaignCueAssetsServer(scope: CampaignCueSessionScope): Promise<CampaignCueAsset[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    return listCampaignCueAssetRecords(workspace.workspaceId);
+    const assets = await listCampaignCueAssetRecords(workspace.workspaceId);
+    return filterCampaignCueAssetsForMember(assets, workspace.members?.[scope.userId]);
 }
 
 export async function listCampaignCueVideoProjectsServer(
@@ -1655,11 +1839,18 @@ export async function listCampaignCueVideoProjectsServer(
             workspaceId: workspace.workspaceId,
         });
     }
-    return projects;
+    const member = workspace.members?.[scope.userId];
+    if (!campaignCueCanReadCreativeWorkspace(member?.role)) return [];
+    if (member?.role !== "local_manager") return projects;
+    const visibleCampaignIds = new Set((await listCampaignCueCampaignsServer(scope)).map((campaign) => campaign.id));
+    return projects.filter((project) => visibleCampaignIds.has(project.campaignId));
 }
 
 export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessionScope): Promise<CampaignCueSourceInput[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
+    if (!campaignCueCanReadCreativeWorkspace(workspace.members?.[scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const sourceInputs = await listSubcollection(
         workspace.workspaceId,
         CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS,
@@ -1669,7 +1860,10 @@ export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessio
 }
 
 export async function listCampaignCueProviderConnectionsServer(scope: CampaignCueSessionScope) {
-    await ensureCampaignCueWorkspaceOnlyServer(scope);
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
+    if (!campaignCueCanReadCreativeWorkspace(workspace.members?.[scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     return {
         connections: [] as CampaignCueProviderConnection[],
         deliveryPolicy: buildDeliveryPolicy(),
@@ -1679,24 +1873,48 @@ export async function listCampaignCueProviderConnectionsServer(scope: CampaignCu
 
 export async function listCampaignCueLocationsServer(scope: CampaignCueSessionScope): Promise<CampaignCueLocation[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    return listSubcollection(
+    const locations = await listSubcollection(
         workspace.workspaceId,
         CAMPAIGNCUE_COLLECTIONS.LOCATIONS,
         parseCampaignCueLocationRecord,
     );
+    return campaignCueVisibleLocationsForMember(workspace, scope.userId, locations);
 }
 
 export async function readCampaignCueAnalyticsServer(scope: CampaignCueSessionScope) {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    const analytics = await readDashboardSummary(workspace.workspaceId);
+    const member = workspace.members?.[scope.userId];
+    let readsPerLoad = 2;
+    let analytics: CampaignCueAnalyticsSummary;
+    if (member?.role === "local_manager") {
+        const campaigns = await listSubcollection(
+            workspace.workspaceId,
+            CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS,
+            (value, currentWorkspaceId) => parseCampaignCueCampaignRecord(value, { workspaceId: currentWorkspaceId }),
+        );
+        const visibleCampaigns = campaignCueVisibleCampaignsForMember(workspace, scope.userId, campaigns);
+        analytics = buildCampaignCueVisibleCampaignAnalytics({
+            campaigns: visibleCampaigns,
+            workspaceId: workspace.workspaceId,
+        });
+        readsPerLoad = 1 + Math.max(1, campaigns.length);
+    } else {
+        analytics = await readDashboardSummary(workspace.workspaceId);
+    }
     return {
         analytics,
+        campaignMemory: buildCampaignCueCampaignMemoryView(
+            analytics.campaignMemory || emptyCampaignCueCampaignMemorySummary(),
+        ),
         cost: {
-            readsPerLoad: 3,
+            readsPerLoad,
             writesPerCampaignCreate: 6,
             realtimeListeners: 0,
             notes: [
-                "Analytics endpoint verifies one MenuList store, reads one workspace document, and reads one precomputed summary document.",
+                member?.role === "local_manager"
+                    ? "Assigned-location analytics reads the workspace and a bounded recent campaign list, then filters it in memory so another branch is never included."
+                    : "Analytics reads one CampaignCue workspace document and one precomputed summary document.",
+                "The MenuList store profile is read only during first workspace or missing Business Brain bootstrap.",
                 "It does not scan raw campaign, event, asset, source, location, or provider collections.",
                 "Provider posting is not part of the active runtime, so no paid provider call runs from analytics load.",
             ],
@@ -1706,7 +1924,6 @@ export async function readCampaignCueAnalyticsServer(scope: CampaignCueSessionSc
 }
 
 function buildLaunchReadiness(): CampaignCueLaunchReadiness {
-    const hasServerProject = Boolean(process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID);
     const hasPublicProject = Boolean(process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID);
     const hasAdminCredential = Boolean(
         process.env.CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL
@@ -1716,10 +1933,10 @@ function buildLaunchReadiness(): CampaignCueLaunchReadiness {
         {
             id: "firebase_project",
             label: "CampaignCue Firebase project",
-            status: hasServerProject && hasPublicProject ? "ready" : "blocked",
-            detail: hasServerProject && hasPublicProject
-                ? "Dedicated CampaignCue Firebase project ids are configured."
-                : "Set CampaignCue public and server Firebase project ids before launch.",
+            status: hasPublicProject ? "ready" : "blocked",
+            detail: hasPublicProject
+                ? "The dedicated CampaignCue Firebase project id is configured."
+                : "Set the canonical CampaignCue Firebase project id before launch.",
         },
         {
             id: "firebase_admin",
@@ -1750,6 +1967,9 @@ function buildLaunchReadiness(): CampaignCueLaunchReadiness {
 
 export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionScope): Promise<CampaignCueOverview> {
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(scope);
+    if (!campaignCueCanReadCreativeWorkspace(workspace.members?.[scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const workspaceId = workspace.workspaceId;
     const [storedSourceInputs, campaigns, assets, schedules, locations, analytics] = await Promise.all([
         listSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS, parseCampaignCueSourceInputRecord),
@@ -1764,40 +1984,55 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
         readDashboardSummary(workspaceId),
     ]);
     const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
+    const visibleCampaigns = campaignCueVisibleCampaignsForMember(workspace, scope.userId, campaigns);
+    const visibleAssets = filterCampaignCueAssetsForMember(assets, workspace.members?.[scope.userId]);
+    const visibleLocations = campaignCueVisibleLocationsForMember(workspace, scope.userId, locations);
+    const visibleCampaignIds = new Set(visibleCampaigns.map((campaign) => campaign.id));
+    const visibleSchedules = workspace.members?.[scope.userId]?.role === "local_manager"
+        ? schedules.filter((schedule) => visibleCampaignIds.has(schedule.campaignId))
+        : schedules;
+    const visibleAnalytics = workspace.members?.[scope.userId]?.role === "local_manager"
+        ? buildCampaignCueVisibleCampaignAnalytics({ campaigns: visibleCampaigns, workspaceId })
+        : analytics;
     const opportunities = buildCampaignCueOpportunities({
-        analytics,
-        assets,
+        analytics: visibleAnalytics,
+        assets: visibleAssets,
         businessBrain,
-        campaigns,
-        locations,
-        schedules,
+        campaigns: visibleCampaigns,
+        locations: visibleLocations,
+        schedules: visibleSchedules,
         sourceInputs,
         workspaceId,
     });
     const sourceFacts = buildSourceFacts(businessBrain, sourceInputs);
     const dailyDesk = buildCampaignCueDailyDesk({
-        analytics,
-        assets,
+        analytics: visibleAnalytics,
+        assets: visibleAssets,
         businessBrain,
-        campaigns,
-        locations,
+        campaigns: visibleCampaigns,
+        locations: visibleLocations,
         opportunities,
-        schedules,
+        schedules: visibleSchedules,
         sourceFacts,
         sourceInputs,
         workspace,
     });
+    const campaignMemory = buildCampaignCueCampaignMemoryView(resolveCampaignCueCampaignMemorySummary({
+        analytics: visibleAnalytics,
+        campaigns: visibleCampaigns,
+    }));
 
     return {
         workspace,
         businessBrain,
         sourceInputs,
         opportunities,
-        campaigns,
-        assets,
-        schedules,
-        locations,
-        analytics,
+        campaigns: visibleCampaigns,
+        assets: visibleAssets,
+        schedules: visibleSchedules,
+        locations: visibleLocations,
+        analytics: visibleAnalytics,
+        campaignMemory,
         providers: providerStatuses(),
         providerConnections: [],
         deliveryPolicy: buildDeliveryPolicy(),
@@ -1806,12 +2041,12 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
         sourceHash: stableHash([...sourceFacts].sort((a, b) => a.id.localeCompare(b.id))),
         sourceFacts,
         cost: {
-            readsPerLoad: 9,
+            readsPerLoad: 8,
             writesPerCampaignCreate: 6,
             realtimeListeners: 0,
             notes: [
-                "Overview uses one MenuList store-scope verification read plus eight bounded CampaignCue reads and no realtime listeners.",
-                "Workspace bootstrap may use the verified MenuList store profile as source input.",
+                "Overview uses eight bounded CampaignCue reads and no realtime listeners.",
+                "First workspace or missing Business Brain bootstrap may use one verified MenuList store profile read as source input.",
                 "Daily Campaign Desk is computed from the same overview documents and does not add a Firestore read.",
                 "Owner campaign creation writes idempotency placeholder/completion, campaign, trust report, event, and dashboard summary.",
                 "Provider connections are not loaded in the active export/download runtime, so no social-integration read or paid provider call runs from page load.",
@@ -2269,6 +2504,10 @@ function buildOutputs(params: {
                         sourceHash: params.patternCueSource.patternCue.sourceHash,
                         platform: params.patternCueSource.patternCue.platform,
                         rightsStatus: params.patternCueSource.patternCue.rightsStatus,
+                        hookType: params.patternCueSource.patternCue.hookType,
+                        format: params.patternCueSource.patternCue.format,
+                        pacing: params.patternCueSource.patternCue.pacing,
+                        durationBand: params.patternCueSource.patternCue.durationBand,
                     },
                     directMutationEnabled: false,
                 }
@@ -2654,6 +2893,13 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                 campaignId: createInput.campaignId,
                 workspaceId,
             });
+            if (!campaignCueCanMutateVideoProject({
+                action: createInput.action,
+                locationId: campaign.locationId,
+                member: currentWorkspace.members?.[params.scope.userId],
+            })) {
+                throw new CampaignCueWorkspaceScopeError();
+            }
             const output = campaign.outputs.find((item) => (
                 item.id === createInput.outputId && item.channel === "video"
             ));
@@ -2693,6 +2939,13 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                 campaignId: current.campaignId,
                 workspaceId,
             });
+            if (!campaignCueCanMutateVideoProject({
+                action: mutationInput.action,
+                locationId: campaign.locationId,
+                member: currentWorkspace.members?.[params.scope.userId],
+            })) {
+                throw new CampaignCueWorkspaceScopeError();
+            }
             const output = campaign.outputs.find((item) => item.id === current.outputId && item.channel === "video");
             if (!output) {
                 throw new CampaignCueDecisionGateError("The source video output is unavailable.");
@@ -2709,6 +2962,12 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                     sourceReferences: [...current.sourceReferences],
                 }));
                 const assets = await getCampaignCueVideoAssets(transaction, workspaceId, scenes, mutationInput.audio);
+                if (filterCampaignCueAssetsForMember(
+                    assets,
+                    currentWorkspace.members?.[params.scope.userId],
+                ).length !== assets.length) {
+                    throw new CampaignCueWorkspaceScopeError();
+                }
                 const invalidSceneAsset = assets.find((asset) => (
                     scenes.some((scene) => scene.enabled && scene.assetId === asset.id)
                     && !["image", "logo", "video"].includes(asset.assetType)
@@ -2758,7 +3017,7 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                 };
             } else if (mutationInput.action === "approve" || mutationInput.action === "reject") {
                 const role = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
-                if (!role || !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(role)) {
+                if (!campaignCueCanResolveApproval(role)) {
                     throw new CampaignCueDecisionGateError("Your CampaignCue role cannot approve or reject this video.");
                 }
                 if (mutationInput.action === "approve" && (current.trustGate === "blocked" || current.trustGate === "needs_fix")) {
@@ -2805,7 +3064,7 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                     throw new CampaignCueDecisionGateError("This review note is no longer open.");
                 }
                 const role = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
-                if (note.authorId !== params.scope.userId && (!role || !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(role))) {
+                if (note.authorId !== params.scope.userId && !campaignCueCanResolveApproval(role)) {
                     throw new CampaignCueDecisionGateError("Your CampaignCue role cannot resolve this review note.");
                 }
                 next = {
@@ -2823,6 +3082,8 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                 if (
                     !receipt
                     || receipt.status !== "started"
+                    || receipt.versionBinding !== "exact"
+                    || receipt.projectVersion !== current.version
                     || receipt.attempt !== mutationInput.attempt
                     || mutationInput.progressPercent <= receipt.progressPercent
                 ) {
@@ -2843,12 +3104,31 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                     item.id === mutationInput.renderReceiptId && item.status === "completed"
                 ));
                 if (!receipt) throw new CampaignCueDecisionGateError("Choose a completed render before recording its result.");
+                if (receipt.versionBinding !== "exact" || !receipt.projectVersion) {
+                    throw new CampaignCueDecisionGateError("Render this video again before recording format learning.");
+                }
+                if (receipt.rightsEvidence.sessionMediaUsed && !receipt.rightsEvidence.sessionMediaRightsConfirmed) {
+                    throw new CampaignCueDecisionGateError("Confirm the right to use session media before recording its result.");
+                }
+                const renderedVersion = current.versions.find((version) => version.version === receipt.projectVersion);
+                if (!renderedVersion) {
+                    throw new CampaignCueDecisionGateError("The rendered video version is no longer available for a reliable result.");
+                }
+                const formatSnapshot = buildCampaignCueVideoFormatSnapshot(current, renderedVersion);
+                const formatSignature = buildCampaignCueVideoFormatSignature(formatSnapshot);
                 const isUseful = mutationInput.signalId === "useful";
-                const isNotUseful = mutationInput.signalId === "not_useful";
+                const counterDelta = getCampaignCueVideoResultCounterDelta(
+                    current.resultMemory?.signalId,
+                    mutationInput.signalId,
+                );
                 resultSignalId = mutationInput.signalId;
                 const resultMemory: CampaignCueVideoProject["resultMemory"] = {
                     signalId: mutationInput.signalId,
                     renderReceiptId: receipt.id,
+                    projectVersion: receipt.projectVersion,
+                    versionBinding: "exact",
+                    formatSignature,
+                    formatSnapshot,
                     note: mutationInput.note,
                     recordedBy: params.scope.userId,
                     recordedAt: now,
@@ -2858,11 +3138,11 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                     resultMemory,
                     reusableBlueprint: isUseful ? {
                         sourceProjectId: current.id,
-                        sourceVersion: current.version,
+                        sourceVersion: renderedVersion.version,
                         label: `${current.title} structure`.slice(0, 120),
-                        aspectRatio: current.aspectRatio,
-                        captions: current.captions,
-                        scenes: current.scenes.map(({ purpose, enabled, durationSeconds, motion, transition }) => ({
+                        aspectRatio: renderedVersion.aspectRatio,
+                        captions: renderedVersion.captions,
+                        scenes: renderedVersion.scenes.map(({ purpose, enabled, durationSeconds, motion, transition }) => ({
                             purpose, enabled, durationSeconds, motion, transition,
                         })),
                     } : undefined,
@@ -2874,8 +3154,8 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                         lastSignalId: mutationInput.signalId,
                         lastNote: mutationInput.note || `Owner marked a video render as ${mutationInput.signalId.replace(/_/g, " ")}.`,
                         lastRecordedAt: now,
-                        usefulCount: Number(campaign.resultMemory?.usefulCount || 0) + (isUseful ? 1 : 0),
-                        notUsefulCount: Number(campaign.resultMemory?.notUsefulCount || 0) + (isNotUseful ? 1 : 0),
+                        usefulCount: Math.max(0, Number(campaign.resultMemory?.usefulCount || 0) + counterDelta.usefulDelta),
+                        notUsefulCount: Math.max(0, Number(campaign.resultMemory?.notUsefulCount || 0) + counterDelta.notUsefulDelta),
                         lastReceipt: {
                             signalId: mutationInput.signalId,
                             channel: "video",
@@ -2885,16 +3165,20 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                             recordedAt: now,
                             videoProjectId: current.id,
                             videoRenderReceiptId: receipt.id,
+                            videoProjectVersion: receipt.projectVersion,
+                            videoFormatSignature: formatSignature,
                         },
                     },
                     updatedAt: now,
                 }), { merge: true });
-                transaction.set(
-                    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
-                        .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID),
-                    { ownerReportedOutcomeCount: admin.firestore.FieldValue.increment(1), updatedAt: now },
-                    { merge: true },
-                );
+                if (counterDelta.newOutcomeDelta) {
+                    transaction.set(
+                        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
+                            .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID),
+                        { ownerReportedOutcomeCount: admin.firestore.FieldValue.increment(1), updatedAt: now },
+                        { merge: true },
+                    );
+                }
             } else {
                 if (mutationInput.action !== "render_receipt") {
                     throw new CampaignCueDecisionGateError("This video project action is unavailable.");
@@ -2911,7 +3195,20 @@ export async function mutateCampaignCueVideoProjectServer(params: {
                 if (current.reviewNotes.some((note) => note.status === "open")) {
                     throw new CampaignCueDecisionGateError("Resolve the open review notes before rendering this video.");
                 }
+                if (
+                    renderInput.receipt.versionBinding !== "exact"
+                    || renderInput.receipt.projectVersion !== current.version
+                ) {
+                    throw new CampaignCueDecisionGateError("The render receipt does not match the approved project version.");
+                }
                 const existingReceipt = current.renderReceipts.find((item) => item.id === renderInput.receipt.id);
+                if (!isCampaignCueVideoRenderEvidenceConsistent({
+                    project: current,
+                    receipt: renderInput.receipt,
+                    existing: existingReceipt,
+                })) {
+                    throw new CampaignCueDecisionGateError("The render evidence does not match the approved project.");
+                }
                 if (!canApplyCampaignCueVideoRenderReceipt(existingReceipt, renderInput.receipt)) {
                     throw new CampaignCueDecisionGateError("The matching render attempt could not be found.");
                 }
@@ -2951,24 +3248,26 @@ export async function mutateCampaignCueVideoProjectServer(params: {
             { projectId, workspaceId },
         );
         transaction.set(projectRef, sanitizeForAdminFirestore(admitted));
-        transaction.set(eventRef, sanitizeForAdminFirestore({
-            id: eventRef.id,
-            workspaceId,
-            actorId: params.scope.userId,
-            action: idempotencyAction,
-            campaignId,
-            channel: "video",
-            outputId,
-            metadata: {
-                projectId,
-                projectVersion: admitted.version,
-                projectStatus: admitted.status,
-                renderStatus,
-                resultSignalId,
-            },
-            confidence: "observed",
-            createdAt: now,
-        }));
+        if (params.input.action !== "render_progress") {
+            transaction.set(eventRef, sanitizeForAdminFirestore({
+                id: eventRef.id,
+                workspaceId,
+                actorId: params.scope.userId,
+                action: idempotencyAction,
+                campaignId,
+                channel: "video",
+                outputId,
+                metadata: {
+                    projectId,
+                    projectVersion: admitted.version,
+                    projectStatus: admitted.status,
+                    renderStatus,
+                    resultSignalId,
+                },
+                confidence: "observed",
+                createdAt: now,
+            }));
+        }
         transaction.set(idempotencyRef, sanitizeForAdminFirestore({
             action: idempotencyAction,
             actorId: params.scope.userId,
@@ -3107,10 +3406,12 @@ function enqueueEvent(batch: CampaignCueFirestoreBatch, params: {
 
 function buildDashboardSummaryIncrement(params: {
     action?: CampaignCueActionType | "campaign_created";
+    count?: number;
     updatedAt: unknown;
     workspaceId: string;
 }) {
     const increment = admin.firestore.FieldValue.increment;
+    const count = Math.max(1, Math.min(8, Math.floor(params.count || 1)));
     const next: Record<string, unknown> = {
         id: CAMPAIGNCUE_DASHBOARD_SUMMARY_ID,
         workspaceId: params.workspaceId,
@@ -3118,9 +3419,9 @@ function buildDashboardSummaryIncrement(params: {
         latestEventAt: params.updatedAt,
         updatedAt: params.updatedAt,
     };
-    if (params.action === "campaign_created") next.campaignCount = increment(1);
+    if (params.action === "campaign_created") next.campaignCount = increment(count);
     if (params.action === "mark_used") next.usedCount = increment(1);
-    if (params.action === "download" || params.action === "export") {
+    if (params.action === "download" || params.action === "export" || params.action === "archive_export") {
         next.exportCount = increment(1);
     }
     if (params.action === "request_approval") next.approvalRequestCount = increment(1);
@@ -3163,6 +3464,9 @@ export async function createCampaignCueCampaignServer(params: {
 }): Promise<{ campaign: CampaignCueCampaign; trustReport: CampaignCueTrustReport; replayed?: boolean }> {
     const ensured = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = ensured.workspace.workspaceId;
+    if (!campaignCueCanManageWorkspaceContent(ensured.workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const idempotency = await checkIdempotency({
         action: "create_campaign",
         idempotencyKey: params.input.idempotencyKey,
@@ -3223,10 +3527,27 @@ export async function createCampaignCueCampaignServer(params: {
         campaigns,
         locations,
         schedules,
+        sourceSnapshot,
+        sourceSnapshotPresent,
         storedSourceInputs,
         workspace,
     } = await loadCampaignCueDecisionAuthority(params.scope, workspaceId);
     const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
+    if (!sourceSnapshotPresent) {
+        const message = "Campaign facts need to be refreshed before creating a pack.";
+        await completeIdempotency({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
+            responseError: message,
+            responseStatus: 409,
+            resultId: "source_snapshot_missing",
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
     const sourceFacts = buildSourceFacts(businessBrain, sourceInputs);
     const unresolvedOutputIntentRequirements = outputIntent
         ? getUnresolvedCampaignCueOutputIntentRequirements(outputIntent, {
@@ -3273,6 +3594,21 @@ export async function createCampaignCueCampaignServer(params: {
         sourceInputs,
         workspace,
     });
+    if (params.input.reuseCampaignId && !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_WINNING_PACK_REFRESH) {
+        const message = "Campaign refresh is unavailable right now.";
+        await completeIdempotency({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
+            responseError: message,
+            responseStatus: 409,
+            resultId: params.input.reuseCampaignId,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
     const reuseCampaign = params.input.reuseCampaignId
         ? campaigns.find((campaign) => campaign.id === params.input.reuseCampaignId)
         : undefined;
@@ -3398,7 +3734,6 @@ export async function createCampaignCueCampaignServer(params: {
         sourceReferences: opportunity.sourceReferences,
         title,
     });
-    const sourceSnapshot = buildSourceSnapshot(businessBrain, sourceInputs);
     const createdAt = new Date();
     const trustReport = buildTrustReport({
         businessBrain,
@@ -3447,8 +3782,17 @@ export async function createCampaignCueCampaignServer(params: {
             patternCueSourceInputId: patternCueSource?.id,
             patternCueSourceHash: patternCueSource?.patternCue?.sourceHash,
             reusedFromCampaignId: reuseCampaign?.id,
+            reuseRootCampaignId: reuseCampaign
+                ? reuseCampaign.pack?.reuseRootCampaignId || reuseCampaign.id
+                : undefined,
+            refreshGeneration: reuseCampaign
+                ? Math.min(
+                    CAMPAIGNCUE_WINNING_PACK_MAX_REFRESH_GENERATION,
+                    Number(reuseCampaign.pack?.refreshGeneration || 0) + 1,
+                )
+                : undefined,
             reuseMode: reuseCampaign ? "rebuild_from_current_truth" : undefined,
-            sourceTemplateId: params.input.sourceTemplateId,
+            sourceTemplateId: reuseCampaign?.pack?.sourceTemplateId || params.input.sourceTemplateId,
             outputIntentId: outputIntent?.id === "recommended_pack" ? undefined : outputIntent?.id,
             requestedOutputTypes: outputIntent?.id === "recommended_pack" ? undefined : outputIntent?.outputTypes,
             freshness: buildCampaignCuePackFreshness({
@@ -3487,6 +3831,7 @@ export async function createCampaignCueCampaignServer(params: {
             currentSchedulesSnap,
             currentCampaignsSnap,
             currentAnalyticsSnap,
+            currentSourceSnapshotSnap,
         ] = await Promise.all([
             transaction.get(idempotencyRef),
             transaction.get(workspaceRef(workspaceId)),
@@ -3497,6 +3842,7 @@ export async function createCampaignCueCampaignServer(params: {
             transaction.get(campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES)),
             transaction.get(campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS)),
             transaction.get(analyticsDocument),
+            transaction.get(workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS).doc(defaultSourceSnapshotId)),
         ]);
         if (idempotency.claimId && idempotency.requestHash) {
             assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
@@ -3505,6 +3851,13 @@ export async function createCampaignCueCampaignServer(params: {
                 requestHash: idempotency.requestHash,
             }, idempotency.claimId);
         }
+        const currentWorkspace = normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
+            currentWorkspaceSnap.exists ? currentWorkspaceSnap.data() : null,
+            { ...params.scope, workspaceId },
+        ));
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspace.members?.[params.scope.userId]?.role)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
         const currentAuthorityHash = campaignCueDecisionAuthorityHash({
             analytics: currentAnalyticsSnap,
             assets: currentAssetsSnap,
@@ -3512,6 +3865,7 @@ export async function createCampaignCueCampaignServer(params: {
             campaigns: currentCampaignsSnap,
             locations: currentLocationsSnap,
             schedules: currentSchedulesSnap,
+            sourceSnapshot: currentSourceSnapshotSnap,
             sourceInputs: currentSourceInputsSnap,
             workspace: currentWorkspaceSnap,
         });
@@ -3572,14 +3926,394 @@ export async function createCampaignCueCampaignServer(params: {
     return { campaign, trustReport };
 }
 
-const CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
+const CAMPAIGNCUE_LOCATION_VARIANT_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
     "owner",
     "admin",
-    "reviewer",
+    "marketer",
+    "local_manager",
+    "agency_member",
+]);
+
+const CAMPAIGNCUE_LOCATION_MANAGEMENT_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
+    "owner",
+    "admin",
+    "marketer",
+    "agency_member",
+]);
+
+const campaignCueMemberCanAccessLocation = (
+    workspace: CampaignCueWorkspace,
+    userId: string,
+    locationId?: string,
+) => {
+    const member = workspace.members?.[userId];
+    if (!member) return false;
+    if (member.role !== "local_manager") return true;
+    return Boolean(locationId && member.locationIds?.includes(locationId));
+};
+
+export async function createCampaignCueLocationVariantsServer(params: {
+    input: CampaignCueLocationVariantBatchInput;
+    scope: CampaignCueSessionScope;
+}): Promise<{
+    campaigns: CampaignCueCampaign[];
+    replayed: boolean;
+    trustReports: CampaignCueTrustReport[];
+    variantGroupId: string;
+}> {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_MULTI_LOCATION_VARIANTS) {
+        throw new CampaignCueDecisionGateError("Location-specific campaign packs are unavailable right now.");
+    }
+    const ensured = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
+    const initialWorkspace = normalizeCampaignCueWorkspace(ensured);
+    const workspaceId = initialWorkspace.workspaceId;
+    const initialRole = campaignCueWorkspaceRole(initialWorkspace, params.scope.userId);
+    const locationIds = [...params.input.locationIds].sort((left, right) => left.localeCompare(right));
+    if (!initialRole || !CAMPAIGNCUE_LOCATION_VARIANT_ROLES.has(initialRole)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
+    if (initialRole === "local_manager" && locationIds.some((locationId) => (
+        !campaignCueMemberCanAccessLocation(initialWorkspace, params.scope.userId, locationId)
+    ))) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
+
+    const idempotencyAction = "create_location_variants";
+    const idempotency = await checkIdempotency({
+        action: idempotencyAction,
+        idempotencyKey: params.input.idempotencyKey,
+        requestIdentity: {
+            baseCampaignId: params.input.baseCampaignId,
+            locationIds,
+        },
+        scope: params.scope,
+        workspaceId,
+    });
+    const variantGroupId = buildCampaignCueLocationVariantGroupId(
+        `${idempotency.requestHash}:${params.input.idempotencyKey}`,
+    );
+    const campaignIds = locationIds.map((locationId) => (
+        buildCampaignCueLocationVariantCampaignId(variantGroupId, locationId)
+    ));
+    if (idempotency.replay?.resultId) {
+        if (idempotency.replay.responseError) {
+            throw new CampaignCueDecisionGateError(idempotency.replay.responseError);
+        }
+        if (idempotency.replay.resultId !== variantGroupId) {
+            throw new CampaignCueIdempotencyConflictError("This location-variant retry result does not match the request.");
+        }
+        const campaigns: CampaignCueCampaign[] = [];
+        const trustReports: CampaignCueTrustReport[] = [];
+        for (const campaignId of campaignIds) {
+            const campaign = await readCampaign(workspaceId, campaignId);
+            if (!campaign?.trustReportId) {
+                throw new CampaignCueIdempotencyConflictError("A saved location-variant retry result is unavailable.");
+            }
+            const trustSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.TRUST_REPORTS)
+                .doc(campaign.trustReportId)
+                .get();
+            if (!trustSnap.exists) {
+                throw new CampaignCueIdempotencyConflictError("A saved location-variant trust result is unavailable.");
+            }
+            campaigns.push(campaign);
+            trustReports.push(parseCampaignCueTrustReportRecord(trustSnap.data(), {
+                campaignId: campaign.id,
+                trustReportId: campaign.trustReportId,
+                workspaceId,
+            }));
+        }
+        return { campaigns, replayed: true, trustReports, variantGroupId };
+    }
+
+    const db = requireCampaignCueFirestoreAdmin();
+    const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
+        .doc(params.input.idempotencyKey);
+    const businessRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
+        .doc(defaultBusinessBrainId);
+    const baseCampaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS)
+        .doc(params.input.baseCampaignId);
+    const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
+        .doc(defaultSourceSnapshotId);
+    const sourceInputsQuery = campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS);
+    const locationRefs = locationIds.map((locationId) => (
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS).doc(locationId)
+    ));
+    const nowDate = new Date();
+    const now = admin.firestore.Timestamp.fromDate(nowDate);
+
+    try {
+        return await db.runTransaction(async (transaction) => {
+            const [idempotencySnap, workspaceSnap, businessSnap, baseCampaignSnap, sourceSnapshotSnap, sourceInputsSnap] = await Promise.all([
+                transaction.get(idempotencyRef),
+                transaction.get(workspaceRef(workspaceId)),
+                transaction.get(businessRef),
+                transaction.get(baseCampaignRef),
+                transaction.get(sourceSnapshotRef),
+                transaction.get(sourceInputsQuery),
+            ]);
+            const locationSnaps = await Promise.all(locationRefs.map((locationRef) => transaction.get(locationRef)));
+            assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+                action: idempotencyAction,
+                actorId: params.scope.userId,
+                requestHash: idempotency.requestHash,
+            }, idempotency.claimId as string);
+            const workspace = normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
+                workspaceSnap.exists ? workspaceSnap.data() : null,
+                { ...params.scope, workspaceId },
+            ));
+            const role = campaignCueWorkspaceRole(workspace, params.scope.userId);
+            if (!role || !CAMPAIGNCUE_LOCATION_VARIANT_ROLES.has(role)) {
+                throw new CampaignCueWorkspaceScopeError();
+            }
+            if (!businessSnap.exists) {
+                throw new CampaignCueDecisionGateError("Business details are unavailable for branch packs.");
+            }
+            if (!sourceSnapshotSnap.exists) {
+                throw new CampaignCueDecisionGateError("Campaign facts are unavailable for branch packs.");
+            }
+            if (!baseCampaignSnap.exists) {
+                throw new CampaignCueDecisionGateError("The source campaign pack is unavailable.");
+            }
+            const businessBrain = normalizeCampaignCueBusinessBrain(assertCampaignCueBusinessBrainRecordScope(
+                businessSnap.data(),
+                workspaceId,
+            ));
+            const baseCampaign = parseCampaignCueCampaignRecord(baseCampaignSnap.data(), {
+                campaignId: params.input.baseCampaignId,
+                workspaceId,
+            });
+            if (baseCampaign.status === "archived") {
+                throw new CampaignCueDecisionGateError("Archived campaign packs cannot create branch variants.");
+            }
+            if (baseCampaign.locationId || baseCampaign.variantRootCampaignId) {
+                throw new CampaignCueDecisionGateError("Choose the original workspace campaign before creating branch variants.");
+            }
+            const recipeId = baseCampaign.pack?.recipeId;
+            const recipe = campaignCueRecipeById(recipeId);
+            if (!recipeId || recipe.id !== recipeId) {
+                throw new CampaignCueDecisionGateError("The source campaign recipe is unavailable. Create a fresh campaign pack first.");
+            }
+            const storedSourceInputs = sourceInputsSnap.docs.map((doc) => (
+                parseCampaignCueSourceInputRecord(doc.data(), workspaceId)
+            ));
+            const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
+            const globalSourceSnapshot = parseCampaignCueSourceSnapshotRecord(sourceSnapshotSnap.data(), workspaceId);
+            const currentPatternCueSource = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE
+                ? getLatestCampaignCuePatternCueSource(sourceInputs)
+                : undefined;
+            if (baseCampaign.pack?.patternCueSourceHash && (
+                !currentPatternCueSource
+                || currentPatternCueSource.patternCue?.sourceHash !== baseCampaign.pack.patternCueSourceHash
+            )) {
+                throw new CampaignCueDecisionGateError("The example format changed. Create a fresh source campaign before making branch variants.");
+            }
+            const patternCueSource = baseCampaign.pack?.patternCueSourceHash ? currentPatternCueSource : undefined;
+            const locations = locationSnaps.map((locationSnap, index) => {
+                if (!locationSnap.exists) {
+                    throw new CampaignCueDecisionGateError("One selected location is unavailable.");
+                }
+                const location = parseCampaignCueLocationRecord(locationSnap.data(), workspaceId);
+                if (location.id !== locationIds[index]) {
+                    throw new CampaignCueDecisionGateError("A selected location does not match this workspace.");
+                }
+                if (location.status !== "active") {
+                    throw new CampaignCueDecisionGateError(`${location.name} must be active before creating a branch pack.`);
+                }
+                if (!compactString(location.locality)) {
+                    throw new CampaignCueDecisionGateError(`Add the area or city for ${location.name} before creating its branch pack.`);
+                }
+                if (!campaignCueMemberCanAccessLocation(workspace, params.scope.userId, location.id)) {
+                    throw new CampaignCueWorkspaceScopeError();
+                }
+                return location;
+            });
+            const variants = locations.map((location, index) => {
+                const locationBrain = applyCampaignCueLocationToBusinessBrain(businessBrain, location);
+                const locationFacts = buildCampaignCueLocationSourceFacts({
+                    businessBrain,
+                    location,
+                    sourceInputs,
+                });
+                const locationSourceSnapshot = buildSourceSnapshot(locationBrain, sourceInputs);
+                const locationSnapshot = buildCampaignCueLocationTruthSnapshot(businessBrain, location);
+                const combinedSourceHash = buildCampaignCueLocationSourceHash(
+                    globalSourceSnapshot.sourceHash,
+                    locationSnapshot,
+                );
+                const commercialGate = evaluateCampaignCueCommercialGate({
+                    businessBrain: locationBrain,
+                    now: nowDate,
+                    recipe,
+                    sourceInputs,
+                });
+                const campaignId = campaignIds[index];
+                const title = `${baseCampaign.title} - ${location.name}`.slice(0, 500);
+                const sourceReferences = uniqueCompactStrings([
+                    location.id,
+                    ...baseCampaign.outputs.flatMap((output) => output.sourceReferences),
+                ], 8);
+                const outputsDraft = buildOutputs({
+                    businessBrain: locationBrain,
+                    brief: baseCampaign.brief,
+                    channels: baseCampaign.channels,
+                    patternCueSource,
+                    sourceReferences,
+                    title,
+                });
+                const trustReport = buildTrustReport({
+                    businessBrain: locationBrain,
+                    campaignId,
+                    commercialGate,
+                    outputs: outputsDraft,
+                    sourceFacts: locationFacts,
+                    workspaceId,
+                });
+                const outputs = applyTrustToOutputs(outputsDraft, trustReport);
+                const campaign: CampaignCueCampaign = {
+                    id: campaignId,
+                    workspaceId,
+                    businessBrainId: businessBrain.businessBrainId,
+                    opportunityId: baseCampaign.opportunityId,
+                    title,
+                    brief: baseCampaign.brief,
+                    status: "generated",
+                    channels: [...baseCampaign.channels],
+                    outputs,
+                    sourceSnapshotId: businessBrain.sourceSnapshotId || defaultSourceSnapshotId,
+                    trustReportId: trustReport.id,
+                    trustGate: trustReport.gate,
+                    credits: {
+                        estimate: 0,
+                        reserved: 0,
+                        captured: 0,
+                        refunded: 0,
+                        currency: "credits",
+                    },
+                    actionCounts: {},
+                    ownerApprovalState: "not_requested",
+                    locationId: location.id,
+                    variantGroupId,
+                    variantRootCampaignId: baseCampaign.id,
+                    pack: {
+                        ownerGoal: recipe.ownerGoal,
+                        recipeId: recipe.id,
+                        reason: `${baseCampaign.pack?.reason || baseCampaign.brief} Prepared for ${location.name} in ${location.locality}.`.slice(0, 4000),
+                        sourceFactIds: locationFacts.slice(0, 12).map((fact) => fact.id),
+                        missingInputIds: [
+                            ...sourceInputs.filter((input) => input.status === "needs_review").map((input) => input.id),
+                            ...locationSourceSnapshot.missingFacts.map((_, missingIndex) => `missing_fact_${missingIndex}`),
+                        ].slice(0, 12),
+                        deliveryCardIds: outputs.map((output) => `${campaignId}_${output.id}_handoff`),
+                        resultQuestion: baseCampaign.pack?.resultQuestion || recipe.resultQuestion,
+                        patternCueSourceInputId: patternCueSource?.id,
+                        patternCueSourceHash: patternCueSource?.patternCue?.sourceHash,
+                        sourceTemplateId: baseCampaign.pack?.sourceTemplateId,
+                        outputIntentId: baseCampaign.pack?.outputIntentId,
+                        requestedOutputTypes: baseCampaign.pack?.requestedOutputTypes,
+                        locationSnapshot,
+                        freshness: buildCampaignCuePackFreshness({
+                            businessBrain: locationBrain,
+                            now: nowDate,
+                            recipe,
+                            sourceHash: combinedSourceHash,
+                            sourceInputs,
+                        }),
+                        commercialGate,
+                    },
+                    createdAt: now,
+                    updatedAt: now,
+                };
+                return { campaign, trustReport };
+            });
+
+            variants.forEach(({ campaign, trustReport }) => {
+                transaction.create(
+                    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(campaign.id),
+                    sanitizeForAdminFirestore(campaign),
+                );
+                transaction.create(
+                    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.TRUST_REPORTS).doc(trustReport.id),
+                    sanitizeForAdminFirestore(trustReport),
+                );
+            });
+            transaction.set(
+                workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX)),
+                sanitizeForAdminFirestore({
+                    workspaceId,
+                    actorId: params.scope.userId,
+                    action: "location_variant_pack_batch_created",
+                    campaignId: baseCampaign.id,
+                    metadata: {
+                        campaignCount: variants.length,
+                        locationIds,
+                        variantGroupId,
+                    },
+                    confidence: "observed",
+                    createdAt: now,
+                }),
+            );
+            transaction.set(
+                workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
+                    .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID),
+                buildDashboardSummaryIncrement({
+                    action: "campaign_created",
+                    count: variants.length,
+                    updatedAt: now,
+                    workspaceId,
+                }),
+                { merge: true },
+            );
+            transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                action: idempotencyAction,
+                actorId: params.scope.userId,
+                claimId: idempotency.claimId,
+                requestHash: idempotency.requestHash,
+                resultId: variantGroupId,
+                status: "completed",
+                updatedAt: now,
+            }), { merge: true });
+            return {
+                campaigns: variants.map(({ campaign }) => campaign),
+                replayed: false,
+                trustReports: variants.map(({ trustReport }) => trustReport),
+                variantGroupId,
+            };
+        });
+    } catch (error) {
+        if (error instanceof CampaignCueDecisionGateError) {
+            await completeIdempotency({
+                action: idempotencyAction,
+                actorId: params.scope.userId,
+                claimId: idempotency.claimId,
+                idempotencyKey: params.input.idempotencyKey,
+                requestHash: idempotency.requestHash,
+                responseError: error.clientMessage,
+                responseStatus: error.status,
+                resultId: variantGroupId,
+                workspaceId,
+            });
+        }
+        throw error;
+    }
+}
+
+const CAMPAIGNCUE_EXPERIMENT_ACCEPTANCE_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
+    "owner",
+    "admin",
+    "marketer",
     "local_manager",
 ]);
 
-type CampaignCueApprovalAction = "request_approval" | "approve" | "reject";
+const CAMPAIGNCUE_RESULT_EVIDENCE_ROLE_SET = new Set<CampaignCueWorkspace["defaultRole"]>(
+    CAMPAIGNCUE_RESULT_EVIDENCE_ROLES,
+);
+
+type CampaignCueApprovalAction =
+    | "request_approval"
+    | "approve"
+    | "reject"
+    | "add_approval_comment"
+    | "resolve_approval_comment";
 
 const campaignCueApprovalId = (campaignId: string) => `${CAMPAIGNCUE_APPROVAL_ID_PREFIX}_${campaignId}`;
 
@@ -3591,7 +4325,9 @@ async function recordCampaignCueApprovalActionTransactional(params: {
     action: CampaignCueApprovalAction;
     campaignId: string;
     claimId: string | null;
+    commentId?: string;
     idempotencyKey: string;
+    locationId?: string;
     note?: string;
     outputId?: string;
     scope: CampaignCueSessionScope;
@@ -3601,7 +4337,7 @@ async function recordCampaignCueApprovalActionTransactional(params: {
     campaign?: CampaignCueCampaign;
     error?: string;
     replayed?: boolean;
-    status?: 404 | 409;
+    status?: 403 | 404 | 409;
 }> {
     const campaignRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(params.campaignId);
     const approvalRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.APPROVAL_REQUESTS)
@@ -3613,16 +4349,51 @@ async function recordCampaignCueApprovalActionTransactional(params: {
     const summaryRef = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
     const now = nowTimestamp();
+    const approvalCommentId = params.action === "add_approval_comment"
+        ? buildId("cc_approval_comment")
+        : undefined;
 
     const result = await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const campaignSnap = await transaction.get(campaignRef);
+        const [campaignSnap, workspaceSnap] = await Promise.all([
+            transaction.get(campaignRef),
+            transaction.get(workspaceRef(params.workspaceId)),
+        ]);
         if (!campaignSnap.exists) {
             return { error: "Campaign not found", status: 404 as const };
+        }
+        const currentWorkspace = normalizeCampaignCueWorkspace(assertCampaignCueWorkspaceRecordScope(
+            workspaceSnap.exists ? workspaceSnap.data() : null,
+            { ...params.scope, workspaceId: params.workspaceId },
+        ));
+        const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+        if (!currentRole) {
+            return { error: "Campaign workspace access is unavailable.", status: 403 as const };
         }
         const current = parseCampaignCueCampaignRecord(campaignSnap.data(), {
             campaignId: params.campaignId,
             workspaceId: params.workspaceId,
         });
+        if (!campaignCueMemberCanAccessLocation(currentWorkspace, params.scope.userId, current.locationId)) {
+            return { error: "This campaign pack is outside your assigned location access.", status: 403 as const };
+        }
+        if (params.action === "request_approval" && !campaignCueCanRequestApproval(currentRole)) {
+            return { error: "This workspace role cannot request campaign approval.", status: 403 as const };
+        }
+        if (params.action === "add_approval_comment" && !campaignCueCanCommentOnApproval(currentRole)) {
+            return { error: "This workspace role cannot comment on campaign approvals.", status: 403 as const };
+        }
+        if (
+            (params.action === "approve" || params.action === "reject" || params.action === "resolve_approval_comment")
+            && !campaignCueCanResolveApproval(currentRole)
+        ) {
+            return { error: "This workspace role cannot resolve campaign approvals.", status: 403 as const };
+        }
+        if (params.outputId && !current.outputs.some((output) => output.id === params.outputId)) {
+            return { error: "This approval output does not belong to the campaign.", status: 409 as const };
+        }
+        if (params.locationId && params.locationId !== current.locationId) {
+            return { error: "This approval location does not match the campaign.", status: 409 as const };
+        }
         if (params.claimId && params.requestHash) {
             const idempotencySnap = await transaction.get(idempotencyRef);
             assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
@@ -3661,14 +4432,69 @@ async function recordCampaignCueApprovalActionTransactional(params: {
             };
         }
 
-        const ownerApprovalState: CampaignCueCampaign["ownerApprovalState"] = params.action === "request_approval"
-            ? "requested"
-            : params.action === "approve" ? "approved" : "rejected";
+        const currentInbox = current.approvalInbox || {
+            requestId: approvalRef.id,
+            requestRevision: 1,
+            status: "requested" as const,
+            requestedBy: "legacy_request",
+            requestedAt: current.updatedAt || now,
+            outputId: params.outputId,
+            locationId: current.locationId,
+            comments: [],
+            updatedAt: current.updatedAt || now,
+        };
+        let approvalInbox;
+        try {
+            if (params.action === "request_approval") {
+                approvalInbox = startCampaignCueApprovalRequest({
+                    actorId: params.scope.userId,
+                    current: current.approvalInbox,
+                    locationId: current.locationId,
+                    now,
+                    outputId: params.outputId,
+                    requestId: approvalRef.id,
+                });
+            } else if (params.action === "add_approval_comment") {
+                approvalInbox = addCampaignCueApprovalComment({
+                    actorId: params.scope.userId,
+                    actorRole: currentRole,
+                    commentId: approvalCommentId || buildId("cc_approval_comment"),
+                    inbox: currentInbox,
+                    locationId: current.locationId,
+                    note: params.note || "",
+                    now,
+                    outputId: params.outputId,
+                });
+            } else if (params.action === "resolve_approval_comment") {
+                approvalInbox = resolveCampaignCueApprovalComment({
+                    actorId: params.scope.userId,
+                    commentId: params.commentId || "",
+                    inbox: currentInbox,
+                    now,
+                });
+            } else {
+                approvalInbox = decideCampaignCueApproval({
+                    actorId: params.scope.userId,
+                    decision: params.action === "approve" ? "approved" : "rejected",
+                    inbox: currentInbox,
+                    note: params.note,
+                    now,
+                });
+            }
+        } catch (error) {
+            if (error instanceof CampaignCueApprovalInboxError) {
+                const approvalError = error.message;
+                return { error: approvalError, status: 409 as const };
+            }
+            throw error;
+        }
+        const ownerApprovalState: CampaignCueCampaign["ownerApprovalState"] = approvalInbox.status;
         const updates: Partial<CampaignCueCampaign> = {
             actionCounts: {
                 ...(current.actionCounts || {}),
                 [params.action]: Number(current.actionCounts?.[params.action] || 0) + 1,
             },
+            approvalInbox,
             ownerApprovalState,
             updatedAt: now,
         };
@@ -3679,11 +4505,14 @@ async function recordCampaignCueApprovalActionTransactional(params: {
             campaignId: current.id,
             outputId: params.outputId,
             status: ownerApprovalState,
-            requestedBy: params.action === "request_approval" ? params.scope.userId : undefined,
-            requestedAt: params.action === "request_approval" ? now : undefined,
-            decidedBy: params.action === "request_approval" ? null : params.scope.userId,
-            decidedAt: params.action === "request_approval" ? null : now,
-            decisionNote: params.action === "request_approval" ? null : params.note || null,
+            requestRevision: approvalInbox.requestRevision,
+            requestedBy: approvalInbox.requestedBy,
+            requestedAt: approvalInbox.requestedAt,
+            locationId: approvalInbox.locationId,
+            comments: approvalInbox.comments,
+            decidedBy: approvalInbox.decidedBy || null,
+            decidedAt: approvalInbox.decidedAt || null,
+            decisionNote: approvalInbox.decisionNote || null,
             createdAt: params.action === "request_approval" && current.ownerApprovalState === "not_requested"
                 ? now
                 : undefined,
@@ -3696,7 +4525,14 @@ async function recordCampaignCueApprovalActionTransactional(params: {
             action: `campaign_${params.action}`,
             campaignId: current.id,
             outputId: params.outputId,
-            metadata: { approvalState: ownerApprovalState },
+            metadata: {
+                approvalState: ownerApprovalState,
+                commentId: params.action === "resolve_approval_comment" ? params.commentId : approvalCommentId,
+                locationId: current.locationId,
+                noteHash: params.action === "add_approval_comment" && params.note ? stableHash(params.note) : undefined,
+                noteLength: params.action === "add_approval_comment" ? params.note?.length || 0 : undefined,
+                requestRevision: approvalInbox.requestRevision,
+            },
             confidence: "observed",
             createdAt: now,
         }));
@@ -3718,6 +4554,7 @@ async function recordCampaignCueApprovalActionTransactional(params: {
                 ...current,
                 ...updates,
                 actionCounts: updates.actionCounts || current.actionCounts,
+                approvalInbox,
                 ownerApprovalState,
                 updatedAt: now,
             },
@@ -3741,11 +4578,23 @@ async function recordCampaignCueApprovalActionTransactional(params: {
     return result;
 }
 
-const CAMPAIGNCUE_TRUST_GATED_ACTIONS = new Set<CampaignCueActionType>([
+const CAMPAIGNCUE_TRUST_GATED_ACTION_TYPES: CampaignCueActionType[] = [
     "download",
     "export",
+    "archive_export",
     "mark_used",
     "schedule",
+];
+
+const CAMPAIGNCUE_TRUST_GATED_ACTIONS = new Set<CampaignCueActionType>(
+    CAMPAIGNCUE_TRUST_GATED_ACTION_TYPES,
+);
+
+const CAMPAIGNCUE_CURRENT_WORKSPACE_RECHECK_ACTIONS = new Set<CampaignCueActionType>([
+    ...CAMPAIGNCUE_TRUST_GATED_ACTION_TYPES,
+    "accept_experiment",
+    "record_outcome",
+    "record_result_evidence",
 ]);
 
 function assertCampaignActionAllowed(
@@ -3753,6 +4602,16 @@ function assertCampaignActionAllowed(
     action: CampaignCueActionType,
     workspace: CampaignCueWorkspace,
 ) {
+    if (action === "accept_experiment") {
+        const experiment = campaign.pack?.experiment;
+        if (!experiment) return "This campaign has no one-change test to use.";
+        if (campaign.status === "archived") return "Archived campaigns cannot start a new test.";
+        if (experiment.status === "accepted") return "This one-change test is already in use.";
+        if (experiment.status === "completed") return "This one-change test already has a recorded result.";
+        if (workspace.agencyMode && campaign.ownerApprovalState !== "approved") {
+            return "Owner or client approval is required before using this test in an agency workspace.";
+        }
+    }
     if ((campaign.trustGate === "blocked" || campaign.trustGate === "needs_fix") && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(action)) {
         return "This campaign has a blocking trust issue.";
     }
@@ -3770,10 +4629,205 @@ function assertCampaignActionAllowed(
     return null;
 }
 
+const CAMPAIGNCUE_EXPORT_ARCHIVE_ROLES = new Set<CampaignCueWorkspace["defaultRole"]>([
+    "owner",
+    "admin",
+    "marketer",
+    "local_manager",
+    "agency_member",
+]);
+
+const campaignCueExportArchiveAssetId = (workspaceId: string, campaignId: string) => (
+    `${CAMPAIGNCUE_EXPORT_ARCHIVE.assetIdPrefix}_${stableHash({ campaignId, workspaceId })}`
+);
+
+const campaignCueExportArchiveSlotFromPath = (
+    storagePath: string,
+    workspaceId: string,
+    campaignId: string,
+): CampaignCueExportArchiveSlot | null => {
+    const slot = CAMPAIGNCUE_EXPORT_ARCHIVE.slots.find((candidate) => (
+        storagePath === buildCampaignCueExportArchiveStoragePath(workspaceId, campaignId, candidate)
+    ));
+    return slot || null;
+};
+
+const isCampaignCueStorageObjectMissing = (error: unknown) => (
+    getCampaignCueSourceErrorStatus(error) === 404
+    || getCampaignCueSourceErrorCode(error) === "404"
+);
+
+const readCampaignCueStorageGeneration = async (storagePath: string): Promise<string | null> => {
+    try {
+        const [metadata] = await requireCampaignCueStorageAdmin().bucket().file(storagePath).getMetadata();
+        const generation = String(metadata.generation || "");
+        return /^[1-9][0-9]{0,29}$/.test(generation) ? generation : null;
+    } catch (error) {
+        if (isCampaignCueStorageObjectMissing(error)) return null;
+        throw error;
+    }
+};
+
+const isCurrentCampaignCueExportArchiveAvailable = async (
+    archive: CampaignCueExportArchivePointer,
+): Promise<boolean> => {
+    try {
+        const [metadata] = await requireCampaignCueStorageAdmin().bucket().file(archive.storagePath, {
+            generation: archive.storageGeneration,
+        }).getMetadata();
+        return String(metadata.generation || "") === archive.storageGeneration
+            && String(metadata.contentType || "").toLowerCase() === CAMPAIGNCUE_EXPORT_ARCHIVE.contentType
+            && Number(metadata.size) === archive.sizeBytes;
+    } catch (error) {
+        if (isCampaignCueStorageObjectMissing(error)) return false;
+        throw error;
+    }
+};
+
+export async function prepareCampaignCueExportArchiveUploadServer(params: {
+    campaignId: string;
+    input: CampaignCueExportArchivePrepareInput;
+    scope: CampaignCueSessionScope;
+}) {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE) {
+        throw new CampaignCueDecisionGateError("Cloud campaign-pack copies are unavailable right now.");
+    }
+    const workspaceId = buildCampaignCueWorkspaceId(params.scope);
+    const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(params.campaignId);
+    const claimUpload = (forceLease: boolean) => requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
+        const [campaignSnap, currentWorkspace] = await Promise.all([
+            transaction.get(campaignRef),
+            assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
+        if (!campaignSnap.exists) throw new CampaignCueDecisionGateError("Campaign not found.");
+        const campaign = parseCampaignCueCampaignRecord(campaignSnap.data(), {
+            campaignId: params.campaignId,
+            workspaceId,
+        });
+        const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+        if (!currentRole || !CAMPAIGNCUE_EXPORT_ARCHIVE_ROLES.has(currentRole)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
+        if (!campaignCueMemberCanAccessLocation(currentWorkspace, params.scope.userId, campaign.locationId)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
+        const currentActionError = assertCampaignActionAllowed(campaign, "archive_export", currentWorkspace);
+        if (currentActionError) throw new CampaignCueDecisionGateError(currentActionError);
+
+        if (
+            !forceLease
+            && campaign.exportArchive
+            && campaign.exportArchive.crc32c === params.input.crc32c
+            && campaign.exportArchive.filename === params.input.filename
+            && campaign.exportArchive.sha256 === params.input.sha256
+            && campaign.exportArchive.sizeBytes === params.input.sizeBytes
+        ) {
+            return { archive: campaign.exportArchive, status: "current_candidate" as const };
+        }
+
+        const existingLease = campaign.exportArchiveUploadLease;
+        const existingLeaseExpiresAt = Date.parse(timestampToIsoString(existingLease?.expiresAt));
+        if (existingLease && Number.isFinite(existingLeaseExpiresAt) && existingLeaseExpiresAt > Date.now()) {
+            if (
+                existingLease.createdBy !== params.scope.userId
+                || existingLease.filename !== params.input.filename
+                || existingLease.crc32c !== params.input.crc32c
+                || existingLease.sha256 !== params.input.sha256
+                || existingLease.sizeBytes !== params.input.sizeBytes
+            ) {
+                throw new CampaignCueDecisionGateError("Another cloud-copy save is still in progress. Try again shortly.");
+            }
+            return { lease: existingLease, status: "lease" as const };
+        }
+
+        const slot = getNextCampaignCueExportArchiveSlot(campaign.exportArchive?.slot);
+        const createdAt = nowTimestamp();
+        const nextLease: NonNullable<CampaignCueCampaign["exportArchiveUploadLease"]> = {
+            crc32c: params.input.crc32c,
+            filename: params.input.filename,
+            sha256: params.input.sha256,
+            sizeBytes: params.input.sizeBytes,
+            slot,
+            storagePath: buildCampaignCueExportArchiveStoragePath(workspaceId, campaign.id, slot),
+            uploadToken: createTimestampedRuntimeId("cc_archive_upload", 12),
+            createdBy: params.scope.userId,
+            createdAt,
+            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + CAMPAIGNCUE_EXPORT_ARCHIVE.uploadLeaseTtlMs),
+        };
+        transaction.set(campaignRef, sanitizeForAdminFirestore({
+            exportArchiveUploadLease: nextLease,
+            updatedAt: createdAt,
+        }), { merge: true });
+        return { lease: nextLease, status: "lease" as const };
+    });
+
+    let claim = await claimUpload(false);
+    if (claim.status === "current_candidate") {
+        if (await isCurrentCampaignCueExportArchiveAvailable(claim.archive)) {
+            return {
+                status: "already_stored" as const,
+                archive: claim.archive,
+            };
+        }
+        claim = await claimUpload(true);
+    }
+    if (claim.status !== "lease") {
+        throw new CampaignCueDecisionGateError("Campaign Pack cloud copy could not be prepared.");
+    }
+    const lease = claim.lease;
+
+    const slot = lease.slot;
+    const storagePath = lease.storagePath;
+    const currentTargetGeneration = await readCampaignCueStorageGeneration(storagePath);
+    const expiresAt = Date.now() + CAMPAIGNCUE_EXPORT_ARCHIVE.signedUploadTtlMs;
+    const uploadHeaders = {
+        "cache-control": "private, max-age=0, no-store",
+        "content-type": CAMPAIGNCUE_EXPORT_ARCHIVE.contentType,
+        "x-goog-hash": `crc32c=${params.input.crc32c}`,
+        "x-goog-meta-archive-slot": slot,
+        "x-goog-meta-campaign-id": params.campaignId,
+        "x-goog-meta-retention-policy": CAMPAIGNCUE_EXPORT_ARCHIVE.retentionPolicy,
+        "x-goog-meta-sha256": params.input.sha256,
+        "x-goog-meta-upload-token-hash": stableHash(lease.uploadToken),
+        "x-goog-meta-workspace-id": workspaceId,
+    };
+    const signedExtensionHeaders = {
+        "cache-control": uploadHeaders["cache-control"],
+        "x-goog-hash": uploadHeaders["x-goog-hash"],
+        "x-goog-meta-archive-slot": uploadHeaders["x-goog-meta-archive-slot"],
+        "x-goog-meta-campaign-id": uploadHeaders["x-goog-meta-campaign-id"],
+        "x-goog-meta-retention-policy": uploadHeaders["x-goog-meta-retention-policy"],
+        "x-goog-meta-sha256": uploadHeaders["x-goog-meta-sha256"],
+        "x-goog-meta-upload-token-hash": uploadHeaders["x-goog-meta-upload-token-hash"],
+        "x-goog-meta-workspace-id": uploadHeaders["x-goog-meta-workspace-id"],
+    };
+    const [uploadUrl] = await requireCampaignCueStorageAdmin().bucket().file(storagePath).getSignedUrl({
+        action: "write",
+        contentType: CAMPAIGNCUE_EXPORT_ARCHIVE.contentType,
+        expires: expiresAt,
+        extensionHeaders: signedExtensionHeaders,
+        queryParams: {
+            ifGenerationMatch: currentTargetGeneration || "0",
+        },
+        version: "v4",
+    });
+    return {
+        status: "upload_required" as const,
+        expiresAt,
+        slot,
+        storagePath,
+        uploadToken: lease.uploadToken,
+        uploadHeaders,
+        uploadUrl,
+    };
+}
+
 const CAMPAIGNCUE_APPROVAL_ACTIONS = new Set<CampaignCueActionType>([
     "request_approval",
     "approve",
     "reject",
+    "add_approval_comment",
+    "resolve_approval_comment",
 ]);
 
 const buildCampaignCueActionUpdates = (params: {
@@ -3788,6 +4842,12 @@ const buildCampaignCueActionUpdates = (params: {
         },
         updatedAt: params.now,
     };
+    if (params.input.action === "accept_experiment" && params.campaign.pack?.experiment) {
+        updates.pack = {
+            ...params.campaign.pack,
+            experiment: acceptCampaignCueExperiment(params.campaign.pack.experiment, params.now),
+        };
+    }
     if (params.input.action === "mark_used") updates.status = "used";
     if (params.input.action === "record_outcome") {
         const resultSignalId = params.input.resultSignalId;
@@ -3808,10 +4868,36 @@ const buildCampaignCueActionUpdates = (params: {
                 usedAt: isNotUsed ? undefined : receipt?.usedAt || params.now,
                 metrics: isNotUsed ? {} : receipt?.metrics || {},
                 evidenceNote: receipt?.evidenceNote || params.input.note,
-                experimentVariable: receipt?.experimentVariable || params.campaign.pack?.experiment?.variable,
+                experimentVariable: receipt?.experimentVariable,
                 confidence: "owner_reported",
                 recordedAt: params.now,
             },
+        };
+        const acceptedExperiment = params.campaign.pack?.experiment;
+        const completedExperiment = completeCampaignCueExperimentForResult({
+            completedAt: params.now,
+            experiment: acceptedExperiment,
+            experimentVariable: receipt?.experimentVariable,
+            resultSignalId,
+        });
+        if (completedExperiment && completedExperiment !== acceptedExperiment && params.campaign.pack) {
+            updates.pack = {
+                ...params.campaign.pack,
+                experiment: completedExperiment,
+            };
+        }
+    }
+    if (params.input.action === "record_result_evidence" && params.input.resultEvidence) {
+        const evidence = buildCampaignCueReadOnlyResultEvidence({
+            input: params.input.resultEvidence,
+            recordedAt: params.now,
+        });
+        const previousFingerprint = params.campaign.resultMemory?.latestExternalEvidence?.sourceFingerprint;
+        updates.resultMemory = {
+            ...(params.campaign.resultMemory || {}),
+            externalEvidenceCount: Number(params.campaign.resultMemory?.externalEvidenceCount || 0)
+                + (previousFingerprint === evidence.sourceFingerprint ? 0 : 1),
+            latestExternalEvidence: evidence,
         };
     }
     if (params.input.action === "schedule") updates.status = "scheduled";
@@ -3825,12 +4911,71 @@ export async function recordCampaignCueActionServer(params: {
 }) {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
     const workspaceId = workspace.workspaceId;
+    const initialMember = workspace.members?.[params.scope.userId];
+    if (
+        !CAMPAIGNCUE_APPROVAL_ACTIONS.has(params.input.action)
+        && !campaignCueCanManageSomeCampaignOutput(initialMember?.role)
+    ) {
+        return { error: "This workspace role cannot manage campaign outputs.", status: 403 as const };
+    }
+    if (
+        CAMPAIGNCUE_APPROVAL_ACTIONS.has(params.input.action)
+        && !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_APPROVAL_COMMENT_INBOX
+    ) {
+        return { error: "Campaign approval and comments are unavailable right now.", status: 404 as const };
+    }
+    if (params.input.action === "accept_experiment") {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EXPERIMENT_COACH) {
+            return { error: "Campaign experiment coaching is not enabled.", status: 404 as const };
+        }
+        const role = campaignCueWorkspaceRole(workspace, params.scope.userId);
+        if (!role || !CAMPAIGNCUE_EXPERIMENT_ACCEPTANCE_ROLES.has(role)) {
+            return { error: "This workspace role cannot choose a campaign test.", status: 403 as const };
+        }
+    }
+    if (params.input.action === "record_result_evidence") {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_READ_ONLY_RESULT_EVIDENCE) {
+            return { error: "Result report evidence is not enabled.", status: 404 as const };
+        }
+        if (!params.input.resultEvidence) {
+            return { error: "Add the report source, date range, and at least one number.", status: 400 as const };
+        }
+        const role = campaignCueWorkspaceRole(workspace, params.scope.userId);
+        if (!role || !CAMPAIGNCUE_RESULT_EVIDENCE_ROLE_SET.has(role)) {
+            return { error: "This workspace role cannot record report evidence.", status: 403 as const };
+        }
+    }
+    if (params.input.action === "archive_export") {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CLOUD_EXPORT_ARCHIVE) {
+            return { error: "Cloud campaign-pack copies are unavailable right now.", status: 404 as const };
+        }
+        if (!params.input.exportArchive) {
+            return { error: "Upload the campaign pack before saving its cloud copy.", status: 400 as const };
+        }
+        const role = campaignCueWorkspaceRole(workspace, params.scope.userId);
+        if (!role || !CAMPAIGNCUE_EXPORT_ARCHIVE_ROLES.has(role)) {
+            return { error: "This workspace role cannot save cloud campaign-pack copies.", status: 403 as const };
+        }
+    }
     if (CAMPAIGNCUE_APPROVAL_ACTIONS.has(params.input.action)) {
+        const approvalRole = campaignCueWorkspaceRole(workspace, params.scope.userId);
         if (
-            (params.input.action === "approve" || params.input.action === "reject")
-            && !CAMPAIGNCUE_APPROVAL_RESOLUTION_ROLES.has(campaignCueWorkspaceRole(workspace, params.scope.userId))
+            params.input.action === "request_approval"
+            && !campaignCueCanRequestApproval(approvalRole)
         ) {
-            return { error: "This workspace role cannot approve or reject campaign packs.", status: 403 as const };
+            return { error: "This workspace role cannot request campaign approval.", status: 403 as const };
+        }
+        if (
+            params.input.action === "add_approval_comment"
+            && !campaignCueCanCommentOnApproval(approvalRole)
+        ) {
+            return { error: "This workspace role cannot comment on campaign approvals.", status: 403 as const };
+        }
+        if (
+            (params.input.action === "approve" || params.input.action === "reject" || params.input.action === "resolve_approval_comment")
+            && !campaignCueCanResolveApproval(approvalRole)
+        ) {
+            return { error: "This workspace role cannot resolve campaign approvals.", status: 403 as const };
         }
         const approvalIdempotency = await checkIdempotency({
             action: params.input.action,
@@ -3851,7 +4996,11 @@ export async function recordCampaignCueActionServer(params: {
                 return {
                     error: approvalReplay.responseError,
                     replayed: true,
-                    status: approvalReplay.responseStatus === 404 ? 404 as const : 409 as const,
+                    status: approvalReplay.responseStatus === 403
+                        ? 403 as const
+                        : approvalReplay.responseStatus === 404
+                            ? 404 as const
+                            : 409 as const,
                 };
             }
             const replayCampaign = await readCampaign(workspaceId, params.campaignId);
@@ -3863,7 +5012,9 @@ export async function recordCampaignCueActionServer(params: {
             action: params.input.action as CampaignCueApprovalAction,
             campaignId: params.campaignId,
             claimId: approvalIdempotency.claimId,
+            commentId: params.input.commentId,
             idempotencyKey: params.input.idempotencyKey,
+            locationId: params.input.locationId,
             note: params.input.note,
             outputId: params.input.outputId,
             scope: params.scope,
@@ -3891,13 +5042,79 @@ export async function recordCampaignCueActionServer(params: {
             return {
                 error: replay.responseError,
                 replayed: true,
-                status: (replay.responseStatus || 409) as 409,
+                status: (replay.responseStatus === 403 ? 403 : 409) as 403 | 409,
             };
         }
-        const replayCampaign = await readCampaign(workspaceId, params.campaignId);
+        const [replayCampaign, replayAnalytics, replayAssetSnap] = await Promise.all([
+            readCampaign(workspaceId, params.campaignId),
+            params.input.action === "record_outcome" && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY
+                ? readDashboardSummary(workspaceId)
+                : Promise.resolve(undefined),
+            params.input.action === "archive_export"
+                ? workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS)
+                    .doc(campaignCueExportArchiveAssetId(workspaceId, params.campaignId))
+                    .get()
+                : Promise.resolve(undefined),
+        ]);
+        const replayAsset = replayAssetSnap?.exists
+            ? parseCampaignCueAssetRecord({
+                assetId: replayAssetSnap.id,
+                value: replayAssetSnap.data(),
+                workspaceId,
+            })
+            : undefined;
         return replayCampaign
-            ? { campaign: replayCampaign, replayed: true }
+            ? { analytics: replayAnalytics, asset: replayAsset, campaign: replayCampaign, replayed: true }
             : { error: "Campaign not found", status: 404 as const };
+    }
+
+    let verifiedExportArchive: {
+        crc32c: string;
+        filename: string;
+        sha256: string;
+        sizeBytes: number;
+        slot: CampaignCueExportArchiveSlot;
+        storageGeneration: string;
+        storagePath: string;
+    } | undefined;
+    if (params.input.action === "archive_export" && params.input.exportArchive) {
+        const archiveInput = params.input.exportArchive;
+        const slot = campaignCueExportArchiveSlotFromPath(archiveInput.storagePath, workspaceId, params.campaignId);
+        if (!slot) {
+            throw new CampaignCueDecisionGateError("This campaign-pack archive does not belong to the current campaign.");
+        }
+        const stored = await verifyCampaignCueStoredFile({
+            allowedMimeTypes: new Set([CAMPAIGNCUE_EXPORT_ARCHIVE.contentType]),
+            maxBytes: CAMPAIGNCUE_EXPORT_ARCHIVE.maxBytes,
+            storagePath: archiveInput.storagePath,
+        });
+        if (
+            stored.crc32c !== archiveInput.crc32c
+            || stored.mimeType !== CAMPAIGNCUE_EXPORT_ARCHIVE.contentType
+            || stored.sizeBytes !== archiveInput.sizeBytes
+        ) {
+            throw new CampaignCueDecisionGateError("This campaign-pack archive changed before it was saved.");
+        }
+        const expectedMetadata = {
+            "archive-slot": slot,
+            "campaign-id": params.campaignId,
+            "retention-policy": CAMPAIGNCUE_EXPORT_ARCHIVE.retentionPolicy,
+            sha256: archiveInput.sha256,
+            "upload-token-hash": stableHash(archiveInput.uploadToken),
+            "workspace-id": workspaceId,
+        };
+        if (Object.entries(expectedMetadata).some(([key, value]) => stored.customMetadata[key] !== value)) {
+            throw new CampaignCueDecisionGateError("This campaign-pack archive upload could not be verified.");
+        }
+        verifiedExportArchive = {
+            crc32c: archiveInput.crc32c,
+            filename: archiveInput.filename,
+            sha256: archiveInput.sha256,
+            sizeBytes: stored.sizeBytes,
+            slot,
+            storageGeneration: stored.storageGeneration,
+            storagePath: archiveInput.storagePath,
+        };
     }
 
     const now = nowTimestamp();
@@ -3912,6 +5129,10 @@ export async function recordCampaignCueActionServer(params: {
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
     const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
         .doc(defaultSourceSnapshotId);
+    const archiveAssetRef = verifiedExportArchive
+        ? workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS)
+            .doc(campaignCueExportArchiveAssetId(workspaceId, params.campaignId))
+        : null;
 
     return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
         const currentSnap = await transaction.get(campaignRef);
@@ -3938,10 +5159,33 @@ export async function recordCampaignCueActionServer(params: {
             campaignId: params.campaignId,
             workspaceId,
         });
+        const resultRecipeId = current.pack?.recipeId || current.pack?.decision?.recipeId;
         let currentWorkspace = workspace;
         let currentSourceSnapshot: CampaignCueSourceSnapshot | null = null;
+        let currentLocation: CampaignCueLocation | null = null;
+        let currentAnalytics: CampaignCueAnalyticsSummary | null = null;
         let finalActionError: string | null = null;
-        if (CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action)) {
+        let finalActionStatus: 403 | 409 = 409;
+        if (verifiedExportArchive && params.input.exportArchive) {
+            const lease = current.exportArchiveUploadLease;
+            const leaseExpiresAt = Date.parse(timestampToIsoString(lease?.expiresAt));
+            if (
+                !lease
+                || !Number.isFinite(leaseExpiresAt)
+                || leaseExpiresAt <= Date.now()
+                || lease.createdBy !== params.scope.userId
+                || lease.crc32c !== verifiedExportArchive.crc32c
+                || lease.filename !== verifiedExportArchive.filename
+                || lease.sha256 !== verifiedExportArchive.sha256
+                || lease.sizeBytes !== verifiedExportArchive.sizeBytes
+                || lease.slot !== verifiedExportArchive.slot
+                || lease.storagePath !== verifiedExportArchive.storagePath
+                || lease.uploadToken !== params.input.exportArchive.uploadToken
+            ) {
+                finalActionError = "This cloud-copy upload expired or was replaced. Save the cloud copy again.";
+            }
+        }
+        if (CAMPAIGNCUE_CURRENT_WORKSPACE_RECHECK_ACTIONS.has(params.input.action)) {
             const currentWorkspaceSnap = await transaction.get(workspaceRef(workspaceId));
             if (!currentWorkspaceSnap.exists) {
                 finalActionError = "Campaign workspace unavailable";
@@ -3951,14 +5195,98 @@ export async function recordCampaignCueActionServer(params: {
                     { ...params.scope, workspaceId },
                 ));
             }
-            if (current.pack?.freshness?.sourceHash) {
+            if (CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && current.pack?.freshness?.sourceHash) {
                 const currentSourceSnapshotSnap = await transaction.get(sourceSnapshotRef);
                 currentSourceSnapshot = currentSourceSnapshotSnap.exists
                     ? parseCampaignCueSourceSnapshotRecord(currentSourceSnapshotSnap.data(), workspaceId)
                     : null;
             }
+            if (CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && current.locationId) {
+                const currentLocationSnap = await transaction.get(
+                    workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS).doc(current.locationId),
+                );
+                currentLocation = currentLocationSnap.exists
+                    ? parseCampaignCueLocationRecord(currentLocationSnap.data(), workspaceId)
+                    : null;
+            }
+        }
+        if (!campaignCueMemberCanAccessLocation(currentWorkspace, params.scope.userId, current.locationId)) {
+            finalActionError = "This campaign pack is outside your assigned location access.";
+            finalActionStatus = 403;
+        }
+        if (
+            !finalActionError
+            && !CAMPAIGNCUE_APPROVAL_ACTIONS.has(params.input.action)
+            && !campaignCueCanPerformCampaignOutputAction({
+                action: params.input.action,
+                locationId: current.locationId,
+                member: currentWorkspace.members?.[params.scope.userId],
+            })
+        ) {
+            finalActionError = "This workspace role cannot manage this campaign output.";
+            finalActionStatus = 403;
+        }
+        if (
+            !finalActionError
+            && params.input.action === "record_outcome"
+            && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY
+            && params.input.resultSignalId
+            && !isCampaignCueResultSignalAllowed(params.input.resultSignalId, resultRecipeId)
+        ) {
+            const responseError = resultRecipeId
+                ? "Choose a result option from this campaign pack."
+                : "This older pack has no valid result options. Create a fresh pack before recording a result.";
+            transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                action: params.input.action,
+                actorId: params.scope.userId,
+                claimId: idempotency.claimId,
+                responseError,
+                responseStatus: 409,
+                resultId: current.id,
+                status: "completed",
+                updatedAt: now,
+            }), { merge: true });
+            return { error: responseError, status: 409 as const };
+        }
+        if (params.input.action === "record_outcome" && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY) {
+            const currentAnalyticsSnap = await transaction.get(summaryRef);
+            if (currentAnalyticsSnap.exists) {
+                try {
+                    currentAnalytics = parseCampaignCueAnalyticsSummaryRecord(currentAnalyticsSnap.data(), workspaceId);
+                } catch {
+                    currentAnalytics = dashboardSummarySeed(workspaceId);
+                }
+            } else {
+                currentAnalytics = dashboardSummarySeed(workspaceId);
+            }
         }
 
+        if (verifiedExportArchive) {
+            const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+            if (!currentRole || !CAMPAIGNCUE_EXPORT_ARCHIVE_ROLES.has(currentRole)) {
+                finalActionError = "This workspace role cannot save cloud campaign-pack copies.";
+                finalActionStatus = 403;
+            }
+        }
+        if (params.input.action === "accept_experiment") {
+            const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+            if (!currentRole || !CAMPAIGNCUE_EXPERIMENT_ACCEPTANCE_ROLES.has(currentRole)) {
+                finalActionError = "This workspace role cannot choose a campaign test.";
+                finalActionStatus = 403;
+            }
+        }
+        if (params.input.action === "record_result_evidence") {
+            const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+            if (!currentRole || !CAMPAIGNCUE_RESULT_EVIDENCE_ROLE_SET.has(currentRole)) {
+                finalActionError = "This workspace role cannot record report evidence.";
+                finalActionStatus = 403;
+            } else if (
+                params.input.resultEvidence
+                && params.input.resultEvidence.periodEnd > getStoreLocalDateKey(currentWorkspace.settings.timezone, now.toDate())
+            ) {
+                finalActionError = "A provider report cannot end in the future.";
+            }
+        }
         finalActionError ||= assertCampaignActionAllowed(current, params.input.action, currentWorkspace);
         if (!finalActionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && current.pack?.patternCueSourceHash) {
             const currentPatternHash = currentWorkspace.patternCueSource?.patternCue?.sourceHash;
@@ -3970,13 +5298,28 @@ export async function recordCampaignCueActionServer(params: {
             if (!currentSourceSnapshot?.sourceHash) {
                 finalActionError = "Campaign facts could not be rechecked. Refresh the workspace before public use.";
             } else {
+                let currentSourceHash = currentSourceSnapshot.sourceHash;
+                if (current.locationId) {
+                    if (
+                        !currentLocation
+                        || currentLocation.status !== "active"
+                        || !current.pack.locationSnapshot
+                        || current.pack.locationSnapshot.locationId !== current.locationId
+                    ) {
+                        finalActionError = "This location changed or is unavailable. Create a fresh branch pack before public use.";
+                    } else {
+                        currentSourceHash = buildCampaignCueLocationSourceHash(currentSourceHash, {
+                            sourceHash: buildCampaignCueLocationRecordSourceHash(currentLocation),
+                        });
+                    }
+                }
                 const freshness = evaluateCampaignCuePackFreshness({
-                    currentSourceHash: currentSourceSnapshot.sourceHash,
+                    currentSourceHash,
                     freshness: current.pack.freshness,
                 });
-                if (freshness.status === "stale") {
+                if (!finalActionError && freshness.status === "stale") {
                     finalActionError = "Business facts changed after this pack was created. Create a fresh pack before public use.";
-                } else if (freshness.status === "expired") {
+                } else if (!finalActionError && freshness.status === "expired") {
                     finalActionError = "This pack has expired. Confirm current stock, slots, dates, and offers, then create a fresh pack.";
                 }
             }
@@ -3986,7 +5329,9 @@ export async function recordCampaignCueActionServer(params: {
                 id: eventRef.id,
                 workspaceId,
                 actorId: params.scope.userId,
-                action: "export_action_blocked",
+                action: CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action)
+                    ? "export_action_blocked"
+                    : "campaign_action_blocked",
                 campaignId: current.id,
                 channel: params.input.channel,
                 outputId: params.input.outputId,
@@ -3997,16 +5342,62 @@ export async function recordCampaignCueActionServer(params: {
             transaction.set(idempotencyRef, sanitizeForAdminFirestore({
                 action: params.input.action,
                 responseError: finalActionError,
-                responseStatus: 409,
+                responseStatus: finalActionStatus,
                 resultId: current.id,
                 status: "completed",
                 updatedAt: now,
             }), { merge: true });
-            return { error: finalActionError, status: 409 as const };
+            return { error: finalActionError, status: finalActionStatus };
         }
 
         const updates = buildCampaignCueActionUpdates({ campaign: current, input: params.input, now });
-        transaction.set(campaignRef, sanitizeForAdminFirestore(updates), { merge: true });
+        let archiveAsset: CampaignCueAsset | undefined;
+        if (verifiedExportArchive && archiveAssetRef) {
+            updates.exportArchive = {
+                schemaVersion: 1,
+                assetId: archiveAssetRef.id,
+                crc32c: verifiedExportArchive.crc32c,
+                filename: verifiedExportArchive.filename,
+                mimeType: CAMPAIGNCUE_EXPORT_ARCHIVE.contentType,
+                retentionPolicy: CAMPAIGNCUE_EXPORT_ARCHIVE.retentionPolicy,
+                sha256: verifiedExportArchive.sha256,
+                sizeBytes: verifiedExportArchive.sizeBytes,
+                slot: verifiedExportArchive.slot,
+                storageGeneration: verifiedExportArchive.storageGeneration,
+                storagePath: verifiedExportArchive.storagePath,
+                archivedAt: now,
+            };
+            archiveAsset = {
+                id: archiveAssetRef.id,
+                workspaceId,
+                locationId: current.locationId,
+                name: verifiedExportArchive.filename,
+                assetType: "export",
+                status: "ready",
+                source: "generated",
+                rights: {
+                    status: "confirmed",
+                    consentType: "not_applicable",
+                    note: "Campaign Pack ZIP created from the owner-reviewed CampaignCue pack.",
+                },
+                tags: ["campaign-pack", "cloud-archive", "current"],
+                file: {
+                    storagePath: verifiedExportArchive.storagePath,
+                    storageGeneration: verifiedExportArchive.storageGeneration,
+                    mimeType: CAMPAIGNCUE_EXPORT_ARCHIVE.contentType,
+                    sizeBytes: verifiedExportArchive.sizeBytes,
+                },
+                usageRefs: [{ campaignId: current.id }],
+                createdAt: now,
+                updatedAt: now,
+            };
+            transaction.set(archiveAssetRef, sanitizeForAdminFirestore(archiveAsset));
+        }
+        const campaignUpdates = sanitizeForAdminFirestore(updates) as Record<string, unknown>;
+        if (verifiedExportArchive) {
+            campaignUpdates.exportArchiveUploadLease = admin.firestore.FieldValue.delete();
+        }
+        transaction.set(campaignRef, campaignUpdates, { merge: true });
 
         let schedule: CampaignCueSchedule | null = null;
         if (scheduleRef) {
@@ -4037,24 +5428,76 @@ export async function recordCampaignCueActionServer(params: {
                 ? "manual_export_used"
                 : params.input.action === "record_outcome"
                     ? "owner_outcome_recorded"
+                    : params.input.action === "record_result_evidence"
+                        ? "owner_result_evidence_recorded"
                     : `campaign_${params.input.action}`,
             campaignId: current.id,
             channel: params.input.channel,
             outputId: params.input.outputId,
             metadata: params.input.action === "record_outcome" ? {
-                note: params.input.note || "Owner reported a result.",
+                evidenceNotePresent: Boolean(params.input.note?.trim()),
+                evidenceNoteLength: params.input.note?.trim().length || 0,
                 resultSignalId: params.input.resultSignalId,
                 metrics: updates.resultMemory?.lastReceipt?.metrics || {},
                 experimentVariable: updates.resultMemory?.lastReceipt?.experimentVariable,
+                experimentCompleted: updates.pack?.experiment?.status === "completed",
+            } : params.input.action === "record_result_evidence" ? {
+                attribution: updates.resultMemory?.latestExternalEvidence?.attribution,
+                metricNames: Object.keys(updates.resultMemory?.latestExternalEvidence?.metrics || {}).sort(),
+                periodEnd: updates.resultMemory?.latestExternalEvidence?.periodEnd,
+                periodStart: updates.resultMemory?.latestExternalEvidence?.periodStart,
+                provider: updates.resultMemory?.latestExternalEvidence?.provider,
+                scope: updates.resultMemory?.latestExternalEvidence?.scope,
+                sourceFingerprint: updates.resultMemory?.latestExternalEvidence?.sourceFingerprint,
+            } : params.input.action === "archive_export" && archiveAsset ? {
+                assetId: archiveAsset.id,
+                retentionPolicy: CAMPAIGNCUE_EXPORT_ARCHIVE.retentionPolicy,
+                sizeBytes: archiveAsset.file?.sizeBytes,
+                slot: updates.exportArchive?.slot,
+            } : params.input.action === "accept_experiment" ? {
+                experimentStatus: updates.pack?.experiment?.status,
+                experimentVariable: updates.pack?.experiment?.variable,
             } : {},
-            confidence: params.input.action === "record_outcome" ? "owner_reported" : "observed",
+            confidence: params.input.action === "record_outcome"
+                ? "owner_reported"
+                : params.input.action === "record_result_evidence"
+                    ? "manual"
+                    : "observed",
             createdAt: now,
         }));
-        transaction.set(summaryRef, buildDashboardSummaryIncrement({
-            action: params.input.action,
-            updatedAt: now,
-            workspaceId,
-        }), { merge: true });
+        let committedAnalytics: CampaignCueAnalyticsSummary | undefined;
+        if (
+            params.input.action === "record_outcome"
+            && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_MEMORY
+            && currentAnalytics
+            && params.input.resultSignalId
+        ) {
+            committedAnalytics = {
+                ...currentAnalytics,
+                ownerReportedOutcomeCount: Math.min(
+                    1_000_000_000,
+                    Number(currentAnalytics.ownerReportedOutcomeCount || 0) + 1,
+                ),
+                latestEventAt: now,
+                updatedAt: now,
+                campaignMemory: applyCampaignCueCampaignMemoryResult({
+                    campaignId: current.id,
+                    channel: params.input.channel || current.channels[0],
+                    existing: currentAnalytics.campaignMemory,
+                    metrics: updates.resultMemory?.lastReceipt?.metrics,
+                    recipeId: resultRecipeId,
+                    recordedAt: now,
+                    resultSignalId: params.input.resultSignalId,
+                }),
+            };
+            transaction.set(summaryRef, sanitizeForAdminFirestore(committedAnalytics));
+        } else if (params.input.action !== "accept_experiment" && params.input.action !== "record_result_evidence") {
+            transaction.set(summaryRef, buildDashboardSummaryIncrement({
+                action: params.input.action,
+                updatedAt: now,
+                workspaceId,
+            }), { merge: true });
+        }
         transaction.set(idempotencyRef, sanitizeForAdminFirestore({
             action: params.input.action,
             resultId: current.id,
@@ -4068,9 +5511,11 @@ export async function recordCampaignCueActionServer(params: {
             ownerApprovalState: updates.ownerApprovalState || current.ownerApprovalState,
             resultMemory: updates.resultMemory || current.resultMemory,
             status: updates.status || current.status,
+            exportArchive: updates.exportArchive || current.exportArchive,
+            exportArchiveUploadLease: verifiedExportArchive ? undefined : current.exportArchiveUploadLease,
             updatedAt: now,
         };
-        return { campaign: updated, schedule };
+        return { analytics: committedAnalytics, asset: archiveAsset, campaign: updated, schedule };
     });
 }
 
@@ -4111,14 +5556,20 @@ const isCampaignCueMediaHeaderValid = (mimeType: string, bytes: Buffer): boolean
     if (mimeType === "audio/mpeg") return bytes.subarray(0, 3).toString("ascii") === "ID3" || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
     if (mimeType === "audio/wav") return bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WAVE";
     if (mimeType === "audio/ogg") return bytes.subarray(0, 4).toString("ascii") === "OggS";
+    if (mimeType === "application/zip") {
+        const signature = bytes.subarray(0, 4);
+        return signature.equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+            || signature.equals(Buffer.from([0x50, 0x4b, 0x05, 0x06]))
+            || signature.equals(Buffer.from([0x50, 0x4b, 0x07, 0x08]));
+    }
     return true;
 };
 
-const verifyCampaignCueStoredFile = async (params: {
+async function verifyCampaignCueStoredFile(params: {
     allowedMimeTypes: ReadonlySet<string>;
     maxBytes: number;
     storagePath: string;
-}) => {
+}) {
     const file = requireCampaignCueStorageAdmin().bucket().file(params.storagePath);
     const [metadata] = await file.getMetadata();
     const sizeBytes = Number(metadata.size);
@@ -4133,12 +5584,23 @@ const verifyCampaignCueStoredFile = async (params: {
     if (!/^[1-9][0-9]{0,29}$/.test(storageGeneration)) {
         throw new CampaignCueDecisionGateError("This asset file version is unavailable.");
     }
-    const [header] = await file.download({ start: 0, end: 31 });
+    const [header] = await requireCampaignCueStorageAdmin().bucket().file(params.storagePath, {
+        generation: storageGeneration,
+    }).download({ start: 0, end: 31 });
     if (!isCampaignCueMediaHeaderValid(mimeType, header)) {
         throw new CampaignCueDecisionGateError("This asset file content does not match its declared type.");
     }
-    return { mimeType, sizeBytes, storageGeneration };
-};
+    const customMetadata = metadata.metadata && typeof metadata.metadata === "object"
+        ? Object.fromEntries(Object.entries(metadata.metadata).map(([key, value]) => [key, String(value)]))
+        : {};
+    return {
+        crc32c: String(metadata.crc32c || ""),
+        customMetadata,
+        mimeType,
+        sizeBytes,
+        storageGeneration,
+    };
+}
 
 export async function createCampaignCueAssetServer(params: {
     input: CampaignCueAssetInput;
@@ -4153,14 +5615,23 @@ export async function createCampaignCueAssetServer(params: {
     if (params.input.campaignId) {
         linkedCampaign = await readCampaign(workspaceId, params.input.campaignId);
         if (!linkedCampaign) throw new CampaignCueDecisionGateError("The campaign selected for this asset is unavailable.");
+        if (!campaignCueMemberCanAccessLocation(workspace, params.scope.userId, linkedCampaign.locationId)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
         assertCampaignCueAssetBinding(linkedCampaign, params.input);
+    }
+    if (!campaignCueCanRegisterAsset({
+        locationId: linkedCampaign?.locationId,
+        member: workspace.members?.[params.scope.userId],
+    })) {
+        throw new CampaignCueWorkspaceScopeError();
     }
     let file: CampaignCueAsset["file"];
     if (params.input.storagePath) {
         try {
             const source = await verifyCampaignCueStoredFile({
                 allowedMimeTypes: CAMPAIGNCUE_ASSET_MIME_TYPES[params.input.assetType],
-                maxBytes: CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES,
+                maxBytes: CAMPAIGNCUE_ASSET_SIZE_LIMITS_BYTES[params.input.assetType],
                 storagePath: params.input.storagePath,
             });
             if (params.input.mimeType && params.input.mimeType.toLowerCase() !== source.mimeType) {
@@ -4233,6 +5704,7 @@ export async function createCampaignCueAssetServer(params: {
     const asset: CampaignCueAsset = {
         id,
         workspaceId,
+        locationId: linkedCampaign?.locationId,
         name: params.input.name,
         assetType: params.input.assetType,
         status: params.input.rightsStatus === "restricted" ? "blocked" : "ready",
@@ -4258,7 +5730,7 @@ export async function createCampaignCueAssetServer(params: {
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
     await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [idempotencySnap, campaignSnap] = await Promise.all([
+        const [idempotencySnap, campaignSnap, currentWorkspace] = await Promise.all([
             transaction.get(idempotencyRef),
             params.input.campaignId
                 ? transaction.get(
@@ -4277,13 +5749,27 @@ export async function createCampaignCueAssetServer(params: {
             if (!campaignSnap?.exists) {
                 throw new CampaignCueDecisionGateError("The campaign selected for this asset is unavailable.");
             }
-            assertCampaignCueAssetBinding(
-                parseCampaignCueCampaignRecord(campaignSnap.data(), {
-                    campaignId: params.input.campaignId,
-                    workspaceId,
-                }),
-                params.input,
-            );
+            const currentCampaign = parseCampaignCueCampaignRecord(campaignSnap.data(), {
+                campaignId: params.input.campaignId,
+                workspaceId,
+            });
+            if (
+                currentCampaign.locationId !== asset.locationId
+                || !campaignCueMemberCanAccessLocation(currentWorkspace, params.scope.userId, currentCampaign.locationId)
+            ) {
+                throw new CampaignCueWorkspaceScopeError();
+            }
+            assertCampaignCueAssetBinding(currentCampaign, params.input);
+            if (!campaignCueCanRegisterAsset({
+                locationId: currentCampaign.locationId,
+                member: currentWorkspace.members?.[params.scope.userId],
+            })) {
+                throw new CampaignCueWorkspaceScopeError();
+            }
+        } else if (!campaignCueCanRegisterAsset({
+            member: currentWorkspace.members?.[params.scope.userId],
+        })) {
+            throw new CampaignCueWorkspaceScopeError();
         }
         transaction.set(assetRef, sanitizeForAdminFirestore(asset));
         transaction.set(eventRef, sanitizeForAdminFirestore({
@@ -4319,6 +5805,9 @@ export async function createCampaignCueAssetPreviewServer(params: {
     const snap = await workspaceSubcollection(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS).doc(params.assetId).get();
     if (!snap.exists) throw new CampaignCueAssetAccessError("Asset not found.", 404);
     const asset = parseCampaignCueAssetRecord({ assetId: snap.id, value: snap.data(), workspaceId: workspace.workspaceId });
+    if (!filterCampaignCueAssetsForMember([asset], workspace.members?.[params.scope.userId]).length) {
+        throw new CampaignCueAssetAccessError("Asset not found.", 404);
+    }
     if (asset.status === "blocked" || !asset.file?.previewStoragePath || !asset.file.previewStorageGeneration) {
         throw new CampaignCueAssetAccessError("This asset does not have an available preview.", 409);
     }
@@ -4344,6 +5833,9 @@ export async function createCampaignCueAssetDownloadServer(params: {
         asset = parseCampaignCueAssetRecord({ assetId: snap.id, value: snap.data(), workspaceId });
     } catch {
         throw new CampaignCueAssetAccessError("This asset record is unavailable.", 409);
+    }
+    if (!filterCampaignCueAssetsForMember([asset], workspace.members?.[params.scope.userId]).length) {
+        throw new CampaignCueAssetAccessError("Asset not found.", 404);
     }
     if (asset.status === "blocked") throw new CampaignCueAssetAccessError("This asset is blocked.", 409);
     const storagePath = asset.file?.storagePath;
@@ -4377,6 +5869,9 @@ export async function createCampaignCueSourceInputServer(params: {
 }) {
     const { workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = workspace.workspaceId;
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const id = params.input.sourceType === "inspiration_pattern"
         ? "cc_source_pattern_current"
         : buildId("cc_source");
@@ -4420,12 +5915,15 @@ export async function createCampaignCueSourceInputServer(params: {
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
     return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [idempotencySnap, businessSnap, sourceSnapshotSnap] = await Promise.all([
+        const [idempotencySnap, businessSnap, sourceSnapshotSnap, currentWorkspace] = await Promise.all([
             transaction.get(idempotencyRef),
             transaction.get(businessRef),
             transaction.get(sourceSnapshotRef),
             assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspace.members?.[params.scope.userId]?.role)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
         assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
             action: idempotencyAction,
             actorId: params.scope.userId,
@@ -4513,12 +6011,160 @@ export async function createCampaignCueSourceInputServer(params: {
     });
 }
 
+export async function createCampaignCueInboxSourcesServer(params: {
+    input: CampaignCueInboxConfirmData;
+    scope: CampaignCueSessionScope;
+}): Promise<CampaignCueInboxConfirmResult> {
+    if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CAMPAIGN_INBOX) {
+        throw new Error("Campaign Inbox is disabled");
+    }
+    const { workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
+    const workspaceId = workspace.workspaceId;
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
+    const { action: _action, idempotencyKey, ...requestInput } = params.input;
+    const idempotencyAction = "campaign_inbox_confirm";
+    const requestIdentity = { action: idempotencyAction, input: requestInput };
+    const idempotency = await checkIdempotency({
+        action: idempotencyAction,
+        idempotencyKey,
+        requestIdentity,
+        scope: params.scope,
+        workspaceId,
+    });
+    const batchId = buildCampaignCueInboxBatchId(idempotency.requestHash);
+    const sourceInputIds = buildCampaignCueInboxSourceInputIds(
+        idempotency.requestHash,
+        params.input.candidates.length,
+    );
+
+    if (idempotency.replay?.resultId) {
+        if (idempotency.replay.resultId !== batchId) {
+            throw new CampaignCueIdempotencyConflictError("The saved Campaign Inbox retry result is unavailable.");
+        }
+        const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
+            .doc(defaultSourceSnapshotId);
+        const sourceInputRefs = sourceInputIds.map((sourceInputId) => (
+            workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS).doc(sourceInputId)
+        ));
+        const [sourceSnapshotSnap, ...sourceInputSnaps] = await Promise.all([
+            sourceSnapshotRef.get(),
+            ...sourceInputRefs.map((sourceInputRef) => sourceInputRef.get()),
+        ]);
+        if (!sourceSnapshotSnap.exists || sourceInputSnaps.some((snap) => !snap.exists)) {
+            throw new CampaignCueIdempotencyConflictError("The saved Campaign Inbox retry result is unavailable.");
+        }
+        return {
+            batchId,
+            sourceInputs: sourceInputSnaps.map((snap) => parseCampaignCueSourceInputRecord(snap.data(), workspaceId)),
+            sourceSnapshot: parseCampaignCueSourceSnapshotRecord(sourceSnapshotSnap.data(), workspaceId),
+        };
+    }
+
+    const now = nowTimestamp();
+    const businessRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
+        .doc(defaultBusinessBrainId);
+    const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
+        .doc(defaultSourceSnapshotId);
+    const sourceInputRefs = sourceInputIds.map((sourceInputId) => (
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS).doc(sourceInputId)
+    ));
+    const eventRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS)
+        .doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
+    const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
+        .doc(idempotencyKey);
+
+    return requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
+        const [idempotencySnap, businessSnap, sourceSnapshotSnap, currentWorkspace] = await Promise.all([
+            transaction.get(idempotencyRef),
+            transaction.get(businessRef),
+            transaction.get(sourceSnapshotRef),
+            assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspace.members?.[params.scope.userId]?.role)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
+        assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+            action: idempotencyAction,
+            actorId: params.scope.userId,
+            requestHash: idempotency.requestHash,
+        }, idempotency.claimId as string);
+        const currentBusinessBrain = normalizeCampaignCueBusinessBrain(
+            assertCampaignCueBusinessBrainRecordScope(
+                businessSnap.exists ? businessSnap.data() : null,
+                workspaceId,
+            ),
+        );
+        const existingSnapshot = sourceSnapshotSnap.exists
+            ? parseCampaignCueSourceSnapshotRecord(sourceSnapshotSnap.data(), workspaceId)
+            : null;
+        const sourceInputs = params.input.candidates.map<CampaignCueSourceInput>((candidate, index) => {
+            const sourceInput: CampaignCueSourceInput = {
+                id: sourceInputIds[index],
+                workspaceId,
+                sourceType: candidate.sourceType,
+                label: candidate.label,
+                value: candidate.value,
+                status: candidate.status,
+                confidence: candidate.status === "active" ? "manual" : "estimated",
+                sourceRefs: ["owner_input", `inbox:${batchId}`],
+                facts: [],
+                createdAt: now,
+                updatedAt: now,
+            };
+            sourceInput.facts = sourceInputToFacts(sourceInput);
+            return sourceInput;
+        });
+        const sourceSnapshot = buildSourceSnapshotFromExistingSnapshot({
+            businessBrain: currentBusinessBrain,
+            existingSnapshot,
+            sourceInputs,
+        });
+
+        sourceInputs.forEach((sourceInput, index) => {
+            transaction.create(sourceInputRefs[index], sanitizeForAdminFirestore(sourceInput));
+        });
+        transaction.set(sourceSnapshotRef, sanitizeForAdminFirestore(sourceSnapshot));
+        transaction.set(eventRef, sanitizeForAdminFirestore({
+            id: eventRef.id,
+            workspaceId,
+            actorId: params.scope.userId,
+            action: "campaign_inbox_confirmed",
+            metadata: {
+                batchId,
+                sourceInputCount: sourceInputs.length,
+                activeCount: sourceInputs.filter((sourceInput) => sourceInput.status === "active").length,
+                needsReviewCount: sourceInputs.filter((sourceInput) => sourceInput.status === "needs_review").length,
+                sourceTypes: Array.from(new Set(sourceInputs.map((sourceInput) => sourceInput.sourceType))).sort(),
+            },
+            confidence: "observed",
+            createdAt: now,
+        }));
+        transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+            action: idempotencyAction,
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            requestHash: idempotency.requestHash,
+            resultId: batchId,
+            status: "completed",
+            updatedAt: now,
+        }), { merge: true });
+
+        return { batchId, sourceInputs, sourceSnapshot };
+    });
+}
+
 export async function createCampaignCueLocationServer(params: {
     input: CampaignCueLocationInput;
     scope: CampaignCueSessionScope;
 }) {
-    const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
+    const workspace = normalizeCampaignCueWorkspace(await ensureCampaignCueWorkspaceOnlyServer(params.scope));
     const workspaceId = workspace.workspaceId;
+    const initialRole = campaignCueWorkspaceRole(workspace, params.scope.userId);
+    if (!initialRole || !CAMPAIGNCUE_LOCATION_MANAGEMENT_ROLES.has(initialRole)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const { idempotencyKey, ...requestInput } = params.input;
     const idempotencyAction = "location_create";
     const idempotency = await checkIdempotency({
@@ -4543,6 +6189,7 @@ export async function createCampaignCueLocationServer(params: {
         workspaceId,
         name: params.input.name,
         locality: params.input.locality,
+        contacts: params.input.contacts,
         status: params.input.status,
         sourceRefs: ["owner_input"],
         createdAt: now,
@@ -4554,10 +6201,14 @@ export async function createCampaignCueLocationServer(params: {
     const idempotencyRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
         .doc(idempotencyKey);
     await requireCampaignCueFirestoreAdmin().runTransaction(async (transaction) => {
-        const [idempotencySnap] = await Promise.all([
+        const [idempotencySnap, currentWorkspace] = await Promise.all([
             transaction.get(idempotencyRef),
             assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        const currentRole = campaignCueWorkspaceRole(currentWorkspace, params.scope.userId);
+        if (!currentRole || !CAMPAIGNCUE_LOCATION_MANAGEMENT_ROLES.has(currentRole)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
         assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
             action: idempotencyAction,
             actorId: params.scope.userId,
@@ -4601,6 +6252,9 @@ export async function patchCampaignCueBusinessServer(params: {
 }> {
     const { workspace } = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = workspace.workspaceId;
+    if (!campaignCueCanManageWorkspaceContent(workspace.members?.[params.scope.userId]?.role)) {
+        throw new CampaignCueWorkspaceScopeError();
+    }
     const { idempotencyKey, ...requestInput } = params.input;
     const idempotencyAction = "business_patch";
     const idempotency = await checkIdempotency({
@@ -4644,6 +6298,9 @@ export async function patchCampaignCueBusinessServer(params: {
             transaction.get(sourceSnapshotRef),
             assertCurrentCampaignCueWorkspaceAccess(transaction, params.scope, workspaceId),
         ]);
+        if (!campaignCueCanManageWorkspaceContent(currentWorkspace.members?.[params.scope.userId]?.role)) {
+            throw new CampaignCueWorkspaceScopeError();
+        }
         assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
             action: idempotencyAction,
             actorId: params.scope.userId,

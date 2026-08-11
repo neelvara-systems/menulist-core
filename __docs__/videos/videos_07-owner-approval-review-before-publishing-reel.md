@@ -1,11 +1,15 @@
 # Videos - Owner Approval / Review Before Publishing Reel
 
-**Status:** Design-team-ready production handoff
+**Status:** Script-ready and market-reviewed; current private-to-approved runtime capture pending
 **Created:** July 7, 2026
 **Source:** [Master production blueprint](./videos_launch-product-marketing-production-blueprint.md)
 **Scope:** Standalone production handoff for Video 7.
 
 **Mandatory production standard:** [MenuList Founder-Approved Video Production Standard](./videos_founder-approved-production-standard.md). Apply it to this video's messaging, Inter typography, website gradient emphasis, UI styling, motion, transitions, logo slate, Indian-English voice, brand music, aspect-ratio adaptation, and encoded-MP4 QA.
+
+**Market and script control:** [MenuList Market, Format, And Script System](./videos_market-format-and-script-system.md).
+
+**Asset gate:** [MenuList Video Asset Intake And Readiness](./videos_asset-intake-and-readiness.md).
 
 ## Shared Positioning
 
@@ -32,6 +36,15 @@ Required boundaries:
 - Avoid fake testimonials, fake numbers, fake customer logos, ranking claims, growth claims, and AI magic visuals.
 - Use fictional or permissioned demo data only.
 
+## Market Role And Asset Gate
+
+- **Market role:** Trust reel that counters fear of silent or incorrect publication.
+- **Opening contract:** Show `Private` or `Not public` while saying `Nothing goes public until you approve.`
+- **First payoff:** Owner review and approval visibly cause the state change.
+- **Asset gate:** Current private-preview, correction, approval, receipt, and customer-page states.
+- **Claim gate:** The publication boundary must match current runtime behavior exactly.
+- **Native adaptation:** `9:16` is the master; approval proof must remain readable without relying on narration.
+
 ## Video 7 - Owner Approval / Review Before Publishing Reel
 
 ### A. Purpose
@@ -54,7 +67,7 @@ Skeptical owners, owners worried about wrong prices, owners worried about AI or 
 
 ### D. Recommended Duration
 
-- Master: 20-30 seconds.
+- Master: 20-25 seconds.
 - 15-second trust cut.
 - 9:16 required.
 - 1:1 optional.
@@ -74,18 +87,18 @@ The viewer should feel: "MenuList gives me safety without extra public risk."
 3. Product entry: Prepared private preview.
 4. Proof: Owner checks item, category, price.
 5. Outcome: Customer link updates after approval.
-6. CTA: Review before publishing.
+6. Close: MenuList identity and `menulist.ai`; companion CTA is `Review before publishing`.
 
 ### H. Second-By-Second Frame Plan
 
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0:00-0:03 | 3s | Private preview with not-public label | Phone UI close-up | Nothing goes public until you approve. | Nothing goes public until you approve. | Soft lock icon appears | Trust hook | Private preview UI |
-| 0:03-0:08 | 5s | MenuList prepared version | Highlight categories and items | MenuList prepares the customer-facing version first. | Private preview first. | UI highlight | Show preparation | Prepared preview |
-| 0:08-0:14 | 6s | Owner checks item name, price, category | Tap through fields | You check the important parts: item, price, category, and details. | Check item. Price. Category. | Tap indicators | Keep simple | Review UI |
-| 0:14-0:20 | 6s | Approve button and confirmation | Tap approve | Then you approve what customers will see. | Owner approval. | Button highlight | Approval central | Approval UI |
-| 0:20-0:27 | 7s | Customer link updates | Public page switches to current version | The customer link updates only after approval. | Customer link updated. | Before/after page transition | Show result | Customer page |
-| 0:27-0:30 | 3s | CTA end card | Full-screen CTA |  | Review before publishing. | Fade | Simple CTA | Logo, CTA |
+| 0:00-0:03 | 3s | Current private preview with `Private` or `Not public` label already visible | Native vertical product close-up | Nothing goes public until you approve. | Nothing goes public until you approve. | Prepared preview settles, no decorative lock animation | Make the runtime state the hook | Current private preview UI |
+| 0:03-0:08 | 5s | Categories and item rows reveal in the same preview | One continuous product view | MenuList prepares the customer-facing version first. | Private preview first. | Rows reveal sequentially | Keep the action continuous rather than another slide | Current prepared preview |
+| 0:08-0:14 | 6s | Owner checks item name, price, category, and one business detail | Focus moves through the few important fields | Check the item, price, category, and business details. | Check the important details. | One focus at a time | Use large readable values | Current review UI |
+| 0:14-0:19 | 5s | Owner presses approval; status changes to `Approved`; receipt appears | Cursor settles, press state is visible, state changes only after the press | Then approve what customers will see. | Owner approves. | Approval press -> status transition -> receipt | This is the causal trust moment | Current approval and receipt UI |
+| 0:19-0:22 | 3s | Customer link now shows the approved version | Match the reviewed item into the customer page | What customers see changes only after approval. | Approved customer version. | Match cut from preview row to public row | Public page stays hidden until now | Current customer page |
+| 0:22-0:25 | 3s | MenuList lockup, tagline, and URL | Clean identity close |  | MenuList / One approved customer link / menulist.ai | Settle and hold through encoded end | Companion CTA stays outside the MP4 | Approved lockup and URL |
 
 ### I. Full Voiceover Script
 
@@ -94,21 +107,21 @@ Nothing goes public until you approve.
 
 MenuList prepares the customer-facing version first.
 
-You check the important parts: item, price, category, and details.
+Check the item, price, category, and business details.
 
-Then you approve what customers will see.
+Then approve what customers will see.
 
-The customer link updates only after approval.
+What customers see changes only after approval.
 ```
 
 ### J. On-Screen Text List
 
 1. Nothing goes public until you approve.
 2. Private preview first.
-3. Check item. Price. Category.
-4. Owner approval.
-5. Customer link updated.
-6. Review before publishing.
+3. Check the important details.
+4. Owner approves.
+5. Approved customer version.
+6. menulist.ai
 
 ### K. UI Screens Required
 
@@ -145,7 +158,8 @@ Use quiet music. Add a soft click for approval. Use a short silence or reduced m
 
 ### P. CTA
 
-Review before publishing.
+- Encoded close: `menulist.ai`.
+- Companion post/ad CTA: `Review before publishing`.
 
 ### Q. Conversion Contract
 

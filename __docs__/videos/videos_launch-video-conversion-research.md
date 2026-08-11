@@ -106,6 +106,145 @@ These figures are market signals, not MenuList performance guarantees.
 - [Google Ads engaged-view conversions](https://support.google.com/google-ads/answer/10048752)
 - [Sprout Social 2026 Content Strategy Report](https://sproutsocial.com/insights/data/2026-social-media-content-strategy-report/)
 
+## August 2026 Platform And Category Update
+
+### Official Platform Signals
+
+| Official source | Current signal | MenuList production decision |
+| --- | --- | --- |
+| [YouTube Shorts ads](https://support.google.com/google-ads/answer/16040527?hl=en) | Shorts is a vertical, full-screen, mobile-optimized environment; ads are immediately skippable and should use sound and social-native creative | Build a native `9:16` opening with owner problem/relief and product context in the first three seconds |
+| [YouTube Shorts specifications](https://support.google.com/google-ads/answer/16041697?hl=en) | Google recommends vertical, sound-on assets, less than 60 seconds for Shorts behavior, and `10-30s` for action-oriented ads | Keep feed ads short; use platform CTA overlays while the encoded MenuList MP4 closes on identity and URL |
+| [TikTok creative guidance](https://ads.tiktok.com/help/article/creative-best-practices?redirected=1) | Proposition in the first three seconds, hook in the first six, captions, vertical safe-zone design, and actual product use | Show the menu source and MenuList transformation immediately; captions must work without hiding UI |
+| [TikTok commercial-content quality standard](https://ads.tiktok.com/help/article/about-tiktoks-content-quality-standard-for-creator-commercial-content) | Current guidance emphasizes credible actual usage, practical product information, coherent editing, clear sound, and an opening hook | Use real MenuList workflow proof; do not make the feed version look like a synthetic AI advertisement |
+| [LinkedIn Art And Science Of Video](https://business.linkedin.com/content/dam/business/marketing-solutions/global/en_US/site/pdf/wp/2025/the-art-and-science-of-video.pdf) | Its analysis of more than 13,000 B2B ads identifies recurring value in experts, conversational delivery, credibility, human presence, and mobile-native framing | Use founder POV for category trust and current product cutaways for substantiation; treat reported lifts as platform observations, not MenuList forecasts |
+| [LinkedIn executive voices and video credibility](https://www.linkedin.com/business/marketing/blog/content-marketing/b2b-video-executive-voices-credibility) | Current LinkedIn guidance continues to emphasize credible human executive voices and authentic video communication | Keep the founder POV natural and specific, then substantiate it with current MenuList product proof rather than a polished but generic monologue |
+| [Wistia current video-length guidance](https://wistia.com/learn/marketing/optimal-video-length) | Awareness/social fits below one minute; explainers and product demos fit one to five minutes; the most important information belongs in the first half | Separate feed reels, hero film, and demo rather than forcing one duration to do every job |
+
+### Category Contrast
+
+Current restaurant-tech positioning remains concentrated around three promises:
+
+- Toast's current digital-menu guidance centers QR scanning, ordering, payment, table setup, menu visibility, and POS-connected publication.
+- Owner.com centers growth, ordering, SEO, marketing, reviews, apps, testimonials, and quantified sales outcomes.
+- PureMenu centers a modern QR menu, permanent URL, dashboard editing, SEO-ready pages, instant updates, and setup speed.
+
+Those are valid positions for those products. They are not the MenuList launch story. MenuList should not imitate their revenue claims, ordering/payments story, dashboard-first setup, or QR-only language. It should make this distinction visible:
+
+```text
+Existing menu source
+-> private customer preview
+-> owner approval
+-> one approved customer link
+```
+
+See [Toast digital-menu setup](https://support.toasttab.com/en/article/Setting-up-mobile-payments-and-digital-menus), [Owner.com](https://www.owner.com/), and [PureMenu](https://www.getpuremenu.com/) for the current observed category language. These pages are competitor-positioning evidence only; their claims are not adopted as MenuList evidence.
+
+### Decision
+
+- `9:16` is a native composition for Reels, Shorts, TikTok, and mobile sales sharing.
+- Product context appears in the first `0:03`; the first visible product payoff should occur by about `0:06`.
+- Website/YouTube product demos use slower, readable `16:9` evidence.
+- Founder video uses a real or approved founder voice, conversational delivery, and current product proof.
+- The final encoded frame is MenuList identity, tagline, and readable `menulist.ai`; interactive CTA belongs in the platform, post, player, or sales message.
+- Setup relief is stated as `No need to retype the whole menu before you begin`, not an absolute `No typing required` or an unmeasured `in minutes` promise.
+
+## August 2026 Market Study: What Teams Are Actually Shipping
+
+### Evidence Boundary
+
+This review separates observable production practice from vendor performance claims.
+
+Reviewed inputs:
+
+- the [official HyperFrames examples gallery](https://hyperframes.heygen.com/launch-videos);
+- the [open HyperFrames launch-project repository](https://github.com/heygen-com/hyperframes-launches), inspected at commit `db56438` on August 10, 2026;
+- Wistia's 2026 survey of more than 900 professionals and analysis of more than 13 million hosted videos and 79 million viewing hours;
+- [LinkedIn's 2026 B2B marketing guidance](https://www.linkedin.com/business/marketing/blog/trends-tips/b2b-marketing-insights-creators-thought-leadership);
+- [Gartner's October 2025 survey of 1,539 United States consumers, published in March 2026](https://www.gartner.com/en/newsroom/press-releases/2026-03-16-gartner-marketing-survey-finds-50-percent-of-consumers-prefer-brands-that-avoid-using-genai-in-consumer-facing-content0); and
+- the current official platform and competitor pages listed in the August 2026 platform and category update above.
+
+The HyperFrames source sample contains 17 launch projects. Fifteen are landscape, two are square, and none is a native vertical project. Their source durations range from approximately `16.47s` to `64.05s`, with a median near `39.5s`. The median project contains nine scene-level HTML compositions. Eight include a `STORYBOARD.md`, eight include a `HANDOFF.md`, and only one includes a `BRIEF.md`.
+
+Those counts describe one curated vendor repository, not the whole market and not launch performance. They do prove that serious HyperFrames work is commonly modular, source-controlled, audio-aware, and built for revision. The launch-project repository does not expose a root license file, so MenuList may study its patterns but must not copy its code, assets, fonts, music, or design systems without separate rights verification.
+
+### Observable Market Patterns
+
+| Pattern | What current work shows | MenuList decision |
+| --- | --- | --- |
+| One job per cut | Notion Calendar, Linear feature reels, Figma feature clips, and HyperFrames' Timeline Editor film each center one workflow or pain | Adopt. Each MenuList cut should change one owner belief and prove one workflow |
+| Product proof before adjectives | Strong product films use real UI, code, cursor actions, or a visible transformation instead of stock footage and abstract claims | Adopt. Existing menu source, private preview, approval, and approved link are the proof |
+| Modular source, not one flattened timeline | The official HyperFrames source sample has a median of nine scene compositions and frequently retains storyboards or handoff notes | Adopt. Serious 30-75 second MenuList films should use beat-level compositions and a maintained handoff |
+| Audio carries meaning | Current HyperFrames launch sources use continuous beds, intentional silence, interaction SFX, confirmation cues, and music lifts tied to the product event | Adopt selectively. Use the approved MenuList bed, voice-reactive ducking, and three or four motivated cues, not sound on every movement |
+| Native distribution variants | Current SaaS launch practice pairs a website/YouTube master with shorter social and vertical versions | Adopt. Recompose `16:9`, `9:16`, and required `1:1` layouts from shared scenes; never center-crop the master |
+| Human trust alongside product polish | [LinkedIn's 2026 guidance](https://www.linkedin.com/business/marketing/blog/trends-tips/b2b-marketing-insights-creators-thought-leadership) says buyers are overwhelmed by polished product messaging and increasingly rely on practitioners and internal experts | Adopt. Pair product films with founder POV and human-reviewed Indian-English delivery |
+| Refreshable launch source | Prompt-led vendors compete on regenerating videos when UI or copy changes; source-controlled HyperFrames provides the same operational benefit locally | Adopt without the paid platform. Keep real UI assets, source, version ledger, and immutable approved renders |
+| AI production behind the work | Wistia reports AI use across planning and repurposing, while [Gartner reports material consumer skepticism toward consumer-facing GenAI content](https://www.gartner.com/en/newsroom/press-releases/2026-03-16-gartner-marketing-survey-finds-50-percent-of-consumers-prefer-brands-that-avoid-using-genai-in-consumer-facing-content0) | Keep AI behind the scenes. Published MenuList work should feel specific, truthful, and founder-directed |
+
+### What The Current Market Gets Wrong
+
+Several visible launch-video trends are poor fits for MenuList:
+
+- dark-mode, glass, neon, bloom, and high-density technical interfaces copied without regard to the product or audience;
+- synthetic avatar presenters used as a shortcut to human trust;
+- abstract claims such as `seamless`, `revolutionary`, or `AI-powered` before a real product action;
+- vendor case-study conversion numbers repeated without independent methodology or MenuList evidence;
+- one 16:9 master mechanically cropped for every platform;
+- constant motion, fixed `1.7s` cuts, or automatic speed increases that make proof harder to read;
+- fake social posts, invented customer quotes, unverified ratings, and unsupported platform logos;
+- a CTA-styled button inside a non-interactive MP4 treated as if it were clickable; and
+- paid prompt-to-video, avatar, hosted-render, stock-catalog, or cloud-generation dependencies.
+
+For MenuList, the encoded end card remains the brand mark, `MenuList`, `One approved customer link`, and a readable `menulist.ai` destination. The clickable CTA belongs beside the video on the website or social post. A hosted player may add a verified end-of-video interactive CTA without baking a fake button into the MP4.
+
+### Market-Derived MenuList Creative System
+
+Every launch story should use this proof spine:
+
+```text
+Owner already has a menu
+-> uploads photos or a PDF
+-> MenuList prepares a private customer preview
+-> owner reviews and approves
+-> one customer link supports verified public surfaces
+```
+
+The production system should then create distinct assets from that shared truth:
+
+| Asset | Market job | MenuList treatment |
+| --- | --- | --- |
+| 60-75 second hero | Establish category and complete story | Polished `16:9`, real UI, calm narration, one transformation per beat |
+| 20-30 second owner-ease cut | Remove setup fear | Native `9:16` and `16:9`; lead with `Your current menu is enough` or `Do not type your menu again` |
+| 2-3 minute demo | Support evaluation and sales | Continuous real workflow, slower UI holds, no decorative scene changes |
+| 8-20 second proof reels | Repeat one pain or action | One hook, one proof, one conclusion; native vertical composition |
+| 45-90 second founder POV | Add human category trust | Founder voice or camera plus truthful product cutaways; no memorized sales pitch |
+| 3-10 second motion modules | Reuse brand and product moments | Logo sting, upload transformation, approval change, one-link propagation, and URL end slate |
+
+### Distribution Interpretation
+
+Wistia's 2026 data says educational, product, social, and webinar videos are the formats teams are prioritizing, and that product videos are among those most often reported as impactful. It also says shorter hosted videos generally earn higher completion percentages, while software and technology audiences often watch longer material when they are actively researching. This supports separate awareness and evaluation assets rather than one compromised universal duration.
+
+Wistia also reports LinkedIn as the primary video channel for eight in ten surveyed B2B teams. MenuList should not translate that into `LinkedIn first for every owner`. Its channel roles remain audience-specific:
+
+- website and YouTube for durable product proof;
+- Instagram, YouTube Shorts, and WhatsApp for owner reach and sales sharing;
+- LinkedIn for founder POV, partners, investors, multi-location operators, and professional buyers; and
+- paid placement only after attribution can distinguish views from private-preview and approved-link progress.
+
+### Final Market Verdict
+
+The market is not converging on one perfect launch video. It is converging on a reusable launch-video system:
+
+```text
+real product proof
++ modular source
++ native channel versions
++ human trust
++ disciplined audio
++ measurable product action
+```
+
+MenuList should use HyperFrames to make that system locally. It should not copy the market's generic AI-video appearance. The differentiator is calm proof for a non-technical owner: the menu already on the owner's phone becomes a private preview, the owner remains in control, and one approved customer link becomes the public version.
+
 ## What The Evidence Does Not Prove
 
 Do not publish any of these claims:
@@ -196,7 +335,7 @@ AI prepares. Owner approves. Customers see the current version.
 The relevant launch line is:
 
 ```text
-Upload what you already have. Create one approved customer link in minutes.
+Upload what you already have. Review one approved customer link before it goes public.
 ```
 
 ## MenuList Conversion Architecture
@@ -223,7 +362,7 @@ Remove setup fear -> prove private preview -> prove owner approval -> send the o
 Primary message:
 
 ```text
-Do not type your menu again.
+Your current menu is enough to start.
 ```
 
 Supporting proof:
@@ -231,6 +370,7 @@ Supporting proof:
 ```text
 Upload menu photos or a PDF.
 MenuList prepares the first customer version.
+No need to retype the whole menu before you begin.
 Review before publishing.
 ```
 

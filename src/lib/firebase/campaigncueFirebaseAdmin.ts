@@ -16,8 +16,8 @@ import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from "
 const getCampaignCueProjectId = () => campaigncueFirebaseProjectId;
 
 const getCampaignCueStorageBucket = () =>
-    process.env[CAMPAIGNCUE_FIREBASE_ENV.STORAGE_BUCKET] ||
-    process.env[CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET];
+    process.env[CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET] ||
+    process.env[CAMPAIGNCUE_FIREBASE_ENV.STORAGE_BUCKET];
 
 function normalizePrivateKey(privateKey: string): string {
     return privateKey
@@ -27,7 +27,10 @@ function normalizePrivateKey(privateKey: string): string {
 }
 
 function getAdminCredential(prefix: CampaignCueAdminCredentialPrefix): admin.credential.Credential | null {
-    const projectId = process.env[`${prefix}_PROJECT_ID`];
+    const projectId = prefix === CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX
+        ? process.env[CAMPAIGNCUE_FIREBASE_ENV.PUBLIC_PROJECT_ID]
+            || process.env[CAMPAIGNCUE_FIREBASE_ENV.PROJECT_ID]
+        : process.env[`${prefix}_PROJECT_ID`];
     const privateKey = process.env[`${prefix}_PRIVATE_KEY`];
     const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
 

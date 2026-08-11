@@ -27,7 +27,7 @@ async function getBasePath(): Promise<string> {
 const STEPS = [
     ['Prepare source truth', 'Use the Pre-Onboarding Kit with the product material you already have. Keep blocked sources and private data out.'],
     ['Generate the product-specific ten', 'Choose one prepared intake. AnswerLattice creates ten editable questions and draft answers with source evidence, applicability, risk, and missing-evidence warnings.'],
-    ['Review and approve the answer path', 'Correct every draft in Knowledge Intake. Use Governance for canonical approval, or keep explicit no-answer and escalation behavior when evidence is insufficient.'],
+    ['Review and approve the answer path', 'Correct every draft in Knowledge Intake. Use Answer Review for official approval, or keep explicit no-answer and escalation behavior when evidence is insufficient.'],
     ['Run deterministic checks', 'Run canonical-only Answer Tests first. They verify the expected answer route without calling an AI provider.'],
     ['Install and verify', 'Confirm the widget script, allowed origin, blocked routes, safe page context, and product-page behavior.'],
     ['Measure the outcome', 'Track explicit Solved and Still need help responses. Treat no escalation as a routing metric, not proof of resolution.'],
@@ -70,7 +70,7 @@ export default async function AnswerlatticeFounderLaunchKitPage() {
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
                             { label: 'First scope', value: 'Ten product-specific priority questions' },
-                            { label: 'Authority', value: 'Owner-approved answer truth' },
+                            { label: 'Official answers', value: 'Owner-approved before users see them' },
                             { label: 'Outcome', value: 'Explicit resolution and recontact evidence' },
                         ]}
                     />
@@ -117,7 +117,7 @@ export default async function AnswerlatticeFounderLaunchKitPage() {
                         <article className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
                             <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">When support ownership grows</p>
                             <h2 className="mt-3 text-2xl font-bold text-white">Add operating depth only when it is needed.</h2>
-                            <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">Keep the founder launch path small. Add team roles, notifications, selected Support Board work, release review, and deeper governance when another person or a material answer risk requires them.</p>
+                            <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">Keep the founder launch path small. Add team roles, notifications, selected Support Board work, release review, and deeper review controls when another person or a material answer risk requires them.</p>
                             <AnswerlatticeLink basePath={basePath} href="/resources/answerlattice-operating-guide" className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-white/[0.1] px-4 py-2 text-sm font-semibold text-[#d6d6ef] transition hover:border-teal-300/25 hover:text-white">
                                 Open operating guide
                             </AnswerlatticeLink>

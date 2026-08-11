@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { LuActivity, LuSparkles, LuUser } from 'react-icons/lu';
 import { OwnerAssistantFreshnessLabel } from './OwnerAssistantFreshnessLabel';
 import styles from './OwnerBusinessAssistant.module.scss';
+import { getOwnerBusinessHealthQuestionLabel } from '@lib/ownerBusinessAssistant/dashboardPresentation';
+import { useTranslations } from 'next-intl';
 
 const { Paragraph, Text } = Typography;
 
@@ -24,13 +26,14 @@ function FollowUpQuestions({ disabled, loading, onAsk, questions }: {
   onAsk?: (question: OwnerBusinessHealthQuestion) => void;
   questions?: OwnerBusinessHealthQuestion[];
 }) {
+  const t = useTranslations('Dashboard.owner');
   if (!questions?.length || !onAsk) return null;
 
   return (
     <div className={styles.followUpBlock}>
       <div className={styles.followUpHeader}>
         <LuSparkles size={14} aria-hidden />
-        <Text type="secondary">You can ask next</Text>
+        <Text type="secondary">{t('businessHealth.assistant.followUps')}</Text>
       </div>
       <div className={styles.followUpGrid}>
         {questions.slice(0, 3).map((question) => (
@@ -42,7 +45,7 @@ function FollowUpQuestions({ disabled, loading, onAsk, questions }: {
             onClick={() => onAsk(question)}
             type="text"
           >
-            {question.label}
+            {getOwnerBusinessHealthQuestionLabel(question, t)}
           </Button>
         ))}
       </div>
@@ -59,6 +62,7 @@ function OwnerAssistantBubble({
   content?: string;
   role: 'user' | 'assistant';
 }) {
+  const t = useTranslations('Dashboard.owner');
   const isUser = role === 'user';
 
   return (
@@ -71,7 +75,7 @@ function OwnerAssistantBubble({
       <div className={`${styles.messageBubble} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
         <div className={styles.messageMeta}>
           {isUser ? <LuUser size={13} aria-hidden /> : <LuActivity size={13} aria-hidden />}
-          <Text type="secondary">{isUser ? 'You' : 'Business Health'}</Text>
+          <Text type="secondary">{isUser ? t('businessHealth.assistant.you') : t('businessHealth.title')}</Text>
         </div>
         {content ? <Paragraph className={styles.messageText}>{content}</Paragraph> : null}
         {children}
@@ -88,6 +92,7 @@ export function OwnerAssistantMessageList({ answer, disabledFollowUps, loading, 
   onSuggestedQuestion?: (question: OwnerBusinessHealthQuestion) => void;
   pendingQuestion?: string | null;
 }) {
+  const t = useTranslations('Dashboard.owner');
   const visibleMessages = (messages || []).slice(-8);
   const hasPendingQuestion = Boolean(pendingQuestion?.trim())
     && !visibleMessages.some((message) => message.role === 'user' && message.content === pendingQuestion);
@@ -164,7 +169,7 @@ export function OwnerAssistantMessageList({ answer, disabledFollowUps, loading, 
           <span className={styles.emptyIcon} aria-hidden>
             <LuSparkles size={18} />
           </span>
-          <Text type="secondary">Choose a question or ask about your business.</Text>
+          <Text type="secondary">{t('businessHealth.assistant.empty')}</Text>
         </div>
       )}
     </div>

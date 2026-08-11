@@ -1,6 +1,6 @@
 # Product Friction Evidence
 
-**Status:** Implemented, source-hardened, and extended with a zero-Firebase-cost owner evidence brief on July 30, 2026. QA deployment and hosted readback of the underlying summaries remain pending authenticated Firebase access.
+**Status:** Implemented, source-hardened, extended with a zero-Firebase-cost owner evidence brief on July 30, 2026, and extended with route-aware owner review plus explicit post-change support-evidence review on August 10, 2026. QA deployment and hosted readback remain pending authenticated access.
 
 Product Friction Evidence turns bounded support events and canonical-answer fallbacks into a compact review queue for active product entities. It helps a founder decide which product areas and approved answers need investigation. It does not measure product health, customer satisfaction, answer accuracy, or verified resolution.
 
@@ -20,7 +20,11 @@ defect, user-experience problem, or customer-journey failure.
 6. All admitted entities contribute to totals; the owner view retains the top ten review areas and up to five emerging topics.
 7. An optional weekly provider call can write an advisory review summary after strict output validation and a source-snapshot recheck.
 8. The owner can choose a non-causal review path and prepare a deterministic Markdown evidence brief from the already-loaded entity summary.
-9. The owner reviews underlying evidence before changing product behavior or approved answers.
+9. Safe knowledge-review paths continue into the existing entity-filtered Knowledge Map or trusted-answer surface; product review stays a local export, and close paths create no saved state.
+10. The selected entity, completed window, source timestamp, and workspace scope are frozen as one browser-local brief input; a scope change closes that selection.
+11. Knowledge Map controls and investigate routing honor the feature kill switch, while an absent requested topic stays visibly unselected instead of substituting unrelated evidence.
+12. The owner may explicitly load a recent release or implemented knowledge correction and compare complete 14-day UTC support-evidence windows over its direct entity links.
+13. The owner reviews underlying evidence before changing product behavior or approved answers.
 
 ## Metric Meaning
 
@@ -45,9 +49,17 @@ defect, user-experience problem, or customer-journey failure.
 - Let the owner copy or download a bounded evidence brief for product,
   engineering, or knowledge review without adding a saved product-problem
   object, integration call, or automatic diagnosis: implemented.
-- Validate workflow hierarchy, release comparison, persisted decision memory,
-  and owner-confirmed root-cause classification with real founder workspaces
-  before development.
+- Route the selected review path to an existing entity-scoped governance surface
+  when one safely exists. Keep product/engineering handoff local, and disclose
+  that watch and no-action choices create no reminder or saved decision:
+  implemented.
+- Keep the post-change comparison explicit, direct-link-only, complete-window,
+  and correlation-only. Do not reuse the legacy causal-sounding mutation impact
+  percentage or schedule automatic outcome reviews: implemented.
+- Validate workflow hierarchy, persisted decision memory, and owner-confirmed
+  root-cause classification with real founder workspaces
+  before development, using the bounded real-workspace protocol in the
+  external proposal validation record.
 - Do not add session replay, product-event tracking, funnel analytics,
   automatic root-cause claims, or autonomous fixes.
 
@@ -59,6 +71,9 @@ defect, user-experience problem, or customer-journey failure.
 - Client readers parse schema version 2 and exact scope before rendering.
 - AI output is advisory, cannot define metrics or friction level, and cannot introduce unknown entity IDs.
 - Daily evidence is retained for 90 days by the existing cleanup task.
+- Post-change comparison reads retained signal events only after explicit owner
+  intent, excludes the change day, and refuses partial, saturated, or expired
+  windows.
 
 ## Important Files
 
@@ -70,9 +85,15 @@ defect, user-experience problem, or customer-journey failure.
 - `src/database/answerlattice/frictionStats.ts`
 - `src/hooks/answerlattice/useFrictionInsights.ts`
 - `src/lib/answerlattice/frictionEvidenceBrief.ts`
+- `src/lib/answerlattice/frictionReviewRouting.ts`
 - `src/components/templates/answerlattice/governance/FrictionTab.tsx`
 - `src/components/templates/answerlattice/governance/FrictionEvidenceBriefDrawer.tsx`
+- `src/components/templates/answerlattice/governance/PostChangeSupportEvidenceReview.tsx`
+- `src/app/api/answerlattice/post-change-evidence/route.ts`
+- `src/lib/answerlattice/postChangeEvidence.ts`
+- `src/lib/answerlattice/postChangeEvidenceServer.ts`
 - `scripts/verification/test-answerlattice-support-metrics-contracts.ts`
+- `scripts/verification/test-answerlattice-post-change-evidence.ts`
 
 ## Documents
 
@@ -85,6 +106,7 @@ defect, user-experience problem, or customer-journey failure.
 - [Website boundary](./product-friction-intelligence_website.md)
 - [Test cases](./product-friction-intelligence_test-cases.md)
 - [External proposal validation](./product-friction-intelligence_validation.md)
+- [Post-Change Support Evidence Review](../post-change-support-evidence-review/README.md)
 
 ## Verification
 

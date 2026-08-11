@@ -62,7 +62,7 @@ function runRefusalCase(label, args, expectedMessage) {
 function verifySourceGuards() {
   const backfill = read(BACKFILL_SCRIPT);
 
-  assertIncludes(backfill, "const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;", 'Backfill explicit project target');
+  assertIncludes(backfill, "const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;", 'Backfill explicit product-scoped project target');
   assertIncludes(backfill, "throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running tenant-block backfill.');", 'Backfill missing-project refusal');
   assertIncludes(backfill, "const confirmedProjectId = getArg('--confirm-project');", 'Backfill write confirmation argument');
   assertIncludes(backfill, 'if (write && confirmedProjectId !== projectId)', 'Backfill write target confirmation guard');

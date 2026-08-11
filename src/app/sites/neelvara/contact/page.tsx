@@ -1,15 +1,11 @@
 import type { Metadata } from 'next';
-import { LuArrowRight, LuExternalLink, LuMail } from 'react-icons/lu';
+import { LuExternalLink } from 'react-icons/lu';
 import {
-    NEELVARA_CONTACT_EMAIL,
-    NEELVARA_LEGAL_EMAIL,
     NEELVARA_OG_IMAGE_PATH,
-    NEELVARA_PRIVACY_EMAIL,
     NEELVARA_PRODUCT_LINEUP,
     buildNeelvaraUrl,
 } from '../siteConfig';
-import { DirectoryCards, PagePrismPanel, PageShell, StructuredData } from '../content';
-import { NeelvaraLink } from '../SiteHeaderNav';
+import { DirectoryCards, PageShell, StructuredData } from '../content';
 
 export const metadata: Metadata = {
     title: 'Contact',
@@ -51,19 +47,10 @@ export default function NeelvaraContactPage() {
                         </span>
                         <h1 className="serif">Start with the right contact route.</h1>
                         <p>
-                            Company, legal, privacy, partnership, and business inquiries
-                            use direct Neelvara email routes.
+                            Choose a Neelvara inbox for company, legal, privacy,
+                            partnership, or business questions.
                         </p>
                     </div>
-                    <PagePrismPanel
-                        eyebrow="Reference summary"
-                        title="Contact routing"
-                        rows={[
-                            NEELVARA_CONTACT_EMAIL,
-                            NEELVARA_LEGAL_EMAIL,
-                            NEELVARA_PRIVACY_EMAIL,
-                        ]}
-                    />
                 </div>
             </section>
 
@@ -87,7 +74,7 @@ export default function NeelvaraContactPage() {
             </section>
 
             <section className="nv-section nv-section-tight nv-reveal">
-                <div className="nv-wrap nv-text-panel glass">
+                <div className="nv-wrap nv-text-panel nv-contact-note">
                     <div>
                         <h2 className="serif">Looking for product support?</h2>
                         <p>
@@ -109,7 +96,7 @@ export default function NeelvaraContactPage() {
             </section>
 
             <section className="nv-section nv-section-tight nv-reveal">
-                <div className="nv-wrap nv-text-panel glass">
+                <div className="nv-wrap nv-text-panel nv-contact-note">
                     <div>
                         <h2 className="serif">Keep the first message focused.</h2>
                         <p>
@@ -126,28 +113,6 @@ export default function NeelvaraContactPage() {
                 </div>
             </section>
 
-            <section className="nv-section nv-final-section nv-reveal">
-                <div className="nv-wrap nv-final-band glass">
-                    <div>
-                        <h2 className="serif">Company questions start with email.</h2>
-                        <p>
-                            For company questions about Neelvara Systems, email
-                            {' '}
-                            {NEELVARA_CONTACT_EMAIL}.
-                        </p>
-                    </div>
-                    <div className="nv-actions">
-                        <a className="nv-button nv-button-solid nv-button-large" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>
-                            Email Neelvara
-                            <LuMail aria-hidden="true" />
-                        </a>
-                        <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/products">
-                            View Products
-                            <LuArrowRight aria-hidden="true" />
-                        </NeelvaraLink>
-                    </div>
-                </div>
-            </section>
         </PageShell>
     );
 }

@@ -428,7 +428,8 @@
         "daily": "Siku iliyotangulia",
         "weekly": "Siku 7 Zilizopita",
         "monthly": "Mwezi Huu",
-        "overall": "Kwa ujumla"
+        "overall": "Kwa ujumla",
+        "graph": "Grafu"
       },
       "today": {
         "noMenuActivityToday": "Bado hakuna shughuli ya menyu leo.",
@@ -454,17 +455,17 @@
         "noResultSearches": "Utafutaji usio na matokeo",
         "unavailableInterest": "Riba Isiyopatikana",
         "topLanguage": "Lugha ya Juu",
-        "smartPicksShown": "Chaguo Mahiri Zinaonyeshwa",
-        "smartPicksClicks": "Mibofyo ya Chaguo Mahiri",
-        "smartPicksTaps": "Miguu Mahiri",
-        "smartPicksUsed": "Chaguzi Mahiri Zilizotumika",
-        "smartPicksEngagement": "Uchumba wa Chaguo Mahiri",
+        "smartPicksShown": "Smart Picks Kuonekana",
+        "smartPicksClicks": "Smart Picks Mchakato",
+        "smartPicksTaps": "Smart Picks ya TAPS",
+        "smartPicksUsed": "Smart Picks kutumika",
+        "smartPicksEngagement": "Smart Picks Mkataba wa",
         "totalMenuScans": "Jumla ya Uchanganuzi wa Menyu",
         "totalItemClicks": "Jumla ya Mibofyo ya Kipengee",
         "activeDays": "Siku Zinazotumika",
         "daysActive": "Siku Zilizotumika",
-        "avgDailyScans": "Wastani. Uchanganuzi wa Kila Siku",
-        "smartPicksActive": "Chaguzi Mahiri Zinatumika",
+        "avgDailyScans": "Maelezo ya Daily Scans",
+        "smartPicksActive": "Smart Picks Mkakati wa",
         "engagementRate": "Kiwango cha Uchumba",
         "topItem": "Kipengee cha Juu",
         "topCategory": "Aina ya Juu"
@@ -473,8 +474,8 @@
         "itemClicks": "Idadi ya mara ambazo wateja waligusa bidhaa",
         "engagedSessions": "Vipindi ambapo wateja walionyesha kupendezwa na menyu halisi",
         "actionRate": "Vipindi vilivyopelekea hatua ya mwisho ya mteja",
-        "smartPicksShown": "Ni mara ngapi Chaguo Mahiri zilionekana kwenye ukurasa wako",
-        "smartPicksUsed": "Asilimia ya wateja waliotumia Chaguo Mahiri",
+        "smartPicksShown": "Baadhi ya mara Smart Picks kuonekana kwenye ukurasa wako",
+        "smartPicksUsed": "asilimia ya wateja ambao wanatumia Smart Picks",
         "customerActions": "Vitendo vya mwisho kama vile kupiga simu, WhatsApp, maelekezo, hifadhi na kuagiza",
         "searches": "Mahitaji ya utafutaji yaliyorudiwa kutoka kwa menyu",
         "unavailableInterest": "Gonga vipengee visivyopatikana"
@@ -482,10 +483,15 @@
       "empty": {
         "noActivityYesterday": "Hakuna shughuli iliyorekodiwa jana",
         "noAnalyticsYet": "Bado hakuna data. Uchanganuzi wako utaonekana mara tu wateja watakapoanza kutazama.",
-        "noItemClicksYet": "Bado hakuna mibofyo ya kipengee"
+        "noItemClicksYet": "Bado hakuna mibofyo ya kipengee",
+        "lowActivityTitle": "Shughuli ya chini",
+        "lowActivityDescription": "Hakukuwa na shughuli za kutosha ili kupata hitimisho la manufaa kwa kipindi hiki.",
+        "noWeeklyData": "Hakuna shughuli iliyowekwa kwenye menyu inapatikana kwa siku 7 zilizopita bado.",
+        "noMonthlyData": "Hakuna shughuli iliyowekwa kwenye menyu inayopatikana kwa mwezi huu bado."
       },
       "weekly": {
-        "vsLastWeek": "{sign}{change}% dhidi ya wiki iliyopita"
+        "vsLastWeek": "{sign}{change}% dhidi ya wiki iliyopita",
+        "changeVsLastWeek": "{change} vs wiki iliyopita wiki hii"
       },
       "monthly": {
         "daysOfActivityRecorded": "{count, plural, one {# siku ya shughuli iliyorekodiwa} other {# siku za shughuli zimerekodiwa}}"
@@ -515,7 +521,7 @@
       "states": {
         "yes": "Ndiyo",
         "no": "Hapana",
-        "notAvailable": "N/A N/B N/C N/D",
+        "notAvailable": "N/A",
         "active": "Inayotumika",
         "lowActivity": "Shughuli ya Chini",
         "noData": "Hakuna Data"
@@ -527,12 +533,25 @@
         "waitingForFirstScan": "Inasubiri kuchanganua mara ya kwanza",
         "weeklyInsights": "Maarifa ya Kila Wiki",
         "last4WeeksComparison": "Wiki 4 Zilizopita Ulinganisho",
-        "historicalDataWillAppear": "Data ya kihistoria itaonekana baada ya wiki chache"
+        "historicalDataWillAppear": "Data ya kihistoria itaonekana baada ya wiki chache",
+        "statusMessages": {
+          "working": "Wateja wanatumia menu yako ya sasa.",
+          "low_activity": "Utendaji wa mteja bado unajengwa. Orodha yako ya sasa inaendelea kupatikana.",
+          "no_data": "Kazi itaonekana baada ya wateja kuanza kufungua menu yako."
+        }
       },
       "aiSummary": {
         "daily": "Siku iliyotangulia kwa muhtasari",
         "weekly": "Wiki hii kwa muhtasari",
-        "monthly": "Mwezi huu kwa muhtasari"
+        "monthly": "Mwezi huu kwa muhtasari",
+        "localized": {
+          "noActivity": "Hakuna shughuli za wateja zilizotangulia kwa kipindi hiki.",
+          "menuViews": "Wateja walifungua menu ya {count} ya wakati.",
+          "itemTaps": "Wateja waligusa vitu vya menyu {count} mara.",
+          "customerActions": "Wateja wamekamilika {count} Hatua ya mwisho.",
+          "searches": "Wateja wakitembelea menu {count} ya wakati.",
+          "unavailableInterest": "Vitu visivyopatikana vimepokea {count} ya kugusa."
+        }
       },
       "actions": {
         "call": "Piga",
@@ -556,7 +575,100 @@
         "sourceQualityTagCompact": "{source}: Ziara za {visits} · {rate}%",
         "markDoneFailed": "Kitendo hiki hakikuweza kutiwa alama kuwa kimefanywa. Jaribu tena.",
         "markDoneSaved": "Imetiwa alama kuwa imekamilika. Matokeo yatasasishwa wakati muhtasari unaofuata wa uchanganuzi utakapokuwa tayari.",
-        "markDone": "Tia alama kuwa umemaliza"
+        "markDone": "Tia alama kuwa umemaliza",
+        "bestSourceStatsFormatted": "· {visits} ziara · {rate} kiwango cha utekelezaji",
+        "bestSourceMobileFormatted": "Chanzo bora sasa hivi: {source} · ziara za {visits} • kiwango cha hatua ya {rate}",
+        "sourceQualityTagFormatted": "{source}: ziara za {visits} · vikao vya vitendo vya {sessions} • {rate}",
+        "sourceQualityTagCompactFormatted": "{source}: ziara za {visits} · {rate}",
+        "priorities": {
+          "high": "Kipaumbele cha juu",
+          "medium": "Kipaumbele cha kati",
+          "low": "Kipaumbele cha chini"
+        },
+        "confidence": {
+          "stable": {
+            "label": "Imara",
+            "message": "Kazi inapatikana inasaidia uchunguzi wazi wa menu."
+          },
+          "watch": {
+            "label": "Kuanzisha kuangalia",
+            "message": "Baadhi ya shughuli zinaweza kuhitaji kuangalia tena kabla ya kubadili menyu."
+          },
+          "no_data": {
+            "label": "Takwimu zaidi zinahitajika.",
+            "message": "Angalia kwa shughuli ya wateja zaidi iliyowekwa kabla ya kutengeneza hitimisho."
+          }
+        },
+        "localizedActions": {
+          "reason": "Kulingana na shughuli ya mwisho iliyowekwa ya mteja.",
+          "availability": {
+            "title": "Angalia upatikanaji wa bidhaa ya kutosha.",
+            "description": "Angalia kama vitu visivyopatikana au vilivyofichwa vinapaswa kurejeshwa au kuhifadhiwa nje ya maono.",
+            "action": "Kagua upatikanaji"
+          },
+          "customerActions": {
+            "title": "Tathmini matendo ya wateja wako.",
+            "description": "Angalia maelezo ya menyu na viungo wateja hutumia kabla ya kuchukua hatua.",
+            "action": "Tathmini matendo ya wateja wako."
+          },
+          "details": {
+            "title": "kuboresha maelezo ya bidhaa",
+            "description": "Angalia majina ya vitu, chaguzi, maelezo na picha ambazo zinaweza kuhitaji habari zilizo wazi zaidi.",
+            "action": "Maelezo ya Sehemu ya Utafiti"
+          },
+          "general": {
+            "title": "Angalia ishara ya wazi zaidi.",
+            "description": "Kuhifadhi orodha ya sasa imara mpaka shughuli zaidi iliyowekwa inapatikana.",
+            "action": "Angalia baadaye."
+          },
+          "menuOrder": {
+            "title": "Utafakari wa menu",
+            "description": "Angalia kama vitu muhimu na makala ni rahisi kwa wateja kupata.",
+            "action": "Utafakari wa menu"
+          },
+          "pricing": {
+            "title": "Uchunguzi wa bei",
+            "description": "Angalia bei zinazohusishwa na ishara ya mwisho ya riba ya mteja.",
+            "action": "Uchunguzi wa bei"
+          },
+          "search": {
+            "title": "Angalia utafutaji wa wateja.",
+            "description": "Angalia utafutaji ambao unaweza kuwa hauna matokeo ya kutosha kwa wateja.",
+            "action": "Utafiti wa uchunguzi"
+          },
+          "source": {
+            "title": "Angalia vyanzo vya kuingia kwa wateja.",
+            "description": "Angalia kama viungo vya umma na QR uwekezaji waelekeze wateja kwenye menyu ya sasa.",
+            "action": "Angalia viungo vya umma."
+          },
+          "timing": {
+            "title": "Tumia wakati wa menu",
+            "description": "Tafadhali kuangalia kama makundi ya wakati na utaratibu yanayohusiana wakati wateja wanatafuta.",
+            "action": "Utafiti wa TIME"
+          }
+        },
+        "results": {
+          "marked_done": {
+            "label": "Imewekwa alama imekamilika.",
+            "message": "Matokeo itachukuliwa baada ya shughuli nyingi zaidi zinapatikana."
+          },
+          "improved": {
+            "label": "kuboresha",
+            "message": "Utafiti wa baadaye unaonyesha kuboresha."
+          },
+          "no_clear_change": {
+            "label": "Hakuna mabadiliko ya wazi.",
+            "message": "Utafiti uliofuata baadaye hakuonyesha mabadiliko mazuri."
+          },
+          "not_enough_data": {
+            "label": "Takwimu zaidi zinahitajika.",
+            "message": "Hakuna kazi ya kutosha ili kutimiza mabadiliko haya kwa sasa."
+          },
+          "pending": {
+            "label": "Utafiti wa muda",
+            "message": "MenuList ataangalia hili baada ya shughuli zaidi zilizowekwa kupatikana."
+          }
+        }
       },
       "details": {
         "menuDetails": "Maelezo ya Menyu",
@@ -574,7 +686,7 @@
           "unavailableInterest": "Riba Isiyopatikana",
           "languages": "Lugha",
           "filters": "Vichujio",
-          "smartPicks": "Chaguzi Mahiri",
+          "smartPicks": "Smart Picks",
           "openHoursActions": "Vitendo kulingana na saa za kazi"
         },
         "descriptions": {
@@ -584,7 +696,7 @@
         },
         "metrics": {
           "menuViews": "Mionekano ya menyu",
-          "itemTaps": "Miguso ya kipengee",
+          "itemTaps": "Miguso ya bidhaa",
           "menuSessions": "Vipindi vya menyu",
           "engagedSessions": "Vikao vyenye shughuli",
           "actionSessions": "Vipindi vya vitendo",
@@ -617,6 +729,12 @@
           "closed": "Vitendo wakati imefungwa",
           "closedShare": "{rate}% ya vitendo vyote vilivyorekodiwa vilifanyika wakati kufungwa",
           "unknown": "Vitendo wakati hali ya saa haikupatikana"
+        },
+        "itemStatus": {
+          "unavailableDemand": "{count} haipatikani hutumia taps.",
+          "strongItem": "{count} Miguso ya bidhaa",
+          "needsWork": "{count} maoni, hakuna kugusa.",
+          "gettingAttention": "{count} imetazamwa"
         }
       },
       "smartPicks": {
@@ -661,7 +779,7 @@
         "pageOpens": "Ukurasa wa {count} unafunguliwa",
         "stayedAfterSwitch": "{count} ilibaki baada ya kubadili",
         "stayed": "{count} imesalia",
-        "weeklyTrend": "Mtindo wa Kila Wiki (Wiki 4 Zilizopita)",
+        "weeklyTrend": "Mabadiliko ya kila wiki (4 wiki iliyopita)",
         "pageViews": "Mionekano ya Ukurasa",
         "viewMenuClicks": "Tazama Mibofyo ya Menyu",
         "actions": "Vitendo",
@@ -696,17 +814,16 @@
         "installs30d": "Programu zilizosakinishwa (30d)",
         "installConversion": "Sakinisha Uongofu",
         "conversion": "Uongofu",
-        "topShortcut": "Njia ya mkato ya Juu",
-        "totalShortcutUses": "Jumla ya Njia za Mkato za Matumizi",
+        "topShortcut": "juu ya shortcut",
+        "totalShortcutUses": "Kuanzisha matumizi ya muda mfupi",
         "iosInferredTitle": "Usakinishaji wa iOS Safari unaweza kueleweka",
         "iosInferredWithCount": "Safari haitoi tukio la kawaida la usakinishaji. Usakinishaji wa {count} wa iOS katika mwonekano huu ulibainishwa kutokana na uzinduzi wa pekee au tabia ya Ongeza kwenye Skrini ya Nyumbani, kwa hivyo hesabu za usakinishaji wa iOS zinaweza kukadiriwa badala ya kuthibitishwa kikamilifu na zinaweza kuonekana baada ya programu ya kwanza inayojitegemea kufunguliwa. Idadi ya wateja waliosakinishwa inategemea kifaa na kivinjari, si watu kamili.",
         "iosInferredNoCount": "Safari haitoi tukio la kawaida la usakinishaji. Hesabu za usakinishaji wa iOS zinaweza kubainishwa kutokana na uzinduzi wa pekee au tabia ya Ongeza kwenye Skrini ya Nyumbani, kwa hivyo zinaweza kukadiriwa badala ya kuthibitishwa kikamilifu na zinaweza kuonekana baada ya programu ya kwanza inayojitegemea kufunguliwa. Idadi ya wateja waliosakinishwa inategemea kifaa na kivinjari, si watu kamili.",
         "mobileIosInferredWithCount": "Sakinisho za iOS Safari zinaweza kuzingatiwa. Safari haitoi tukio la kawaida la kusakinisha, kwa hivyo usakinishaji wa {count} wa iOS hapa ulikadiriwa kutoka kwa uzinduzi wa pekee au tabia ya Ongeza kwenye Skrini ya Nyumbani na inaweza kuonekana baada ya programu inayojitegemea ya kwanza kufunguliwa. Idadi ya wateja waliosakinishwa inategemea kifaa na kivinjari, si watu kamili.",
         "mobileIosInferredNoCount": "Sakinisho za Safari za iOS zinaweza kuzingatiwa. Safari haitoi tukio la kawaida la usakinishaji, kwa hivyo hesabu za usakinishaji wa iOS zinaweza kukadiriwa kutoka kwa uzinduzi wa pekee au tabia ya Ongeza kwenye Skrini ya Nyumbani na inaweza kuonekana baada ya programu inayojitegemea ya kwanza kufunguliwa. Idadi ya wateja waliosakinishwa inategemea kifaa na kivinjari, si watu kamili.",
-        "shortcutBreakdown": "Uchanganuzi wa njia ya mkato",
+        "shortcutBreakdown": "Mwisho wa Breakout",
         "installsByPlatform": "Programu zilizosakinishwa kulingana na jukwaa",
         "appStickiness": "Kunata kwa programu",
-        "returningOpens30d": "Kurejesha hufungua (30d)",
         "avgOpensPerInstall": "Wastani hufunguliwa kwa kila usakinishaji",
         "iosManualInstalls": "usakinishaji wa mwongozo wa iOS",
         "shortcuts": {
@@ -715,12 +832,13 @@
           "order": "Agiza Mtandaoni"
         },
         "platforms": {
-          "ios": "iOS inapatikana kwa watumiaji wote wa iOS.",
+          "ios": "iOS",
           "iosLong": "iOS (iPhone / iPad)",
-          "android": "Android ni mfumo wa uendeshaji wa kompyuta.",
+          "android": "Android",
           "desktop": "Eneo-kazi",
           "other": "Nyingine"
-        }
+        },
+        "tryAgainLater": "Kujaribu tena baadaye."
       },
       "projectSelector": {
         "deleted": "Imefutwa",
@@ -761,7 +879,8 @@
         "copied": "Imenakiliwa",
         "copy": "Nakili",
         "openGoogle": "Fungua Google",
-        "done": "Imekamilika"
+        "done": "Imekamilika",
+        "couldNotOpen": "Hakuweza kufungua Google Wasifu wa Biashara."
       },
       "behaviorNudge": {
         "linkCopied": "Kiungo kimenakiliwa",
@@ -786,7 +905,748 @@
         "reviewTopIssue": "Kagua suala kuu",
         "repairMenu": "Menyu ya Urekebishaji",
         "review": "Kagua",
-        "repair": "Rekebisha"
+        "repair": "Rekebisha",
+        "signals": {
+          "descriptions": {
+            "warning": "{count, plural, one {# kitu kinakosa maelezo.} other {# vitu havina maelezo yaliyopotea.}}",
+            "ok": "Vitu vyote vina maelezo.",
+            "help": "Maonyesho yanasaidia wateja kuelewa kila msaada."
+          },
+          "images": {
+            "warning": "{count, plural, one {# kitu kinakosa picha.} other {# vitu ni picha zilizopotea.}}",
+            "ok": "Vitu vyote vina picha.",
+            "help": "Picha zinaweza kusaidia wateja kuchagua kwa haraka."
+          },
+          "categoryIcons": {
+            "warning": "{count, plural, one {Aina ya # inakosa ikoni.} other {# makundi ni kukosa icons icon.}}",
+            "ok": "Aina zote zina icons.",
+            "help": "Icons kufanya makundi rahisi zaidi kwa ajili ya skanning."
+          },
+          "prices": {
+            "warning": "{count, plural, one {# kitu kinakosa bei.} other {# vitu havina bei zilizopotea.}}",
+            "ok": "Vitu vyote vina bei zao.",
+            "help": "Wateja hulinganisha bei kabla ya kuamua."
+          },
+          "hidden": {
+            "warning": "{count, plural, one {# kitu ni siri kutoka kwa wateja.} other {# vitu vimefichwa kutoka kwa wateja.}}",
+            "ok": "Hakuna vitu vimefichwa.",
+            "help": "Bidhaa zilizochapishwa hazitazama kwenye menu ya umma."
+          },
+          "priceOutliers": {
+            "warning": "{count, plural, one {Bei ya # inahitajika kufanyiwa tathmini.} other {Bei za # zinahitajika kufanyiwa tathmini.}}",
+            "ok": "Bei ni ndani ya kiwango kinachotarajiwa.",
+            "help": "MenuList inalinganisha bei za vitu viwili ndani ya aina moja. Ingiza bei iliyokusudiwa kama imefanyiwa tathmini."
+          },
+          "translations": {
+            "warning": "{count, plural, one {# kitu kinakosa tafsiri zilizotafsiriwa.} other {# vitu havina tafsiri zilizopatikana.}}",
+            "ok": "Vitu vyote vinavyoonekana vinatafsiriwa.",
+            "help": "Baadhi ya vitu havijakamilika katika lugha zilizochaguliwa za menyu."
+          },
+          "projectContent": {
+            "warning": "{count, plural, one {# maelezo ya menyu hayana tafsiri zilizopatikana.} other {Maelezo ya menyu ya # hayajatafsiriwa.}}",
+            "ok": "Maelezo ya menyu ni kutafsiriwa.",
+            "help": "Jina la menyu, maelezo au maoni hayajakamilika katika lugha zilizochaguliwa za menyu."
+          }
+        }
+      },
+      "sources": {
+        "copyLink": "Maelezo ya Link",
+        "direct": "moja kwa",
+        "facebook": "Facebook",
+        "google": "Google",
+        "instagram": "Instagram",
+        "menuKit": "Kiwango cha kit",
+        "nativeShare": "Kushiriki kifaa cha kifaa",
+        "obp": "Ukurasa wa biashara",
+        "other": "Nyingine",
+        "qr": "QR Kodi ya",
+        "shortcut": "Mchakato wa App",
+        "whatsapp": "WhatsApp"
+      },
+      "businessHealth": {
+        "title": "Afya ya Biashara",
+        "open": "Fungua hali ya biashara",
+        "today": "Leo",
+        "latestActivity": "Shughuli ya hivi karibuni",
+        "noActionNeeded": "Hakuna hatua inayohitajika",
+        "status": {
+          "stable": "Imara",
+          "watch": "Inahitaji umakini",
+          "needs_review": "Inahitaji marekebisho.",
+          "insufficient_data": "Takwimu zaidi zinahitajika.",
+          "stale": "Inahitaji akaunti safi ya kuchunguza.",
+          "not_ready": "Kuwa tayari"
+        },
+        "summary": {
+          "actionsNeedReview": "{count, plural, one {# maelezo ya mteja yanayomkabili yanahitaji marekebisho.} other {# maelezo ya mteja yanayokabiliwa na haja ya marekebisho.}}",
+          "stable": {
+            "headline": "Taarifa zako za umma ni imara.",
+            "message": "Hakuna suala la mteja anayekabiliwa na mahitaji ya hatua katika ukaguzi wa hivi karibuni."
+          },
+          "watch": {
+            "headline": "Kipengee kinaweza kuhitaji kuzingatiwa.",
+            "message": "Angalia dhibitisho lililopendekezwa kabla ya kubadilisha habari za umma."
+          },
+          "needs_review": {
+            "headline": "Angalia maelezo yanayomkabili mteja.",
+            "message": "Kila mmoja au zaidi ya maelezo ya umma inapaswa kuangalia."
+          },
+          "insufficient_data": {
+            "headline": "Kazi zaidi inahitajika.",
+            "message": "Kuhifadhi habari ya sasa imara wakati MenuList inakusanya ishara muhimu."
+          },
+          "stale": {
+            "headline": "Afya ya Biashara inahitaji uchunguzi mpya wa kuchunguza.",
+            "message": "Uchunguzi wa mwisho ni wa zamani. Maelezo yako ya sasa ya umma yanabaki bila kubadilika."
+          },
+          "not_ready": {
+            "headline": "Biashara Afya inajiandaa kuandaliwa.",
+            "message": "Kuangalia kwanza kwa duka litaonekana hapa wakati litakuwa tayari."
+          }
+        },
+        "checks": {
+          "no_active_projects": {
+            "action": "Angalia chanzo cha menyu.",
+            "message": "Hakuna chanzo cha menyu ya umma kilichopatikana. Angalia orodha kabla ya kushirikisha. Angalie orodha ya watumiaji kabla ya kuishirikisha na wengine.",
+            "title": "Menu chanzo mahitaji kuangalia kudhibitisha."
+          },
+          "low_latest_activity": {
+            "action": "Angalia viungo vya kushirikisha.",
+            "message": "Utendaji wa mteja ni mdogo. Angalia QR, Google , Instagram na WhatsApp pamoja na viungo vya tovuti.",
+            "title": "Utendaji wa mteja ni chini."
+          },
+          "unavailable_item_taps": {
+            "action": "Angalia vitu visivyopatikana.",
+            "message": "Wateja walionyesha nia ya vitu visivyopatikana. Restock yao au kuwaweka siri.",
+            "title": "Vitu visivyopatikana vilipata kipaumbele."
+          },
+          "guest_feedback_needs_attention": {
+            "action": "Tathmini maoni ya wageni.",
+            "message": "Maoni ya wageni inahitaji mmiliki kuangalia kabla maelezo ya umma ni kubadilishwa.",
+            "title": "Maoni ya wageni inahitajika kuangalia kuchunguza."
+          },
+          "default": {
+            "action": "Kagua maelezo",
+            "message": "Maelezo ya mteja yanayokabiliwa na mahitaji ya udhibiti wa mmiliki.",
+            "title": "Sehemu ambayo inahitaji kuangalia"
+          }
+        },
+        "feedback": {
+          "needsAttention": "{count, plural, one {# sehemu ya maoni binafsi inahitaji kuchunguza.} other {# vitu vya maoni ya kibinafsi vinahitaji kuchunguza.}}",
+          "clear": "Feedback ya kibinafsi ni wazi."
+        },
+        "freshness": {
+          "notReady": "Afya ya Biashara siyo wakati halisi. Soko la kwanza kuangalia kuonyesha tarehe data hapa. Afya ni biashara.",
+          "throughDate": "Uses data through {date}. Today may not be complete yet.",
+          "latest": "Uses the latest available MenuList data. Today may not be complete yet."
+        },
+        "periods": {
+          "today": "Leo",
+          "yesterday": "Siku iliyotangulia",
+          "thisWeek": "Wiki hii",
+          "lastWeek": "Wiki iliyopita",
+          "thisMonth": "Mwezi huu",
+          "lastMonth": "Mwezi uliopita",
+          "last7Days": "Siku 7 zilizopita",
+          "last30Days": "Siku 30 zilizopita",
+          "overall": "Kwa ujumla"
+        },
+        "metrics": {
+          "menuViews": "Mionekano ya menyu",
+          "topDemand": "Mahitaji makubwa zaidi",
+          "topDemandDetail": "Kupandisha: {count} {signal}",
+          "bestSource": "Nguvu bora",
+          "bestSourceDetail": "Sasa kiungo: {count} ziara"
+        },
+        "signals": {
+          "views": "Mtazamo",
+          "clicks": "Miguso",
+          "attention": "ishara ya uwezekano"
+        },
+        "page": {
+          "description": "Hali ya biashara ya kila siku na ukaguzi wa mteja.",
+          "latestCheck": "AI health check",
+          "loading": "Kupakia kupaki.",
+          "loadingMessage": "Kupakia Biashara Afya...",
+          "notReady": "Afya ya biashara bado haija tayari.",
+          "loadErrorTitle": "Biashara Afya haikuweza kupakia.",
+          "loadErrorDescription": "Tafadhali kurejea ukurasa huu na kujaribu tena.",
+          "refresh": "Onyesha upya",
+          "needsAttention": "Inahitaji umakini",
+          "desktopSettingsOnly": "Kufungua hii kutoka kwa mipangilio ya desktop."
+        },
+        "scope": {
+          "title": "Sehemu ya Afya ya Biashara",
+          "allMenus": "Sehemu ya Menu",
+          "selectedMenu": "Menu ya kuchaguliwa",
+          "menuCount": "{count, plural, one {# menyu katika eneo hili} other {# menyu katika eneo hili.}}",
+          "locationLevel": "Mtazamo wa kiwango cha ubora",
+          "inactiveMenu": "Chini ya Menu",
+          "thisMenuOnly": "Chini ya menu",
+          "allMenusInLocation": "Menyu zote katika eneo hili zinapatikana hapa.",
+          "thisMenuHelper": "Maswali na shughuli kutumia menyu hii.",
+          "allMenusHelper": "Maswali na shughuli hutumia menyu zote katika eneo hili.",
+          "dialogDescription": "Chagua menyu zote au menu moja kwa shughuli na ukaguzi.",
+          "all": "kila kitu",
+          "close": "Funga"
+        },
+        "locations": {
+          "title": "Makao Makuu ya Wilaya",
+          "loading": "Kupakia maeneo...",
+          "empty": "Hakuna muhtasari wa eneo bado.",
+          "storeFallback": "Uwanja wa {id}",
+          "checkedOn": "Imethibitishwa {date}.",
+          "checkCount": "{count, plural, one {# check} other {# checks}}",
+          "checksNeedReview": "{count, plural, one {# mteja anayekabiliwa na ukaguzi wa mahitaji ya marekebisho.} other {# ukaguzi wa mteja unaokabiliwa na mteja unahitaji marekebisho.}}",
+          "statusReason": {
+            "stable": "Hakuna suala la mteja anayekabiliwa na haja ya hatua.",
+            "watch": "Maelezo ya mteja yanayomkabili yanaweza kuhitaji kipaumbele.",
+            "needs_review": "Maelezo ya wateja yanayowakabili yanahitaji marekebisho.",
+            "insufficient_data": "Kazi zaidi ya wateja inahitajika kwa ajili ya uchunguzi wa manufaa.",
+            "stale": "Uwanja huu unahitaji uchunguzi mpya.",
+            "not_ready": "Utafiti wa nafasi ya kwanza unatarajiwa."
+          }
+        },
+        "assistant": {
+          "title": "Jiulize Biashara Afya Ushauri wa Biashara",
+          "askShort": "Kuuliza",
+          "englishOnlyTitle": "Maswali kwa sasa yanapatikana kwa Kiingereza.",
+          "englishOnlyDescription": "Hali yako na ukaguzi ni wa ndani. Badilisha lugha ya programu kuwa Kiingereza ili kuuliza maswali ya Afya ya Biashara.",
+          "notReady": "Afya ya Biashara itajibu baada ya mwisho wa ukaguzi.",
+          "suggestedUnavailable": "Maswali yaliyopendekezwa hayapatikani kwa sasa.",
+          "freeTextUnavailable": "Maswali ya bure ya maandishi haiwezekani kwa sasa.",
+          "answerError": "Afya ya biashara hauwezi kukabiliana na hili.",
+          "suggestedQuestions": "Maswali yaliyopendekezwa ya kujiuliza",
+          "followUps": "Unaweza kuuliza baadaye.",
+          "you": "Wewe kwa",
+          "empty": "Chagua swali au uulize kuhusu biashara yako.",
+          "placeholderReady": "Tafuta kuhusu leo, wiki hii, menu tahadhari, au uchunguzi ijayo.",
+          "placeholderMobile": "Unaweza kuuliza kuhusu leo au wiki hii.",
+          "placeholderPending": "Inapatikana baada ya ukaguzi wa mwisho.",
+          "send": "Kutuma swali Lako",
+          "cachedFacts": "Kulingana na ukweli wa biashara ya MenuList iliyohifadhiwa katika cache.",
+          "questions": {
+            "checks": "Ni nini kinachohitajika kudhibitiwa?",
+            "today_stats": "Leo inavyokwenda?",
+            "this_week_stats": "Kipi kilitokea wiki hii?",
+            "top_item": "Ni kitu gani kinapata kipaumbele?",
+            "last_week_stats": "Je, kilichotokea wiki iliyopita?",
+            "this_month_stats": "Mwezi huu ni wa namna gani?",
+            "last_month_stats": "Kipi kilitokea mwezi uliopita?",
+            "public_menu_status": "Je, orodha yangu ya umma ni sawa?",
+            "profile_status": "Je, wasifu wangu wa biashara umekamilika?",
+            "feedback_reviews": "Maoni yoyote ya wageni kuangalia?",
+            "feedback_recent": "Wageni walisema nini hivi karibuni?",
+            "default": "Ninapaswa kuangalia nini baadaye?"
+          }
+        },
+        "sources": {
+          "title": "Nguvu ya Data",
+          "menuProjects": "Mradi wa Menu",
+          "ownerAnalytics": "Kazi ya mwenyeji",
+          "guestFeedback": "Feedback ya wageni",
+          "storeSettings": "Mipango ya biashara",
+          "menuListData": "data ya MenuList",
+          "updatedOn": "Imesasishwa {date}",
+          "latest": "Takwimu za hivi karibuni zilizopo zinapatikana."
+        },
+        "publicTruth": {
+          "title": "Chanzo rasmi cha taarifa za wateja",
+          "checking": "Utafiti",
+          "checkingFacts": "Kuangalia ukweli wa umma wa MenuList...",
+          "checkedMenu": "Orodha iliyokaguliwa: {name}",
+          "boundary": "Imethibitishwa kutoka kwa data ya biashara na menyu ya sasa ya MenuList. Mitandao ya nje inaendelea kuthibitishwa na mmiliki.",
+          "boundaryShort": "Mitandao ya nje inakuwa imethibitishwa na mmiliki.",
+          "historyTitle": "Taarifa za umma historia ya habari ya umma.",
+          "historyBoundary": "Inatumia MenuList biashara na ukweli wa menyu tu. Hakuna tovuti za nje zinachunguzwa.",
+          "historyBoundaryShort": "MenuList ukweli tu. Hakuna tovuti za nje zilizopimwa.",
+          "refreshErrorTitle": "Mteja-chanzo kuangalia hakuweza kusasisha.",
+          "refreshErrorDescription": "Ukweli wa mwisho uliopatikana MenuList bado unaonyeshwa hapa chini.",
+          "historyRefreshError": "Historia ya habari ya umma haikuweza kurejesha.",
+          "historyLoadError": "Taarifa za umma historia haikuweza kupakia.",
+          "historyErrorDescription": "Ripoti ya mwisho imehifadhiwa bado inaonyesha wakati inapatikana.",
+          "notRun": "Si kukimbia.",
+          "lastSaved": "Mwisho kuhifadhiwa {date}",
+          "noSavedReport": "Hakuna ripoti iliyohifadhiwa bado.",
+          "noSavedReportDescription": "Kuendesha check ili kuokoa ripoti ya kwanza kwa eneo hili.",
+          "downloadEnglishReport": "Pakua ripoti kwa Kiingereza.",
+          "downloadEnglishShort": "Ripoti ya Kiingereza",
+          "runCheck": "Utafiti wa Run",
+          "currentFix": "Sehemu ya sasa ya fix",
+          "nextFixes": "Marekebisho yanayofuata ya taarifa za umma",
+          "none": "Hakuna",
+          "attentionCount": "{count, plural, one {# kitu inahitaji kuchunguza kuangalia.} other {# vitu vinahitaji kuchunguza.}}",
+          "readyModuleCount": "Imeshakamilika {count}/{total}",
+          "missingCount": "Kupotea {count}",
+          "checkCount": "Angalia {count}.",
+          "savedCount": "Imehifadhiwa {count}/{total}",
+          "modulesReady": "{count}/{total} moduli tayari",
+          "status": {
+            "ready": {
+              "label": "Weka tayari.",
+              "message": "Chanzo chako rasmi cha wateja kina mambo ya msingi ambayo wateja wanayohitaji."
+            },
+            "missing_basics": {
+              "label": "Mwisho wa msingi",
+              "message": "Menu, masaa, bei, vitendo, au maelezo ya kiungo cha mteja wanahitaji kuzingatiwa kabla ya kushiriki kwa upana zaidi."
+            },
+            "unclear": {
+              "label": "Unahitaji kuangalia",
+              "message": "Mambo ya msingi mengi yamepatikana, lakini ukweli mmoja au zaidi wa umma bado unahitajika kuchunguza."
+            }
+          },
+          "metrics": {
+            "readyModules": "Moduli ya tayari",
+            "missingFacts": "Ukweli uliopotea.",
+            "checkedMenu": "Utafiti wa menu",
+            "savedReports": "Ripoti ya kuokoa"
+          },
+          "results": {
+            "present": "Weka tayari.",
+            "missing": "kutokuwa na",
+            "unclear": "Utafiti wa",
+            "not_applicable": "Haihitajiki.",
+            "not_checked": "Hakuna uhakika"
+          },
+          "moduleStatus": {
+            "ready": "Weka tayari.",
+            "needs_attention": "kutokuwa na",
+            "check": "Utafiti wa",
+            "not_checked": "Hakuna uhakika"
+          },
+          "facts": {
+            "business_identity": "jina la biashara",
+            "menu_or_service_source": "Menu au orodha ya huduma",
+            "prices": "Bei za bidhaa na huduma",
+            "hours": "Siku ya",
+            "location": "Eneo la Location",
+            "contact": "Mawasiliano",
+            "customer_actions": "Matendo ya wateja",
+            "public_link": "Mawasiliano ya Mteja",
+            "photos": "Picha ya",
+            "machine_readable_source": "maelezo ya kutafuta"
+          },
+          "evidence": {
+            "owner_entered": "kuingia katika utafiti huu.",
+            "owner_selected": "Kuchaguliwa na mmiliki.",
+            "source_text_hint": "inapatikana katika chanzo kilichotolewa.",
+            "valid_public_url": "Muundo wa kiungo cha umma ni halali.",
+            "invalid_public_url": "Kiungo cha umma kinahitaji kurekebishwa.",
+            "menulist_store": "Imechunguza mipangilio ya biashara ya sasa ya MenuList.",
+            "menulist_project": "Imethibitishwa chaguo-msingi au chaguo la kuchaguliwa MenuList.",
+            "menulist_summary": "Tazama kwa sasa MenuList Maelezo ya menu.",
+            "menulist_public_route": "Imechunguza mipangilio ya sasa ya MenuList ya kiungo cha mteja.",
+            "menulist_index_gate": "Imechunguza sheria za sasa za ugunduzi wa umma wa MenuList.",
+            "not_provided": "Ukweli huu uko mbali na data ya sasa ya MenuList.",
+            "not_checked": "Ukweli huu haukuthibitishwa kwa usalama kutokana na data ya sasa ya MenuList.",
+            "priceNotLoaded": "Futa menyu iliyochaguliwa mara moja ili MenuList aweze kuangalia bei zake."
+          },
+          "moduleEvidence": {
+            "ready": "ya sasa MenuList Data zinaonyesha eneo hili ni tayari.",
+            "needs_attention": "ya sasa MenuList data inaonyesha taarifa zinazohitajika ni kutokuwa na.",
+            "check": "Angalia eneo hili kabla wateja kutegemea juu yake.",
+            "not_checked": "MenuList haikuweza kuchunguza eneo hili kutoka kwa data ya sasa."
+          },
+          "setupReason": {
+            "needs_attention": "Maelezo yanayohitajika ya kukabiliana na wateja yamepotea.",
+            "check": "Tazama hii kabla ya wateja kuaminika.",
+            "not_checked": "MenuList hakuweza kuchunguza hii kutoka kwa data ya sasa."
+          },
+          "targetActions": {
+            "basic_settings": "Ongeza maelezo ya biashara wazi.",
+            "domain_settings": "Link ya Mteja",
+            "hours_edit": "Siku ya wazi",
+            "menu_tab": "Menu ya wazi",
+            "official_page": "Tovuti ya biashara ya wazi",
+            "presence_monitor": "Ongeza udhibiti wa kufungua nafasi ya kuangalia.",
+            "share_tab": "Mipango ya wazi ya bidhaa"
+          },
+          "actions": {
+            "openCustomerSource": "Ufungue chanzo cha wateja wazi.",
+            "openShareTools": "Mipango ya Open Sharing",
+            "fixFact": "Kurekebisha {fact}"
+          },
+          "modules": {
+            "public_truth_basics": {
+              "title": "Mambo ya msingi ya habari kwa umma.",
+              "description": "Jina la biashara, menyu ya sasa au chanzo cha huduma, kuwasiliana, vitendo, na kiungo cha mteja."
+            },
+            "business_facts_copy_pack": {
+              "title": "Maelezo ya biashara yanayoweza kutumika tena.",
+              "description": "Wafanyakazi wa sasa wanaweza kutumia tena ukweli katika wasifu wa umma, majibu na ushirikiano wa kiungo cha mteja."
+            },
+            "qr_link_health": {
+              "title": "QR ukamilifu wa kiungo cha kukaribisha",
+              "description": "Kiungo cha sasa cha mteja kwa QR na uwekezaji uliochapishwa."
+            },
+            "social_bio_link_consistency": {
+              "title": "Ukamilifu wa kiungo cha wasifu ni sawa.",
+              "description": "Kiungo kimoja cha sasa cha mteja kwa wasifu wa kijamii na uwekezaji mwingine."
+            },
+            "customer_link_preview": {
+              "title": "Kiungo cha mteja cha kutazamwa kwa maelezo ya awali.",
+              "description": "Mambo makuu ya kuzingatia wateja wanapaswa kuona kabla hawajatenda."
+            },
+            "print_share_assets": {
+              "title": "Chapisha na kushiriki mali.",
+              "description": "Uandaaji wa kiungo cha sasa kwa posters za QR, kadi za kuhesabu na picha za kushiriki."
+            },
+            "menu_service_readability": {
+              "title": "Uwazi wa menyu au huduma.",
+              "description": "Makundi, vitu au huduma, na bei katika menyu iliyochaguliwa."
+            },
+            "price_availability_gap": {
+              "title": "Bei na uhakika wa utoaji",
+              "description": "Bei, aina, hali ya kuuza nje na upatikanaji huonyeshwa kwa wateja."
+            },
+            "menu_pdf_cleanup": {
+              "title": "wazee PDF Mabadiliko ya",
+              "description": "Chanzo cha sasa cha MenuList na kiungo cha mteja ambacho kinaweza kuchukua nafasi ya PDF za zamani."
+            },
+            "whatsapp_action_link": {
+              "title": "WhatsApp Hatua ya",
+              "description": "A wazi WhatsApp au mbadala mteja kuwasiliana na hatua."
+            },
+            "hours_readiness": {
+              "title": "Siku ya kurekebisha",
+              "description": "Saa za kawaida wateja wanaweza kutegemea."
+            },
+            "whatsapp_reply_pack": {
+              "title": "WhatsApp jibu ukweli wa ukweli",
+              "description": "Orodha ya sasa, masaa, kuwasiliana na ukweli wa kiungo kwa majibu ya wafanyakazi."
+            },
+            "photo_visual_identity": {
+              "title": "Maonyesho ya picha na identity",
+              "description": "nembo, kichwa, picha ya biashara, au vitu na huduma za kuona."
+            },
+            "customer_question_coverage": {
+              "title": "Maswali ya kawaida ya wateja",
+              "description": "Mambo ya wazi kwa ajili ya kutoa, masaa, bei, eneo, kuwasiliana, na hatua ijayo."
+            },
+            "customer_faq_reply_pack": {
+              "title": "Majibu ya wateja yanayoweza kutumika tena.",
+              "description": "Wafanyakazi wa ukweli wa sasa wanaweza kutumia tena wakati wateja wanapouliza maswali ya kawaida."
+            },
+            "booking_inquiry_readiness": {
+              "title": "Kupata na kuuliza upatikanaji wa utaftaji na utoaji wa maombi.",
+              "description": "Njia wazi ya kuagiza, kitabu, kuhifadhi, simu, ujumbe, ombi la quote, au ziara.."
+            },
+            "google_profile_handoff": {
+              "title": "Google Faili ya Link",
+              "description": "Kiungo cha sasa cha mteja kilichoandaliwa kwa Google Wasifu wa Biashara."
+            },
+            "menu_freshness": {
+              "title": "Menu ya freshness",
+              "description": "Orodha ya hivi karibuni inasasishwa wakati bei, vitu au upatikanaji hubadilishwa."
+            }
+          }
+        }
+      },
+      "graph": {
+        "title": "Grafu",
+        "description": "muhtasari wa kuona kutoka shughuli hiyo iliyowekwa imeonyeshwa katika dashibodi.",
+        "ranges": {
+          "days7": "Siku 7",
+          "days30": "Siku 30"
+        },
+        "metrics": {
+          "menu_activity": "Kazi ya Menu",
+          "customer_actions": "Matendo ya wateja",
+          "search_demand": "mahitaji ya kutafuta",
+          "item_interest": "Sehemu ya maslahi",
+          "unavailable_demand": "mahitaji ya kutosha",
+          "missing_searches": "Utafutaji uliopotea unaopotea."
+        },
+        "trend": {
+          "summary": "Maelezo ya Trend",
+          "updatedAfterClose": "Imesasishwa baada ya duka lako kufunga siku.",
+          "status": {
+            "up": "ya juu",
+            "down": "chini ya",
+            "stable": "Imara",
+            "not_enough_data": "Historia ya kutosha haitoshi."
+          },
+          "period": {
+            "week": "Utafiti wa wiki",
+            "month": "Tarehe ya mwezi"
+          },
+          "shortPeriod": {
+            "week": "Siku ya",
+            "month": "Mwezi"
+          },
+          "needsMoreDays": "Inahitaji siku zaidi zilizowekwa.",
+          "versus": "{current} ikilinganishwa na {previous}",
+          "messages": {
+            "up": "{metric} ni ya juu kwa uchunguzi huu wa {period}.",
+            "down": "{metric} ni chini kwa uchunguzi huu wa {period}.",
+            "stable": "{metric} ni imara kwa uchunguzi huu wa {period}.",
+            "not_enough_data": "Hakuna historia ya kutosha ya {metric} iliyowekwa kwa uchunguzi huu wa {period}."
+          },
+          "change": {
+            "gathering": "{period}: kukusanya.",
+            "newActivity": "{period}: shughuli mpya",
+            "steady": "{period}: imara",
+            "value": "{period}: {change}"
+          }
+        },
+        "comparison": {
+          "title": "Mifano ya Karatasi",
+          "description": "Maisha ya wiki na mwezi kutoka siku zilizotangulia."
+        },
+        "charts": {
+          "menuTrend": {
+            "title": "Njia ya Trend",
+            "days7": "Siku ya mwisho ya 7",
+            "days30": "Siku ya mwisho ya 30"
+          },
+          "customerActions": {
+            "title": "Matendo ya wateja",
+            "description": "Wateja walichokigusa baada ya kufungua menyu ni nini?"
+          },
+          "sources": {
+            "title": "Wateja walipokuja kutoka wapi?",
+            "description": "Ziara za menyu na vikao vya hatua kwa chanzo cha chanzo."
+          },
+          "items": {
+            "title": "Sehemu ya juu ya maslahi",
+            "description": "Vitu wateja wengi walifungua au kubonyeza zaidi."
+          },
+          "search": {
+            "title": "mahitaji ya kutafuta",
+            "description": "Wateja walitafuta nini?"
+          },
+          "officialPage": {
+            "title": "Mtazamo wa ukurasa rasmi",
+            "description": "Maoni na matendo kutoka kwa ukurasa rasmi wa biashara."
+          }
+        },
+        "legends": {
+          "visits": "Ujumbe wa",
+          "actionSessions": "Vipindi vya vitendo",
+          "views": "Mtazamo",
+          "taps": "Miguso",
+          "noResult": "Hakuna matokeo."
+        },
+        "empty": {
+          "default": "Hakuna data ya grafu kwa maoni haya bado.",
+          "menuActivity": "Kazi ya menu itaonekana baada ya wateja kufungua menu.",
+          "customerActions": "Hatua za wateja zitaonekana baada ya wateja kupiga simu, ujumbe, amri, hifadhi, au kuomba maelekezo.",
+          "customerActionsPeriod": "Hakuna hatua za wateja katika kipindi hiki bado.",
+          "searchDemand": "Mahitaji ya utafutaji yataonekana baada ya wateja kutumia orodha ya kutafuta.",
+          "itemInterest": "Bidhaa maslahi itaonekana baada ya wateja kufungua vitu menu.",
+          "unavailableDemand": "Mahitaji hayapatikani yataonekana wakati wateja watagusa vitu visivyopatikana.",
+          "missingSearches": "Utafutaji uliopotea utaonekana wakati wateja wanapotafuta lakini hawapati matokeo.",
+          "sources": "Maelezo ya chanzo yataonekana baada ya wateja kufika kutoka kwenye viungo, QR, au kurasa za kijamii.",
+          "officialPage": "Utendaji rasmi wa ukurasa utaonekana baada ya wateja kufungua ukurasa wa biashara ya umma."
+        },
+        "footer": {
+          "sameData": "Data ya Dashboard",
+          "noExtraTracking": "Hakuna kufuatilia zaidi.",
+          "settledAfterClose": "Kukaa baada ya kuhifadhi mwishoni mwa siku ya mwisho."
+        }
+      },
+      "offering": {
+        "menu": {
+          "singular": "Menu ya",
+          "viewsLabel": "Mionekano ya menyu",
+          "viewsTooltip": "Idadi ya mara wateja walipofungua menyu yako.",
+          "thisMonthLabel": "Orodha yako ya mwezi huu ni hii hapa."
+        },
+        "product": {
+          "singular": "Mkataba wa",
+          "viewsLabel": "Mtazamo wa Catalog",
+          "viewsTooltip": "Idadi ya mara wateja walipofungua orodha yako.",
+          "thisMonthLabel": "Makala yako ya mwezi huu"
+        },
+        "service": {
+          "singular": "orodha ya huduma",
+          "viewsLabel": "Mtazamo wa orodha ya huduma",
+          "viewsTooltip": "Idadi ya mara wateja walipofungua orodha yako ya huduma.",
+          "thisMonthLabel": "Orodha yako ya huduma mwezi huu ni hii."
+        }
+      },
+      "publicTruthStatus": {
+        "title": {
+          "needsAttention": "Inahitaji umakini",
+          "active": "Chanzo rasmi cha mteja ni kikamilifu.",
+          "readyToPlace": "Chanzo rasmi cha mteja ni tayari kuweka mahali."
+        },
+        "description": {
+          "needsAttention": "Kurekebisha menyu, masaa, au kiungo cha mteja kabla ya kushiriki kwa upana.",
+          "active": "Hakuna hatua inayohitajika. Wateja wanaweza kutumia maelezo yako ya sasa ya umma kutoka kwa chanzo kimoja.",
+          "readyToPlace": "Kiungo chako cha mteja kipo tayari. Ingiza kwenye Google, Instagram , WhatsApp au QR ili wateja wako waweze kutumia chanzo cha sasa."
+        },
+        "link": {
+          "ready": "Mawasiliano ya wateja tayari",
+          "missing": "Kiungo cha mteja hakipo."
+        },
+        "states": {
+          "set": "Imewekwa",
+          "missing": "kutokuwa na",
+          "ready": "Weka tayari.",
+          "notReady": "Si tayari.",
+          "live": "Imechapishwa",
+          "hidden": "Haitumiki"
+        },
+        "tags": {
+          "menu": "Orodha: {status}",
+          "hours": "Saa: {status}",
+          "customerLink": "Kiungo cha mteja: {status}",
+          "link": "Kiungo: {status}",
+          "placed": "Imewekwa: {count}/{total}"
+        },
+        "actions": {
+          "fix": "Kurekebisha nini inahitaji tahadhari.",
+          "preview": "Maelezo ya menu ya umma",
+          "share": "Kazi ya menu"
+        },
+        "updated": {
+          "notUpdated": "Hajasasishwa bado.",
+          "recently": "ya hivi karibuni updated",
+          "today": "Imesasishwa leo",
+          "yesterday": "Updated siku ya jana",
+          "daysAgo": "Imesasishwa {count, plural, one {# siku iliyopita} other {# siku zilizopita}}"
+        }
+      },
+      "ownerActions": {
+        "title": "Mchakato wa mwisho wa mwenyeji",
+        "open": "Fungua",
+        "placement": {
+          "notConfirmed": "Haijathibitishwa bado.",
+          "today": "Imethibitishwa leo hii.",
+          "yesterday": "Kuanzishwa jana",
+          "daysAgo": "Imethibitishwa {count, plural, one {# siku iliyopita} other {# siku zilizopita}}"
+        },
+        "status": {
+          "ready": "Weka tayari.",
+          "missing": "kutokuwa na",
+          "set": "Imewekwa",
+          "live": "Imechapishwa",
+          "notLive": "Si kuishi hai.",
+          "confirmedCount": "{count}/{total} imethibitishwa.",
+          "on": "Imewashwa",
+          "off": "Imezimwa",
+          "dailyChanges": "Mabadiliko ya kila siku",
+          "hoursException": "Tarehe ya kipekee",
+          "staffUse": "matumizi ya wafanyakazi",
+          "menuPrices": "Gharama ya Menu",
+          "openCount": "{count, plural, one {# kitendo kufungua $s} other {# matendo ya kufungua $$s}}",
+          "stable": "Imara"
+        },
+        "items": {
+          "setCustomerLink": {
+            "label": "Weka kiungo cha mteja.",
+            "description": "Unda kiungo cha mteja kabla ya kushiriki QR, majibu ya wafanyakazi, au wasifu wa umma."
+          },
+          "setHours": {
+            "label": "Siku ya kutosha",
+            "description": "Weka hadhi ya wazi na iliyofungwa wazi kabla ya wateja kutembelea."
+          },
+          "publishMenu": {
+            "labelPublish": "Chapisha menyu",
+            "labelOpen": "Menu ya wazi",
+            "descriptionVisible": "Kuchapisha orodha ya sasa kabla ya kushiriki kwa upana.",
+            "descriptionHidden": "Kuonyesha menu kabla ya wateja kutumia kiungo."
+          },
+          "placeCustomerLink": {
+            "labelConfirm": "Hakikisha kuthibitisha uwekezaji wa kiungo.",
+            "labelPlace": "Kiungo cha wateja",
+            "descriptionPlaced": "Weka Google, Instagram na WhatsApp zikielekeza kwenye chanzo kimoja.",
+            "descriptionUnplaced": "Ongeza kiungo kilekile cha wateja kwenye Google, Instagram, WhatsApp, QR na machapisho."
+          },
+          "openPrivateFeedback": {
+            "label": "Ongeza maoni ya kibinafsi kwa uwazi.",
+            "description": "Matumizi ya maoni binafsi kabla ya masuala wageni kubadilishwa kuwa mapitio ya umma."
+          },
+          "captureDailyChange": {
+            "label": "Mambie MenuList nini kimebadilika.",
+            "description": "Mambie MenuList kilichobadilika leo na uidhinishe kadi ya menyu iliyoandaliwa."
+          },
+          "setTodayStatus": {
+            "label": "Weka hali ya leo.",
+            "description": "Kufunga leo, kufungua baadaye, jikoni imefungwa, au taarifa maalum ya menyu."
+          },
+          "prepareStaffHandoff": {
+            "label": "Kuandaa uhamisho wa wafanyakazi.",
+            "description": "Wape wafanyakazi kiungo cha menyu, QR, na mistari ya jibu la mteja kutoka mahali pamoja."
+          },
+          "updatePrices": {
+            "label": "Sasisha bei",
+            "description": "Matumizi Menu Manager kwa mabadiliko ya bei, kisha kupitisha kabla ya kuchapisha."
+          }
+        }
+      },
+      "menuSetup": {
+        "title": "Usanidi wa menyu",
+        "complete": "Mkutano wa menu ni kamili.",
+        "ready": "Menu setup ni tayari.",
+        "actions": {
+          "openMenu": "Menu ya wazi",
+          "createMenu": "Unda menyu",
+          "reviewDetails": "Kagua maelezo",
+          "publishMenu": "Chapisha menyu",
+          "openSharingTools": "Mipango ya Open Sharing",
+          "prepareDescriptions": "Tayari maelezo ya maandalizi ya maelezo.",
+          "addImages": "Ongeza picha.",
+          "reviewLanguageText": "Angalia maandishi ya lugha kwa makini.",
+          "openMenuCheck": "Utafiti wa menu ya wazi",
+          "updatePublicLinks": "Kuendeleza viungo vya umma",
+          "addPublicPhoto": "Ongeza picha ya umma."
+        },
+        "steps": {
+          "sourceAdded": {
+            "label": "chanzo cha kuongeza",
+            "doneDescription": "Nguvu ya menu ni kuunganishwa.",
+            "nextDescription": "Ongeza picha ya menyu, PDF, kiungo, au anza kwa mkono."
+          },
+          "menuImported": {
+            "label": "Orodha iliyoingizwa iliingizwa.",
+            "doneDescription": "{count, plural, one {# kitu kinachoonekana kilipatikana.} other {# vitu vinavyoonekana vilipatikana.}}",
+            "nextDescription": "Kuagiza au kuongeza vitu vya menyu."
+          },
+          "keyDetailsChecked": {
+            "label": "Maelezo muhimu yamekaguliwa.",
+            "doneDescription": "Bei na maelezo muhimu ya orodha ni wazi.",
+            "nextDescription": "Angalia bei na maelezo muhimu kabla ya kuchapisha."
+          },
+          "menuPublished": {
+            "label": "Menu iliyochapishwa imechapishwa.",
+            "doneDescription": "Menu ya umma imewasilishwa.",
+            "nextDescription": "Kuandika wakati menu ni tayari kwa wateja."
+          },
+          "linkPlaced": {
+            "label": "Kiungo kilichowekwa.",
+            "readyLabel": "Kiungo tayari.",
+            "doneDescription": "Kiungo rasmi ni tayari kwa wateja.",
+            "progressDescription": "{count} ya {total} hatua za uwekezaji zimekamilika.",
+            "nextDescription": "Fungua zana za kushiriki wakati orodha inapochapishwa."
+          },
+          "descriptionsReady": {
+            "label": "Maelezo ya tayari",
+            "doneDescription": "Sehemu ya kuonekana ina maelezo.",
+            "nextDescription": "Kuandaa maelezo kwa vitu vya menu wazi zaidi."
+          },
+          "imagesReady": {
+            "label": "Picha tayari zimeandaliwa.",
+            "doneDescription": "Vitu vinavyoonekana vina picha.",
+            "nextDescription": "Kuongeza au kuunda picha ya bidhaa wakati inawezekana."
+          },
+          "translationsReady": {
+            "label": "Maonyesho ya tayari",
+            "doneDescription": "Lugha ya menu iliyochaguliwa ni kamili.",
+            "nextDescription": "Angalia lugha zilizochaguliwa za menyu."
+          },
+          "publicLinksAdded": {
+            "label": "Viungo vya umma vimeongezwa.",
+            "doneDescription": "Hatua za umma au viungo vya kijamii vinapatikana.",
+            "nextDescription": "Ongeza viungo muhimu vya umma kwa ukurasa wa biashara."
+          },
+          "publicPhotoAdded": {
+            "label": "Picha ya umma iliongezwa.",
+            "doneDescription": "Picha ya umma inapatikana.",
+            "nextDescription": "Ongeza ukurasa wa mbele, nembo au picha ya umma unapokuwa tayari."
+          }
+        }
       }
     }
   },
@@ -1709,7 +2569,7 @@
         "phoneRequired": "Nambari ya simu inahitajika.",
         "commentRequired": "Maoni yanahitajika.",
         "addNote": "Ongeza dokezo",
-        "addOptionalNote": "Ongeza dokezo ukitaka",
+        "addOptionalNote": "Ongeza ujumbe ukitaka",
         "upToCharacters": "Hadi vibambo {count}",
         "feedbackStaysPrivate": "Maoni yako yatasalia kuwa ya faragha.",
         "contactDetails": "Maelezo ya mawasiliano",
@@ -2119,6 +2979,20 @@
     "noBillingHistoryYet": "Hakuna historia ya bili bado. Hakuna taarifa za malipo.",
     "perMonth": "/mwezi",
     "contactUs": "Wasiliana nasi Tuwasiliane"
+  },
+  "StarterActivation": {
+    "activeTitle": "Menyu yako iko mtandaoni",
+    "endingSoonTitle": "Weka menyu yako mtandaoni",
+    "publicMenuQrActive": "Menyu yako ya umma na msimbo wa QR zinatumika.",
+    "activeRemaining": "Ufikiaji wa menyu yako unatumika.",
+    "daysRemaining": "{days, plural, one {Chagua mpango ndani ya siku # ili kuweka menyu yako mtandaoni.} other {Chagua mpango ndani ya siku # ili kuweka menyu yako mtandaoni.}}",
+    "sharingComplete": "Usanidi wako wa kushiriki umekamilika.",
+    "sharingProgress": "{count, number} kati ya {target, number} hatua za kushiriki zimekamilika.",
+    "evidenceRecorded": "Imerekodiwa kiotomatiki: {systemCount, number}. Imethibitishwa na wewe: {ownerCount, number}.",
+    "evidenceEmpty": "Nakili au ushiriki kiungo cha menyu, pakua msimbo wake wa QR, au uthibitishe mahali ulipoiweka.",
+    "keepLiveAction": "Weka menyu yako mtandaoni",
+    "noSubscriptionDescription": "Chagua mpango wa kuweka masasisho ya menyu na kurasa za mteja zinapatikana.",
+    "choosePlanDescription": "Menyu yako imehifadhiwa. Chagua mpango wa kuiweka mtandaoni na kusasishwa."
   },
   "Transactions": {
     "title": "Historia ya Mawasiliano Historia ya mawasiliano",
@@ -3915,7 +4789,8 @@
     "loadingMobileApp": "Mkono App Mobile App ni kwa ajili ya simu za mkononi.",
     "subscribeTitle": "Jisajili ili uanze Kuanza.",
     "subscribeDescription": "Chagua mpango wa kuanza kuunda orodha yako ya digital na kusimamia biashara yako.",
-    "viewPlans": "Tazama Mipango Mipango ya Maoni"
+    "viewPlans": "Tazama Mipango Mipango ya Maoni",
+    "returnToMobile": "Uko kwenye toleo la desktop. Rudi kwa simu ya mkononi."
   },
   "UseMenuList": {
     "qrSectionTitle": "QR Codes Nambari za %1 $s",

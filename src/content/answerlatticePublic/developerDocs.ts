@@ -18,7 +18,7 @@ export const ANSWERLATTICE_DEVELOPER_DOCS: AnswerlatticeDeveloperDoc[] = [
         sections: [
             {
                 title: 'Allowed context',
-                description: 'Use stable, high-level values that describe the current product surface.',
+                description: 'Use stable, high-level values that describe the current product page or workflow.',
                 bullets: [
                     'Send path and title for the current page.',
                     'Use product-safe feature, workflow, role, and locale values when available.',

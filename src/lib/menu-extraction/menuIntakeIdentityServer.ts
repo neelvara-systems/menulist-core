@@ -28,6 +28,8 @@ import { genAIClient } from "@lib/google/genAi";
 import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
 import { validateServerNetworkTargetUrl } from "@lib/security/serverNetworkTarget";
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 export const MAX_MENU_INTAKE_PREFLIGHT_FILES = 8;
 export const MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE = MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES;
@@ -122,16 +124,16 @@ export function isSupportedMenuIntakeIdentityMimeType(type: string): boolean {
 }
 
 function getProjectStorageBucketFallback(): string {
-  const projectId = process.env.FIREBASE_PROJECT_ID
+  const projectId = menulistServerEnv.firebaseProjectId
     || process.env.GCLOUD_PROJECT
     || process.env.GCP_PROJECT
-    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    || menulistPublicEnv.firebaseProjectId;
   return projectId ? `${projectId}.appspot.com` : "";
 }
 
 export function getAllowedStorageBucket(): string {
-  return process.env.FIREBASE_STORAGE_BUCKET
-    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  return menulistServerEnv.firebaseStorageBucket
+    || menulistPublicEnv.firebaseStorageBucket
     || getProjectStorageBucketFallback();
 }
 

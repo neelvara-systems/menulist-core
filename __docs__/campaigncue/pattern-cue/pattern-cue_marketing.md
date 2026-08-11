@@ -12,6 +12,7 @@ Pattern Cue is not a viral-content remixer. It removes blank-page planning while
 - Produces three original business-specific hooks.
 - Feeds the existing reel and creator pack.
 - Keeps source wording and media out of durable CampaignCue truth.
+- Connects the abstract format to a phone shot list and owner-reported result without importing creator performance.
 - No account surveillance, direct posting, AI avatars, or reach guarantees.
 
 ## Forbidden Claims
@@ -22,3 +23,4 @@ Pattern Cue is not a viral-content remixer. It removes blank-page planning while
 - Guaranteed reach or sales
 - Automatic posting
 - AI customer or authentic synthetic testimonial
+- Automatic trend detection or competitor performance intelligence

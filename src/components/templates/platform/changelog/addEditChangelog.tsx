@@ -65,6 +65,8 @@ import KbTreeSelect from './KbTreeSelect';
 const { Title } = Typography;
 
 type ReleaseImpactPreview = Awaited<ReturnType<typeof previewReleaseImpact>>;
+type SupportTruthChangeControl = NonNullable<ReleaseImpactPreview['changeControl']>;
+type SourceFreshnessReason = SupportTruthChangeControl['sourceWatch']['items'][number]['reasons'][number];
 
 const getAnswerTestProofCopy = (proof: ReleaseImpactPreview['answerTestProof']): string => {
     switch (proof.state) {
@@ -85,6 +87,78 @@ const getAnswerTestProofCopy = (proof: ReleaseImpactPreview['answerTestProof']):
         default:
             return 'Answer Tests proof was not requested.';
     }
+};
+
+const getSourceWatchCopy = (watch: SupportTruthChangeControl['sourceWatch']): string => {
+    switch (watch.state) {
+        case 'not_enabled':
+            return 'Source freshness remains advisory until Source Governance completes its controlled rollout.';
+        case 'unavailable':
+            return 'Source metadata could not be checked. The release review remains usable, but freshness is unverified.';
+        case 'no_linked_sources':
+            return 'The affected answers do not contain direct evidence source IDs.';
+        case 'ready':
+            return `${watch.checkedSourceCount} directly cited source ${watch.checkedSourceCount === 1 ? 'record is' : 'records are'} approved, ready, and within review date.`;
+        case 'partial':
+            return `The source check reached its ${watch.checkedSourceCount}-record safety cap. Review the remaining cited evidence in Knowledge Intake.`;
+        default:
+            return `${watch.unreviewedCount + watch.nonApprovedCount + watch.reviewDueCount + watch.conflictCount + watch.missingCount + watch.invalidCount + watch.invalidEvidenceReferenceCount} attention findings were detected across the directly cited evidence.`;
+    }
+};
+
+const getSourceReasonCopy = (reason: SourceFreshnessReason): string => {
+    switch (reason) {
+        case 'record_missing':
+            return 'Source record missing';
+        case 'record_invalid':
+            return 'Source record invalid';
+        case 'governance_unreviewed':
+            return 'Governance not reviewed';
+        case 'not_approved':
+            return 'Not approved';
+        case 'review_date_missing':
+            return 'Review date missing';
+        case 'review_due':
+            return 'Review due';
+        case 'not_yet_effective':
+            return 'Not effective yet';
+        case 'conflict_recorded':
+            return 'Conflict recorded';
+        default:
+            return 'Source not ready';
+    }
+};
+
+const getSurfaceReviewCopy = (review: SupportTruthChangeControl['surfaceReview']): string => {
+    if (review.state === 'missing') return 'The compact product-surface summary has not been generated yet.';
+    if (review.state === 'invalid') return 'The compact product-surface summary could not be validated for this workspace.';
+    if (review.state === 'partial') {
+        return `${review.mappedSurfaceCount} directly mapped product surfaces were found; the first ${review.sampledSurfaceCount} are shown.`;
+    }
+    if (review.mappedSurfaceCount === 0) return 'No product surface is directly linked to the changed product areas.';
+    return `${review.mappedSurfaceCount} directly mapped product ${review.mappedSurfaceCount === 1 ? 'surface was' : 'surfaces were'} found.`;
+};
+
+const getPropagationCopy = (proof: SupportTruthChangeControl['propagationProof']): string => {
+    switch (proof.state) {
+        case 'ready':
+            return 'The current compiled bundle manifest matches the source-version control document.';
+        case 'rebuild_required':
+            return 'Compiled delivery is stale or incomplete. Activation will also require a bundle rebuild for enabled compiled channels.';
+        case 'not_enabled':
+            return 'Compiled context is disabled; enabled direct-runtime channels continue from current governed data.';
+        case 'missing':
+            return 'A compiled-context control document is missing. Review Activation before relying on compiled delivery.';
+        default:
+            return 'Compiled-context control evidence is invalid for this workspace. Review Activation before relying on it.';
+    }
+};
+
+const getProofAlertType = (state: string): 'success' | 'info' | 'warning' | 'error' => {
+    if (state === 'ready' || state === 'available') return 'success';
+    if (state === 'not_enabled' || state === 'no_linked_sources') return 'info';
+    if (state === 'invalid' || state === 'unavailable') return 'error';
+    return 'warning';
 };
 
 interface AddEditChangelogProps {
@@ -287,15 +361,16 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             };
             const proofIsBlocked = impact.answerTestProof.state === 'blocked';
             const previewRows = impact.affectedAnswers.slice(0, 6);
+            const changeControl = impact.changeControl;
             impactModalRef.current = Modal.confirm({
                 title: 'Review release support impact',
-                width: 640,
+                width: isMobile ? 'calc(100vw - 24px)' : 720,
                 okText: proofIsBlocked ? 'Acknowledge and activate' : 'Activate and publish',
                 cancelText: 'Keep as draft',
                 okButtonProps: { danger: proofIsBlocked, style: { minHeight: 44 } },
                 cancelButtonProps: { style: { minHeight: 44 } },
                 content: (
-                    <Flex vertical gap={12} style={{ marginTop: 16 }}>
+                    <Flex vertical gap={12} style={{ marginTop: 16, maxHeight: '70vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
                         <Typography.Text>
                             {impact.affectedAnswerCount === 0
                                 ? 'No active approved answers are directly linked to the changed product areas.'
@@ -409,6 +484,131 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                                     Review linked Answer Tests
                                 </Button>
                             ) : null}
+                        {changeControl ? (
+                            <Flex vertical gap={12}>
+                                <Typography.Text strong>Source freshness and conflicts</Typography.Text>
+                                <Alert
+                                    showIcon
+                                    type={getProofAlertType(changeControl.sourceWatch.state)}
+                                    message={getSourceWatchCopy(changeControl.sourceWatch)}
+                                    description="Only direct canonical evidence IDs are checked. Source bodies and private notes are not loaded or returned."
+                                />
+                                <Flex gap={6} wrap>
+                                    <Tag>{changeControl.sourceWatch.totalEvidenceSourceCount} cited sources</Tag>
+                                    {changeControl.sourceWatch.approvedCount > 0 ? <Tag color="green">{changeControl.sourceWatch.approvedCount} approved</Tag> : null}
+                                    {changeControl.sourceWatch.reviewDueCount > 0 ? <Tag color="orange">{changeControl.sourceWatch.reviewDueCount} review due</Tag> : null}
+                                    {changeControl.sourceWatch.conflictCount > 0 ? <Tag color="red">{changeControl.sourceWatch.conflictCount} with conflicts</Tag> : null}
+                                    {changeControl.sourceWatch.invalidEvidenceReferenceCount > 0 ? (
+                                        <Tag color="red">{changeControl.sourceWatch.invalidEvidenceReferenceCount} invalid references skipped</Tag>
+                                    ) : null}
+                                    {changeControl.sourceWatch.untrackedSourceCount > 0 ? <Tag>{changeControl.sourceWatch.untrackedSourceCount} outside Source Governance</Tag> : null}
+                                </Flex>
+                                {changeControl.sourceWatch.items.length > 0 ? (
+                                    <Flex vertical gap={8}>
+                                        {changeControl.sourceWatch.items.slice(0, 5).map(source => (
+                                            <Flex
+                                                gap={6}
+                                                key={source.sourceId}
+                                                style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}
+                                                vertical
+                                            >
+                                                <Typography.Text strong style={{ overflowWrap: 'anywhere' }}>
+                                                    {source.title || source.sourceId}
+                                                </Typography.Text>
+                                                <Typography.Text type="secondary">
+                                                    Linked to {source.linkedAnswerCount} affected {source.linkedAnswerCount === 1 ? 'answer' : 'answers'}
+                                                </Typography.Text>
+                                                <Flex gap={6} wrap>
+                                                    {source.reasons.map(reason => (
+                                                        <Tag key={reason}>{getSourceReasonCopy(reason)}</Tag>
+                                                    ))}
+                                                </Flex>
+                                            </Flex>
+                                        ))}
+                                        {changeControl.sourceWatch.items.length > 5 ? (
+                                            <Typography.Text type="secondary">
+                                                {changeControl.sourceWatch.items.length - 5} more sampled source records
+                                            </Typography.Text>
+                                        ) : null}
+                                    </Flex>
+                                ) : null}
+                                <Button
+                                    href={ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE}
+                                    icon={<LuExternalLink />}
+                                    rel="noopener noreferrer"
+                                    style={{ alignSelf: 'flex-start', minHeight: 44 }}
+                                    target="_blank"
+                                >
+                                    Review source evidence
+                                </Button>
+
+                                <Typography.Text strong>Cross-surface dependency review</Typography.Text>
+                                <Alert
+                                    showIcon
+                                    type={getProofAlertType(changeControl.surfaceReview.state)}
+                                    message={getSurfaceReviewCopy(changeControl.surfaceReview)}
+                                    description="This uses direct entity-to-surface mappings. Attached articles, FAQs, and changelog entries are contextual mappings, not inferred factual dependencies."
+                                />
+                                <Flex gap={6} wrap>
+                                    <Tag>{changeControl.surfaceReview.mappedSurfaceCount} mapped surfaces</Tag>
+                                    <Tag>{changeControl.surfaceReview.visibleMappedArticleCount} visible articles</Tag>
+                                    <Tag>{changeControl.surfaceReview.visibleMappedFaqCount} visible FAQs</Tag>
+                                    <Tag>{changeControl.surfaceReview.visibleMappedChangelogCount} visible changelogs</Tag>
+                                    {changeControl.surfaceReview.entityIdsWithoutDirectSurfaceLinks.length > 0 ? (
+                                        <Tag color="orange">
+                                            {changeControl.surfaceReview.entityIdsWithoutDirectSurfaceLinks.length} areas without a surface link
+                                        </Tag>
+                                    ) : null}
+                                </Flex>
+                                {changeControl.surfaceReview.items.length > 0 ? (
+                                    <Flex gap={6} wrap>
+                                        {changeControl.surfaceReview.items.slice(0, 8).map(surface => (
+                                            <Tag key={surface.key}>{surface.label}</Tag>
+                                        ))}
+                                    </Flex>
+                                ) : null}
+                                <Button
+                                    href={ANSWERLATTICE_ROUTES.PRODUCT_SURFACES}
+                                    icon={<LuExternalLink />}
+                                    rel="noopener noreferrer"
+                                    style={{ alignSelf: 'flex-start', minHeight: 44 }}
+                                    target="_blank"
+                                >
+                                    Review product surfaces
+                                </Button>
+
+                                <Typography.Text strong>Truth propagation proof</Typography.Text>
+                                <Alert
+                                    showIcon
+                                    type={getProofAlertType(changeControl.propagationProof.state)}
+                                    message={getPropagationCopy(changeControl.propagationProof)}
+                                    description="This proves Answerlattice control documents only. It does not certify external caches, third-party clients, or customer delivery."
+                                />
+                                <Flex gap={6} wrap>
+                                    {changeControl.propagationProof.channels.map(channel => (
+                                        <Tag
+                                            color={channel.currentState === 'current'
+                                                ? 'green'
+                                                : channel.currentState === 'rebuild_required'
+                                                    ? 'orange'
+                                                    : undefined}
+                                            key={channel.channel}
+                                        >
+                                            {channel.channel.replace(/_/g, ' ')}: {channel.currentState.replace(/_/g, ' ')}
+                                        </Tag>
+                                    ))}
+                                </Flex>
+                                <Button
+                                    href={ANSWERLATTICE_ROUTES.ACTIVATION}
+                                    icon={<LuExternalLink />}
+                                    rel="noopener noreferrer"
+                                    style={{ alignSelf: 'flex-start', minHeight: 44 }}
+                                    target="_blank"
+                                >
+                                    Review distribution readiness
+                                </Button>
+                            </Flex>
+                        ) : null}
                         <Typography.Text type="secondary">
                             Activation marks outdated linked answers for review. It does not approve or rewrite support knowledge.
                         </Typography.Text>

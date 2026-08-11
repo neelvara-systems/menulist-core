@@ -146,7 +146,7 @@
 .neelvara-site .nv-brand-title {
     font-family: var(--wordmark-font);
     font-weight: 700;
-    letter-spacing: -0.025em;
+    letter-spacing: 0;
 }
 
 .neelvara-site .nv-brand-title {
@@ -244,8 +244,8 @@
 
 .nv-reveal {
     --nv-reveal-delay: 0ms;
-    --nv-reveal-distance: 18px;
-    --nv-reveal-duration: 640ms;
+    --nv-reveal-distance: 12px;
+    --nv-reveal-duration: 520ms;
     opacity: 1;
     transition-property: opacity, transform;
     transition-duration: var(--nv-reveal-duration);
@@ -287,8 +287,7 @@
 }
 
 .nv-header-inner::before,
-.nv-final-band::before,
-.nv-page-prism::before {
+.nv-final-band::before {
     position: absolute;
     inset: 0;
     border-radius: inherit;
@@ -298,8 +297,7 @@
 }
 
 .nv-header-inner > *,
-.nv-final-band > *,
-.nv-page-prism > * {
+.nv-final-band > * {
     position: relative;
     z-index: 1;
 }
@@ -369,7 +367,6 @@
 .nv-nav-toggle:focus-visible,
 .nv-button:focus-visible,
 .nv-product-row:focus-visible,
-.nv-product-architecture-card:focus-visible,
 .nv-routing-card:focus-visible,
 .nv-support-product-link:focus-visible,
 .nv-check-list a:focus-visible,
@@ -509,8 +506,8 @@
 
 .nv-hero-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr);
-    gap: 40px;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.52fr);
+    gap: 54px;
     align-items: center;
 }
 
@@ -581,9 +578,7 @@
 .nv-routing-card p,
 .nv-text-panel p,
 .nv-final-band p,
-.nv-operating-card p,
-.nv-table-cards p,
-.nv-table-cards dd {
+.nv-operating-card p {
     color: var(--ink-soft);
     font-size: 1rem;
     line-height: 1.62;
@@ -596,9 +591,25 @@
     font-size: 1.08rem;
 }
 
-.nv-hero h1 {
+.nv-hero .nv-brand-title {
     max-width: 760px;
-    font-size: 5.05rem;
+    font-size: 5.5rem;
+}
+
+.nv-hero-copy > .nv-hero-statement {
+    max-width: 720px;
+    margin-top: 20px;
+    color: var(--ink);
+    font-size: 2.35rem;
+    font-weight: 500;
+    line-height: 1.08;
+    text-wrap: balance;
+}
+
+.nv-hero-copy > .nv-hero-lead {
+    max-width: 610px;
+    margin-top: 18px;
+    font-size: 1.08rem;
 }
 
 .nv-hero .nv-actions {
@@ -677,7 +688,6 @@
 .nv-card-meta,
 .nv-bento-card-head .mono,
 .nv-routing-card .mono,
-.nv-table-cards .mono,
 .nv-product-row .mono,
 .nv-product-summary .mono,
 .nv-spot-stat {
@@ -1122,9 +1132,7 @@
 
 .nv-spot::after,
 .nv-bento-card::after,
-.nv-product-detail-card::after,
-.nv-routing-card::after,
-.nv-text-panel::after {
+.nv-product-detail-card::after {
     position: absolute;
     inset: 1px;
     border-radius: inherit;
@@ -1135,9 +1143,7 @@
 
 .nv-spot > *,
 .nv-bento-card > *,
-.nv-product-detail-card > *,
-.nv-routing-card > *,
-.nv-text-panel > * {
+.nv-product-detail-card > * {
     position: relative;
     z-index: 1;
 }
@@ -1281,75 +1287,6 @@
     text-transform: uppercase;
 }
 
-.nv-table-wrap {
-    overflow: hidden;
-}
-
-.nv-comparison-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.nv-comparison-table th,
-.nv-comparison-table td {
-    padding: 22px;
-    border-bottom: 1px solid var(--line);
-    color: var(--ink-soft);
-    text-align: left;
-    vertical-align: top;
-    font-size: 0.96rem;
-    line-height: 1.56;
-}
-
-.nv-comparison-table thead th {
-    color: var(--ink);
-    font-family: var(--site-font);
-    font-size: 0.78rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.nv-comparison-table thead th:nth-child(2) {
-    background: rgb(20 87 217 / 7%);
-}
-
-.nv-comparison-table thead th span {
-    display: block;
-}
-
-.nv-comparison-table thead th em {
-    display: inline-flex;
-    margin-top: 8px;
-    padding: 5px 9px;
-    border: 1px solid var(--glass-stroke);
-    border-radius: 999px;
-    color: var(--m-blue);
-    background: rgb(238 243 250 / 88%);
-    font-style: normal;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-.nv-comparison-table tbody th {
-    width: 18%;
-    color: var(--ink);
-    font-weight: 650;
-}
-
-.nv-comparison-table tbody td:nth-child(2) {
-    color: var(--ink);
-    background: rgb(20 87 217 / 5%);
-}
-
-.nv-comparison-table tr:last-child th,
-.nv-comparison-table tr:last-child td {
-    border-bottom: 0;
-}
-
-.nv-table-cards {
-    display: none;
-}
-
 .nv-product-lineup {
     overflow: hidden;
     border-top: 1px solid rgb(255 255 255 / 9%);
@@ -1405,7 +1342,6 @@
 }
 
 .nv-product-row,
-.nv-product-architecture-card,
 .nv-product-detail-card {
     --product-accent-start: #29aae3;
     --product-accent-end: #0051d2;
@@ -1438,7 +1374,6 @@
 }
 
 .nv-product-row[data-product="answerlattice"],
-.nv-product-architecture-card[data-product="answerlattice"],
 .nv-product-detail-card[data-product="answerlattice"] {
     --product-accent-start: #25b9a6;
     --product-accent-end: #08513e;
@@ -1543,126 +1478,6 @@
     transform: translate(2px, -2px);
 }
 
-.nv-product-architecture {
-    display: grid;
-    gap: 28px;
-}
-
-.nv-product-architecture-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.7fr);
-    gap: 48px;
-    align-items: end;
-    padding-bottom: 28px;
-    border-bottom: 1px solid var(--line);
-}
-
-.nv-product-architecture h2 {
-    font-size: 3.55rem;
-}
-
-.nv-product-architecture-head h2 {
-    margin: 18px 0 0;
-}
-
-.nv-product-architecture-head > p {
-    max-width: 38rem;
-    margin: 0;
-    justify-self: end;
-}
-
-.nv-product-architecture-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-}
-
-.nv-product-architecture-root,
-.nv-product-architecture-card {
-    min-width: 0;
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    background: rgb(255 255 255 / 62%);
-}
-
-.nv-product-architecture-root {
-    display: flex;
-    grid-column: 1 / -1;
-    align-items: center;
-    gap: 14px;
-    padding: 18px;
-    color: var(--ink);
-}
-
-.nv-product-architecture-root svg {
-    width: 22px;
-    height: 22px;
-    color: var(--m-blue);
-}
-
-.nv-product-architecture-card {
-    display: flex;
-    flex-direction: column;
-    min-height: 190px;
-    overflow: hidden;
-    padding: 24px;
-    color: inherit;
-    background:
-        radial-gradient(86% 78% at 100% 0%, var(--product-tint), transparent 68%),
-        rgb(255 255 255 / 68%);
-    box-shadow: inset 0 3px 0 var(--product-accent-start);
-    text-decoration: none;
-    transition:
-        background 160ms ease,
-        border-color 160ms ease,
-        transform 160ms ease;
-}
-
-.nv-product-architecture-card:hover,
-.nv-product-architecture-card:focus-visible {
-    transform: translateY(-2px);
-    border-color: rgb(20 87 217 / 24%);
-    background: rgb(255 255 255 / 78%);
-}
-
-.nv-product-architecture-card:active {
-    transform: translateY(0) scale(0.995);
-}
-
-.nv-product-architecture-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-}
-
-.nv-product-architecture-card-head .nv-product-logo-wrap {
-    align-self: center;
-}
-
-.nv-product-architecture-link-icon {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    color: var(--product-accent-end);
-    transition: transform 160ms ease;
-}
-
-.nv-product-architecture-card:hover .nv-product-architecture-link-icon,
-.nv-product-architecture-card:focus-visible .nv-product-architecture-link-icon {
-    transform: translate(2px, -2px);
-}
-
-.nv-product-architecture-card .mono {
-    margin-top: 18px;
-}
-
-.nv-product-architecture-card strong {
-    margin-top: 8px;
-    color: var(--ink);
-    font-size: 1.45rem;
-}
-
 .nv-product-detail-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1729,52 +1544,57 @@
 }
 
 .nv-routing-card {
+    position: relative;
     display: grid;
-    min-height: 320px;
-    padding: 28px;
+    grid-template-columns: 44px minmax(90px, 0.28fr) minmax(180px, 0.58fr) minmax(0, 1fr) 20px;
+    gap: 18px;
+    align-items: center;
+    min-height: 92px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line-2);
     color: inherit;
+    background: transparent;
     text-decoration: none;
     transition:
-        border-color 160ms ease,
-        transform 160ms ease,
-        box-shadow 160ms ease;
+        color 160ms ease,
+        background-color 160ms ease;
 }
 
 .nv-routing-card:hover,
 .nv-routing-card:focus-visible {
-    transform: translateY(-2px);
-    border-color: rgb(20 87 217 / 24%);
-    box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 78%),
-        inset 0 -1px 0 rgb(20 87 217 / 7%),
-        0 34px 84px -56px rgb(20 87 217 / 44%);
+    background: rgb(255 255 255 / 42%);
 }
 
 .nv-routing-card:active {
-    transform: translateY(0) scale(0.995);
+    background: rgb(20 87 217 / 6%);
 }
 
 .nv-routing-card .mono {
-    margin-top: 24px;
+    margin: 0;
 }
 
 .nv-routing-card strong {
-    margin-top: 10px;
+    margin: 0;
     color: var(--ink);
     font-size: 1.18rem;
     overflow-wrap: anywhere;
 }
 
 .nv-routing-card p {
-    margin: 14px 0 0;
+    margin: 0;
 }
 
 .nv-routing-card > svg {
-    align-self: end;
     justify-self: end;
     width: 20px;
     height: 20px;
     color: var(--m-blue);
+}
+
+.nv-routing-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: 1px solid var(--line-2);
 }
 
 .nv-support-product-grid {
@@ -1830,14 +1650,12 @@
 }
 
 .nv-page-hero-inner {
-    display: grid;
-    grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.58fr);
-    gap: 34px;
-    align-items: center;
+    display: block;
 }
 
 .nv-page-hero-copy {
     min-width: 0;
+    max-width: 980px;
 }
 
 .nv-page-hero h1 {
@@ -1865,74 +1683,6 @@
     text-transform: uppercase;
 }
 
-.nv-page-prism {
-    display: flex;
-    min-height: 340px;
-    flex-direction: column;
-    padding: 30px;
-    overflow: hidden;
-}
-
-.nv-page-prism-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.nv-page-prism-top .mono {
-    color: var(--ink-mute);
-    font-size: 0.78rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-}
-
-.nv-page-prism-heading {
-    margin: 64px 0 26px;
-}
-
-.nv-page-prism-heading .mono {
-    color: var(--ink-mute);
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.nv-page-prism-heading h2 {
-    margin-top: 10px;
-    font-size: 2rem;
-    font-weight: 600;
-    line-height: 1.08;
-}
-
-.nv-page-prism-rows {
-    display: grid;
-    margin-top: auto;
-    border-top: 1px solid var(--line);
-}
-
-.nv-page-prism-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    padding: 10px 0;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    border-radius: 0;
-    color: var(--ink-soft);
-    background: transparent;
-    font-size: 0.9rem;
-}
-
-.nv-page-prism-row svg {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 16px;
-    color: var(--m-blue);
-}
-
 .nv-text-panel,
 .nv-final-band {
     display: grid;
@@ -1944,7 +1694,24 @@
 
 .nv-secondary-section .nv-text-panel {
     grid-template-columns: minmax(240px, 0.48fr) minmax(0, 1fr);
-    border-radius: 14px;
+}
+
+.nv-secondary-section {
+    padding: 0;
+}
+
+.nv-page-hero + .nv-secondary-section {
+    padding-top: 48px;
+}
+
+.nv-policy-row,
+.nv-contact-note {
+    padding: 38px 0;
+    border-top: 1px solid var(--line-2);
+}
+
+.nv-contact-note {
+    border-bottom: 1px solid var(--line-2);
 }
 
 .nv-text-panel h2,
@@ -2039,6 +1806,7 @@
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    min-height: 44px;
     min-width: 0;
 }
 
@@ -2097,14 +1865,12 @@
     .nv-button,
     .nv-skip-link,
     .nv-product-row,
-    .nv-product-architecture-card,
     .nv-routing-card,
     .nv-support-product-link {
         transition: none;
     }
 
-    .nv-product-link-icon,
-    .nv-product-architecture-link-icon {
+    .nv-product-link-icon {
         transition: none;
     }
 }
@@ -2135,7 +1901,6 @@
 
     .nv-product-lineup,
     .nv-product-row,
-    .nv-product-architecture-card,
     .nv-product-detail-card {
         background: var(--surface);
     }
@@ -2158,8 +1923,7 @@
     .nv-product-section,
     .nv-hero-layout,
     .nv-operating-layout,
-    .nv-page-hero-inner,
-    .nv-product-architecture {
+    .nv-page-hero-inner {
         grid-template-columns: 1fr;
     }
 
@@ -2189,15 +1953,8 @@
         align-items: start;
     }
 
-    .nv-product-summary p,
-    .nv-product-architecture-head > p {
+    .nv-product-summary p {
         justify-self: start;
-    }
-
-    .nv-product-architecture-head {
-        grid-template-columns: 1fr;
-        gap: 20px;
-        align-items: start;
     }
 }
 
@@ -2258,6 +2015,14 @@
         font-size: 4rem;
     }
 
+    .nv-hero .nv-brand-title {
+        font-size: 4.3rem;
+    }
+
+    .nv-hero-copy > .nv-hero-statement {
+        font-size: 2.15rem;
+    }
+
     .neelvara-site h2 {
         font-size: 3.25rem;
     }
@@ -2292,14 +2057,9 @@
         gap: 16px;
     }
 
-    .nv-secondary-section-1 .nv-text-panel {
+    .nv-secondary-section .nv-text-panel {
         grid-template-columns: 1fr;
-    }
-
-    .nv-secondary-section-1 .nv-text-panel > div,
-    .nv-secondary-section-1 .nv-text-panel > ul {
-        grid-column: auto;
-        grid-row: auto;
+        gap: 24px;
     }
 
     .nv-section-head {
@@ -2341,9 +2101,6 @@
         justify-content: flex-start;
     }
 
-    .nv-page-prism {
-        max-width: 560px;
-    }
 }
 
 @media (max-width: 720px) {
@@ -2377,49 +2134,46 @@
         grid-template-columns: 1fr;
     }
 
-    .nv-product-architecture-grid {
-        grid-template-columns: 1fr;
-    }
-
     .nv-product-list {
         grid-template-columns: 1fr;
     }
 
-    .nv-table-wrap {
-        display: none;
+    .nv-routing-card {
+        grid-template-columns: 44px minmax(0, 1fr) 20px;
+        gap: 7px 14px;
+        align-items: start;
+        padding: 20px 0;
     }
 
-    .nv-table-cards {
-        display: grid;
-        gap: 14px;
+    .nv-routing-card .nv-card-icon {
+        grid-column: 1;
+        grid-row: 1 / span 3;
     }
 
-    .nv-table-cards article {
-        padding: 24px;
+    .nv-routing-card .mono,
+    .nv-routing-card strong,
+    .nv-routing-card p {
+        grid-column: 2;
     }
 
-    .nv-table-cards h3 {
-        margin-top: 12px;
+    .nv-routing-card .mono {
+        grid-row: 1;
     }
 
-    .nv-table-cards p {
-        margin: 10px 0 0;
+    .nv-routing-card strong {
+        grid-row: 2;
     }
 
-    .nv-table-cards dl {
-        display: grid;
-        gap: 14px;
-        margin: 20px 0 0;
+    .nv-routing-card p {
+        grid-row: 3;
     }
 
-    .nv-table-cards dt {
-        color: var(--ink);
-        font-weight: 650;
+    .nv-routing-card > svg {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        align-self: center;
     }
 
-    .nv-table-cards dd {
-        margin: 4px 0 0;
-    }
 }
 
 @media (max-width: 640px) {
@@ -2461,6 +2215,14 @@
         padding: 58px 0 46px;
     }
 
+    .nv-hero .nv-brand-title {
+        font-size: 3.35rem;
+    }
+
+    .nv-hero-copy > .nv-hero-statement {
+        font-size: 1.9rem;
+    }
+
     .neelvara-site h1 {
         font-size: 3.05rem;
         line-height: 1.02;
@@ -2480,21 +2242,6 @@
     .nv-hero-copy > p,
     .nv-page-hero p {
         font-size: 1rem;
-    }
-
-    .nv-page-prism {
-        min-height: 0;
-        padding: 20px;
-    }
-
-    .nv-page-prism-heading {
-        margin: 36px 0 20px;
-    }
-
-    .nv-page-prism-row {
-        min-height: 36px;
-        padding: 8px 10px;
-        font-size: 0.82rem;
     }
 
     .nv-hero-meta {
@@ -2543,6 +2290,11 @@
     .nv-text-panel,
     .nv-final-band {
         padding: 28px;
+    }
+
+    .nv-secondary-section .nv-policy-row,
+    .nv-contact-note {
+        padding: 28px 0;
     }
 
     .nv-quote blockquote {
@@ -2612,6 +2364,14 @@
         font-size: 2.2rem;
     }
 
+    .nv-hero .nv-brand-title {
+        font-size: 2.55rem;
+    }
+
+    .nv-hero-copy > .nv-hero-statement {
+        font-size: 1.65rem;
+    }
+
     .neelvara-site h2,
     .nv-text-panel h2,
     .nv-final-band h2 {
@@ -2625,7 +2385,6 @@
 
     .nv-spot-card,
     .nv-operating-card,
-    .nv-routing-card,
     .nv-bento-card {
         padding: 22px;
     }

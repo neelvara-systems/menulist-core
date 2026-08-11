@@ -1,7 +1,7 @@
 # Help Center — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-08-05
+> **Last Updated:** 2026-08-10
 > **Audit Type:** Codebase-first forensic documentation
 > **Feature Scope:** 16 subsystems, 190+ files, Answerlattice + Help Center Firestore collections
 
@@ -15,7 +15,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - **Knowledge Base (KB)** — Hierarchical article system with categories, sections, and articles
 - **KB Article Generation Pipeline** — Upload raw files → AI generates articles → review → publish → embed
 - **Ticket System** — Governed human fallback with scoped intake, bounded attachments, append-only replies/status history, operational SLA indicators, and explicit handoff
-- **Releases and Changelog** — Ordered release activation, answer-drift propagation, draft-first versioned publication, exact dependency linkage, and public feedback
+- **Releases and Changelog** — Ordered release activation, answer-drift propagation, draft-first versioned publication, exact dependency linkage, support-truth change control, and public feedback
 - **Feedback System** — Multi-step owner feedback (general, feature usage, feature requests)
 - **Conversation Monitoring** — Scoped conversation review, bounded quality evidence, feedback, private notes, and knowledge-gap handoff
 - **Ticket Email Notifications** — Server-projected created/reply/status notices with scoped authorization, claimed delivery, and Activation verification
@@ -54,7 +54,8 @@ analytics collection:
 | --- | --- | --- | --- |
 | Daily Brief | Product Friction Evidence | Selected entity ID | Friction summary remains the evidence source. |
 | Daily Brief | Canonical Answers | Coverage-repair intent | Canonical Governance owns review and mutation. |
-| Product Friction Evidence | Knowledge Map | Selected entity ID | The map remains read-only and does not ingest friction metrics. |
+| Product Friction Evidence | Knowledge Map | Selected entity ID | Investigate-further review remains read-only and does not copy friction metrics. |
+| Product Friction Evidence | Canonical Answers | Selected entity ID | Knowledge, limitation, and access review filter the existing answer set; no diagnosis is saved. |
 | Knowledge Map | Canonical Answers | Selected entity ID | Canonical Answers filters its existing loaded set. |
 | Release impact preview | Canonical Answers | Affected answer ID | The preview remains private and read-only. |
 | Release impact preview | Answer Tests | Pending release ID | Answer Tests selects the existing release only after the owner opens it. |
@@ -97,6 +98,8 @@ the destination pays only its existing cost when the owner explicitly opens it.
 | 22  | `aidbase-competitor-response_validation.md`      | Product/Dev/Ops | Aidbase fit verdict, implemented response matrix, cross-surface evidence, source gates, and release blockers |
 | 23  | `drift-governance/`                             | Product/Ops/Dev | Four-class probable-drift evaluation, release propagation, review queue, human revalidation, Firebase cost, and claim boundaries |
 | 24  | `changelog-system/`                            | Product/Ops/Dev | Feature 11 governed release registry, draft-first versioned publication, exact dependency validation, public projection, recovery, and cost boundaries |
+| 24A | `support-truth-change-control/`                | Product/Ops/Dev | Release-to-truth review, direct source freshness/conflict watch, mapped cross-surface dependencies, and compiled propagation proof without new storage or schedulers |
+| 24B | `scope-coverage-matrix/`                      | Product/Ops/Dev | Active important-question coverage by explicit plan, role, product state, and version using current Answer Test proof without a new data system |
 | 25  | `compiled-context-distribution/`               | Product/Ops/Dev | Feature 14 immutable bounded bundle build, version, failure, ref-validation, and consumer-rollout contract |
 | 26  | `instant-response-infrastructure/`             | Product/Ops/Dev | Feature 14 optional canonical cache, freshness, payload-validation, expiry, and public-claim boundary |
 | 27  | `public-api/`                                  | Product/Ops/Dev | Feature 35 server-to-server governed answer/entity/signal distribution and credential lifecycle |
@@ -105,7 +108,7 @@ the destination pays only its existing cost when the owner explicitly opens it.
 | 30  | `multi-language-articles/`                     | Product/Ops/Dev | Feature 38 disabled translation-draft boundary, source fingerprint, overwrite guard, and customer-delivery non-goal |
 | 31  | `advanced-white-label/`                        | Product/Ops/Dev | Feature 39 validated private branding-profile prototype, strict storage, injection boundary, and customer-delivery non-goal |
 | 32  | `ai-failure-escalation/`                      | Product/Ops/Dev | Feature 40 active widget fallback plus default-off final-evidence evaluator, server-reserved ticket authority, and Help Chat activation blockers |
-| 33  | `native-knowledge-intake-connectors/`         | Product/Ops/Dev | Feature 41 reserved-only connector boundary, evidence gate, and explicit do-not-build-now decision |
+| 33  | `native-knowledge-intake-connectors/`         | Product/Ops/Dev | Feature 41 rollout-gated GitHub Change Intake, owner-approved repository scope, signed webhooks, and governed Knowledge Intake reuse |
 | 34  | `signal-quality-scoring/`                    | Product/Ops/Dev | Feature 42 transparent evidence boundary and validation-before-development decision |
 | 35  | `native-helpdesk-and-jira-connectors/`       | Product/Ops/Dev | Feature 43 export-first boundary and one-provider paying-client evidence gate |
 | 36  | `autonomous-browser-and-account-actions/`    | Product/Ops/Dev | Feature 44 Explain + Guide boundary and explicit account-action non-goal |
@@ -432,7 +435,7 @@ When adding to the Help Center:
 
 ## Sub-Feature Documentation (Deep Dive)
 
-Each subsystem has its own complete documentation suite (8 docs per feature):
+Each subsystem has its own maintained documentation suite:
 
 | #   | Feature                                                          | Folder                    | Files  | Key Metric                                    |
 | --- | ---------------------------------------------------------------- | ------------------------- | :----: | --------------------------------------------- |
@@ -452,8 +455,11 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 14  | **[Email Notifications](./email-notifications/README.md)** | `email-notifications/` | 9 docs | Scoped ticket projection, deterministic delivery claim, bounded SMTP, and Activation test boundary |
 | 15  | **[Weekly Digest](./weekly-digest/README.md)** | `weekly-digest/` | 9 docs | Deterministic completed-week evidence, source completeness, freshness, manual prepare, and governed review handoff |
 | 16  | **[Client Activation Command Center](./client-activation-command-center/README.md)** | `client-activation-command-center/` | 10 docs | Four-group evidence-derived launch path, deferred technical diagnostics, and manual customer-path verification |
+| 17  | **[Support Truth Change Control](./support-truth-change-control/README.md)** | `support-truth-change-control/` | 10 docs | One release review overlay for truth impact, source health, mapped customer surfaces, and compiled-context propagation proof |
+| 18  | **[Scope Coverage Matrix](./scope-coverage-matrix/README.md)** | `scope-coverage-matrix/` | 10 docs | Current approved-answer proof for active owner-defined questions across explicit plan, role, product-state, and version context |
+| 19  | **[Post-Change Support Evidence Review](./post-change-support-evidence-review/README.md)** | `post-change-support-evidence-review/` | 10 docs | Explicit complete-window support-evidence comparison after an activated release or implemented knowledge correction, without causal claims |
 
-**Total:** 16 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, Owner Support Assistant, Founder Daily Brief, First Trusted Answers, Email Notifications, Weekly Digest, and Client Activation Command Center.
+**Total:** 19 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, Owner Support Assistant, Founder Daily Brief, First Trusted Answers, Email Notifications, Weekly Digest, Client Activation Command Center, Support Truth Change Control, Scope Coverage Matrix, and Post-Change Support Evidence Review.
 
 Each sub-feature folder contains:
 
@@ -472,6 +478,10 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-10 | 3.4.40  | Completed Expansion Item 7 with deterministic Product Friction review continuation: entity-scoped Knowledge Map and trusted-answer routes, local product-review export, explicit no-reminder/no-persistence close paths, immutable scoped brief input, flag-aware fail-closed routing, and zero new Firebase operations or runtime systems. |
+| 2026-08-10 | 3.4.39  | Added an explicit Post-Change Support Evidence Review inside Product Friction Evidence: complete 14-day UTC windows, direct release/correction entity links, strict insufficient/retention/saturation states, correlation-only language, zero mount reads, and no new persistence, scheduler, index, cache, or model call. |
+| 2026-08-10 | 3.4.38  | Added the Scope Coverage Matrix inside Answer Tests: active owner-defined contexts only, case-and-source-current proof, strict five-state projection, existing edit/run/governance handoffs, responsive presentation, and no new persistence, listeners, schedulers, or model calls. |
+| 2026-08-10 | 3.4.37  | Added Support Truth Change Control inside the existing release impact preview: bounded direct-source freshness/conflict checks, compact mapped-surface evidence, compiled propagation proof, strict DTOs, and zero new collections, listeners, schedulers, or preview writes. |
 | 2026-08-07 | 3.4.36  | Added a compact founder-first navigation projection with permission-aware All tools disclosure, kept every existing route reachable, promoted the existing coding-agent packet as Install Support, and added zero-cost/mobile verification contracts. |
 | 2026-08-06 | 3.4.35  | Added the shared customer-language contract, simplified owner navigation and Answer Quality labels, and added a five-step support-system snapshot to Activation without changing routes, schemas, permissions, reads, writes, or AI calls. |
 | 2026-08-05 | 3.4.34  | Added a server-redacted release-evidence handoff from Knowledge Intake to the existing Changelog editor while preserving Release Impact Guard and the zero-runtime native GitHub connector boundary. |

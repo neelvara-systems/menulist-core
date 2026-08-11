@@ -307,11 +307,13 @@
       "sourcePaths": [
         "src/app/api/answerlattice",
         "firestore-answerlattice.rules",
+        "scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js",
         "scripts/verification/test-answerlattice-dashboard-read-rate-limit-policy.ts"
       ],
       "evidenceIds": [
         "answerlattice.public-api-rules",
         "answerlattice.knowledge-intake-rules",
+        "answerlattice.github-change-intake-boundary",
         "answerlattice.integrations-rules",
         "answerlattice.billing-rules",
         "answerlattice.dashboard-read-rate-limit-policy"
@@ -319,7 +321,7 @@
       "bundleIds": [
         "answerlattice.authority-and-ingress"
       ],
-      "notes": "Focused rule and policy checks are mapped; SecurityOS does not execute them or claim full ingress coverage."
+      "notes": "Focused rule, provider-ingress, and policy checks are mapped; SecurityOS does not execute them or claim full ingress coverage."
     },
     {
       "id": "answerlattice.release-ontology-and-session-rules",

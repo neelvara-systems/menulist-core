@@ -14,6 +14,8 @@ import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/fi
 import { answerlatticeFirebaseBoundary, answerlatticeFirestoreDatabaseId, shouldUseSharedAnswerlatticeFirebase, } from './answerlatticeConfig';
 import { isAnswerlatticeEmulatorProjectId } from '@data/shared/answerlatticeFirebaseBoundary';
 import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from './firebaseAdminDiagnostics';
+import { answerlatticeServerEnv } from '@lib/env/answerlatticeServerEnv';
+import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -27,13 +29,9 @@ function isAllowedAnswerlatticeProjectId(projectId: string): boolean {
         || (isAnswerlatticeEmulator && isAnswerlatticeEmulatorProjectId(projectId));
 }
 
-const getAnswerlatticeProjectId = () =>
-    process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID;
+const getAnswerlatticeProjectId = () => answerlatticeServerEnv.firebaseProjectId;
 
-const getAnswerlatticeStorageBucket = () =>
-    process.env.ANSWERLATTICE_FIREBASE_STORAGE_BUCKET ||
-    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET;
+const getAnswerlatticeStorageBucket = () => answerlatticeServerEnv.firebaseStorageBucket;
 
 function normalizePrivateKey(privateKey: string): string {
     return privateKey
@@ -43,9 +41,15 @@ function normalizePrivateKey(privateKey: string): string {
 }
 
 function getAdminCredential(prefix: 'FIREBASE' | 'ANSWERLATTICE_FIREBASE'): admin.credential.Credential | null {
-    const projectId = process.env[`${prefix}_PROJECT_ID`];
-    const privateKey = process.env[`${prefix}_PRIVATE_KEY`];
-    const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
+    const projectId = prefix === 'ANSWERLATTICE_FIREBASE'
+        ? getAnswerlatticeProjectId()
+        : menulistServerEnv.firebaseProjectId;
+    const privateKey = prefix === 'ANSWERLATTICE_FIREBASE'
+        ? answerlatticeServerEnv.firebasePrivateKey
+        : menulistServerEnv.firebasePrivateKey;
+    const clientEmail = prefix === 'ANSWERLATTICE_FIREBASE'
+        ? answerlatticeServerEnv.firebaseClientEmail
+        : menulistServerEnv.firebaseClientEmail;
 
     if (!projectId || !privateKey || !clientEmail) return null;
     if (

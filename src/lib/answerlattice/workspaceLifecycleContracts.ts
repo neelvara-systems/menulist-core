@@ -56,6 +56,7 @@ export const ANSWERLATTICE_WORKSPACE_ERASURE_COLLECTIONS: readonly Answerlattice
     { collection: DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES, productIdentity: 'dedicated', scopeFields: ['sId', 'storeId'] },
     { collection: DB_COLLECTIONS.ANSWERLATTICE_INTAKE_REVIEW_ITEMS, productIdentity: 'dedicated', scopeFields: ['sId', 'storeId'] },
     { collection: DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER, productIdentity: 'dedicated', scopeFields: ['sId', 'storeId'] },
+    { collection: DB_COLLECTIONS.ANSWERLATTICE_GITHUB_INTAKE_BINDINGS, productIdentity: 'dedicated', scopeFields: ['sId'] },
     { collection: DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES, productIdentity: 'dedicated', scopeFields: ['sId', 'storeId'] },
     { collection: DB_COLLECTIONS.PLATFORM_SUMMARY, productIdentity: 'dedicated', scopeFields: ['sId', 'storeId'] },
     { collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS, productIdentity: 'required', scopeFields: ['sId', 'storeId'] },

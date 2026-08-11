@@ -1,10 +1,28 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.9
-> **Last Updated:** 2026-07-31
+> **Version:** 1.3.11
+> **Last Updated:** 2026-08-11
 > **Audience:** Developers
 
 ---
+
+## August 11, 2026 Whole-Site Content And Route Audit
+
+- The public source now contains 77 `page.tsx` files: 75 routes in `ANSWERLATTICE_PUBLIC_PAGES` and two explicit aliases, `/home` and `/use-cases/vibe-coded-saas`.
+- Shared capability, feature, SEO, resource, use-case, navigation, footer, proof, and concept-illustration content now follows one public transformation: scattered founder material becomes reviewed support structure, then familiar support destinations, then owner-approved official guidance.
+- Buyer-facing labels were translated from internal terms such as governance, canonical retrieval, ontology, control plane, qualification, and generic surface language where those terms did not identify an exact technical contract.
+- Exact implemented names remain where specificity matters, including Support Truth Export, Knowledge Map, Product Friction Evidence, Answer Tests, and canonical-only Answer Tests.
+- `scripts/verification/verify-answerlattice-public-website.js` now discovers every public `page.tsx`, rejects unregistered pages, admits only the two declared aliases, and verifies the revised category, route-family, and shared-copy contracts.
+- This pass changes static public content and source verification only. It adds no Firebase operation, provider call, dependency, route runtime, tenant data, or billing behavior.
+
+## August 11, 2026 Homepage Positioning And Motion Correction
+
+- The compressed homepage now names the complete front-door transformation: scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies become reviewed support knowledge for the in-app widget, hosted help center, documentation, FAQs, changelog, feedback review, fallback, and future AI-agent context.
+- Seven familiar support-surface chips and a four-part proof strip replace the narrower trust-only hero summary. Approved answers, safe fallback, and founder review remain the differentiator instead of the entire product category.
+- Essential hero text and actions now settle within roughly 500ms without blur. The motion asset settles within 700ms, while reduced-motion users continue to receive the complete first fold immediately.
+- The founder-review section leads with outcomes such as priorities, gaps, product pressure, release review, answer verification, and guide scanning. Daily Brief, Knowledge Map, Product Friction Evidence, and Answer Tests remain available as deeper product names.
+- Pricing language no longer implies a free tier: deterministic Answer Tests are described by behavior and zero-provider-call boundary instead of as free checks.
+- Homepage metadata, source verification, and maintained website contracts use the same product breadth. The page remains static and adds no Firestore operation, provider call, dependency, public route, or runtime cost.
 
 ## July 31, 2026 Progressive Adoption Guidance
 
@@ -18,32 +36,32 @@
 ## July 29, 2026 Owner-Decision Website Alignment
 
 - `page.tsx` mounts one `FounderReviewSection` after the trusted-answer support loop. The section links Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps while preserving the three deferred homepage mounts in their explicit comment block.
-- `/product` reframes founder controls as one owner decision system. Daily Brief is qualified and can be quiet; friction stays advisory; Knowledge Map stays governed; release impact remains owner-confirmed; Answer Tests remain bounded proof rather than a correctness guarantee.
-- `/product/support-control` explains qualified Daily Brief output and public article topic maps. `/product/knowledge-governance` owns the connected evidence-to-answer workflow. `/product/changelog` explains directly linked answer/test review and stale-preview rejection.
+- `/product` reframes founder controls as one owner decision system. Daily Brief is focused and can be quiet; friction stays advisory; Knowledge Map stays private and reviewable; release impact remains owner-confirmed; Answer Tests remain bounded proof rather than a correctness guarantee.
+- `/product/support-control` explains focused Daily Brief output and public article topic maps. `/product/knowledge-governance` owns the connected evidence-to-answer workflow. `/product/changelog` explains directly linked answer/test review and stale-preview rejection.
 - FAQ, Updates, route metadata, product-area navigation, system coverage, and feature website docs use the same names and boundaries.
 - The public page remains static. This pass adds no Firestore operation, listener, scheduled work, provider call, dependency, route, or public data payload.
 
 ## July 28, 2026 Buyer-Path Compression
 
 - The homepage now leads from founder pain to first trusted answers, one concrete known-answer/fallback/review loop, installation, fit, pricing, objections, and signup. Three overlapping feature-inventory bands remain available through their dedicated product routes and are no longer rendered; their mounts remain explicitly commented in `page.tsx` for intentional one-line reactivation.
-- The hero keeps the founder-support outcome while reducing eight horizontal capability chips to three trust signals that wrap on small screens.
+- That compression pass temporarily reduced eight horizontal capability chips to three trust signals. The August 11 correction restores concise input and support-surface breadth without reactivating the deferred long-form sections.
 - The support-loop proof shows the exact sample evidence behind an approved answer: source, applicability, product context, review state, Answer Test status, and clarification/fallback behavior when evidence is incomplete.
 - `/get-started` renders the real Google/workspace activation form before proof, pre-onboarding preparation, and fit criteria. The longer input and first-session guidance remains below the activation action.
 - `/demo` now starts with a deterministic six-stage support-resolution simulation: known question, approved answer, missing evidence, safe fallback, founder review, and tested improvement. The existing source-conflict and release-drift simulation remains as secondary governance proof.
 - `/product/page-aware-widget` now describes Guided Resolution only as an opt-in, client-instrumented capability. The public boundary states that AnswerLattice can highlight declared targets and wait for verified events, but cannot click controls or change product data.
-- Product and site descriptions no longer lead with broad suite inventory or future-agent expansion. The maintained category remains a governed support layer for founder-led SaaS.
+- Product and site descriptions stopped using broad feature inventory as the category claim. Formal doctrine remains governed answer infrastructure, while the maintained buyer category is a reviewed support layer or support system. Concrete widget, help-center, documentation, fallback, review, and future-agent outcomes support that category when grounded in implemented behavior.
 - The website source gate now enforces activation order, both deterministic demo contracts, homepage compression, deferred-mount retention, the trusted-answer proof, and the bounded Guided Resolution claim.
 - These changes add no Firebase reads, writes, scheduled work, dependencies, or new public routes.
 
 ## July 19, 2026 Public-Flow Hardening
 
-- `get-started/OnboardingForm.tsx` now uses native form submission, bound labels, server-matching field limits, at least one selected product surface, linked Terms/Privacy routes, strict response admission, and allowlisted Razorpay checkout URLs.
+- `get-started/OnboardingForm.tsx` now uses native form submission, bound labels, server-matching field limits, at least one selected product page, linked Terms/Privacy routes, strict response admission, and allowlisted Razorpay checkout URLs.
 - `components/Header.tsx` gives the mobile drawer a trigger relationship, initial focus, Tab containment, Escape handling, and focus restoration while removing duplicate touch/click activation.
 - `components/StructuredData.tsx` derives the Starter monthly INR offer from `src/data/answerlattice/plans.ts`.
 - `sitemap.xml/route.ts` omits synthetic build-time `lastmod` values.
 - `contact/ContactForm.tsx` uses explicit telephone and URL input semantics while preserving strict API, Turnstile, rate-limit, retention, and bounded-response behavior.
 - `src/content/answerlatticePublic/guardrails.ts` rejects the unsupported `the first 24/7 support layer` superlative.
-- Public category metadata, Product proof, and Footer use `governed support layer` rather than an uptime-style category claim.
+- Public category metadata, Product proof, and Footer use `reviewed support layer` or concrete support-system language rather than an uptime-style category claim.
 - Pricing, FAQ, the support-credit resource, and the Billing top-up description match `AI_UNIT_COSTS`: provider fallback, full-runtime answer tests, starter-answer generation, OCR, and transcription are charged; approved/cached widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and help browsing are not.
 - Trust and Privacy render the shared `ANSWERLATTICE_RETENTION_DAYS` values and state that Gemini no-training or zero-retention status requires deployed billing-tier, feature, abuse-monitoring, and account-configuration evidence.
 - Terms identify the verified Neelvara Systems operating trade-name relationship, explain monthly cancellation/end-of-cycle behavior and scoped deletion review, and leave unverified governing-law, jurisdiction, warranty, liability, SLA, and customer-specific refund language pending founder/legal approval.
@@ -91,7 +109,7 @@ The root app layout defines default startup images in `metadata.appleWebApp.star
 
 Visible AnswerLattice website diagrams stay vector-based. `AnswerlatticeFlowDiagram`, `SupportKnowledgeMapSection`, and routed product/SEO diagram surfaces use inline SVG paths plus the shared `AnswerlatticeLogoMark` atom; they should not use PNGs, raster screenshots, or image-wrapped logo assets for diagram marks. `scripts/verification/verify-answerlattice-pwa-assets.js` enforces this by scanning the public website component directory, with the metadata-only `StructuredData.tsx` logo reference excluded because it is not a visible diagram.
 
-`SupportKnowledgeMapSection` keeps the source-map diagram but now labels the center hub as a reviewed support layer with three proof chips: approved first, fallback tracked, and review loop. This makes the "one governed support layer" contract visible inside the map without adding another product section or implying autopilot support.
+`SupportKnowledgeMapSection` keeps the source-map diagram but now labels the center hub as a reviewed support layer with three proof chips: approved first, fallback tracked, and review loop. This makes the one-support-system contract visible inside the map without adding another product section or implying autopilot support.
 
 Diagram centers use a single soft outer ripple around the logo mark and do not render a second static inner strip. Shared pulse keyframes travel to the visible route endpoint and fade there; cross diagrams launch all logo-origin pulses together so the center reads as one listening source.
 
@@ -551,6 +569,8 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-11 | 1.3.11 | Audited every public page file, translated shared and route-specific buyer copy, declared the two intentional aliases, and extended the source verifier to enforce complete public-route coverage without changing runtime behavior. |
+| 2026-08-11 | 1.3.10 | Broadened the compressed homepage front door from answer-only framing to scattered-inputs-through-support-surfaces, shortened non-blurred hero motion, translated owner-review labels, and aligned metadata and verification without adding runtime cost. |
 | 2026-07-29 | 1.3.8 | Added and wired four AssetOS-governed 6:5 WebP proof assets for owner decisions, Knowledge Map, release assurance, and public article topic maps without changing runtime data or Firebase behavior |
 | 2026-07-29 | 1.3.7 | Connected the five owner decision features and public article topic maps across the compressed homepage and deeper product routes, synchronized public docs/metadata, and extended the source verifier without adding Firebase cost. |
 | 2026-07-31 | 1.3.9 | Added the static progressive Operating Guide, navigation and use-case wiring, and source verification while keeping one product model and zero Firebase runtime cost. |

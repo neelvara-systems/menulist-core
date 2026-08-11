@@ -19,7 +19,7 @@ Agency Workspace must use explicit account/workspace/client mappings. It must ne
 - Campaign packs can record `request_approval` through `/api/campaigncue/campaigns/[campaignId]/actions`.
 - Approval request records are server-written under the CampaignCue workspace and tied to campaign/output ids.
 - Structured campaign outputs include approval notes and manual handoff steps so agency users can pass a reviewed pack without starting connected publishing.
-- The current runtime supports approval request logging and manual handoff. External client portal links, comments, and report shares remain disabled until the CampaignCue Firebase project and external delivery surface are provisioned.
+- The current runtime supports approval request logging, a bounded current-thread comment inbox on the existing Campaign Pack, authorized comment resolution, and manual handoff. External client portal links, notifications, and report shares remain disabled until the CampaignCue Firebase project and external delivery surface are provisioned.
 
 ## Data Objects
 
@@ -28,7 +28,7 @@ Agency Workspace must use explicit account/workspace/client mappings. It must ne
 | `agencyAccounts` | Agency-level identity and settings. |
 | `agencyClientLinks` | Mapping between agency account and client workspace. |
 | `agencyTemplates` | Reusable campaign structures. |
-| `approvalRequests` | Client approval state and comments. |
+| `approvalRequests` | Deterministic approval record mirrored atomically from the current Campaign Pack approval inbox. |
 | `clientReportShares` | Shareable report snapshots and expiry. |
 
 ## Security Rules

@@ -28,7 +28,7 @@
 ## Freshness Cases
 
 1. Same sorted fact set in different query order: same source hash.
-2. Current source hash matches: download/export/mark-used/schedule accepted.
+2. Current source hash matches: download/export/cloud-archive/mark-used/schedule accepted.
 3. Current source hash differs: action rejected with 409.
 4. Pack expiry passed: action rejected with 409.
 5. Current source snapshot missing: action rejected with 409.
@@ -84,7 +84,7 @@
 2. Request, approve, and reject reuse one deterministic approval document ID.
 3. Concurrent approve/reject attempts recheck requested state in one transaction; only the first decision succeeds.
 4. Used, archived, and already-approved packs cannot start another approval request.
-5. Agency workspace blocks download/export/mark-used/schedule while approval is not approved.
+5. Agency workspace blocks download/export/cloud-archive/mark-used/schedule while approval is not approved.
 6. Requested and rejected campaigns block public-use actions in every workspace.
 7. Owner/admin/reviewer/local-manager can approve or reject.
 8. Marketer and agency-member cannot resolve approval.

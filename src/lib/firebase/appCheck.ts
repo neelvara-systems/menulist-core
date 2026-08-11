@@ -14,9 +14,10 @@
 import { FEATURE_FLAGS } from '@config/features';
 import type { FirebaseApp } from 'firebase/app';
 import { CustomProvider, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
 import { logFirebaseBootstrapFailure } from './firebaseDiagnostics';
 
-const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+const appCheckDebugToken = menulistPublicEnv.firebaseAppCheckDebugToken;
 let appCheckInstance: ReturnType<typeof initializeAppCheck> | null = null;
 
 function isLocalOrPreviewHost(hostname: string): boolean {

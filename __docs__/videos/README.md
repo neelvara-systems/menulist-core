@@ -34,14 +34,17 @@ MenuList launch videos must not sell the product as only a QR menu app or as gen
 | [videos_audio-production-research-and-plan.md](./videos_audio-production-research-and-plan.md) | HyperFrames-only audio production standard, research findings, local voice/BGM/SFX plan, mix/master rules, and audio rescue plan for draft videos |
 | [brand-audio/](./brand-audio/) | Reusable MenuList brand-audio bed, approval sting, source ledger, hashes, and usage rules |
 | [videos_ai-era-market-strategy.md](./videos_ai-era-market-strategy.md) | 2026 AI/search-era strategy layer: source-quality positioning, trust-over-automation rules, serialized short-form content, safe discoverability language, and future video angle |
-| [videos_launch-video-conversion-research.md](./videos_launch-video-conversion-research.md) | Evidence-led launch-video conversion model, source-method caveats, MenuList funnel roles, UTM standard, A/B tests, measurement ladder, and paid-launch instrumentation gate |
+| [videos_launch-video-conversion-research.md](./videos_launch-video-conversion-research.md) | Evidence-led launch-video conversion model, August 2026 market and HyperFrames source-project study, source-method caveats, MenuList funnel roles, UTM standard, A/B tests, measurement ladder, and paid-launch instrumentation gate |
+| [videos_market-format-and-script-system.md](./videos_market-format-and-script-system.md) | Current restaurant/video-market map, official platform format rules, 12-video campaign roles, script language, hook bank, asset/claim gates, and recommended production sequence |
+| [videos_asset-intake-and-readiness.md](./videos_asset-intake-and-readiness.md) | Real-asset intake contract, capture specifications, fictional demo data, rights/privacy checklist, per-video readiness matrix, and production handoff |
+| [feature-launch/](./feature-launch/) | Canonical 14-feature launch system, feature-inventory crosswalk, production waves, and individual A-Q handoffs for every admitted public feature |
 | [videos_conversion-brief-template.md](./videos_conversion-brief-template.md) | Required pre-build conversion brief for every public, social, sales, website, aspect-ratio, hook, and paid video version |
 | [videos_campaign-measurement-ledger.md](./videos_campaign-measurement-ledger.md) | Active asset/version register, UTM identity, conversion job, measurement readiness, paid eligibility, and campaign results ledger |
 | [videos_version-ledger.md](./videos_version-ledger.md) | Founder-review pass IDs, immutable output paths, change history, audio decisions, verification, and supersession rules |
 | [videos_future-ai-search-ready-video.md](./videos_future-ai-search-ready-video.md) | Future 13th awareness video concept for AI search readiness, explicitly bounded away from ranking or AI recommendation guarantees |
 | [videos_launch-hero-video.md](./videos_launch-hero-video.md) | 60-75 second hero launch film, 30-second launch announcement, founder POV video, core story beats, and launch-format notes |
 | [videos_product-demo-video.md](./videos_product-demo-video.md) | 2-3 minute product demo walkthrough, screen sequence, narration, capture checklist, and demo account requirements |
-| [videos_feature-videos.md](./videos_feature-videos.md) | Feature-level videos for AI Menu Manager, Official Business Page, Multi-location, one-link value, QR/print, Business Health, and later feature slots |
+| [videos_feature-videos.md](./videos_feature-videos.md) | Feature-launch strategy, 14-video authority index, production waves, shared gates, and versioning rules |
 | [videos_short-form-reels.md](./videos_short-form-reels.md) | Reels/shorts scripts, first 30 short-form ideas, hook bank, and content mapping by funnel stage |
 | [videos_paid-ad-cutdowns.md](./videos_paid-ad-cutdowns.md) | 6-second, 15-second, and 30-second ad cutdowns with paid-media guardrails |
 | [videos_campaign-calendar.md](./videos_campaign-calendar.md) | Pre-launch, launch-week, and post-launch posting plan with priority order and deliverable packages |
@@ -99,8 +102,8 @@ Supporting lines:
 
 - Start from the menu or service list you already have.
 - Upload existing menu photos or a PDF.
-- No typing required to start.
-- Create your customer link in minutes.
+- No need to retype the whole menu before you begin.
+- MenuList prepares a private customer preview.
 - Review the customer-facing version before publishing.
 - QR, page, print, and customer actions stay tied to the approved list.
 - Menu updates wait for owner approval.
@@ -113,7 +116,7 @@ Allowed:
 - Owner-approved customer link.
 - Private preview before publishing.
 - Photo, PDF, owned public link, service list, or rate card as starting sources; typed entry is only a fallback, not the primary launch message.
-- Easy setup language such as upload current menu photos, no typing required to start, and create a customer link in minutes.
+- Setup-relief language such as upload current menu photos or a PDF and no need to retype the whole menu before beginning.
 - QR, Official Business Page, print files, customer actions, owner phone view, activity, feedback, and Business Health tied to the approved MenuList list.
 - AI Menu Manager prepares cards and waits for approval before important supported work.
 - Multi-location master list plus outlet-level flexibility.
@@ -149,7 +152,7 @@ Better launch pack:
 
 - 1 hero film.
 - 1 product demo.
-- 5 feature videos.
+- 14 feature-launch authorities produced and released in three waves, not as one simultaneous batch.
 - 15 reels.
 - 5 paid ad cuts.
 - 4 onboarding clips.
@@ -159,6 +162,7 @@ Better launch pack:
 Ready as planning docs:
 
 - scripts;
+- canonical 14-feature video inventory and ten new detailed feature-production handoffs;
 - content calendar;
 - guardrails;
 - production sequence;
@@ -168,6 +172,7 @@ Still blocked before final video production:
 
 - routed demo screenshots or approved mockups;
 - final demo tenant/source-list approval;
+- final asset-intake batch, provenance, privacy, and rights review;
 - founder voiceover, talking-head, or approved local TTS decision;
 - final public audio approval after the local audio-v2 review pass;
 - visual editing;
@@ -178,6 +183,7 @@ Rendered drafts now exist for production review:
 
 - [HyperFrames production note](./videos_hyperframes-production.md)
 - [Audio production plan](./videos_audio-production-research-and-plan.md)
+- [v1.16 Owner Ease 30s native vertical `Start there` hook test with primary One Link Motion audio, 1080 x 1920](./hyperframes/menulist-owner-ease-30s-v1.16/deliverables/menulist-owner-ease-30s-v1.16.mp4)
 - [v1.15 Owner Ease 30s centered URL close with Outlet Control alternate, 1920 x 1080](./hyperframes/menulist-owner-ease-30s-v1.15/deliverables/menulist-owner-ease-30s-v1.15.mp4)
 - [v1.14 Owner Ease 30s centered URL close with primary One Link Motion audio, 1920 x 1080](./hyperframes/menulist-owner-ease-30s-v1.14/deliverables/menulist-owner-ease-30s-v1.14.mp4)
 - [v1.13 Owner Ease 30s readable URL close with Outlet Control alternate, 1920 x 1080](./hyperframes/menulist-owner-ease-30s-v1.13/deliverables/menulist-owner-ease-30s-v1.13.mp4)
@@ -187,7 +193,7 @@ Rendered drafts now exist for production review:
 - [v1.9 Owner Ease 30s Outlet Control music comparison, 1920 x 1080](./hyperframes/menulist-owner-ease-30s-v1.9/deliverables/menulist-owner-ease-30s-v1.9.mp4)
 - [v1.8 Owner Ease 30s One Link Motion music comparison, 1920 x 1080](./hyperframes/menulist-owner-ease-30s-v1.8/deliverables/menulist-owner-ease-30s-v1.8.mp4)
 - [v1.7 Owner Ease 30s workflow-polished native 1920 x 1080 founder-review MP4](./hyperframes/menulist-owner-ease-30s-v1.7/deliverables/menulist-owner-ease-30s-v1.7.mp4)
-- [v1.0 Owner Ease 30s current native 1920 x 1080 founder-review MP4](./hyperframes/menulist-owner-ease-30s-v4-landscape-brand-type/deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4)
+- [v1.0 Owner Ease 30s frozen native 1920 x 1080 baseline MP4](./hyperframes/menulist-owner-ease-30s-v4-landscape-brand-type/deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4)
 - [30-sec Launch Announcement draft MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-draft.mp4)
 - [30-sec Launch Announcement audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-audio-v2.mp4)
 - [30-sec Launch Announcement vertical audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s-vertical/renders/menulist-launch-announcement-30s-vertical-audio-v2.mp4)
@@ -196,9 +202,11 @@ Rendered drafts now exist for production review:
 
 Public-use warning:
 
-Use the native V4 1920 x 1080 Lyria MP4 as the current Owner Ease founder-review reference. Superseded Owner Ease projects and rejected audio binaries were removed after the final source, deliverable, hashes, and decision record were retained. Public publishing remains blocked until founder listening approval, final UI/product capture approval where needed, current service-terms review, and final claim-boundary review.
+Use `v1.14` as the current primary 16:9 Owner Ease founder-review reference, `v1.15` as its operational-audio alternate, and `v1.16` as the current native 9:16 retention test. Keep `v1.0` only as the frozen baseline. Public publishing remains blocked until founder listening approval, final UI/product capture approval where needed, current service-terms review, and final claim-boundary review.
 
-Storage retention: founder-review `v1.0`, `v1.7`, the controlled `v1.8` / `v1.9` music comparisons, the clean-close `v1.10` / `v1.11` passes, the readable-URL `v1.12` / `v1.13` passes, and the centered-URL `v1.14` / `v1.15` passes are retained. Versions `v1.1` through `v1.6` were explicitly rejected and deleted on July 14, 2026; their decisions and hashes remain in the [version ledger](./videos_version-ledger.md).
+The current market review and scripts are complete enough to storyboard every video. After the real assets arrive, produce the Photo/PDF To Customer Link reel first, then the Owner Approval reel, the 30-second launch cut, the continuous product demo, and finally the hero film. This order lets the flagship reuse evidence that has already passed product, motion, audio, and founder review.
+
+Storage retention: founder-review `v1.0`, `v1.7`, the controlled `v1.8` / `v1.9` music comparisons, the clean-close `v1.10` / `v1.11` passes, the readable-URL `v1.12` / `v1.13` passes, the centered-URL `v1.14` / `v1.15` passes, and the native-vertical `v1.16` test are retained. Versions `v1.1` through `v1.6` were explicitly rejected and deleted on July 14, 2026; their decisions and hashes remain in the [version ledger](./videos_version-ledger.md).
 
 ## Related Docs
 

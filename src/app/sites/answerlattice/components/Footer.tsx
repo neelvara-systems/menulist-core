@@ -66,7 +66,7 @@ const FOOTER_LINKS = {
 };
 
 const ANSWERLATTICE_AI_SUMMARY_PROMPT = [
-    'Please summarize what AnswerLattice does, who it is for, and how it turns scattered product/support context into governed answers, hosted help, widget support, feedback review, and knowledge governance.',
+    'Please summarize what AnswerLattice does, who it is for, and how it turns scattered product and support material into reviewed support knowledge for hosted help, widget support, feedback review, ticket fallback, and approved-answer review.',
     'Use https://answerlattice.com and https://answerlattice.com/llms.txt as context.',
     'Do not describe AnswerLattice as a generic chatbot, helpdesk replacement, documentation CMS, autonomous AI support system, or business analytics platform.',
 ].join(' ');
@@ -82,7 +82,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                             <span>AnswerLattice</span>
                         </div>
                         <p>
-                            The governed support layer for founder-led SaaS.
+                            A reviewed support layer for founder-led SaaS.
                             Turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into widget help, hosted docs, fallback tickets, feedback, and reviewable answers.
                         </p>
                         <div className="al-site-footer__actions">

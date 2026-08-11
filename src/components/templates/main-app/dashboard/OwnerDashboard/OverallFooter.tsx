@@ -7,9 +7,15 @@
  */
 
 import { OverallData } from '@template/main-app/projects/types';
+import { useDashboardOfferingLabels } from '@hook/useDashboardOfferingLabels';
+import {
+    formatDashboardPercent,
+    getDashboardLanguageLabel,
+} from '@lib/analytics/ownerDashboardPresentation';
 import { formatDateKey, formatDateTime } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
 import { Card, Col, Divider, Row, Statistic, Typography } from 'antd';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuTrophy } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -22,7 +28,9 @@ interface OverallFooterProps {
 
 const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
     const { lifetimeMetrics, firstDataDate, lastUpdated } = data;
+    const labels = useDashboardOfferingLabels();
     const formatter = useFormatter();
+    const locale = useLocale();
     const t = useTranslations('Dashboard.owner');
 
     const formatDate = (date?: string | Date) => {
@@ -51,73 +59,71 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
             <Row gutter={[24, 16]}>
                 <Col xs={12} sm={6}>
                     <Statistic
-                        title={t('metrics.totalMenuScans')}
-                        value={lifetimeMetrics.totalViews}
+                        title={labels.scansLabel}
+                        value={formatNumber(lifetimeMetrics.totalViews)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.totalItemClicks')}
-                        value={lifetimeMetrics.totalClicks}
+                        value={formatNumber(lifetimeMetrics.totalClicks)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.smartPicksShown')}
-                        value={lifetimeMetrics.totalSmartPicksRendered}
+                        value={formatNumber(lifetimeMetrics.totalSmartPicksRendered)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.smartPicksClicks')}
-                        value={lifetimeMetrics.totalSmartPicksClicks}
+                        value={formatNumber(lifetimeMetrics.totalSmartPicksClicks)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.engagedSessions')}
-                        suffix="%"
-                        value={lifetimeMetrics.engagedSessionRate || 0}
+                        value={formatDashboardPercent(lifetimeMetrics.engagedSessionRate)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.actionRate')}
-                        suffix="%"
-                        value={lifetimeMetrics.actionRate || 0}
+                        value={formatDashboardPercent(lifetimeMetrics.actionRate)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.searches')}
-                        value={lifetimeMetrics.totalSearches || 0}
+                        value={formatNumber(lifetimeMetrics.totalSearches || 0)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.noResultSearches')}
-                        value={lifetimeMetrics.totalZeroResultSearches || 0}
+                        value={formatNumber(lifetimeMetrics.totalZeroResultSearches || 0)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.customerActions')}
-                        value={lifetimeMetrics.totalMenuActionClicks || 0}
+                        value={formatNumber(lifetimeMetrics.totalMenuActionClicks || 0)}
                         className={styles.overallStat}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title={t('metrics.unavailableInterest')}
-                        value={lifetimeMetrics.totalUnavailableItemTaps || 0}
+                        value={formatNumber(lifetimeMetrics.totalUnavailableItemTaps || 0)}
                         className={styles.overallStat}
                     />
                 </Col>
@@ -162,7 +168,7 @@ const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
                 <Text type="secondary" className={styles.lastUpdated} style={{ display: 'block', marginTop: 8 }}>
                     {t('overall.topLanguagesSummary', {
                         languages: data.topLanguages.slice(0, 3).map((language) => t('overall.languageSummary', {
-                            language: language.label || language.language,
+                            language: getDashboardLanguageLabel(language.language, language.label, locale),
                             sessions: language.menuSessions || language.menuViews,
                             adoptions: language.adoptions || 0,
                         })).join(', '),

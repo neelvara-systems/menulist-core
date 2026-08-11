@@ -6,7 +6,7 @@ Source Integrations bring business data into CampaignCue without making Campaign
 
 ## Current Runtime
 
-The active runtime uses the signed-in MenuList store profile as a read-only bootstrap source and lets owners add source input records for manual notes, menu links, booking links, offers, events, and upload metadata. Upload parsing, website extraction, OAuth provider sync, webhooks, contact import, POS/booking import, and direct provider publishing are not active until credentials, permissions, and provider contracts are configured.
+The active runtime uses the signed-in MenuList store profile as a read-only bootstrap source and lets owners add source input records for manual notes, menu links, booking links, offers, events, and upload metadata. Campaign Inbox can turn explicitly labelled owner text into a reviewed batch of those same source inputs without storing the raw draft. Upload parsing, website extraction, OAuth provider sync, webhooks, contact import, POS/booking import, and direct provider publishing are not active until credentials, permissions, and provider contracts are configured.
 
 ## Supported Sources
 

@@ -1,7 +1,7 @@
 # Public Menu Entry - Mobile Support
 
 **Status:** Local source complete; physical-device evidence pending
-**Last reviewed:** August 7, 2026
+**Last reviewed:** August 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -21,7 +21,7 @@ This is a responsive owner-app onboarding funnel, not a MobileShell sub-screen: 
 - Unauthenticated source actions go to sign-in and return to the funnel.
 - Status polling stops after 36 reads rather than leaving an indefinite spinner.
 - Existing accounts are not asked for city; new accounts still supply city/area for subdomain setup.
-- All claim/session/browser handoffs use bounded responses and bounded session refresh. The dashboard handoff uses full navigation after the retry.
+- All claim/session/browser handoffs use bounded responses and bounded session refresh. The new starter Billing action and setup-workspace action share one single-flight refresh before fixed internal navigation. The full-width Billing action and banner action keep 44px-class touch targets, localized labels can wrap, and expired starter accounts receive the same localized keep-live explanation as desktop. QR Code and Assets stay in their dedicated modules.
 - Intake responses and preview path segments require the canonical draft UUID; malformed or whitespace-mutated IDs do not navigate or poll.
 
 ## Physical-device checks still pending

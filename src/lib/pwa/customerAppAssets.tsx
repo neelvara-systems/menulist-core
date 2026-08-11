@@ -1,4 +1,5 @@
 import { APP_THEME_COLOR } from '@constant/common';
+import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
 
 export const CUSTOMER_APP_ICON_CACHE_CONTROL = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
 export const CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL = 'private, no-store, max-age=0';
@@ -135,11 +136,7 @@ export function normalizeCustomerAppRenderableImageUrl(value: unknown): string |
             || !CUSTOMER_APP_RENDERABLE_IMAGE_HOSTS.has(url.hostname.toLowerCase())
         ) return undefined;
 
-        const configuredBucket = (
-            process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET
-            || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-            || ''
-        ).trim();
+        const configuredBucket = (menulistPublicEnv.firebaseStorageBucket || '').trim();
         if (!configuredBucket || getCustomerAppStorageBucketFromUrl(url) !== configuredBucket) return undefined;
 
         const decodedPath = decodeURIComponent(url.pathname);

@@ -155,6 +155,8 @@ One person may hold several responsibilities. The purpose is accountability, not
 - Knowledge Map for a curated view of structure, coverage, demand, freshness, and connected review work.
 - Release impact preview before activating customer-visible product changes.
 - Critical Answer Tests before and after important knowledge or release changes.
+- Scope Coverage Matrix when plan, role, product state, or version changes the correct answer.
+- Post-Change Support Evidence Review when an important release or approved knowledge correction has a complete after window and the owner needs bounded directional evidence.
 - Trusted Answer version history and audit evidence.
 - Product Friction Evidence for qualified support-event concentration, without claiming root cause or product-health certainty.
 - Role and permission controls so support responders, knowledge approvers, and technical operators do not share owner authority.
@@ -199,6 +201,8 @@ The correct workspace may therefore use only Start capabilities for months. That
 | Knowledge Map | The operator needs cross-feature context for a decision | A visual map is available |
 | Release Impact | A release changes customer-visible truth | Every internal deployment occurs |
 | Answer Tests | An answer is important enough to protect from regression | Test count is treated as a vanity metric |
+| Scope Coverage Matrix | An important answer differs by plan, role, product state, or version | Every theoretical context combination can be listed |
+| Post-Change Support Evidence Review | A completed release or knowledge correction has enough retained support evidence for an owner decision | Lower event counts can be presented as proof that the change caused relief |
 | Support Truth Export | A buyer, reviewer, or downstream team needs bounded evidence | A second source of truth can be created |
 | Public API | Approved coverage and key controls are ready | A technical team asks for generic API access |
 

@@ -24,7 +24,7 @@ export default async function MyCodexCreativeEditorTestPage() {
     const host = (await headers()).get("host");
     const explicitTestRouteEnabled = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE;
 
-    if (!isLocalHost(host) && !explicitTestRouteEnabled) {
+    if (!explicitTestRouteEnabled || !isLocalHost(host)) {
         notFound();
     }
 

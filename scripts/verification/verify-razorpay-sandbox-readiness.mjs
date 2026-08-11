@@ -71,11 +71,9 @@ async function main() {
     throw new Error('razorpay_sandbox_timeout_invalid');
   }
 
-  const keyId = requireTestKeyId('RAZORPAY_KEY_ID');
-  const publicKeyId = requireTestKeyId('NEXT_PUBLIC_RAZORPAY_KEY_ID');
-  if (publicKeyId !== keyId) throw new Error('razorpay_public_private_key_id_mismatch');
-  const keySecret = requireSecret('RAZORPAY_KEY_SECRET');
-  const webhookSecret = requireSecret('RAZORPAY_WEBHOOK_SECRET');
+  const keyId = requireTestKeyId('NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID');
+  const keySecret = requireSecret('MENULIST_RAZORPAY_KEY_SECRET');
+  const webhookSecret = requireSecret('MENULIST_RAZORPAY_WEBHOOK_SECRET');
 
   const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
   const operations = [];
