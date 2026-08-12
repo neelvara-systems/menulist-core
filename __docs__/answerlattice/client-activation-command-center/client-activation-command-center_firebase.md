@@ -12,6 +12,7 @@
 | Load compiled context manifest | `platformSummary/bundleManifest_{tId}_{sId}` | 1 | Compiled context readiness and public/private bundle status |
 | Load Answer Tests proof | `platformSummary/answerTests_{tId}_{sId}` | 1 | Bounded summary; derives First 10 count, latest proof state, and critical failures |
 | Load current governed source versions | `platformSummary/sourceVersions_{tId}_{sId}` | 1 | Six server-side counters invalidate stale Answer Test proof without source collection scans |
+| First-value evidence transaction reread | `platformSummary/activation_{tId}_{sId}` | 0-5 | Only when the bounded evidence object is first established, repaired, or advanced; normally one read, with the Firestore SDK capped at five attempts under contention |
 | Stage-aware base-route entry | `platformSummary/activation_{tId}_{sId}` | 0-1 | One direct read after access resolution; missing/error fails to Activation |
 | Load Daily Governance | `stores/{sId}` + `platformSummary/answerlatticeSchedulerState` + `platformSummary/answerlatticeNightlyState_{tId}_{sId}` + 5 capped `answerlattice_schedulerRunLogs` | 0 or 8 | Deferred until the owner first opens technical details; then mounted for the remaining page session, with no source collection scans |
 | Legacy subscription fallback | `subscriptions` exact dual-product/workspace query, `limit(5)` | 0-5 | Only when the store mirror is missing, malformed, terminal, or elapsed; exact current active truth wins within the bounded window |
@@ -23,7 +24,7 @@
 
 | Flow | Path | Count | Guard |
 | --- | --- | ---: | --- |
-| Activation snapshot | `platformSummary/activation_{tId}_{sId}` | 0-1 | Signature changed or older than 30 minutes |
+| Activation snapshot | `platformSummary/activation_{tId}_{sId}` | 0-1 | Signature changed, first-value evidence advances, or snapshot is older than 30 minutes |
 | Widget runtime marker | `stores/{sId}.widgetRuntimeStatus` | 0-1 | At most once per 15 minutes unless route/context changed |
 | Onboarding subscription mirror | `stores/{sId}.answerlatticeSubscription` | 1 | During account creation |
 | Notification test log | `answerlattice_notificationLogs/{eventHash}` | 0-1 | Only when the owner explicitly sends a test email |
@@ -45,6 +46,8 @@ The added entity and canonical-answer readiness checks reuse the trust metrics s
 The notification readiness card does not expose raw Firebase/cache internals. It shows only whether emails are enabled, sender config exists, and which sender address will be used. The explicit test action is rate-limited to 3/hour per workspace and writes an Answerlattice-scoped delivery log for debugging.
 
 The First-client launch proof, four-group progressive owner journey, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. Accordion state, group status, supporting checks, and the next action are computed in browser memory. They add 0 reads, 0 writes, and no listeners after the eight compact Activation reads. Launch proof stores compact group status fields plus current runtime-proof state inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer guidance and action labels remain client-side UI copy.
+
+First-value evidence reuses the activation snapshot already read before summary construction. It stores five nullable canonical ISO timestamps in that same document. Missing, malformed, cross-scope, or newly advanced evidence uses a Firestore transaction that rereads only this summary document, so that request normally uses nine reads instead of eight and concurrent refreshes cannot erase the earliest committed observation. If contention causes a retry, the route counts every transaction callback read in its bounded read model; the installed Firestore SDK defaults to at most five attempts. Ordinary views and ordinary signature/staleness writes remain at eight reads; unchanged direct writes omit the nested evidence object. There is no activation-event collection, daily aggregate, listener, index, migration scan, Storage object, scheduled task, or AI call. Legacy workspaces are backfilled lazily only when their activation summary is normally refreshed.
 
 Compact navigation and All tools are static projections of the existing authorized navigation registry. Reveal state lives only in the mounted sidebar component. It adds 0 Firestore reads, writes, deletes, listeners, summary documents, Storage objects, Functions, browser-storage writes, or AI calls. Directly opening a secondary route uses that route's existing cost contract; revealing its navigation label performs no data work.
 

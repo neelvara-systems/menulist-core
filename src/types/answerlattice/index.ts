@@ -981,6 +981,14 @@ export interface AnswerlatticeLaunchProofSummary {
     items: AnswerlatticeLaunchProofItem[];
 }
 
+export interface AnswerlatticeActivationFirstValueEvidence {
+    knowledgeReadyObservedAt: string | null;
+    trustedAnswerReadyObservedAt: string | null;
+    answerTestProofReadyObservedAt: string | null;
+    widgetRuntimeVerifiedObservedAt: string | null;
+    launchProofReadyObservedAt: string | null;
+}
+
 export interface AnswerlatticeActivationAnswerTestSummary {
     activeCaseCount: number;
     firstTenCount: number;
@@ -1057,6 +1065,7 @@ export interface AnswerlatticeActivationSummary {
     answerTests: AnswerlatticeActivationAnswerTestSummary;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
     launchProof: AnswerlatticeLaunchProofSummary;
+    firstValueEvidence: AnswerlatticeActivationFirstValueEvidence;
     steps: AnswerlatticeActivationStep[];
     readModel: {
         firestoreReads: number;

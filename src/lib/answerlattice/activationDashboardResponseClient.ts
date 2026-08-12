@@ -103,6 +103,33 @@ const isNullableCanonicalIsoTimestamp = (value: unknown): boolean => (
     value === null || isCanonicalIsoTimestamp(value)
 );
 
+const ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS = new Set([
+    'knowledgeReadyObservedAt',
+    'trustedAnswerReadyObservedAt',
+    'answerTestProofReadyObservedAt',
+    'widgetRuntimeVerifiedObservedAt',
+    'launchProofReadyObservedAt',
+]);
+
+const isActivationFirstValueEvidence = (value: unknown, computedAtIso: string): boolean => {
+    if (
+        !isRecord(value)
+        || Object.keys(value).length !== ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS.size
+        || !hasOnlyKeys(value, ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS)
+        || !isNullableCanonicalIsoTimestamp(value.knowledgeReadyObservedAt)
+        || !isNullableCanonicalIsoTimestamp(value.trustedAnswerReadyObservedAt)
+        || !isNullableCanonicalIsoTimestamp(value.answerTestProofReadyObservedAt)
+        || !isNullableCanonicalIsoTimestamp(value.widgetRuntimeVerifiedObservedAt)
+        || !isNullableCanonicalIsoTimestamp(value.launchProofReadyObservedAt)
+    ) return false;
+
+    const computedAtMillis = Date.parse(computedAtIso);
+    return Object.values(value).every(candidate => (
+        candidate === null
+        || (typeof candidate === 'string' && Date.parse(candidate) <= computedAtMillis)
+    ));
+};
+
 const isPercentageOrNull = (value: unknown): boolean => (
     value === undefined
     || value === null
@@ -396,6 +423,7 @@ const isActivationSummary = (value: unknown): value is AnswerlatticeActivationSu
         || !isActivationAnswerTests(value.answerTests)
         || !isCompiledContextReadiness(value.compiledContext)
         || !isLaunchProof(value.launchProof)
+        || !isActivationFirstValueEvidence(value.firstValueEvidence, value.computedAtIso)
         || !Array.isArray(value.steps)
         || value.steps.length > 20
         || !value.steps.every(isActivationStep)

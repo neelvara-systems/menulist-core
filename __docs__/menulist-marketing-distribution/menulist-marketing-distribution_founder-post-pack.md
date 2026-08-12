@@ -1,9 +1,9 @@
 # MenuList Marketing Distribution - Founder Post Pack
 
-**Status:** Draft content pack  
-**Created:** June 22, 2026  
-**Owner:** Codex drafts, founder edits before publishing  
-**Related action:** MLD-A005  
+**Status:** Draft content pack
+**Created:** June 22, 2026
+**Owner:** Codex drafts, founder edits before publishing
+**Related action:** MLD-A005
 
 ---
 
@@ -12,6 +12,12 @@
 This document gives the founder a small set of launch posts that explain MenuList without sounding like a generic QR menu product.
 
 Use these as drafts. The founder should edit voice, timing, screenshots, and proof before posting.
+
+The founder's pseudonymous Proof & State identity, daily workflow, cross-product
+content intake, research, privacy, and measurement are governed by [Founder
+Public Presence](../founder-public-presence/README.md). This pack remains the
+MenuList-specific launch and pilot draft source. None of its drafts may connect
+Proof & State to MenuList until the PresenceOS identity-correlation gate passes.
 
 ---
 
@@ -28,8 +34,8 @@ Use these as drafts. The founder should edit voice, timing, screenshots, and pro
 
 ## Post 1 - Why MenuList Exists
 
-**Channel:** LinkedIn  
-**Timing:** 7-10 days before launch  
+**Channel:** LinkedIn
+**Timing:** 7-10 days before launch
 **Goal:** Explain the problem without pitching too hard.
 
 ```text
@@ -54,8 +60,8 @@ We are preparing the launch proof now.
 
 ## Post 2 - Not Only Restaurants
 
-**Channel:** LinkedIn or X  
-**Timing:** 4-6 days before launch  
+**Channel:** LinkedIn or X
+**Timing:** 4-6 days before launch
 **Goal:** Record broad-SMB stance.
 
 ```text
@@ -79,8 +85,8 @@ That is the launch focus: one official customer link for the current list the bu
 
 ## Post 3 - Before/After Proof
 
-**Channel:** LinkedIn, Instagram caption, or Product Hunt gallery support  
-**Timing:** After screenshots are ready  
+**Channel:** LinkedIn, Instagram caption, or Product Hunt gallery support
+**Timing:** After screenshots are ready
 **Goal:** Explain visual transformation.
 
 ```text
@@ -106,8 +112,8 @@ The important part is making the current source easier for customers to find and
 
 ## Post 4 - Product Hunt Launch
 
-**Channel:** LinkedIn  
-**Timing:** Product Hunt launch day  
+**Channel:** LinkedIn
+**Timing:** Product Hunt launch day
 **Goal:** Send founder network to the launch and ask for useful feedback.
 
 ```text
@@ -132,8 +138,8 @@ Link in the comments.
 
 ## Post 5 - Partner Angle
 
-**Channel:** LinkedIn  
-**Timing:** Launch week or pilot week  
+**Channel:** LinkedIn
+**Timing:** Launch week or pilot week
 **Goal:** Recruit agencies/freelancers without overpromising a partner program.
 
 ```text
@@ -156,8 +162,8 @@ If you work with SMB clients and see this problem often, I would like to compare
 
 ## Post 6 - Pilot Ask
 
-**Channel:** LinkedIn, founder DM follow-up, local network  
-**Timing:** Before or after Product Hunt, depending on proof readiness  
+**Channel:** LinkedIn, founder DM follow-up, local network
+**Timing:** Before or after Product Hunt, depending on proof readiness
 **Goal:** Ask for controlled pilot businesses.
 
 ```text
@@ -187,4 +193,3 @@ If this sounds like a real problem in your business or client base, send the cur
 | Product Hunt launch | Recommended | Product Hunt asset pack |
 | Partner angle | No | partner brief |
 | Pilot ask | Optional | activation/follow-up plan |
-

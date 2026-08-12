@@ -588,6 +588,13 @@ export default function AnswerlatticeActivationCommandCenter() {
             ? STATUS_META.pending
             : STATUS_META.attention;
     const LaunchProofStatusIcon = launchProofStatus.icon;
+    const firstValueEvidence = [
+        { key: 'knowledge', label: 'Product knowledge ready', value: summary.firstValueEvidence.knowledgeReadyObservedAt },
+        { key: 'answer', label: 'First trusted answer ready', value: summary.firstValueEvidence.trustedAnswerReadyObservedAt },
+        { key: 'tests', label: 'First 10 proof ready', value: summary.firstValueEvidence.answerTestProofReadyObservedAt },
+        { key: 'widget', label: 'Support connection verified', value: summary.firstValueEvidence.widgetRuntimeVerifiedObservedAt },
+        { key: 'launch', label: 'Launch proof ready', value: summary.firstValueEvidence.launchProofReadyObservedAt },
+    ];
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
@@ -893,6 +900,28 @@ export default function AnswerlatticeActivationCommandCenter() {
                     </Flex>
                 </Card>
             )}
+
+            <Card>
+                <Flex vertical gap={14}>
+                    <div>
+                        <Text strong>First-value evidence</Text>
+                        <br />
+                        <Text type="secondary">
+                            First observed from retained setup evidence. These timestamps do not prove customer resolution.
+                        </Text>
+                    </div>
+                    <Row gutter={[12, 12]}>
+                        {firstValueEvidence.map(item => (
+                            <Col xs={24} sm={12} lg={8} key={item.key}>
+                                <Flex vertical gap={2} style={{ minWidth: 0 }}>
+                                    <Text type="secondary">{item.label}</Text>
+                                    <Text strong>{item.value ? formatDateTime(item.value) : 'Not observed yet'}</Text>
+                                </Flex>
+                            </Col>
+                        ))}
+                    </Row>
+                </Flex>
+            </Card>
 
             <Row gutter={[12, 12]}>
                 {modeCards.map((mode) => (

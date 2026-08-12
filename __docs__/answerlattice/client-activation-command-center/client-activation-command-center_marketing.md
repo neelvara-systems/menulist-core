@@ -12,3 +12,5 @@ Positioning:
 - Ready-to-test labels keep configuration proof separate from verified customer resolution.
 
 Avoid claims that Answerlattice automatically fixes every support gap. The product shows readiness and routes owners to the right management surface.
+
+First-value evidence is an internal activation measurement and support aid. Do not market its timestamps as customer resolution, deflection, time saved, or exact action timing.

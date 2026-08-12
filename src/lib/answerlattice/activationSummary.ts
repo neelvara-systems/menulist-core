@@ -14,6 +14,7 @@ import { getNotificationReadiness } from '@lib/notifications';
 import type {
     AnswerlatticeActivationStage,
     AnswerlatticeActivationAnswerTestSummary,
+    AnswerlatticeActivationFirstValueEvidence,
     AnswerlatticeActivationStep,
     AnswerlatticeActivationStepStatus,
     AnswerlatticeActivationSubscriptionSummary,
@@ -34,6 +35,20 @@ export const getAnswerlatticeActivationSummaryDocId = (tId: number, sId: number)
 
 export const ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const ANSWERLATTICE_WIDGET_RUNTIME_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const ANSWERLATTICE_ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS: ReadonlyArray<keyof AnswerlatticeActivationFirstValueEvidence> = [
+    'knowledgeReadyObservedAt',
+    'trustedAnswerReadyObservedAt',
+    'answerTestProofReadyObservedAt',
+    'widgetRuntimeVerifiedObservedAt',
+    'launchProofReadyObservedAt',
+];
+
+const normalizeActivationFirstObservedAt = (value: unknown, nowMillis: number): string | null => {
+    if (typeof value !== 'string' || value.length > 40) return null;
+    const millis = Date.parse(value);
+    if (!Number.isFinite(millis) || millis < 0 || millis > nowMillis) return null;
+    return new Date(millis).toISOString() === value ? value : null;
+};
 
 const getTimestampMillis = (value: any): number => {
     if (!value) return 0;
@@ -135,6 +150,56 @@ const buildLaunchProof = (items: AnswerlatticeLaunchProofItem[]): AnswerlatticeL
         items,
     };
 };
+
+export function buildAnswerlatticeActivationFirstValueEvidence(params: {
+    existingEvidence?: unknown;
+    launchProof: AnswerlatticeLaunchProofSummary;
+    nowMillis: number;
+}): AnswerlatticeActivationFirstValueEvidence {
+    const existing = params.existingEvidence && typeof params.existingEvidence === 'object' && !Array.isArray(params.existingEvidence)
+        ? params.existingEvidence as Record<string, unknown>
+        : {};
+    const observedAt = new Date(params.nowMillis).toISOString();
+    const proofReady = (key: string) => params.launchProof.items.some(item => item.key === key && item.status === 'complete');
+    const preserveOrObserve = (key: keyof AnswerlatticeActivationFirstValueEvidence, achieved: boolean): string | null => (
+        normalizeActivationFirstObservedAt(existing[key], params.nowMillis)
+        || (achieved ? observedAt : null)
+    );
+
+    return {
+        knowledgeReadyObservedAt: preserveOrObserve('knowledgeReadyObservedAt', proofReady('knowledge-surfaces')),
+        trustedAnswerReadyObservedAt: preserveOrObserve('trustedAnswerReadyObservedAt', proofReady('ontology-canonical')),
+        answerTestProofReadyObservedAt: preserveOrObserve('answerTestProofReadyObservedAt', proofReady('priority-answer-checks')),
+        widgetRuntimeVerifiedObservedAt: preserveOrObserve('widgetRuntimeVerifiedObservedAt', proofReady('widget-runtime')),
+        launchProofReadyObservedAt: preserveOrObserve('launchProofReadyObservedAt', params.launchProof.ready),
+    };
+}
+
+export function shouldPersistActivationFirstValueEvidenceAtomically(
+    existing: Record<string, any> | null,
+    next: AnswerlatticeActivationSummary,
+): boolean {
+    if (
+        !existing
+        || existing.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || existing.tId !== next.tId
+        || existing.sId !== next.sId
+        || !existing.firstValueEvidence
+        || typeof existing.firstValueEvidence !== 'object'
+        || Array.isArray(existing.firstValueEvidence)
+        || Object.keys(existing.firstValueEvidence).length !== ANSWERLATTICE_ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS.length
+        || Object.keys(existing.firstValueEvidence).some(key => (
+            !ANSWERLATTICE_ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS.includes(key as keyof AnswerlatticeActivationFirstValueEvidence)
+        ))
+    ) return true;
+
+    const nowMillis = Date.parse(next.computedAtIso);
+    return ANSWERLATTICE_ACTIVATION_FIRST_VALUE_EVIDENCE_KEYS.some(key => {
+        const rawValue = existing.firstValueEvidence[key];
+        const normalizedValue = normalizeActivationFirstObservedAt(rawValue, nowMillis);
+        return rawValue !== normalizedValue || normalizedValue !== next.firstValueEvidence[key];
+    });
+}
 
 const normalizeSubscription = (
     value: unknown,
@@ -276,6 +341,7 @@ export function buildAnswerlatticeActivationSummary(params: {
     trustMetrics?: AnswerlatticeTrustMetrics | null;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
     answerTests?: AnswerlatticeActivationAnswerTestSummary | null;
+    existingSummary?: Record<string, any> | null;
     nowMillis?: number;
 }): AnswerlatticeActivationSummary {
     const storeData = params.storeData || {};
@@ -614,6 +680,16 @@ export function buildAnswerlatticeActivationSummary(params: {
             actionLabel: 'Test Signal Flow',
         },
     ]);
+    const existingSummaryInScope = params.existingSummary?.pId === PRODUCT_IDS.ANSWERLATTICE
+        && params.existingSummary?.tId === params.tId
+        && params.existingSummary?.sId === params.sId
+        ? params.existingSummary
+        : null;
+    const firstValueEvidence = buildAnswerlatticeActivationFirstValueEvidence({
+        existingEvidence: existingSummaryInScope?.firstValueEvidence,
+        launchProof,
+        nowMillis,
+    });
     const signaturePayload = {
         tId: params.tId,
         sId: params.sId,
@@ -709,6 +785,7 @@ export function buildAnswerlatticeActivationSummary(params: {
         answerTests,
         compiledContext: params.compiledContext || null,
         launchProof,
+        firstValueEvidence,
         steps,
         readModel: {
             firestoreReads: 8,

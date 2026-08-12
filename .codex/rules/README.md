@@ -1,6 +1,6 @@
 # 📋 Cascade AI Rules - MenuListAI Project
 
-**Last Updated**: November 5, 2025  
+**Last Updated**: August 12, 2026
 **Status**: ✅ Active & Enforced
 
 ---
@@ -16,6 +16,7 @@ This folder contains **MANDATORY RULES** that Cascade AI must follow strictly (n
 | **SECURITY_IMPLEMENTATION_RULES.md**    | Security patterns & enforcement | 🔴 CRITICAL | 600+  |
 | **DOCUMENTATION_ORGANIZATION_RULES.md** | Global vs feature-specific docs | 🔴 CRITICAL | 500+  |
 | **MOBILE_SUPPORT_RULES.md**             | Mobile support & UX enforcement | 🔴 CRITICAL | 130+  |
+| **FOUNDER_PUBLIC_PRESENCE_RULES.md**    | Proof & State identity/privacy, social strategy, evidence, capture, automation, and external-action boundaries | 🔴 CRITICAL | 150+ |
 
 ---
 
@@ -46,8 +47,8 @@ This folder contains **MANDATORY RULES** that Cascade AI must follow strictly (n
 
 ## 🚨 Critical Difference
 
-**Rules = LAW (Must obey)**  
-**Memories = CONTEXT (Should consider)**  
+**Rules = LAW (Must obey)**
+**Memories = CONTEXT (Should consider)**
 **Workflows = SUGGESTIONS (Can adapt)**
 
 ---
@@ -167,10 +168,10 @@ This folder contains **MANDATORY RULES** that Cascade AI must follow strictly (n
 
 ## ✅ Rule Establishment
 
-**Created**: November 5, 2025  
-**Authority**: Maximum (cannot be overridden)  
-**Enforcement**: Strict (zero tolerance)  
-**Scope**: All security-related code changes  
+**Created**: November 5, 2025
+**Authority**: Maximum (cannot be overridden)
+**Enforcement**: Strict (zero tolerance)
+**Scope**: All security-related code changes
 **Violations**: Will be refused by Cascade AI
 
 ---

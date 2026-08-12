@@ -55,6 +55,7 @@
 | Folder                                         | What's Inside                                                                 |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- |
 | **[strategy/](./strategy/)**                   | 5-year vision, founder manifesto, pricing, market research, feature spec      |
+| **[founder-public-presence/](./founder-public-presence/)** | Internal PresenceOS for the pseudonymous Proof & State identity, privacy, daily research, content, replies, and measurement |
 | **[constitution/](./constitution/)**           | Core doctrine, language governance, enforcement rules, feature rejection gate |
 | **[menulist-seo-launch/](./menulist-seo-launch/)** | MenuList launch SEO operating index, consultant ledger, and action register |
 | **[internal-tracking/](./internal-tracking/)** | MOL (Menu Observation Layer), internal metrics                                |

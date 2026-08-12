@@ -1,6 +1,6 @@
 # Client Activation Command Center Validation
 
-Reviewed: 2026-08-05
+Reviewed: 2026-08-12
 
 This validation cross-checks the Google Workspace progressive setup pattern
 against Answerlattice's current activation truth, founder-first doctrine,
@@ -20,6 +20,22 @@ responsive contract, and Firebase cost boundaries.
 | Copy recommendation counts or promotional setup items | Rejected | Answerlattice uses required support outcomes and does not manufacture a recommendations inbox. |
 | Add decorative artwork to every group | Rejected | The operational state already has meaningful content; repeated illustrations would add noise without helping a launch decision. |
 | Add a new onboarding document or listener | Rejected | The complete projection is in-memory over the existing activation response. |
+
+## Chatbase Growth Review
+
+The current Answerlattice journey was rechecked against the useful part of Chatbase's activation thesis: compress time to a concrete result, keep the initial action obvious, and expand only after value is visible.
+
+| Proposal | Decision | Current or added boundary |
+|---|---|---|
+| Replace the current journey with upload -> chatbot | Rejected | Answerlattice's governed workflow intentionally requires reviewed sources, Trusted Answers, Answer Tests, and current install evidence. |
+| Add a second quick-start wizard | Rejected | Activation already owns the four-goal path and one current action. |
+| Remove deeper governance tools | Rejected | Compact navigation and deferred technical details preserve every authorized route. |
+| Add an anonymous Support Truth Scan | Rejected | It would duplicate intake and create privacy, abuse, cost, and low-confidence proof risk before demand is established. |
+| Track every onboarding click | Rejected | Per-event analytics would add cost and a second behavioral system without proving owner value. |
+| Retain first-value threshold evidence | Adopted | Five monotonic first-observed timestamps live in the existing activation summary and use its existing conditional write. |
+| Treat a served answer as a resolved customer | Rejected | Explicit customer outcome remains the only confirmed-resolution evidence. |
+
+The additive evidence is deliberately not another owner workflow. It lets product interviews distinguish where activation slows down while the owner continues using the existing four groups.
 
 ## Owner Coverage
 
@@ -45,9 +61,12 @@ responsive contract, and Firebase cost boundaries.
 | Technical details first opened | Existing bounded Daily Governance request: eight reads |
 | Close and reopen technical details in the same page session | 0 additional mount-triggered reads |
 | Manual customer checklist use | 0 reads or writes until the owner opens an existing destination |
+| First-value evidence | 0 extra documents; normally one additional snapshot read only when evidence is established, repaired, or advanced, with retries counted under contention |
 
-No collection query, listener, write, index, scheduled function, model call,
-cache document, or persisted disclosure state was added.
+No collection query, listener, new write path, index, scheduled function, model
+call, cache document, or persisted disclosure state was added. First-value
+evidence advances only through the existing conditional activation-snapshot
+write.
 
 ## Local Evidence
 

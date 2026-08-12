@@ -721,8 +721,6 @@ function verifyEnvironmentTargets() {
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
   assertIncludes(envValidation, "'WHATSAPP_PHONE_NUMBER_ID'", 'Environment validation WhatsApp provider prerequisite warnings');
   assertIncludes(envValidation, "'WHATSAPP_ACCESS_TOKEN'", 'Environment validation WhatsApp provider prerequisite warnings');
-  assertIncludes(envValidation, "'WHATSAPP_APP_SECRET'", 'Environment validation WhatsApp provider prerequisite warnings');
-  assertIncludes(envValidation, "'WHATSAPP_VERIFY_TOKEN'", 'Environment validation WhatsApp provider prerequisite warnings');
   assertIncludes(deploymentTargets, 'resolveKnownProductIdByHostname', 'Deployment target helper');
   assertIncludes(middleware, 'resolveKnownProductIdByHostname', 'Inactive product-domain redirect guard');
   assertIncludes(middleware, 'NextResponse.redirect(url, 308)', 'Inactive product-domain redirect guard');
@@ -745,7 +743,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(documentComposer, 'sessionSourceContext?.tId', 'Answerlattice source context preservation boundary');
   assertIncludes(answerlatticeDashboardLayout, 'ensureFirebaseAuthForSession', 'Answerlattice dashboard Firebase Auth sync boundary');
   assertIncludes(setClaimsRoute, 'hasDefaultPlatformAccess', 'Answerlattice platform auth sync boundary');
-  assert(firebaserc.projects['menulist-qa'] === 'menulist-qa', '.firebaserc MenuList QA alias');
+  assert(firebaserc.projects.default === 'menulist-qa', '.firebaserc MenuList QA default project');
+  assert(firebaserc.projects['menulist-qa'] === undefined, '.firebaserc must not duplicate the MenuList QA project id as an alias');
   assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
   assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
   assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
@@ -783,7 +782,9 @@ function verifyEnvironmentTargets() {
     assertNotIncludes(content, '\nRAZORPAY_KEY_ID=', `${label} must not duplicate MenuList Razorpay key`);
     assertNotIncludes(content, '\nMENULIST_RAZORPAY_KEY_ID=', `${label} must not duplicate public MenuList Razorpay key id`);
     assertNotIncludes(content, '\nUPSTASH_REDIS_REST_URL=', `${label} must not duplicate MenuList Upstash URL`);
-    assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING=false', `${label} messaging onboarding provider processing must fail closed`);
+    assertNotIncludes(content, '\nENABLE_MESSAGING_ONBOARDING=', `${label} must keep the Functions-only messaging onboarding flag out of the Next.js environment`);
+    assertNotIncludes(content, '\nMENULIST_WHATSAPP_APP_SECRET=', `${label} must keep the Functions-only WhatsApp app secret out of the Next.js environment`);
+    assertNotIncludes(content, '\nMENULIST_WHATSAPP_VERIFY_TOKEN=', `${label} must keep the Functions-only WhatsApp verify token out of the Next.js environment`);
     assertNotIncludes(content, 'WHATSAPP_API_TOKEN', `${label} must not use stale WhatsApp API token env naming`);
     assertNotIncludes(content, 'MENULIST_SIGNALDESK_', `${label} must not use stale MenuList-prefixed SignalDesk env keys`);
     assertNotIncludes(content, 'NEXT_PUBLIC_MENULIST_SIGNALDESK_', `${label} must not use stale public MenuList-prefixed SignalDesk env keys`);

@@ -2,7 +2,7 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** July 18, 2026 | **Core catalog:** 32+ documented families | **Doc Types:** 7 per feature
+> **Last Updated:** August 12, 2026 | **Core catalog:** 32+ documented families | **Doc Types:** 7 per feature
 
 > **Current inventory boundary:** This index preserves the core documentation catalog but is not an exhaustive runtime feature count. Current routes, feature flags, maintained feature docs, and the [MenuList Feature Flow Audit Tracker](./audits/menulist-feature-flow-audit-tracker.md) are authoritative for the 41 completed numbered audits, the 35 MenuList-owned flows within that ledger, eight cross-cutting MenuList system audits, twelve dedicated audited subflows, and the explicit adjacent-product exclusions.
 
@@ -93,6 +93,7 @@
 | 36  | Internal Platform | `internal-platform/` | Internal tools                          |
 | 37  | Workflows Guide   | `workflows-guide/`   | Cascade workflow documentation          |
 | 37a | MenuList SEO Launch | `menulist-seo-launch/` | Launch SEO consultant ledger, decision log, and action register |
+| 37b | Proof & State PresenceOS | `founder-public-presence/` | Pseudonymous identity/privacy, X/Reddit launch, gated social channels, daily research heartbeat, posts, replies, decisions, and metrics |
 
 ## Other (Reference only)
 

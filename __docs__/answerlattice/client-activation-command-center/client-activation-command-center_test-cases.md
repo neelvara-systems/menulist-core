@@ -44,6 +44,13 @@
 - A non-ready compiled-context rebuild shows fixed needs-review copy rather than a success toast.
 - Malformed notification-test or compiled-context responses fail closed before success copy.
 - Browser response validation rejects malformed timestamps, statuses, counts, oversized arrays/strings, contradictory proof totals, and live-stage/proof mismatch.
+- First-value evidence accepts only its five exact nullable canonical ISO timestamps; malformed, future, extra, or object-coercible values fail closed.
+- Historical first-value evidence is preserved only from an exact `AL` tenant/store activation snapshot; foreign or malformed parent scope contributes no timestamp.
+- A newly reached threshold stores the current computed timestamp once, a later refresh preserves it, and a regression does not erase it or keep the current launch state green.
+- Milestone-changing writes transactionally reread the latest activation snapshot; ordinary writes omit the unchanged evidence map so concurrent refreshes cannot erase an earlier observation.
+- Transactional repair replaces the five-field evidence map exactly; unknown nested fields cannot survive a successful repair write.
+- Legacy activation summaries without first-value evidence are lazily observed on the next normal refresh without a migration scan.
+- Technical details show the five first-observed milestones without adding another primary progress indicator.
 - Surface Readiness matrix shows Ready, Needs mapping, Needs content, and Open signals states from `summary.content.surfaceReadiness`.
 - Daily Governance panel shows workspace scheduler status, support-day end time, daily check start time, last completion, and Settings/Refresh actions.
 - Ticket detail operator view shows Knowledge Loop guidance without extra ticket reads.
@@ -76,6 +83,7 @@
 - Compact navigation and All tools add no Firestore reads, writes, listeners, browser-storage state, model calls, or persisted workspace preference.
 - Ticket detail Knowledge Loop card adds no Firestore calls; it reads only local ticket state.
 - Activation snapshot write is skipped when signature is unchanged and fresh.
+- First-value evidence adds no document. Ordinary loads remain eight reads; establishing, repairing, or advancing evidence normally uses one additional transaction read and the existing conditional activation snapshot write. The read model counts each retry, up to the SDK's five-attempt default.
 - Widget runtime marker is throttled.
 - Invalid store ownership stops before seven compact summary reads; valid direct Activation remains eight reads.
 

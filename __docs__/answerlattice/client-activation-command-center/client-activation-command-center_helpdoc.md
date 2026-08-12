@@ -19,6 +19,8 @@ For installation, open **Install Support**. The primary **Copy coding-agent inst
 
 Open **Technical evidence and setup details** when you need the exact launch-proof groups, full checklist, setup percentage, runtime evidence, compiled context, notification test, license, profile, Answer Evidence, or Daily Governance status. Normal launch work should stay in the four setup groups.
 
+The **First-value evidence** row in technical details records when Answerlattice first observed reviewed knowledge, a Trusted Answer, a ready First 10 proof, a verified widget connection, and complete launch proof. It is historical setup evidence, not another checklist. A timestamp can remain visible when a current check later needs review, and it does not mean a customer issue was resolved.
+
 When the first-client launch proof is clear, configuration and retained evidence are ready for controlled customer-path testing. The green checks do not prove that a customer was resolved. Complete the manual known-answer and fallback path before relying on customer traffic, then check Suggested Updates before wider rollout. Keep Jira, native helpdesk connectors, and broad distribution out of the launch until this proof is complete.
 
 The percentage inside technical details and on Setup Status is setup progress, not a launch decision. Use the factual launch-check count and the controlled-customer-testing message as the gate. A notification test is successful only after the configured support email passes validation and delivery succeeds; a compiled-context rebuild that finishes in a non-ready state remains a review item.

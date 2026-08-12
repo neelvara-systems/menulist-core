@@ -35,6 +35,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - **Security rules**: `.cascade/rules/SECURITY_IMPLEMENTATION_RULES.md` and `.codex/rules/SECURITY_IMPLEMENTATION_RULES.md`
 - **Mobile rules**: `.cascade/rules/MOBILE_SUPPORT_RULES.md` and `.codex/rules/MOBILE_SUPPORT_RULES.md`
 - **Documentation rules**: `.cascade/rules/DOCUMENTATION_ORGANIZATION_RULES.md` and `.codex/rules/DOCUMENTATION_ORGANIZATION_RULES.md`
+- **Founder public presence rules**: `.cascade/rules/FOUNDER_PUBLIC_PRESENCE_RULES.md` and `.codex/rules/FOUNDER_PUBLIC_PRESENCE_RULES.md`
 - **Answerlattice rules**: `.cascade/rules/ANSWERLATTICE_RULES.md` and `.codex/rules/ANSWERLATTICE_RULES.md`
 - **Contextual state illustration rules**: `.cascade/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md` and `.codex/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md`
 - **Master execution**: `.codex/rules/master-execution.md` and `.codex/workflows/master-execution.md`
@@ -54,6 +55,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - For security-sensitive work, read the security rules before editing auth, middleware, API routes, Firestore rules, logging, tenant isolation, or validation code.
 - For mobile work, read mobile support rules before editing mobile screens, sheets, hooks, or mobile UX.
 - For documentation work, read documentation organization rules before moving, creating, or restructuring docs.
+- For Proof & State, the founder's pseudonymous X/Reddit or any founder social channel, creator research, public post ideas, audience strategy, account identity/privacy, replies, or useful public lessons discovered during repo work, read the PresenceOS rules and `__docs__/founder-public-presence/` before deciding, drafting, or capturing material.
 - For digital menu output work, read menu enforcement rules before editing customer-facing menu output.
 - For website work, load the website workflow and website/content-layer rules before editing `src/app/(website)/`, `src/components/website/`, or `public/locales/menulist.ai/` website copy.
 - For any new or changed empty, result, first-use, recovery, completion, or no-data state, read the contextual state illustration rules before choosing artwork or leaving the state plain.
@@ -309,6 +311,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Website Auto-Sync**: If a feature changes public/customer-visible capability, check whether website copy, help docs, and output surfaces need updating.
 - **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Answerlattice website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/KitStamp.
 - **Security Operating System Boundary**: Portfolio security profiles, surface maps, verifier evidence, grouped manual-selection bundles, provenance reviews, and local registry audits belong under `packages/security-os/`, `__docs__/security/security-operating-system/`, and `.agents/skills/security-os/`. Keep SecurityOS internal-only and read-only by default. Evidence bundles are planning aids and must never auto-execute their commands. SecurityOS may map owned source, rules, docs, and verifiers, but must not upload source/findings, scan production or third-party targets, auto-fix, auto-deploy, expose a public route, or treat mapped evidence as a passing security result. External scanners require a separate license, data-flow, credential, cost, and provenance decision.
+- **PresenceOS Boundary**: The founder's public identity is the transparent pseudonym `Proof & State`, first-choice handle `@proofandstate`. PresenceOS belongs under `__docs__/founder-public-presence/` with mirrored Codex/Cascade rules, approved local visual assets, manual workflows, a canonical daily progress tracker, and morning/evening internal Codex heartbeats. Mark external work complete only from a founder-provided URL or clear result; silence is `unconfirmed`, not failure. Give one primary action per day, carry forward at most one missed action, and use `DONE`, `BLOCKED`, or `SKIP` results to guide the next dependency. Never expose the founder's original identity, face, natural voice, personal accounts/contact details, personal Git identity/history, identifying metadata, customer content, or private repository details. Do not link MenuList, Answerlattice, Neelvara, product domains, repositories, app-store identities, or a founder hub until the documented identity-correlation audit passes. Public pseudonymity does not imply platform anonymity; comply with private registration/verification requirements without making them public. Keep PresenceOS internal-only: no public runtime, dashboard, database, scraper, auto-posting, automated replies, engagement network, lead harvesting, account creation, publication, messages, follows, purchases, verification, or spend without a separate architecture decision or explicit external-action instruction as applicable.
 
 ---
 
@@ -587,5 +590,5 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ---
 
-**Document Signature:** Persistent Brain - System Memory Replacement  
+**Document Signature:** Persistent Brain - System Memory Replacement
 **Authority:** Maximum - Critical system memory for all AI sessions

@@ -19,7 +19,9 @@ import {
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
 import {
     buildAnswerlatticeActivationSummary,
+    buildAnswerlatticeActivationFirstValueEvidence,
     getAnswerlatticeActivationSummaryDocId,
+    shouldPersistActivationFirstValueEvidenceAtomically,
     shouldPersistActivationSummary,
 } from '@lib/answerlattice/activationSummary';
 import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
@@ -289,6 +291,7 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
                 && areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)
                 ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions(rawSourceVersions))
                 : null;
+        const existingSummary = existingSummarySnap.exists ? existingSummarySnap.data() || null : null;
         const summary = buildAnswerlatticeActivationSummary({
             tId,
             sId,
@@ -310,12 +313,61 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
                 sId,
                 currentAnswerTestSourceVersions,
             ),
+            existingSummary,
         });
 
-        const existingSummary = existingSummarySnap.exists ? existingSummarySnap.data() || null : null;
-        if (shouldPersistActivationSummary(existingSummary, summary)) {
+        let responseSummary = summary;
+        if (shouldPersistActivationFirstValueEvidenceAtomically(existingSummary, summary)) {
+            let transactionReadCount = 0;
+            responseSummary = await db.runTransaction(async transaction => {
+                transactionReadCount += 1;
+                const latestSummarySnap = await transaction.get(summaryRef);
+                const latestSummary = latestSummarySnap.exists ? latestSummarySnap.data() || null : null;
+                const latestSummaryInScope = latestSummary?.pId === PRODUCT_IDS.ANSWERLATTICE
+                    && latestSummary?.tId === tId
+                    && latestSummary?.sId === sId
+                    ? latestSummary
+                    : null;
+                const transactionComputedAtMillis = Math.max(
+                    Date.now(),
+                    Date.parse(summary.computedAtIso),
+                );
+                const transactionSummary = {
+                    ...summary,
+                    computedAtIso: new Date(transactionComputedAtMillis).toISOString(),
+                    firstValueEvidence: buildAnswerlatticeActivationFirstValueEvidence({
+                        existingEvidence: latestSummaryInScope?.firstValueEvidence,
+                        launchProof: summary.launchProof,
+                        nowMillis: transactionComputedAtMillis,
+                    }),
+                    readModel: {
+                        ...summary.readModel,
+                        firestoreReads: summary.readModel.firestoreReads + transactionReadCount,
+                    },
+                };
+
+                if (
+                    shouldPersistActivationFirstValueEvidenceAtomically(latestSummary, transactionSummary)
+                    || shouldPersistActivationSummary(latestSummary, transactionSummary)
+                ) {
+                    const persistPayload = {
+                        ...transactionSummary,
+                        lastComputedAt: admin.firestore.FieldValue.serverTimestamp(),
+                        source: 'activation_summary_api',
+                    };
+                    if (latestSummarySnap.exists) {
+                        transaction.update(summaryRef, persistPayload);
+                    } else {
+                        transaction.create(summaryRef, persistPayload);
+                    }
+                }
+
+                return transactionSummary;
+            });
+        } else if (shouldPersistActivationSummary(existingSummary, summary)) {
+            const { firstValueEvidence: _preservedFirstValueEvidence, ...summaryWithoutFirstValueEvidence } = summary;
             await summaryRef.set({
-                ...summary,
+                ...summaryWithoutFirstValueEvidence,
                 lastComputedAt: admin.firestore.FieldValue.serverTimestamp(),
                 source: 'activation_summary_api',
             }, { merge: true });
@@ -323,10 +375,10 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
 
         return activationJson({
             summary: {
-                ...summary,
+                ...responseSummary,
                 readModel: {
-                    ...summary.readModel,
-                    firestoreReads: summary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
+                    ...responseSummary.readModel,
+                    firestoreReads: responseSummary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
                     legacySubscriptionFallbackUsed: usedLegacySubscriptionFallback,
                     legacySubscriptionFallbackReadCap: usedLegacySubscriptionFallback ? 5 : 0,
                 },

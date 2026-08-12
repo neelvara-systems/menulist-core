@@ -20,6 +20,7 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Launch/checklist actions that collapse to icons retain accessible labels and a 44px square target; labelled customer-path and surface actions remain at least 44px high.
 - Bottom padding keeps content clear of mobile browser controls.
 - Technical evidence and setup details remain collapsed by default so widget, scheduler, context, notification, license, and evidence panels do not overwhelm first use.
+- First-value evidence uses a wrapping one-column/two-column grid inside technical details; labels and first-observed timestamps must not overflow narrow screens.
 - The navigation drawer shows the compact owner toolset first. All tools expands only the selected group's authorized destinations without closing the drawer; selecting a real destination closes it through the existing callback.
 - Install Support and Copy coding-agent install remain explicit text actions with at least 44px target height; the owner is not expected to reconstruct the widget setup manually on mobile.
 
@@ -31,6 +32,7 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Step action buttons
 - Refresh button
 - First-client launch proof card and proof item actions
+- First-value evidence labels, timestamps, and Not observed yet states
 - Content Control workbench actions
 - Test-as-Customer checklist actions
 - Surface Readiness matrix actions

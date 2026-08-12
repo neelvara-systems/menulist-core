@@ -1,5 +1,36 @@
 # MenuList — Changelog
 
+## August 12, 2026 - Proof & State PresenceOS
+
+- Added a canonical `__docs__/founder-public-presence/` PresenceOS for the
+  transparent pseudonym `Proof & State`, covering identity privacy, X/Reddit
+  launch, gated Instagram/Facebook/LinkedIn/YouTube decisions, daily operating
+  workflow, native replies, evidence-backed content, research, and metrics.
+- Reversed the earlier real-name/face recommendation and blocked product,
+  company, domain, repository, and founder-hub links until an
+  identity-correlation audit passes. Public pseudonymity remains distinct from
+  platform-private registration or verification.
+- Added account-ready non-human avatar and X banner assets plus a thirty-day
+  action calendar, twelve-post bank, content candidates, and reply patterns.
+- Added a daily 8:30 AM Asia/Kolkata Codex Presence Brief contract for current
+  platform research, successful-account pattern study, repo-safe content
+  capture, and one bounded recommended action.
+- Added a canonical founder progress tracker and a daily 9:30 PM accountability
+  heartbeat. Completion now requires a `DONE` result or evidence; otherwise the
+  action remains `unconfirmed`, with one action carried forward and no catch-up
+  volume.
+- Added mirrored mandatory Codex/Cascade rules so future related work loads the
+  hub, protects the original identity, and proactively captures material
+  lessons without interpreting that as authority to create accounts, publish,
+  reply, message, follow, subscribe, verify, purchase, or spend externally.
+- Added a read-only live X review of eight technical/founder accounts using the
+  founder-authorized logged-in Chrome session. The resulting strategy adopts a
+  sharp promise, artifacts, receipts, product boundaries, and substantive
+  questions while rejecting revenue-dashboard, extreme-volume, lifestyle, and
+  controversy-led identity patterns.
+- Linked the new hub from the portfolio distribution ledger, MenuList founder
+  post pack, master documentation index, and persistent repo brain.
+
 ## August 11, 2026 - Transitive Dependency Security Closure
 
 - Pinned patched `js-yaml@4.3.1`, `nanoid@3.3.17`, and

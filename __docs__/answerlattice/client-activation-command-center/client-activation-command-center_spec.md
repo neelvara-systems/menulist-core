@@ -105,3 +105,15 @@ The entry decision may read only the compact activation summary. It must not reb
 ## Proof Semantics
 
 `readinessScore` is a diagnostic percentage over required setup steps. `launchProof.ready` is the stricter configuration/evidence gate and is the only condition that can produce `stage: live`. Neither field proves a customer received a correct answer or completed a support task. The Test-as-Customer checklist remains a manual workflow until Answerlattice has explicit, verified outcome evidence.
+
+## First-Value Evidence Contract
+
+The existing activation snapshot retains one monotonic first-observed timestamp for each bounded threshold:
+
+- reviewed knowledge plus a mapped product surface are ready;
+- at least one active Trusted Answer and reviewed Product Topic are available;
+- the current First 10 Answer Test proof is ready;
+- widget runtime, safe origins, and current page context are verified;
+- every strict launch-proof group is ready.
+
+These timestamps are measurement evidence for activation interviews and technical diagnosis, not a second progress model. They remain inside `platformSummary/activation_{tId}_{sId}`, are shown only under technical evidence, and never create per-event analytics, a funnel collection, or a customer-resolution claim. Existing valid timestamps are preserved when current evidence regresses. Missing legacy timestamps begin when the upgraded summary first observes the threshold, so the UI labels them **First observed** rather than implying an exact historical action time.

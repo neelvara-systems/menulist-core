@@ -1624,6 +1624,235 @@ Operator progress:
   Phase H Secret Manager. `functions/.env.menulist-qa` remains fail-closed with
   `ENABLE_MESSAGING_ONBOARDING=false`. No webhook, provider request, secret
   write, Functions deploy, or Vercel deploy was performed.
+- `2026-08-12` - A fresh empty `neelvara-systems/menulist-core` Vercel project
+  was created and linked to `neelvara-systems/menulist-core` without triggering
+  a deployment. Readback confirms Next.js at root `.`, Node.js `22.x`, build
+  command `npm run build:vercel`, Git integration, and zero deployments. The
+  QA env inventory contains exactly 39 unique rows: 13 Sensitive and 26
+  Non-sensitive, all restricted to Preview branch `staging`. Production has no
+  project env rows. The imported values use `menulist.digital`/`app` hosts,
+  `menulist-qa`, test-mode Razorpay, emulator-off hosted flags, canonical
+  product-scoped names, and no sister-product, generic Firebase, placeholder,
+  or local-emulator rows. No value was retrieved during remote verification.
+  `QA-A10` and `QA-G02` through `QA-G18` are complete.
+- `2026-08-12` - Firebase CLI reauthentication succeeded as
+  `admin@neelvara.com`, and metadata-only `firebase projects:list` returned the
+  single active project `menulist-qa`. Google Cloud Console then confirmed
+  `secretmanager.googleapis.com` is Enabled in that exact project. An initial
+  metadata-only audit found all 14 required Function secret names absent, so no
+  existing version was overwritten. `QA-H01` and `QA-H02` are complete.
+- `2026-08-12` - Secret Manager version 1 was created in project number
+  `113909530649` for `GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`,
+  `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `UPSTASH_REDIS_REST_URL`,
+  `UPSTASH_REDIS_REST_TOKEN`, `RAZORPAY_KEY_ID`, and
+  `RAZORPAY_KEY_SECRET`. Values were streamed directly from the ignored local
+  env into Firebase CLI and were never printed. Metadata-only readback confirms
+  every created version is Enabled; the Razorpay key ID was guarded as
+  `rzp_test_`. `RAZORPAY_WEBHOOK_SECRET` remains only in local/Vercel env for
+  the Next.js route. `QA-H03`, `QA-H04`, and `QA-H05` are complete; WhatsApp,
+  Sentry, revalidation, optional-secret handling, final metadata inventory, and
+  production non-touch evidence remain pending under `QA-H06` through
+  `QA-H09`.
+- `2026-08-12` - Secret Manager version 1 was created in `menulist-qa` for
+  `SENTRY_DSN` and `REVALIDATION_SECRET`, streamed from the ignored local env
+  without printing either value. These complete the monitoring and
+  revalidation portions of `QA-H06`. The operator then entered
+  `WHATSAPP_PHONE_NUMBER_ID` directly into Firebase CLI's private prompt, and
+  Secret Manager created version 1 without exposing the value. The same private
+  prompt flow then created version 1 of `WHATSAPP_ACCESS_TOKEN`. That gate now
+  includes version 1 of `WHATSAPP_APP_SECRET` and `WHATSAPP_VERIFY_TOKEN` as
+  well. All six maintained names now have version 1, completing `QA-H06`.
+- `2026-08-12` - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`,
+  `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID` were intentionally skipped for
+  this deploy target. Source readback confirms no exported MenuList Function
+  binds `SECRET_GROUPS.SMTP` or `SECRET_GROUPS.MONITORING`;
+  `PLATFORM_ALERT_DELIVERY` deliberately excludes both groups, SMTP returns a
+  not-configured result, and Telegram skips delivery when absent. Do not create
+  placeholder secrets. This completes `QA-H07`; add real QA values only if a
+  selected target later declares and uses either group.
+- `2026-08-12` - A metadata-only Firebase CLI audit checked the complete
+  14-name required inventory. Every secret reports version 1 as `ENABLED`, and
+  no value was accessed or displayed. Every create and metadata command used
+  exact project `menulist-qa`; the authenticated project inventory exposed no
+  production project and no command targeted project id `menulist`. This
+  completes `QA-H08` and `QA-H09`, closing Phase H.
+- `2026-08-12` - Phase I prechecks confirmed active Node `v22.23.1` matches
+  `.nvmrc`, while `firebase projects:list --json` returned only active project
+  `menulist-qa` with project number `113909530649`. This completes `QA-I01` and
+  `QA-I02` without running a build or deploy.
+- `2026-08-12` - `npm run verify:menulist-firebase-rules-predeploy`
+  discovered and passed all 41 root Firestore/Storage emulator rule scripts.
+  The maintained runner enforced `demo-*` projects and performed no QA or
+  production cloud read, write, or deploy. Expected denied-operation logs were
+  test assertions; every suite and the aggregate command exited successfully.
+  This completes `QA-I03`.
+- `2026-08-12` - The first exact-project baseline deploy targeted only
+  Firestore rules/indexes and Storage rules in `menulist-qa`. Storage and
+  Firestore rules compiled successfully; Firestore emitted 26 non-blocking
+  existing compiler warnings. Upload then stopped on
+  `firebaserules.googleapis.com` HTTP 503 (`The service is currently
+  unavailable`). Treat this as a transient external failure and a potentially
+  partial attempt: `QA-I04` remains open until the complete baseline command
+  exits successfully, followed by console readback under `QA-I05` through
+  `QA-I07`.
+- `2026-08-12` - One retry of the same exact-project baseline command also
+  stopped at the Google Firebase Rules API, this time on the server-side
+  `projects/menulist-qa:test` preflight with HTTP 503 before upload. The public
+  Firebase and Google Cloud status dashboards showed no broad Firestore or
+  Storage incident at the time, and the workstation's global Firebase CLI was
+  `14.15.1` while the current stable registry release was `15.26.0`. Stop
+  immediate retries. Non-mutating checks through explicitly pinned Firebase
+  CLI `15.26.0` authenticated successfully, listed only `menulist-qa`, and read
+  the `(default)` Firestore database as Native mode in `us-central1`; this
+  isolates the failure to the Firebase Rules API rather than login, project
+  visibility, or database creation. `QA-I04` remains externally blocked; after
+  a cooling period, make only one rules-first attempt with the pinned current
+  CLI, then escalate through project-specific Service Health or Firebase
+  Support if the same API 503 recurs.
+- `2026-08-12` - Firebase Console readback for bucket
+  `menulist-qa.firebasestorage.app` still showed the initial 11-line deny-all
+  Storage template, while repository `storage.rules` contains the maintained
+  461-line tenant/file-validation policy. This confirms that neither failed
+  attempt published the repository Storage rules. Keep the Console as a
+  post-deploy readback surface only; do not paste/publish rules manually because
+  that would bypass the version-controlled deployment record and cannot deploy
+  the Firestore index manifest. `QA-I06` remains open until the remote source
+  matches the repository after a successful CLI deployment.
+- `2026-08-12` - Project-specific diagnosis ruled out a general outage or
+  project configuration error. Cloud Logging returned no project-visible
+  `firebaserules.googleapis.com` entries; Google Cloud Service Health showed no
+  relevant active incident; the Firebase Rules API was Enabled; all displayed
+  Rules API quotas were at 0%; and the project Rules service agent retained its
+  Google-managed Firebase Rules System role. Pinned Firebase CLI `15.26.0`
+  debug traffic then proved OAuth refresh, IAM permission checks, Firestore API
+  access, database readback, rules compilation, release listing, and current
+  ruleset readback all returned HTTP 200. Only
+  `POST /v1/projects/menulist-qa/rulesets` for the repository Firestore source
+  returned HTTP 503 `UNAVAILABLE`. Google exposed no deeper project log or
+  request identifier for this managed control-plane failure.
+- `2026-08-12` - The Rules API accepted and released repository
+  `storage.rules` through pinned CLI `15.26.0`, proving the project could create
+  and release rulesets. A non-releasing REST diagnostic also created valid
+  default-deny Firestore rulesets at 512, 204800, 204801, and 205443 bytes,
+  including the exact byte size of the failing source. This ruled out the
+  documented raw source-size boundary and isolated the trigger to the compiled
+  complexity of the repository Firestore policy. The diagnostic rulesets were
+  never attached to `cloud.firestore` and therefore never changed active
+  access behavior; all four were deleted after diagnosis returned HTTP 200 for
+  each cleanup request.
+- `2026-08-12` - Ten functions reported by the Firebase compiler as unused were
+  removed from `firestore.rules`. They were unreachable from every `allow`
+  expression, so this changed no authorization path and reduced the source from
+  205443 to 198976 bytes. The complete
+  `npm run verify:menulist-firebase-rules-predeploy` gate then passed all 41
+  emulator suites again. The reduced source compiled, created ruleset
+  `9ce8cb3f-0bb1-4c12-bec0-1e9973c258e2`, and released successfully to
+  `cloud.firestore` at `2026-08-12T04:25:08.720448Z`. Seven newly exposed
+  transitive unused-helper warnings remain nonblocking; no active rule or test
+  depends on those helpers.
+- `2026-08-12` - The first indexes-only retry exposed one invalid one-field
+  composite declaration for `menuImageProcessingJobs.createdAt DESCENDING`.
+  Firestore supplies that single-field direction by default and no field
+  override disables it, so the redundant declaration was removed. An
+  indexes-only temporary deploy config prevented the main CLI config from
+  recompiling Firestore rules while the Rules API was under diagnosis. After
+  one expected HTTP 409 cross-transaction contention retry, Firestore accepted
+  the corrected manifest. REST readback reports all 166 composite indexes in
+  `READY` state.
+- `2026-08-12` - Rules API readback confirmed active Firestore ruleset
+  `9ce8cb3f-0bb1-4c12-bec0-1e9973c258e2` is 198976 bytes and SHA-256
+  `a6e0fc744050b73bcfbfa21e79b93e31b978617bb9822107f760bba2b6fc5da4`,
+  exactly matching local `firestore.rules`. Active Storage ruleset
+  `d37f8e26-60c3-47d4-97e2-f04d5327f2ff` is 18176 bytes and SHA-256
+  `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`,
+  exactly matching local `storage.rules`; its release timestamp is
+  `2026-08-12T04:09:12.303731Z`. This completes `QA-I04` through `QA-I07`.
+- `2026-08-12` - More than five minutes after the Firestore release, a fresh
+  Rules API readback still matched both repository rule files byte-for-byte,
+  and Firestore Admin API readback still reported all 166 composite indexes as
+  `READY`. The propagation hold is complete. This completes `QA-I08`; the
+  real-auth allow/deny matrix under `QA-I09` remains the next gate.
+- `2026-08-12 10:46 IST` - Two synthetic, non-customer QA identities and their
+  separate baseline businesses were created only in project `menulist-qa` for
+  the live rules gate. `QA owner A` uses Firebase Auth UID
+  `udsMmv6gQQP59zibA1RQUoX6Ckd2`, tenant/store `1/1`; `QA owner B` uses UID
+  `w916RXQfreRKIxpZEAXT2TH6t6R2`, tenant/store `2/2`. Each token carried only
+  the matching `ML` owner claims. Neither fixture has a Razorpay subscription,
+  customer data, menu data, or provider activity.
+- `2026-08-12 10:46 IST` - Operator `admin@neelvara.com` ran from branch
+  `staging` at base commit `159005a3a003`, using Node `v22.23.1` and pinned
+  Firebase CLI `15.26.0`. The local app and direct Firebase Web SDK were
+  connected deliberately to cloud project `menulist-qa`, with emulators
+  disabled only for this smoke. Both synthetic owners authenticated through
+  the real localhost credential flow and completed the protected app/store
+  bootstrap. The subscription guard then routed both unsubscribed fixtures to
+  Billing, as expected; direct client reads independently confirmed that each
+  owner could read only their own store.
+- `2026-08-12 10:46 IST` - The deployed-rule matrix passed all `35/35`
+  scenarios: four positive own-tenant scenarios and 31 expected denials.
+  Allowed coverage included owner A and B own-store reads, one reversible
+  owner-A campaign create/read/delete sequence, and one owner-A scoped Storage
+  upload/read/delete sequence. Denied coverage included anonymous owner-store
+  access, owner-A cross-tenant read/write and Storage upload, all
+  get/list/create/update/delete operations on server-only
+  `geminiSpendWindows/menulist` across anonymous, owner, and platform-style
+  identities, and read/write/delete on legacy `MenuListAi/project/files/...`
+  Storage paths across anonymous, same-tenant, cross-tenant, and platform-style
+  identities. Expected `permission-denied` responses were assertions, not
+  failures.
+- `2026-08-12 10:46 IST` - Post-smoke cleanup removed the disposable campaign,
+  scoped and legacy Storage objects, and server-only spend-window fixture;
+  remote readback found no residual smoke objects. Temporary platform-style
+  claims were restored to normal owner claims. Test passwords were rotated,
+  the temporary credential file was deleted, the local session was signed out,
+  the dev server was stopped, and `.env.local` was restored to emulator-first
+  hosts. Future hosted Phase K reuse must reset the synthetic passwords through
+  Firebase Auth. No blocker remains for `QA-I09`, and this evidence completes
+  `QA-I11` without recording a password, token, secret value, or customer
+  payload.
+- `2026-08-12` - Every Phase I cloud command used exact project
+  `menulist-qa`; no command targeted project id `menulist`, which remained
+  absent from the authenticated Firebase project inventory. This completes
+  `QA-I12`.
+- `2026-08-12 11:20 IST` - `npm run verify:functions-deploy-preflight` passed
+  the MenuList Functions lint and TypeScript build gates before deployment. The
+  first deploy exposed a Firebase CLI dotenv collision because `.firebaserc`
+  mapped both the default project and a same-name `menulist-qa` alias to the
+  same `.env.menulist-qa` file. The redundant self-alias was removed and both
+  deploy/readiness verifiers now guard that boundary; the default project
+  remains exact `menulist-qa`.
+- `2026-08-12 11:20 IST` - Fresh-project bootstrap enabled only the APIs needed
+  by the maintained Functions bundle. The Firebase-prescribed Pub/Sub service
+  agent token-creator grant and Compute default service-account Run invoker and
+  Eventarc receiver grants were applied. Cloud Build readback showed this new
+  project uses `113909530649-compute@developer.gserviceaccount.com` as its
+  default build identity, so that exact service account received
+  `roles/cloudbuild.builds.builder`. Artifact Registry cleanup was set to seven
+  days for `gcf-artifacts`; no application read/write path or function quota
+  changed.
+- `2026-08-12 11:20 IST` - The organization domain-restricted-sharing policy
+  initially rejected the public `allUsers` Cloud Run invoker required by the
+  Firebase callable transport. A project-only override was created for exact
+  project `menulist-qa`; both the current and legacy Organization Policy
+  readbacks report public members allowed for that project. The temporary
+  organization-policy administrator grant used to create the override was
+  removed immediately. Production and sister projects were not changed.
+  `processMenuImages` now has `allUsers -> roles/run.invoker`, while its callable
+  handler still enforces Firebase authentication and tenant/store scope before
+  application logic.
+- `2026-08-12 11:20 IST` - The maintained ten-target deploy completed after the
+  fresh-project IAM and first-use Eventarc propagation gates. A final targeted
+  deploy of `processMenuImages` exited successfully after its invoker binding
+  propagated. Firebase CLI readback reports all ten maintained targets
+  `ACTIVE`, second generation, Node.js 22, and `us-central1`: `processMenuImages`,
+  `processMenuImagesJob`, `menulistMaintenanceScheduler`,
+  `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`,
+  `triggerStoreNightlyScheduler`, `messagingOnboarding`,
+  `backfillStoresSummary`, `mapsPlaceCheck`, and `verifyMenuPublish`. A
+  provider-free unauthenticated callable probe reached `processMenuImages` and
+  returned HTTP 401 with `UNAUTHENTICATED`, proving public transport reachability
+  without bypassing application auth or invoking image processing. This
+  completes `QA-I10`; no Vercel or production deploy was run.
 
 Status rules:
 
@@ -1649,7 +1878,7 @@ Status rules:
 | [x] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` are aliases on the one licensed admin mailbox, and separate external delivery tests reached its Inbox |
 | [x] | QA-A09 | GitHub repository transferred to company organization | GitHub source `menulist-ai/menulist-core`, controlled intermediary `neelvara-admin/menulist-core`, and target `neelvara-systems/menulist-core` | Company-admin account `neelvara-admin` uses verified `admin@neelvara.com`, passkey, authenticator MFA, and independent recovery; two native transfers preserve `main`, `staging`, and repository metadata without granting the retiring account organization membership; final access readback shows no `menulist-ai` collaborator and no copy/recreated repository was used |
 | [x] | QA-A21 | Local Git authentication and author identity migrated | This workstation, `~/.ssh`, GitHub SSH settings, and the local `menulist-core` repository | The dedicated Neelvara key is the only active GitHub key on this workstation and authenticates as `neelvara-admin`; `origin`, authenticated fetch, preserved branch refs, repo-local `Neelvara Systems` noreply identity, old-account key revocation, and deletion of the retired local keypair are all verified |
-| [ ] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project imports `neelvara-systems/menulist-core` once; no old deployment, project setting, or environment value is transferred; exact branch `staging` can be restricted to Preview |
+| [x] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project is linked to `neelvara-systems/menulist-core`; readback confirms the intended framework/root/build/runtime settings, exact-branch Preview env support, and zero inherited or new deployments |
 | [ ] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | No setup depends on a weak or disposable login |
 | [ ] | QA-A12 | Secret sharing rule accepted | This guide and password vault | No real secret will be pasted into docs, chat, screenshots, or git |
 | [ ] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | A long-lived personal email is recovery-only; offline codes and the recovery owner are recorded; add a second trusted Super Admin before production when another owner is available |
@@ -1836,23 +2065,23 @@ Optional provider console links:
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
 | [x] | QA-G01 | Local ignored env file prepared from `.env.staging.example` | `.env.local` or approved ignored local env | Local values point to `menulist-qa`; local URL overrides use `http://localhost:3000` |
-| [ ] | QA-G02 | Branch-restricted Vercel Preview env created | Vercel Project -> Settings -> Environment Variables -> Preview -> Git Branch | Every MenuList QA value, especially secrets, is restricted to exact branch `staging` |
-| [ ] | QA-G03 | Runtime URL env values set | Local env and Vercel Preview env | Website/platform values use `menulist.digital`, aliases include `www` and `app`, tenant base uses `menulist.digital`, and `NEXTAUTH_URL` uses `app.menulist.digital` |
-| [ ] | QA-G04 | Firebase public canonical keys set | Local env and Vercel Preview env | `NEXT_PUBLIC_MENULIST_FIREBASE_*` values point to `menulist-qa` |
-| [ ] | QA-G05 | Generic Firebase public aliases absent | Local env and Vercel Preview env | No `NEXT_PUBLIC_FIREBASE_*` duplicate rows are stored; runtime uses the canonical MenuList family |
-| [ ] | QA-G06 | Firebase admin canonical keys set | Local env and Vercel Preview env | `MENULIST_FIREBASE_*` values point to `menulist-qa` |
-| [ ] | QA-G07 | Generic Firebase admin aliases absent | Local env and Vercel Preview env | No generic `FIREBASE_*` duplicate rows are stored; emulator host variables remain unscoped infrastructure controls |
-| [ ] | QA-G08 | Gemini keys and rolling ceiling set | Local env and Vercel Preview env | Only `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4` are stored; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
-| [ ] | QA-G09 | Razorpay Test Mode keys set | Local env and Vercel Preview env | Private and public Razorpay keys start with `rzp_test_` |
-| [ ] | QA-G10 | Upstash and revalidation values set | Local env and Vercel Preview env | QA Redis and revalidation secrets are present |
-| [ ] | QA-G11 | Provider values handled according to Phase E/F | Local env and Vercel Preview env | Required QA providers use real QA values; optional providers are real QA values or intentionally absent |
-| [ ] | QA-G12 | Private key newlines escaped for Vercel | Vercel Preview env | The single `MENULIST_FIREBASE_PRIVATE_KEY` value is multiline-safe |
-| [ ] | QA-G13 | Production env not touched | Vercel Project -> Environment Variables -> Production | No production values are changed from this guide |
-| [ ] | QA-G14 | Other product env setup skipped | Vercel and local env | No real Answerlattice, CampaignCue, SignalDesk, Neelvara, or MyCodex setup is done in this pass |
+| [x] | QA-G02 | Branch-restricted Vercel Preview env created | Vercel Project -> Settings -> Environment Variables -> Preview -> Git Branch | All 39 MenuList QA rows are restricted to exact branch `staging`; 13 true secrets are Sensitive and 26 public/config rows are Non-sensitive |
+| [x] | QA-G03 | Runtime URL env values set | Local env and Vercel Preview env | Website/platform values use `menulist.digital`, aliases include `www` and `app`, tenant base uses `menulist.digital`, and `NEXTAUTH_URL` uses `app.menulist.digital` |
+| [x] | QA-G04 | Firebase public canonical keys set | Local env and Vercel Preview env | `NEXT_PUBLIC_MENULIST_FIREBASE_*` values point to `menulist-qa` |
+| [x] | QA-G05 | Generic Firebase public aliases absent | Local env and Vercel Preview env | No `NEXT_PUBLIC_FIREBASE_*` duplicate rows are stored; runtime uses the canonical MenuList family |
+| [x] | QA-G06 | Firebase admin canonical keys set | Local env and Vercel Preview env | `MENULIST_FIREBASE_*` values point to `menulist-qa` |
+| [x] | QA-G07 | Generic Firebase admin aliases absent | Local env and Vercel Preview env | No generic `FIREBASE_*` duplicate rows are stored; emulator host variables remain local-only infrastructure controls |
+| [x] | QA-G08 | Gemini keys and rolling ceiling set | Local env and Vercel Preview env | Only `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4` are stored; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
+| [x] | QA-G09 | Razorpay Test Mode keys set | Local env and Vercel Preview env | The public key ID starts with `rzp_test_`; the private key secret belongs to the same QA pair and remains server-only |
+| [x] | QA-G10 | Upstash and revalidation values set | Local env and Vercel Preview env | QA Redis and revalidation secrets are present |
+| [x] | QA-G11 | Provider values handled according to Phase E/F | Local env and Vercel Preview env | Required root-runtime QA providers use real QA values; Functions-only Meta values remain vaulted for Phase H rather than duplicated in Vercel |
+| [x] | QA-G12 | Private key newlines escaped for Vercel | Vercel Preview env | The single Sensitive `MENULIST_FIREBASE_PRIVATE_KEY` value was imported through dotenv-compatible multiline handling |
+| [x] | QA-G13 | Production env not touched | Vercel Project -> Environment Variables -> Production | CLI readback reports no Production project env rows and no deployment was triggered |
+| [x] | QA-G14 | Other product env setup skipped | Vercel and local env | No real Answerlattice, CampaignCue, SignalDesk, Neelvara, or MyCodex setup was added in this pass |
 | [x] | QA-G15 | MenuList Functions non-secret env set | `functions/.env.menulist-qa` | App/API and message-preview origins are `https://app.menulist.digital`; tenant base is `menulist.digital`; the approved QA Gemini rolling limit is explicit |
-| [ ] | QA-G16 | Cloud Tasks worker values set | Local env and Vercel Preview env | Worker URL is the QA app-host endpoint, queue id is `batch-image-generation`, and the QA-only worker secret is present |
-| [ ] | QA-G17 | Deployable env values sanitized | Local env and Vercel Preview env | No value contains `<...>` template text, and unrelated product placeholder rows are absent rather than uploaded as values |
-| [ ] | QA-G18 | Emulator-first local override documented | Ignored `.env.local` and Firebase Emulator Suite | Destructive/rule-focused local work uses emulator hosts; Vercel remains emulator-off and cloud QA is used only for deliberate integration smoke |
+| [x] | QA-G16 | Cloud Tasks worker values set | Local env and Vercel Preview env | Worker URL is the QA app-host endpoint, queue id is `batch-image-generation`, and the QA-only worker secret is present |
+| [x] | QA-G17 | Deployable env values sanitized | Local env and Vercel Preview env | No value contains `<...>` template text, and unrelated product placeholder rows are absent rather than uploaded as values |
+| [x] | QA-G18 | Emulator-first local override documented | Ignored `.env.local` and Firebase Emulator Suite | Destructive/rule-focused local work keeps emulator hosts local; Vercel stores emulator-off flags and cloud QA is reserved for deliberate integration smoke |
 
 Required runtime values for this guide:
 
@@ -1880,32 +2109,32 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-H01 | Firebase CLI login confirmed | Local terminal | `firebase projects:list` shows `menulist-qa` |
-| [ ] | QA-H02 | Secret Manager API enabled only in `menulist-qa` | Google Cloud API Library | `secretmanager.googleapis.com` is enabled for the QA project after billing/budgets, not for production |
-| [ ] | QA-H03 | Required AI secrets set | Firebase Secret Manager for `menulist-qa` | `GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4` exist because current deploy targets declare them |
-| [ ] | QA-H04 | Required Upstash secrets set | Firebase Secret Manager for `menulist-qa` | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` exist |
-| [ ] | QA-H05 | Required Razorpay Test Mode Function secrets set | Firebase Secret Manager for `menulist-qa` | `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` use test-mode values; `RAZORPAY_WEBHOOK_SECRET` stays in local/Vercel env for the Next.js webhook route |
-| [ ] | QA-H06 | Required WhatsApp, monitoring, and revalidation secrets set for the maintained target list | Firebase Secret Manager for `menulist-qa` | Real QA `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `SENTRY_DSN`, and `REVALIDATION_SECRET` versions exist even while provider processing is disabled |
-| [ ] | QA-H07 | Optional Function secrets handled | Firebase Secret Manager for `menulist-qa` | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID` are real QA values or intentionally skipped until a selected deploy target declares/uses them |
-| [ ] | QA-H08 | Secret metadata checked without printing values | Google Secret Manager metadata command | Secret names exist, values are never displayed |
-| [ ] | QA-H09 | Production Functions secrets not touched | Firebase/Google Secret Manager | No secrets are set in project id `menulist` |
+| [x] | QA-H01 | Firebase CLI login confirmed | Local terminal | `firebase projects:list` succeeded as `admin@neelvara.com` and returned the single active project `menulist-qa` |
+| [x] | QA-H02 | Secret Manager API enabled only in `menulist-qa` | Google Cloud API Library | `secretmanager.googleapis.com` is visibly Enabled in exact project `menulist-qa`; no production project was selected or modified |
+| [x] | QA-H03 | Required AI secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4` exists and metadata readback reports Enabled |
+| [x] | QA-H04 | Required Upstash secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` exists and metadata readback reports Enabled |
+| [x] | QA-H05 | Required Razorpay Test Mode Function secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` exists and metadata readback reports Enabled; the key ID was guarded as test mode, while `RAZORPAY_WEBHOOK_SECRET` remains local/Vercel-only for the Next.js route |
+| [x] | QA-H06 | Required WhatsApp, monitoring, and revalidation secrets set for the maintained target list | Firebase Secret Manager for `menulist-qa` | Version 1 of `SENTRY_DSN`, `REVALIDATION_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, and `WHATSAPP_VERIFY_TOKEN` exists even while provider processing is disabled |
+| [x] | QA-H07 | Optional Function secrets handled | Firebase Secret Manager for `menulist-qa` | Skipped intentionally: no exported MenuList Function currently binds `SECRET_GROUPS.SMTP` or `SECRET_GROUPS.MONITORING`; runtime delivery fails closed, so no placeholder secret was created |
+| [x] | QA-H08 | Secret metadata checked without printing values | Google Secret Manager metadata command | Metadata-only readback confirms all 14 required names have version 1 `ENABLED`; no value was accessed or displayed |
+| [x] | QA-H09 | Production Functions secrets not touched | Firebase/Google Secret Manager | Every create and metadata command targeted exact project `menulist-qa`; no command targeted project id `menulist`, which was absent from the authenticated project inventory |
 
 ### Phase I - Firebase QA Infrastructure Deploy
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-I01 | Pinned runtime loaded | Local terminal | `node --version` is `v22.23.1`, matching `.nvmrc` |
-| [ ] | QA-I02 | Firebase project pre-check passed | Local terminal | `firebase projects:list` includes exact `menulist-qa` under the intended owner login |
-| [ ] | QA-I03 | MenuList root rules predeploy suite passed | Local terminal | `npm run verify:menulist-firebase-rules-predeploy` passes every discovered `demo-*` Firestore/Storage emulator rule script |
-| [ ] | QA-I04 | Firestore rules/indexes and Storage rules deployed together | Local terminal | Fresh-project command targets `--project menulist-qa --config firebase.json` only |
-| [ ] | QA-I05 | Deployed Firestore rules read back | Firebase Console -> Firestore Database -> Rules | Published source/timestamp match the repository deploy; no Console-only edit exists |
-| [ ] | QA-I06 | Deployed Storage rules read back | Firebase Console -> Storage -> Rules | Published source/timestamp match the repository deploy; no Console-only edit exists |
-| [ ] | QA-I07 | Deployed index state read back | Firebase CLI and Firebase Console -> Firestore Database -> Indexes | Every declared composite index reaches `READY`; none remain `CREATING` or `ERROR` |
-| [ ] | QA-I08 | Rule propagation wait completed | Firebase Console and clock | Several minutes have passed after the successful rules release before live smoke testing |
-| [ ] | QA-I09 | Deployed allow/deny smoke matrix passed | Local app connected to cloud `menulist-qa`, Firebase Auth, Rules Playground/direct client, Firestore, and Storage | Own-tenant operations work through real QA Auth; anonymous, cross-tenant, server-only spend-window, and legacy Storage operations are denied before the first Vercel deploy |
-| [ ] | QA-I10 | MenuList QA Functions bundle deployed only after rule smoke and required secrets pass | Local terminal | Maintained `functions` script deploys scoped MenuList QA function targets to `menulist-qa` only |
-| [ ] | QA-I11 | Deploy/readback/smoke evidence recorded | This checklist and operator evidence | Date, project, commands, result, tester ids, and blockers are recorded without secrets or sensitive payloads |
-| [ ] | QA-I12 | Production Firebase deploy not run | Local terminal history and Firebase Console | No command targets `--project menulist` |
+| [x] | QA-I01 | Pinned runtime loaded | Local terminal | `node --version` is `v22.23.1`, matching `.nvmrc` |
+| [x] | QA-I02 | Firebase project pre-check passed | Local terminal | `firebase projects:list --json` returned only active project `menulist-qa` under the intended owner login |
+| [x] | QA-I03 | MenuList root rules predeploy suite passed | Local terminal | `npm run verify:menulist-firebase-rules-predeploy` passed all 41 discovered `demo-*` Firestore/Storage emulator rule scripts with exit code 0 |
+| [x] | QA-I04 | Firestore rules/indexes and Storage rules deployed as the fresh QA baseline | Local terminal | Every command targeted exact project `menulist-qa`; Rules API diagnosis required safe split deployment through pinned Firebase CLI `15.26.0`, and every intended baseline target completed |
+| [x] | QA-I05 | Deployed Firestore rules read back | Firebase Rules API metadata/source readback | Active ruleset timestamp, byte count, and SHA-256 match repository `firestore.rules`; no Console-only edit exists |
+| [x] | QA-I06 | Deployed Storage rules read back | Firebase Rules API metadata/source readback | Active ruleset timestamp, byte count, and SHA-256 match repository `storage.rules`; no Console-only edit exists |
+| [x] | QA-I07 | Deployed index state read back | Firebase CLI and Firestore Admin API | Corrected manifest contains 166 composite indexes and every remote composite index reports `READY`; none remain `CREATING` or `ERROR` |
+| [x] | QA-I08 | Rule propagation wait completed | Firebase Rules API, Firestore Admin API, and clock | More than five minutes elapsed after the Firestore release; fresh ruleset hashes still matched local source and all 166 indexes remained `READY` |
+| [x] | QA-I09 | Deployed allow/deny smoke matrix passed | Local app connected to cloud `menulist-qa`, Firebase Auth, direct Web SDK, Firestore, and Storage | All 35 live scenarios passed: own-tenant operations worked through real QA Auth, while anonymous, cross-tenant, server-only spend-window, and legacy Storage operations were denied before the first Vercel deploy |
+| [x] | QA-I10 | MenuList QA Functions bundle deployed only after rule smoke and required secrets pass | Local terminal, Cloud Build, Cloud Run, Eventarc, and Firebase Functions readback | All ten maintained targets are `ACTIVE`, second generation, Node.js 22, and `us-central1`; the public callable transport returns the expected unauthenticated application response and no command targeted production |
+| [x] | QA-I11 | Deploy/readback/smoke evidence recorded | This checklist and operator evidence | Date, project, command families, results, tester ids, cleanup, and blocker state are recorded without secrets or sensitive payloads |
+| [x] | QA-I12 | Production Firebase deploy not run | Local terminal history and Firebase project inventory | Every Phase I cloud command targeted exact project `menulist-qa`; no command targeted `--project menulist`, which was absent from the authenticated project inventory |
 
 ### Phase J - Vercel Preview/Staging Deploy
 

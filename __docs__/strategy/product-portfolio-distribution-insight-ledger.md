@@ -24,6 +24,12 @@ Each entry must:
 An entry does not authorize account creation, publishing, partnerships, paid
 media, provider connections, spend, product claims, or deployment.
 
+The founder's pseudonymous Proof & State PresenceOS is maintained in
+[Founder Public Presence](../founder-public-presence/README.md). This ledger
+still governs product-by-product distribution boundaries; PresenceOS must not
+connect the alias to a product, company, domain, repository, or founder hub
+until both this ledger's product gate and the identity-correlation audit pass.
+
 ## Statuses
 
 - `APPLY_NOW` - update an existing internal operating rule or active bounded

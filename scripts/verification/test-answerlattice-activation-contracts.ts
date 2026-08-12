@@ -7,7 +7,11 @@ import {
     isAnswerlatticeOperationsStatusResponse,
     normalizeAnswerlatticeOperationsMetric,
 } from '@lib/answerlattice/activationDashboardResponseClient';
-import { buildAnswerlatticeActivationSummary } from '@lib/answerlattice/activationSummary';
+import {
+    buildAnswerlatticeActivationFirstValueEvidence,
+    buildAnswerlatticeActivationSummary,
+    shouldPersistActivationFirstValueEvidenceAtomically,
+} from '@lib/answerlattice/activationSummary';
 
 const nowMillis = Date.UTC(2026, 6, 18, 12, 0, 0);
 const keyHash = 'a'.repeat(64);
@@ -106,7 +110,145 @@ const summary = buildAnswerlatticeActivationSummary({
 assert.ok(summary.readinessScore >= 85, 'setup score should demonstrate that a high percentage is not the launch gate');
 assert.equal(summary.launchProof.ready, false, 'missing priority-answer proof must block launch proof');
 assert.notEqual(summary.stage, 'live', 'high setup readiness must not select the live stage');
+assert.equal(summary.firstValueEvidence.knowledgeReadyObservedAt, new Date(nowMillis).toISOString());
+assert.equal(summary.firstValueEvidence.trustedAnswerReadyObservedAt, new Date(nowMillis).toISOString());
+assert.equal(summary.firstValueEvidence.answerTestProofReadyObservedAt, null);
+assert.equal(summary.firstValueEvidence.widgetRuntimeVerifiedObservedAt, new Date(nowMillis).toISOString());
+assert.equal(summary.firstValueEvidence.launchProofReadyObservedAt, null);
 assert.equal(isAnswerlatticeActivationSummaryResponse({ summary }), true);
+assert.equal(
+    shouldPersistActivationFirstValueEvidenceAtomically(summary as unknown as Record<string, unknown>, summary),
+    false,
+    'an exact persisted first-value object must not require a transaction',
+);
+assert.equal(
+    shouldPersistActivationFirstValueEvidenceAtomically(null, summary),
+    true,
+    'the first activation snapshot must establish its bounded evidence object atomically',
+);
+assert.equal(
+    shouldPersistActivationFirstValueEvidenceAtomically({
+        ...summary,
+        firstValueEvidence: {
+            ...summary.firstValueEvidence,
+            launchProofReadyObservedAt: undefined,
+        },
+    } as unknown as Record<string, unknown>, summary),
+    true,
+    'a malformed persisted milestone must be repaired even when it normalizes to the next null state',
+);
+
+const completeFirstValueEvidence = buildAnswerlatticeActivationFirstValueEvidence({
+    nowMillis,
+    launchProof: {
+        ready: true,
+        score: 100,
+        completeCount: 4,
+        totalCount: 4,
+        blockers: [],
+        items: [
+            { key: 'knowledge-surfaces', title: 'Knowledge', description: 'Ready', status: 'complete' },
+            { key: 'ontology-canonical', title: 'Trusted answers', description: 'Ready', status: 'complete' },
+            { key: 'priority-answer-checks', title: 'Answer tests', description: 'Ready', status: 'complete' },
+            { key: 'widget-runtime', title: 'Widget', description: 'Ready', status: 'complete' },
+        ],
+    },
+});
+assert.deepEqual(
+    Object.values(completeFirstValueEvidence),
+    Array(5).fill(new Date(nowMillis).toISOString()),
+    'all five first-value timestamps must be observed when every bounded threshold is ready',
+);
+
+const regressedSummary = buildAnswerlatticeActivationSummary({
+    tId: 7,
+    sId: 9,
+    nowMillis: nowMillis + 60_000,
+    storeData: {},
+    existingSummary: summary as unknown as Record<string, unknown>,
+});
+assert.equal(
+    regressedSummary.firstValueEvidence.knowledgeReadyObservedAt,
+    summary.firstValueEvidence.knowledgeReadyObservedAt,
+    'first-observed knowledge evidence must survive a current-state regression',
+);
+assert.equal(
+    regressedSummary.firstValueEvidence.widgetRuntimeVerifiedObservedAt,
+    summary.firstValueEvidence.widgetRuntimeVerifiedObservedAt,
+    'first-observed widget evidence must survive stale or missing current runtime proof',
+);
+assert.equal(regressedSummary.launchProof.ready, false, 'historical evidence must not keep current launch proof green');
+
+const concurrentEvidenceObservedAt = new Date(nowMillis + 30_000).toISOString();
+const concurrentEvidence = buildAnswerlatticeActivationFirstValueEvidence({
+    existingEvidence: {
+        ...summary.firstValueEvidence,
+        answerTestProofReadyObservedAt: concurrentEvidenceObservedAt,
+    },
+    launchProof: summary.launchProof,
+    nowMillis: nowMillis + 60_000,
+});
+assert.equal(
+    concurrentEvidence.answerTestProofReadyObservedAt,
+    concurrentEvidenceObservedAt,
+    'a transaction retry must preserve evidence committed after the original summary computation',
+);
+
+const foreignExistingSummary = buildAnswerlatticeActivationSummary({
+    tId: 7,
+    sId: 9,
+    nowMillis: nowMillis + 60_000,
+    storeData: {},
+    existingSummary: {
+        ...summary,
+        tId: 70,
+        firstValueEvidence: {
+            ...summary.firstValueEvidence,
+            answerTestProofReadyObservedAt: new Date(nowMillis).toISOString(),
+        },
+    } as unknown as Record<string, unknown>,
+});
+assert.deepEqual(
+    Object.values(foreignExistingSummary.firstValueEvidence),
+    Array(5).fill(null),
+    'cross-scope activation snapshots must not contribute historical first-value evidence',
+);
+assert.equal(
+    shouldPersistActivationFirstValueEvidenceAtomically(
+        { ...summary, tId: 70 } as unknown as Record<string, unknown>,
+        summary,
+    ),
+    true,
+    'a foreign persisted summary must require fail-closed evidence replacement',
+);
+const substitutedEvidenceKey = {
+    ...summary.firstValueEvidence,
+    unexpectedObservedAt: summary.firstValueEvidence.launchProofReadyObservedAt,
+} as Record<string, unknown>;
+delete substitutedEvidenceKey.launchProofReadyObservedAt;
+assert.equal(
+    shouldPersistActivationFirstValueEvidenceAtomically({
+        ...summary,
+        firstValueEvidence: substitutedEvidenceKey,
+    } as unknown as Record<string, unknown>, summary),
+    true,
+    'an unknown key cannot substitute for a required first-value evidence field',
+);
+
+const malformedFirstValueEvidenceSummary = JSON.parse(JSON.stringify(summary));
+malformedFirstValueEvidenceSummary.firstValueEvidence.extra = 'not allowed';
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({ summary: malformedFirstValueEvidenceSummary }),
+    false,
+    'activation responses must reject uncontracted first-value evidence fields',
+);
+const futureFirstValueEvidenceSummary = JSON.parse(JSON.stringify(summary));
+futureFirstValueEvidenceSummary.firstValueEvidence.knowledgeReadyObservedAt = new Date(nowMillis + 60_000).toISOString();
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({ summary: futureFirstValueEvidenceSummary }),
+    false,
+    'first-value evidence cannot be later than the summary computation time',
+);
 assert.equal(
     isAnswerlatticeActivationSummaryForScope(summary, { tenantId: 7, storeId: 9 }),
     true,

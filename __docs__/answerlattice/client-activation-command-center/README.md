@@ -16,6 +16,7 @@ The authenticated shell now presents a compact default toolset. Get Live shows A
 - Runtime source docs: `stores/{sId}`, `platformSummary/activation_{tId}_{sId}`, `platformSummary/contextContent_{tId}_{sId}`, `platformSummary/coverage_{tId}_{sId}`, `platformSummary/trustMetrics_{tId}_{sId}`, `platformSummary/bundleManifest_{tId}_{sId}`, `platformSummary/answerTests_{tId}_{sId}`, and `platformSummary/sourceVersions_{tId}_{sId}`
 - Notification verification: `POST /api/answerlattice/notifications/test`
 - Launch proof summary: `summary.launchProof`
+- First-value evidence: `summary.firstValueEvidence`
 - Content Control workbench: `src/components/templates/answerlattice/content/AnswerlatticeContentWorkbench.tsx`
 - Test-as-Customer checklist: `src/components/templates/answerlattice/content/AnswerlatticeCustomerFlowChecklist.tsx`
 - Surface readiness matrix: `src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx`
@@ -37,7 +38,7 @@ The separately bounded Daily Governance request is deferred until the owner firs
 
 Legacy subscription lookup is capped to 5 documents and only runs when `stores/{sId}.answerlatticeSubscription` is missing.
 
-The activation snapshot writes only when the readiness signature changes or when the cached snapshot is older than 30 minutes.
+The activation snapshot writes only when the readiness signature changes, a first-value threshold is observed for the first time, or the cached snapshot is older than 30 minutes. First-value evidence is monotonic: it preserves the first valid observation of knowledge readiness, a Trusted Answer, an Answer Test proof, current widget runtime proof, and complete launch proof. It is stored inside the same activation summary document and adds no document, listener, route, or model call. Ordinary loads remain eight reads; establishing or advancing first-value evidence transactionally rereads only the activation snapshot, normally for nine total reads. The bounded read model counts each retry if Firestore contention causes the transaction callback to run again.
 
 Ticket notification readiness is computed from feature flag + SMTP environment + workspace support email. It does not scan notification logs. The Send Test Email action reads the workspace store once, then writes one Answerlattice notification log only when a test send is attempted.
 
@@ -48,6 +49,8 @@ Sidebar All tools state is also component-local and session-only. It adds no rou
 The summary route reads and validates `stores/{sId}` first. A missing or cross-product/cross-scope store stops after that one read; only a valid store can trigger the remaining seven compact summary reads. Coverage, trust, context, source-version, Answer Test, and compiled-manifest inputs are parsed against exact Answerlattice scope before they can advance readiness. Legacy subscriptions require exact `AL` product plus tenant/store identity.
 
 Widget install and page-context proof expire after seven days without current sanitized runtime telemetry. A stale marker remains visible as **Needs review**, but cannot complete launch proof or select the internal `live` stage. The browser accepts only a bounded 64 KiB, deeply shape-validated summary whose counts, statuses, timestamps, proof totals, and `live` state are mutually consistent.
+
+First-value timestamps mean **first observed by the activation summary**, not the exact historical moment an action happened. They never claim that a customer was resolved. If a current check later regresses, its original first-observed timestamp remains historical evidence while the live launch status correctly returns to Needs review.
 
 Setup Status displays `readinessScore` as **Setup readiness** only. Success styling and controlled-customer-testing copy require `summary.launchProof.ready`; an 85% or higher setup percentage cannot independently claim launch readiness. Notification-test recipients and compiled-context rebuild results are also validated before success copy is shown, and these management responses are private/no-store.
 

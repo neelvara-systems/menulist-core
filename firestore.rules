@@ -3529,22 +3529,6 @@ service cloud.firestore {
         && (values.size() < 8 || (values[7] is string && values[7].size() > 0 && values[7].size() <= maxLength));
     }
 
-    function isValidAnswerlatticeSupportBoardResolution(data) {
-      return (
-          data.status == 'resolved'
-          && data.keys().hasAll(['resolvedOn', 'resolvedBy'])
-          && data.resolvedOn is timestamp
-          && data.resolvedBy is string
-          && data.resolvedBy.size() > 0
-          && data.resolvedBy.size() <= 100
-        )
-        || (
-          data.status != 'resolved'
-          && (!data.keys().hasAny(['resolvedOn']) || data.resolvedOn == null)
-          && (!data.keys().hasAny(['resolvedBy']) || data.resolvedBy == null)
-        );
-    }
-
     function hasAnswerlatticeSupportBoardSourceIdentity(data) {
       return (data.keys().hasAny(['sourceCustomerName']) && data.sourceCustomerName != null)
         || (data.keys().hasAny(['sourceCustomerEmail']) && data.sourceCustomerEmail != null)
@@ -3915,65 +3899,6 @@ service cloud.firestore {
         );
     }
 
-    function isValidAnswerlatticeFeedbackPayload(data) {
-      return data.keys().hasAll([
-          'type', 'pId', 'sourceContext', 'traceId', 'requestId', 'sId', 'tId',
-          'role', 'uId', 'modifiedBy', 'modifiedOn', 'createdOn', 'createdBy'
-        ])
-        && data.keys().hasOnly(answerlatticeFeedbackDocumentKeys())
-        && data.pId == 'AL'
-        && isValidAnswerlatticeFeedbackIdentifier(data.tId)
-        && isValidAnswerlatticeFeedbackIdentifier(data.sId)
-        && isValidAnswerlatticeFeedbackIdentifier(data.uId)
-        && isValidAnswerlatticeFeedbackText(data.traceId)
-        && data.traceId.size() <= 180
-        && isValidAnswerlatticeFeedbackText(data.requestId)
-        && data.requestId.size() <= 180
-        && data.role is string
-        && data.role.size() <= 80
-        && data.modifiedBy is string
-        && data.modifiedBy.size() <= 200
-        && data.createdBy is string
-        && data.createdBy.size() <= 200
-        && data.modifiedOn is timestamp
-        && data.createdOn is timestamp
-        && isValidAnswerlatticeFeedbackSourceContext(data)
-        && (
-          (
-            data.type == 'general'
-            && data.keys().hasAll(['rating', 'comment'])
-            && !data.keys().hasAny(['featureComment', 'featureIssues', 'featureRequest', 'votedPopularRequests'])
-            && data.rating is int
-            && data.rating >= 1
-            && data.rating <= 5
-            && isValidAnswerlatticeFeedbackText(data.comment)
-          )
-          || (
-            data.type == 'feature_usage'
-            && !data.keys().hasAny(['rating', 'comment', 'featureRequest', 'votedPopularRequests'])
-            && (data.keys().hasAny(['featureComment']) || data.keys().hasAny(['featureIssues']))
-            && (!data.keys().hasAny(['featureComment']) || isValidAnswerlatticeFeedbackText(data.featureComment))
-            && (
-              !data.keys().hasAny(['featureIssues'])
-              || (
-                data.featureIssues is list
-                && data.featureIssues.size() > 0
-                && data.featureIssues.size() <= 10
-                && data.featureIssues.toSet().size() == data.featureIssues.size()
-                && data.featureIssues.toSet().difference(answerlatticeFeedbackFeatureIssueValues().toSet()).size() == 0
-              )
-            )
-          )
-          || (
-            data.type == 'feature_requests'
-            && !data.keys().hasAny(['rating', 'comment', 'featureComment', 'featureIssues'])
-            && (data.keys().hasAny(['featureRequest']) || data.keys().hasAny(['votedPopularRequests']))
-            && (!data.keys().hasAny(['featureRequest']) || isValidAnswerlatticeFeedbackText(data.featureRequest))
-            && isValidAnswerlatticeFeedbackVotes(data)
-          )
-        );
-    }
-
     function isValidAnswerlatticeFeedbackSurfaceValue(data, field) {
       return !data.keys().hasAny([field])
         || data[field] == null
@@ -4026,16 +3951,6 @@ service cloud.firestore {
       ];
     }
 
-    function isAnswerlatticeContentFeedbackDoc(data, tId, sId) {
-      return data.keys().hasAll(['list', 'pId', 'tId', 'sId'])
-        && data.keys().hasOnly(answerlatticeContentFeedbackKeys())
-        && data.pId == 'AL'
-        && string(data.tId) == string(tId)
-        && string(data.sId) == string(sId)
-        && data.list is list
-        && data.list.size() <= 200;
-    }
-
     function isValidAnswerlatticeContentFeedbackSourceContext(sourceContext) {
       return sourceContext is map
         && sourceContext.keys().hasAll(['uId', 'name', 'email'])
@@ -4062,27 +3977,6 @@ service cloud.firestore {
       return isPlatformAdmin()
         || item.uId == request.auth.uid
         || item.uId == request.auth.token.get('uId', '');
-    }
-
-    function isValidAnswerlatticeContentFeedbackItem(item) {
-      return item is map
-        && item.keys().hasAll(['comment', 'sentiment', 'action', 'createdOn', 'uId', 'userName', 'sourceContext'])
-        && item.keys().hasOnly(['comment', 'sentiment', 'action', 'createdOn', 'uId', 'userName', 'userEmail', 'userPhone', 'sourceContext'])
-        && item.comment is string
-        && item.comment.size() <= 500
-        && (item.sentiment == 'like' || item.sentiment == 'dislike')
-        && (item.action == 'added' || item.action == 'removed')
-        && item.createdOn is timestamp
-        && item.uId is string
-        && item.uId.size() > 0
-        && item.uId.size() <= 180
-        && item.userName is string
-        && item.userName.size() > 0
-        && item.userName.size() <= 160
-        && (!item.keys().hasAny(['userEmail']) || (item.userEmail is string && item.userEmail.size() > 0 && item.userEmail.size() <= 180))
-        && (!item.keys().hasAny(['userPhone']) || (item.userPhone is string && item.userPhone.size() > 0 && item.userPhone.size() <= 80))
-        && isValidAnswerlatticeContentFeedbackSourceContext(item.sourceContext)
-        && isAnswerlatticeContentFeedbackActor(item);
     }
 
     function hasAnswerlatticeContentFeedbackPermission() {
@@ -4247,34 +4141,6 @@ service cloud.firestore {
         ]);
     }
 
-    function isAnswerlatticeScopedRead() {
-      return isAuthenticated()
-        && (isPlatformAdmin() || isAnswerlatticeTenantMember(resource.data));
-    }
-
-    function isAnswerlatticeScopedCreate() {
-      return isAuthenticated()
-        && (isPlatformAdmin() || isAnswerlatticeTenantMember(request.resource.data));
-    }
-
-    function isAnswerlatticeScopedUpdate() {
-      return isAuthenticated()
-        && (
-          isPlatformAdmin()
-          || (
-            isAnswerlatticeTenantMember(resource.data)
-            && request.resource.data.pId == resource.data.pId
-            && request.resource.data.tId == resource.data.tId
-            && request.resource.data.sId == resource.data.sId
-          )
-        );
-    }
-
-    function isAnswerlatticeScopedDelete() {
-      return isAuthenticated()
-        && (isPlatformAdmin() || isAnswerlatticeTenantMember(resource.data));
-    }
-
     function isAnswerlatticeScopedReadWithPermission(permission) {
       return isAuthenticated()
         && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
@@ -4404,11 +4270,6 @@ service cloud.firestore {
         && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
     }
 
-    function isAnswerlatticeScopedDeleteWithKnowledgeControl() {
-      return isAuthenticated()
-        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
-    }
-
     function isMenuProcessingJobOwner() {
       return resource.data.uId == request.auth.uid
         || resource.data.uId == request.auth.token.uId;
@@ -4466,19 +4327,6 @@ service cloud.firestore {
         );
     }
     
-    // Check if user owns subscription (for read access)
-    function ownsSubscription() {
-      return isAuthenticated()
-        && (
-          isPlatformAdmin()
-          || (
-            resource.data.keys().hasAll(['tenantId', 'storeId'])
-            && belongsToTenantById(resource.data.tenantId)
-            && belongsToStoreById(resource.data.storeId)
-          )
-        );
-    }
-
     function hasExactAnswerlatticeBillingIdentity(data) {
       return data.keys().hasAll(['pId', 'productId'])
         && data.pId == 'AL'

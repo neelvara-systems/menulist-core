@@ -38,6 +38,16 @@ const runbook = read('__docs__/production-readiness/external-certification-runbo
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const launchPrerequisites = read('__docs__/production-readiness/launch-prerequisites.md');
 const functionsPackage = JSON.parse(read('functions/package.json'));
+const firebaserc = JSON.parse(read('.firebaserc'));
+
+assert(
+  firebaserc.projects.default === 'menulist-qa',
+  '.firebaserc default project must remain menulist-qa',
+);
+assert(
+  firebaserc.projects['menulist-qa'] === undefined,
+  '.firebaserc must not define a self-alias for menulist-qa because Firebase CLI treats .env.menulist-qa as both project-id and alias dotenv files',
+);
 
 assertIncludes(
   runbook,
