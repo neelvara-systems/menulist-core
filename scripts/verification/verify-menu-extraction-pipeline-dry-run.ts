@@ -25,6 +25,7 @@ import {
   normalizePublicDraftSourceForProject,
   normalizePublicDraftSourcesForProject,
 } from '../../src/lib/public-menu-entry/publicDraftSource';
+import { sanitizeForFirestore } from '../../src/lib/firestore/sanitizeForFirestore';
 import { PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION } from '../../src/data/shared/publicMenuDraftSource';
 
 type DryRunFile = {
@@ -558,6 +559,27 @@ assertCheck(
 );
 
 const publicClaimRoute = read('src/app/api/public/create-menu/claim/route.ts');
+const sanitizedPublicClaimPayload = sanitizeForFirestore({
+  files: [{
+    extractedData: {
+      processingMessages: undefined,
+      data: {
+        items: [{
+          description: undefined,
+          name: 'Certification item',
+          tags: undefined,
+        }],
+      },
+    },
+  }],
+}, { undefinedObjectValue: 'omit' }) as {
+  files: Array<{
+    extractedData: {
+      data: { items: Array<Record<string, unknown>> };
+      processingMessages?: unknown;
+    };
+  }>;
+};
 assertCheck(
   'public claim validates draft DTOs, supports exact-owner retry, and runs all invalidations independently',
   publicClaimRoute.includes('const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`')
@@ -568,7 +590,17 @@ assertCheck(
     && publicClaimRoute.includes('normalizeCompletedClaimResult(draft, userId)')
     && publicClaimRoute.includes('convertedProjectSlug: projectSlug')
     && publicClaimRoute.includes('convertedSubdomain: subdomain')
+    && publicClaimRoute.includes("const safeProjectData = sanitizeForFirestore(projectData, {")
+    && publicClaimRoute.includes("undefinedObjectValue: 'omit'")
+    && publicClaimRoute.includes('transaction.set(projectRef, safeProjectData)')
     && publicClaimRoute.includes('Promise.allSettled(cacheEffects.map((effect) => effect.run()))'),
+);
+assertCheck(
+  'public claim Firestore projection omits undefined optional extraction fields',
+  !('processingMessages' in sanitizedPublicClaimPayload.files[0].extractedData)
+    && !('description' in sanitizedPublicClaimPayload.files[0].extractedData.data.items[0])
+    && !('tags' in sanitizedPublicClaimPayload.files[0].extractedData.data.items[0])
+    && sanitizedPublicClaimPayload.files[0].extractedData.data.items[0].name === 'Certification item',
 );
 
 const messagingWatcher = read('functions/src/messagingOnboarding/extractionWatcher.ts');

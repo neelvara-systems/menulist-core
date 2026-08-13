@@ -65,6 +65,7 @@ import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { buildSummaryProjectPayload } from '@lib/firestore/summaryProjectsWriter';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
@@ -837,7 +838,10 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                 }
             }
 
-            transaction.set(projectRef, projectData);
+            const safeProjectData = sanitizeForFirestore(projectData, {
+                undefinedObjectValue: 'omit',
+            });
+            transaction.set(projectRef, safeProjectData);
 
             Object.assign(summaryUpdate, buildSummaryProjectPayload(projectId, {
                     name: projectName,

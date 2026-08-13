@@ -1,5 +1,21 @@
 # MenuList — Changelog
 
+## August 13, 2026 - Hosted Public Menu Claim Firestore Projection Fix
+
+- Reproduced the authenticated hosted link-import flow through extraction and
+  preview, then confirmed the claim transaction failed before any project,
+  summary, or claim-receipt write.
+- Traced the failure to optional `undefined` properties retained inside the
+  redistributed extraction payload. The Next.js Firestore Admin client rejects
+  those nested values even though the canonical extracted-menu DTO is valid.
+- Added the canonical `sanitizeForFirestore` projection immediately before the
+  project transaction write with undefined object fields omitted. Populated
+  extraction values and Firestore SDK atomics remain unchanged.
+- Extended the extraction source gate and dry-run verifier to lock the route
+  boundary and representative nested processing-message, description, and tag
+  omissions. Firebase operation counts, rules, indexes, and Functions are
+  unchanged.
+
 ## August 13, 2026 - Razorpay Subscription Lifecycle Authority Hardening
 
 - Rechecked the current official subscription webhook, state, testing, update,

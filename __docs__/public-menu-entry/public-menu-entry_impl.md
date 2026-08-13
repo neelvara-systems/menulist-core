@@ -3,7 +3,7 @@
 July 28, 2026 persisted-identity correction: an authenticated draft claim revalidates transaction-current store tenant aliases and optional embedded store aliases as one exact identity before project/summary writes or public cache effects. Conflicting compatibility fields fail closed.
 
 **Status:** Local source complete; external release evidence pending
-**Last reviewed:** August 10, 2026
+**Last reviewed:** August 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -44,7 +44,9 @@ For an existing account, the transaction reads the target store, tenant, current
 
 Existing persisted public-presence/business-attribute maps are accepted only as plain records. Business type resolves through the canonical registry, category is string-only, and an invalid legacy subdomain falls back to the exact store identity before URL or receipt output. The request schema is strict and every protected response is private, no-store and nosniff.
 
-**Target document-ID guard:** tenant, store, draft, and project references are built only from normalized/validated identities. The project includes explicit `projectId`, `slug`, and `deleted: false`. `resolvePublicMenuEntryProjectSlug()` blocks reserved slugs and collisions across current and previous slugs. Canonical price truth and optional Menu Correctness metadata are applied before `transaction.set(projectRef, projectData)`.
+**Target document-ID guard:** tenant, store, draft, and project references are built only from normalized/validated identities. The project includes explicit `projectId`, `slug`, and `deleted: false`. `resolvePublicMenuEntryProjectSlug()` blocks reserved slugs and collisions across current and previous slugs. Canonical price truth and optional Menu Correctness metadata are applied before the project write.
+
+**Hosted Firestore payload guard:** link-import redistribution may retain optional extraction properties as JavaScript `undefined` values even though the canonical DTO is valid. The claim route projects the complete project through `sanitizeForFirestore(..., { undefinedObjectValue: 'omit' })` immediately before `transaction.set()`. This preserves populated values and SDK atomics while omitting absent optional object properties, so the Next.js Admin client cannot reject an otherwise valid hosted claim before commit. The extraction verifier locks both the route boundary and representative nested item/message shapes.
 
 The same transaction writes the project, compact project summary, store defaults, account records when new, and the complete converted-claim receipt. For multi-page input, the canonical redistribution helper maps combined categories/items back to each source index and writes one standard project file per page; if an otherwise coherent legacy result has no usable source indices, the first file safely retains the complete menu and the remaining files retain empty source shells. A same-owner retry returns the receipt without duplicating tenant/store/project writes.
 

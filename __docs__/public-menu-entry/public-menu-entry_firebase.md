@@ -1,7 +1,7 @@
 # Public Menu Entry - Firebase and Scale
 
 **Status:** Local source complete; scoped QA Function deployment pending
-**Last reviewed:** August 10, 2026
+**Last reviewed:** August 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The publicly reachable `/create-menu` owner-onboarding route uses the canonical MenuList app host, is `noindex`, and is omitted from marketing sitemap/LLM discovery; source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -33,6 +33,8 @@ No new collection, rule, or Storage rule was added. The obsolete `claimed + expi
 | Daily cleanup | At most 100 expired drafts, independent of the intake feature flag; every unclaimed source delete then draft delete, or claimed receipt delete while all project-owned sources are preserved. |
 
 Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral. The slug, explicit project identity, price validation, phone validation, canonical business type, and in-transaction Menu Correctness stamp are CPU/transaction-shaping boundaries and add no new read or write.
+
+The hosted claim now sanitizes its project payload immediately before the existing project write, omitting nested optional `undefined` properties produced by extraction redistribution. This adds no read, write, delete, Storage, Function, rule, or index operation. It prevents Firestore Admin serialization from aborting the existing transaction while preserving populated extraction data and SDK atomic values.
 
 The browser preview projector and request-lifecycle guards add no Firebase operation. Canonical response normalization occurs after the existing bounded HTTP read; an aborted status request does not schedule another poll or mutate current state. The immediate claim single-flight guard prevents duplicate browser POSTs, while the route's transaction receipt remains the durable idempotency authority.
 
