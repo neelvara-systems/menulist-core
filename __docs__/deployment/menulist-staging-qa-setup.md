@@ -2393,6 +2393,15 @@ Operator progress:
   and the free project is not used by any deployed revision. Google Cloud then
   required password re-authentication before provider-side deletion, so the
   credential page was left open for the owner to complete that final cleanup.
+- `2026-08-13` - The owner completed Google password re-authentication and
+  deleted the retired `MenuList QA synthetic text` provider key from project
+  `gen-lang-client-0740061827`. AI Studio now lists only the four paid
+  `menulist-qa` credentials: primary, shared rotations 2 and 3, and the
+  provider key still displayed as `MenuList QA rotation 4`. Slot 4 is not a
+  runtime rotation slot; it is the dedicated extraction credential stored in
+  Firebase as `MENULIST_GEMINI_TEXT_AI_KEY` version 2. Rename its provider
+  display name to `MenuList QA menu extraction` when the console permits so
+  operators do not mistake it for shared quota or failover capacity.
 - `2026-08-13` - Final scoped deploy/readback after retiring the slot-4 aliases
   confirms all seven affected QA revisions are `ACTIVE`. `processMenuImages`
   and `mapsPlaceCheck` use hash `bbee32a3e76e26d57aa9fbeb8af44e7e05bbedc4`;
