@@ -35,7 +35,6 @@ export const SECRETS = {
     GEMINI_AI_KEY: 'GEMINI_AI_KEY',
     GEMINI_AI_KEY_2: 'GEMINI_AI_KEY_2',
     GEMINI_AI_KEY_3: 'GEMINI_AI_KEY_3',
-    GEMINI_AI_KEY_4: 'GEMINI_AI_KEY_4',
     MENULIST_GEMINI_TEXT_AI_KEY: 'MENULIST_GEMINI_TEXT_AI_KEY',
 
     // Rate Limiting (Upstash Redis)
@@ -73,12 +72,11 @@ export const SECRETS = {
 // ═══════════════════════════════════════════════════════════════
 
 export const SECRET_GROUPS = {
-    /** AI keys for key rotation (KeyManager auto-discovers which are configured) */
+    /** Shared AI keys. The extraction credential has its own secret group. */
     AI: [
         SECRETS.GEMINI_AI_KEY,
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
-        SECRETS.GEMINI_AI_KEY_4,
     ] as string[],
 
     /** AI + rate limiting (most callable functions) */
@@ -86,7 +84,6 @@ export const SECRET_GROUPS = {
         SECRETS.GEMINI_AI_KEY,
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
-        SECRETS.GEMINI_AI_KEY_4,
         SECRETS.UPSTASH_REDIS_REST_URL,
         SECRETS.UPSTASH_REDIS_REST_TOKEN,
     ] as string[],

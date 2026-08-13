@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 process.env.GEMINI_AI_KEY = "menu-key-one";
 process.env.GEMINI_AI_KEY_2 = "menu-key-two";
+process.env.GEMINI_AI_KEY_4 = "menu-extraction-provider-key";
 process.env.MENULIST_GEMINI_TEXT_AI_KEY = "menu-extraction-key";
 process.env.ANSWERLATTICE_GEMINI_AI_KEY = "answer-key-one";
 process.env.ANSWERLATTICE_GEMINI_AI_KEY_2 = "answer-key-two";
@@ -56,6 +57,11 @@ const extractionManager = new MenuListKeyManager([
     ['MENULIST_GEMINI_TEXT_AI_KEY'],
 ]);
 assert.equal(extractionManager.totalKeys, 1, 'Menu extraction discovers only its dedicated text key');
+assert.equal(
+    new MenuListKeyManager().totalKeys,
+    2,
+    'The shared MenuList pool ignores provider slot 4 reserved for menu extraction',
+);
 
 delete process.env.MENULIST_GEMINI_TEXT_AI_KEY;
 const missingExtractionManager = new MenuListKeyManager([

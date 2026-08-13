@@ -18,7 +18,9 @@
  *   MENULIST_GEMINI_AI_KEY    (required, primary)
  *   MENULIST_GEMINI_AI_KEY_2  (optional)
  *   MENULIST_GEMINI_AI_KEY_3  (optional)
- *   MENULIST_GEMINI_AI_KEY_4  (optional)
+ *
+ * Menu extraction uses MENULIST_GEMINI_TEXT_AI_KEY in Firebase Functions and
+ * is intentionally outside this app-side shared pool.
  * 
  * @see __docs__/ai-system-layer/README.md
  */

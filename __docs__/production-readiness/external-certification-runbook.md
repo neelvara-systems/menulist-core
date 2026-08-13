@@ -210,20 +210,26 @@ evidence; listing an existing revision does not certify new source.
 
 Current changed-revision evidence: the scoped August 13 deploy of
 `functions:processMenuImagesJob` completed with source hash
-`61d035e45023bb5c8561d2454c9fe24643805f83`. Its deployed secret bindings are
+`f3103a15d669037839dd6de1c29cb674eda22f4e`. Its deployed secret bindings are
 `MENULIST_GEMINI_TEXT_AI_KEY`, `REVALIDATION_SECRET`,
 `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`; no shared
 `GEMINI_AI_KEY*` slot is present. Two disposable synthetic hosted jobs reached
 the worker and were fully cleaned up, but both failed at provider file handling.
-Direct bounded provider probes established the external blocker: the dedicated
-free-project key returns HTTP 403 `PERMISSION_DENIED` because the project is
-denied access, while every existing `menulist-qa` key returns HTTP 429 because
-prepayment credits are depleted. AI Studio shows the free project as
-`Restricted`/billing `Unavailable` and `menulist-qa` as `Prepay required`.
-Therefore deployment/isolation evidence passes, but live Gemini extraction
-certification does not pass. Restore provider access or prepay, rotate
-`MENULIST_GEMINI_TEXT_AI_KEY`, redeploy this target, and rerun the synthetic
-hosted smoke before closing the provider gate.
+Direct bounded provider probes established the former external blocker: the
+retired free-project key returned HTTP 403 `PERMISSION_DENIED`, while every
+`menulist-qa` paid key returned HTTP 429 because prepayment credits were
+depleted. The permanent policy now requires paid keys in QA and production.
+Paid QA provider slot 4 is reserved for extraction, removed from shared-pool
+discovery, and copied without value exposure into
+`MENULIST_GEMINI_TEXT_AI_KEY` version 2. Live Gemini extraction certification
+still requires funded `menulist-qa` prepay and one successful synthetic hosted
+smoke. A direct version-2 probe reaches the paid project and returns HTTP 429,
+confirming that the former free-project HTTP 403 boundary is no longer active.
+The same final deploy updated the six affected shared-pool functions and live
+readback confirms every revision is `ACTIVE` with slots 1-3 only. Firebase CLI
+could not reapply the existing invoker IAM policy for
+`menulistMaintenanceScheduler` and `computeDecisionBlocksScores`; the revisions
+are active, but independent invoker-policy readback remains operator evidence.
 
 Historical authenticated evidence remains relevant but is not the current
 operator state: the default package-local scoped set was retried on July 9 with

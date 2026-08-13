@@ -13,7 +13,7 @@ import {
 import { buildImageBatchProjectJobKey } from '../../src/lib/ai/imageBatchIdBoundary';
 
 const jobId = 'AbCdEfGhIjKlMnOpQrSt';
-const projectId = '11-owner-22-project';
+const projectId = '11-owner-project-22';
 const itemId = 'menu-item-1';
 const projectJobKey = buildImageBatchProjectJobKey(projectId, '2025-01-02T03:04:05.000Z', jobId);
 assert.ok(projectJobKey);

@@ -37,8 +37,11 @@ async function main() {
 
     process.env.GEMINI_AI_KEY = 'menu-key-one';
     process.env.GEMINI_AI_KEY_2 = 'menu-key-two';
+    process.env.GEMINI_AI_KEY_4 = 'menu-extraction-provider-key';
+    process.env.MENULIST_GEMINI_AI_KEY_4 = 'menu-extraction-provider-key';
     const { KeyManager } = require('../../src/lib/google/genAi/keyManager') as {
         KeyManager: new () => {
+            totalKeys: number;
             getClient(): object;
             markKeyRateLimited(client: object): void;
             markKeySuccess(client: object): void;
@@ -50,6 +53,7 @@ async function main() {
     };
 
     const manager = new KeyManager();
+    assert.equal(manager.totalKeys, 2, 'The app-side shared pool ignores extraction slot 4');
     const firstRequestClient = manager.getClient();
     const concurrentRequestClient = manager.getClient();
     manager.markKeyRateLimited(firstRequestClient);

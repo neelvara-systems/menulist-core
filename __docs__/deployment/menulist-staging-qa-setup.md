@@ -2348,6 +2348,64 @@ Operator progress:
   key, the worker is redeployed to the resulting secret version, and one
   synthetic hosted extraction completes. No customer data or production key
   was used.
+- `2026-08-13` - The owner permanently retired the free-tier Gemini exception
+  for MenuList QA. QA and production now require paid keys from each
+  environment's single governed Gemini project. The dedicated extraction pool
+  remains because it provides independent credential rotation and prevents
+  extraction from falling back into the shared image/general pool; it is not a
+  project-quota scaling mechanism. Shared MenuList source discovery is reduced
+  to primary plus rotations 2 and 3. Existing paid provider slot 4 is reserved
+  for menu extraction; the former slot-4 runtime aliases are retired from both
+  the Next.js and Functions shared clients, Function secret groups, and the
+  three Decision Blocks bindings.
+- `2026-08-13` - Google AI Studio rejected an attempted fifth paid QA key with
+  `The request is suspicious`; the same provider action was not retried. The
+  existing paid `MenuList QA rotation 4` credential was instead copied through
+  the system clipboard directly into Firebase Secret Manager without printing
+  or storing its value. This created
+  `projects/113909530649/secrets/MENULIST_GEMINI_TEXT_AI_KEY/versions/2`.
+  The clipboard was cleared immediately. The active worker still required a
+  scoped redeploy before version 2 could take effect, and funded provider smoke
+  remained blocked by `menulist-qa` prepay.
+- `2026-08-13` - The paid credential policy was deployed to `menulist-qa`.
+  `processMenuImagesJob` is `ACTIVE` on Node.js 22 with source hash
+  `f3103a15d669037839dd6de1c29cb674eda22f4e` and binds only
+  `MENULIST_GEMINI_TEXT_AI_KEY` version 2 plus its non-AI worker secrets.
+  `processMenuImages`, `mapsPlaceCheck`, the MenuList maintenance scheduler,
+  and the Decision Blocks functions bind shared slots 1-3 only; none binds
+  `GEMINI_AI_KEY_4`. The retired extraction secret version 1 is `DESTROYED`;
+  Firebase destroyed `GEMINI_AI_KEY_4@1` and removed the now-empty duplicate
+  secret. Vercel removed `MENULIST_GEMINI_AI_KEY_4` from Preview restricted to
+  branch `staging`. The paid extraction credential now exists at runtime only
+  as `MENULIST_GEMINI_TEXT_AI_KEY` version 2.
+  A bounded synthetic version-2 provider probe reached the paid project and
+  returned HTTP 429 `PREPAY_REQUIRED_OR_QUOTA`, replacing the former free-key
+  HTTP 403 boundary. `QA-E13` is now blocked only by prepay and one successful
+  hosted synthetic extraction.
+- `2026-08-13` - Four retired compatibility exports were inadvertently named in
+  the first scoped Firebase command: `embedArticleWorker`, `startGeneration`,
+  `retryGeneration`, and `finalizePublish`. They were deleted immediately from
+  `us-central1`; a subsequent `firebase functions:list --json` confirmed all
+  four are absent. No production Firebase target was used.
+- `2026-08-13` - Deletion of the retired free-project provider key failed twice
+  in Google AI Studio with `Failed to delete API key. Please retry.` The same
+  provider action was not repeated. Its Firebase secret version is destroyed
+  and the free project is not used by any deployed revision. Google Cloud then
+  required password re-authentication before provider-side deletion, so the
+  credential page was left open for the owner to complete that final cleanup.
+- `2026-08-13` - Final scoped deploy/readback after retiring the slot-4 aliases
+  confirms all seven affected QA revisions are `ACTIVE`. `processMenuImages`
+  and `mapsPlaceCheck` use hash `bbee32a3e76e26d57aa9fbeb8af44e7e05bbedc4`;
+  `processMenuImagesJob` uses
+  `f3103a15d669037839dd6de1c29cb674eda22f4e`;
+  `menulistMaintenanceScheduler` uses
+  `19b118c365dc21f48bcb6c8c6bb6b97aa814704b`; and the three Decision Blocks
+  exports use `c1dcc16e28f352c1deb99f2dd6fd10afadb88b82`. Shared revisions bind slots
+  1-3 only and the extraction worker binds version 2 only. Firebase CLI exited
+  non-zero because it could not reapply the existing invoker IAM policy for
+  `menulistMaintenanceScheduler` and `computeDecisionBlocksScores`. Live
+  readback confirms both new revisions are active; independent IAM-policy
+  readback remains operator evidence and was not represented as passing.
 - `2026-08-13` - Vercel Preview deployment
   `dpl_4VTwaJ1TAENTffk8ZW3bBhxoySHN` is Ready for staging commit
   `158f19219e3e72936ac3c360330069d7ed59d152`. Live
@@ -2562,7 +2620,7 @@ until every Phase C2 billing/spend item is complete.
 | [x] | QA-E10 | Cloud Tasks API enabled in `menulist-qa` | Google Cloud APIs | Cloud Tasks is enabled only for the QA project |
 | [x] | QA-E11 | Batch image queue created | Cloud Tasks -> Queues | `batch-image-generation` exists in `us-central1` with bounded dispatch/retry settings |
 | [x] | QA-E12 | Batch worker secret generated | Password vault | One separate random QA-only secret is ready for `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
-| [ ] | QA-E13 | Synthetic-text Gemini boundary certified | Google AI Studio, Firebase Secret Manager, scoped Functions deploy, hosted synthetic smoke, and focused verifiers | Runtime/secret/deploy isolation passes, but provider certification is blocked: the free project returns 403 `PERMISSION_DENIED` and is `Restricted`; all four paid-project keys return 429 because `menulist-qa` is `Prepay required`. Rotate the extraction secret to an admitted key, redeploy the worker, and retain one successful synthetic-only hosted extraction before checking this item |
+| [ ] | QA-E13 | Paid menu-extraction Gemini boundary certified | Google AI Studio, Firebase Secret Manager, scoped Functions deploy, hosted synthetic smoke, and focused verifiers | Free-project use is retired. Paid provider slot 4 is reserved for extraction and deployed as `MENULIST_GEMINI_TEXT_AI_KEY` version 2; shared source discovery and deployed shared bindings exclude slot 4. Fund `menulist-qa` prepay and retain one successful synthetic hosted extraction before checking this item |
 
 Provider console links for this phase:
 
@@ -2576,20 +2634,21 @@ Provider console links for this phase:
 - Sentry: https://sentry.io/
 - Meta Developers: https://developers.facebook.com/apps/
 
-Gemini rotation note: current MenuList Functions targets declare
-`GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`. Prefer separate
-real failover keys. If a slot temporarily uses the same Google account/provider
-value as the primary key, record it in your vault as a rotate-later placeholder;
-do not treat duplicate values as extra quota.
+Gemini credential note: the shared MenuList Functions pool uses
+`GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`, and `GEMINI_AI_KEY_3`. Paid provider slot 4
+is reserved for menu extraction and its value is stored under
+`MENULIST_GEMINI_TEXT_AI_KEY`; shared source discovery and new shared Function
+revisions must not bind the retired `GEMINI_AI_KEY_4` alias. The Next.js shared
+pool likewise uses only `MENULIST_GEMINI_AI_KEY` plus slots 2 and 3. Keys
+provide rotation and workload isolation,
+not extra project quota.
 
-Synthetic-text QA exception: `menulist-gemini-qa-free` is an intentionally
-separate, unbilled Gemini provider project for synthetic text/File API testing
-only. Store it in Firebase Secret Manager as
-`MENULIST_GEMINI_TEXT_AI_KEY`; do not place it into the existing shared
-MenuList key slots. `QA-E13` requires the distinct server-side extraction pool
-before this credential can be activated.
-The exception does not authorize real customer data, a second Firebase project,
-another deployed environment, or multiple free projects for quota scaling.
+Paid extraction policy: QA and production both use paid keys from their own
+single governed Gemini project. The former `menulist-gemini-qa-free` exception
+is retired and must not be restored. The dedicated extraction secret permits
+independent rotation and prevents fallback into the shared image/general pool;
+it does not authorize a second runtime environment or provider-project quota
+sharding.
 
 ### Phase F - Optional QA Provider Decisions
 

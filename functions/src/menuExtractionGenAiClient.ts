@@ -3,8 +3,9 @@
  *
  * This credential pool is intentionally separate from the shared MenuList AI
  * pool so text/File API extraction cannot rotate onto an image credential.
- * QA stores the synthetic-only free-project key under the same secret name;
- * production must use a paid key from the governed production project.
+ * Every deployed environment uses a paid key from its governed Gemini project.
+ * Separate binding provides independent rotation and failure containment; it
+ * does not create additional project-level quota.
  */
 
 import { createAIGateway } from "./ai/aiGateway";

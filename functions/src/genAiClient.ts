@@ -17,7 +17,9 @@
  *   GEMINI_AI_KEY    (required, primary)
  *   GEMINI_AI_KEY_2  (optional)
  *   GEMINI_AI_KEY_3  (optional)
- *   GEMINI_AI_KEY_4  (optional)
+ *
+ * GEMINI_AI_KEY_4 is reserved for the separately bound menu-extraction
+ * credential and is intentionally absent from this shared client.
  * 
  * @see __docs__/ai-system-layer/README.md
  */

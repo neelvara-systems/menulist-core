@@ -21,18 +21,19 @@ Menu extraction is the bounded exception to the single MenuList pool. The
 deployed `processMenuImagesJob` worker uses only
 `MENULIST_GEMINI_TEXT_AI_KEY` through
 `functions/src/menuExtractionGenAiClient.ts`; Files API upload/delete and text
-generation cannot rotate onto `GEMINI_AI_KEY*`. In `menulist-qa`, that secret
-may hold the unbilled `menulist-gemini-qa-free` key only for synthetic inputs.
-Paid image operations and other MenuList AI operations keep the existing
-governed pool. Production uses the same extraction secret name but its value
-must come from the one paid production Gemini project.
+generation cannot rotate onto `GEMINI_AI_KEY*`. QA and production both use a
+paid extraction key from their own governed environment project. Paid image
+operations and other MenuList AI operations keep the existing governed shared
+pool. The separate key is an independent rotation and failure-containment
+boundary; it does not increase project/model quota.
 
 Current QA provider boundary (August 13, 2026): source isolation, Secret Manager
-wiring, and the scoped `processMenuImagesJob` deploy pass. The free project is
-currently marked `Restricted` by Google and returns HTTP 403 for both text and
-Files API probes; the existing paid QA project returns HTTP 429 because prepay
-is required. No hosted extraction is certified until an admitted key replaces
-the secret value and the scoped worker is redeployed and smoked successfully.
+wiring, and the scoped `processMenuImagesJob` deploy pass. The free-project
+exception is retired. Paid QA provider key slot 4 is reserved for extraction,
+removed from shared-pool discovery, and copied without exposing its value into
+`MENULIST_GEMINI_TEXT_AI_KEY` version 2. The paid QA project still returns HTTP
+429 because prepay is required. Version 2 is deployed to the isolated worker;
+no hosted extraction is certified until one funded provider smoke succeeds.
 
 ### 2026 provider migration register
 
@@ -143,7 +144,8 @@ Gemini API (via @google/genai SDK)
 | SDK standardization   | `@google/genai` (new SDK)        | Already used by extraction, newer API                       |
 | Default model         | `gemini-3.5-flash-lite`          | High-throughput structured default; complex recovery uses `gemini-3.6-flash` |
 | Request compatibility | Shared compile-before-call guard | Stops known Gemini 3 contract failures before paid provider work |
-| Key pool              | **✅ IMPLEMENTED** (1-4 keys)    | Auto-discovers available keys from env vars                 |
+| Shared key pool       | **✅ IMPLEMENTED** (1-3 keys)    | Auto-discovers the primary plus rotation slots 2 and 3      |
+| Extraction key        | **✅ IMPLEMENTED** (1 paid key)  | Dedicated Secret Manager binding; never shared-pool fallback |
 | Proxy approach        | Transparent (same interface)     | Zero changes to 19 call sites                               |
 | Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
 | Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
@@ -224,7 +226,6 @@ Gemini API (via @google/genai SDK)
 | `GEMINI_AI_KEY`   | ✅ Yes   | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_2` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
-| `GEMINI_AI_KEY_4` | Optional | Vercel + Firebase Secrets |
 | `MENULIST_GEMINI_TEXT_AI_KEY` | Required for `processMenuImagesJob` | MenuList Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY` | ✅ Yes for Answerlattice Functions AI | Answerlattice Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY_2` | Optional | Answerlattice Firebase Secrets |

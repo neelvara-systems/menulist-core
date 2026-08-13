@@ -45,7 +45,6 @@ selected Function binds it through its `secrets` option:
 GEMINI_AI_KEY
 GEMINI_AI_KEY_2
 GEMINI_AI_KEY_3
-GEMINI_AI_KEY_4
 MENULIST_GEMINI_TEXT_AI_KEY
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
@@ -73,7 +72,6 @@ target list:
 firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
 firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa
@@ -311,16 +309,17 @@ validating Functions secrets.
 ## Current AI Secret Name
 
 Use `GEMINI_AI_KEY` as the primary MenuList Firebase Functions AI secret.
-Rotation keys are `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and
-`GEMINI_AI_KEY_4`.
+Shared-pool rotation keys are `GEMINI_AI_KEY_2` and `GEMINI_AI_KEY_3`.
+The former `GEMINI_AI_KEY_4` runtime alias is retired and must not be restored.
 
-Use `MENULIST_GEMINI_TEXT_AI_KEY` only for the menu extraction worker. In
-`menulist-qa`, its value may come from the unbilled
-`menulist-gemini-qa-free` provider project only while QA inputs remain
-synthetic. In `menulist`, create this same Secret Manager name with a paid key
-from the single governed production Gemini project before deploying the
-worker. Never fall back from this extraction pool to `GEMINI_AI_KEY*`, and do
-not use multiple provider projects to multiply production quota.
+Use `MENULIST_GEMINI_TEXT_AI_KEY` only for the menu extraction worker. Every
+deployed environment must set it to a paid key from that environment's single
+governed Gemini project. QA currently designates the paid provider key formerly
+named as rotation slot 4 and stores its value under this dedicated Secret
+Manager name. Production must create its own paid extraction key in the
+production Gemini project. Never fall back from this extraction pool to
+`GEMINI_AI_KEY*`, and do not create provider projects or keys to multiply
+project-level quota.
 
 Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY` plus
 `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
@@ -339,9 +338,10 @@ Production Gemini keys must be created per environment and restricted to the
 Gemini API. Do not reuse the local or staging key in production. Do not expose
 Gemini keys in browser code, mobile apps, widgets, Firestore, or logs.
 
-The extra key slots are for credential rotation, leak response, and transient
-failover. They do not create unlimited capacity when they belong to the same
-Google project because Gemini quotas are enforced at the project/model tier.
+The shared rotation keys and dedicated extraction key are for credential
+rotation, leak response, and workload isolation. They do not create additional
+capacity when they belong to the same Google project because Gemini quotas are
+enforced at the project/model tier.
 For production scaling, use billing, quota monitoring, alert-only budgets, the
 Gemini API spend-cap budget, the app-local rolling ceiling, and quota increase
 requests.

@@ -10,7 +10,9 @@
  * - GEMINI_AI_KEY (required, primary)
  * - GEMINI_AI_KEY_2 (optional)
  * - GEMINI_AI_KEY_3 (optional)
- * - GEMINI_AI_KEY_4 (optional)
+ *
+ * GEMINI_AI_KEY_4 is reserved as the provider-side credential source for the
+ * dedicated menu-extraction secret. It must not re-enter this shared pool.
  * 
  * Note: Cloud Functions can have warm instances, so in-memory state
  * (cooldown tracking) persists across requests within the same instance.
@@ -72,7 +74,6 @@ const KEY_ENV_VAR_CANDIDATES: GeminiKeyEnvVarCandidates = [
     ['GEMINI_AI_KEY'],
     ['GEMINI_AI_KEY_2'],
     ['GEMINI_AI_KEY_3'],
-    ['GEMINI_AI_KEY_4'],
 ] as const;
 
 export class AIProviderConfigMissingError extends Error {
