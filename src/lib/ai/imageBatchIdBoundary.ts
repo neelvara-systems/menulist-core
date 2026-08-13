@@ -40,7 +40,7 @@ export function normalizeImageBatchProjectId(value: unknown): ImageBatchProjectS
     if (parts.length < 3) return null;
 
     const tenantScope = normalizeImageBatchScopeDocumentId(parts[0]);
-    const storeScope = normalizeImageBatchScopeDocumentId(parts[2]);
+    const storeScope = normalizeImageBatchScopeDocumentId(parts[parts.length - 1]);
     if (!tenantScope || !storeScope) return null;
 
     return {

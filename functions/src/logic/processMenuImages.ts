@@ -1369,6 +1369,9 @@ export async function processMenuImagesLogic(
         const uploadCompletedAt = Date.now();
 
         if (uploadResult.failedFileIndices.length > 0 || uploadedFiles.length !== files.length) {
+            if (uploadResult.firstError && isRetryableProcessingError(uploadResult.firstError)) {
+                throw uploadResult.firstError;
+            }
             throw createProcessingError(MENU_IMAGE_FILE_UPLOAD_FAILED_CODE, {
                 causeName: getExtractionErrorName(uploadResult.firstError),
                 failedFileCount: uploadResult.failedFileIndices.length,

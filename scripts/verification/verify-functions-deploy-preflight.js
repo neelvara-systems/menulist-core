@@ -91,8 +91,21 @@ assert(
   !functionsPackage.scripts.deploy.includes('firebase deploy --only functions'),
   'Functions package default deploy script must not run a broad Functions deploy',
 );
+assert(
+  functionsPackage.main === 'lib/index.js',
+  'Functions package main must point to the TypeScript build output at lib/index.js',
+);
+assert(
+  functionsPackage.scripts.build.includes("rmSync('lib', { recursive: true, force: true })"),
+  'Functions build must remove stale compiled output before running TypeScript',
+);
 
 run('functions lint', 'npm', ['--prefix', 'functions', 'run', 'lint']);
 run('functions build', 'npm', ['--prefix', 'functions', 'run', 'build']);
+
+assert(
+  fs.existsSync(path.join(ROOT, 'functions', functionsPackage.main)),
+  'Functions build must produce the package main entrypoint',
+);
 
 console.log('\nFunctions deploy preflight verifier passed');

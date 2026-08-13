@@ -879,6 +879,7 @@ export async function processMenuImagesJobLogic(
     let saveStartedAtMillis: number | null = null;
     let saveCompletedAtMillis: number | null = null;
     let publicDraftBindingVerified = job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT;
+    let processingStage = "validate_files";
     const loadExistingProject = async () => {
         if (skipProjectSave) return null;
         if (existingProjectCache === undefined) {
@@ -895,7 +896,9 @@ export async function processMenuImagesJobLogic(
 
     try {
         validateJobFiles(job);
+        processingStage = "validate_routing";
         validateJobRouting(job);
+        processingStage = "claim_job";
 
         // ─────────────────────────────────────────────────────────────
         // Step 1: Update status to processing (with idempotency check)
@@ -947,6 +950,7 @@ export async function processMenuImagesJobLogic(
             return; // Job already being processed
         }
 
+        processingStage = "validate_destination";
         await assertPublicDraftJobBinding(jobId, job);
         publicDraftBindingVerified = true;
 
@@ -1090,10 +1094,12 @@ export async function processMenuImagesJobLogic(
             timestamp: Date.now()
         });
 
+        processingStage = "extract_menu";
         aiStartedAtMillis = Date.now();
         const deterministicLinkResult = await tryExtractMenuLinkTextFromJob(jobId, job);
         const result = deterministicLinkResult || await processMenuImagesLogic(request);
         aiCompletedAtMillis = Date.now();
+        processingStage = "post_process";
         const batchCompletion = resolveMenuExtractionBatchCompletion(result.batchResults, {
             canReviewPartialResult: !skipProjectSave,
         });
@@ -1582,6 +1588,7 @@ export async function processMenuImagesJobLogic(
             sourceErrorCode: getFunctionErrorCode(error),
             sourceStatusCode: getFunctionErrorStatus(error),
             localErrorCode,
+            processingStage,
         });
 
         try {

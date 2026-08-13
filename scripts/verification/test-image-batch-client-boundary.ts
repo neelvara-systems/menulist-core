@@ -13,13 +13,27 @@ import {
     shouldApplyImageBatchListenerSnapshot,
     toPersistedImageBatchProjectImage,
 } from '@lib/ai/imageBatchClientBoundary';
-import { buildImageBatchProjectJobKey } from '@lib/ai/imageBatchIdBoundary';
+import {
+    buildImageBatchProjectJobKey,
+    normalizeImageBatchProjectId,
+} from '@lib/ai/imageBatchIdBoundary';
 
 const PROJECT_ID = '1-menu-2';
 const JOB_ID = 'AbCdEfGhIjKlMnOpQrSt';
 const IMAGE_URL = 'https://firebasestorage.googleapis.com/v0/b/demo.appspot.com/o/media%2FmenuItem%2F1%2F2%2Fone.webp?alt=media';
 const PROJECT_JOB_KEY = buildImageBatchProjectJobKey(PROJECT_ID, '2025-01-02T03:04:05.000Z', JOB_ID);
 assert.ok(PROJECT_JOB_KEY);
+assert.deepEqual(
+    normalizeImageBatchProjectId('1-msr1yxoh-bfFP5210PsJZmzerHYsI-1'),
+    {
+        projectId: '1-msr1yxoh-bfFP5210PsJZmzerHYsI-1',
+        sId: '1',
+        storeId: 1,
+        tId: '1',
+        tenantId: 1,
+    },
+    'Current project IDs must derive the store scope from the final segment.',
+);
 
 function validJob(): Record<string, unknown> {
     return {

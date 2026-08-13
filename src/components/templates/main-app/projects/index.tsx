@@ -538,8 +538,9 @@ function ProjectsPage() {
     // SWR cache key for projects list
     const effectiveTenantId = storeDetails?.tenantId || loggedInSession?.tId;
     const effectiveStoreId = storeDetails?.storeId || loggedInSession?.sId;
+    const hasProjectSessionScope = Boolean(loggedInSession && currentProjectScope);
 
-    const projectsListCacheKey = shouldEnableDesktopProjectsData && effectiveTenantId && effectiveStoreId
+    const projectsListCacheKey = shouldEnableDesktopProjectsData && hasProjectSessionScope && effectiveTenantId && effectiveStoreId
         ? `projects-${effectiveTenantId}-${effectiveStoreId}`
         : null;
 
@@ -552,7 +553,7 @@ function ProjectsPage() {
         selectedProjectStoreId &&
         selectedProjectStoreId === String(effectiveStoreId),
     );
-    const projectDataCacheKey = shouldEnableDesktopProjectsData && selectedProjectMatchesStore && selectedProject?.projectId
+    const projectDataCacheKey = shouldEnableDesktopProjectsData && hasProjectSessionScope && selectedProjectMatchesStore && selectedProject?.projectId
         ? `project-${effectiveTenantId}-${effectiveStoreId}-${selectedProject.projectId}`
         : null;
 

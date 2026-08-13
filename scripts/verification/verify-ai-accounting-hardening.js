@@ -2807,7 +2807,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'export function normalizeImageBatchProjectId',
     "const parts = projectId.split('-');",
     'const tenantScope = normalizeImageBatchScopeDocumentId(parts[0]);',
-    'const storeScope = normalizeImageBatchScopeDocumentId(parts[2]);',
+    'const storeScope = normalizeImageBatchScopeDocumentId(parts[parts.length - 1]);',
     'export function normalizeImageBatchJobId',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes image batch ID boundary token ${token}`);

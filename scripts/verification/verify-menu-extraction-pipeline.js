@@ -4103,6 +4103,8 @@ contains(
     'validateNetworkTargetUrl(file.url',
     'const fileFetchUrl = await resolveValidatedFileFetchUrl(file, request)',
     'fetch(fileFetchUrl)',
+    'uploadResult.firstError && isRetryableProcessingError(uploadResult.firstError)',
+    'throw uploadResult.firstError',
     'buildSafeTempFilePath(file.name, "menu-source-file")',
     'readResponseUint8ArrayWithLimit(response, MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES)',
     'isResponseBodyTooLargeError(error)',
