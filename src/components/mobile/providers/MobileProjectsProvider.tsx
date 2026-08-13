@@ -6,6 +6,7 @@ import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundar
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { getMobileProjectStoreLogContext, logMobileProjectFailure } from '../utils/mobileProjectDiagnostics';
 import { getStoredMobileProjectId, resolveMobileSelectedProject, setStoredMobileProjectId } from '../utils/projectSelection';
 
 type ProjectSummary = {
@@ -18,6 +19,7 @@ type ProjectSummary = {
 };
 
 type MobileProjectsContextValue = {
+    hasLoadError: boolean;
     isLoading: boolean;
     projectsById: Record<string, any>;
     projectsList: ProjectSummary[];
@@ -32,6 +34,7 @@ type MobileProjectsContextValue = {
 };
 
 const MobileProjectsContext = createContext<MobileProjectsContextValue>({
+    hasLoadError: false,
     isLoading: true,
     projectsById: {},
     projectsList: [],
@@ -94,6 +97,7 @@ export default function MobileProjectsProvider({
     const [projectsList, setProjectsList] = useState<ProjectSummary[]>([]);
     const [projectsById, setProjectsById] = useState<Record<string, any>>({});
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [hasLoadError, setHasLoadError] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const currentScope = resolveMobileProjectScope(storeDetails, loggedInSession);
     const currentScopeRef = useRef<ProjectExpectedScope | null>(currentScope);
@@ -155,7 +159,19 @@ export default function MobileProjectsProvider({
                     projectsByIdRef.current = next;
                     return next;
                 });
+                setHasLoadError(false);
                 return sanitizedProject;
+            })
+            .catch((error) => {
+                if (isExpectedScope(expectedScope)) {
+                    setHasLoadError(true);
+                    logMobileProjectFailure(
+                        'mobile_project_detail_load_failed',
+                        error,
+                        getMobileProjectStoreLogContext(expectedScope.sId, expectedScope.tId),
+                    );
+                }
+                return null;
             })
             .finally(() => {
                 if (inFlightProjectLoadsRef.current[requestKey] === request) {
@@ -179,6 +195,7 @@ export default function MobileProjectsProvider({
             projectsByIdRef.current = {};
             hasHydratedRef.current = false;
             hydratedScopeKeyRef.current = null;
+            setHasLoadError(false);
             setIsLoading(false);
             return;
         }
@@ -220,6 +237,7 @@ export default function MobileProjectsProvider({
             }
             const summaries = ((result?.projects || []) as ProjectSummary[])
                 .filter((project) => projectMatchesMobileScope(project.projectId, expectedScope));
+            setHasLoadError(false);
             const resolvedProject = resolveMobileSelectedProject(
                 summaries,
                 options?.preferredProjectId || getStoredMobileProjectId(storeId, expectedScope.tId)
@@ -262,6 +280,20 @@ export default function MobileProjectsProvider({
             }
             hydratedScopeKeyRef.current = scopeKey;
             hasHydratedRef.current = true;
+        } catch (error) {
+            if (
+                latestProjectsRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
+                hydratedScopeKeyRef.current = scopeKey;
+                hasHydratedRef.current = true;
+                setHasLoadError(true);
+                logMobileProjectFailure(
+                    'mobile_projects_list_load_failed',
+                    error,
+                    getMobileProjectStoreLogContext(expectedScope.sId, expectedScope.tId),
+                );
+            }
         } finally {
             if (
                 shouldShowLoader
@@ -312,6 +344,7 @@ export default function MobileProjectsProvider({
             setProjectsList([]);
             setProjectsById({});
             setSelectedProjectId(null);
+            setHasLoadError(false);
             setIsLoading(true);
             return;
         }
@@ -458,6 +491,7 @@ export default function MobileProjectsProvider({
         && hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`
     );
     const value = useMemo<MobileProjectsContextValue>(() => ({
+        hasLoadError: hasCurrentHydratedScope ? hasLoadError : false,
         isLoading: !hasCurrentHydratedScope || isLoading,
         projectsById: hasCurrentHydratedScope ? projectsById : {},
         projectsList: hasCurrentHydratedScope ? projectsList : [],
@@ -471,6 +505,7 @@ export default function MobileProjectsProvider({
         upsertCachedProject,
     }), [
         hasCurrentHydratedScope,
+        hasLoadError,
         isLoading,
         projectsById,
         projectsList,

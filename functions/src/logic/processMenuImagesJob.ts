@@ -66,6 +66,7 @@ import { getProject, saveFilesToProject } from "./saveFilesToProject";
 import { applyMenuDerivedBusinessAttributeDefaultsForStore } from "./businessAttributeDefaults";
 import { revalidatePublicClientCacheForStore } from "./publicCacheRevalidation";
 import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
+import { getAllowedStorageBucket } from '../utils/storageBucket';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIDENCE SUMMARY (Infrastructure Compounding 10.1)
@@ -231,20 +232,6 @@ function shouldSkipProjectSave(job: MenuImageProcessingJob): boolean {
         job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT ||
         job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING ||
         job.projectId?.startsWith("msg-onboarding-");
-}
-
-function getProjectStorageBucketFallback(): string {
-    const projectId = process.env.FIREBASE_PROJECT_ID
-        || process.env.GCLOUD_PROJECT
-        || process.env.GCP_PROJECT
-        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    return projectId ? `${projectId}.appspot.com` : "";
-}
-
-function getAllowedStorageBucket(): string {
-    return process.env.FIREBASE_STORAGE_BUCKET
-        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {

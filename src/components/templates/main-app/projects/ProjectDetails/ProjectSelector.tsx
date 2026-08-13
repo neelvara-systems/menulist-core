@@ -530,6 +530,7 @@ export const ProjectSelector = ({
                                     setModalOpen(false);
                                 }}
                                 onEdit={() => {
+                                    setModalOpen(false);
                                     onOpenModal(project);
                                 }}
                                 onDuplicate={() => confirmDuplicate(project)}

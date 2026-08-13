@@ -72,6 +72,7 @@ import { buildSafeTempFilePath } from "../utils/safeTempFile";
 import { processAIResponseForFirebase } from "./aiResponseUtils";
 import { ExistingCategoriesContext, getParallelProcessingPrompt } from "./parallelProcessingPrompt";
 import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
+import { getAllowedStorageBucket } from '../utils/storageBucket';
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT (Uses parallel processing prompt with sourceFileIndex)
@@ -174,20 +175,6 @@ function createProcessingError(code: string, context: Record<string, unknown> = 
         (error as any)[key] = value;
     });
     return error;
-}
-
-function getProjectStorageBucketFallback(): string {
-    const projectId = process.env.FIREBASE_PROJECT_ID
-        || process.env.GCLOUD_PROJECT
-        || process.env.GCP_PROJECT
-        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    return projectId ? `${projectId}.appspot.com` : "";
-}
-
-function getAllowedStorageBucket(): string {
-    return process.env.FIREBASE_STORAGE_BUCKET
-        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {

@@ -2,7 +2,7 @@
 
 **Feature:** File Upload & PDF Processing  
 **Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** July 13, 2026
+**Last Updated:** August 13, 2026
 **Priority:** HIGH — Entry point for every new menu. Every user triggers this.
 
 > **Launch Boundary:** This file records Firebase cost evidence for upload flows, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, provider/extraction smoke, target deploy evidence, and production-host smoke.
@@ -13,7 +13,9 @@
 
 - **Collections Used:** `projects/{tId}/{sId}` (projectsData), `platformSummary` (projectsSummary)
 - **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{stable-file-prefix}-{attemptId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`, but that unscoped namespace denies all direct client access.
-- **Cloud Functions:** None (client-side processing)
+- **Cloud Functions:** Client-side upload is followed by
+  `processMenuImagesJob` for queued AI extraction when an extraction job is
+  created.
 - **Estimated Monthly Cost:** **Low** — Storage-dominated
 
 ---
@@ -55,7 +57,7 @@
 
 | Function | Trigger | Frequency | Duration | Memory | Notes |
 |----------|---------|-----------|----------|--------|-------|
-| None | — | — | — | — | All file processing is client-side (PDF→image conversion via pdfjs-dist). No Cloud Functions for upload. |
+| `processMenuImagesJob` | Firestore document created at `menuImageProcessingJobs/{jobId}` | Per admitted extraction job | Up to 540 seconds | 2 GiB | PDF-to-image conversion remains client-side. The worker validates the configured Storage bucket, calls the extraction provider, and saves bounded results. The bucket resolver reads the deployed `FIREBASE_CONFIG.storageBucket` before using a project-derived compatibility fallback. |
 
 ---
 

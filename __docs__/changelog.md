@@ -1,5 +1,20 @@
 # MenuList — Changelog
 
+## August 13, 2026 - MenuList QA Owner-Flow Recovery
+
+- Fixed the desktop project selector so opening Edit closes the selector first,
+  preventing overlapping project dialogs.
+- Made mobile project-list/detail failures settle into bounded recovery states
+  instead of leaving Menu and Share blank, and added a Create Menu action to
+  Share's genuine first-use state.
+- Prevented Mobile Menu Design from crashing a fresh business that has not yet
+  received a subdomain or custom domain; public-link actions remain withheld
+  until tenant host context exists.
+- Extended the true-device owner verifier with fresh-data support, secure
+  Preview session cookies, and an optional owner-visible More-screen matrix.
+- Completed a bounded Chrome QA sweep without Firebase sign-in changes,
+  provider sends, payment actions, production writes, or a Vercel deployment.
+
 ## August 12, 2026 - Proof & State PresenceOS
 
 - Added a canonical `__docs__/founder-public-presence/` PresenceOS for the

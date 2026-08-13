@@ -73,6 +73,7 @@ function requireNamedImport(source, moduleSpecifier, names, label) {
 const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
+const projectSelector = read('src/components/templates/main-app/projects/ProjectDetails/ProjectSelector.tsx');
 const pdfViewer = read('src/components/templates/main-app/projects/PdfViewer.tsx');
 const projectCommonTypes = read('src/components/templates/main-app/projects/types/common.types.ts');
 const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
@@ -91,6 +92,9 @@ const commandCenterActionFiles = [
   source: read(`src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/${file}`),
 }));
 const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+const mobileDesignEditor = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
+const mobileProjectsProvider = read('src/components/mobile/providers/MobileProjectsProvider.tsx');
+const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
 const projectDal = read('src/database/projects/index.ts');
@@ -137,6 +141,36 @@ requireToken(
 ['import ProjectsPage from "@template/main-app/projects"', '<ProjectsPage />'].forEach((token) => {
   requireToken(projectsRoute, token, 'projects route');
 });
+
+requireOrder(projectSelector, [
+  'onEdit={() => {',
+  'setModalOpen(false);',
+  'onOpenModal(project);',
+], 'desktop project selector edit modal handoff');
+
+[
+  "'mobile_projects_list_load_failed'",
+  "'mobile_project_detail_load_failed'",
+  'hasLoadError: hasCurrentHydratedScope ? hasLoadError : false,',
+  'hydratedScopeKeyRef.current = scopeKey;',
+  'hasHydratedRef.current = true;',
+].forEach((token) => requireToken(mobileProjectsProvider, token, 'mobile project load recovery'));
+[
+  'if (hasLoadError && !menuData)',
+  "variant=\"serverErrorContext\"",
+  'refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })',
+].forEach((token) => requireToken(mobileMenu, token, 'mobile menu load recovery'));
+[
+  'if (hasLoadError && !data)',
+  "variant=\"serverErrorContext\"",
+  'refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })',
+  "variant=\"uploadContext\"",
+  "tProjectSelector('createCatalog')",
+].forEach((token) => requireToken(mobileShare, token, 'mobile share load and first-use recovery'));
+requireOrder(mobileDesignEditor, [
+  "if (!storeDetails?.subdomain && !storeDetails?.customDomain) return '';",
+  'return generateProjectUrl(',
+], 'mobile design public-link tenant-host guard');
 
 [
   'open={pdfPagesCount !== null || Boolean(pdfFiles?.images?.length)}',

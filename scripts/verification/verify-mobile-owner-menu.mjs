@@ -33,15 +33,19 @@ function readPositiveIntegerEnv(name, fallback) {
 
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const baseUrl = process.env.MOBILE_QA_BASE_URL || 'http://localhost:3000';
+const isSecureBaseUrl = new URL(baseUrl).protocol === 'https:';
 const configuredProjectId = process.env.MOBILE_QA_PROJECT_ID || '';
 const projectId = configuredProjectId || 'auto-selected-project';
 const expectedProjectName = process.env.MOBILE_QA_PROJECT_NAME || '';
+const tenantId = process.env.MOBILE_QA_TENANT_ID || '1';
 const storeId = process.env.MOBILE_QA_STORE_ID || '15';
 const email = process.env.MOBILE_QA_EMAIL || 'danny.tools.4884@gmail.com';
 const outputDir = process.env.MOBILE_QA_OUTPUT_DIR || '/tmp';
 const debugPort = readPositiveIntegerEnv('MOBILE_QA_DEBUG_PORT', 9333);
 const cdpTimeoutMs = readPositiveIntegerEnv('MOBILE_QA_CDP_TIMEOUT_MS', 45000);
 const requireExplicitFixture = process.env.MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE === '1';
+const allowEmptyMenu = process.env.MOBILE_QA_ALLOW_EMPTY_MENU === '1';
+const testOwnerMoreScreens = process.env.MOBILE_QA_TEST_OWNER_MORE_SCREENS === '1';
 const screenshotPath = path.join(outputDir, `mobile-owner-menu-${projectId}.png`);
 const bulkSheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-bulk-${projectId}.png`);
 const visibilitySheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-visibility-${projectId}.png`);
@@ -52,6 +56,56 @@ const MOBILE_REQUIRED_NAV_TABS = [
   { key: 'more', label: 'More' },
   { key: 'menu', label: 'Menu' },
 ];
+const DEFAULT_MOBILE_OWNER_MORE_SCREENS = [
+  'businessProfileHub',
+  'searchDiscoveryHub',
+  'billing',
+  'basicSettings',
+  'locale',
+  'hoursEdit',
+  'roles',
+  'digitalScreens',
+  'locations',
+  'users',
+  'dashboard',
+  'businessHealth',
+  'aiMenuManager',
+  'printAssets',
+  'printMenu',
+  'feedback',
+  'transactions',
+  'help',
+  'advancedSettings',
+  'contactSettings',
+  'designEditor',
+  'businessAttributes',
+  'feedbackSettings',
+  'officialPage',
+  'businessCopySetup',
+  'seoSettings',
+  'analyticsSettings',
+  'socialSettings',
+  'timeSlots',
+  'tempStatus',
+  'specialMenus',
+  'domainSettings',
+  'integrations',
+  'posSync',
+  'todayHistory',
+  'customerApp',
+  'presenceMonitor',
+  'answerlatticeHelp',
+  'answerlatticeDocs',
+  'answerlatticeSupport',
+  'answerlatticeReleaseNotes',
+];
+const configuredOwnerMoreScreens = (process.env.MOBILE_QA_OWNER_MORE_SCREENS || '')
+  .split(',')
+  .map((screen) => screen.trim())
+  .filter(Boolean);
+const MOBILE_OWNER_MORE_SCREENS = configuredOwnerMoreScreens.length
+  ? configuredOwnerMoreScreens
+  : DEFAULT_MOBILE_OWNER_MORE_SCREENS;
 const mobileTabScreenshotPaths = Object.fromEntries(MOBILE_REQUIRED_NAV_TABS.map(({ key }) => [
   key,
   key === 'menu' ? screenshotPath : path.join(outputDir, `mobile-owner-${key}-${projectId}.png`),
@@ -64,9 +118,9 @@ if (!process.env.NEXTAUTH_SECRET) {
 if (requireExplicitFixture) {
   const missing = [
     'MOBILE_QA_EMAIL',
+    'MOBILE_QA_TENANT_ID',
     'MOBILE_QA_STORE_ID',
-    'MOBILE_QA_PROJECT_ID',
-    'MOBILE_QA_PROJECT_NAME',
+    ...(allowEmptyMenu ? [] : ['MOBILE_QA_PROJECT_ID', 'MOBILE_QA_PROJECT_NAME']),
   ].filter((name) => !process.env[name]);
   if (missing.length) {
     throw new Error(`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE=1 requires ${missing.join(', ')}.`);
@@ -314,6 +368,7 @@ async function inspectMobileNavigationTab(client, sessionId, expectedTab) {
       document.documentElement?.scrollWidth || 0,
       document.body?.scrollWidth || 0,
     );
+    const bodyText = (document.body?.innerText || '').replace(/\\s+/g, ' ').trim();
     const text = (shellScroll?.innerText || '').replace(/\\s+/g, ' ').trim();
     return {
       expectedTab,
@@ -323,7 +378,7 @@ async function inspectMobileNavigationTab(client, sessionId, expectedTab) {
       hasPrimaryNavigationLandmark: Boolean(navigation),
       hasMobileShellScroll: Boolean(shellScroll),
       hasMeaningfulScreenContent: text.length > 0,
-      hasRuntimeError: /application error|internal server error|something went wrong|this page could not be found/i.test(text),
+      hasRuntimeError: /application error|internal server error|something went wrong|this page could not be found/i.test(bodyText),
       viewportWidth: innerWidth,
       documentWidth,
       hasPageOverflow: documentWidth > innerWidth + 1,
@@ -363,6 +418,40 @@ async function exerciseMobileNavigationTab(client, sessionId, tab, label, screen
   return { ...state, clicked, navigationError, screenshot };
 }
 
+async function exerciseMobileOwnerMoreScreen(client, sessionId, screen) {
+  const expectedHash = `#mobile/more/${screen}`;
+  await client.send('Page.navigate', { url: `${baseUrl}/projects${expectedHash}` }, sessionId);
+  await waitForExpression(client, sessionId, `document.readyState === 'complete' && Boolean(document.body)`);
+  await delay(1400);
+
+  return evaluate(client, sessionId, `(() => {
+    const expectedHash = ${JSON.stringify(expectedHash)};
+    const shellScroll = document.querySelector('[data-mobile-shell-scroll="true"]');
+    const bodyText = (document.body?.innerText || '').replace(/\\s+/g, ' ').trim();
+    const text = (shellScroll?.innerText || '').replace(/\\s+/g, ' ').trim();
+    const documentWidth = Math.max(
+      document.documentElement?.scrollWidth || 0,
+      document.body?.scrollWidth || 0,
+    );
+    const exactScreenRendered = location.hash === expectedHash;
+    const fellBackToMore = location.hash === '#mobile/more';
+    return {
+      screen: ${JSON.stringify(screen)},
+      hash: location.hash,
+      exactScreenRendered,
+      unavailableForRoleOrFeature: fellBackToMore,
+      hasMobileShellScroll: Boolean(shellScroll),
+      hasMeaningfulScreenContent: text.length >= 20 && !/^loading(?:\\.{0,3})?$/i.test(text),
+      hasRuntimeError: /application error|internal server error|something went wrong|this page could not be found/i.test(bodyText),
+      viewportWidth: innerWidth,
+      documentWidth,
+      hasPageOverflow: documentWidth > innerWidth + 1,
+      text: text.slice(0, 900),
+      bodyText: bodyText.slice(0, 900),
+    };
+  })()`);
+}
+
 function isIgnorablePageError(message) {
   return /Failed to load resource: net::ERR_CONNECTION_RESET/i.test(message)
     || /webpack-hmr/i.test(message);
@@ -394,11 +483,18 @@ async function main() {
     await client.ready;
 
     const pageErrors = [];
+    const failedResponses = [];
     client.on('Runtime.exceptionThrown', (params) => {
       pageErrors.push(params?.exceptionDetails?.exception?.description || params?.exceptionDetails?.text || 'Runtime exception');
     });
     client.on('Log.entryAdded', (params) => {
       if (params?.entry?.level === 'error') pageErrors.push(params.entry.text);
+    });
+    client.on('Network.responseReceived', (params) => {
+      const status = params?.response?.status;
+      if (typeof status === 'number' && status >= 400) {
+        failedResponses.push({ status, url: params.response.url });
+      }
     });
 
     const target = await client.send('Target.createTarget', { url: 'about:blank' });
@@ -430,16 +526,33 @@ async function main() {
         email,
         name: 'Mobile QA',
         sub: 'mobile-qa',
+        dbUser: {
+          id: 'mobile-qa',
+          email,
+          name: 'Mobile QA',
+          isVerified: true,
+          active: true,
+          blocked: false,
+          tenantId,
+          storeId,
+          pId: 'ML',
+          productId: 'ML',
+          platformRole: 'OWNER',
+          role: 'OWNER',
+          stores: [{ storeId, role: 'OWNER' }],
+        },
+        sessionIssuedAt: Math.floor(Date.now() / 1000),
       },
       secret: process.env.NEXTAUTH_SECRET,
     });
 
     await client.send('Network.setCookie', {
-      name: 'next-auth.session-token',
+      name: isSecureBaseUrl ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
       value: authToken,
       url: baseUrl,
       path: '/',
       httpOnly: true,
+      secure: isSecureBaseUrl,
       sameSite: 'Lax',
     }, sessionId);
 
@@ -544,7 +657,17 @@ async function main() {
       );
     }
 
-    const clickedFloatingActions = await evaluate(client, sessionId, `
+    const ownerMoreScreenStates = {};
+    if (testOwnerMoreScreens) {
+      for (const screen of MOBILE_OWNER_MORE_SCREENS) {
+        ownerMoreScreenStates[screen] = await exerciseMobileOwnerMoreScreen(client, sessionId, screen);
+      }
+      await client.send('Page.navigate', { url: `${baseUrl}/projects#mobile/menu` }, sessionId);
+      await waitForExpression(client, sessionId, `location.hash === '#mobile/menu'`);
+      await delay(800);
+    }
+
+    const clickedFloatingActions = allowEmptyMenu ? false : await evaluate(client, sessionId, `
       (() => {
         const button = document.querySelector('.ant-float-btn') || document.querySelector('[aria-label*="actions" i]');
         if (!button) return false;
@@ -575,7 +698,7 @@ async function main() {
 
     await captureScreenshot(client, sessionId, bulkSheetScreenshotPath);
 
-    const clickedVisibility = await clickByText(client, sessionId, 'Visibility', true);
+    const clickedVisibility = allowEmptyMenu ? false : await clickByText(client, sessionId, 'Visibility', true);
     await delay(1500);
     const visibilityState = await evaluate(client, sessionId, `(() => {
       const text = document.body.innerText;
@@ -593,19 +716,21 @@ async function main() {
     })()`);
     await captureScreenshot(client, sessionId, visibilitySheetScreenshotPath);
 
-    await client.send('Page.navigate', { url: `${baseUrl}/projects#mobile/menu` }, sessionId);
-    await waitForExpression(client, sessionId, `
-      document.body && /(\\d+)\\s+(?:items\\s+)?missing images\\b/i.test(document.body.innerText)
-    `);
-    await delay(1500);
-    await evaluate(client, sessionId, `
-      (() => {
-        const button = document.querySelector('.ant-float-btn');
-        if (button) button.click();
-      })()
-    `);
-    await delay(1000);
-    const clickedTextCase = await clickByText(client, sessionId, 'Fix Text Case', true);
+    if (!allowEmptyMenu) {
+      await client.send('Page.navigate', { url: `${baseUrl}/projects#mobile/menu` }, sessionId);
+      await waitForExpression(client, sessionId, `
+        document.body && /(\\d+)\\s+(?:items\\s+)?missing images\\b/i.test(document.body.innerText)
+      `);
+      await delay(1500);
+      await evaluate(client, sessionId, `
+        (() => {
+          const button = document.querySelector('.ant-float-btn');
+          if (button) button.click();
+        })()
+      `);
+      await delay(1000);
+    }
+    const clickedTextCase = allowEmptyMenu ? false : await clickByText(client, sessionId, 'Fix Text Case', true);
     await delay(1500);
     const textCaseState = await evaluate(client, sessionId, `(() => {
       const text = document.body.innerText;
@@ -627,16 +752,16 @@ async function main() {
     const materialPageErrors = pageErrors.filter((message) => !isIgnorablePageError(message));
     if (!mainState.hasMobileNav) failures.push('Mobile bottom navigation did not render.');
     if (mainState.hasDesktopSidebar) failures.push('Desktop sidebar content rendered in mobile harness.');
-    if (!mainState.hasSelectedProjectId) {
+    if (!allowEmptyMenu && !mainState.hasSelectedProjectId) {
       failures.push(configuredProjectId
         ? `Expected QA project id ${configuredProjectId} was not selected on mobile.`
         : 'Expected a mobile project to be selected.');
     }
-    if (!mainState.hasExpectedProjectName) failures.push(`Expected QA project name "${expectedProjectName}" was not visible.`);
-    if (!(mainState.itemCount > 0)) failures.push('Expected a positive item count to be visible.');
-    if (!(mainState.categoryCount > 0)) failures.push('Expected a positive category count to be visible.');
-    if (!mainState.hasMissingImagesSignal) failures.push('Expected a missing images signal to be visible.');
-    if (!mainState.hasNoCategoryIconWarning) failures.push('Category-icon warning was visible even though extracted categories have icons.');
+    if (!allowEmptyMenu && !mainState.hasExpectedProjectName) failures.push(`Expected QA project name "${expectedProjectName}" was not visible.`);
+    if (!allowEmptyMenu && !(mainState.itemCount > 0)) failures.push('Expected a positive item count to be visible.');
+    if (!allowEmptyMenu && !(mainState.categoryCount > 0)) failures.push('Expected a positive category count to be visible.');
+    if (!allowEmptyMenu && !mainState.hasMissingImagesSignal) failures.push('Expected a missing images signal to be visible.');
+    if (!allowEmptyMenu && !mainState.hasNoCategoryIconWarning) failures.push('Category-icon warning was visible even though extracted categories have icons.');
     for (const { key, label } of MOBILE_REQUIRED_NAV_TABS) {
       const state = navigationStates[key];
       if (!state.clicked) failures.push(`${label} bottom-navigation target was not found or could not be clicked.`);
@@ -653,11 +778,20 @@ async function main() {
       }
       if (!state.navTouchTargetsMeetMinimum) failures.push(`${label} bottom navigation has a target smaller than 44x44px.`);
     }
+    for (const [screen, state] of Object.entries(ownerMoreScreenStates)) {
+      if (!state.exactScreenRendered && !state.unavailableForRoleOrFeature) {
+        failures.push(`${screen} produced unexpected hash ${state.hash || '(empty)'}.`);
+      }
+      if (!state.hasMobileShellScroll) failures.push(`${screen} rendered outside the MobileShell scroll container.`);
+      if (!state.hasMeaningfulScreenContent) failures.push(`${screen} rendered without settled screen content.`);
+      if (state.hasRuntimeError) failures.push(`${screen} rendered a runtime error state.`);
+      if (state.hasPageOverflow) failures.push(`${screen} created page-level horizontal overflow (${state.documentWidth}px > ${state.viewportWidth}px).`);
+    }
     if (bulkState.clickedMoreActions && bulkState.hasBottomGapRisk) failures.push('Bulk sheet left a visible bottom gap.');
-    if (!visibilityState.clickedVisibility || !visibilityState.hasVisibilitySheet) failures.push('Visibility bulk sheet did not open.');
-    if (visibilityState.hasBottomGapRisk) failures.push('Visibility sheet left a visible bottom gap.');
-    if (!textCaseState.clickedTextCase || !textCaseState.hasTextCaseSheet) failures.push('Fix Text Case sheet did not open.');
-    if (textCaseState.hasBottomGapRisk) failures.push('Fix Text Case sheet left a visible bottom gap.');
+    if (!allowEmptyMenu && (!visibilityState.clickedVisibility || !visibilityState.hasVisibilitySheet)) failures.push('Visibility bulk sheet did not open.');
+    if (!allowEmptyMenu && visibilityState.hasBottomGapRisk) failures.push('Visibility sheet left a visible bottom gap.');
+    if (!allowEmptyMenu && (!textCaseState.clickedTextCase || !textCaseState.hasTextCaseSheet)) failures.push('Fix Text Case sheet did not open.');
+    if (!allowEmptyMenu && textCaseState.hasBottomGapRisk) failures.push('Fix Text Case sheet left a visible bottom gap.');
     if (materialPageErrors.length) failures.push(`Page errors: ${materialPageErrors.join(' | ')}`);
 
     const result = {
@@ -665,6 +799,8 @@ async function main() {
       failures,
       mainState,
       navigationStates,
+      ownerMoreScreenStates,
+      failedResponses: failedResponses.slice(-40),
       bulkState,
       visibilityState,
       textCaseState,

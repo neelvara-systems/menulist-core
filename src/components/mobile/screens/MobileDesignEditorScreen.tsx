@@ -242,12 +242,15 @@ export default function MobileDesignEditorScreen({
         return JSON.stringify(draftProjectData) !== JSON.stringify(savedProjectData);
     }, [draftProjectData, savedProjectData]);
 
-    const menuUrl = useMemo(() => generateProjectUrl(
-        storeDetails?.subdomain,
-        storeDetails?.customDomain,
-        resolvedProjectName || undefined,
-        false,
-    ), [resolvedProjectName, storeDetails?.customDomain, storeDetails?.subdomain]);
+    const menuUrl = useMemo(() => {
+        if (!storeDetails?.subdomain && !storeDetails?.customDomain) return '';
+        return generateProjectUrl(
+            storeDetails.subdomain,
+            storeDetails.customDomain,
+            resolvedProjectName || undefined,
+            false,
+        );
+    }, [resolvedProjectName, storeDetails?.customDomain, storeDetails?.subdomain]);
     const isProjectSelectorClickable = projectsList.length > 1 && !isPublishing;
 
     const buildMobileDesignLogContext = useCallback((

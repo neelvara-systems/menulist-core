@@ -460,6 +460,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
+    const tProjectSelector = useTranslations('MobileProjectSelector');
     const tShare = useTranslations('MobileShare');
     const { storeDetails, setStoreDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
     const processingStorageKey = getTenantStoreStorageKey(
@@ -473,6 +474,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     }), [storeDetails?.storeId, storeDetails?.tenantId]);
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
+        hasLoadError,
         isLoading: loadingProjects,
         projectsById,
         projectsList,
@@ -3067,6 +3069,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
                 <DotLoading color="primary" />
+            </Flex>
+        );
+    }
+
+    if (hasLoadError && !menuData) {
+        return (
+            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
+                <ContextualStateIllustration
+                    color={token.colorTextQuaternary}
+                    size={112}
+                    variant="serverErrorContext"
+                />
+                <Title level={4} style={{ margin: 0 }}>{tProjectSelector('loadFailed')}</Title>
+                <Button
+                    color="primary"
+                    onClick={() => void refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })}
+                    size="large"
+                >
+                    {t('tryAgain')}
+                </Button>
             </Flex>
         );
     }

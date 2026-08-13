@@ -29,6 +29,7 @@ information and may request verification or recovery evidence.
 | Surface | Finding | Decision |
 | --- | --- | --- |
 | X/Reddit handle | `proofandstate` produced no obvious web collision; direct public X and Reddit profile fetches returned unclaimed-style 404s on August 12, 2026 | Recheck and register manually; availability is not guaranteed until success |
+| Existing email candidates | Founder-provided candidates exposed a personal name, surname, product/business association, or prior-account history | Do not use them for Proof & State; create one new durable private recovery inbox and never record its address in PresenceOS |
 | Instagram/Facebook handle | Public availability could not be confirmed reliably | Do not claim availability |
 | Product websites | Targeted public search found no obvious founder-name result | Useful but not a complete ownership or registration audit |
 | Repository source | No normal public page source was found exposing the workspace name; one disposable-domain dataset match was irrelevant | Continue screenshot and output review |

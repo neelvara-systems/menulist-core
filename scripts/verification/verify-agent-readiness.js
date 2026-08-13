@@ -306,6 +306,7 @@ function verifyMenuListStorageBucketFallbackBoundary() {
     'src/lib/firebase/firebaseClient.ts',
     'src/lib/apiUtils/index.ts',
     'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+    'functions/src/utils/storageBucket.ts',
     'functions/src/logic/processMenuImages.ts',
     'functions/src/logic/processMenuImagesJob.ts',
     'functions/src/messagingOnboarding/assetIntelligence.ts',
@@ -320,23 +321,41 @@ function verifyMenuListStorageBucketFallbackBoundary() {
   [
     'src/lib/apiUtils/index.ts',
     'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
-    'functions/src/logic/processMenuImages.ts',
-    'functions/src/logic/processMenuImagesJob.ts',
-    'functions/src/messagingOnboarding/assetIntelligence.ts',
   ].forEach((file) => {
     const content = read(file);
     assertIncludes(content, 'function getProjectStorageBucketFallback()', `${file} project-derived Storage bucket fallback`);
     assertIncludes(content, 'process.env.GCLOUD_PROJECT', `${file} active Firebase project fallback`);
     assertIncludes(content, 'process.env.GCP_PROJECT', `${file} active GCP project fallback`);
-    if (file.startsWith('functions/')) {
-      assertIncludes(content, 'process.env.FIREBASE_STORAGE_BUCKET', `${file} project-local server Storage bucket env`);
-      assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', `${file} project-local public Storage bucket env`);
-      assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID', `${file} project-local public Firebase project fallback`);
-    } else {
-      assertIncludes(content, 'menulistServerEnv.firebaseStorageBucket', `${file} MenuList server Storage bucket env`);
-      assertIncludes(content, 'menulistPublicEnv.firebaseStorageBucket', `${file} MenuList public Storage bucket env`);
-      assertIncludes(content, 'menulistPublicEnv.firebaseProjectId', `${file} MenuList public Firebase project fallback`);
-    }
+    assertIncludes(content, 'menulistServerEnv.firebaseStorageBucket', `${file} MenuList server Storage bucket env`);
+    assertIncludes(content, 'menulistPublicEnv.firebaseStorageBucket', `${file} MenuList public Storage bucket env`);
+    assertIncludes(content, 'menulistPublicEnv.firebaseProjectId', `${file} MenuList public Firebase project fallback`);
+  });
+
+  const functionsStorageBucket = read('functions/src/utils/storageBucket.ts');
+  [
+    'process.env.FIREBASE_STORAGE_BUCKET',
+    'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    'process.env.FIREBASE_CONFIG',
+    'JSON.parse(firebaseConfig)',
+    'parsed.storageBucket',
+    'process.env.GCLOUD_PROJECT',
+    'process.env.GCP_PROJECT',
+    'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  ].forEach((token) => assertIncludes(
+    functionsStorageBucket,
+    token,
+    `shared Functions Storage bucket resolver ${token}`,
+  ));
+
+  [
+    'functions/src/logic/processMenuImages.ts',
+    'functions/src/logic/processMenuImagesJob.ts',
+    'functions/src/messagingOnboarding/assetIntelligence.ts',
+  ].forEach((file) => {
+    const content = read(file);
+    assertIncludes(content, 'getAllowedStorageBucket', `${file} shared Storage bucket resolver use`);
+    assertNotIncludes(content, 'function getAllowedStorageBucket()', `${file} must not duplicate the shared Storage bucket resolver`);
+    assertNotIncludes(content, 'function getProjectStorageBucketFallback()', `${file} must not duplicate the project bucket fallback`);
   });
 
   const firebaseClient = read('src/lib/firebase/firebaseClient.ts');

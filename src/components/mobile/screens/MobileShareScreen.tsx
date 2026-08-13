@@ -1,5 +1,6 @@
 'use client'
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { getScreenState } from '@database/campaigns';
@@ -267,13 +268,16 @@ export default function MobileShareScreen({
     const { isCompactHandheld } = useViewportInfo();
     const { isMasterUser, setStoreDetails, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
+    const tMenu = useTranslations('MobileMenu');
     const referralT = useTranslations('OwnerReferral');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
     const {
+        hasLoadError,
         isLoading: loadingProjects,
         projectsList,
         refreshCachedProject,
+        refreshProjects,
         selectedProject,
         selectedProjectId,
         selectProject,
@@ -1134,14 +1138,44 @@ export default function MobileShareScreen({
         );
     }
 
+    if (hasLoadError && !data) {
+        return (
+            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
+                <ContextualStateIllustration
+                    color={token.colorTextQuaternary}
+                    size={112}
+                    variant="serverErrorContext"
+                />
+                <Title level={4} style={{ margin: 0 }}>{tProjectSelector('loadFailed')}</Title>
+                <Button
+                    color="primary"
+                    onClick={() => void refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })}
+                    size="large"
+                >
+                    {tMenu('tryAgain')}
+                </Button>
+            </Flex>
+        );
+    }
+
     if (!data) {
         return (
-            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24 }} vertical>
-                <LuBookOpen color={token.colorTextQuaternary} size={36} />
+            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={112}
+                    treatment="softHalo"
+                    variant="uploadContext"
+                />
                 <Title level={4} style={{ margin: 0 }}>{t('noMenuYet')}</Title>
                 <Text type="secondary" style={{ textAlign: 'center' }}>
                     {t('noMenuYetDesc', { offering: labels.offeringLower })}
                 </Text>
+                {onOpenMenuTab ? (
+                    <Button color="primary" onClick={onOpenMenuTab} size="large">
+                        {tProjectSelector('createCatalog')}
+                    </Button>
+                ) : null}
             </Flex>
         );
     }

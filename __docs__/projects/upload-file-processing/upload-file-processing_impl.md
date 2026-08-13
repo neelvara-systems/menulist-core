@@ -2,7 +2,7 @@
 
 **Feature:** File Upload & PDF Processing  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** January 2026
+**Last Updated:** August 13, 2026
 
 **Launch boundary:** This implementation note documents upload/PDF processing architecture. Current release approval still requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target deploy evidence, browser/mobile upload QA, Storage quota/rules evidence, and extraction-job evidence for the release.
 
@@ -88,6 +88,23 @@ src/components/templates/main-app/projects/
 ---
 
 ## Key Files & Functions
+
+### Functions Storage Bucket Resolution
+
+Menu extraction workers accept only objects from the configured Firebase
+Storage bucket. The shared Functions resolver in
+`functions/src/utils/storageBucket.ts` uses this order:
+
+1. explicit `FIREBASE_STORAGE_BUCKET`;
+2. explicit `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`;
+3. `storageBucket` from the injected `FIREBASE_CONFIG` JSON;
+4. a project-derived `*.appspot.com` compatibility fallback.
+
+`processMenuImages`, `processMenuImagesJob`, and messaging asset intelligence
+must import this shared resolver. They must not independently synthesize a
+bucket from `GCLOUD_PROJECT`, because newer Firebase buckets can use the
+`*.firebasestorage.app` hostname and a synthesized legacy name rejects a valid
+same-project upload before provider work.
 
 ### constants.ts
 

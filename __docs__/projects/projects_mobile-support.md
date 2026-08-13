@@ -1,9 +1,9 @@
 # Projects — Mobile Support
 
-**Last Updated:** July 16, 2026
+**Last Updated:** August 13, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Core operational features on mobile, advanced editor desktop-only
 
-**Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
+**Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, project-list/detail recovery, first-use Menu/Share behavior, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
 
 ---
 
@@ -37,6 +37,24 @@
 | Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL, loaded-`modifiedOn` stale-write rejection, and bounded non-blocking post-publish verification diagnostics |
 | Quick Start presets         | `MobileDesignEditorScreen` (mobile-only!)   | 3 one-tap preset bundles                                     |
 | Bulk availability/show-hide | `BulkActionsSheet`                          | Simplified Command Center                                    |
+
+### First-Use And Recovery States
+
+`MobileProjectsProvider` must settle the exact tenant/store scope after a
+project-list or selected-project read failure. It exposes `hasLoadError`, logs
+only bounded store context, and allows an explicit retry; it must not leave the
+Menu or Share tab in a permanent loading state.
+
+- Menu and Share render a recovery state with **Try again** when project truth
+  could not be loaded.
+- A successfully loaded empty project list is different from an error. Share
+  renders **No menu yet** with **Create Menu**, which returns the owner to the
+  Menu tab.
+- Menu Design withholds public-link actions when a fresh business has neither
+  a subdomain nor a custom domain. It does not call the strict public URL
+  builder until tenant host context exists.
+- These states add no Firestore reads beyond an owner-initiated retry and add
+  no writes, listeners, collections, or server routes.
 
 ### Desktop-Only (Fails 4-gate) ❌
 
@@ -73,6 +91,7 @@ Data changes (availability, price, add/delete) are **immediately live** to custo
 | Menu upload   | `src/components/mobile/sheets/MenuUploadSheet.tsx`           |
 | Share         | `src/components/mobile/screens/MobileShareScreen.tsx`        |
 | Project sheet | `src/components/mobile/components/MobileProjectSelectorSheet.tsx` |
+| Project provider | `src/components/mobile/providers/MobileProjectsProvider.tsx` |
 | Project diagnostics | `src/components/mobile/utils/mobileProjectDiagnostics.ts` |
 | Owner diagnostics | `src/components/mobile/utils/mobileOwnerDiagnostics.ts` |
 | Design editor | `src/components/mobile/screens/MobileDesignEditorScreen.tsx` |

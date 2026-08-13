@@ -21,7 +21,7 @@ function message(id: string, from: string, type: string, value: Record<string, u
   return {
     id,
     from,
-    timestamp: "1783737000",
+    timestamp: String(Math.floor(Date.now() / 1000)),
     type,
     [type]: value,
   };

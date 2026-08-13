@@ -1,8 +1,8 @@
 # Project Management - Implementation
 
 **Feature:** Project CRUD and Menu Builder Lifecycle
-**Status:** Production implementation exists; audited July 29, 2026
-**Last Updated:** July 29, 2026
+**Status:** Production implementation exists; audited August 13, 2026
+**Last Updated:** August 13, 2026
 
 ## Architecture
 
@@ -181,3 +181,18 @@ The source gates reject known direct-write bypass patterns and lock the public c
 Mobile project management uses the same DAL functions as desktop. Mobile-specific code is limited to shell state, project selection, touch UI, and optimistic cache updates.
 
 The mobile provider intentionally auto-creates the first default project when the owner enters the menu-management shell. Mobile read-only output surfaces should use `getExistingProjectsListWithoutLoader()`.
+
+Project-list and selected-project failures are terminal for that request but
+not for the mobile shell. `MobileProjectsProvider` marks the exact scope as
+settled, exposes `hasLoadError`, records `mobile_projects_list_load_failed` or
+`mobile_project_detail_load_failed` through bounded diagnostics, and returns
+`null` from a failed detail request instead of leaking an unhandled rejection.
+Mobile Menu and Share then present an explicit retry. A successful empty list
+uses the separate first-use path, including Share's **Create Menu** handoff.
+This recovery contract changes no Firestore write path and performs another
+read only when the owner selects retry.
+
+Mobile Design derives its public menu URL only after the store has a subdomain
+or custom domain. Fresh businesses without either host keep link/QR actions
+unavailable instead of calling `generateProjectUrl()` without tenant context;
+the shared URL builder remains strict and continues to reject invalid callers.

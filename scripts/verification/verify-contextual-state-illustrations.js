@@ -35,9 +35,10 @@ const approvedConsumers = new Map([
   ['src/components/mobile/screens/MobileDashboardScreen.tsx', { count: 4, softHaloCount: 4, variant: 'analyticsContext' }],
   ['src/components/mobile/screens/MobileDigitalScreensScreen.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/mobile/screens/MobileFeedbackScreen.tsx', { count: 1, softHaloCount: 0, variant: 'feedbackContext' }],
-  ['src/components/mobile/screens/MobileMenuScreen.tsx', { count: 3, softHaloCount: 2, variants: ['photoErrorContext', 'photoSuccessContext', 'uploadContext'] }],
+  ['src/components/mobile/screens/MobileMenuScreen.tsx', { count: 4, softHaloCount: 2, variants: ['photoErrorContext', 'photoSuccessContext', 'serverErrorContext', 'uploadContext'] }],
   ['src/components/mobile/screens/MobileResellerOnboardingScreen.tsx', { count: 1, softHaloCount: 1, variant: 'onboardingSuccessContext' }],
   ['src/components/mobile/screens/MobileRolesScreen.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
+  ['src/components/mobile/screens/MobileShareScreen.tsx', { count: 2, softHaloCount: 1, variants: ['serverErrorContext', 'uploadContext'] }],
   ['src/components/mobile/screens/MobileSpecialMenuScreen.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/mobile/screens/MobileTimeSlotsScreen.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/mobile/screens/MobileUsersScreen.tsx', { count: 1, softHaloCount: 1, variant: 'teamContext' }],
@@ -517,12 +518,12 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 66,
-  `Expected 66 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 69,
+  `Expected 69 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
-  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 49,
-  'Expected 49 positive or first-use illustrations to use the branded soft halo',
+  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 50,
+  'Expected 50 positive or first-use illustrations to use the branded soft halo',
 );
 
 const actualResultRenderCounts = new Map();
@@ -638,4 +639,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (66 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (69 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

@@ -2,7 +2,7 @@
 
 > Status: first execution guide
 > Scope: MenuList local plus staging only
-> Last updated: August 11, 2026
+> Last updated: August 13, 2026
 > Launch boundary: this guide does not approve production deployment. Finish this MenuList QA setup, verify it end to end, then create a separate MenuList production guide.
 
 This is the dedicated setup file for **MenuList staging/QA**. Follow only this
@@ -1853,6 +1853,403 @@ Operator progress:
   returned HTTP 401 with `UNAUTHENTICATED`, proving public transport reachability
   without bypassing application auth or invoking image processing. This
   completes `QA-I10`; no Vercel or production deploy was run.
+- `2026-08-12 22:53 IST` - Commit `4bc4d0182` was pushed to exact branch
+  `staging`. Vercel deployment `dpl_9jSJRpgEecstJH1kZYi9kHko6Exc` completed
+  with target `preview` and status `Ready`; its generated branch alias is
+  `menulist-core-git-staging-neelvara-systems.vercel.app`. Read-only Vercel CLI
+  inspection confirmed all 39 configured variables are scoped to Preview for
+  exact Git branch `staging`, with 13 Sensitive and 26 Non-sensitive rows. The
+  push did not create or promote a Production deployment; the dashboard's only
+  Production entry predates this push and remains a failed deployment from the
+  prior day. This completes `QA-J01`, `QA-J02`, and `QA-J05`.
+- `2026-08-12 22:53 IST` - Read-only Vercel domain inventory returned zero
+  domains for the fresh `neelvara-systems` team, so `QA-J03` remains pending.
+  Public DNS readback before any mutation found GoDaddy nameservers
+  `ns19.domaincontrol.com` and `ns20.domaincontrol.com`, apex A record
+  `216.198.79.1`, and `www` CNAME
+  `9bd65540e56b2d57.vercel-dns-017.com`; `app`, apex AAAA, MX, apex TXT, and CAA
+  returned no records. GoDaddy zone readback confirmed seven records total,
+  including its default apex NS/SOA records, `_domainconnect` CNAME, and a
+  `_dmarc` TXT policy. No DNS or domain assignment was changed during this
+  inspection.
+- `2026-08-12 23:26 IST` - The pre-change `menulist.digital` GoDaddy zone was
+  captured as a restorable seven-record baseline: `A @ 216.198.79.1` with TTL
+  600 seconds; default `NS @ ns19.domaincontrol.com.` and
+  `NS @ ns20.domaincontrol.com.` with TTL one hour; `CNAME www
+  9bd65540e56b2d57.vercel-dns-017.com.` with TTL one hour; GoDaddy-managed
+  `CNAME _domainconnect _domainconnect.gd.domaincontrol.com.` with TTL one
+  hour; the GoDaddy-managed apex SOA; and `TXT _dmarc "v=DMARC1;
+  p=quarantine; adkim=r; aspf=r;
+  rua=mailto:dmarc_rua@onsecureserver.net;"` with TTL one hour. No AAAA, MX,
+  CAA, apex TXT, or SRV records were present. This completes `QA-B04` without
+  changing nameserver authority.
+- `2026-08-12 23:26 IST` - `menulist.digital` and `www.menulist.digital` both
+  report **Valid Configuration** and exact Git branch `staging` in Vercel,
+  completing `QA-B05`. `app.menulist.digital` was added to Preview for exact
+  branch `staging`; Vercel requested `A app 76.76.21.21`, and the operator added
+  that non-conflicting record in GoDaddy with TTL 600 seconds. Both authoritative
+  GoDaddy nameservers and the system, Cloudflare, and Google public resolvers now
+  return `76.76.21.21`; Vercel CLI inspection no longer reports a configuration
+  warning. The subsequent dashboard refresh classified that legacy A target as
+  functional but **DNS Change Recommended** because Vercel is expanding its IP
+  range. Vercel supplied the project-specific preferred record `CNAME app
+  dd4b150d15c50a85.vercel-dns-017.com.` and stated that `76.76.21.21` continues
+  to work.
+- `2026-08-12 23:31 IST` - The temporary `A app 76.76.21.21` record was removed
+  and replaced by Vercel's exact project-specific `CNAME app
+  dd4b150d15c50a85.vercel-dns-017.com.` target. GoDaddy now shows the expected
+  eight-record post-change zone with no conflicting `app` A record. Public DNS
+  readback returns that exact CNAME, and Vercel reports **Valid Configuration**
+  with exact Git branch `staging` for `app.menulist.digital`. An HTTPS header
+  probe reaches Vercel and redirects to Vercel SSO because Preview deployment
+  protection is active; this is not a DNS failure and remains a later browser
+  smoke concern. This completes `QA-B06`.
+- `2026-08-12 23:33 IST` - `*.menulist.digital` was added to Vercel Preview for
+  exact Git branch `staging` with no redirect, completing the assignment portion
+  of `QA-B07`. Vercel correctly reports **Invalid Configuration** until DNS
+  authority moves from GoDaddy to `ns1.vercel-dns.com` and
+  `ns2.vercel-dns.com`. Read-only Vercel DNS inspection found the destination
+  zone already contains Vercel-managed apex and wildcard `ALIAS` records aimed
+  at `dd4b150d15c50a85.vercel-dns-017.com`, plus Vercel's default certificate
+  `CAA` records for Google Trust Services, Sectigo, and Let's Encrypt. Before
+  changing nameservers, the portable `_dmarc` TXT policy must be recreated in
+  Vercel DNS. The GoDaddy-managed NS, SOA, and `_domainconnect` records must not
+  be copied, and the old apex/`www`/`app` routing records are superseded by the
+  managed Vercel `ALIAS` records. Wildcard validation remains pending under
+  `QA-B08` and `QA-B10`.
+- `2026-08-12 23:35 IST` - The portable `_dmarc` TXT policy was recreated in
+  Vercel DNS as record `rec_04dac82323806804289f662e`. Read-only destination-zone
+  verification returned that exact policy together with the managed apex and
+  wildcard `ALIAS` records and Vercel's three default certificate `CAA`
+  records. This matches the portable content from the pre-change GoDaddy
+  baseline: there were no MX, apex TXT, AAAA, SRV, or additional CAA records to
+  migrate. The destination zone is therefore ready for the registrar
+  nameserver switch; `QA-B08` remains pending until public NS propagation and
+  post-switch record verification pass.
+- `2026-08-12 23:37 IST` - GoDaddy accepted the custom nameserver change and
+  displays only `ns1.vercel-dns.com` and `ns2.vercel-dns.com`. Direct queries to
+  Vercel's authoritative nameserver already return the expected apex, `www`,
+  `app`, and synthetic wildcard A answers plus the preserved `_dmarc` TXT
+  policy. The `.digital` registry and the system, Cloudflare, and Google public
+  resolvers still return the previous `ns19.domaincontrol.com` and
+  `ns20.domaincontrol.com` delegation with a one-hour registry TTL, so wildcard
+  public resolution is not complete yet. This is normal delegation propagation;
+  no further GoDaddy DNS-record mutation is required. `QA-B08` remains pending
+  until registry/public NS readback changes to Vercel and the wildcard HTTPS
+  check succeeds.
+- `2026-08-12 23:37-23:41 IST` - Eight direct `.digital` registry polls at
+  30-second intervals continued to return the previous GoDaddy delegation. The
+  registry advertises a 3,600-second NS TTL. This bounded poll confirms the
+  setup is waiting on external registry publication rather than another Vercel
+  or GoDaddy configuration action; do not resave the nameservers or delete the
+  old GoDaddy zone while propagation is pending.
+- `2026-08-12 23:45 IST` - Independent of DNS propagation, read-only Vercel
+  deployment inspection confirmed Preview deployment
+  `dpl_9jSJRpgEecstJH1kZYi9kHko6Exc` remains **Ready**, targets `preview`, and
+  was built from branch `staging` at commit `4bc4d01`. Exact-branch Preview env
+  readback, with secret values never printed, confirmed Firebase project
+  `menulist-qa`, Auth domain `menulist-qa.firebaseapp.com`, Storage bucket
+  `menulist-qa.firebasestorage.app`, environment `preview`, Vercel environment
+  `preview`, and emulators `false`. The temporary mode-0600 env file was
+  truncated immediately after the bounded readback. This completes `QA-J04`;
+  no deployment or environment mutation was performed.
+- `2026-08-12 23:46 IST` - HTTPS probes to the QA custom domains currently
+  receive a Vercel Authentication redirect before Next.js middleware. Vercel's
+  current Deployment Protection contract applies authentication to every
+  request, so leaving this project-level gate enabled would block ordinary QA
+  customer-link access and third-party Razorpay/Meta webhook delivery. The
+  project Deployment Protection screen must be reviewed before Phase K; no
+  protection setting was changed during this diagnosis.
+- `2026-08-12 23:46 IST` - Vercel Project -> Settings -> Deployment Protection
+  confirms **Require Log In** is enabled with **Standard Protection**. Password
+  Protection and per-domain Deployment Protection Exceptions each require the
+  $150/month Advanced Deployment Protection add-on, while automation bypass
+  headers do not solve ordinary customer browsers, OAuth callbacks, or external
+  webhook providers. The approved zero-cost QA path is therefore to disable
+  project-level Vercel Authentication, while retaining MenuList application
+  authentication, exact QA Firebase isolation, crawler blocking, and route/API
+  authorization. Do not purchase an add-on. Completion waits for a fresh
+  unauthenticated request to reach the application rather than Vercel SSO.
+- `2026-08-12 23:47 IST` - Vercel Authentication was disabled and saved without
+  purchasing an add-on. Fresh unauthenticated requests now reach the application:
+  apex and `www` return HTTP 200, `app.menulist.digital/signin` returns HTTP 200,
+  and `app.menulist.digital/api/version` returns HTTP 200 with build
+  `4bc4d018204a2c82744a8e2ee320c9205a346aff`, environment `preview`, and the
+  expected deployment URL. The website and app responses include
+  `X-Robots-Tag: noindex, nofollow, noarchive`; the generated branch alias is
+  also public and returns `X-Robots-Tag: noindex`. The apex `/create-menu`
+  request returns HTTP 308 to `https://app.menulist.digital/create-menu`.
+- `2026-08-12 23:47 IST` - The `.digital` registry, Cloudflare, and Google now
+  all return only `ns1.vercel-dns.com` and `ns2.vercel-dns.com`, and public DNS
+  returns Vercel addresses for a synthetic wildcard hostname. This completes
+  `QA-B08` and confirms the branch deploy was correctly deferred until after
+  the env/Firebase gates, completing `QA-B09`. Wildcard HTTPS still fails its
+  TLS handshake while Vercel provisions the wildcard certificate, so `QA-B10`
+  and `QA-J03` remain pending.
+- `2026-08-12 23:47 IST` - A request to the owner API from synthetic tenant
+  origin `https://dns-smoke-20260812.menulist.digital` returned HTTP 403 with
+  `CORS policy: Origin not allowed` and no `Access-Control-Allow-Origin` header.
+  This completes `QA-K18`. Apex, `www`, and app crawler-isolation checks pass,
+  but `QA-K17` remains pending until the wildcard TLS endpoint can be checked.
+  `QA-K04` is complete from the live version response; `QA-K01` through
+  `QA-K03` remain pending visual browser verification despite their successful
+  HTTP responses.
+- `2026-08-13 01:03 IST` - Vercel's domain dashboard changed the wildcard label
+  to **Proxy Status Unknown** with `Failed to check whether a proxy is in front
+  of this domain`. Direct verification proves this is a non-blocking dashboard
+  detector failure, not a DNS, proxy, certificate, or assignment failure:
+  Vercel CLI reports the domain on the Edge Network with intended/current
+  nameservers matching; registry, Cloudflare, Google, authoritative, public,
+  and workstation DNS resolve arbitrary tenant hosts; and two independently
+  named wildcard hosts complete HTTPS and return HTTP 200 from middleware path
+  `/client/[[...slug]]` with tenant-subdomain headers. The active Let's Encrypt
+  certificate has CN/SAN `*.menulist.digital` and is valid from
+  `2026-08-12T17:22:49Z` through `2026-11-10T17:22:48Z`. Wildcard
+  `/api/version` reports exact Preview commit `4bc4d01`; `robots.txt` returns
+  `Disallow: /`, `/sitemap.xml` returns HTTP 404, and every response carries
+  `X-Robots-Tag: noindex, nofollow, noarchive`. This completes `QA-B10`,
+  `QA-J03`, and `QA-K17`. Do not change DNS to address the dashboard-only proxy
+  classification.
+- `2026-08-13 01:05 IST` - Read-only visual browser verification at a
+  `1280x720` viewport completed the three public entry gates. The apex and
+  `www` hosts rendered the MenuList QA website with the expected navigation,
+  hero, customer-link actions, and optional-analytics banner; neither emitted
+  a browser console error. `https://app.menulist.digital/signin` rendered the
+  canonical MenuList owner sign-in with both Google and email entry paths.
+  The sign-in page emitted the bounded diagnostic `[Firebase Bootstrap]
+  Operation failed` because this first QA boot intentionally skipped
+  App Check/reCAPTCHA and the branch-scoped Preview environment therefore has
+  no `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`; `initAppCheck` returns without creating
+  App Check in that case, so the diagnostic does not block Firebase Auth.
+  This completes `QA-K01`, `QA-K02`, and `QA-K03`. App Check remains skipped
+  until normal Auth, Firestore, and Storage smoke has passed, as recorded in
+  `QA-F01`.
+- `2026-08-13 01:14 IST` - Live email/password smoke used only synthetic
+  `QA owner A`; its temporary password was rotated for this test and was not
+  printed, logged, documented, or placed in shell history. Firebase Auth
+  accepted the credential and the live Preview reached `/dashboard`, then the
+  expected no-subscription guard routed the fixture to `/billing`. The first
+  access-status check failed closed with `TENANT_REFERENCE_INVALID`. Bounded
+  QA-only readback found contradictory legacy aliases on both synthetic user
+  documents: canonical `tenantId/storeId` values were `1/1` and `2/2`, while
+  `tId/sId` were `0/0`. A two-document batch in project `menulist-qa` repaired
+  only those synthetic aliases to `1/1` and `2/2`; Auth claims already carried
+  the matching `ML` owner scopes. Reauthentication then remained on the owner
+  shell and settled at `/billing` with **No Active Subscription**, without the
+  access-ended modal. Subsequent automatic `/api/auth/access-status` requests
+  returned HTTP 200 in Vercel Preview with no authorization-failure log. This
+  completes `QA-K05` and `QA-K07`; the Billing destination is expected for
+  these deliberately unsubscribed fixtures.
+- `2026-08-13 01:39 IST` - Google OAuth smoke used the named QA test user
+  `admin@neelvara.com` and the exact callback
+  `https://app.menulist.digital/api/auth/callback/google`. The first callback
+  failed closed at `/unauthorized`: Vercel recorded bounded
+  `oauth_user_create_failed` / `AuthSecurityUnavailableError` diagnostics and
+  no redirect-domain mismatch. Readback confirmed that this listed OAuth test
+  identity had no MenuList QA user document. A QA-only owner document was
+  therefore provisioned with deterministic OAuth id, product `ML`, and the
+  existing synthetic tenant/store A scope `1/1`; no production record or new
+  tenant was created. The repeated Google chooser flow then completed and
+  landed at `https://app.menulist.digital/dashboard`. Firebase Auth readback
+  confirms the resulting identity is enabled and carries only the expected
+  `ML` owner, tenant/store `1/1`, and store-list claims. This completes
+  `QA-K06`.
+- `2026-08-13` - Owner onboarding remained on the canonical app host. Opening
+  `https://menulist.digital/create-menu` redirected to
+  `https://app.menulist.digital/create-menu`; the existing Google-authenticated
+  owner session remained valid, and the subsequent upload preview stayed at
+  `https://app.menulist.digital/create-menu/preview/f5222684-e923-5ac1-85ab-3897b5e65752`.
+  This completes `QA-K08`.
+- `2026-08-13` - One bounded QA upload used the repository-owned 205,041-byte
+  PNG `featured-choices-public-menu.png`. The live app created
+  `publicMenuDrafts/f5222684-e923-5ac1-85ab-3897b5e65752` and
+  `menuImageProcessingJobs/public_f5222684-e923-5ac1-85ab-3897b5e65752` in
+  Firestore project `menulist-qa`, then stored the exact 205,041-byte
+  `image/png` object at
+  `publicMenuDrafts/f5222684-e923-5ac1-85ab-3897b5e65752/menu.png` in bucket
+  `menulist-qa.firebasestorage.app`. This completes the positive QA-project
+  write evidence for `QA-K11` and `QA-K12`; the separate production-absence
+  check remains `QA-K13`.
+- `2026-08-13` - The same extraction job remained `pending`, progress `0`,
+  current step `Queued`, with no `startedAt`, completion, or error after the
+  upload. Its public draft also remained unclaimed with `extractionStatus`
+  `pending`. This proves `processMenuImagesJob` never claimed the Firestore
+  create event, so the active blocker is Eventarc/Firestore trigger delivery or
+  trigger wiring rather than a Gemini failure inside the worker. Vercel's
+  earlier bounded `public_menu_identity_check` HTTP 429 degraded to the durable
+  queue as designed and is not what left this job unclaimed. `QA-K09` and
+  `QA-K10` remain pending until this trigger path is repaired and one bounded
+  extraction finishes.
+- `2026-08-13` - The controlled batch-worker negative-auth request reached
+  `https://app.menulist.digital/api/image-generation/batch-generation` with a
+  deliberately false task secret and returned HTTP 403 with generic
+  `{"error":"Forbidden"}` output. This proves the first half of `QA-K20`; a
+  one-item normal queue acceptance test remains pending.
+- `2026-08-13` - Fresh read-only Vercel log inspection for Preview deployment
+  `dpl_9jSJRpgEecstJH1kZYi9kHko6Exc` found no missing-environment-variable,
+  Firebase-project mismatch, or unresolved OAuth/access-status error in the
+  current one-hour window. The only secret-related entries were six deliberate
+  wrong-worker-secret requests from the controlled `QA-K20` negative test.
+  Older error rows correspond to the already repaired synthetic scope aliases,
+  the first OAuth provisioning attempt, the durable create-menu fallback, and
+  a malformed backslash path probe; none is a current configuration blocker.
+  This completes `QA-K14`.
+- `2026-08-13` - One metadata-only controlled server event reached Sentry
+  project `menulist-qa` as issue `MENULIST-QA-3`, event
+  `e1c85343403d4122b2fe74735f226229`. Provider readback reports environment
+  `preview`, release `4bc4d018204a`, handled `yes`, source
+  `controlled-server-sdk`, verification tag `menulist-qa-k15`, no user, and no
+  request URL or raw payload. This completes `QA-K15` without exposing a DSN or
+  other secret.
+- `2026-08-13` - Optional post-deploy monitoring was intentionally skipped for
+  this initial QA pass. No owner-controlled UptimeRobot account or named alert
+  operator is configured, and optional analytics remain skipped under the
+  earlier consent decision. The two approved endpoints remain documented for a
+  later owner-controlled monitor setup; no wildcard-per-tenant monitor was
+  created. This completes `QA-K16` as an explicit skip, not an unreviewed gap.
+- `2026-08-13` - No-go review confirms this setup changed only MenuList QA
+  project `menulist-qa`, Preview branch `staging`, and `menulist.digital` QA
+  hosts. It did not deploy Vercel Production, write to production Firebase,
+  activate retired MenuList QA hostnames, or configure Answerlattice,
+  CampaignCue, SignalDesk, MyCodex, `menulist.ai`, `app.menulist.ai`, or
+  `menulist.online`. This completes `QA-K19`.
+- `2026-08-13` - Read-only production-absence verification remains blocked,
+  correctly, rather than inferred. Local `.env.prod` identifies Firebase
+  project `menulist` but intentionally contains no Admin client email/private
+  key, the local `gcloud` session has no active account, and Google Cloud/Firebase
+  administrator pages require password reauthentication. `QA-K13` stays open
+  until an administrator can prove that the exact QA draft, job, and Storage
+  object IDs are absent from production.
+- `2026-08-13` - Firebase Functions dashboard readback for
+  `processMenuImagesJob` reports one 24-hour request, zero billable instance
+  time, Node.js 22, 2 GiB, 9-minute timeout, and the deployed Firestore
+  `document.created` trigger. Together with the unclaimed pending job, this
+  narrows the failure to trigger ingress/IAM or startup before the first
+  Firestore transaction. Exact Cloud Run IAM, Eventarc trigger metadata, and
+  Functions logs require the same administrator reauthentication, so no source
+  patch or blind redeploy was attempted. `QA-K09`, `QA-K10`, and the positive
+  half of `QA-K20` remain blocked on that evidence-led repair.
+- `2026-08-13` - The retained `functions/firebase-debug.log` from the original
+  scoped deployment supplies the missing infrastructure evidence. Firebase
+  successfully created `processMenuImagesJob`, its active Eventarc trigger
+  `processmenuimagesjob-367299`, the exact
+  `menuImageProcessingJobs/{jobId}` Firestore path filter, and the compute
+  service-account trigger identity. The same deployment then attempted to grant
+  `allUsers -> roles/run.invoker` on the callable `processMenuImages` Cloud Run
+  service. Google rejected that IAM write with HTTP 400 because the member did
+  not belong to a permitted customer, explicitly identifying an organization
+  policy. The deploy summary was 10 Functions deployed and one errored. This is
+  Domain Restricted Sharing evidence, not another Rules API HTTP 503. Public
+  callable and Meta webhook ingress cannot be considered repaired until the
+  owner grants a narrowly reviewed project policy exception or chooses an
+  architecture that does not require unauthenticated Cloud Run ingress.
+- `2026-08-13` - A second deterministic extraction defect was reproduced from
+  the live QA fixture. Cloud Functions injects
+  `FIREBASE_CONFIG.storageBucket = menulist-qa.firebasestorage.app`, but the
+  three Functions consumers synthesized `menulist-qa.appspot.com` whenever no
+  explicit bucket env existed. A shared resolver now admits the exact deployed
+  `FIREBASE_CONFIG.storageBucket` before the project-derived legacy fallback,
+  and `processMenuImages`, `processMenuImagesJob`, and messaging asset
+  intelligence all use it. Source gates reject duplicated consumer fallbacks.
+  Compiled runtime checks passed for explicit env precedence, the deployed
+  Firebase config shape, malformed-config fallback, Functions lint/build,
+  agent readiness, tenant safety, callable scope, sensitive server-store scope,
+  and CSP boundaries.
+- `2026-08-13` - Bounded recovery of only the synthetic QA draft/job proved the
+  storage correction through Firestore claim, QA Storage object validation,
+  download, and Upstash admission. One transient 1.5-second Upstash timeout
+  failed closed; an immediate direct atomic-provider check passed three times
+  and the next worker attempt advanced to Gemini. Gemini then returned HTTP 429
+  for file upload across all four QA keys after the maintained rotation and
+  bounded backoff policy, so the job correctly ended `failed` with
+  `FILE_ERROR` and no extracted data. `QA-K09` and `QA-K10` remain open on
+  provider capacity plus deployed trigger repair; no provider limit was
+  bypassed and no result was fabricated.
+- `2026-08-13` - A fresh QA-only Firestore `onCreate` probe recreated the same
+  synthetic extraction job and polled it every three seconds for one minute.
+  It remained `pending`, progress `0`, step `Queued`, with no `startedAt` for
+  the entire window. This independently confirms Eventarc delivery is still
+  failing before worker execution. The smallest deploy target,
+  `functions:processMenuImagesJob`, passed its lint/build predeploy but could
+  not be published: the owner Firebase login requires `firebase login
+  --reauth`, while an isolated QA service-account attempt lacks
+  `iam.serviceAccounts.ActAs` on
+  `menulist-qa@appspot.gserviceaccount.com`. No broader role was self-granted.
+  A final owner-login attempt reached Google's password verification screen for
+  `admin@neelvara.com`; it was stopped without accessing stored credentials,
+  changing IAM, or leaving a deploy process running.
+- `2026-08-13` - Razorpay route verification remains bounded to Test Mode. A
+  wrong signature returned HTTP 400; the distinct QA webhook secret produced
+  HTTP 200 and a processed `ML` ledger entry at
+  `razorpayWebhookEvents/evt_menulist_qa_k21_1786566382077` in
+  `menulist-qa`. `QA-K21` remains open because a provider-originated Razorpay
+  Test Mode delivery and dashboard registration have not been evidenced; no
+  live-mode payment or webhook was created.
+- `2026-08-13` - The exact Meta callback is
+  `https://us-central1-menulist-qa.cloudfunctions.net/messagingOnboarding/whatsapp`.
+  Controlled GET and POST probes are rejected by Google IAM with HTTP 403
+  before the handler, consistent with Domain Restricted Sharing preventing the
+  required public invoker. `QA-K22` remains open; callback verification,
+  `messages` subscription, and a bounded signed Meta test event cannot pass
+  until public ingress is deliberately resolved and the Function is redeployed.
+- `2026-08-13` - The complete local menu-extraction pipeline passed after
+  repairing one time-sensitive WhatsApp adapter fixture. The fixture had used
+  a fixed epoch that eventually aged beyond the maintained 30-day inbound
+  retention boundary; it now derives the current test time. The rerun passed
+  all 382 core extraction cases and every maintained lifecycle, Firestore,
+  Storage, model-input, publish, messaging, WhatsApp adapter, and upload-content
+  validation stage. Expected warning/error logs from negative provider cases
+  were asserted by the tests and did not fail the gate.
+- `2026-08-13` - Final Admin SDK readback was restricted to project
+  `menulist-qa`. The synthetic draft still exists with extraction status
+  `pending` and no extracted data; its job still exists with status `pending`,
+  progress `0`, step `Queued`, no `startedAt`, no `completedAt`, and no error
+  code. This preserves the bounded Eventarc probe for owner-side infrastructure
+  repair and confirms no later background delivery changed the diagnosis.
+- `2026-08-13` - Final QA status was consolidated into this checklist and
+  shared with Codex. `QA-K23` is complete as an evidence handoff, while
+  `QA-K09`, `QA-K10`, `QA-K13`, `QA-K20`, `QA-K21`, and `QA-K22` remain
+  explicitly open. This guide does not authorize moving to production.
+- `2026-08-13` - A Chrome-session owner-flow sweep reused only the synthetic
+  `admin@neelvara.com` QA owner and deliberately excluded Firebase sign-in,
+  reauthentication, password, and provider-auth flows. Desktop coverage
+  included Dashboard/Today, Projects, Feedback, all Business Settings tabs,
+  Growth Kits, Business Health, QR and print assets, Users, permissions,
+  locations, billing, transactions, support, app appearance, public website,
+  canonical redirects, and authorization boundaries for platform, reseller,
+  and operations routes. No Razorpay checkout, WhatsApp send, provider write,
+  production route, or destructive business-setting mutation was executed.
+- `2026-08-13` - Project CRUD used one zero-value synthetic QA subscription and
+  one synthetic project. Create and rename reached the intended tenant/store
+  scope; opening Edit now closes the project-selector modal before showing the
+  editor, preventing the two dialogs from overlapping. The hosted branch could
+  not complete duplicate, publish, or normal delete because its NextAuth owner
+  session had no matching client Firebase Auth identity. This is inside the
+  explicitly excluded Auth boundary and was not bypassed. Exact Admin readback
+  and shape checks removed both synthetic documents afterward; neither the
+  project nor subscription remains in `menulist-qa`.
+- `2026-08-13` - True mobile-owner smoke used an iPhone-class `393x852`
+  viewport, touch/coarse-pointer capability, and the hosted `staging` owner
+  session. Today, More, business profile, working hours, roles, locations,
+  users, billing, feedback, public-presence, SEO/AEO, analytics, integrations,
+  customer-app, Presence Monitor, and Help Centre screens rendered meaningful
+  content without horizontal overflow; all primary navigation targets met the
+  44px minimum. Hosted Menu and Share were blank after the scoped project read
+  failed, and Menu Design reached the global error boundary when a fresh store
+  had neither a subdomain nor custom domain.
+- `2026-08-13` - Source fixes now make the mobile project provider expose a
+  bounded load-failure state, give Menu and Share explicit recovery/retry UI,
+  give Share a first-menu creation action, and prevent Menu Design from
+  generating a strict tenant URL until a tenant host exists. Focused project,
+  mobile-route, and contextual-state verifiers pass. The hosted Preview still
+  serves commit `4bc4d018204a`, so post-fix browser certification remains
+  pending an explicitly authorized Vercel Preview deployment; this run did not
+  deploy Vercel.
+- `2026-08-13` - The temporary `Closed Today` UI check left no residue: final
+  Admin readback of `stores/1` in exact project `menulist-qa` reports no
+  `tempStatus`. The local Next development server and mobile debug processes
+  were stopped after testing. No production Firebase project was queried or
+  changed as part of this owner-flow continuation.
 
 Status rules:
 
@@ -1938,14 +2335,14 @@ Startup-benefit preflight decision before `QA-A03`:
 | --- | --- | --- | --- | --- |
 | [x] | QA-B01 | `menulist.digital` ownership confirmed | Registrar DNS screen | Registrar evidence confirms the domain is present in the owner-controlled account |
 | [x] | QA-B02 | `menulist.digital` auto-renew confirmed | Registrar billing/domain settings | Operator confirmed auto-renew is enabled; payment details were not shared or recorded |
-| [ ] | QA-B03 | No extra domain selected | Registrar and Vercel | No production, SignalDesk, MyCodex, Answerlattice, or CampaignCue domain is used in this pass |
-| [ ] | QA-B04 | Current `menulist.digital` DNS zone inventoried and exported | Existing DNS provider/registrar | Every `menulist.digital` A, AAAA, CNAME, MX, TXT, CAA, and SRV record is backed up before QA-domain DNS changes; the `neelvara.com` backup in `QA-A19` does not satisfy this row |
-| [ ] | QA-B05 | `menulist.digital` and `www.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | Apex and `www` target Preview for `staging`, never Production |
-| [ ] | QA-B06 | `app.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | Owner sign-in and `/dashboard` use the dedicated QA app host |
-| [ ] | QA-B07 | `*.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | QA customer subdomains target the same `staging` deployment |
-| [ ] | QA-B08 | DNS records preserved and Vercel nameservers configured | Vercel DNS and registrar nameserver screen | Existing required records are recreated in Vercel DNS before the registrar uses the exact Vercel nameservers required for the apex wildcard |
-| [ ] | QA-B09 | First branch deployment intentionally deferred | Vercel Domains and this guide | Domain assignments are saved, but no incomplete deployment is triggered before Phase G env and Phase I Firebase gates are ready |
-| [ ] | QA-B10 | Domain ownership, DNS, and TLS readiness complete | Vercel Project -> Domains | Apex, `www`, `app`, and wildcard configuration are valid and assigned to exact branch `staging`; content smoke waits for Phase J/K |
+| [x] | QA-B03 | No extra domain selected | Registrar and Vercel | Only MenuList QA `menulist.digital` hosts were added; no production or sister-product domain entered this pass |
+| [x] | QA-B04 | Current `menulist.digital` DNS zone inventoried and exported | Existing DNS provider/registrar | The exact seven-record GoDaddy baseline, TTLs, managed-record boundaries, and absent record families are recorded before nameserver changes |
+| [x] | QA-B05 | `menulist.digital` and `www.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | Both hosts report Valid Configuration and exact branch `staging`, never Production |
+| [x] | QA-B06 | `app.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | The final project-specific CNAME resolves publicly, Vercel reports Valid Configuration on exact branch `staging`, and no conflicting `app` A record remains |
+| [x] | QA-B07 | `*.menulist.digital` added and assigned to exact Git branch `staging` | Vercel Project -> Domains -> Git Branch | The wildcard is assigned to Preview for exact branch `staging` with no redirect; Vercel DNS validation intentionally waits for the controlled nameserver migration in `QA-B08` |
+| [x] | QA-B08 | DNS records preserved and Vercel nameservers configured | Vercel DNS and registrar nameserver screen | The portable DMARC policy is preserved, Vercel's managed routing/CAA records are present, and registry plus Cloudflare/Google readback returns only Vercel nameservers |
+| [x] | QA-B09 | First branch deployment intentionally deferred | Vercel Domains and this guide | The first Preview deployment occurred only after Phase G env, Phase H secrets, and Phase I Firebase deploy/smoke gates were complete |
+| [x] | QA-B10 | Domain ownership, DNS, and TLS readiness complete | Vercel Project -> Domains | Apex, `www`, `app`, and arbitrary wildcard hosts resolve through Vercel, complete TLS, and serve exact branch `staging`; dashboard-only Proxy Status Unknown is disproved by direct DNS/TLS/runtime evidence |
 
 ### Phase C - Firebase Project Shell And Auth
 
@@ -2140,39 +2537,39 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-J01 | Branch-restricted Preview env reviewed before deploy | Vercel Project -> Environment Variables -> Preview | Required MenuList QA values are present and restricted to exact Git branch `staging` |
-| [ ] | QA-J02 | Vercel Preview/Staging deployment triggered | Vercel dashboard or approved git workflow | Deployment is not a production deployment |
-| [ ] | QA-J03 | Deployment attached to QA domains | Vercel Project -> Deployments and Domains | Website apex/`www`, owner `app`, and customer wildcard all serve the Preview/Staging deployment |
-| [ ] | QA-J04 | Runtime project checked from logs/env evidence | Vercel logs or app diagnostics | Runtime points to `menulist-qa`, not `menulist` |
-| [ ] | QA-J05 | Vercel Production not touched | Vercel dashboard | No production deploy or production env edit happens in this guide |
+| [x] | QA-J01 | Branch-restricted Preview env reviewed before deploy | Vercel Project -> Environment Variables -> Preview | All 39 configured MenuList QA rows are restricted to exact Git branch `staging`; Vercel readback reports 13 Sensitive and 26 Non-sensitive Preview rows without exposing their values |
+| [x] | QA-J02 | Vercel Preview/Staging deployment triggered | Vercel dashboard or approved git workflow | Commit `4bc4d0182` produced Ready Preview deployment `dpl_9jSJRpgEecstJH1kZYi9kHko6Exc` and the generated exact-branch staging alias |
+| [x] | QA-J03 | Deployment attached to QA domains | Vercel Project -> Deployments and Domains | Apex, `www`, app, and arbitrary wildcard hosts all serve exact Preview commit `4bc4d01` from the staging deployment |
+| [x] | QA-J04 | Runtime project checked from logs/env evidence | Vercel logs or app diagnostics | Exact-branch Preview readback reports `menulist-qa`, its matching Auth domain and Storage bucket, Preview mode, and emulators disabled; no production identifier is present |
+| [x] | QA-J05 | Vercel Production not touched | Vercel dashboard | This push targeted Preview only and did not create or promote Production; the visible failed Production entry predates this push by one day |
 
 ### Phase K - MenuList QA Smoke Test
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [ ] | QA-K01 | `https://menulist.digital` opens | Browser | MenuList main website opens with QA/staging values |
-| [ ] | QA-K02 | `https://www.menulist.digital` opens | Browser | `www` reaches the same QA website deployment |
-| [ ] | QA-K03 | `https://app.menulist.digital/signin` opens | Browser | Canonical QA owner sign-in loads on the app host |
-| [ ] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Version endpoint responds from the staging deployment |
-| [ ] | QA-K05 | Email/password owner sign-in works | Browser and Firebase Auth | A synthetic QA owner authenticates through the current credential flow on `app.menulist.digital` |
-| [ ] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
-| [ ] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
-| [ ] | QA-K08 | Owner onboarding stays on app host | Browser | `https://menulist.digital/create-menu` redirects to `https://app.menulist.digital/create-menu`; Google auth and preview remain on the app host |
+| [x] | QA-K01 | `https://menulist.digital` opens | Browser | MenuList main website opens with QA/staging values |
+| [x] | QA-K02 | `https://www.menulist.digital` opens | Browser | `www` reaches the same QA website deployment |
+| [x] | QA-K03 | `https://app.menulist.digital/signin` opens | Browser | Canonical QA owner sign-in loads on the app host |
+| [x] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Live HTTP 200 JSON reports exact staging commit `4bc4d01`, environment `preview`, and the expected Preview deployment URL |
+| [x] | QA-K05 | Email/password owner sign-in works | Browser and Firebase Auth | A synthetic QA owner authenticates through the current credential flow on `app.menulist.digital` |
+| [x] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
+| [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
+| [x] | QA-K08 | Owner onboarding stays on app host | Browser | `https://menulist.digital/create-menu` redirects to `https://app.menulist.digital/create-menu`; Google auth and preview remain on the app host |
 | [ ] | QA-K09 | Test business/store can be created or loaded | Browser | Basic owner workflow is usable |
 | [ ] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
-| [ ] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
-| [ ] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |
+| [x] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
+| [x] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |
 | [ ] | QA-K13 | No production writes observed | Firebase Console -> project `menulist` | Production data remains untouched |
-| [ ] | QA-K14 | Vercel logs checked | Vercel deployment logs | No missing-env, auth callback, Firebase project, or server secret errors remain |
-| [ ] | QA-K15 | QA Sentry event checked | Sentry `menulist-qa` project | One controlled browser/server test error appears only in the QA project and contains no secret or raw sensitive payload |
-| [ ] | QA-K16 | Optional post-deploy monitors handled | UptimeRobot/analytics dashboards | Website/app monitors and approved analytics are created and tested, or each is recorded as skipped intentionally |
-| [ ] | QA-K17 | Complete QA crawler isolation works | Browser or `curl` | Apex, `www`, `app`, and a QA customer host return `X-Robots-Tag: noindex, nofollow, noarchive`, serve `Disallow: /`, and return `404` for `/sitemap.xml` |
-| [ ] | QA-K18 | QA customer origin cannot use owner API CORS | Terminal | A request to an owner API with `Origin: https://<test-slug>.menulist.digital` is rejected and does not receive `Access-Control-Allow-Origin` |
-| [ ] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | No other product or production setup was performed; retired QA hosts were not activated |
+| [x] | QA-K14 | Vercel logs checked | Vercel deployment logs | Current Preview logs contain no missing-env, Firebase-project mismatch, or unresolved auth error; controlled negative-test entries are identified separately |
+| [x] | QA-K15 | QA Sentry event checked | Sentry `menulist-qa` project | Controlled event `e1c85343403d4122b2fe74735f226229` appears only in QA with Preview/release tags and no user, URL, secret, or raw payload |
+| [x] | QA-K16 | Optional post-deploy monitors handled | UptimeRobot/analytics dashboards | Initial QA monitoring is skipped intentionally because no owner-controlled monitor account/operator exists; optional analytics remain skipped by decision |
+| [x] | QA-K17 | Complete QA crawler isolation works | Browser or `curl` | Apex, `www`, app, and a synthetic wildcard customer host return the full noindex header, `Disallow: /`, and HTTP 404 for `/sitemap.xml` |
+| [x] | QA-K18 | QA customer origin cannot use owner API CORS | Terminal | A synthetic wildcard tenant origin receives HTTP 403 `Origin not allowed` and no `Access-Control-Allow-Origin` header from the owner API |
+| [x] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | Only MenuList QA project/Preview/domain setup was performed; production, sister products, and retired QA hosts were not activated |
 | [ ] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | One QA batch request reaches `app.menulist.digital`, rejects a wrong secret, accepts the configured secret through the normal queue flow, and leaves no production data |
 | [ ] | QA-K21 | Razorpay Test webhook configured and verified | Razorpay Test Mode and Vercel logs | Exact QA endpoint uses the distinct webhook secret; one signed test/sandbox event is accepted without any live-mode operation |
 | [ ] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verifies with the vaulted token, only `messages` is subscribed, and one bounded signed test event reaches the QA Function without production assets |
-| [ ] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marks completed items and records blockers before moving to production guide |
+| [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marked completed items and recorded the remaining deploy, provider, production-absence, worker, and webhook blockers; production is not approved |
 
 ## Step-By-Step Setup Order
 

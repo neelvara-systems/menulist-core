@@ -11,6 +11,7 @@ import * as functions from "firebase-functions";
 import { promises as fs } from "fs";
 import { AI_MODEL } from "../constants/ai";
 import { storageAdmin } from "../firebaseAdmin";
+import { getAllowedStorageBucket } from "../utils/storageBucket";
 import { genAIClient } from "../genAiClient";
 import {
   buildMenuIntakeIdentityPrompt,
@@ -104,20 +105,6 @@ function getUploadDiagnosticContext(upload: SessionUpload, uploadIndex: number, 
     mimeTypeLength: upload.mimeType.length,
     fileSize: upload.fileSize,
   };
-}
-
-function getProjectStorageBucketFallback(): string {
-  const projectId = process.env.FIREBASE_PROJECT_ID
-    || process.env.GCLOUD_PROJECT
-    || process.env.GCP_PROJECT
-    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  return projectId ? `${projectId}.appspot.com` : "";
-}
-
-function getAllowedStorageBucket(): string {
-  return process.env.FIREBASE_STORAGE_BUCKET
-    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    || getProjectStorageBucketFallback();
 }
 
 async function readMessagingStorageObject(storagePath: string): Promise<Buffer> {
