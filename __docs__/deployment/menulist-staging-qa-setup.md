@@ -2625,7 +2625,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K01 | `https://menulist.digital` opens | Browser | MenuList main website opens with QA/staging values |
 | [x] | QA-K02 | `https://www.menulist.digital` opens | Browser | `www` reaches the same QA website deployment |
 | [x] | QA-K03 | `https://app.menulist.digital/signin` opens | Browser | Canonical QA owner sign-in loads on the app host |
-| [x] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Live HTTP 200 JSON reports exact staging commit `158f19219`, environment `preview`, and Preview deployment `menulist-core-bnr9dwfc3-neelvara-systems.vercel.app` |
+| [x] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Live HTTP 200 JSON reports environment `preview`; its full build id matches `origin/staging`, and its deployment URL matches the newest Ready Preview |
 | [x] | QA-K05 | Email/password owner sign-in works | Browser and Firebase Auth | A synthetic QA owner authenticates through the current credential flow on `app.menulist.digital` |
 | [x] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
 | [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
