@@ -2,7 +2,7 @@
 
 > **Purpose:** This document maps the entire `activeSubscription` data flow end-to-end — from Razorpay payment events through webhooks, Firestore, React providers, and every UI component that consumes it. Reading this gives you the full real picture of how subscription state moves through the application.
 >
-> **Last Updated:** July 16, 2026
+> **Last Updated:** August 13, 2026
 > **Scope:** Frontend + Backend + Database + External (Razorpay)
 
 ---
@@ -104,6 +104,7 @@ interface FirestoreSubscriptionDoc {
 
   // --- Plan & Status ---
   status: PaymentStatus; // "pending"|"active"|"cancelled"|"expired"|"paid"|"failed"|"past_due"|"paused"|"completed"
+  providerStatus?: RazorpayProviderSubscriptionStatus; // exact Razorpay state: created/authenticated/active/...
   planName: string; // e.g. "Pro Plan (Yearly)"
   planId: string; // e.g. "pro"
   planType: "MONTH" | "YEAR";
@@ -156,6 +157,15 @@ interface FirestoreSubscriptionDoc {
 }
 ```
 
+### Pending checkout authority
+
+- Regular onboarding, existing-owner checkout, Answerlattice onboarding, and reseller online onboarding persist `status: "pending"` and `providerStatus: "created"` before payment. Cycle dates remain null, `billingHistory` is empty, and entitlement checks reject the row.
+- Desktop Billing, Mobile Billing, authenticated website subscription management, and Answerlattice onboarding do not open a pending `shortUrl`. They use the authenticated Billing flow and `usePaymentHandler.onContinuePendingSubscriptionCheckout()`.
+- `POST /api/razorpay/create-subscription` fetches the exact provider subscription and applies the shared pending-checkout policy. Safe `created` rows reuse Standard Checkout; `authenticated`, active, past-due, paused, or an eMandate still inside its 48-hour confirmation window return HTTP 202 `processing` without a provider or Firestore write.
+- A stale eMandate replacement is user-triggered. The server first cancels the old provider subscription and requires terminal provider truth, then transactionally rechecks exact product/tenant/store/plan/quantity/replacement intent before expiring the local row. A concurrent provider transition returns processing and blocks duplication.
+- `shortUrl` remains durable only for past-due hosted recovery and unauthenticated reseller client handoff. It is not pending owner-checkout authority.
+- Legacy local `active` rows without exact captured-payment evidence are not entitled. Billing projects them as payment-pending, outlet and credit-pack actions remain disabled, and the unresolved-checkout query includes both local `pending` and unpaid local `active` rows so provider truth is checked without creating a duplicate subscription.
+
 ---
 
 ## 3. Layer 1: Razorpay → Webhook → Firestore (Backend)
@@ -172,17 +182,21 @@ interface FirestoreSubscriptionDoc {
 
 **File:** `src/app/api/razorpay/webhook/route.ts`
 
-| Razorpay Event           | Our Handler                          | Fields Updated                                                                                                                                                                                                  |
-| ------------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subscription.activated` | Sets `active`, resets credits        | `status`, `cycleStartDate`, `cycleEndDate`, `renewsOn`, `subscriptionStartDate`, `subscriptionEndDate`, `monthlyCredits`, `creditsLastResetMonth`, `paymentMethod`, `lastWebhook`, `billingHistory`, `statuses` |
-| `subscription.charged`   | Same as activated (renewal)          | Same fields — credits reset, dates updated to new cycle                                                                                                                                                         |
-| `payment.failed`         | Sets `past_due`                      | `status`, `pastDueSinceAt`, `lastWebhook`, `statuses`                                                                                                                                                           |
-| `subscription.pending`   | Sets `past_due` (retry in progress)  | `status`, `pastDueSinceAt`, `lastWebhook`, `statuses`                                                                                                                                                           |
-| `subscription.halted`    | Sets `past_due` (all retries failed) | `status`, `pastDueSinceAt`, `lastWebhook`, `statuses`                                                                                                                                                           |
-| `subscription.completed` | Sets `completed`                     | `status`, `subscriptionEndDate`, `lastWebhook`, `statuses`                                                                                                                                                      |
-| `subscription.cancelled` | Converges cancelled state            | `status`, `subscriptionEndDate`, `lastWebhook`, `statuses`; entitlement/churn sync and lifecycle notification only on new application                                                                         |
-| `subscription.paused`    | Sets `paused`                        | `status`, `lastWebhook`, `statuses`                                                                                                                                                                             |
-| `subscription.resumed`   | Sets `active`                        | `status`, `lastWebhook`, `statuses`                                                                                                                                                                             |
+| Razorpay Event                 | Our Handler                                  | Authority and Fields Updated                                                                                                  |
+| ------------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `subscription.authenticated`   | Keeps local `pending`                        | Stores bounded provider pre-activation state/dates/counts; no entitlement, payment history, revenue, or credit reset          |
+| `subscription.activated`       | Keeps local `pending`                        | Stores bounded provider/cycle truth, sets `capturedPaymentSyncPending: true`, and grants no entitlement or payment settlement |
+| `subscription.charged`         | Settles one captured recurring payment       | Requires matching captured payment/subscription IDs; updates cycle/payment history and resets credits exactly once           |
+| `subscription.completed`       | Sets `completed`                             | Updates end date/provider status and synchronizes entitlement                                                                  |
+| `subscription.updated`         | Stores provider state and optional quantity  | Quantity/MRR changes only when a valid quantity is present; no-quantity updates still persist provider truth                  |
+| `subscription.pending`         | Sets `past_due` (retry in progress)          | Updates provider/recovery state and `pastDueSinceAt`                                                                           |
+| `subscription.halted`          | Sets `past_due` (all retries failed)         | Updates provider/recovery state and `pastDueSinceAt`                                                                           |
+| `subscription.cancelled`       | Converges cancelled state                    | Updates end/provider state; entitlement/churn sync and lifecycle notification only on new application                        |
+| `subscription.paused`          | Sets `paused`                                | Updates provider state, status history, and entitlement                                                                        |
+| `subscription.resumed`         | Restores `active` only with payment evidence | Updates provider state/history; an unpaid legacy row stays non-entitled and is marked for captured-payment synchronization     |
+| `payment.failed`               | Sets `past_due`                              | Updates failure recovery state and product-correct notification                                                                |
+
+Every admitted subscription event must contain a bounded subscription entity and the event's documented provider status before the idempotency claim. `subscription.charged` additionally requires a bounded `pay_...` identity, `captured` payment status, and `payment.subscription_id === subscription.id`. Event dedupe prefers the canonical `x-razorpay-event-id`; unsafe identities use a deterministic hash. Delivery order is not trusted: activation alone remains pending, while a late charge after local cancellation/completion appends payment truth and preserves terminal status, provider truth, credit balance, and closed entitlement.
 
 ### 3.3 How Subscription Data Gets Updated (User Actions)
 
@@ -609,9 +623,11 @@ User triggers AI operation (e.g., image generation)
 
 ### 12.6 Webhook Idempotency
 
-- **`billingHistory`:** Dedup check — won't append if payment ID already exists
+- **Event identity:** Prefer `x-razorpay-event-id`; exact replay shares one leased server-only event document. Malformed/oversized canonical headers are rejected, while bounded Firestore-unsafe identities are hashed rather than character-replaced.
+- **`billingHistory`:** Exact provider `pay_...` dedupe — won't append if payment ID already exists.
 - **`statuses`:** Appended through the event-keyed subscription transaction and bounded to the latest 100 diagnostic entries; partial-failure retries do not append duplicates and concurrent lifecycle events cannot overwrite history. Payment-id idempotency remains separate in `billingHistory`.
-- **Credit operations:** Naturally idempotent — `monthlyCredits = monthlyCreditsAllowance` is same regardless of how many times called
+- **Credit operations:** Only a newly applied captured charge can reset cycle credits. Duplicate charge delivery cannot reset a balance consumed after the first settlement.
+- **Out-of-order terminal recovery:** A late captured charge can record its payment ID/method/history on `cancelled` or `completed`, but cannot change terminal status/provider status, reopen entitlement, or reset credits.
 
 ### 12.8 Payment Method Null Safety
 
@@ -636,7 +652,10 @@ User triggers AI operation (e.g., image generation)
 | DAL fallback query for paused subs with expired cycleEndDate                        | ✅     |
 | `hasValidSubscriptionAccess()` utility for access gates                             | ✅     |
 | Dashboard/Projects gates use `hasValidSubscriptionAccess()` not just null check     | ✅     |
-| Webhook handles all 9 Razorpay lifecycle states                                     | ✅     |
+| Webhook handles all 10 documented Razorpay subscription events                      | ✅     |
+| Event/status matrix rejects malformed subscription events before event claim         | ✅     |
+| Canonical `x-razorpay-event-id` and hashed unsafe fallback prevent key collisions     | ✅     |
+| Late charged delivery preserves cancelled/completed lifecycle and consumed credits    | ✅     |
 | `lastWebhook` updated in ALL webhook cases                                          | ✅     |
 | `billingHistory` idempotency guard (dedup check)                                    | ✅     |
 | ActiveSubscriptionCard handles `paused` status (tag, date, support fallback, optional feature-gated resume) | ✅     |
@@ -675,7 +694,7 @@ All subscription status transitions are governed by a centralized transition val
 **Valid transitions:**
 
 ```
-pending   → active
+pending   → active | expired
 active    → past_due | paused | cancelled | completed | expired
 past_due  → active | expired
 paused    → active | cancelled | expired
@@ -714,11 +733,11 @@ completed → (terminal)
 
 The same scheduler owns `subscription_access_expiry` every 60 minutes. It queries at most five pages of 100 exact-dual-`ML` cancelled/paused rows whose `cycleEndDate` is due, transactionally rechecks product/scope/status/date, transitions valid rows to `expired`, and synchronizes the store and platform plan mirrors. A failed mirror sync leaves `billingEntitlementSyncPending: true`; the existing bounded product-scoped retry scan repairs it later. The query is backed by the `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)` composite index.
 
-Safety net for webhook failures. Queries all `active`/`past_due`/`paused` subscriptions from Firestore (Admin SDK), fetches each from Razorpay API, and syncs mismatches:
+Safety net for webhook failures. Queries all local `pending`/`active`/`past_due`/`paused` subscriptions from Firestore (Admin SDK), fetches each from Razorpay API, preserves the exact provider status separately, and syncs all 9 provider states into the compact local state model:
 
-- **Status mismatch** → sync to Razorpay's authoritative state (with `validateTransition()`)
-- **Cycle dates** → sync if Razorpay has newer cycle (start date is later)
-- **Paid count** → sync if different
+- **Status mismatch** → sync non-monetary lifecycle state with `validateTransition()`; provider `active` requires an exact matching local captured-payment ledger
+- **Cycle dates** → sync a newer provider cycle only when that captured-payment ledger and the already-settled local billing period agree
+- **Paid count** → diagnostic comparison only; reconciliation never copies it into local payment truth
 - **Renews-on** → sync if >1 day difference
 
 **Auth:** Runs as Firebase service account — no user auth needed.

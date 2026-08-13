@@ -22,7 +22,7 @@ import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import type { StoreDataType } from '@type/platform/store';
 import type { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
-import { calculateProration } from '@util/razorpay';
+import { calculateProration, hasValidSubscriptionAccess } from '@util/razorpay';
 import { Alert, Button, Input, Modal, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useContext, useRef, useState } from 'react';
@@ -112,13 +112,14 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     const activeStoreCount = (tenantDetails?.storesList || []).filter((store: any) => store?.active !== false).length || 1;
     const prepaidCapacity = Number(subscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoreCount;
+    const hasPaidSubscriptionAccess = hasValidSubscriptionAccess(subscription);
     const needsCheckoutBeforeOutlet = Boolean(
         !isManualBilling
         && subscription?.status === 'active'
         && subscription?.paymentMethod?.type === 'upi'
         && prepaidCapacity <= activeStoreCount,
     );
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (subscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet);
 
     const openBilling = () => {
         handleClose();

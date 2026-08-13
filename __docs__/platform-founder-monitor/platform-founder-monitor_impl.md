@@ -2,6 +2,16 @@
 
 July 16 authorization follow-up: `/api/platform/founder-monitor` keeps signed platform admission, then applies a fail-closed DATA_READ limiter and re-reads the exact current persisted platform user before any Founder summary, daily revenue, growth or movement read. Provider outage returns 503 and stale/downgraded/revoked authority returns 403.
 
+## Subscription Revenue Authority
+
+Founder Monitor never treats a local status string as payment truth. Current MRR
+requires a confirmed manual payment or an exact captured Razorpay `pay_*`
+billing-history entry plus a current paid window. Past-due MRR requires prior
+verified payment. An unpaid `pending` checkout remains visible as payment
+attention but contributes no current or past-due MRR and is not classified as a
+paid plan. The Functions scheduler and reconciliation path share the same
+payment-evidence helper.
+
 ## Architecture
 
 The implementation follows the internal platform monitor pattern:

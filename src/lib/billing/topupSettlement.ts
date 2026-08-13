@@ -1,3 +1,5 @@
+import { hasCurrentSubscriptionPlanEntitlement } from './subscriptionPlanEntitlement';
+
 type RecordLike = Record<string, unknown>;
 
 export type VerifiedTopupSettlement = {
@@ -93,6 +95,7 @@ export function resolveCurrentTopupSubscriptionSettlement(params: {
     if (
         subscription.pId !== params.expectedProductId
         || subscription.productId !== params.expectedProductId
+        || !hasCurrentSubscriptionPlanEntitlement(subscription)
     ) {
         return null;
     }

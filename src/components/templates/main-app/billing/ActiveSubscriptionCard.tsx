@@ -7,8 +7,9 @@ import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import usePaymentHandler from '@hook/usePaymentHandler';
+import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -64,10 +65,16 @@ function ActiveSubscriptionCard({
 }: ActiveSubscriptionCardProps) {
     const { token } = theme.useToken();
     const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
+    const [isPendingCheckoutLoading, setIsPendingCheckoutLoading] = useState(false);
     const dispatch = useAppDispatch();
     const router = useRouter();
     const formatter = useFormatter();
-    const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch, { productId, productName });
+    const {
+        onCancelSubscription,
+        onContinuePendingSubscriptionCheckout,
+        onPauseSubscription,
+        onResumeSubscription,
+    } = usePaymentHandler(dispatch, { productId, productName });
     const buildSubscriptionActionPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
         surface: 'desktop_billing_subscription_card',
         flow,
@@ -86,7 +93,11 @@ function ActiveSubscriptionCard({
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
-    const isPaymentPending = activeSubscription.status === 'pending';
+    const isPaymentPending = activeSubscription.status === 'pending'
+        || (
+            activeSubscription.status === 'active'
+            && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription)
+        );
     const renewsOnSeconds = activeSubscription.renewsOn?.seconds;
     const subscriptionEndSeconds = activeSubscription.subscriptionEndDate?.seconds;
     const isFinalCycle = typeof renewsOnSeconds === 'number'
@@ -169,7 +180,7 @@ function ActiveSubscriptionCard({
         }
     };
 
-    const handleOpenPaymentLink = (flow: 'pending_payment' | 'retry_payment') => {
+    const handleOpenPaymentLink = (flow: 'retry_payment') => {
         if (!subscriptionCheckoutUrl) return;
         try {
             openIsolatedBrowserUrl(subscriptionCheckoutUrl);
@@ -178,6 +189,24 @@ function ActiveSubscriptionCard({
                 ...getBoundedPaymentStringContext('shortUrl', subscriptionCheckoutUrl),
             }));
             message.error('Could not open payment link.');
+        }
+    };
+    const handleContinuePendingCheckout = async () => {
+        setIsPendingCheckoutLoading(true);
+        try {
+            const result = await onContinuePendingSubscriptionCheckout(activeSubscription);
+            if (result.activationStatus === 'processing') {
+                message.info('Razorpay is still confirming this payment. No new checkout was opened.');
+            } else {
+                message.success('Payment confirmed. Your subscription is active.');
+            }
+            await refetchActiveSubscription();
+        } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
+            logPaymentFailure('payment_desktop_pending_subscription_continue_failed', error, buildSubscriptionActionPaymentLogContext('pending_payment'));
+            message.error('Could not continue checkout. Refresh Billing and try again.');
+        } finally {
+            setIsPendingCheckoutLoading(false);
         }
     };
     const openCancellationModal = () => {
@@ -196,13 +225,14 @@ function ActiveSubscriptionCard({
         }
 
         if (isPaymentPending) {
-            return subscriptionCheckoutUrl ? (
-                <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('pending_payment')}>
-                    Pay Now
-                </Button>
-            ) : (
-                <Button type="primary" onClick={() => router.push(supportRoute)}>
-                    Contact Support
+            return (
+                <Button
+                    type="primary"
+                    icon={<LuCreditCard />}
+                    loading={isPendingCheckoutLoading}
+                    onClick={() => void handleContinuePendingCheckout()}
+                >
+                    Continue Checkout
                 </Button>
             );
         }

@@ -2,6 +2,8 @@
 
 > **⚠️ SUPERSEDED HISTORICAL SNAPSHOT:** This document has been merged into [razorpay_impl.md](./razorpay_impl.md). Do not use the capability tables, security notes, backlog, or architecture decisions below as current truth; use `README.md`, `razorpay_impl.md`, `active-subscription-flow.md`, `user-journey-tracking.md`, and `razorpay_verification.md`. The body remains a February 2026 migration snapshot.
 
+> **Current recovery correction (August 13, 2026):** do not follow this snapshot's pending-link behavior. Authenticated pending subscriptions are continued only through the server-checked Standard Checkout path. Razorpay-hosted `shortUrl` remains limited to past-due recovery and unauthenticated reseller handoff. See [active-subscription-flow.md](./active-subscription-flow.md#pending-checkout-authority).
+
 **Snapshot Date:** February 2026
 **Superseded Status Rechecked:** July 14, 2026
 
@@ -103,7 +105,7 @@ monthlyCredits → monthlyCreditsAllowance
 creditsLastResetMonth → billingPeriod
 ```
 
-**File:** `api/razorpay/webhook/route.ts` (subscription.activated / subscription.charged case)
+**File:** `api/razorpay/webhook/route.ts` (`subscription.charged` case only). `subscription.activated` may store bounded provider/cycle dates, but it leaves local status pending, marks captured settlement outstanding, and never grants entitlement or resets paid credits.
 
 ### Layer 2: Lazy Reset (Yearly Plans + Safety Net)
 

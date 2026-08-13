@@ -20,6 +20,7 @@ import {
 import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
 import { isMatchingCheckoutProviderSubscription } from '@lib/billing/checkoutProviderSubscriptionRecovery';
 import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import {
     getBillingPlansForProduct,
     isAnswerlatticeBillingProduct,
@@ -52,6 +53,10 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { CreateSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
+import {
+    resolveRazorpayPendingCheckoutAction,
+    resolveRazorpayProviderSubscriptionStatus,
+} from '@data/shared/razorpaySubscriptionLifecycle';
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
@@ -323,17 +328,17 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const billingDb = getBillingFirestoreAdminForProduct(productId);
-        const pendingSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        const unresolvedSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
             .where('pId', '==', productId)
             .where('productId', '==', productId)
-            .where('status', '==', 'pending')
+            .where('status', 'in', ['pending', 'active'])
             .where('tenantId', '==', Number(tenantId))
             .where('storeId', '==', Number(storeId))
             .where('tId', '==', Number(tenantId))
             .where('sId', '==', Number(storeId))
             .limit(10)
             .get();
-        for (const pendingDoc of pendingSubscriptions.docs) {
+        for (const pendingDoc of unresolvedSubscriptions.docs) {
             const pending = { ...pendingDoc.data(), id: pendingDoc.id } as FirestoreSubscriptionDoc;
             const pendingScope = getProductSubscriptionBillingScope(productId, pending);
             if (
@@ -342,6 +347,12 @@ export const POST = withAuth(async (request, session) => {
                 || pendingScope.storeId !== Number(storeId)
             ) {
                 continue;
+            }
+            if (pending.status === 'active' && hasVerifiedSubscriptionPaymentEvidence(pending)) {
+                return NextResponse.json(
+                    { error: 'A current subscription already exists. Use the change-plan flow.' },
+                    { status: 409 },
+                );
             }
             const pendingReplacementEvidence = resolveSubscriptionReplacementEvidence(pending);
             const expectedReplacementMrrPaise = replacementSubscription
@@ -375,7 +386,8 @@ export const POST = withAuth(async (request, session) => {
                 );
             }
             const providerPendingSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
-            if (providerPendingSubscription.status === 'created') {
+            const pendingCheckoutAction = resolveRazorpayPendingCheckoutAction(providerPendingSubscription);
+            if (pendingCheckoutAction === 'checkout') {
                 const responsePayload = projectRazorpaySubscriptionCheckoutResponse(
                     providerPendingSubscription,
                     true,
@@ -387,12 +399,55 @@ export const POST = withAuth(async (request, session) => {
                 if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
                 return response;
             }
-            if (!['cancelled', 'completed', 'expired'].includes(String(providerPendingSubscription.status))) {
-                return NextResponse.json(
-                    { error: 'A subscription payment is already being processed. Refresh billing before trying again.' },
-                    { status: 409 },
-                );
+            if (pendingCheckoutAction === 'processing') {
+                const response = NextResponse.json({
+                    success: true,
+                    status: 'processing',
+                    subscriptionId: pendingProviderId,
+                }, { status: 202 });
+                if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+                return response;
             }
+
+            if (!pendingCheckoutAction) {
+                throw new Error('razorpay_pending_subscription_state_invalid');
+            }
+
+            let cleanupProviderStatus = resolveRazorpayProviderSubscriptionStatus(
+                providerPendingSubscription.status,
+            );
+            if (cleanupProviderStatus === 'created') {
+                try {
+                    const cancelledSubscription = await razorpayClient.subscriptions.cancel(pendingProviderId);
+                    cleanupProviderStatus = resolveRazorpayProviderSubscriptionStatus(
+                        cancelledSubscription.status,
+                    );
+                } catch (cancellationError) {
+                    const refreshedSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
+                    const refreshedAction = resolveRazorpayPendingCheckoutAction(refreshedSubscription);
+                    cleanupProviderStatus = resolveRazorpayProviderSubscriptionStatus(
+                        refreshedSubscription.status,
+                    );
+                    if (refreshedAction === 'processing' || refreshedAction === 'checkout') {
+                        const response = NextResponse.json({
+                            success: true,
+                            status: 'processing',
+                            subscriptionId: pendingProviderId,
+                        }, { status: 202 });
+                        if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+                        return response;
+                    }
+                    if (refreshedAction !== 'replace') throw cancellationError;
+                }
+            }
+            if (
+                cleanupProviderStatus !== 'cancelled'
+                && cleanupProviderStatus !== 'completed'
+                && cleanupProviderStatus !== 'expired'
+            ) {
+                throw new Error('razorpay_pending_subscription_not_terminal');
+            }
+
             const cleanupResult = await billingDb.runTransaction(async (transaction) => {
                 const currentSnapshot = await transaction.get(pendingDoc.ref);
                 if (!currentSnapshot.exists) return 'missing' as const;
@@ -425,8 +480,20 @@ export const POST = withAuth(async (request, session) => {
                 const expiredAt = Timestamp.now();
                 transaction.set(pendingDoc.ref, {
                     status: 'expired',
+                    providerStatus: cleanupProviderStatus,
                     subscriptionEndDate: expiredAt,
                     cycleEndDate: expiredAt,
+                    pastDueSinceAt: null,
+                    statuses: [
+                        ...(Array.isArray(current.statuses) ? current.statuses : []),
+                        {
+                            status: 'expired',
+                            timestamp: expiredAt,
+                            amount: current.amount,
+                            currency: current.currency,
+                            remark: 'Expired after the provider checkout became terminal.',
+                        },
+                    ],
                 }, { merge: true });
                 return 'expired' as const;
             });
@@ -652,6 +719,7 @@ export const POST = withAuth(async (request, session) => {
             currency,
             amount: unitAmount,
             status: "pending",
+            providerStatus: "created",
             lastWebhook: null,
             planId: planId,
             planName: selectedPlan.name,

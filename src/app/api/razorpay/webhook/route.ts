@@ -1,6 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
+import {
+    getRazorpaySubscriptionWebhookPolicy,
+    isRazorpaySubscriptionWebhookProviderStatusValid,
+    resolveRazorpayProviderSubscriptionStatus,
+} from '@data/shared/razorpaySubscriptionLifecycle';
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
     applyProductSubscriptionPayment,
@@ -23,6 +28,7 @@ import { isAnswerlatticeBillingProduct } from "@lib/billing/productBillingPlans"
 import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
 import {
     requireRazorpayRevenueAmountPaise,
+    resolveRazorpayAuthenticatedSubscriptionState,
     resolveRazorpayAuditAmountPaise,
     resolveRazorpayRevenueOccurredAtMillis,
     resolveRazorpaySubscriptionQuantity,
@@ -33,6 +39,7 @@ import {
 } from '@lib/billing/razorpayRevenueProjectionBoundary';
 import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
 import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { settleProductTopupFromProvider } from "@lib/billing/topupSettlementServer";
 import { logger } from "@lib/monitoring/logger";
 import {
@@ -149,7 +156,18 @@ const getWebhookNonBlockingContext = ({
     ...getBoundedRazorpayStringContext('storeId', subscription?.storeId ?? subscription?.sId ?? storeId),
 });
 
-const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
+const normalizeRazorpayWebhookEventId = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    return value.length > 0 && value.length <= 180 && value === value.trim()
+        ? value
+        : null;
+};
+
+const buildWebhookEventKey = (
+    eventPayload: any,
+    rawBody: string,
+    webhookEventId: string | null,
+): string => {
     const payment = eventPayload?.payload?.payment?.entity;
     const subscription = eventPayload?.payload?.subscription?.entity;
     const order = eventPayload?.payload?.order?.entity;
@@ -159,7 +177,7 @@ const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
         const normalized = value.trim();
         return normalized && normalized.length <= 180 ? normalized : null;
     };
-    const providerEventId = normalizeProviderId(eventPayload?.id);
+    const providerEventId = webhookEventId || normalizeProviderId(eventPayload?.id);
     const entityId = normalizeProviderId(payment?.id)
         || normalizeProviderId(subscription?.id)
         || normalizeProviderId(order?.id)
@@ -171,7 +189,10 @@ const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
     const rawKey = providerEventId
         || `${eventPayload.event}:${entityId}:${createdAtIdentity}`;
 
-    return rawKey.replace(/[\/\\#?]/g, '_').trim().slice(0, 180);
+    const safeKey = rawKey.trim();
+    if (safeKey.length <= 180 && !/[\/\\#?]/.test(safeKey)) return safeKey;
+
+    return `evt_${createHash('sha256').update(rawKey).digest('hex')}`;
 };
 
 const retryableWebhookResponse = () => NextResponse.json(
@@ -257,7 +278,8 @@ const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
 
 //🔹 subscription.activated
 // When it fires: Triggered once when a subscription is first activated.
-// What it means: Razorpay has successfully activated the subscription(usually after the user completes the first payment authorization or after mandate approval — especially important for cards, eMandates, or UPI autopay).
+// What it means: Razorpay activated the provider lifecycle. This event alone is not
+// captured-payment evidence and must not grant local paid entitlement.
 
 //🔹 subscription.charged
 // When it fires: Triggered every time a subscription payment is successfully charged(including the first and all subsequent charges).
@@ -332,6 +354,51 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
 
+    const subscriptionWebhookPolicy = getRazorpaySubscriptionWebhookPolicy(event.event);
+    const subscriptionWebhookEntity = event.payload?.subscription?.entity;
+    if (
+        subscriptionWebhookPolicy
+        && (
+            !subscriptionWebhookEntity
+            || typeof subscriptionWebhookEntity !== 'object'
+            || Array.isArray(subscriptionWebhookEntity)
+            || typeof subscriptionWebhookEntity.id !== 'string'
+            || subscriptionWebhookEntity.id.length === 0
+            || subscriptionWebhookEntity.id.length > 180
+            || subscriptionWebhookEntity.id !== subscriptionWebhookEntity.id.trim()
+            || !isRazorpaySubscriptionWebhookProviderStatusValid(
+                event.event,
+                subscriptionWebhookEntity.status,
+            )
+        )
+    ) {
+        logger.warn('Subscription webhook payload validation failed', {
+            eventType: event.event,
+        });
+        return NextResponse.json({ error: 'Invalid subscription event.' }, { status: 400 });
+    }
+    if (
+        event.event === 'subscription.charged'
+        && (
+            typeof event.payload?.payment?.entity?.id !== 'string'
+            || event.payload.payment.entity.id.length === 0
+            || event.payload.payment.entity.status !== 'captured'
+            || event.payload.payment.entity.subscription_id !== subscriptionWebhookEntity.id
+        )
+    ) {
+        logger.warn('Subscription charge evidence validation failed', {
+            eventType: event.event,
+        });
+        return NextResponse.json({ error: 'Invalid subscription charge.' }, { status: 400 });
+    }
+
+    const webhookEventIdHeader = request.headers.get('x-razorpay-event-id');
+    const webhookEventId = normalizeRazorpayWebhookEventId(webhookEventIdHeader);
+    if (webhookEventIdHeader !== null && webhookEventId === null) {
+        logger.warn('Webhook event identity validation failed', { provider: 'razorpay' });
+        return NextResponse.json({ error: 'Invalid webhook event identity.' }, { status: 400 });
+    }
+
     let eventProductResolution: ResolvedWebhookEventProduct | null;
     try {
         eventProductResolution = await resolveWebhookEventProduct(event);
@@ -363,8 +430,8 @@ export async function POST(request: NextRequest) {
     let webhookClaim;
     try {
         webhookClaim = await claimRazorpayWebhookEvent({
-            eventId: event.id,
-            eventKey: buildWebhookEventKey(event, requestBody),
+            eventId: webhookEventId || event.id,
+            eventKey: buildWebhookEventKey(event, requestBody, webhookEventId),
             eventType: event.event,
         });
     } catch (error) {
@@ -769,6 +836,11 @@ export async function POST(request: NextRequest) {
                             },
                             subscriptionId: requireInternalSubscriptionId(internalSub),
                             update: {
+                                ...(event.event === 'subscription.pending'
+                                    ? { providerStatus: 'pending' as const }
+                                    : event.event === 'subscription.halted'
+                                        ? { providerStatus: 'halted' as const }
+                                        : {}),
                                 pastDueSinceAt: pastDueSince,
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                             },
@@ -797,6 +869,9 @@ export async function POST(request: NextRequest) {
                                 },
                                 subscriptionId: requireInternalSubscriptionId(internalSub),
                                 update: {
+                                    providerStatus: event.event === 'subscription.pending'
+                                        ? 'pending'
+                                        : 'halted',
                                     pastDueSinceAt: pastDueSince,
                                     lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                                 },
@@ -811,18 +886,138 @@ export async function POST(request: NextRequest) {
                 }
                 break;
             }
-            case 'subscription.activated':
+            case 'subscription.authenticated': {
+                const subscriptionEntity = event.payload?.subscription?.entity;
+                await writeLogEntry({
+                    logFileName: LOG_FILE,
+                    logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_AUTHENTICATED',
+                    data: auditSummary,
+                });
+                if (!subscriptionEntity?.id) throw new Error('Authenticated webhook is missing its subscription entity.');
+                if (subscriptionEntity.status !== 'authenticated') {
+                    throw new Error('Authenticated webhook has an invalid provider status.');
+                }
+                const internalSub = await getSubscription(subscriptionEntity.id);
+                const providerState = resolveRazorpayAuthenticatedSubscriptionState(
+                    subscriptionEntity,
+                    internalSub?.quantity,
+                );
+                const billingInterval = subscriptionEntity.notes?.interval;
+                if (
+                    !internalSub
+                    || !providerState
+                    || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
+                ) {
+                    throw new Error('Invalid authenticated provider subscription state.');
+                }
+                await applyProductSubscriptionWebhookEvent(eventProductId, {
+                    eventKey: webhookClaim.eventKey,
+                    expectedStatuses: ['pending'],
+                    statusEntry: {
+                        status: 'authenticated',
+                        timestamp: Timestamp.now(),
+                        amount: 0,
+                        currency: internalSub.currency || 'INR',
+                        remark: 'Subscription mandate authenticated; billing has not started',
+                    },
+                    subscriptionId: requireInternalSubscriptionId(internalSub),
+                    update: {
+                        providerStatus: 'authenticated',
+                        renewsOn: Timestamp.fromMillis(providerState.chargeAtMillis),
+                        subscriptionStartDate: Timestamp.fromMillis(providerState.startAtMillis),
+                        subscriptionEndDate: getSubscriptionEndDate({
+                            interval: billingInterval,
+                            startAtMillis: providerState.startAtMillis,
+                            totalCount: providerState.totalCount,
+                        }),
+                        totalPaymentsNeededCount: providerState.totalCount,
+                        totalPaymentsMadeCount: providerState.paidCount,
+                        quantity: providerState.quantity,
+                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                    },
+                });
+                break;
+            }
+
+            case 'subscription.activated': {
+                const subscriptionEntity = event.payload?.subscription?.entity;
+                await writeLogEntry({
+                    logFileName: LOG_FILE,
+                    logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_ACTIVATED',
+                    data: auditSummary,
+                });
+                if (!subscriptionEntity?.id) throw new Error('Activated webhook is missing its subscription entity.');
+                if (subscriptionEntity.status !== 'active') {
+                    throw new Error('Activated webhook has an invalid provider status.');
+                }
+                const internalSub = await getSubscription(subscriptionEntity.id);
+                const providerState = resolveRazorpaySubscriptionState(subscriptionEntity, internalSub?.quantity);
+                const billingInterval = subscriptionEntity.notes?.interval;
+                if (
+                    !internalSub
+                    || !providerState
+                    || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
+                ) {
+                    throw new Error('Invalid activated provider subscription state.');
+                }
+                const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
+                    eventKey: webhookClaim.eventKey,
+                    expectedStatuses: ['pending', 'active'],
+                    statusEntry: {
+                        status: 'activated',
+                        timestamp: Timestamp.now(),
+                        amount: 0,
+                        currency: internalSub.currency || 'INR',
+                        remark: 'Subscription billing cycle activated; awaiting captured-payment settlement',
+                    },
+                    subscriptionId: requireInternalSubscriptionId(internalSub),
+                    update: {
+                        capturedPaymentSyncPending: true,
+                        providerStatus: 'active',
+                        cycleStartDate: Timestamp.fromMillis(providerState.currentStartMillis),
+                        cycleEndDate: Timestamp.fromMillis(providerState.currentEndMillis),
+                        renewsOn: Timestamp.fromMillis(providerState.chargeAtMillis),
+                        subscriptionStartDate: Timestamp.fromMillis(providerState.startAtMillis),
+                        subscriptionEndDate: getSubscriptionEndDate({
+                            interval: billingInterval,
+                            startAtMillis: providerState.startAtMillis,
+                            totalCount: providerState.totalCount,
+                        }),
+                        pastDueSinceAt: null,
+                        totalPaymentsNeededCount: providerState.totalCount,
+                        quantity: providerState.quantity,
+                        lastWebhook: { event: event.event, timestamp: Timestamp.now() },
+                    },
+                });
+                if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
+                break;
+            }
+
             case 'subscription.charged': {
                 const subscriptionEntity = event.payload?.subscription?.entity;
-                await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_ACTIVATED', data: auditSummary });
-                if (!subscriptionEntity?.id) break;
+                await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_CHARGED', data: auditSummary });
+                if (!subscriptionEntity?.id) throw new Error('Charged webhook is missing its subscription entity.');
+                if (
+                    !paymentEntity?.id
+                    || paymentEntity.status !== 'captured'
+                    || paymentEntity.subscription_id !== subscriptionEntity.id
+                ) {
+                    throw new Error('Subscription charge is missing captured payment evidence.');
+                }
                 const internalSub = await getSubscription(subscriptionEntity.id);
                 const planDetails = getPlanDetailsFromConstants(subscriptionEntity.notes);
-
-                if (internalSub && planDetails) {
+                if (!internalSub || !planDetails) {
+                    throw new Error('Charged subscription cannot be resolved to a local plan.');
+                }
+                {
+                    const chargedProviderStatus = resolveRazorpayProviderSubscriptionStatus(
+                        subscriptionEntity.status,
+                    );
                     const providerState = resolveRazorpaySubscriptionState(subscriptionEntity, internalSub.quantity);
                     const billingInterval = subscriptionEntity.notes?.interval;
                     if (
+                        chargedProviderStatus !== 'active'
+                        ||
                         !providerState
                         || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
                     ) {
@@ -840,9 +1035,10 @@ export async function POST(request: NextRequest) {
                     if (currentBillingPeriod === null) {
                         throw new Error('Invalid provider billing cycle.');
                     }
-                    const paymentHistoryId = paymentEntity?.id || `${event.event}-${subscriptionEntity.id}-${providerState.currentStartSeconds}`;
+                    const paymentHistoryId = paymentEntity.id;
                     const updatePayload: Partial<FirestoreSubscriptionDoc> = {
                         status: 'active',
+                        providerStatus: chargedProviderStatus,
                         cycleStartDate: Timestamp.fromMillis(providerState.currentStartMillis),
                         cycleEndDate: Timestamp.fromMillis(providerState.currentEndMillis),
                         renewsOn: Timestamp.fromMillis(providerState.chargeAtMillis),
@@ -863,18 +1059,28 @@ export async function POST(request: NextRequest) {
                         billingPeriod: currentBillingPeriod,
                         paymentHistoryId,
                         statusEntry: {
-                            status: event.event === 'subscription.activated' ? 'activated' : 'charged',
+                            status: 'charged',
                             timestamp: Timestamp.now(),
                             amount: paymentEntity?.amount || internalSub.amount || 0,
                             currency: paymentEntity?.currency || internalSub.currency || 'INR',
-                            remark: event.event === 'subscription.activated' ? 'Subscription activated' : 'Subscription charged',
+                            remark: 'Subscription charged',
                         },
                         subscriptionId: requireInternalSubscriptionId(internalSub),
+                        terminalSettlementPaymentId: paymentHistoryId,
                         update: updatePayload,
                     });
                     if (!paymentApplication || (!paymentApplication.applied && !paymentApplication.duplicate)) {
                         break;
                     }
+                    const previousBillingHistory = Array.isArray(
+                        paymentApplication.previousSubscription.billingHistory,
+                    )
+                        ? paymentApplication.previousSubscription.billingHistory
+                        : [];
+                    const isInitialCapturedPayment = previousBillingHistory.length === 0
+                        || previousBillingHistory[0] === paymentHistoryId;
+                    const preservesTerminalLifecycle = paymentApplication.previousSubscription.status === 'cancelled'
+                        || paymentApplication.previousSubscription.status === 'completed';
                     const replacementEvidence = resolveSubscriptionReplacementEvidence(
                         paymentApplication.previousSubscription,
                         internalSub,
@@ -899,6 +1105,9 @@ export async function POST(request: NextRequest) {
                             productId: eventProductId,
                             source: `webhook:${event.event}:replacement`,
                             storeId: Number(internalSub.storeId),
+                            terminalCapturedPaymentId: preservesTerminalLifecycle
+                                ? paymentHistoryId
+                                : undefined,
                             tenantId: Number(internalSub.tenantId),
                         });
                         appliedSubscription = replacementApplication.newSubscription;
@@ -919,7 +1128,7 @@ export async function POST(request: NextRequest) {
                             },
                             evidence: {
                                 paidAt: new Date(resolvePaymentOccurredAt() ?? Date.now()),
-                                paymentEvidenceId: String(paymentEntity?.id || paymentHistoryId),
+                                paymentEvidenceId: paymentHistoryId,
                                 source: `webhook:${event.event}`,
                                 subscriptionId: requireInternalSubscriptionId(internalSub),
                             },
@@ -931,7 +1140,7 @@ export async function POST(request: NextRequest) {
                         planId: planDetails.planId || appliedSubscription.planId,
                         status: 'active',
                     } as FirestoreSubscriptionDoc;
-                    if (replacementSubscriptionId && replacementMrrPaise > 0) {
+                    if (!preservesTerminalLifecycle && replacementSubscriptionId && replacementMrrPaise > 0) {
                         await recordFounderSubscriptionMrrChange({
                             eventKey: `${replacementSubscriptionId}:${requireInternalSubscriptionId(internalSub)}`,
                             previousMrrPaise: replacementMrrPaise,
@@ -941,7 +1150,7 @@ export async function POST(request: NextRequest) {
                             subscription: activatedSubscription,
                             occurredAt: providerState.currentStartMillis,
                         });
-                    } else {
+                    } else if (!preservesTerminalLifecycle && isInitialCapturedPayment) {
                         await recordFounderSubscriptionNewMrr({
                             productId: eventProductId,
                             requireDurableWrite: true,
@@ -989,11 +1198,14 @@ export async function POST(request: NextRequest) {
                             }));
                         }
 
-                        // 📧 INTERNAL: Notify founder about renewal revenue
+                        // 📧 INTERNAL: Distinguish first purchase from later renewal revenue.
                         try {
                             const { sendInternalNotification } = await import('@lib/messaging');
+                            const internalNotificationEvent = isInitialCapturedPayment
+                                ? 'INTERNAL_SUBSCRIPTION_PURCHASED'
+                                : 'INTERNAL_SUBSCRIPTION_RENEWED';
                             sendInternalNotification({
-                                eventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                eventType: internalNotificationEvent,
                                 storeId: String(internalSub.storeId),
                                 tenantId: String(internalSub.tenantId),
                                 metadata: {
@@ -1007,7 +1219,7 @@ export async function POST(request: NextRequest) {
                                 },
                             }).catch((notificationError) => {
                                 logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_internal_notification_failed', notificationError, getWebhookNonBlockingContext({
-                                    notificationEventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                    notificationEventType: internalNotificationEvent,
                                     webhookEventType: event.event,
                                     productId: eventProductId,
                                     paymentEntity,
@@ -1017,7 +1229,9 @@ export async function POST(request: NextRequest) {
                             });
                         } catch (notificationSetupError) {
                             logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_internal_notification_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
-                                notificationEventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                notificationEventType: isInitialCapturedPayment
+                                    ? 'INTERNAL_SUBSCRIPTION_PURCHASED'
+                                    : 'INTERNAL_SUBSCRIPTION_RENEWED',
                                 webhookEventType: event.event,
                                 productId: eventProductId,
                                 paymentEntity,
@@ -1033,7 +1247,7 @@ export async function POST(request: NextRequest) {
             case 'subscription.completed': {
                 const subscriptionEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_COMPLETED', data: auditSummary });
-                if (!subscriptionEntity?.id) break;
+                if (!subscriptionEntity?.id) throw new Error('Completed webhook is missing its subscription entity.');
                 const endedAtMillis = resolveRazorpayRevenueOccurredAtMillis(subscriptionEntity.ended_at);
                 const internalSub = await getSubscription(subscriptionEntity.id);
                 if (internalSub) {
@@ -1049,6 +1263,7 @@ export async function POST(request: NextRequest) {
                         },
                         subscriptionId: requireInternalSubscriptionId(internalSub),
                         update: {
+                            providerStatus: 'completed',
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                             subscriptionEndDate: endedAtMillis == null ? Timestamp.now() : Timestamp.fromMillis(endedAtMillis),
                         },
@@ -1072,7 +1287,10 @@ export async function POST(request: NextRequest) {
             case 'subscription.cancelled': {
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_CANCELLED', data: auditSummary });
                 const cancelledSubEntity = event.payload?.subscription?.entity;
-                if (cancelledSubEntity?.id) {
+                if (!cancelledSubEntity?.id) {
+                    throw new Error('Cancelled webhook is missing its subscription entity.');
+                }
+                {
                     const endedAtMillis = resolveRazorpayRevenueOccurredAtMillis(cancelledSubEntity.ended_at);
                     const cancelledInternalSub = await getSubscription(cancelledSubEntity.id);
                     if (cancelledInternalSub) {
@@ -1088,6 +1306,7 @@ export async function POST(request: NextRequest) {
                             },
                             subscriptionId: requireInternalSubscriptionId(cancelledInternalSub),
                             update: {
+                                providerStatus: 'cancelled',
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                                 subscriptionEndDate: endedAtMillis == null
                                     ? (cancelledInternalSub.cycleEndDate || Timestamp.now())
@@ -1149,7 +1368,7 @@ export async function POST(request: NextRequest) {
             case 'subscription.paused': {
                 const pausedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_PAUSED', data: auditSummary });
-                if (!pausedSubEntity?.id) break;
+                if (!pausedSubEntity?.id) throw new Error('Paused webhook is missing its subscription entity.');
                 const pausedInternalSub = await getSubscription(pausedSubEntity.id);
                 if (pausedInternalSub) {
                     const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
@@ -1164,6 +1383,7 @@ export async function POST(request: NextRequest) {
                         },
                         subscriptionId: requireInternalSubscriptionId(pausedInternalSub),
                         update: {
+                            providerStatus: 'paused',
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },
                     });
@@ -1215,12 +1435,18 @@ export async function POST(request: NextRequest) {
             case 'subscription.updated': {
                 const updatedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_UPDATED', data: auditSummary });
-                if (!updatedSubEntity?.id) break;
+                if (!updatedSubEntity?.id) throw new Error('Updated webhook is missing its subscription entity.');
                 const updatedInternalSub = await getSubscription(updatedSubEntity.id);
-                if (updatedInternalSub && updatedSubEntity.quantity !== undefined) {
-                    const quantity = resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity);
-                    if (quantity == null) throw new Error('Invalid provider subscription quantity.');
-                    if (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due') {
+                if (updatedInternalSub) {
+                    const hasQuantity = updatedSubEntity.quantity !== undefined;
+                    const quantity = hasQuantity
+                        ? resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity)
+                        : undefined;
+                    const providerStatus = resolveRazorpayProviderSubscriptionStatus(updatedSubEntity.status);
+                    if (!providerStatus || (hasQuantity && quantity == null)) {
+                        throw new Error('Invalid updated provider subscription state.');
+                    }
+                    if (quantity != null && (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due')) {
                         await recordFounderSubscriptionMrrChange({
                             eventKey: webhookClaim.eventKey,
                             productId: eventProductId,
@@ -1238,7 +1464,8 @@ export async function POST(request: NextRequest) {
                         eventKey: webhookClaim.eventKey,
                         subscriptionId: requireInternalSubscriptionId(updatedInternalSub),
                         update: {
-                            quantity,
+                            providerStatus,
+                            ...(quantity == null ? {} : { quantity }),
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },
                     });
@@ -1250,12 +1477,14 @@ export async function POST(request: NextRequest) {
             case 'subscription.resumed': {
                 const resumedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_RESUMED', data: auditSummary });
-                if (!resumedSubEntity?.id) break;
+                if (!resumedSubEntity?.id) throw new Error('Resumed webhook is missing its subscription entity.');
                 const resumedInternalSub = await getSubscription(resumedSubEntity.id);
                 if (resumedInternalSub) {
+                    const hasCapturedPayment = hasVerifiedSubscriptionPaymentEvidence(resumedInternalSub);
                     const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
                         eventKey: webhookClaim.eventKey,
-                        nextStatus: 'active',
+                        expectedStatuses: ['paused', 'active'],
+                        ...(hasCapturedPayment ? { nextStatus: 'active' as const } : {}),
                         statusEntry: {
                             status: 'resumed',
                             timestamp: Timestamp.now(),
@@ -1265,14 +1494,13 @@ export async function POST(request: NextRequest) {
                         },
                         subscriptionId: requireInternalSubscriptionId(resumedInternalSub),
                         update: {
+                            capturedPaymentSyncPending: !hasCapturedPayment,
+                            providerStatus: 'active',
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },
                     });
                     if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
-                    await syncSubscriptionForProduct(
-                        statusApplication.subscription,
-                        'webhook:subscription.resumed',
-                    );
+                    await syncSubscriptionForProduct(statusApplication.subscription, 'webhook:subscription.resumed');
                     if (shouldSendMenuListBillingMessages && statusApplication.applied) {
                         try {
                             const { sendLifecycleMessage } = await import('@lib/messaging');

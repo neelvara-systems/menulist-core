@@ -1,5 +1,9 @@
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
+import {
+    hasCurrentSubscriptionPlanEntitlement,
+    hasVerifiedSubscriptionPaymentEvidence,
+} from "@lib/billing/subscriptionPlanEntitlement";
 
 const toValidDate = (value: unknown): Date | null => {
     if (value instanceof Date) {
@@ -102,16 +106,15 @@ export const getGracePeriodDisplayInfo = (pastDueTimestamp: unknown, graceDays: 
  */
 export function hasValidSubscriptionAccess(sub: FirestoreSubscriptionDoc | null): boolean {
     if (!sub) return false;
+    if (!hasVerifiedSubscriptionPaymentEvidence(sub)) return false;
     if (sub.status === 'pending' || sub.status === 'expired' || sub.status === 'completed') return false;
 
-    // Paused subs with expired billing cycle → no access (support recovery from billing page)
-    if (sub.status === 'paused') {
-        const cycleEndDate = toValidDate(sub.cycleEndDate);
-        return Boolean(cycleEndDate && cycleEndDate.getTime() >= Date.now());
+    if (sub.status === 'past_due') {
+        const gracePeriod = getGracePeriodInfo(sub.pastDueSinceAt);
+        return gracePeriod.hasKnownGracePeriod && gracePeriod.remainingDays > 0;
     }
 
-    // For active/past_due/cancelled — the DAL already ensures cycleEndDate >= now
-    return true;
+    return hasCurrentSubscriptionPlanEntitlement(sub);
 }
 
 /**

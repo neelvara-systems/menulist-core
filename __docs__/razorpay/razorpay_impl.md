@@ -1,5 +1,9 @@
 # Razorpay Payment System — Complete Technical Reference
 
+> **August 13, 2026 subscription lifecycle authority correction:** the browser checkout callback is retained because it verifies the checkout HMAC and independently fetches both Razorpay entities; it requires a captured payment bound to the same active subscription before applying settlement. The signed webhook route now handles all 10 documented subscription events. `subscription.authenticated` records pre-activation provider truth without entitlement or money. `subscription.activated` records bounded provider/cycle state but keeps the local row pending and marks captured settlement outstanding. `subscription.charged` is the sole recurring event allowed to settle captured money, activate entitlement, reset credits, and record payment identity. App and Functions share one byte-identical provider-state policy, and reconciliation includes local `pending` rows but never manufactures payment authority from provider status or `paid_count`.
+
+> **August 13, 2026 pending eMandate recovery correction:** pending owner UI no longer opens the provider `shortUrl`. The authenticated create-subscription route fetches exact provider truth and either reuses Standard Checkout, returns 202 `processing`, or performs a user-triggered stale replacement. A `created` eMandate is held for 48 hours; replacement requires immediate provider cancellation, terminal-state proof, and a transaction-current exact-scope local expiry before any new provider create. The same hook serves MenuList desktop/mobile and Answerlattice Billing. Answerlattice onboarding links to Billing, and all online provisioning paths persist exact `providerStatus: 'created'`. Past-due and reseller recipient hosted-link flows remain intentionally separate.
+
 > **August 1, 2026 billing limiter outage boundary:** all authenticated
 > subscription checkout, top-up checkout, subscription mutation, subscription
 > verification, and top-up verification routes explicitly fail closed when the
@@ -18,7 +22,7 @@
 > **July 22, 2026 exact entitlement selection:** the bounded current-entitlement query constrains both product aliases and both tenant/store alias pairs before its limit. Transaction-current and candidate rows use the shared exact MenuList subscription projector; conflicting aliases cannot select another store's mirror or invalidation scope.
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** July 16, 2026
+**Last Updated:** August 13, 2026
 **Status:** Implemented and billing-slice audited — full MenuList production certification still pending
 **Codebase:** Single source of truth. File paths identify the maintained implementation; line numbers and file lengths are intentionally not treated as stable contracts.
 
@@ -46,7 +50,7 @@ July 10, 2026 transactional lifecycle corrections:
 - Upgrade carry-forward uses `applyProductSubscriptionUpgradeCarryForward()` to read and write the old and replacement subscriptions atomically. Credits are calculated from the current old document, added to—not substituted for—the replacement top-up balance, and guarded by `carryForwardFromSubscriptionId` on retry.
 - Entitlement sync now reads the authoritative exact-dual-`ML` active subscription for the tenant/store in the same transaction that updates the store/platform summary and subscription audit mirror. Expiring the old subscription during upgrade cannot clear the replacement plan, stale sync completion cannot overwrite a newer active subscription, and a same-scope foreign-product row cannot become MenuList entitlement truth.
 - `src/lib/billing/subscriptionUpgradeSettlement.ts` is the pure arithmetic boundary for additive and idempotent credit transfer. `npm run test:billing-settlement-boundaries` covers additive balance preservation, replay behavior, malformed balances, and malformed grace timestamps.
-- The Functions reconciliation safety net now runs as the leased 2:20 AM UTC `subscription_reconciliation` task in `menulistMaintenanceScheduler`, not inside Decision Blocks. It paginates by Firestore document ID behind both exact `ML` aliases, rejects embedded/whitespace-mutated provider identity, re-reads and revalidates each subscription in a transaction, appends reconciled status history, clears/starts recovery state correctly, and resets recurring credits only once when provider cycle evidence moves to a new billing period.
+- The Functions reconciliation safety net now runs as the leased 2:20 AM UTC `subscription_reconciliation` task in `menulistMaintenanceScheduler`, not inside Decision Blocks. It paginates by Firestore document ID behind both exact `ML` aliases, rejects embedded/whitespace-mutated provider identity, and re-reads each subscription in a transaction. It may repair non-monetary lifecycle state, but provider `active`, `paid_count`, or cycle dates cannot manufacture local payment truth or reset credits. Active/cycle convergence requires the existing exact `pay_*` ledger count to match provider paid count; otherwise local status is preserved and `capturedPaymentSyncPending` remains visible.
 - Reconciliation derives the desired plan mirror from the transaction-next subscription shape, not the pre-update cycle/status. Any required mirror change persists `billingEntitlementSyncPending` in that transaction and clears it only after the scoped mirror and cache effects settle, so terminal transitions and lost acknowledgements remain repairable. Cursor cleanup is fail-visible; a failed `_system/subscriptionReconciliationCursor` delete cannot be logged as a completed cycle.
 - Manual reseller expiry rechecks exact-dual-`ML` subscription/profile state in one transaction, never decrements the active-offline counter below zero, selects only an exact-dual-`ML` replacement active subscription before changing entitlement, and persists `billingEntitlementSyncPending` until post-commit mirror/cache synchronization succeeds. Later leased runs retry bounded product-scoped pending rows.
 
@@ -59,17 +63,17 @@ July 14, 2026 end-to-end lifecycle corrections:
 - Direct recurring checkout is store-scoped. An outlet may inherit the master/HQ subscription for entitlement, but a switched-store billing view is read-only for recurring-plan mutations. Owners must sign in to the directly billed store to create, retry, pause, resume, cancel, or replace its Razorpay subscription. An inherited outlet may still add an enhancement pack to the shared HQ balance when signed in to that outlet.
 - Manual reseller/prepaid rows (`manual_...`) never call Razorpay. Cancel, pause, resume, and replacement routes reject them with a controlled conflict response; their capacity and lifecycle remain Firestore/reseller governed.
 - New-subscription creation rejects a second unmarked current subscription, reuses an exact matching pending provider subscription in `created` state, and blocks conflicting pending checkouts. Provider subscriptions are cancelled if their local persistence definitively fails; ambiguous writes are re-read first.
-- UPI quantity changes and upgrades identify the old subscription with `replacementForSubscriptionId`. Browser verification and the signed webhook both finalize the replacement: cancel the old provider subscription unless it is already terminal, atomically expire the old local row, carry unused credits into the active replacement exactly once, and synchronize entitlement for both rows. The legacy browser follow-up remains an idempotent recovery call.
+- UPI quantity changes and upgrades identify the old subscription with `replacementForSubscriptionId`. Server-verified browser settlement and a captured matching `subscription.charged` webhook can finalize the replacement; authentication/activation alone cannot. Finalization cancels the old provider subscription unless it is already terminal, atomically expires the old local row, carries unused credits into the replacement exactly once, and synchronizes entitlement for both rows. A late terminal charged delivery must prove the exact newly appended `pay_...` ID before carry-forward. The legacy browser follow-up remains an idempotent recovery call.
 - Top-up creation stores an immutable pending order snapshot through a create-once transaction. Exact retry preserves the first creation time; an existing paid, foreign-product, differently scoped, differently valued, or differently owned provider order ID fails without merge-overwriting the row. Provider notes and persisted snapshots require both exact product aliases plus complete agreeing tenant/store aliases.
 - Either the authenticated browser verification route or a signed `order.paid` webhook settles that snapshot against the transaction-current subscription exactly once. Initial selection, transaction-current mutation and paid replay bind the snapshot's frozen `billingStoreId` to the exact projected subscription. Missing/conflicting aliases, malformed balances and credit additions outside JavaScript's safe integer range fail reconciliation. This recovers captured payments when the browser closes before the callback without doubling credits or notifications.
 - Webhook product identity is recovered from exact agreeing canonical notes and reconciled to one exact subscription ID plus exactly one product-local stored subscription before the central event claim. Subscription-bearing payloads query both product stores, reject dual ownership, declaration mismatch, malformed/conflicting IDs and unknown product aliases, and return a retryable response when no row is visible or either read fails. The proven subscription seeds the request-local cache, so lifecycle processing uses the same ownership evidence without another read. Payment/order events without a subscription retain the established exact declaration or MenuList legacy default.
 - Razorpay plan deduplication paginates provider plans in bounded pages of 100. It only creates a plan after proving absence; reaching the bounded 20-page safety ceiling fails closed.
 - `subscription.updated` transactionally synchronizes a validated provider quantity. The leased Functions reconciliation job now performs the same provider/local quantity comparison in its existing transaction, repairing a missed quantity webhook without another provider mutation.
 - Provider subscription state is projected through one exact runtime boundary before authenticated verification or signed webhook mutation. Cycle/start/charge timestamps must be positive numeric safe-integer seconds; quantity and total/paid counts must be bounded numeric safe integers; paid count cannot exceed total count; current end must advance current start; and start/charge ordering must be coherent. Numeric strings are not accepted. The same exact quantity and optional event-time admission protects `subscription.updated`, cancellation/completion and Founder MRR timing. Leased reconciliation uses equivalent exact predicates and fails an item before its transaction when any explicitly present provider scalar is malformed.
-- Replacement subscriptions carry paired exact evidence: a valid old subscription document ID and an exact nonnegative safe-integer prior MRR. Pending-checkout reuse, browser verification, signed webhook activation, recovery upgrade and provider-cancellation finalization all use the same runtime projector. Transaction-current and pre-read snapshots must agree; numeric/string coercion, marker-only/MRR-only state and cross-snapshot conflicts fail before provider cancellation, credit carry-forward, entitlement sync or replacement-MRR projection.
+- Replacement subscriptions carry paired exact evidence: a valid old subscription document ID and an exact nonnegative safe-integer prior MRR. Pending-checkout reuse, browser verification, captured charged-webhook recovery, recovery upgrade and provider-cancellation finalization all use the same runtime projector. Transaction-current and pre-read snapshots must agree; numeric/string coercion, marker-only/MRR-only state and cross-snapshot conflicts fail before provider cancellation, credit carry-forward, entitlement sync or replacement-MRR projection.
 - Lost-acknowledgement subscription recovery uses `src/lib/billing/checkoutProviderSubscriptionRecovery.ts` for both bounded provider search and exact checkpoint fetch. A candidate must have an exact valid provider subscription ID, created status, exact plan/attempt/product/plan-note identity, canonical tenant/store notes and agreeing quantity evidence. Notes may carry the provider's canonical decimal string form, while the provider entity quantity must be an exact number; a conflicting or coercible representation is never attached to the checkout lease or persisted subscription.
 - The authenticated `upgrade-subscription` recovery route requires the new subscription's paired exact replacement evidence to name the requested old subscription. An exact already-applied carry-forward remains idempotent; otherwise the new row must still be active before the route fetches or cancels the old provider subscription. Markerless or pending replacements cannot trigger provider mutation.
-- Captured-payment recurring-credit reset treats `creditsLastResetMonth` and `monthlyCreditsAllowance` as exact persisted scalars. A string period never suppresses a genuine numeric paid-cycle reset and is repaired to the numeric period during that reset. The effective allowance must be a nonnegative safe integer; malformed allowance aborts the transaction before billing history or credit mutation. The leased reconciliation task uses the same exact period comparison and allowance admission.
+- Captured-payment recurring-credit reset treats `creditsLastResetMonth` and `monthlyCreditsAllowance` as exact persisted scalars. A string period never suppresses a genuine numeric paid-cycle reset and is repaired to the numeric period during that reset. The effective allowance must be a nonnegative safe integer; malformed allowance aborts the transaction before billing history or credit mutation. Only the captured-payment transaction performs this reset; reconciliation does not.
 
 June 11, 2026 audit corrections:
 
@@ -524,7 +528,7 @@ When a subscription has current paid-cycle plan entitlement, payment verificatio
 - `platformSummary/storesSummary.stores.{storeId}.activePlanType`
 - `subscriptions/{subscriptionId}.analyticsEntitlement`
 
-Current `active`, `cancelled`, and `paused` subscriptions carry an active plan type only while `cycleEndDate` is exact and has not elapsed, so the pure decision matches the transaction query and owner-visible access agrees with the paid period. Missing or malformed cycle evidence fails closed and requires provider reconciliation; it is not interpreted as indefinite active access. Timestamp projection accepts exact Date/browser/Admin Timestamp components without invoking persisted methods or coercing strings, and plan IDs must be bounded strings. `past_due`, `expired`, and `completed` do not carry this plan mirror. When multiple rows exist, a current active row wins before a paid-cycle cancelled/paused row. The leased reconciliation job repairs stale or missing mirrors without scanning stores and evaluates provider cycle/status updates as one next-state contract. The hourly `subscription_access_expiry` maintenance task transitions at most 500 due cancelled/paused rows per run. Both tasks preserve `billingEntitlementSyncPending: true` until the mirror/cache settlement succeeds, allowing the bounded retry path to repair partial failure.
+Current `active`, `cancelled`, and `paused` subscriptions carry an active plan type only when captured/manual payment evidence exists and `cycleEndDate` is exact and has not elapsed, so the pure decision matches the transaction query and owner-visible access agrees with the paid period. Missing payment or cycle evidence fails closed; it is not interpreted as indefinite active access. Timestamp projection accepts exact Date/browser/Admin Timestamp components without invoking persisted methods or coercing strings, and plan IDs must be bounded strings. `past_due`, `expired`, and `completed` do not carry this plan mirror. When multiple rows exist, a current active row wins before a paid-cycle cancelled/paused row. The leased reconciliation job repairs stale or missing mirrors without scanning stores and evaluates provider cycle/status updates as one next-state contract. The hourly `subscription_access_expiry` maintenance task transitions at most 500 due cancelled/paused rows per run. Both tasks preserve `billingEntitlementSyncPending: true` until the mirror/cache settlement succeeds, allowing the bounded retry path to repair partial failure.
 
 The same transaction writes a compact `subscriptions.analyticsEntitlement`
 audit mirror. Its status is projected independently from transaction-current
@@ -667,7 +671,9 @@ Razorpay sends webhook events for subscription lifecycle changes. This route is 
 
 ### Durable Webhook Replay Guard
 
-Before any billing mutation, the webhook handler claims a server-only document in `razorpayWebhookEvents/{eventKey}`. The key accepts only bounded string provider identities, prefers Razorpay's webhook event id when valid, and falls back to a stable hash of the signed raw body. An existing row is admitted only when version 1, embedded event key, UUID attempt, positive Firestore timestamps, nonnegative safe retry count, bounded nullable provider metadata, state and processing-lease shape all agree. Malformed persisted state throws through the route's retryable `503` path; a bare or conflicting `processed` status can never suppress a signed event as a duplicate. Valid already processed events return `status: duplicate`. An actively locked event returns `503` with `Retry-After` so Razorpay keeps a recovery delivery available if the original worker dies. Failed or expired claims receive a new attempt ID. Exact transactional terminal replacement requires the current attempt, prunes stale failure/lease fields, and never lets an old worker replace a newer `processed` result. Payment-failure and processing-failure alerts use deterministic document IDs, while the owner-message fallback uses the event key rather than wall-clock time.
+Before any billing mutation, the webhook handler claims a server-only document in `razorpayWebhookEvents/{eventKey}`. The key prefers Razorpay's canonical `x-razorpay-event-id`, then a bounded envelope ID, then the signed-body-derived fallback. A malformed/oversized canonical header is rejected. A bounded identity containing Firestore-unsafe characters is hashed, so two distinct identities cannot collide through character replacement. An existing row is admitted only when version 1, embedded event key, UUID attempt, positive Firestore timestamps, nonnegative safe retry count, bounded nullable provider metadata, state and processing-lease shape all agree. Malformed persisted state throws through the route's retryable `503` path; a bare or conflicting `processed` status can never suppress a signed event as a duplicate. Valid already processed events return `status: duplicate`. An actively locked event returns `503` with `Retry-After` so Razorpay keeps a recovery delivery available if the original worker dies. Failed or expired claims receive a new attempt ID. Exact transactional terminal replacement requires the current attempt, prunes stale failure/lease fields, and never lets an old worker replace a newer `processed` result. Payment-failure and processing-failure alerts use deterministic document IDs, while the owner-message fallback uses the event key rather than wall-clock time.
+
+Before product resolution or the event claim, each of the 10 admitted subscription events must carry a bounded subscription entity whose status matches the shared event policy. A charged event must also carry a bounded payment ID, `status: captured`, and a payment subscription ID equal to the subscription entity ID. Malformed signed payloads return 400 without a claim or billing mutation. Razorpay delivery order is not trusted: terminal lifecycle state wins over a later charge for entitlement, while the exact captured `pay_...` ID can still be appended to payment history without resetting credits or replacing terminal provider state.
 
 Answerlattice top-up settlement and paid-order replay mirror only the transaction-current projected subscription. The projection requires exact AL product/scope aliases, nonnegative safe credit scalars, a valid optional reset period and bounded optional subscription identities. Store summary repair never numerically coerces raw persisted fields or reuses the pre-transaction subscription after the settlement transaction has selected newer truth.
 
@@ -677,32 +683,38 @@ Webhook product selection is resolved before the central event claim or any prod
 
 ### Handled Events
 
-| Event                    | Action                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------- |
-| `subscription.activated` | Set status "active", update billing dates, reset credits, store payment method         |
-| `subscription.charged`   | Same as activated — reset monthlyCredits, update cycle dates, append to billingHistory |
-| `subscription.completed` | Set status "completed", update subscriptionEndDate                                     |
-| `subscription.cancelled` | Apply cancelled status idempotently, synchronize entitlement, record churn, notify once |
-| `subscription.halted`    | Set status "past_due", record pastDueSinceAt                                           |
-| `payment.failed`         | Set status "past_due" with fixed recovery metadata and product-correct founder alert  |
-| `order.paid`             | Settle a pending enhancement-pack snapshot exactly once when browser verification is absent |
+| Event                         | Action                                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `subscription.authenticated`  | Keep local status `pending`; record validated provider state and pre-activation dates/counts; no entitlement or payment settlement |
+| `subscription.activated`      | Keep local `pending`, update bounded provider/cycle truth, and set `capturedPaymentSyncPending`; no entitlement or payment settlement |
+| `subscription.charged`        | Require a captured payment bound to the same subscription, settle it exactly once, reset cycle credits, and record payment identity |
+| `subscription.completed`      | Set status `completed`, update end date, and synchronize entitlement                                   |
+| `subscription.updated`        | Record validated provider state and optional quantity; quantity MRR changes apply only when quantity is present |
+| `subscription.pending`        | Set local status `past_due` and begin recovery evidence                                                  |
+| `subscription.halted`         | Set local status `past_due` after provider retries are exhausted                                        |
+| `subscription.cancelled`      | Apply cancelled status idempotently, synchronize entitlement, record churn, and notify once              |
+| `subscription.paused`         | Set status `paused` and synchronize entitlement                                                          |
+| `subscription.resumed`        | Restore local `active` only when captured-payment evidence already exists; otherwise retain non-entitled local state and mark settlement pending |
+| `payment.failed`              | Set status `past_due` with fixed recovery metadata and product-correct founder alert                     |
+| `order.paid`                  | Settle a pending enhancement-pack snapshot exactly once when browser verification is absent              |
 
-### Key Webhook Logic (subscription.activated / subscription.charged)
+### Key Webhook Logic (authenticated / activated / charged)
 
 **File:** `src/app/api/razorpay/webhook/route.ts:154-208`
 
 ```
-1. Extract subscriptionEntity and paymentEntity from event payload
-2. getSubscriptionById(subscriptionEntity.id) — find our Firestore doc
-3. getPlanDetailsFromConstants(notes) — get plan from local constants
-4. Extract payment method (card brand/last4 or UPI VPA)
-5. Compute billing-period key (same anchor-day logic as verify-subscription):
+1. Validate the event-specific subscription entity and resolve the exact local row.
+2. For `subscription.authenticated`, require local `pending`, retain local `pending`, and store only bounded provider lifecycle facts.
+3. For `subscription.activated`, require provider `active`, update bounded cycle/lifecycle facts, keep local `pending`, and set `capturedPaymentSyncPending: true`; do not synchronize entitlement.
+4. For `subscription.charged`, require payment `status: captured`, a payment ID, and `payment.subscription_id === subscription.id` before settlement.
+5. Fetch/store the provider payment method only in captured-payment settlement.
+6. Compute the billing-period key (same anchor-day logic as verify-subscription):
    - newCycleStart = subscriptionEntity.current_start
    - rawAnchorDay = newCycleStart day-of-month
    - Cap anchor to days in current month
    - If today < anchor: still previous period
    - key = year * 100 + month
-6. Build update:
+7. Build the captured-payment update:
    - status: "active"
    - monthlyCredits: reset to monthlyCreditsAllowance
    - creditsLastResetMonth: billing-period key
@@ -711,8 +723,20 @@ Webhook product selection is resolved before the central event claim or any prod
    - subscriptionEndDate calculated from start_at + total_count
    - Append payment ID to billingHistory
    - Append status entry to statuses array
-7. updateSubscription()
+8. Apply through the transactional payment applicator, keyed by the exact provider payment ID. Replays return duplicate without resetting already-consumed credits.
 ```
+
+### Stored Payment-Authority States
+
+| State | Firestore authority | Access result |
+|---|---|---|
+| Created checkout | `status: pending`, `providerStatus: created`, `paymentProvider: razorpay`, `billingHistory: []`, null cycle dates | Billing UI can continue checkout; no paid access |
+| Authenticated mandate | local `pending`, provider `authenticated`, empty payment ledger | Processing only; no paid access |
+| Provider activated | local `pending`, provider `active`, bounded cycle facts, `capturedPaymentSyncPending: true`, empty payment ledger | Await callback/charged webhook; no paid access |
+| Captured payment committed | exact `pay_*` ledger entry, local `active`, provider `active`, paid count/cycle update, marker false | Paid access while cycle/grace remains valid |
+| Manual prepaid | `billingMode: manual`, `manualPaymentConfirmed: true` | Paid access while manual cycle remains valid; no Razorpay subscription call |
+
+Every server entitlement reader, AI capacity check, top-up settlement, outlet mutation, Answerlattice paid read, and store-plan mirror requires this payment evidence. Provider status and cycle dates are diagnostic/lifecycle data, not proof of money.
 
 ### Transaction Logging
 
@@ -755,7 +779,7 @@ FRONTEND:
    → Atomically expire old local row and add transaction-current remaining credits to the new row
    → Guard replay with `carryForwardFromSubscriptionId`
    → Synchronize old and new entitlement mirrors
-   → The signed activation/charge webhook runs the same finalizer if the browser callback is lost
+   → A captured matching `subscription.charged` webhook runs the same finalizer if the browser callback is lost; authentication/activation alone do not
 
 8. POST /api/razorpay/upgrade-subscription
    Body: { nSi: newSubscriptionId, oSi: oldSubscriptionId }
@@ -1405,27 +1429,28 @@ No features were lost in the migration.
 
 ---
 
-## 23. Razorpay Official Docs Audit (Feb 10, 2026)
+## 23. Razorpay Official Docs Audit (Updated Aug 13, 2026)
 
 > **Source:** Deep cross-reference of our codebase against official Razorpay documentation (razorpay.com/docs). All subscription API endpoints, webhook events, lifecycle states, payment retries, international payments, and SaaS patterns reviewed.
 
 ### 23.1 Subscription Lifecycle States — Our Coverage
 
-Razorpay defines **9 subscription states**. Here's what we handle vs what we don't:
+Razorpay defines **9 subscription states** and documents **10 subscription webhook events**. The current source handles every event and preserves provider status separately from the smaller local entitlement state:
 
 | Razorpay State     | Webhook Event                | Our Handling                                                                                                                                                                                 | Status             |
 | ------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | `created`          | —                            | Set when `createInitialSubscription()` writes `status: "pending"`                                                                                                                            | ✅ Handled         |
-| `authenticated`    | `subscription.authenticated` | NOT explicitly handled — falls to `default` case in webhook. OK because subscription progresses to `active` next.                                                                            | ⚠️ Logged only     |
-| `active`           | `subscription.activated`     | Full handling: status → "active", billing dates set, credits reset, payment method stored                                                                                                    | ✅ Handled         |
-| `active` (renewal) | `subscription.charged`       | Full handling: same as activated — credits reset, cycle dates updated                                                                                                                        | ✅ Handled         |
+| `authenticated`    | `subscription.authenticated` | Validated pre-activation facts are stored while local status remains `pending`; it grants no entitlement and settles no payment.                                                              | ✅ Handled         |
+| `active`           | `subscription.activated`     | Provider/cycle truth is recorded while local status remains `pending`; `capturedPaymentSyncPending` is set and no entitlement, payment ledger, credit reset, or payment revenue is created.       | ✅ Handled         |
+| `active` (renewal) | `subscription.charged`       | A captured payment bound to the same subscription is settled exactly once; cycle truth and monthly credits update under the exact provider payment ID.                                        | ✅ Handled         |
 | `pending`          | `subscription.pending`       | ✅ Handled (Feb 11, 2026): sets `past_due` + `pastDueSinceAt`, supports both payment-entity and subscription-entity paths                                                                    | ✅ Handled         |
 | `halted`           | `subscription.halted`        | Handled: status → "past_due", `pastDueSinceAt` recorded                                                                                                                                      | ✅ Handled         |
 | `cancelled`        | `subscription.cancelled`     | Webhook applies the cancelled transition idempotently, synchronizes entitlement, records churn, and sends owner lifecycle copy only on a new application                                    | ✅ Handled         |
 | `completed`        | `subscription.completed`     | Handled: status → "completed", `subscriptionEndDate` updated                                                                                                                                 | ✅ Handled         |
 | `paused`           | `subscription.paused`        | ✅ Handled (Feb 11, 2026): sets `status: "paused"`, records in statuses array. New API route + frontend UI.                                                                                  | ✅ Handled         |
-| `resumed`          | `subscription.resumed`       | ✅ Handled (Feb 11, 2026): sets `status: "active"`, records in statuses array. New API route + frontend UI.                                                                                  | ✅ Handled         |
-| `expired`          | —                            | Not a Razorpay webhook event. Razorpay expires subscriptions when `start_at` time passes without authentication. Our internal "expired" status is used for upgrades and grace period expiry. | ✅ Different usage |
+| `resumed`          | `subscription.resumed`       | Records provider/history state; restores local `active` only when the stored subscription already has captured-payment evidence.                                                               | ✅ Handled         |
+| any admitted state | `subscription.updated`       | Validates and stores provider state on every delivery; a bounded quantity is synchronized when present, while no-quantity updates leave quantity and payment state unchanged.                 | ✅ Handled         |
+| `expired`          | —                            | Not a subscription webhook event. Shared reconciliation maps provider `expired` to local `expired`, including pending subscriptions that miss authentication.                                  | ✅ Reconciled      |
 
 ### 23.2 Critical Findings
 

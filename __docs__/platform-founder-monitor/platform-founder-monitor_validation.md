@@ -1,5 +1,16 @@
 # Platform Founder Monitor Validation
 
+## August 13, 2026 - Subscription Revenue Authority
+
+- Unpaid local `active` rows do not enter current MRR.
+- Malformed or non-Razorpay payment-history identities do not count as captured payment.
+- Expired paid windows do not enter current MRR.
+- Confirmed manual rows require a current paid window.
+- Past-due MRR requires prior verified payment.
+- Unpaid pending checkout remains an attention state and contributes zero MRR.
+- `npm run test:functions-subscription-scope` and `npm run verify:platform-founder-monitor-boundary` lock the pure authority and scheduler wiring.
+- Functions lint/build/preflight passed, and the scoped QA scheduler deploy read back `ACTIVE` at hash `3ba1fd91827c88f7bd56959324994d5fd38bb226`.
+
 ## July 6, 2026
 
 ### Passed

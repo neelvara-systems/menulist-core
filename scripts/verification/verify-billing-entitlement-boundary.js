@@ -187,6 +187,9 @@ function verifyBillingEntitlementBoundary() {
   const purchaseIntentBoundaryTest = read('scripts/verification/test-purchase-intent-boundary.ts');
   const desktopSubscriptionCard = read('src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx');
   const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
+  const desktopAddOutlet = read('src/components/organisms/AddOutletModal/index.tsx');
+  const mobileLocations = read('src/components/mobile/screens/MobileLocationsScreen.tsx');
+  const websiteCreditPackCard = read('src/components/website/pricing-pages/CreditPackCard.tsx');
   const paymentTransactionsDal = read('src/database/subscriptions/paymentTransactions.ts');
   const billingRecordProductIdentity = read('src/lib/billing/billingRecordProductIdentity.ts');
   const billingRecordProductIdentityBackfill = read('scripts/backfill-billing-record-product-identity.ts');
@@ -218,6 +221,15 @@ function verifyBillingEntitlementBoundary() {
       && packageJson.scripts['verify:billing-entitlement-boundary'].includes('npm run test:answerlattice-subscription-read-boundary'),
     'package.json must expose verify:billing-entitlement-boundary',
   );
+  [
+    ".where('status', 'in', ['pending', 'active'])",
+    "pending.status === 'active' && hasVerifiedSubscriptionPaymentEvidence(pending)",
+    "resolveRazorpayPendingCheckoutAction(providerPendingSubscription)",
+  ].forEach((token) => assertIncludes(
+    createSubscription,
+    token,
+    'Razorpay unresolved checkout reuse boundary',
+  ));
   assert(
     packageJson.scripts?.['test:answerlattice-billing-contracts']?.includes('test-answerlattice-billing-contracts.ts'),
     'package.json must expose Answerlattice billing response and URL contracts',
@@ -484,7 +496,7 @@ function verifyBillingEntitlementBoundary() {
     "const TEST_KEY_ID_PATTERN = /^rzp_test_[A-Za-z0-9]+$/;",
     "const LIVE_KEY_ID_PATTERN = /^rzp_live_/;",
     "throw new Error(`${name.toLowerCase()}_live_key_refused`)",
-    "if (publicKeyId !== keyId) throw new Error('razorpay_public_private_key_id_mismatch');",
+    "const keyId = requireTestKeyId('NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID');",
     "readCollection('payments.all', () => razorpay.payments.all({ count: 1 }))",
     "readCollection('orders.all', () => razorpay.orders.all({ count: 1 }))",
     "readCollection('plans.all', () => razorpay.plans.all({ count: 1 }))",
@@ -495,6 +507,11 @@ function verifyBillingEntitlementBoundary() {
     'tamperedBodyRejected',
     'validSignatureAccepted',
   ].forEach((token) => assertIncludes(razorpaySandboxReadiness, token, 'Razorpay sandbox read-only readiness command'));
+  assertNotIncludes(
+    razorpaySandboxReadiness,
+    "requireTestKeyId('MENULIST_RAZORPAY_KEY_ID')",
+    'Razorpay sandbox readiness must not restore the redundant server key-id alias',
+  );
   [
     'razorpay.orders.create(',
     'razorpay.subscriptions.create(',
@@ -762,11 +779,11 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(razorpayReadmeDoc, token, 'Razorpay scale-hardening README parity'));
   [
     '**Paid-cycle plan entitlement:**',
-    '`cancelled` and `paused` subscriptions retain the purchased plan mirror only through a valid `cycleEndDate`',
+    'Current `active`, `cancelled`, and `paused` subscriptions carry the purchased plan mirror only when captured/manual payment evidence exists and `cycleEndDate` is exact and has not elapsed',
     'at most 500 due cancelled/paused rows each hour',
   ].forEach((token) => assertIncludes(razorpayReadmeDoc, token, 'Razorpay paid-cycle entitlement README parity'));
   [
-    'Current `active`, `cancelled`, and `paused` subscriptions carry an active plan type only while `cycleEndDate` is exact and has not elapsed',
+    'Current `active`, `cancelled`, and `paused` subscriptions carry an active plan type only when captured/manual payment evidence exists and `cycleEndDate` is exact and has not elapsed',
     'The hourly `subscription_access_expiry` maintenance task transitions at most 500 due cancelled/paused rows per run',
     'The store and platform plan mirrors retain the purchased plan through that same paid cycle',
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay paid-cycle entitlement implementation docs'));
@@ -903,7 +920,10 @@ function verifyBillingEntitlementBoundary() {
     'createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload)',
     'replacementForSubscriptionId',
     'getDirectActiveProductSubscriptionForStore(productId, tenantId, storeId)',
-    "providerPendingSubscription.status === 'created'",
+    'resolveRazorpayPendingCheckoutAction(providerPendingSubscription)',
+    "status: 'processing'",
+    'razorpayClient.subscriptions.cancel(pendingProviderId)',
+    'providerStatus: cleanupProviderStatus',
     'founderMonitorReplacementForSubscriptionId: replacementForSubscriptionId',
     'resolveSubscriptionReplacementEvidence(pending)',
     'const pendingQuantity = pending.quantity == null ? 1 : pending.quantity;',
@@ -1224,8 +1244,10 @@ function verifyBillingEntitlementBoundary() {
     'export async function applyProductSubscriptionPayment(',
     'return db.runTransaction(async (transaction) => {',
     'if (billingHistory.includes(paymentHistoryId)) {',
-    'const shouldResetCredits = billingHistory.length === 0',
-    '|| current.creditsLastResetMonth !== params.billingPeriod;',
+    'params.terminalSettlementPaymentId === paymentHistoryId',
+    "&& paymentHistoryId.startsWith('pay_')",
+    'const shouldResetCredits = !isTerminalSettlementRecovery && (',
+    '|| current.creditsLastResetMonth !== params.billingPeriod',
     "throw new Error('Subscription monthly credit allowance is invalid.');",
     'topUpCredits: _ignoredTopUpCredits',
     'transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });',
@@ -1239,6 +1261,7 @@ function verifyBillingEntitlementBoundary() {
     'current.status === params.nextStatus',
     "validateTransition(current.status, params.nextStatus, 'api:lifecycle-status-transaction')",
     'export async function applyProductSubscriptionUpgradeCarryForward(',
+    'newSubscription.billingHistory.includes(terminalCapturedPaymentId)',
     'transaction.get(oldSubscriptionRef)',
     'transaction.get(newSubscriptionRef)',
     "newSubscription.status !== 'active'",
@@ -1565,12 +1588,18 @@ function verifyBillingEntitlementBoundary() {
     'const gracePeriod = getGracePeriodInfo(current.pastDueSinceAt);',
     'if (!gracePeriod.hasKnownGracePeriod) {',
     'if (gracePeriod.remainingDays > 0) {',
+    'if (!hasVerifiedSubscriptionPaymentEvidence(sub)) return null;',
     'transaction.set(subscriptionRef, composeServerSubscriptionPayload(update), { merge: true });',
     'await safeSyncStorePlanEntitlementFromSubscription(result.subscription, "server:grace-period-auto-expire");',
   ].forEach((token) => assertIncludes(subscriptionServer, token, 'MenuList server subscription DAL document ID boundary'));
   assertNotIncludes(subscriptionServer, 'getSubscriptionsCollectionRefServer().doc(docId)', 'MenuList server subscription DAL must not build raw subscription refs');
   assertNotIncludes(subscriptionServer, 'return { ...(docSnap.data() as FirestoreSubscriptionDoc), id };', 'MenuList server subscription DAL must return the normalized Firestore doc ID');
   assertNotIncludes(subscriptionServer, '.doc(String(tenantId))', 'MenuList server subscription DAL must not build tenant fallback refs from raw tenant IDs');
+  assertIncludes(
+    productBillingServer,
+    "!/^pay_[A-Za-z0-9]+$/.test(paymentHistoryId)",
+    'captured subscription payment transaction identity boundary',
+  );
   [
     'export function normalizeBillingSubscriptionScopeDocumentId(value: unknown): BillingSubscriptionScopeDocumentId | null',
     'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
@@ -1984,7 +2013,8 @@ function verifyBillingEntitlementBoundary() {
   );
 
   [
-    'const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);',
+    'onContinuePendingSubscriptionCheckout,',
+    '} = usePaymentHandler(noopDispatcher);',
     'await onUpgradePlan(sub, plan, currency)',
     'await onClickPaymentCard(plan, currency',
     'await handleTopupPurchase(pack, currency)',
@@ -1993,6 +2023,32 @@ function verifyBillingEntitlementBoundary() {
     'otherReason: cancellationReason === CANCELLATION_REASON.OTHER',
     "sub.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing payment hook parity'));
+  [
+    "sub?.status === 'active'",
+    '!hasVerifiedSubscriptionPaymentEvidence(sub)',
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing unpaid-active projection'));
+  [
+    "activeSubscription.status === 'active'",
+    '!hasVerifiedSubscriptionPaymentEvidence(activeSubscription)',
+  ].forEach((token) => assertIncludes(desktopSubscriptionCard, token, 'desktop billing unpaid-active projection'));
+  [
+    'hasPaidSubscriptionAccess = hasValidSubscriptionAccess(subscription)',
+    'hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet',
+  ].forEach((token) => assertIncludes(desktopAddOutlet, token, 'desktop outlet paid-access boundary'));
+  [
+    'hasPaidSubscriptionAccess = hasValidSubscriptionAccess(activeSubscription)',
+    'hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet',
+  ].forEach((token) => assertIncludes(mobileLocations, token, 'mobile outlet paid-access boundary'));
+  assertIncludes(
+    websiteSubscriptionManagement,
+    '!hasVerifiedSubscriptionPaymentEvidence(activeSubscription)',
+    'website subscription unpaid-active projection',
+  );
+  assertIncludes(
+    websiteCreditPackCard,
+    'activeSubscription && hasValidSubscriptionAccess(activeSubscription)',
+    'website credit-pack paid-access boundary',
+  );
   [
     'const billingScopeKeyRef = useRef<string | null>(billingScopeKey);',
     'subscriptionRequestSequenceRef.current !== requestSequence',
@@ -2013,7 +2069,9 @@ function verifyBillingEntitlementBoundary() {
     'hasKnownGracePeriod: true',
     'getGracePeriodDisplayInfo',
     'if (!gracePeriodInfo.hasKnownGracePeriod || !gracePeriodInfo.graceEndsTimestamp)',
-    'const cycleEndDate = toValidDate(sub.cycleEndDate);',
+    'if (!hasVerifiedSubscriptionPaymentEvidence(sub)) return false;',
+    'return gracePeriod.hasKnownGracePeriod && gracePeriod.remainingDays > 0;',
+    'return hasCurrentSubscriptionPlanEntitlement(sub);',
     'const monthlyCredits = toNonNegativeSafeInteger(activeSubscription.monthlyCredits);',
     'const topUpCredits = toNonNegativeSafeInteger(activeSubscription.topUpCredits);',
     'const end = toValidDate(activeSubscription.cycleEndDate);',

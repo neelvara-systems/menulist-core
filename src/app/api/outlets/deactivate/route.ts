@@ -9,6 +9,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
@@ -318,7 +319,7 @@ export const POST = withAuth(async (request, session) => {
                 const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
                 if (sub && (sub.quantity || 1) > activeStoresAfterDeactivation) {
                     const providerSubId = getRazorpayManagedSubscriptionId(sub);
-                    if (providerSubId && sub.id) {
+                    if (providerSubId && sub.id && hasVerifiedSubscriptionPaymentEvidence(sub)) {
                         const newQty = activeStoresAfterDeactivation;
                         await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
                         await updateSubscription(sub.id, { quantity: newQty });

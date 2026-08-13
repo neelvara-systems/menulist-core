@@ -17,6 +17,8 @@ const baseSubscription = {
     sId: scope.storeId,
     storeId: scope.storeId,
     status: 'active',
+    paymentProvider: 'razorpay',
+    billingHistory: ['pay_Answerlattice123', 'pay_Answerlattice456'],
     planType: 'MONTH',
     currency: 'INR',
     amount: 1_200,
@@ -203,6 +205,17 @@ const completed = projectAnswerlatticeSubscriptionForRead(
 );
 assert(completed, 'terminal subscriptions must remain available to exact direct-ID lifecycle readers');
 assert.equal(isAnswerlatticeSubscriptionCurrent(completed), false);
+
+assert.equal(
+    projectActiveAnswerlatticeSubscriptionForRead(
+        { ...baseSubscription, billingHistory: [] },
+        'sub_Exact123',
+        scope.tenantId,
+        scope.storeId,
+    ),
+    null,
+    'provider active without captured payment evidence cannot authorize paid work',
+);
 
 assert.equal(
     projectActiveAnswerlatticeSubscriptionForRead(

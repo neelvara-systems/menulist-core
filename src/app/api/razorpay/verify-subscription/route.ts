@@ -3,6 +3,10 @@ import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
+    resolveRazorpayCheckoutVerificationOutcome,
+    resolveRazorpayProviderSubscriptionStatus,
+} from '@data/shared/razorpaySubscriptionLifecycle';
+import {
     applyProductSubscriptionPayment,
     getProductSubscriptionById,
     safeSyncProductSubscriptionEntitlementFromSubscription,
@@ -326,8 +330,29 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        // 4. --- OPTIMISTIC UPDATE ---
-        // The payment is verified. We can now confidently update our own database immediately.
+        const providerStatus = resolveRazorpayProviderSubscriptionStatus(providerSubscription.status);
+        const verificationOutcome = resolveRazorpayCheckoutVerificationOutcome(providerSubscription.status);
+        if (verificationOutcome === 'processing') {
+            logger.info('Captured payment is awaiting subscription activation', {
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('userId', userId),
+                providerStatus,
+                action: 'activation_processing',
+            });
+            return NextResponse.json({ success: true, status: 'processing' }, { status: 202 });
+        }
+        if (verificationOutcome !== 'active' || providerStatus !== 'active') {
+            logger.error('Provider subscription is not ready for settlement', undefined, {
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('userId', userId),
+                providerStatus,
+            });
+            return NextResponse.json({ success: false, error: 'Could not verify the subscription state.' }, { status: 502 });
+        }
+
+        // 4. --- VERIFIED SETTLEMENT ---
+        // Only an active provider subscription with a captured matching payment
+        // may activate local entitlement and apply money/credit side effects.
         logger.info('Payment verified successfully', {
             ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
             ...getBoundedRazorpayStringContext('userId', userId),
@@ -355,7 +380,8 @@ export const POST = withAuth(async (request, session) => {
 
         const billingPeriod = getProviderCycleBillingPeriodKey(providerState?.currentStartSeconds);
         if (
-            !providerState
+            providerStatus !== 'active'
+            || !providerState
             || billingPeriod === null
             || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
         ) {
@@ -375,6 +401,7 @@ export const POST = withAuth(async (request, session) => {
             userId,
             uId: userId,
             status: 'active',
+            providerStatus,
             planName: planDetails.name,
             planId: planDetails.planId,
 

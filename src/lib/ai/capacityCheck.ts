@@ -10,7 +10,10 @@ import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { getBillingPeriodKey } from "@lib/billing/billingPeriod";
-import { hasCurrentSubscriptionPlanEntitlement } from "@lib/billing/subscriptionPlanEntitlement";
+import {
+    hasCurrentSubscriptionPlanEntitlement,
+    hasVerifiedSubscriptionPaymentEvidence,
+} from "@lib/billing/subscriptionPlanEntitlement";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -41,6 +44,7 @@ export function hasCurrentAiCapacitySubscriptionEntitlement(
     nowMs = Date.now(),
 ): boolean {
     if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (!hasVerifiedSubscriptionPaymentEvidence(subscription)) return false;
     if (subscription.status !== "past_due") {
         return hasCurrentSubscriptionPlanEntitlement(subscription, nowMs);
     }

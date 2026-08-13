@@ -17,6 +17,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { logger } from "@lib/monitoring/logger";
@@ -137,6 +138,12 @@ export const POST = withAuth(async (request, session) => {
 
         if (internalSub.status !== 'paused') {
             return NextResponse.json({ error: "Only paused subscriptions can be resumed." }, { status: 400 });
+        }
+        if (!hasVerifiedSubscriptionPaymentEvidence(internalSub)) {
+            return NextResponse.json(
+                { error: 'Billing settlement is still being verified. Please contact support.' },
+                { status: 409 },
+            );
         }
 
         if (!validateTransition(internalSub.status, 'active', 'api:resume-subscription')) {

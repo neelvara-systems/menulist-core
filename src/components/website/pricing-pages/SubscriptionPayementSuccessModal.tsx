@@ -8,7 +8,7 @@ import { Button } from '@shadcncomponents/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@shadcncomponents/dialog';
 import { useTranslations } from 'next-intl';
 import React from 'react';
-import { LuCheckCircle } from 'react-icons/lu';
+import { LuCheckCircle, LuClock3 } from 'react-icons/lu';
 
 interface SubscriptionPayementSuccessModalProps {
     isOpen: boolean;
@@ -51,6 +51,10 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
     const planName = purchaseIntent?.plan?.name
         ?.replace(' (Yearly)', '')
         .replace(' (Monthly)', '') || t('Pricing.successPlanFallback');
+    const isActivationProcessing = typeof paymentDetails === 'object'
+        && paymentDetails !== null
+        && 'activationStatus' in paymentDetails
+        && paymentDetails.activationStatus === 'processing';
 
     return (
         <Dialog
@@ -61,10 +65,16 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
         >
             <DialogContent className="sm:max-w-md">
                 <DialogHeader className="items-center text-center">
-                    <LuCheckCircle aria-hidden="true" className="mb-3 h-16 w-16 text-green-600" />
-                    <DialogTitle>{t('Pricing.successPaymentTitle')}</DialogTitle>
+                    {isActivationProcessing
+                        ? <LuClock3 aria-hidden="true" className="mb-3 h-16 w-16 text-blue-600" />
+                        : <LuCheckCircle aria-hidden="true" className="mb-3 h-16 w-16 text-green-600" />}
+                    <DialogTitle>
+                        {isActivationProcessing ? 'Payment received' : t('Pricing.successPaymentTitle')}
+                    </DialogTitle>
                     <DialogDescription className="text-center">
-                        {t('Pricing.successPaymentBody', { plan: planName })}
+                        {isActivationProcessing
+                            ? `We are confirming your ${planName} subscription. Your dashboard will update automatically after Razorpay activates it.`
+                            : t('Pricing.successPaymentBody', { plan: planName })}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="mt-4 gap-2 sm:justify-center">

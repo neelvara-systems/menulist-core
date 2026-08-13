@@ -35,6 +35,7 @@ export async function finalizeProductSubscriptionReplacement(params: {
     source: string;
     storeId: number;
     tenantId: number;
+    terminalCapturedPaymentId?: string;
     requireReplacementMarker?: boolean;
 }): Promise<ProductSubscriptionUpgradeApplicationResult> {
     const {
@@ -44,6 +45,7 @@ export async function finalizeProductSubscriptionReplacement(params: {
         source,
         storeId,
         tenantId,
+        terminalCapturedPaymentId,
         requireReplacementMarker = true,
     } = params;
     const [oldSubscription, newSubscription] = await Promise.all([
@@ -79,7 +81,12 @@ export async function finalizeProductSubscriptionReplacement(params: {
         && newSubscription.carryForwardFromSubscriptionId === oldSubscriptionId
     );
     if (!carryForwardAlreadyApplied) {
-        if (newSubscription.status !== 'active') {
+        const terminalReplacementAllowed = typeof terminalCapturedPaymentId === 'string'
+            && terminalCapturedPaymentId.startsWith('pay_')
+            && Array.isArray(newSubscription.billingHistory)
+            && newSubscription.billingHistory.includes(terminalCapturedPaymentId)
+            && (newSubscription.status === 'cancelled' || newSubscription.status === 'completed');
+        if (newSubscription.status !== 'active' && !terminalReplacementAllowed) {
             throw new Error('Replacement subscription is not active.');
         }
         const providerSubscriptionId = getRazorpayManagedSubscriptionId(oldSubscription);
@@ -97,6 +104,7 @@ export async function finalizeProductSubscriptionReplacement(params: {
         newSubscriptionId,
         oldSubscriptionId,
         storeId,
+        terminalCapturedPaymentId,
         tenantId,
     });
     if (!application || (!application.applied && !application.duplicate)) {
@@ -111,7 +119,7 @@ export async function finalizeProductSubscriptionReplacement(params: {
     await safeSyncProductSubscriptionEntitlementFromSubscription(
         productId,
         application.newSubscription,
-        `${source}:new-active`,
+        `${source}:new-${application.newSubscription.status}`,
     );
     return application;
 }

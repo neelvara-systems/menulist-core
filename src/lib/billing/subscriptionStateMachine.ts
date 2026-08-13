@@ -19,7 +19,7 @@ import { getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostic
  * Any transition not listed here is considered invalid and will be logged as a warning.
  *
  * State diagram:
- *   pending  ─→ active | past_due | cancelled
+ *   pending  ─→ active | past_due | cancelled | expired
  *   active   ─→ past_due | paused | cancelled | completed | expired (upgrade)
  *   past_due ─→ active | cancelled | expired
  *   paused   ─→ active | cancelled | expired (upgrade)
@@ -28,7 +28,7 @@ import { getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostic
  *   completed ─→ (terminal)
  */
 const VALID_TRANSITIONS: Readonly<Record<string, readonly PaymentStatus[]>> = {
-    pending:   ["active", "past_due", "cancelled"],
+    pending:   ["active", "past_due", "cancelled", "expired"],
     active:    ["past_due", "paused", "cancelled", "completed", "expired"],
     past_due:  ["active", "cancelled", "expired"],
     paused:    ["active", "cancelled", "expired"],

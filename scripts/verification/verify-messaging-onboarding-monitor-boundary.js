@@ -33,7 +33,13 @@ function assertOrder(source, tokens, label) {
   }
 }
 
-function verifyProviderRuntimeBoundary(providerRegistry, constants, webhookHandler, envFiles) {
+function verifyProviderRuntimeBoundary(
+  providerRegistry,
+  constants,
+  webhookHandler,
+  functionsEnvFiles,
+  rootEnvFiles,
+) {
   [
     'const providerRegistry: Partial<Record<MessagingProvider, () => IMessagingProvider>> = {',
     'whatsapp: () => new WhatsAppAdapter(),',
@@ -54,12 +60,22 @@ function verifyProviderRuntimeBoundary(providerRegistry, constants, webhookHandl
     'MESSAGING_ONBOARDING_PROVIDERS: readProvidersEnv()',
   ].forEach((token) => assertIncludes(constants, token, 'Messaging onboarding Functions flag defaults'));
 
-  Object.entries(envFiles).forEach(([label, source]) => {
+  Object.entries(functionsEnvFiles).forEach(([label, source]) => {
     [
       'ENABLE_MESSAGING_ONBOARDING=false',
       'MESSAGING_ONBOARDING_PROVIDERS=whatsapp',
     ].forEach((token) => {
       assertIncludes(source, token, `Messaging onboarding ${label} env defaults`);
+    });
+  });
+
+  Object.entries(rootEnvFiles).forEach(([label, source]) => {
+    [
+      'ENABLE_MESSAGING_ONBOARDING=',
+      'MESSAGING_ONBOARDING_PROVIDERS=',
+      'ENABLE_MESSAGING_ONBOARDING_TRACKING=',
+    ].forEach((token) => {
+      assertNotIncludes(source, token, `Messaging onboarding ${label} Functions-only env boundary`);
     });
   });
 
@@ -542,13 +558,15 @@ function verifyMessagingOnboardingMonitorBoundary() {
     constants: read('functions/src/messagingOnboarding/constants.ts'),
     webhookHandler: read('functions/src/messagingOnboarding/webhookHandler.ts'),
     healthMonitor: read('functions/src/messagingOnboarding/healthMonitor.ts'),
-    envFiles: {
-      stagingExample: read('.env.staging.example'),
-      productionExample: read('.env.production.example'),
+    functionsEnvFiles: {
       functionsQa: read('functions/.env.menulist-qa'),
       functionsProduction: read('functions/.env.menulist'),
       functionsQaExample: read('functions/.env.menulist-qa.example'),
       functionsProductionExample: read('functions/.env.menulist.example'),
+    },
+    rootEnvFiles: {
+      stagingExample: read('.env.staging.example'),
+      productionExample: read('.env.production.example'),
     },
     monitor: read('src/components/templates/main-app/platform/messagingOnboardingMonitor/index.tsx'),
     opsBoundary: read('src/lib/ops/messagingOnboardingOpsBoundary.ts'),
@@ -573,7 +591,13 @@ function verifyMessagingOnboardingMonitorBoundary() {
     changelogDoc: read('__docs__/changelog.md'),
   };
 
-  verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.webhookHandler, files.envFiles);
+  verifyProviderRuntimeBoundary(
+    files.providerRegistry,
+    files.constants,
+    files.webhookHandler,
+    files.functionsEnvFiles,
+    files.rootEnvFiles,
+  );
   verifyRoute(files.route);
   verifyHealthMonitor(files.healthMonitor);
   verifyOpsBoundary(files.opsBoundary);

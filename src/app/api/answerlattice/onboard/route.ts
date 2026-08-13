@@ -149,6 +149,7 @@ type AnswerlatticePendingSubscriptionSummary = {
     planId: string;
     planName: string;
     providerSubscriptionId: string;
+    providerStatus: 'created';
     sId: number;
     shortUrl: string;
     status: 'pending';
@@ -182,6 +183,7 @@ const parseAnswerlatticePendingOnboardingSummary = (
         || !plan
         || !shortUrl
         || raw.status !== 'pending'
+        || (raw.providerStatus !== undefined && raw.providerStatus !== 'created')
         || raw.pId !== PRODUCT_IDS.ANSWERLATTICE
         || normalizeAnswerlatticeScopeDocumentId(raw.tId) !== scope.tenantId
         || normalizeAnswerlatticeScopeDocumentId(raw.sId) !== scope.storeId
@@ -1186,6 +1188,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             currency,
             amount: price,
             status: 'pending',
+            providerStatus: 'created',
             lastWebhook: null,
             planId: plan.planId,
             planName: plan.name,
@@ -1227,6 +1230,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             planId: plan.planId,
             planName: plan.name,
             providerSubscriptionId,
+            providerStatus: 'created',
             sId: result.storeId,
             shortUrl,
             status: 'pending',

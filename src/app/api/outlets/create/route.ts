@@ -19,6 +19,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles, getOwnerRoleId } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
@@ -300,7 +301,7 @@ export const POST = withAuth(async (request, session) => {
                     { status: 402 },
                 );
             }
-            if (sub.status !== 'active') {
+            if (sub.status !== 'active' || !hasValidSubscriptionAccess(sub)) {
                 return NextResponse.json(
                     { error: "Billing needs attention before adding another location" },
                     { status: 402 },

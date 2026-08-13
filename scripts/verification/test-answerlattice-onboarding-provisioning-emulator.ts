@@ -140,6 +140,7 @@ async function run(): Promise<void> {
         productId: PRODUCT_IDS.ANSWERLATTICE,
         providerPlanId: 'plan_contract',
         providerSubscriptionId: subscriptionId,
+        providerStatus: 'created',
         pId: PRODUCT_IDS.ANSWERLATTICE,
         sId: scope.storeId,
         status: 'pending',
@@ -201,6 +202,7 @@ async function run(): Promise<void> {
             planId: 'answerlattice_starter',
             planName: 'Starter',
             providerSubscriptionId: subscriptionId,
+            providerStatus: 'created',
             sId: scope.storeId,
             shortUrl: 'https://rzp.io/rzp/contract',
             status: 'pending',
@@ -224,6 +226,7 @@ async function run(): Promise<void> {
         assert.equal(data.onboardingProviderRecoveryAvailableAt, null);
         assert.equal(data.onboardingProviderSubscriptionId, subscriptionId);
     }
+    assert.equal(subscriptionFinal.data()?.providerStatus, 'created');
     assert.equal(subscriptionFinal.data()?.pId, PRODUCT_IDS.ANSWERLATTICE);
     assert.equal(subscriptionFinal.data()?.productId, PRODUCT_IDS.ANSWERLATTICE);
     assert.equal(subscriptionFinal.data()?.tId, scope.tenantId);

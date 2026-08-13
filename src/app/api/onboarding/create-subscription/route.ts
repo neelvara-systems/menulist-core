@@ -696,6 +696,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             currency,
             amount: selectedPrice.price,
             status: "pending",
+            providerStatus: "created",
             lastWebhook: null,
             planId: planId,
             planName: selectedPlan.name,

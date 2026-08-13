@@ -622,6 +622,7 @@ export async function applyProductSubscriptionPayment(
         paymentHistoryId: string;
         statusEntry: FirestoreSubscriptionDoc['statuses'][number];
         subscriptionId: string;
+        terminalSettlementPaymentId?: string;
         update: Partial<FirestoreSubscriptionDoc>;
     },
 ): Promise<ProductSubscriptionPaymentApplicationResult | null> {
@@ -636,6 +637,7 @@ export async function applyProductSubscriptionPayment(
         !subscriptionId
         || paymentHistoryId !== params.paymentHistoryId
         || paymentHistoryId.length > 180
+        || !/^pay_[A-Za-z0-9]+$/.test(paymentHistoryId)
         || !isValidFirestoreDocumentId(paymentHistoryId)
         || !isValidBillingPeriodKey(params.billingPeriod)
     ) {
@@ -665,7 +667,13 @@ export async function applyProductSubscriptionPayment(
                 subscription: current,
             };
         }
-        if (!validateTransition(current.status, 'active', 'payment:captured')) {
+        const isTerminalSettlementRecovery = params.terminalSettlementPaymentId === paymentHistoryId
+            && paymentHistoryId.startsWith('pay_')
+            && (current.status === 'cancelled' || current.status === 'completed');
+        if (
+            !isTerminalSettlementRecovery
+            && !validateTransition(current.status, 'active', 'payment:captured')
+        ) {
             return {
                 applied: false,
                 duplicate: false,
@@ -673,28 +681,26 @@ export async function applyProductSubscriptionPayment(
                 subscription: current,
             };
         }
-        if (isAnswerlatticeBillingProduct(productId) && currentScope) {
+        if (isAnswerlatticeBillingProduct(productId) && currentScope && !isTerminalSettlementRecovery) {
             await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, currentScope);
         }
 
-        const {
-            billingHistory: _ignoredBillingHistory,
-            creditsLastResetMonth: _ignoredResetPeriod,
-            monthlyCredits: _ignoredMonthlyCredits,
-            statuses: _ignoredStatuses,
-            topUpCredits: _ignoredTopUpCredits,
-            ...safeUpdate
-        } = params.update;
-        const shouldResetCredits = billingHistory.length === 0
-            || current.creditsLastResetMonth !== params.billingPeriod;
+        const safeUpdate = isTerminalSettlementRecovery
+            ? (params.update.paymentMethod ? { paymentMethod: params.update.paymentMethod } : {})
+            : params.update;
+        const shouldResetCredits = !isTerminalSettlementRecovery && (
+            billingHistory.length === 0
+            || current.creditsLastResetMonth !== params.billingPeriod
+        );
         const nextAllowance = safeUpdate.monthlyCreditsAllowance ?? current.monthlyCreditsAllowance ?? 0;
         if (!Number.isSafeInteger(nextAllowance) || nextAllowance < 0) {
             throw new Error('Subscription monthly credit allowance is invalid.');
         }
         const update: Partial<FirestoreSubscriptionDoc> = {
             ...safeUpdate,
-            status: 'active' as const,
-            pastDueSinceAt: null,
+            status: isTerminalSettlementRecovery ? current.status : 'active' as const,
+            ...(isTerminalSettlementRecovery ? {} : { pastDueSinceAt: null }),
+            capturedPaymentSyncPending: false,
             billingHistory: [...billingHistory, paymentHistoryId],
             statuses: appendBoundedBillingStatusHistory(current.statuses, params.statusEntry),
             ...(shouldResetCredits ? {
@@ -866,6 +872,7 @@ export async function applyProductSubscriptionUpgradeCarryForward(
         newSubscriptionId: string;
         oldSubscriptionId: string;
         storeId: number;
+        terminalCapturedPaymentId?: string;
         tenantId: number;
     },
 ): Promise<ProductSubscriptionUpgradeApplicationResult | null> {
@@ -920,6 +927,14 @@ export async function applyProductSubscriptionUpgradeCarryForward(
         );
         const carriedFromId = normalizeSubscriptionId(newSubscription.carryForwardFromSubscriptionId);
         const storedCarryForwardCredits = Number(newSubscription.carryForwardCredits);
+        const terminalCapturedPaymentId = typeof params.terminalCapturedPaymentId === 'string'
+            && params.terminalCapturedPaymentId.startsWith('pay_')
+            ? params.terminalCapturedPaymentId
+            : null;
+        const terminalReplacementAllowed = terminalCapturedPaymentId !== null
+            && Array.isArray(newSubscription.billingHistory)
+            && newSubscription.billingHistory.includes(terminalCapturedPaymentId)
+            && (newSubscription.status === 'cancelled' || newSubscription.status === 'completed');
         const duplicate = (
             scopeMatches
             && oldSubscription.status === 'expired'
@@ -939,7 +954,7 @@ export async function applyProductSubscriptionUpgradeCarryForward(
         if (
             !scopeMatches
             || oldSubscription.status === 'expired'
-            || newSubscription.status !== 'active'
+            || (newSubscription.status !== 'active' && !terminalReplacementAllowed)
             || (carriedFromId && carriedFromId !== oldSubscriptionId)
             || !validateTransition(oldSubscription.status, 'expired', 'api:upgrade-subscription-transaction')
         ) {
@@ -1037,6 +1052,7 @@ export async function applyProductSubscriptionWebhookEvent(
     productId: ProductId,
     params: {
         eventKey: string;
+        expectedStatuses?: FirestoreSubscriptionDoc['status'][];
         nextStatus?: FirestoreSubscriptionDoc['status'];
         statusEntry?: FirestoreSubscriptionDoc['statuses'][number];
         subscriptionId: string;
@@ -1077,6 +1093,17 @@ export async function applyProductSubscriptionWebhookEvent(
             return {
                 applied: false,
                 duplicate: true,
+                previousSubscription: current,
+                subscription: current,
+            };
+        }
+        if (
+            params.expectedStatuses?.length
+            && !params.expectedStatuses.includes(current.status)
+        ) {
+            return {
+                applied: false,
+                duplicate: false,
                 previousSubscription: current,
                 subscription: current,
             };

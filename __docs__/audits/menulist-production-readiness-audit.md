@@ -1,5 +1,13 @@
 # MenuList Production Readiness Audit
 
+## Razorpay Pending Checkout Recovery - August 13, 2026
+
+- End-user QA found a pending eMandate whose Razorpay hosted link returned an invalid-anchor error while provider and Firestore truth correctly remained unpaid/pending. The create payload did not send `start_at`; provider plan period/interval/amount were valid.
+- Authenticated MenuList desktop/mobile, website subscription management, and Answerlattice onboarding now converge on canonical Billing and one provider-checked Continue Checkout path. No pending owner surface opens `shortUrl`.
+- Shared app/Functions policy holds a `created` eMandate for 48 hours, then permits only a user-triggered replacement after provider cancellation and terminal proof. Exact product/tenant/store/plan/quantity/replacement intent is rechecked transactionally before local expiry.
+- All online subscription creation paths persist exact `providerStatus: created` beside local `pending`. Pending enhancement access is not presented as available, and no processing branch grants entitlement, cash, MRR, payment history, notification, or credit reset.
+- Remaining external proof: release the current app/API source to Vercel staging through the approved deployment path, then verify Continue Checkout against a disposable Razorpay Test Mode subscription. No production provider state is required or approved for this check.
+
 ## Persisted Tenant Alias Agreement - July 28, 2026
 
 - Shared store-summary and immediate Admin authority consumers now require every supplied canonical/legacy tenant and store alias to agree before subdomain, outlet-policy, analytics, nightly, backfill or owner-recipient work.
@@ -6791,6 +6799,111 @@ nor a bound secret version changed. Continue the separate project CRUD,
 customer-link, authenticated device, Razorpay, WhatsApp, POS, batch worker, and
 remaining scoped Function certification gates; do not infer them from this
 result.
+
+## QA Customer Link Certification Checkpoint - August 13, 2026
+
+Expected: a disposable QA store/project resolves through the wildcard customer
+domain to the current OBP and generated project menu without production writes.
+Actual: on Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`,
+Chrome created project `1-msrgdura-AIe2cGaeK9XhyBJkf6HN-1` at QA scope `1/1`.
+A unique temporary store subdomain then opened the OBP and its generated
+`qa-k09-crud-2026-08-13` project link. The project surface rendered the honest
+empty-menu state.
+Result: passed for the customer-link boundary; `QA-K10` closed. Project CRUD is
+not fully certified: create and immediate read passed, while reload, update,
+and normal delete remain blocked by the excluded Firebase Auth bootstrap
+boundary, so `QA-K09` remains open.
+Evidence: the linked project returned HTTP 200 with
+`x-matched-path: /client/[[...slug]]`, exact tenant-subdomain headers, and
+`x-robots-tag: noindex, nofollow, noarchive`. The current immutable browser
+bundle logged bounded Firebase bootstrap/project failures after reload while
+Vercel recorded HTTP 200 for `/api/auth/set-claims`; this supersedes the earlier
+stale-service-worker diagnosis and does not classify the excluded Auth flow as
+passing.
+Cleanup: guarded rollback removed the temporary subdomain, project, sole
+project-summary document, and zero-value subscription. Independent Admin
+readback confirmed all three documents absent and no store subdomain remaining.
+Production Firebase and Vercel Production were not queried or changed.
+Follow-up: repair and separately certify the Firebase Auth bootstrap boundary,
+then rerun project read/update/delete in Chrome to close `QA-K09`. Do not reopen
+`QA-K10` unless the wildcard/customer-rendering contract changes.
+
+## MenuList QA Razorpay Test Webhook Checkpoint - August 13, 2026
+
+Expected: Razorpay Test Mode sends a provider-originated signed event to the
+exact QA endpoint, the current staging deployment accepts it, and the bounded
+test leaves no durable synthetic QA billing records.
+Actual: the enabled Test Mode webhook at
+`https://app.menulist.digital/api/razorpay/webhook` subscribes to 12 events:
+`payment.failed`, `order.paid`, `refund.processed`, `subscription.paused`,
+`subscription.resumed`, `subscription.activated`, `subscription.pending`,
+`subscription.halted`, `subscription.charged`, `subscription.cancelled`,
+`subscription.completed`, and `subscription.updated`. One disposable INR 1
+Test Mode order completed through the provider's mock netbanking success path
+and generated `order.paid`.
+Result: passed for webhook transport; `QA-K21` closed. Vercel Preview logs record
+POST `/api/razorpay/webhook`, branch `staging`, environment `preview`, HTTP 200,
+and present event and product identifiers. The maintained wrong-signature smoke
+continues to return HTTP 403.
+Cleanup: guarded deletion removed the exact temporary `payment_transactions`
+audit and `razorpayWebhookEvents` ledger. Independent bounded Firestore REST
+readback against `menulist-qa` confirmed both identities absent. The simulated
+provider order/payment remains only as immutable Razorpay Test Mode evidence;
+no real charge, Live Mode operation, production query, or production write was
+performed.
+Recurring lifecycle follow-up: the earlier HTTP 401 result is superseded.
+Bounded Plans and Subscriptions reads now return HTTP 200. The hosted MenuList
+flow created one canonical Starter Yearly plan (`plan_TPGo0iCOW9gJmT`) and one
+disposable subscription (`sub_TPGo1XmddplChB`) through the application path.
+Card authorization was not bypassed at Razorpay's saved-card token OTP boundary.
+An eMandate retry reached the provider's mock-bank Success result, but current
+API readback still reports the subscription as `created`, with no captured
+payment, billing cycle, or lifecycle webhook. Activation/charge delivery and
+local entitlement synchronization therefore remain pending provider-transition
+evidence. `subscription.authenticated` is deliberately not subscribed because
+the route does not handle that non-entitled pre-activation state. No real charge,
+Live Mode operation, production query, or production write was performed.
+
+Current source follow-up: the preceding 12-event statement is historical hosted
+transport evidence. The reviewed route now handles all 10 documented
+subscription events and requires the documented provider status for each before
+the event claim. It prefers `x-razorpay-event-id`, hashes unsafe identities, and
+requires matching captured-payment evidence for `subscription.charged`.
+Authentication stays local pending; activation applies lifecycle/entitlement
+without money; charged alone settles recurring payment. Emulator coverage proves
+10/10 event behavior, no-quantity updates, replay, exact-scope replacement, and
+late charge after cancelled/completed without entitlement reopening or credit
+reset. This app-side source is not yet hosted, so the Razorpay Test dashboard
+must retain the certified 12-event selection until the approved Vercel staging
+deployment is Ready; then add `subscription.authenticated` and run the provider
+lifecycle matrix.
+
+## MenuList QA Meta Webhook Checkpoint - August 13, 2026
+
+Expected: the isolated Meta QA app verifies the exact `menulist-qa` callback,
+subscribes only to `messages`, and sends one provider-signed dashboard test to
+the QA Function without activating production messaging assets.
+Actual: a controlled QA-only revision temporarily enabled
+`messagingOnboarding`. Meta verified
+`https://us-central1-menulist-qa.cloudfunctions.net/messagingOnboarding/whatsapp`
+with the vaulted verify token. `MenuList QA Messaging` now has exactly one
+WhatsApp Business Account webhook field subscribed: `messages` at `v26.0`.
+Cloud Logging records the controlled wrong-token GET at HTTP 403, the provider
+challenge at HTTP 200 with `[WhatsApp] Webhook verification successful`, and
+the Meta dashboard test POST at HTTP 200 with no invalid-signature log.
+Result: passed; `QA-K22` closed. Bounded Firestore REST queries found no
+`messagingOnboardingInboundMessages` or `messagingOnboardingEvents` documents
+from the provider sample, so no synthetic data deletion was required.
+Restoration: the repository flag was returned to
+`ENABLE_MESSAGING_ONBOARDING=false`, the single Function was rebuilt and
+redeployed, and metadata readback reports `ACTIVE` hash
+`ee465f97efe387e86727b849b8f222534d6a6c84`, provider `whatsapp`, tracking
+enabled, and the four WhatsApp secret bindings still on version 1. A disabled
+endpoint probe returns HTTP 200 `OK`. The callback and sole subscription remain
+registered while the Meta app remains unpublished; no production number,
+payment method, production project, publish-state change, or production
+message was used.
+
 ## Razorpay Checkout Concurrency And Scale Checkpoint - July 14, 2026
 
 Razorpay long-term hardening is implemented in source without changing desktop/mobile request or response contracts. Existing-user subscription and top-up creation use actor/request-bound central server leases with a versioned pre-provider state, a transactional provider-start fence, exact provider attempt recovery, an immutable provider-ID checkpoint, an attempt-derived unique top-up receipt, and a short completed-attempt replay checkpoint. An expired provider-ambiguous subscription can recover or wait but cannot create again; top-up recovery retains the same receipt/attempt. Ordinary cleanup cannot delete provider state, and unversioned rolling-release leases fail into recovery. Provider-plan creation uses a separate versioned durable registry plus complete bounded provider scanning: only expired pre-provider work can change owner, while provider-started or unversioned ambiguity remains recovery-only until the canonical plan appears. Signed webhook coordination now separates processed replay from active work: active work returns retryable `503`, failed/expired work can be re-owned, and exact attempt-fenced terminal replacement prevents stale workers from downgrading success. Deterministic failure alerts/messages and immutable payment-audit creation time keep replay side effects stable; the Admin serializer preserves real FieldValue timestamps. Inherited-outlet top-up audits use the shared HQ billing store so paid packs remain visible in the effective desktop/mobile billing history. New status writes retain the latest 100 diagnostic entries while payment-id idempotency history remains intact. The consolidated Functions reconciler processes five provider calls at a time, checkpoints every complete 100-row page, resumes within a six-minute work budget, and caps detailed result samples. The same scheduler writes one daily server-only `systemHealth/billing` summary that separately observes expired pre-provider, provider-ambiguous, provider-created and webhook state. `billingCheckoutLeases`, `billingProviderPlans`, and `razorpayWebhookEvents` are explicitly client-denied; exact checkout-status/expiry and webhook-status/processing-expiry composite indexes prevent terminal/completed rows from masking live recovery risk. Root TypeScript, scoped lint, Functions build, billing/API source gates, checkout/provider-plan/webhook Admin emulators and coordination-rules emulator pass locally. Owner-pending work remains: restore Firebase CLI authentication and run the maintained combined QA deploy, deploy the app through the separately approved Vercel path, then run disposable Razorpay test-mode concurrent/lost-response subscription, top-up, plan-creation and webhook mutation smoke. No live charge, production deploy, or launch certification is claimed.

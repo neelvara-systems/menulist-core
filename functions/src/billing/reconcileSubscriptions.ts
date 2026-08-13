@@ -8,7 +8,7 @@
  * - Runs alongside existing nightly scheduler (no extra cron needed)
  * - Same infrastructure as other nightly jobs
  *
- * Fetches all active/past_due/paused subscriptions from Firestore,
+ * Fetches all pending/active/past_due/paused subscriptions from Firestore,
  * compares with Razorpay's authoritative state, and syncs mismatches.
  * This is the safety net for webhook failures.
  *
@@ -21,7 +21,15 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
+import {
+    RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP,
+    resolveRazorpayProviderSubscriptionStatus,
+} from '../sharedData/razorpaySubscriptionLifecycle';
 import { getExactMenuListSubscriptionScope } from './subscriptionScope';
+import {
+    getExactRazorpayPaymentHistory,
+    hasVerifiedSubscriptionPaymentEvidence,
+} from './subscriptionPaymentEvidence';
 import {
     getBoundedFunctionsErrorCode,
     getBoundedFunctionsErrorName,
@@ -62,17 +70,6 @@ export function projectSubscriptionEntitlementAuditStatus(value: unknown): Payme
         ? value as PaymentStatus
         : null;
 }
-
-// Map Razorpay API status → our internal PaymentStatus
-const RAZORPAY_STATUS_MAP: Record<string, PaymentStatus> = {
-    active: 'active',
-    pending: 'past_due',
-    halted: 'past_due',
-    paused: 'paused',
-    cancelled: 'cancelled',
-    completed: 'completed',
-    expired: 'expired',
-};
 
 const BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED =
     'BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED';
@@ -133,6 +130,7 @@ function getReconciliationUpdateLogContext(updates: Record<string, any>): Record
         hasCycleStartUpdate: updateKeys.includes('cycleStartDate'),
         hasCycleEndUpdate: updateKeys.includes('cycleEndDate'),
         hasPaidCountUpdate: updateKeys.includes('totalPaymentsMadeCount'),
+        hasCapturedPaymentSyncPendingUpdate: updateKeys.includes('capturedPaymentSyncPending'),
         hasRenewsOnUpdate: updateKeys.includes('renewsOn'),
         hasQuantityUpdate: updateKeys.includes('quantity'),
     };
@@ -216,6 +214,7 @@ export function hasCurrentSubscriptionPlanEntitlement(
     nowMs = Date.now(),
 ): boolean {
     if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (!hasVerifiedSubscriptionPaymentEvidence(sub)) return false;
     if (!['active', 'cancelled', 'paused'].includes(status)) return false;
     if (sub.cycleEndDate === undefined || sub.cycleEndDate === null) return false;
     const cycleEndMs = toTimestampMillis(sub.cycleEndDate);
@@ -387,7 +386,7 @@ export async function syncStorePlanEntitlement(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
-    pending: ['active', 'past_due', 'cancelled'],
+    pending: ['active', 'past_due', 'cancelled', 'expired'],
     active: ['past_due', 'paused', 'cancelled', 'completed', 'expired'],
     past_due: ['active', 'cancelled', 'expired'],
     paused: ['active', 'cancelled', 'expired'],
@@ -472,6 +471,40 @@ function getProviderSubscriptionQuantity(value: unknown): number | null {
         : null;
 }
 
+export function getReconciliationPaymentAuthorityDecision(
+    current: Record<string, any>,
+    providerStatus: string | null,
+    providerPaidCount: number | null,
+    providerCycleStart: unknown,
+): {
+    canApplyProviderActiveStatus: boolean;
+    canSyncProviderCycle: boolean;
+    capturedPaymentSyncPending: boolean;
+    localPaidCount: number | null;
+} {
+    const localPaidCount = getNonNegativeSafeInteger(current.totalPaymentsMadeCount);
+    const paymentHistoryIds = getExactRazorpayPaymentHistory(current);
+    const hasExactLocalPaymentLedger = localPaidCount !== null
+        && localPaidCount > 0
+        && paymentHistoryIds.length >= localPaidCount;
+    const providerCountMatchesLedger = providerPaidCount !== null
+        && providerPaidCount === localPaidCount;
+    const canApplyProviderActiveStatus = providerStatus === 'active'
+        && hasExactLocalPaymentLedger
+        && providerCountMatchesLedger;
+    const providerBillingPeriod = getProviderBillingPeriod(providerCycleStart);
+    const localBillingPeriod = getNonNegativeSafeInteger(current.creditsLastResetMonth);
+
+    return {
+        canApplyProviderActiveStatus,
+        canSyncProviderCycle: canApplyProviderActiveStatus
+            && providerBillingPeriod !== null
+            && providerBillingPeriod === localBillingPeriod,
+        capturedPaymentSyncPending: providerStatus === 'active' && !canApplyProviderActiveStatus,
+        localPaidCount,
+    };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RAZORPAY CLIENT (initialized lazily with Firebase secrets)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -535,7 +568,7 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         let pageQuery = subscriptionsRef
             .where('pId', '==', MENULIST_PRODUCT_ID)
             .where('productId', '==', MENULIST_PRODUCT_ID)
-            .where('status', 'in', ['active', 'past_due', 'paused'])
+            .where('status', 'in', ['pending', 'active', 'past_due', 'paused'])
             .orderBy(FieldPath.documentId())
             .limit(pageSize);
         if (lastDocumentId) pageQuery = pageQuery.startAfter(lastDocumentId);
@@ -589,7 +622,45 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
 
                     const updates: Record<string, any> = {};
                     const changes: Array<{ field: string; local: string; remote: string }> = [];
-                    const rzpStatus = RAZORPAY_STATUS_MAP[String(rzpSub.status || '')];
+                    const providerStatus = resolveRazorpayProviderSubscriptionStatus(rzpSub.status);
+                    const providerPaidCount = getNonNegativeSafeInteger(rzpSub.paid_count);
+                    const paymentAuthority = getReconciliationPaymentAuthorityDecision(
+                        current,
+                        providerStatus,
+                        providerPaidCount,
+                        rzpSub.current_start,
+                    );
+                    const mappedRzpStatus = providerStatus
+                        ? RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP[providerStatus]
+                        : null;
+                    const rzpStatus = providerStatus === 'active'
+                        && !paymentAuthority.canApplyProviderActiveStatus
+                        ? current.status as PaymentStatus
+                        : mappedRzpStatus;
+                    if (providerStatus && providerStatus !== current.providerStatus) {
+                        updates.providerStatus = providerStatus;
+                        changes.push({
+                            field: 'providerStatus',
+                            local: String(current.providerStatus || 'unknown'),
+                            remote: providerStatus,
+                        });
+                    }
+                    const terminalProviderStatus = providerStatus === 'cancelled'
+                        || providerStatus === 'completed'
+                        || providerStatus === 'expired';
+                    const nextCapturedPaymentSyncPending = providerStatus === 'active'
+                        ? paymentAuthority.capturedPaymentSyncPending
+                        : terminalProviderStatus
+                            ? false
+                            : current.capturedPaymentSyncPending === true;
+                    if (nextCapturedPaymentSyncPending !== (current.capturedPaymentSyncPending === true)) {
+                        updates.capturedPaymentSyncPending = nextCapturedPaymentSyncPending;
+                        changes.push({
+                            field: 'capturedPaymentSyncPending',
+                            local: String(current.capturedPaymentSyncPending === true),
+                            remote: String(nextCapturedPaymentSyncPending),
+                        });
+                    }
                     if (
                         rzpStatus
                         && rzpStatus !== current.status
@@ -620,17 +691,10 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         && rzpCycleEnd !== null
                         && rzpCycleEnd > rzpCycleStart
                         && rzpCycleStart > localCycleStart
+                        && paymentAuthority.canSyncProviderCycle
                     ) {
                         updates.cycleStartDate = Timestamp.fromMillis(rzpCycleStart);
                         updates.cycleEndDate = Timestamp.fromMillis(rzpCycleEnd);
-                        const billingPeriod = getProviderBillingPeriod(rzpSub.current_start);
-                        const finalStatus = (updates.status || current.status) as PaymentStatus;
-                        if (billingPeriod !== null && finalStatus === 'active' && current.creditsLastResetMonth !== billingPeriod) {
-                            const allowance = getNonNegativeSafeInteger(current.monthlyCreditsAllowance);
-                            if (allowance === null) throw new Error('Subscription monthly credit allowance is invalid.');
-                            updates.monthlyCredits = allowance;
-                            updates.creditsLastResetMonth = billingPeriod;
-                        }
                         changes.push({
                             field: 'cycleDates',
                             local: `${new Date(localCycleStart).toISOString()} -> ${new Date(localCycleEnd).toISOString()}`,
@@ -638,12 +702,9 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         });
                     }
 
-                    const providerPaidCount = getNonNegativeSafeInteger(rzpSub.paid_count);
-                    const localPaidCount = getNonNegativeSafeInteger(current.totalPaymentsMadeCount);
-                    if (providerPaidCount !== null && providerPaidCount !== localPaidCount) {
-                        updates.totalPaymentsMadeCount = providerPaidCount;
+                    if (providerPaidCount !== null && providerPaidCount !== paymentAuthority.localPaidCount) {
                         changes.push({
-                            field: 'paidCount',
+                            field: 'capturedPaymentCount',
                             local: String(current.totalPaymentsMadeCount),
                             remote: String(providerPaidCount),
                         });

@@ -242,6 +242,11 @@ function BillingPage() {
             const paymentResponse = activeSubscription
                 ? await onUpgradePlan(activeSubscription, newPlan, currency)
                 : await onClickPaymentCard(newPlan, currency, () => { })
+            if (paymentResponse?.activationStatus === 'processing') {
+                message.info('Payment received. Subscription activation is being confirmed.');
+                await refetchActiveSubscription();
+                return;
+            }
             message.success(t('upgradeSuccess'));
             refetchActiveSubscription();
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
@@ -274,8 +279,17 @@ function BillingPage() {
         setIsAddingPaidLocation(true);
         try {
             dispatch(startLoader("Adding paid location"));
-            await onUpgradePlan(activeSubscription, currentSubscriptionPlan, activeSubscription.currency, nextPaidLocationCount);
-            message.success(`Paid locations updated to ${nextPaidLocationCount}.`);
+            const paymentResponse = await onUpgradePlan(
+                activeSubscription,
+                currentSubscriptionPlan,
+                activeSubscription.currency,
+                nextPaidLocationCount,
+            );
+            if (paymentResponse.activationStatus === 'processing') {
+                message.info('Payment received. The paid location update is being confirmed.');
+            } else {
+                message.success(`Paid locations updated to ${nextPaidLocationCount}.`);
+            }
             await refetchActiveSubscription();
         } catch (error) {
             if (isPaymentCheckoutDismissedError(error)) return;

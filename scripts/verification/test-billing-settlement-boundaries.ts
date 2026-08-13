@@ -370,7 +370,12 @@ assert.equal(statusHistory.at(-1), 999);
 const entitlementNowMs = Date.UTC(2026, 6, 16, 12, 0, 0);
 const futureCycleEnd = { seconds: Math.floor((entitlementNowMs + 60_000) / 1_000) };
 const endedCycle = { toMillis: () => entitlementNowMs - 1 };
+const razorpayPaymentEvidence = {
+    billingHistory: ['pay_Entitlement123'],
+    paymentProvider: 'razorpay',
+} as const;
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
     status: 'active',
     planId: ' Pro ',
@@ -381,42 +386,66 @@ assert.equal(
     'active rows without exact paid-cycle evidence must fail closed',
 );
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: { seconds: Math.floor((entitlementNowMs - 1_000) / 1_000) },
     planId: 'pro',
     status: 'active',
 }, entitlementNowMs), null, 'an elapsed active row must not retain plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
     planId: 'premium',
     status: 'cancelled',
 }, entitlementNowMs), 'premium');
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
     planId: 'starter',
     status: 'paused',
 }, entitlementNowMs), 'starter');
 assert.equal(hasCurrentSubscriptionPlanEntitlement({
+    ...razorpayPaymentEvidence,
     cycleEndDate: endedCycle,
     status: 'cancelled',
 }, entitlementNowMs), false);
 assert.equal(hasCurrentSubscriptionPlanEntitlement({
+    ...razorpayPaymentEvidence,
     cycleEndDate: endedCycle,
     status: 'paused',
 }, entitlementNowMs), false);
-assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'past_due' }, entitlementNowMs), null);
-assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'expired' }, entitlementNowMs), null);
-assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: 'invalid', planId: 'pro', status: 'cancelled' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'pro', status: 'past_due' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'pro', status: 'expired' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: 'invalid', planId: 'pro', status: 'cancelled' }, entitlementNowMs), null);
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: { seconds: String(Math.floor((entitlementNowMs + 60_000) / 1_000)) },
     planId: 'pro',
     status: 'active',
 }, entitlementNowMs), null, 'numeric-string timestamp components must not retain plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     planId: { toString: () => 'pro' } as unknown as string,
     status: 'active',
 }, entitlementNowMs), null, 'object plan IDs must not be coerced into plan entitlement');
+assert.equal(getActivePlanTypeForSubscription({
+    billingHistory: [],
+    cycleEndDate: futureCycleEnd,
+    paymentProvider: 'razorpay',
+    planId: 'pro',
+    status: 'active',
+}, entitlementNowMs), null, 'provider active without a captured payment id must not grant entitlement');
+assert.equal(getActivePlanTypeForSubscription({
+    billingHistory: [],
+    billingMode: 'manual',
+    cycleEndDate: futureCycleEnd,
+    manualPaymentConfirmed: true,
+    paymentProvider: 'razorpay',
+    planId: 'pro',
+    status: 'active',
+}, entitlementNowMs), 'pro', 'confirmed manual billing must retain prepaid entitlement');
 let entitlementTimestampMethodCalled = false;
 assert.equal(getActivePlanTypeForSubscription({
+    ...razorpayPaymentEvidence,
     cycleEndDate: {
         toMillis: () => {
             entitlementTimestampMethodCalled = true;
@@ -458,7 +487,7 @@ assert.deepEqual(formatBillingHistoryEvents([{
     created_at: { toMillis: () => { throw new Error('legacy timestamp'); } },
     currency: 'INR',
     event: 'subscription.charged',
-    id: 'pay_throwing_timestamp',
+    id: 'pay_ThrowingTimestamp01',
     status: 'captured',
 }]), []);
 assert.deepEqual(formatBillingHistoryEvents([{
@@ -536,6 +565,17 @@ assert.deepEqual(calculateRemainingCredits(invalidAnnualCredits, graceNow), {
 assert.equal(hasValidSubscriptionAccess({
     status: 'paused',
     cycleEndDate: 'invalid',
+} as unknown as FirestoreSubscriptionDoc), false);
+assert.equal(hasValidSubscriptionAccess({
+    ...razorpayPaymentEvidence,
+    status: 'active',
+    cycleEndDate: { seconds: Math.floor((Date.now() + 60_000) / 1_000) },
+} as unknown as FirestoreSubscriptionDoc), true);
+assert.equal(hasValidSubscriptionAccess({
+    billingHistory: [],
+    paymentProvider: 'razorpay',
+    status: 'active',
+    cycleEndDate: { seconds: Math.floor((Date.now() + 60_000) / 1_000) },
 } as unknown as FirestoreSubscriptionDoc), false);
 assert.deepEqual(calculateProration({
     amount: '299900',
@@ -699,7 +739,10 @@ assert.equal(resolveVerifiedTopupSettlement({
 }), null, 'immutable and provider pack names must agree');
 
 const currentTopupSubscription = {
+    billingHistory: ['pay_TopupCurrent123'],
+    cycleEndDate: { seconds: Math.floor((Date.now() + 60_000) / 1_000) },
     id: 'sub_current_001',
+    paymentProvider: 'razorpay',
     providerSubscriptionId: 'sub_provider_001',
     productId: 'ML',
     pId: 'ML',
@@ -711,6 +754,7 @@ const currentTopupSubscription = {
     monthlyCredits: 4,
     monthlyCreditsAllowance: 10,
     creditsLastResetMonth: 202607,
+    status: 'active',
 };
 assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
     expectedProductId: 'ML',
@@ -727,6 +771,12 @@ assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
     tenantId: 101,
     topUpCredits: 9,
 });
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, billingHistory: [] },
+}), null, 'top-up settlement must reject an unpaid provider-active subscription');
 assert.equal(resolveCurrentTopupSubscriptionSettlement({
     expectedProductId: 'ML',
     expectedTenantId: 101,

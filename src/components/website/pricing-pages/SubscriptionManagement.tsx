@@ -9,12 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { formatDateTime } from "@util/dateTime";
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
-import { getBoundedPaymentStringContext, logPaymentFailure } from "@hook/paymentDiagnostics";
 import { DASHBOARD_URL, OWNER_APP_URL } from "@constant/urls";
-import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
-import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
+import { hasVerifiedSubscriptionPaymentEvidence } from "@lib/billing/subscriptionPlanEntitlement";
 import { useFormatter } from "next-intl";
-import { useRouter } from "next/navigation";
 import React from "react";
 import { LuCreditCard, LuHeartCrack, LuHeartOff, LuHeartPulse, LuLayoutDashboard, LuPause, LuTimer } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from ".";
@@ -33,32 +30,25 @@ const PaymentMethodIcon = ({ brand }: { brand?: string }) => {
 
 const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererProps> = ({ activeSubscription, refetchActiveSubscription }) => {
     const session = useClientAuthSession()
-    const router = useRouter()
     const formatter = useFormatter()
-    const pendingCheckoutUrl = activeSubscription.status === 'pending'
-        ? normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl)
-        : null;
+    const isPaymentPending = activeSubscription.status === 'pending'
+        || (
+            activeSubscription.status === 'active'
+            && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription)
+        );
 
     const handleCompletePendingPayment = () => {
-        if (!pendingCheckoutUrl) {
-            router.push('/billing');
-            return;
-        }
-        try {
-            openIsolatedBrowserUrl(pendingCheckoutUrl);
-        } catch (error) {
-            logPaymentFailure('website_pricing_pending_payment_open_failed', error, {
-                flow: 'returning_owner_pending_payment',
-                surface: 'website_pricing_subscription_management',
-                ...getBoundedPaymentStringContext('checkoutUrl', pendingCheckoutUrl),
-            });
-            router.push('/billing');
-        }
+        // Pending provider state must be checked by the authenticated billing API before checkout opens.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign(`${OWNER_APP_URL}/billing`);
     };
 
     const renderTag = () => {
         const baseStyles = { fontSize: '14px', padding: '6px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }
 
+        if (isPaymentPending) {
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-warning)', color: 'var(--ws-text-on-accent)' }}><LuTimer size={14} /> Payment pending</Badge>;
+        }
         if (activeSubscription.status === 'active') {
             return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-success)', color: 'var(--ws-text-on-accent)' }}><LuHeartPulse size={14} /> Active</Badge>;
         }
@@ -70,9 +60,6 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
         }
         if (activeSubscription.status === 'past_due') {
             return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-error)', color: 'var(--ws-text-on-accent)' }}><LuHeartCrack size={14} /> Payment Failed</Badge>;
-        }
-        if (activeSubscription.status === 'pending') {
-            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-warning)', color: 'var(--ws-text-on-accent)' }}><LuTimer size={14} /> Payment pending</Badge>;
         }
         if (activeSubscription.status === 'expired') {
             return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-text-muted)', color: 'var(--ws-text-on-accent)' }}><LuHeartOff size={14} /> Expired</Badge>;
@@ -98,6 +85,9 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
     };
 
     const renderAccessUntillDate = () => {
+        if (isPaymentPending) {
+            return <Statistic title="Access Starts" value="After payment" />
+        }
         if (activeSubscription.status === 'cancelled') {
             return <Statistic
                 title="Access Good Until"
@@ -122,9 +112,6 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                 title="Paused Since"
                 value={formatDateTime(activeSubscription.statuses[activeSubscription.statuses.length - 1]?.timestamp, "date", formatter)}
             />
-        }
-        if (activeSubscription.status === 'pending') {
-            return <Statistic title="Access Starts" value="After payment" />
         }
         return null;
     }
@@ -153,7 +140,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                         <div>
                             <CardTitle style={{ fontSize: '18px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>Current Plan</CardTitle>
                             <CardDescription style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>
-                                {activeSubscription.status === 'pending'
+                                {isPaymentPending
                                     ? 'Your workspace is ready. Complete payment to activate this plan.'
                                     : 'Your active subscription details.'}
                             </CardDescription>
@@ -171,7 +158,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
                             <Statistic
                                 title="Current Billing Cycle"
-                                value={activeSubscription.status === 'pending'
+                                value={isPaymentPending
                                     ? 'Starts after payment'
                                     : `${formatDateTime(activeSubscription.cycleStartDate, "date", formatter)} - ${formatDateTime(activeSubscription.cycleEndDate, "date", formatter)}`}
                             />
@@ -181,7 +168,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                                 value={<div className="flex items-center gap-2">
                                     <PaymentMethodIcon brand={activeSubscription.paymentMethod?.brand} />
                                     <span className="font-medium capitalize" style={{ color: 'var(--ws-text-primary)' }}>
-                                        {activeSubscription.status === 'pending'
+                                        {isPaymentPending
                                             ? 'Selected during payment'
                                             : `${activeSubscription.paymentMethod?.brand ?? "Card"} **** ${activeSubscription.paymentMethod?.last4 ?? "****"}`}
                                     </span>
@@ -199,10 +186,10 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                         </>}
                     </CardContent>
                     <CardFooter className="flex flex-col sm:flex-row justify-end gap-3" style={{ padding: '16px 24px 24px', borderTop: '1px solid var(--ws-border-default)' }}>
-                        {activeSubscription.status === 'pending' ? (
+                        {isPaymentPending ? (
                             <Button size="sm" onClick={handleCompletePendingPayment}>
                                 <LuCreditCard size={16} style={{ marginRight: '8px' }} />
-                                {pendingCheckoutUrl ? 'Complete payment' : 'Open Billing'}
+                                Continue in Billing
                             </Button>
                         ) : null}
                         <Button variant="outline" size="sm" onClick={() => {
@@ -223,7 +210,9 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                 </Card>
             </div>
 
-            <CreditPacksCtaSection activeSubscription={activeSubscription} currency={activeSubscription.currency} refetchActiveSubscription={refetchActiveSubscription} />
+            {hasValidSubscriptionAccess(activeSubscription) ? (
+                <CreditPacksCtaSection activeSubscription={activeSubscription} currency={activeSubscription.currency} refetchActiveSubscription={refetchActiveSubscription} />
+            ) : null}
         </div>
     );
 };

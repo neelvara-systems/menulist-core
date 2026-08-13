@@ -1,4 +1,8 @@
 import { DEFAULT_PRODUCT_ID } from '@constant/product';
+import {
+    RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP,
+    resolveRazorpayProviderSubscriptionStatus,
+} from '@data/shared/razorpaySubscriptionLifecycle';
 
 export type OnboardingProviderSubscription = {
     id: string;
@@ -95,6 +99,7 @@ export function isMatchingPersistedOnboardingSubscription(params: {
         return false;
     }
     const record = params.subscription as Record<string, unknown>;
+    const providerStatus = resolveRazorpayProviderSubscriptionStatus(record.providerStatus);
     return exactProviderNote(record.id) === params.providerSubscriptionId
         && exactProviderNote(record.providerSubscriptionId) === params.providerSubscriptionId
         && exactProviderNote(record.paymentProvider) === 'razorpay'
@@ -106,7 +111,9 @@ export function isMatchingPersistedOnboardingSubscription(params: {
         && record.tId === params.tenantId
         && record.storeId === params.storeId
         && record.sId === params.storeId
-        && exactProviderNote(record.planId) === params.planId;
+        && exactProviderNote(record.planId) === params.planId
+        && providerStatus !== null
+        && RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP[providerStatus] === record.status;
 }
 
 export const resolveOnboardingPlanPrice = (value: unknown): {

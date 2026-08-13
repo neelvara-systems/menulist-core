@@ -7,6 +7,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const route = read('src/app/api/onboarding/create-subscription/route.ts');
+const boundary = read('src/lib/onboarding/onboardingSubscriptionBoundary.ts');
 const tenantStore = read('src/lib/onboarding/createTenantStore.ts');
 const subscriptionBoundary = read('src/lib/onboarding/onboardingSubscriptionBoundary.ts');
 const schemas = read('src/lib/validation/apiSchemas.ts');
@@ -89,6 +90,9 @@ const compensationCall = route.indexOf(
 assert.ok(cancellation >= 0 && persistenceWrite >= 0 && compensationCall > persistenceWrite, 'persistence failure must trigger provider/local compensation');
 requireText(paymentHandler, 'const subscriptionId = subscription.id;', 'bounded client response consumer');
 requireText(route, 'isMatchingPersistedOnboardingSubscription({', 'exact ambiguous local persistence recovery');
+requireText(route, 'providerStatus: "created"', 'pending onboarding provider state');
+requireText(boundary, 'resolveRazorpayProviderSubscriptionStatus(record.providerStatus)', 'persisted provider state validation');
+requireText(boundary, 'RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP[providerStatus] === record.status', 'provider/local lifecycle consistency');
 forbidText(route, 'subscription: razorpaySubscription,', 'raw provider response');
 forbidText(route, 'let razorpaySubscription: any;', 'provider response type');
 forbidText(route, 'bodyResult.data as any', 'unchecked onboarding request cast');

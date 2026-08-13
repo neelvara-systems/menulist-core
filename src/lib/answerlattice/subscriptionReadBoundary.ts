@@ -1,5 +1,6 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { getNonNegativeCreditInteger } from '@data/shared/aiCreditScalarContract';
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import type {
     Currency,
     FirestoreSubscriptionDoc,
@@ -341,6 +342,7 @@ export const projectActiveAnswerlatticeSubscriptionForRead = (
         storeId,
     );
     return subscription?.status === 'active'
+        && hasVerifiedSubscriptionPaymentEvidence(subscription)
         && isAnswerlatticeSubscriptionCurrent(subscription, nowMs)
         ? subscription
         : null;

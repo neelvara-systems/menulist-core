@@ -60,7 +60,7 @@ codes, recovery details, private email, phone, or identity documents.
 
 | ID | Added | Due/check | Action | Status | Evidence/result | Blocker | Next step |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PS-P000 | 2026-08-13 | 2026-08-13 9:30 PM | Create one new permanent private recovery email for Proof & State; do not use an existing personal/product inbox and do not share the address | pending | Existing candidates were privacy-reviewed and rejected; no new-inbox result recorded | External email creation requires the founder | Reply `DONE dedicated email created`, `BLOCKED <reason>`, or `SKIP <reason>` without sharing the address |
+| PS-P000 | 2026-08-13 | 2026-08-14 9:30 PM | Create one new permanent private recovery email for Proof & State; do not use an existing personal/product inbox and do not share the address | carried-forward | No completion evidence recorded by the 2026-08-13 evening check | External email creation requires the founder | Reply `DONE dedicated email created`, `BLOCKED <reason>`, or `SKIP <reason>` without sharing the address |
 | PS-P001 | 2026-08-12 | After PS-P000 | Manually create the X account using `@proofandstate` if available, set the approved avatar/banner/bio, and add no product link, location, or original-identity detail | blocked | No X profile result recorded | Depends on PS-P000; external account creation requires the founder | Resume only after the dedicated recovery email is created |
 | PS-P002 | 2026-08-12 | After PS-P001 | Send the X profile URL for a logged-out privacy and correlation review before publishing | pending | - | Depends on PS-P001 | Share the public profile URL only; do not share credentials or verification details |
 | PS-P003 | 2026-08-12 | After X privacy review | Manually create the matching Reddit account and complete its privacy check | pending | - | Depends on PS-P002 | Follow the Day Zero Reddit checklist after the X review passes |
@@ -70,7 +70,8 @@ codes, recovery details, private email, phone, or identity documents.
 | Date | Primary action | Morning status | Founder result | Evidence | Evening status | Carry-forward |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-12 | PS-P001 - create the privacy-safe X profile | pending | no result recorded | No completion evidence recorded | unconfirmed | PS-P001 to 2026-08-13; no extra action added |
-| 2026-08-13 | PS-P000 - create the dedicated recovery email | PS-P001 narrowed to its privacy prerequisite | awaiting founder | Existing candidates rejected; no new address or result recorded | scheduled for 9:30 PM | none yet |
+| 2026-08-13 | PS-P000 - create the dedicated recovery email | PS-P001 narrowed to its privacy prerequisite | no result recorded | No completion evidence recorded | unconfirmed | PS-P000 to 2026-08-14; no extra action added |
+| 2026-08-14 | PS-P000 - create the dedicated recovery email | carried-forward from 2026-08-13 | awaiting founder | - | scheduled for 9:30 PM | none yet |
 
 ## Maintenance Contract
 

@@ -168,7 +168,11 @@ export default function AnswerlatticeBilling() {
             const paymentResponse = activeSubscription
                 ? await onUpgradePlan(activeSubscription, newPlan, currency)
                 : await onClickPaymentCard(newPlan, currency, () => { });
-            message.success('Answerlattice subscription updated.');
+            if (paymentResponse?.activationStatus === 'processing') {
+                message.info('Payment received. Subscription activation is being confirmed.');
+            } else {
+                message.success('Answerlattice subscription updated.');
+            }
             await refetchActiveSubscription();
             return paymentResponse;
         } catch (error) {

@@ -1,5 +1,13 @@
 # Platform Founder Monitor Firebase Notes
 
+## Subscription Revenue Projection
+
+Payment-evidence validation is in-memory on subscription rows already read by
+the bounded snapshot job. It adds no Firestore read, write, delete, collection,
+index, Storage operation, provider call, or standalone scheduler. Current MRR
+requires verified payment and a current paid window; past-due MRR requires prior
+verified payment; unpaid pending checkout is attention-only.
+
 ## Reads
 
 The monitor is platform-only and manual-refresh. It reads precomputed sources:

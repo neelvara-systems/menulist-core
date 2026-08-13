@@ -15,6 +15,7 @@ import {
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
 import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
+import { hasCurrentSubscriptionPlanEntitlement } from '@lib/billing/subscriptionPlanEntitlement';
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
@@ -213,7 +214,7 @@ export const POST = withAuth(async (request, session) => {
             tenantId,
             storeId,
         );
-        if (!activeSubscription) {
+        if (!activeSubscription || !hasCurrentSubscriptionPlanEntitlement(activeSubscription)) {
             return NextResponse.json(
                 { error: 'An active subscription is required before buying enhancement packs.' },
                 { status: 404 }

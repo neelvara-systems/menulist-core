@@ -29,6 +29,16 @@ export type RazorpaySubscriptionStateProjection = {
     totalCount: number;
 };
 
+export type RazorpayAuthenticatedSubscriptionStateProjection = {
+    chargeAtMillis: number;
+    chargeAtSeconds: number;
+    paidCount: number;
+    quantity: number;
+    startAtMillis: number;
+    startAtSeconds: number;
+    totalCount: number;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null => (
     value && typeof value === 'object' && !Array.isArray(value)
         ? value as Record<string, unknown>
@@ -199,6 +209,47 @@ export const resolveRazorpaySubscriptionState = (
         currentEndSeconds,
         currentStartMillis,
         currentStartSeconds,
+        paidCount,
+        quantity,
+        startAtMillis,
+        startAtSeconds,
+        totalCount,
+    };
+};
+
+export const resolveRazorpayAuthenticatedSubscriptionState = (
+    value: unknown,
+    fallbackQuantity?: unknown,
+): RazorpayAuthenticatedSubscriptionStateProjection | null => {
+    const subscription = asRecord(value);
+    if (!subscription) return null;
+
+    const chargeAtSeconds = resolveExactPositiveSafeInteger(subscription.charge_at);
+    const startAtSeconds = resolveExactPositiveSafeInteger(subscription.start_at);
+    const totalCount = resolveExactPositiveSafeInteger(subscription.total_count, 10_000);
+    const paidCount = resolveExactNonNegativeSafeInteger(subscription.paid_count, 10_000);
+    const quantity = resolveRazorpaySubscriptionQuantity(
+        subscription.quantity == null ? fallbackQuantity : subscription.quantity,
+    );
+    if (
+        chargeAtSeconds == null
+        || startAtSeconds == null
+        || totalCount == null
+        || paidCount == null
+        || quantity == null
+        || paidCount > totalCount
+        || chargeAtSeconds < startAtSeconds
+    ) {
+        return null;
+    }
+
+    const chargeAtMillis = providerSecondsToMillis(chargeAtSeconds);
+    const startAtMillis = providerSecondsToMillis(startAtSeconds);
+    if (chargeAtMillis == null || startAtMillis == null) return null;
+
+    return {
+        chargeAtMillis,
+        chargeAtSeconds,
         paidCount,
         quantity,
         startAtMillis,

@@ -1,5 +1,138 @@
 # MenuList — Changelog
 
+## August 13, 2026 - Razorpay Subscription Lifecycle Authority Hardening
+
+- Rechecked the current official subscription webhook, state, testing, update,
+  and signature-validation contracts and encoded all 10 documented
+  subscription events plus all 9 provider states in one byte-identical
+  app/Functions policy.
+- Retained the checkout callback as an authenticated recovery path: it verifies
+  the Razorpay HMAC, fetches payment and subscription server-side, and requires
+  a captured payment bound to the same active subscription. Browser claims do
+  not grant entitlement or settle money.
+- Added explicit pre-activation handling. `subscription.authenticated` remains
+  local `pending`; `subscription.activated` updates bounded provider/cycle
+  metadata without entitlement, money, or credit mutation; only a valid `subscription.charged`
+  delivery settles recurring payment and resets monthly credits exactly once.
+- Expanded reconciliation to pending rows and every provider terminal/recovery
+  state, and made no-quantity `subscription.updated` deliveries persist
+  provider truth without inventing a quantity or MRR change.
+- Added source, pure contract, and Firestore-emulator verification for 10/10
+  events, out-of-order authentication, charged replay, and no-quantity updates.
+  The earlier 12-event QA webhook certification remains historical transport
+  evidence; the dashboard must add `subscription.authenticated` only after the
+  hardened Vercel staging route is deployed.
+- The follow-up code review now prefers Razorpay's canonical
+  `x-razorpay-event-id`, rejects malformed event identities, and hashes unsafe
+  IDs so two provider identities cannot collapse into one Firestore lease key.
+  Every subscription event/status pair is validated before the claim, and a
+  charged event must contain a matching captured payment.
+- Added late-delivery protection for Razorpay's non-guaranteed event order. A
+  captured charge arriving after cancellation/completion records its exact
+  `pay_...` settlement while preserving terminal lifecycle/provider state,
+  consumed credits, and closed entitlement. Terminal replacement carry-forward
+  requires that same exact payment ID in transaction-current billing history.
+- Charged-webhook partial-failure replay now recognizes the same first
+  `pay_...` history entry, preserving initial-purchase MRR and notification
+  classification after settlement committed but a later side effect failed.
+- Replaced every authenticated pending-payment hosted-link action with one
+  provider-checked Continue Checkout path. Safe provider-created rows reuse
+  Standard Checkout, eMandate confirmation waits up to 48 hours without a
+  duplicate, and stale replacement requires terminal provider proof plus an
+  exact-scope Firestore transaction. Pending mobile credits now read "Starts
+  after payment" rather than appearing available.
+- Added exact `providerStatus: created` persistence to regular onboarding,
+  Answerlattice onboarding/summary, existing-owner checkout, and reseller
+  online onboarding. Answerlattice onboarding now sends the owner to canonical
+  Billing instead of exposing its pending hosted link. Past-due and reseller
+  recipient links remain separate provider-owned recovery/handoff flows.
+- Deployed only the changed QA reconciliation Function. Firebase readback shows
+  `menulistMaintenanceScheduler` `ACTIVE` on Node 22 at hash
+  `3ba1fd91827c88f7bd56959324994d5fd38bb226` with the existing Razorpay secret
+  bindings. Hosted Vercel remains at checked-out commit `87abeca`; no Vercel or
+  production deployment was run.
+- A read-only `menulist-qa` Firestore audit found one MenuList subscription: it
+  is provider-backed and pending, has exact product and tenant/store aliases, a
+  valid provider subscription identity, an HTTPS checkout URL, and array-shaped
+  billing/status histories. It has no captured payment evidence and produces no
+  entitlement anomaly. Its missing legacy `providerStatus` is tolerated because
+  checkout recovery fetches current provider truth; every new source path writes
+  `providerStatus: created`.
+- The final adversarial consumer sweep found and fixed one internal revenue
+  projection bypass: Founder Monitor previously counted any local `active` row
+  as current MRR and included unpaid `pending` checkouts in past-due MRR. Its
+  Functions boundary now requires confirmed manual payment or an exact captured
+  Razorpay `pay_*` history entry, requires a current paid window for current MRR,
+  and treats unpaid pending checkout only as an attention state. The focused
+  Functions/Founder Monitor tests and preflight pass, and the corrected scheduler
+  is included in the active QA hash above.
+
+## August 13, 2026 - MenuList QA Meta Webhook Certification
+
+- Temporarily enabled only the QA `messagingOnboarding` Function so Meta could
+  verify the exact `menulist-qa` callback with the independently vaulted token.
+- Subscribed only the WhatsApp Business Account `messages` field at `v26.0` and
+  confirmed one Meta dashboard test POST reached Cloud Run with HTTP 200 and no
+  invalid-signature log.
+- Confirmed bounded inbound-message and tracking collection readback was empty,
+  so the provider sample left no synthetic Firestore artifact to delete.
+- Restored `ENABLE_MESSAGING_ONBOARDING=false`, redeployed only the QA Function,
+  and confirmed its active revision retains all four version-1 WhatsApp secret
+  bindings. The callback remains registered, but provider processing and the
+  unpublished test app remain non-production.
+- Reconciled the messaging boundary verifier with the current environment
+  ownership contract: Firebase Functions env files must keep fail-closed
+  messaging defaults, while root Vercel env templates must not duplicate those
+  Functions-only flags.
+- Closed `QA-K22` without a production number, payment method, publish-state
+  change, production project access, or production message.
+
+## August 13, 2026 - MenuList QA Razorpay Webhook Certification
+
+- Registered the exact QA webhook endpoint in Razorpay Test Mode with 12
+  route-handled events: `payment.failed`, `order.paid`, `refund.processed`, and
+  nine subscription lifecycle events covering pause, resume, activation,
+  pending, halted, charged, cancelled, completed, and updated transitions.
+- Completed one disposable INR 1 order through Razorpay's mock netbanking
+  success path and confirmed the provider-originated `order.paid` delivery
+  reached the current staging Preview route with HTTP 200.
+- Retained the existing negative-signature HTTP 403 proof and removed the exact
+  temporary QA payment audit and webhook ledger after inspection; independent
+  readback confirmed both absent.
+- Closed `QA-K21` for webhook transport without a real charge, Live Mode action,
+  or production access. A later bounded read superseded the earlier recurring
+  API blocker: Plans and Subscriptions now return HTTP 200, and the dashboard
+  exposes the nine subscription events handled by the route.
+- Created one canonical Starter Yearly plan and one disposable subscription
+  through the hosted application flow, proving provider-plan deduplication and
+  subscription creation. Card authorization stopped at the provider's token
+  OTP boundary; an eMandate retry reached mock-bank Success but remains in
+  provider `created` state without a captured payment or lifecycle webhook.
+  Subscription activation/charge and local entitlement synchronization remain
+  pending provider-transition evidence. `subscription.authenticated` remains
+  unsubscribed because the route does not handle that pre-activation state.
+- Reconciled the billing-boundary verifier with the canonical single Razorpay
+  key-id contract and added a regression check against restoring the retired
+  redundant server key-id alias.
+
+## August 13, 2026 - MenuList QA Customer Link Certification
+
+- Certified one disposable `menulist-qa` customer hostname through the logged-in
+  Chrome session on current Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`.
+- Confirmed the QA OBP generated the expected project link and the linked menu
+  rendered at HTTP 200 with tenant-routing and QA noindex headers.
+- Closed `QA-K10`; kept `QA-K09` open because create and immediate read passed,
+  but update/delete after reload remain blocked by the explicitly excluded
+  Firebase Auth bootstrap boundary despite an HTTP 200 claim exchange.
+- Superseded the earlier stale-service-worker diagnosis: the failing reload was
+  running the current immutable bundle.
+- Corrected the focused host-routing verifier to assert the canonical
+  `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL` name already used by both
+  staging and production templates, rather than the retired unprefixed alias.
+- Removed and independently verified absence of the temporary subdomain,
+  project, project summary, and zero-value QA subscription. No production
+  target was queried or changed.
+
 ## August 13, 2026 - MenuList QA Paid Extraction Certification
 
 - Recorded the owner-completed Google Payments verification and INR 1,000
@@ -7525,7 +7658,7 @@
 - **Upgrade credits move atomically** - old-subscription expiry and replacement credit carry-forward are one two-document transaction. Existing replacement top-up credits are preserved, retries do not credit twice, and partial local transfer cannot occur.
 - **The active replacement remains authoritative** - MenuList and Answerlattice entitlement sync select the current active subscription for the store inside their transaction, so an old/expired subscription cannot clear or replace a newer plan summary.
 - **Billing timing and arithmetic have behavioral regression coverage** - the settlement suite covers malformed grace timestamps, additive upgrade credits, replay, and malformed replacement balances; the billing source gate locks transaction and index wiring.
-- **The nightly billing safety net cannot undo live transitions** - reconciliation is now a leased maintenance task, paginates subscription reads, uses Firestore document identity, rejects whitespace-mutated provider IDs, rechecks current state in a transaction, appends status history, and performs one-time provider-cycle credit reset.
+- **The nightly billing safety net cannot undo live transitions** - reconciliation is now a leased maintenance task, paginates subscription reads, uses Firestore document identity, rejects whitespace-mutated provider IDs, rechecks current state in a transaction, and appends status history. The August 13 authority correction supersedes its former provider-count cycle reset: reconciliation now requires an existing matching captured-payment ledger and never manufactures payment truth or resets credits.
 - **Manual reseller expiry survives partial entitlement failure** - subscription/profile changes are atomic, profile counts cannot go below zero, active replacement plans remain authoritative, and a durable pending marker is retried until entitlement/cache synchronization succeeds.
 
 ### Boundaries
@@ -31002,7 +31135,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 ### Changed
 
 - **`FirestoreSubscriptionDoc`** — Added optional `creditsLastResetMonth?: number` field for credit reset tracking.
-- **Webhook handler** — `subscription.activated`/`subscription.charged` now resets `monthlyCredits` to `monthlyCreditsAllowance` and sets `creditsLastResetMonth`.
+- **Webhook handler (historical implementation)** — This release reset credits on both `subscription.activated` and `subscription.charged`. The August 13 lifecycle correction supersedes that behavior: activation is lifecycle-only and only a captured matching `subscription.charged` settlement resets paid-cycle credits.
 - **All subscription creation routes** — Now set `creditsLastResetMonth` at creation (create-subscription, onboarding, verify-subscription).
 
 ---

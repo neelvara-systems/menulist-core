@@ -1,10 +1,29 @@
 export interface SubscriptionPlanEntitlementInput {
+    billingHistory?: unknown;
+    billingMode?: unknown;
     cycleEndDate?: unknown;
+    manualPaymentConfirmed?: unknown;
+    paymentProvider?: unknown;
     planId?: string | null;
     status?: string | null;
 }
 
 export const PLAN_ENTITLED_SUBSCRIPTION_STATUSES = ['active', 'cancelled', 'paused'] as const;
+const RAZORPAY_PAYMENT_ID_PATTERN = /^pay_[A-Za-z0-9]+$/;
+
+export function hasVerifiedSubscriptionPaymentEvidence(
+    subscription: SubscriptionPlanEntitlementInput,
+): boolean {
+    if (subscription.billingMode === 'manual') {
+        return subscription.manualPaymentConfirmed === true;
+    }
+    if (subscription.billingMode !== undefined && subscription.billingMode !== 'auto') return false;
+    if (subscription.paymentProvider !== 'razorpay') return false;
+    return Array.isArray(subscription.billingHistory)
+        && subscription.billingHistory.some((entry) => (
+            typeof entry === 'string' && RAZORPAY_PAYMENT_ID_PATTERN.test(entry)
+        ));
+}
 
 export function toSubscriptionCycleEndMillis(value: unknown): number {
     if (value === undefined || value === null) return 0;
@@ -48,6 +67,7 @@ export function hasCurrentSubscriptionPlanEntitlement(
     nowMs = Date.now(),
 ): boolean {
     if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (!hasVerifiedSubscriptionPaymentEvidence(subscription)) return false;
     if (!PLAN_ENTITLED_SUBSCRIPTION_STATUSES.includes(
         subscription.status as typeof PLAN_ENTITLED_SUBSCRIPTION_STATUSES[number],
     )) return false;

@@ -24,12 +24,13 @@ import { syncStorePlanEntitlementFromSubscription } from '../../src/lib/billing/
 
 const baseSubscription = (overrides: Record<string, unknown> = {}) => ({
     amount: 49_900,
-    billingHistory: [],
+    billingHistory: ['pay_ScopeBoundary123'],
     creditsLastResetMonth: 202607,
     currency: 'INR',
     monthlyCredits: 50,
     monthlyCreditsAllowance: 75,
     pId: 'ML',
+    paymentProvider: 'razorpay',
     productId: 'ML',
     providerSubscriptionId: 'sub_ScopeBoundary123',
     sId: 202,
@@ -182,6 +183,18 @@ async function run(): Promise<void> {
     );
     await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_PendingCannotEntitle123').delete();
 
+    await writeSubscription('sub_UnpaidActiveCannotEntitle123', baseSubscription({
+        billingHistory: [],
+        cycleEndDate: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+        providerSubscriptionId: 'sub_UnpaidActiveCannotEntitle123',
+    }));
+    assert.equal(
+        await getDirectActiveSubscriptionForStoreServer(101, 202),
+        null,
+        'a provider-active subscription without captured payment evidence must not enter server entitlement truth',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_UnpaidActiveCannotEntitle123').delete();
+
     await writeSubscription('sub_StalePausedCannotEntitle123', baseSubscription({
         cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
         providerSubscriptionId: 'sub_StalePausedCannotEntitle123',
@@ -253,7 +266,27 @@ async function run(): Promise<void> {
         update: { monthlyCreditsAllowance: 75 },
     });
     assert.equal(paymentResult, null);
-    assert.deepEqual((await readSubscription('sub_ConflictingScope123')).billingHistory, []);
+    assert.deepEqual(
+        (await readSubscription('sub_ConflictingScope123')).billingHistory,
+        ['pay_ScopeBoundary123'],
+    );
+    await assert.rejects(
+        applyProductSubscriptionPayment(PRODUCT_IDS.MENULIST, {
+            billingPeriod: 202607,
+            paymentHistoryId: 'evt_NotCapturedPayment123',
+            statusEntry: {
+                amount: 49_900,
+                currency: 'INR',
+                remark: 'must reject non-payment authority',
+                status: 'charged',
+                timestamp: Timestamp.now() as never,
+            },
+            subscriptionId: 'sub_ConflictingScope123',
+            update: {},
+        }),
+        /Invalid subscription payment application/,
+        'the captured-payment transaction boundary must reject non-pay provider identifiers',
+    );
 
     const webhookResult = await applyProductSubscriptionWebhookEvent(PRODUCT_IDS.MENULIST, {
         eventKey: 'evt_scope_boundary_123',
@@ -394,6 +427,59 @@ async function run(): Promise<void> {
     assert.equal(upgradeResult?.duplicate, false);
     assert.equal((await readSubscription('sub_UpgradeOld123')).status, 'active');
     assert.equal('carryForwardFromSubscriptionId' in await readSubscription('sub_UpgradeNew123'), false);
+
+    await writeSubscription('sub_TerminalUpgradeOld123', baseSubscription({
+        providerSubscriptionId: 'sub_TerminalUpgradeOld123',
+    }));
+    await writeSubscription('sub_TerminalUpgradeNew123', baseSubscription({
+        billingHistory: ['pay_TerminalUpgrade123'],
+        providerStatus: 'cancelled',
+        providerSubscriptionId: 'sub_TerminalUpgradeNew123',
+        replacementForSubscriptionId: 'sub_TerminalUpgradeOld123',
+        status: 'cancelled',
+        topUpCredits: 0,
+    }));
+    const terminalUpgradeResult = await applyProductSubscriptionUpgradeCarryForward(
+        PRODUCT_IDS.MENULIST,
+        {
+            newSubscriptionId: 'sub_TerminalUpgradeNew123',
+            oldSubscriptionId: 'sub_TerminalUpgradeOld123',
+            storeId: 202,
+            terminalCapturedPaymentId: 'pay_TerminalUpgrade123',
+            tenantId: 101,
+        },
+    );
+    assert.equal(terminalUpgradeResult?.applied, true);
+    assert.equal((await readSubscription('sub_TerminalUpgradeOld123')).status, 'expired');
+    const terminalReplacement = await readSubscription('sub_TerminalUpgradeNew123');
+    assert.equal(terminalReplacement.status, 'cancelled');
+    assert.equal(
+        terminalReplacement.carryForwardFromSubscriptionId,
+        'sub_TerminalUpgradeOld123',
+    );
+
+    await writeSubscription('sub_UnpaidTerminalUpgradeOld123', baseSubscription({
+        providerSubscriptionId: 'sub_UnpaidTerminalUpgradeOld123',
+    }));
+    await writeSubscription('sub_UnpaidTerminalUpgradeNew123', baseSubscription({
+        providerStatus: 'cancelled',
+        providerSubscriptionId: 'sub_UnpaidTerminalUpgradeNew123',
+        replacementForSubscriptionId: 'sub_UnpaidTerminalUpgradeOld123',
+        status: 'cancelled',
+        topUpCredits: 0,
+    }));
+    const unpaidTerminalUpgradeResult = await applyProductSubscriptionUpgradeCarryForward(
+        PRODUCT_IDS.MENULIST,
+        {
+            newSubscriptionId: 'sub_UnpaidTerminalUpgradeNew123',
+            oldSubscriptionId: 'sub_UnpaidTerminalUpgradeOld123',
+            storeId: 202,
+            terminalCapturedPaymentId: 'pay_UnpaidTerminalUpgrade123',
+            tenantId: 101,
+        },
+    );
+    assert.equal(unpaidTerminalUpgradeResult?.applied, false);
+    assert.equal((await readSubscription('sub_UnpaidTerminalUpgradeOld123')).status, 'active');
 
     await writeSubscription('sub_StringResetPeriod123', baseSubscription({
         billingHistory: ['pay_PreviousCycle123'],

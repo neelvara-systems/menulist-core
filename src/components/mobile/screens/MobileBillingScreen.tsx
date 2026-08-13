@@ -11,6 +11,7 @@ import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePay
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
     CANCELLATION_REASON,
@@ -41,7 +42,7 @@ interface MobileBillingScreenProps {
     onBack: () => void;
 }
 
-type MobileBillingExternalLinkKind = 'retry_payment' | 'pending_payment' | 'invoice';
+type MobileBillingExternalLinkKind = 'retry_payment' | 'invoice';
 
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
@@ -71,7 +72,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [isLoading, setIsLoading] = useState(false);
 
     const noopDispatcher: Parameters<typeof usePaymentHandler>[0] = () => undefined;
-    const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);
+    const {
+        onUpgradePlan,
+        onClickPaymentCard,
+        onContinuePendingSubscriptionCheckout,
+        handleTopupPurchase,
+        onCancelSubscription,
+        onPauseSubscription,
+        onResumeSubscription,
+    } = usePaymentHandler(noopDispatcher);
 
     const tenantStoresList = tenantDetails?.storesList || [];
     const accessibleBillingStores = useMemo(
@@ -111,7 +120,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const sub = activeSubscription;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(sub?.shortUrl);
     const isManualBilling = sub?.billingMode === 'manual';
-    const isPaymentPending = sub?.status === 'pending';
+    const isPaymentPending = sub?.status === 'pending'
+        || Boolean(
+            sub?.status === 'active'
+            && !hasVerifiedSubscriptionPaymentEvidence(sub),
+        );
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(sub?.quantity || 1));
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
@@ -222,13 +235,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         setShowPlans(false);
         setIsLoading(true);
         try {
-            if (sub) {
-                await onUpgradePlan(sub, plan, currency);
-            } else {
-                await onClickPaymentCard(plan, currency, () => undefined);
-            }
+            const paymentResponse = sub
+                ? await onUpgradePlan(sub, plan, currency)
+                : await onClickPaymentCard(plan, currency, () => undefined);
             if (billingScopeKeyRef.current !== mutationScopeKey) return;
-            Toast.show({ content: t('planUpdated'), duration: 2000 });
+            if (paymentResponse?.activationStatus === 'processing') {
+                Toast.show({ content: 'Payment received. Subscription activation is being confirmed.', duration: 3000 });
+            } else {
+                Toast.show({ content: t('planUpdated'), duration: 2000 });
+            }
             await refetchSubscription();
         } catch (err) {
             if (isPaymentCheckoutDismissedError(err)) return;
@@ -258,9 +273,19 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
         setIsLoading(true);
         try {
-            await onUpgradePlan(sub, currentSubscriptionPlan, currency, nextPaidLocationCount);
+            const paymentResponse = await onUpgradePlan(
+                sub,
+                currentSubscriptionPlan,
+                currency,
+                nextPaidLocationCount,
+            );
             if (billingScopeKeyRef.current !== mutationScopeKey) return;
-            Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
+            Toast.show({
+                content: paymentResponse.activationStatus === 'processing'
+                    ? 'Payment received. The paid location update is being confirmed.'
+                    : `Paid locations updated to ${nextPaidLocationCount}.`,
+                duration: paymentResponse.activationStatus === 'processing' ? 3000 : 2000,
+            });
             await refetchSubscription();
         } catch (err) {
             if (isPaymentCheckoutDismissedError(err)) return;
@@ -269,6 +294,33 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 quantity: nextPaidLocationCount,
             }));
             Toast.show({ content: t('paymentFailedRetry'), duration: 3000 });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleContinuePendingCheckout = async () => {
+        const mutationScopeKey = billingScopeKey;
+        if (!sub || !canManageSelectedSubscription) {
+            Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to continue checkout.`, duration: 2600 });
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await onContinuePendingSubscriptionCheckout(sub);
+            if (billingScopeKeyRef.current !== mutationScopeKey) return;
+            Toast.show({
+                content: result.activationStatus === 'processing'
+                    ? 'Razorpay is still confirming this payment. No new checkout was opened.'
+                    : 'Payment confirmed. Your subscription is active.',
+                duration: result.activationStatus === 'processing' ? 3200 : 2000,
+            });
+            await refetchSubscription();
+        } catch (error) {
+            if (isPaymentCheckoutDismissedError(error)) return;
+            logPaymentFailure('payment_mobile_pending_subscription_continue_failed', error, buildMobileBillingPaymentLogContext('pending_payment'));
+            Toast.show({ content: 'Could not continue checkout. Refresh Billing and try again.', duration: 2600 });
         } finally {
             setIsLoading(false);
         }
@@ -582,7 +634,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     />
                                     <List.Item
                                         title={<Text>Enhancement access</Text>}
-                                        extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits > 0 ? 'Available' : 'Paused'}</Tag>}
+                                        extra={isPaymentPending
+                                            ? <Tag color="primary">Starts after payment</Tag>
+                                            : <Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits > 0 ? 'Available' : 'Paused'}</Tag>}
                                     />
                                     <List.Item
                                         title={<Text>Pack balance</Text>}
@@ -637,10 +691,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             {isPaymentPending ? (
                                 <Card size="small" style={{ backgroundColor: token.colorPrimaryBg }}>
                                     <Flex gap={8} vertical>
-                                        <Text>Payment is pending. Complete the Razorpay checkout to activate this store.</Text>
-                                        {subscriptionCheckoutUrl ? (
-                                            <Button color="primary" onClick={() => handleOpenExternalBillingLink(subscriptionCheckoutUrl, 'pending_payment')} size="small">
-                                                Pay Now
+                                        <Text>Payment is pending. Continue checkout to activate this store.</Text>
+                                        {canManageSelectedSubscription ? (
+                                            <Button color="primary" loading={isLoading} onClick={() => void handleContinuePendingCheckout()} size="small">
+                                                Continue Checkout
                                             </Button>
                                         ) : null}
                                     </Flex>
@@ -703,11 +757,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             </Flex>
                                         </Button>
                                     </>
-                                ) : null}
-                                {canManageSelectedSubscription && isPaymentPending && subscriptionCheckoutUrl ? (
-                                    <Button color="primary" onClick={() => handleOpenExternalBillingLink(subscriptionCheckoutUrl, 'pending_payment')} size="small">
-                                        Pay Now
-                                    </Button>
                                 ) : null}
                                 {canManageSelectedSubscription && sub.status === 'paused' ? (
                                     <>

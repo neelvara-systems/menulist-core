@@ -2,8 +2,8 @@
 
 > **Purpose:** Complete tracking of every user journey and flow in the subscription system. Each scenario documents the exact path through the codebase, what triggers it, what happens at each step, and the current status. Use this as a reference when revisiting, debugging, or extending the subscription flow.
 >
-> **Last Updated:** July 14, 2026
-> **Verification Method:** Code dry-run tracing (every file, every branch)
+> **Last Updated:** August 13, 2026
+> **Verification Method:** Code review, source contracts, and Firestore emulator lifecycle/transaction tests
 
 ---
 
@@ -64,7 +64,7 @@ topUpCredits: 0
 paymentMethod: { type: "card"|"upi", brand, last4, upiId }
 ```
 
-**Webhook also fires:** `subscription.activated` and/or `subscription.charged` — idempotent with verify route.
+**Webhook convergence:** `subscription.authenticated` and `subscription.activated` retain local `pending`; activation records provider/cycle metadata and marks captured settlement outstanding but grants no entitlement. A captured matching `subscription.charged` is idempotent with the verified callback for payment settlement and paid activation.
 
 ---
 
@@ -100,7 +100,7 @@ billingHistory: [..., paymentId] (if not already present)
 lastWebhook: { event, timestamp }
 ```
 
-**Idempotency guard:** `if (internalSub.billingHistory?.includes(paymentEntity.id))` — prevents duplicate billing entries if webhook fires twice.
+**Idempotency guard:** the canonical `x-razorpay-event-id` owns event delivery dedupe and the provider `pay_...` ID owns payment settlement dedupe. Replays cannot append billing history or reset credits twice.
 
 ---
 
@@ -272,7 +272,7 @@ statuses: [..., { status: "cancelled", remark: "Cancelled by user, reason: ..." 
 | 4a | If an eligible old subscription exists: `onUpgradePlan()` creates a durable marked replacement | `usePaymentHandler.ts` | Sends `replacementForSubscriptionId`; server owns credit calculation |
 | 4b | If no activeSubscription: `onClickPaymentCard()` — fresh subscription | `usePaymentHandler.ts` | Creates new sub without carry |
 | 5 | Razorpay Checkout → payment → verify → active | Same as Journey 1 | — |
-| 6 | Verification or signed webhook finalizes the replacement; the browser upgrade route is an idempotent recovery | `subscriptionReplacementFinalization.ts` | Provider cancel before atomic old/new carry-forward transaction |
+| 6 | Server-verified browser settlement or a captured matching `subscription.charged` webhook finalizes the replacement; the browser upgrade route is an idempotent recovery | `subscriptionReplacementFinalization.ts` | Authentication/activation alone cannot cancel the old provider row or transfer credits |
 
 **Credit carry-forward formula:**
 - Monthly: `monthlyCredits + topUpCredits`
@@ -371,7 +371,7 @@ if (sub.status === 'paused' && sub.cycleEndDate) {
 | 5 | Creates a replacement intent for the old subscription | `usePaymentHandler.ts` → `createSubscription()` | POST `/api/razorpay/create-subscription` with `replacementForSubscriptionId` |
 | 6 | Server validates direct scope, blocks conflicting current/pending rows, and reuses an exact provider `created` checkout on retry | `api/razorpay/create-subscription/route.ts` | Durable pending replacement marker |
 | 7 | User pays via Razorpay Checkout → verify | `usePaymentHandler.ts` | `verifySubscriptionPaymentResponse()` |
-| 8 | Browser verification activates the new row and invokes shared replacement finalization; the signed webhook provides the same recovery if the browser callback is lost | `verify-subscription/route.ts`, `webhook/route.ts` | `finalizeProductSubscriptionReplacement()` |
+| 8 | Browser verification settles the provider-fetched captured payment and invokes shared replacement finalization; a captured matching `subscription.charged` provides the same recovery if the browser callback is lost | `verify-subscription/route.ts`, `webhook/route.ts` | Authentication/activation events never finalize replacement |
 | 9 | Finalizer cancels the old provider subscription unless terminal, then atomically expires the old row | `subscriptionReplacementFinalization.ts` | Provider-before-Firestore ordering |
 | 10 | Finalizer calculates credits from the transaction-current old row and adds them to the replacement exactly once | `productBillingServer.ts` | `carryForwardFromSubscriptionId` replay guard |
 | 11 | Frontend: refetches → shows new active sub | `billing/index.tsx` | `refetchActiveSubscription()` |
@@ -490,11 +490,11 @@ Credits are carried forward identically to upgrades.
 | 1 | User pays on Razorpay Checkout | External (Razorpay) | — |
 | 2 | Frontend calls `/api/razorpay/verify-subscription` → **FAILS** (network error, timeout) | `usePaymentHandler.ts` | `verifySubscriptionPaymentResponse()` throws |
 | 3 | User sees error message | `billing/index.tsx` | `catch` block |
-| 4 | Meanwhile, Razorpay sends `subscription.activated` webhook | External (Razorpay) | — |
-| 5 | Webhook handler: sets status=`active`, credits, dates | `api/razorpay/webhook/route.ts` | Full subscription activation |
-| 6 | Next page load → SessionProvider fetches active sub → everything works | `sessionProvider.tsx` | `getActiveSubscriptionForStore()` |
+| 4 | Razorpay may send `subscription.authenticated`, then `subscription.activated`, then captured `subscription.charged` in non-guaranteed delivery order | External (Razorpay) | — |
+| 5 | Authentication retains local `pending`; activation updates bounded provider/cycle metadata only; charged validates the captured payment/subscription pair and settles exactly once | `api/razorpay/webhook/route.ts` | Event-specific authority, not one combined activation path |
+| 6 | Next page load → SessionProvider fetches converged provider-backed state | `sessionProvider.tsx` | `getActiveSubscriptionForStore()` |
 
-**The webhook is the safety net.** Even if the frontend verification fails, the webhook ensures the subscription is activated in Firestore.
+**The signed webhook is the safety net.** Even if the frontend verification callback is lost, lifecycle events converge state and the captured matching `subscription.charged` event performs settlement. Activation alone does not prove or apply payment.
 
 ---
 
@@ -511,13 +511,15 @@ Credits are carried forward identically to upgrades.
 |------|-------------|------|----------|
 | 1 | `createSubscription()` → creates Razorpay sub + Firestore doc (status: `pending`) | `api/razorpay/create-subscription/route.ts` | `createInitialSubscription()` |
 | 2 | Razorpay Checkout opens | `usePaymentHandler.ts` | `paymentObject.open()` |
-| 3 | User closes modal → handler never called | — | Promise neither resolves nor rejects |
+| 3 | User closes modal → the shared checkout promise rejects with the typed dismissed outcome; UI suppresses a false payment error | `usePaymentHandler.ts` | `createCheckoutDismissedError()` |
 | 4 | Firestore doc stays as `pending` until payment or a later retry evaluates it | — | No entitlement is granted |
-| 5 | Billing can surface pending checkout state, but pending never counts as active entitlement | `database/subscriptions/index.ts`, owner Billing surfaces | Read-only pending status/retry link |
-| 6 | User retries the same intent → server fetches the pending provider subscription and reuses it when provider status is `created` | `api/razorpay/create-subscription/route.ts` | Returns `{ reused: true }` |
-| 7 | A conflicting pending intent is blocked; a provider-terminal pending row is expired before a new checkout is created | `api/razorpay/create-subscription/route.ts` | Controlled 409 or local expiry |
+| 5 | Billing surfaces pending checkout state and "Starts after payment" enhancement access; pending never counts as active entitlement | `database/subscriptions/index.ts`, desktop/mobile Billing | No raw pending hosted-link action |
+| 6 | User clicks Continue Checkout → server fetches exact provider truth | `usePaymentHandler.ts`, `api/razorpay/create-subscription/route.ts` | Authenticated same-intent request |
+| 7 | Provider `created` without an in-progress eMandate reuses the same subscription in Standard Checkout; authenticated/active/past-due/paused or eMandate inside 48 hours returns 202 `processing` | Shared lifecycle policy | No duplicate provider create or Firestore write |
+| 8 | A terminal provider row, or eMandate older than 48 hours, permits replacement. A stale live row must first be cancelled and proven terminal; local expiry then transactionally rechecks exact scope and intent | `api/razorpay/create-subscription/route.ts` | User-triggered cancellation + guarded replacement |
+| 9 | Conflicting pending intent, malformed provider state, cancellation uncertainty, or concurrent lifecycle change fails closed | `api/razorpay/create-subscription/route.ts` | No second live checkout |
 
-**Boundary:** Retrying cannot silently accumulate a second live provider checkout for the same store. Provider-created/local-write failures use compensating cancellation after an ambiguity re-read.
+**Boundary:** Retrying cannot silently accumulate a second live provider checkout for the same store. Provider-created/local-write failures use compensating cancellation after an ambiguity re-read. Past-due hosted recovery and reseller recipient payment links are separate Razorpay-owned workflows; authenticated pending owner surfaces never open `shortUrl`.
 
 ---
 
@@ -588,14 +590,16 @@ Credits are carried forward identically to upgrades.
 
 | Razorpay Event | Handler | What It Does | Status |
 |----------------|---------|-------------|--------|
-| `subscription.activated` | ✅ | Sets active, credits, dates (same as verify) | Handled |
-| `subscription.charged` | ✅ | Resets credits, updates cycle dates, billing history | Handled |
+| `subscription.authenticated` | ✅ | Keeps local pending and stores validated pre-activation provider facts; no entitlement or money | Handled |
+| `subscription.activated` | ✅ | Keeps local pending, stores provider/cycle metadata, marks captured settlement pending, and grants no entitlement | Handled |
+| `subscription.charged` | ✅ | Requires captured matching payment, then settles/reset credits exactly once; late terminal delivery records money without reopening access | Handled |
 | `subscription.completed` | ✅ | Sets completed, subscription end date | Handled |
+| `subscription.updated` | ✅ | Stores validated provider state and optional quantity without implying payment | Handled |
 | `subscription.cancelled` | ✅ | Applies cancelled state idempotently, synchronizes entitlement, records churn, and notifies once | Handled |
 | `subscription.pending` | ✅ | Sets past_due, preserves pastDueSinceAt | Handled |
 | `subscription.halted` | ✅ | Sets past_due (same as payment.failed) | Handled |
 | `subscription.paused` | ✅ | Sets paused with initiator info | Handled |
-| `subscription.resumed` | ✅ | Sets active with initiator info | Handled |
+| `subscription.resumed` | ✅ | Records initiator/provider state and restores local active only when captured-payment evidence already exists | Handled |
 | `payment.failed` | ✅ | Sets past_due, preserves pastDueSinceAt | Handled |
 | `order.paid` | ✅ | Writes audit history and settles a pending top-up exactly once if browser verification did not | Handled |
 | Unhandled events | ✅ | Logged as unhandled, 200 returned | Handled |

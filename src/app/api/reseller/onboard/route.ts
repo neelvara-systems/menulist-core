@@ -1046,6 +1046,7 @@ export const POST = withAuth(async (request, session) => {
                 currency: 'INR',
                 amount: billingAmount,
                 status: 'pending',
+                providerStatus: 'created',
                 lastWebhook: null,
                 planId: tier.planId,
                 planName: tier.displayName,

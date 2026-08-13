@@ -4,6 +4,7 @@ import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolic
 import { Button } from '@shadcncomponents/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shadcncomponents/card';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -86,7 +87,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
             >
                 {t('creditPackSignIn')}
             </Button>
-        } else if (Boolean(activeSubscription?.id)) {
+        } else if (activeSubscription && hasValidSubscriptionAccess(activeSubscription)) {
             return <Button
                 className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
@@ -94,7 +95,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
             >
                 {t('creditPackAdd')}<>&nbsp; {currentStyle.icon}</>
             </Button>
-        } else {
+        } else if (!activeSubscription) {
             return <Button
                 className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
@@ -103,6 +104,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 {t('creditPackChoosePlan')}
             </Button>
         }
+        return <Button className="mt-6 w-full" disabled>{t('creditPackChoosePlan')}</Button>
     }
 
     return (

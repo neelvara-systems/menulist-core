@@ -1,5 +1,9 @@
 # Razorpay — Firebase Cost Tracking
 
+> **August 13, 2026 subscription lifecycle delta:** the 10-event shared policy and exact event/status validation add no Firestore operation before an invalid event is rejected. A valid event still creates or reclaims one `razorpayWebhookEvents` lease and writes the existing lean payment audit before event-specific mutation. `subscription.authenticated` adds one event-keyed subscription transaction only while the local row is pending. `subscription.activated` also keeps local `pending`; it writes bounded provider/cycle metadata and `capturedPaymentSyncPending: true` but no entitlement or payment ledger. `subscription.charged` owns captured-payment settlement and may append a late `pay_...` ID to a terminal row without a credit reset or entitlement reopening. `subscription.updated` may write provider status without quantity. The reconciliation query includes local `pending`; it can repair lifecycle metadata but cannot manufacture a payment ID, paid count, credit reset, or entitlement from provider status alone.
+
+> **August 13, 2026 pending-checkout cost delta:** clicking Continue Checkout performs one bounded pending-subscription query and one provider subscription fetch. Safe checkout reuse and 48-hour eMandate `processing` add no Firestore write. A user-triggered stale replacement adds one provider cancellation plus one Firestore transaction read/write to expire the exact pending row before the normal coordinated create path. No scheduler, collection, rule, or index was added. Regular owner, Answerlattice, and reseller-online initial rows now persist `providerStatus: 'created'` with local `pending` status.
+
 > **August 1, 2026 billing limiter outage boundary:** all eight authenticated
 > checkout, subscription-mutation, and payment-verification routes fail closed
 > on distributed limiter uncertainty. A provider outage returns 503 before any
@@ -16,7 +20,7 @@
 > **July 29, 2026 master-store runtime authority:** MenuList client/Admin outlet entitlement fallback shares one exact tenant `storesList` projector. Coercive IDs, malformed/conflicting activity or master flags, duplicate IDs, multiple masters and ambiguous legacy rows return no master before the fallback subscription query. Valid current lists keep the same reads; no billing or provider write is added.
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** August 1, 2026
+**Last Updated:** August 13, 2026
 
 ---
 
@@ -39,7 +43,7 @@ The long-term hardening adds two central MenuList server-only coordination colle
 
 The initial July 14 checkout/recovery section below predates this scale follow-up. Its statement that no collection, rule, or Function changed applies only to that earlier slice; the current source now includes the two coordination collections, their deny rules, the cursor/health scheduler work, and the required scoped Firebase deployment.
 
-Deployment status: local rules-emulator denial coverage and Functions lint/build/preflight pass. On July 16 the scoped index attempt read the current index source and stopped at the Firebase Rules test endpoint with HTTP 403 before upload; later audit retries stopped at missing Firebase CLI authentication before upload. The current owner-pending MenuList target is `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerCustomerAnalyticsManually,functions:menulistMaintenanceScheduler --non-interactive`. No deployed runtime cost or behavior has changed yet.
+Deployment status: local rules-emulator denial coverage and Functions lint/build/preflight pass. The lifecycle-aware `menulistMaintenanceScheduler` was deployed to `menulist-qa` on August 13 and read back `ACTIVE` in `us-central1` on Node 22 at hash `3ba1fd91827c88f7bd56959324994d5fd38bb226`. A read-only aggregate Firestore audit found one pending Razorpay subscription with exact product and tenant/store aliases, valid provider identity, HTTPS checkout URL, array histories, no captured payment evidence, and zero entitlement/provider/scope/history anomalies. The legacy row has no `providerStatus`; this is non-authoritative and safe because checkout recovery fetches provider truth before mutation or checkout. Founder Monitor now shares the Functions payment-evidence boundary: current MRR requires verified payment and a current paid window, past-due MRR requires prior verified payment, and unpaid pending checkout is attention-only. The Next.js webhook route remains pending the separately approved Vercel staging deployment. The July 16 rules/index HTTP 403 evidence is historical and does not prove the current rules/index target. Re-run the maintained scoped rules/index check before claiming complete Firebase infrastructure parity.
 
 ## Browser Diagnostics Boundary
 
@@ -91,9 +95,9 @@ July 6 MenuList Top-Up Scope Document ID Boundary is Firebase-cost neutral. Vali
 | Operation | Collection | Count per run | Type | Description |
 |-----------|-----------|---------------|------|-------------|
 | Cursor read/checkpoint | `_system/subscriptionReconciliationCursor` | 1 initial read + up to 1 write per complete page + 1 delete at cycle end | READ/WRITE/DELETE | Resumes after the last fully processed document; reaching the end deletes the cursor, and a failed delete fails the leased task instead of reporting a completed cycle |
-| Paged query | `subscriptions` | N reads in 100-row pages | READ | `where('status', 'in', ['active', 'past_due', 'paused'])`, ordered by Firestore document ID; no unbounded snapshot is retained and only five provider fetches run concurrently |
+| Paged query | `subscriptions` | N reads in 100-row pages | READ | `where('status', 'in', ['pending', 'active', 'past_due', 'paused'])`, ordered by Firestore document ID; no unbounded snapshot is retained and only five provider fetches run concurrently |
 | Transaction re-read | `subscriptions` | N reads | READ | Rechecks authoritative Firestore ID, exact provider ID and current state immediately before any update |
-| Update | `subscriptions` | 0-N writes | WRITE | Only writes a mismatch; status history, recovery timestamp, cycle dates, paid count, renew date, billing-period credit reset, `lastWebhook`, and any required entitlement-repair marker are committed together |
+| Update | `subscriptions` | 0-N writes | WRITE | Only writes an admitted mismatch. Provider state/quantity/renew date may converge, but `active` and cycle advancement require a matching local captured-payment ledger. Reconciliation never writes provider `paid_count` into local payment truth and never resets credits. Missing authority sets `capturedPaymentSyncPending: true`. |
 | Entitlement repair | `subscriptions`, `stores`, `platformSummary` | mismatch-only transaction + 1 marker-clear write after complete mirror/cache settlement | READ/WRITE | Derives entitlement from the transaction-next subscription shape, reads the triggering subscription plus at most 10 current paid-cycle subscriptions, writes the authoritative store/platform/subscription mirrors, and clears the durable retry marker only after cache/screen/Business Health invalidation succeeds |
 
 **Cost estimate (per night):**
@@ -102,6 +106,18 @@ July 6 MenuList Top-Up Scope Document ID Boundary is Firebase-cost neutral. Vali
 - **Typical:** 2N reads and few writes; webhook success keeps reconciliation changes rare
 
 If provider reconciliation commits a status or cycle change that requires a plan-mirror repair, `billingEntitlementSyncPending: true` is part of that same subscription transaction. A failed or interrupted post-commit mirror/cache settlement remains visible to the existing bounded pending-entitlement repair scan, including when the provider transition makes the subscription terminal and removes it from future active reconciliation queries.
+
+### Subscription Payment-Authority Data Shape
+
+| State | Required stored fields | Entitled? |
+|---|---|---|
+| Checkout created | `status: pending`, `providerStatus: created`, `paymentProvider: razorpay`, `billingHistory: []`, null cycle dates | No |
+| Mandate authenticated | local `status: pending`, `providerStatus: authenticated`, empty payment history | No |
+| Provider activated before settlement | local `status: pending`, `providerStatus: active`, bounded cycle dates, `capturedPaymentSyncPending: true`, empty payment history | No |
+| Captured settlement | `status: active`, exact `pay_*` in `billingHistory`, matching `totalPaymentsMadeCount`, current cycle dates, `capturedPaymentSyncPending: false` | Yes, while the paid cycle/grace policy remains current |
+| Manual prepaid | `billingMode: manual`, `manualPaymentConfirmed: true`; no provider subscription API calls | Yes, while the paid cycle remains current |
+
+`billingEntitlementSyncPending` and `capturedPaymentSyncPending` are different: the first means a committed paid lifecycle change still needs store/cache mirror repair; the second means provider lifecycle is active but no local captured-payment authority has been committed.
 
 **External API calls (not Firebase):**
 - Razorpay `subscriptions.fetch()` — 1 call per alive subscription per night
@@ -130,7 +146,7 @@ July 5 normal-path debug cleanup is Firebase-cost neutral. Plan lookup no longer
 
 Answerlattice top-up credit and store-summary writes remain in the same product-local transaction for new settlement. A paid replay that repairs the store summary first projects the current exact subscription and writes only that admitted identity/credit shape; malformed/coercible or concurrently replaced subscription state returns reconciliation instead of becoming a mirror update.
 | Query | `subscriptions` | 1 read | READ | Find subscription by `providerSubscriptionId` |
-| Update | `subscriptions` | 1 write | WRITE | Update status, dates, credits, lastWebhook, billingHistory |
+| Update | `subscriptions` | 1 write | WRITE | Update bounded lifecycle metadata. Only captured callback/`subscription.charged` settlement appends `billingHistory`, clears the captured-payment marker, transitions to entitled active, or resets cycle credits. |
 | Create | `payment_transactions` | 0-1 write | WRITE | Append-only payment audit log. Webhook storage writes a lean v2 summary instead of the full Razorpay payload; desktop/mobile billing history parse these summaries through a shared formatter and still tolerate legacy raw payload rows. |
 | Legacy identity migration | `payment_transactions` or `subscriptions` | 1 read per scanned row; 1 write per safely classifiable legacy row | MAINTENANCE | Collection must be explicitly selected; dry-run by default, paged at 400, MenuList-project allowlisted, exact project/collection acknowledgement required for writes. Run both collections before the exact-product rule/query release. |
 | Top-up recovery | `topups`, `subscriptions` | recovery-only transaction | READ/WRITE | On `order.paid`, validates the pending snapshot and settles the exact subscription once; duplicate/already-settled events perform no second credit write. |
@@ -235,7 +251,7 @@ Successful subscription payments use one transaction over `subscriptions/{subscr
 
 Webhook subscription ownership is resolved before the central idempotency claim. Every subscription-bearing event performs one exact-document read in each product project (two reads total), requires one exact subscription ID across provider entity aliases, requires exactly one stored product owner, and reconciles any explicit exact `ML`/`AL` declaration to that owner. The selected document is reused by the processor, avoiding a third read. Zero matches or read failure returns retryable 503 with no write; dual matches, declaration mismatch, unknown product or conflicting subscription IDs return 400 with no write. Non-subscription payment/order events add no ownership read and retain their exact declaration/legacy MenuList behavior.
 
-Provider subscription scalar projection adds no Firestore operation. Authenticated verification and signed webhook activation validate exact numeric safe-integer cycle/start/charge seconds, quantity and total/paid counts plus basic ordering before the existing subscription transaction; malformed values produce no subscription write. Optional cancellation/completion/update times pass the same exact seconds boundary. The leased reconciliation task validates every explicitly present provider timestamp/count/quantity before entering its transaction, so a malformed field cannot be ignored while another status/date field is written. Its read/write budget, cursor, concurrency and scheduler cadence are unchanged.
+Provider subscription scalar projection adds no Firestore operation. Authenticated verification and each signed subscription webhook validate the event/status pair plus exact numeric safe-integer cycle/start/charge seconds, quantity and total/paid counts, and basic ordering before the existing subscription transaction; malformed values produce no subscription write. Charged settlement additionally requires matching captured-payment evidence. Optional cancellation/completion/update times pass the same exact seconds boundary. The leased reconciliation task validates every explicitly present provider timestamp/count/quantity before entering its transaction, so a malformed field cannot be ignored while another status/date field is written. Its read/write budget, cursor, concurrency and scheduler cadence are unchanged.
 
 Replacement evidence adds no read or write. The existing pending/new subscription document must contain a valid exact old-subscription ID paired with exact nonnegative safe-integer prior MRR. Pending checkout reuse validates the stored pair and quantity against current intent. Verification/webhook compare transaction-current and pre-read evidence; finalization revalidates the current new subscription before provider cancellation and the existing carry-forward transaction. Missing nonreplacement evidence is valid, but marker-only, MRR-only, coercible and conflicting states fail without provider or Firestore mutation.
 
@@ -299,7 +315,7 @@ Onboarding subscription and shared payment error-handler diagnostic hardening ad
 | Trigger | Reads/night | Writes/night | Notes |
 |---------|-------------|-------------|-------|
 | Nightly reconciliation | Approximately 2N | 0-N mismatch writes plus scoped entitlement repair | One paged admission read and one transaction re-read per admitted subscription; provider fetches are external, not Firebase reads. |
-| Webhooks | ~3 per store/month | ~3 per store/month plus entitlement mirror on status change | Charged, renewed, failed, paused, resumed, cancelled, completed events. |
+| Webhooks | Provider-delivery dependent; at least the recurring lifecycle events actually emitted | One event lease/audit path per admitted delivery plus event-specific subscription/entitlement writes | All 10 subscription events are admitted; duplicates are lease/audit guarded, and only charged settles recurring money. |
 | User actions | Bounded route-specific reads | 0-2 subscription writes plus entitlement mirror when status changes | Create also checks current/pending intent; replacement reads old/new twice around the transaction; pause/resume cost 0 provider/Firestore mutation while disabled. |
 | Page loads | 1 per session | 0 from browser | Cached after first load; client-side grace expiry no longer attempts forbidden billing writes |
 

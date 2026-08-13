@@ -24,6 +24,7 @@ import {
 } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { getProductSubscriptionBillingScope } from "@lib/billing/productSubscriptionScopeBoundary";
 import { getExactMasterStoreIdFromList } from "@lib/billing/masterStoreBoundary";
+import { hasVerifiedSubscriptionPaymentEvidence } from "@lib/billing/subscriptionPlanEntitlement";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
@@ -291,6 +292,7 @@ const expireIfGracePeriodEndedServer = async (
 ): Promise<FirestoreSubscriptionDoc | null> => {
     const expectedScope = getMenuListSubscriptionEntitlementScope(sub);
     if (!expectedScope) return null;
+    if (!hasVerifiedSubscriptionPaymentEvidence(sub)) return null;
     if (sub.status !== "past_due") return sub;
     if (!sub.pastDueSinceAt) return null;
 

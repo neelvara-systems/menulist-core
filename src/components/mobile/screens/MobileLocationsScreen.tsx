@@ -24,7 +24,7 @@ import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { formatCurrency } from '@util/formatters';
-import { calculateProration } from '@util/razorpay';
+import { calculateProration, hasValidSubscriptionAccess } from '@util/razorpay';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -194,13 +194,14 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
     const isManualBilling = activeSubscription?.billingMode === 'manual';
     const prepaidCapacity = Number(activeSubscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoresList.length;
+    const hasPaidSubscriptionAccess = hasValidSubscriptionAccess(activeSubscription);
     const needsCheckoutBeforeOutlet = Boolean(
         !isManualBilling
         && activeSubscription?.status === 'active'
         && activeSubscription?.paymentMethod?.type === 'upi'
         && prepaidCapacity <= activeStoresList.length,
     );
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (activeSubscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet);
     const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
 
     const handleSwitchStore = async (storeId: number) => {

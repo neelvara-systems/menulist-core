@@ -7,6 +7,11 @@ import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotif
 import { projectFounderRevenueMovementRow } from '../sharedData/founderMonitorPersistedBoundary';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
+import {
+    isFounderMonitorActiveRevenueSubscription,
+    isFounderMonitorPastDueRevenueSubscription,
+    isFounderMonitorPaymentAttentionSubscription,
+} from '../billing/founderMonitorSubscriptionAuthority';
 import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 import {
     buildFounderMonitorScopeKey,
@@ -150,20 +155,6 @@ function getSubscriptionMrrPaise(data: Record<string, any>): number {
         return Math.round((amount * quantity) / 12);
     }
     return Math.round(amount * quantity);
-}
-
-function isActiveSubscription(data: Record<string, any>): boolean {
-    const status = normalizeStatus(data.status);
-    if (status === 'active' || status === 'paid') return true;
-    if (normalizeStatus(data.billingMode) === 'manual' && data.manualPaymentConfirmed === true) {
-        const validUntil = toDate(data.validUntil);
-        return !validUntil || validUntil.getTime() >= Date.now();
-    }
-    return false;
-}
-
-function isPastDueSubscription(data: Record<string, any>): boolean {
-    return ['past_due', 'pending', 'paused'].includes(normalizeStatus(data.status));
 }
 
 function isChurnedSubscription(data: Record<string, any>): boolean {
@@ -530,7 +521,10 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
         const storeId = cleanText(subscription.storeId || subscription.sId, 80);
         if (!storeId) return;
         const current = subscriptionByStore.get(storeId);
-        if (!current || (isActiveSubscription(subscription) && !isActiveSubscription(current))) {
+        if (!current || (
+            isFounderMonitorActiveRevenueSubscription(subscription)
+            && !isFounderMonitorActiveRevenueSubscription(current)
+        )) {
             subscriptionByStore.set(storeId, subscription);
         }
     });
@@ -600,8 +594,14 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
         const projectCount = safeNumber(summary.projectCount);
         const hasPublishedMenu = projectCount > 0 || Boolean(lastPublishedAt);
         const distributionReady = hasDistributionSurface(summary);
-        const hasPlan = Boolean(summary.activePlanType) || Boolean(subscription && (isActiveSubscription(subscription) || isPastDueSubscription(subscription)));
-        const paying = Boolean(subscription && (isActiveSubscription(subscription) || isPastDueSubscription(subscription)));
+        const hasPlan = Boolean(summary.activePlanType) || Boolean(subscription && (
+            isFounderMonitorActiveRevenueSubscription(subscription)
+            || isFounderMonitorPastDueRevenueSubscription(subscription)
+        ));
+        const paying = Boolean(subscription && (
+            isFounderMonitorActiveRevenueSubscription(subscription)
+            || isFounderMonitorPastDueRevenueSubscription(subscription)
+        ));
         const stale = truth.staleFlag === true || (publishAgeDays !== null && publishAgeDays > 90);
         const supportCounts = supportByStore.get(buildFounderMonitorScopeKey({
             tenantId: summary.tId,
@@ -663,7 +663,9 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
 
         const riskReasons: string[] = [];
         if (!active) riskReasons.push('Store inactive or blocked');
-        if (subscription && isPastDueSubscription(subscription)) riskReasons.push('Payment past due or pending');
+        if (subscription && isFounderMonitorPaymentAttentionSubscription(subscription)) {
+            riskReasons.push('Payment past due or pending');
+        }
         if (active && hasPlan && !hasPublishedMenu) riskReasons.push('Paid store not live');
         if (active && hasPublishedMenu && !distributionReady) riskReasons.push('Distribution surface not recorded');
         if (active && stale) riskReasons.push('Store truth stale');
@@ -678,7 +680,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
             storeName: cleanText(summary.name || summary.storeName || `Store ${storeId}`, 120),
             planName: cleanText(subscription?.planName || summary.activePlanType || 'No plan recorded', 120),
             subscriptionStatus: cleanText(subscription?.status || (summary.activePlanType ? 'entitled' : 'not_recorded'), 80),
-            mrrPaise: subscription ? getSubscriptionMrrPaise(subscription) : 0,
+            mrrPaise: subscription && paying ? getSubscriptionMrrPaise(subscription) : 0,
             stage: buildStoreStage(active, hasPublishedMenu, hasPlan, distributionReady, stale),
             paymentStatus: cleanText(subscription?.status || (hasPlan ? 'entitled' : 'not_recorded'), 80),
             menuStatus: hasPublishedMenu ? (stale ? 'Stale' : 'Published') : 'Not live',
@@ -699,8 +701,8 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
             || String(left.storeName).localeCompare(String(right.storeName));
     }).slice(0, 120);
 
-    const activeSubscriptions = subscriptions.filter(isActiveSubscription);
-    const pastDueSubscriptions = subscriptions.filter(isPastDueSubscription);
+    const activeSubscriptions = subscriptions.filter(isFounderMonitorActiveRevenueSubscription);
+    const pastDueSubscriptions = subscriptions.filter(isFounderMonitorPastDueRevenueSubscription);
     const churnedSubscriptions = subscriptions.filter(isChurnedSubscription);
     const currentMrrPaise = activeSubscriptions.reduce((sum, subscription) => sum + getSubscriptionMrrPaise(subscription), 0);
     const pastDueMrrPaise = pastDueSubscriptions.reduce((sum, subscription) => sum + getSubscriptionMrrPaise(subscription), 0);

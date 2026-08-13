@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase/firestore";
 import type { ProductId } from "@constant/product";
+import type { RazorpayProviderSubscriptionStatus } from "@data/shared/razorpaySubscriptionLifecycle";
 
 // Core Types for the Payment System
 export type PaymentProvider = "razorpay";
@@ -66,6 +67,7 @@ export interface FirestoreSubscriptionDoc {
 
   // --- Plan & Status Details ---
   status: PaymentStatus;
+  providerStatus?: RazorpayProviderSubscriptionStatus;
   planName: string;                 // NEW: User-friendly name, e.g., "Pro Plan (Yearly)"
   planId: string;                   // NEW: The internal plan identifier, e.g., "pro"
   planType: PlanInterval;
@@ -101,6 +103,8 @@ export interface FirestoreSubscriptionDoc {
   founderMonitorReplacementPlanName?: string | null;
   /** Durable Functions retry marker cleared only after entitlement/cache sync succeeds. */
   billingEntitlementSyncPending?: boolean;
+  /** Provider is active but the local ledger has not observed the matching captured payment yet. */
+  capturedPaymentSyncPending?: boolean;
 
   totalPaymentsNeededCount: number;
   totalPaymentsMadeCount: number;

@@ -631,7 +631,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     <div style={styles.nextSteps}>
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
-                            <li>Complete payment from the checkout link or billing screen</li>
+                            <li>Open Billing and continue the server-checked checkout</li>
                             <li>Check your activation dashboard</li>
                             <li>Teach AnswerLattice from selected links, docs, screenshots, recordings, or starter answers</li>
                             <li>Review generated product topics and answer drafts</li>
@@ -639,24 +639,13 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                         </ol>
                     </div>
 
-                    {result.subscription?.shortUrl && (
-                        <a
-                            href={result.subscription.shortUrl}
-                            style={styles.primaryBtn}
-                            data-answerlattice-event="onboarding_payment_clicked"
-                            data-answerlattice-label={`${result.plan.id}_${result.billing.currency.toLowerCase()}`}
-                            rel="noopener noreferrer"
-                        >
-                            Complete payment
-                        </a>
-                    )}
                     <a
-                        href={result.subscription?.shortUrl ? billingHref : mainDashboardHref}
-                        style={result.subscription?.shortUrl ? styles.secondaryBtn : styles.primaryBtn}
+                        href={result.subscription ? billingHref : mainDashboardHref}
+                        style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_dashboard_clicked"
-                        data-answerlattice-label={result.subscription?.shortUrl ? 'open_billing' : 'open_dashboard'}
+                        data-answerlattice-label={result.subscription ? 'open_billing' : 'open_dashboard'}
                     >
-                        {result.subscription?.shortUrl ? 'Open billing' : 'Open dashboard'}
+                        {result.subscription ? 'Continue in Billing' : 'Open dashboard'}
                     </a>
                 </div>
             )}

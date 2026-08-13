@@ -87,11 +87,11 @@ function verifyOperationalHostEnv() {
 
   assert.match(
     stagingEnv,
-    /^BATCH_IMAGE_GENERATION_WORKER_URL=https:\/\/app\.menulist\.digital\/api\/image-generation\/batch-generation$/m,
+    /^MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL=https:\/\/app\.menulist\.digital\/api\/image-generation\/batch-generation$/m,
   );
   assert.match(
     productionEnv,
-    /^BATCH_IMAGE_GENERATION_WORKER_URL=https:\/\/app\.menulist\.ai\/api\/image-generation\/batch-generation$/m,
+    /^MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL=https:\/\/app\.menulist\.ai\/api\/image-generation\/batch-generation$/m,
   );
   assert.match(
     qaFunctionsEnv,

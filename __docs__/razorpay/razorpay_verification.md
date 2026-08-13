@@ -1,5 +1,42 @@
 # Razorpay — Session Verification Log
 
+## Session: August 13, 2026 - Complete Subscription Lifecycle Authority
+
+**Task:** Recheck the current Razorpay subscription documentation and the complete callback/webhook/reconciliation implementation, remove browser-trust ambiguity, and verify every documented subscription event.
+
+### Decision and Implementation
+
+- Retained the authenticated checkout callback. It verifies Razorpay's checkout HMAC, fetches both provider entities server-side, and requires a captured payment whose `subscription_id` matches the active provider subscription before applying settlement. Browser IDs are inputs to verification, never payment authority.
+- Added one shared byte-identical app/Functions policy for all 10 documented subscription webhook events and all 9 provider states.
+- Added explicit `subscription.authenticated` handling: local status remains `pending`; no entitlement, cash, MRR, payment history, notification, or credit reset occurs.
+- Split `subscription.activated` from `subscription.charged`. Activation keeps local status `pending`, records bounded provider/cycle metadata, and sets `capturedPaymentSyncPending: true`; it grants no entitlement. Charged requires a captured payment bound to the same subscription and is the sole recurring event that settles payment, activates entitlement, and resets cycle credits.
+- Made `subscription.updated` record validated provider state even when quantity is absent; quantity and MRR change only when a bounded quantity is present.
+- Expanded reconciliation to local `pending` rows and provider `expired`, while keeping exact product/tenant/store and transaction-current checks. Reconciliation no longer copies provider `paid_count` or resets credits. Provider-active/cycle convergence requires an existing exact local `pay_*` ledger whose count matches provider truth; otherwise local status is preserved and captured settlement remains pending.
+- Completed a second code-review pass over callback, webhook lease, lifecycle transactions, settlement, replacement finalization, and reconciliation. The review fixed canonical `x-razorpay-event-id` admission, collision-safe hashing for unsafe IDs, exact event/provider-status validation before claims, and explicit rejection of charged payloads without matching captured-payment evidence.
+- Added out-of-order settlement recovery. A captured `subscription.charged` arriving after local `cancelled`/`completed` records its exact `pay_...` ID, method, and history while preserving terminal local/provider state, consumed credits, and closed entitlement. Terminal replacement carry-forward additionally requires that same exact payment ID in transaction-current billing history.
+- Preserved first-purchase classification across partial-failure replay: when settlement committed before a later side effect failed, a retry recognizes the same first `pay_...` entry and cannot downgrade purchased MRR/notification semantics to renewal semantics.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Shared lifecycle source policy | Passed: exact 10/10 subscription events and app/Functions byte parity |
+| Pure lifecycle contract | Passed: 10/10 events; only `subscription.charged` may settle captured money |
+| Firestore emulator lifecycle matrix | Passed: 10/10 events plus `subscription.updated` without quantity; authenticated/activated never settle money or reset credits; charged replay is exactly once; late charged delivery preserves cancelled/completed lifecycle and credits |
+| Product-scoped transaction emulator | Passed: replacement carry-forward remains exact-product/exact-scope; unpaid provider-active rows are excluded from server entitlement; payment application rejects non-`pay_*` identities; a terminal replacement requires the exact captured `pay_...` history entry |
+| Webhook event identity source contract | Passed: canonical header preference, invalid-header rejection, collision-safe hashing, exact subscription event/status pairs, and captured charge evidence are required before mutation |
+| Browser callback authority | Passed source gate: HMAC plus server-side payment/subscription fetch and captured/matching identity requirements |
+| Paid-access consumers | Passed: MenuList server DAL, desktop/mobile access helper, AI capacity, top-up settlement, outlet mutations, store-plan mirror, GrowthOS/Public Truth, Answerlattice reads, and resume recovery all require captured/manual payment evidence |
+| Checkout/provider isolation | Passed: checkout concurrency, webhook lease, provider-plan registry, reseller online provisioning, and Firestore coordination rules emulator gates |
+| Firebase QA reconciliation deploy | Passed: `menulistMaintenanceScheduler` is `ACTIVE` in `us-central1` on Node 22 with hash `3ba1fd91827c88f7bd56959324994d5fd38bb226`; Razorpay key ID/secret bindings remain version 1 |
+| QA Firestore subscription shape | Passed read-only aggregate audit: one pending Razorpay row; exact product and tenant/store aliases; valid provider identity and HTTPS checkout URL; array histories; no captured payment and zero entitlement/provider/scope/history anomalies. Its legacy missing `providerStatus` cannot grant access and is resolved from provider truth by checkout recovery. |
+| Founder Monitor revenue authority | Passed: current MRR requires verified payment plus a current paid window; past-due MRR requires prior verified payment; unpaid pending checkout is attention-only. Functions subscription assertions, full Founder Monitor boundary suite, and Functions preflight passed before the active QA redeploy. |
+| Hosted/provider lifecycle delivery | Pending until the updated Vercel staging route is deployed; the current Razorpay Test webhook remains on the earlier certified 12-event set and must not enable `subscription.authenticated` against the old route |
+
+Hosted readback after the Functions deploy reports Vercel Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`, matching checked-out `HEAD` but not the uncommitted lifecycle hardening. No Vercel or production deployment was performed in this session.
+
+Primary contracts rechecked: [subscription webhooks](https://razorpay.com/docs/webhooks/subscriptions/), [subscription states](https://razorpay.com/docs/payments/subscriptions/states/), [test lifecycle](https://razorpay.com/docs/payments/subscriptions/test/), and [webhook validation](https://razorpay.com/docs/webhooks/validate-test/).
+
 ## Session: July 14, 2026
 
 **Task:** End-to-end Razorpay/subscription cross-check across self-serve Billing, onboarding, Answerlattice, reseller/manual billing, outlet quantity, top-up, webhook, reconciliation, owner desktop/mobile display, and documentation.
@@ -68,9 +105,9 @@
 - Razorpay plan lookup paginates with `count` and `skip` and fails closed if the bounded scan cannot establish that a lookup key is absent.
 - `subscription.updated` already synchronizes a validated provider quantity. The leased Functions reconciler now repairs the same provider/local quantity mismatch if that webhook is missed; the multi-location source gate locks the transaction-current comparison.
 
-### External Verification Still Required
+### Historical July 14 External Verification Boundary
 
-This session did not create real provider charges or mutate a production subscription. A disposable Razorpay test-mode account/store is still required to smoke: new subscription, post-persistence identical-request replay, replacement upgrade, cancel, UPI quantity replacement, inherited-outlet HQ history routing, lost-browser top-up webhook recovery, provider-plan lost-response recovery, reseller online payment-link activation, and Answerlattice failure routing. Pause/resume are intentionally unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; the rejection path was source-verified, not provider-smoked. The final billing rules, status-scoped indexes, reconciliation cursor, and health snapshot are not deployed to QA because earlier scoped attempts failed authorization and the latest audit retries lacked Firebase CLI authentication before upload. After authentication/IAM repair, use the current complete target set:
+This July 14 session did not create real provider charges or mutate a production subscription. A disposable Razorpay test-mode account/store was still required to smoke: new subscription, post-persistence identical-request replay, replacement upgrade, cancel, UPI quantity replacement, inherited-outlet HQ history routing, lost-browser top-up webhook recovery, provider-plan lost-response recovery, reseller online payment-link activation, and Answerlattice failure routing. Pause/resume were intentionally unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; the rejection path was source-verified, not provider-smoked. The deploy statement below is retained as historical evidence and is superseded by the current August 13 section above for scheduler status.
 
 `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerCustomerAnalyticsManually,functions:menulistMaintenanceScheduler --non-interactive`
 

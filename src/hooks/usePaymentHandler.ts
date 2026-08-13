@@ -25,6 +25,8 @@ import { getBoundedPaymentStringContext, getPaymentFlowLogContext, logPaymentFai
 import useRazorpayScript from './useRazorpayScript';
 import { isRazorpayCheckoutConfigurationReady } from '@lib/billing/razorpayScriptBoundary';
 import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
+import { getBillingPlansForProduct } from '@lib/billing/productBillingPlans';
+import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 
 declare global {
     interface Window {
@@ -32,7 +34,11 @@ declare global {
     }
 }
 
-type SubscriptionCheckoutResult = RazorpayPaymentResponse & {
+type SubscriptionCheckoutResult = (
+    | RazorpayPaymentResponse
+    | Record<never, never>
+) & {
+    activationStatus: 'active' | 'processing';
     subscriptionId: string;
 };
 
@@ -83,7 +89,13 @@ type PaymentSubscriptionActionResponse = {
 
 type PaymentSubscriptionVerifyResponse = {
     success: true;
-    status: 'active';
+    status: 'active' | 'processing';
+};
+
+type PaymentSubscriptionCreateProcessingResponse = {
+    success: true;
+    status: 'processing';
+    subscriptionId: string;
 };
 
 type PaymentTopupVerifyResponse = {
@@ -103,7 +115,16 @@ const isPaymentSubscriptionActionResponse = (value: unknown): value is PaymentSu
 const isPaymentSubscriptionVerifyResponse = (value: unknown): value is PaymentSubscriptionVerifyResponse => (
     isRecord(value)
     && value.success === true
-    && value.status === 'active'
+    && (value.status === 'active' || value.status === 'processing')
+);
+
+const isPaymentSubscriptionCreateProcessingResponse = (
+    value: unknown,
+): value is PaymentSubscriptionCreateProcessingResponse => (
+    isRecord(value)
+    && value.success === true
+    && value.status === 'processing'
+    && isBoundedProviderString(value.subscriptionId)
 );
 
 const isPaymentTopupVerifyResponse = (value: unknown): value is PaymentTopupVerifyResponse => (
@@ -212,7 +233,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         quantity: number = 1,
         replacementForSubscriptionId?: string,
     ): Promise<SubscriptionCheckoutResult> => {
-        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, menulistPublicEnv.razorpayKeyId)) {
+        if (!isBoundedProviderString(menulistPublicEnv.razorpayKeyId)) {
             throw createPaymentStatusError(
                 'Razorpay checkout is not available.',
                 'payment_checkout_unavailable',
@@ -253,6 +274,19 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                 ...getBoundedPaymentStringContext('planId', plan.planId),
                 quantity: subscriptionQuantity,
             });
+            if (subResponse.status === 202) {
+                if (!isPaymentSubscriptionCreateProcessingResponse(subscriptionPayload)) {
+                    throw createPaymentStatusError(
+                        'Failed to confirm subscription status.',
+                        'payment_subscription_processing_response_invalid',
+                        subResponse.status,
+                    );
+                }
+                return {
+                    activationStatus: 'processing',
+                    subscriptionId: subscriptionPayload.subscriptionId,
+                };
+            }
             const subscriptionResponse = parseRazorpaySubscriptionCheckoutResponse(subscriptionPayload);
             if (!subscriptionResponse) {
                 throw createPaymentStatusError(
@@ -270,6 +304,13 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
             throw error;
         } finally {
             dispatcher(stopLoader("Creating Subscription"));
+        }
+
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, menulistPublicEnv.razorpayKeyId)) {
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
         }
 
         return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
@@ -341,6 +382,62 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                     requestedQuantityValid: Number.isSafeInteger(quantity)
                         && quantity >= 1
                         && quantity <= MAX_SUBSCRIPTION_QUANTITY,
+                }));
+            }
+            throw error;
+        } finally {
+            checkoutInFlightRef.current = false;
+        }
+    };
+
+    const onContinuePendingSubscriptionCheckout = async (
+        subscription: FirestoreSubscriptionDoc,
+    ): Promise<SubscriptionCheckoutResult> => {
+        if (subscription.status !== 'pending' || subscription.billingMode === 'manual') {
+            throw createPaymentStatusError(
+                'This subscription is not waiting for an online payment.',
+                'payment_subscription_not_pending',
+            );
+        }
+        const plan = getBillingPlansForProduct(productId, subscription.userType).find((candidate) => (
+            candidate.planId === subscription.planId
+            && candidate.billingInterval === subscription.planType
+        ));
+        if (!plan) {
+            throw createPaymentStatusError(
+                'Current plan details are not available.',
+                'payment_subscription_plan_unavailable',
+            );
+        }
+        const replacementEvidence = resolveSubscriptionReplacementEvidence(subscription);
+        if (replacementEvidence.outcome === 'invalid') {
+            throw createPaymentStatusError(
+                'Subscription replacement details are invalid.',
+                'payment_subscription_replacement_invalid',
+            );
+        }
+        if (checkoutInFlightRef.current) {
+            throw createPaymentStatusError(
+                'A checkout is already in progress.',
+                'payment_checkout_in_progress',
+            );
+        }
+
+        checkoutInFlightRef.current = true;
+        try {
+            return await createSubscription(
+                plan,
+                subscription.currency,
+                subscription.quantity ?? 1,
+                replacementEvidence.outcome === 'replacement'
+                    ? replacementEvidence.subscriptionId
+                    : undefined,
+            );
+        } catch (error) {
+            if (!isPaymentCheckoutDismissedError(error)) {
+                logPaymentFailure('payment_pending_subscription_continue_failed', error, buildPaymentLogContext('continue_pending_subscription', {
+                    ...getBoundedPaymentStringContext('planId', subscription.planId),
+                    ...getBoundedPaymentStringContext('subscriptionId', subscription.providerSubscriptionId),
                 }));
             }
             throw error;
@@ -492,7 +589,9 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                 targetQuantity,
                 currentPlan.providerSubscriptionId,
             );
-            await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
+            if (paymentResponse.activationStatus === 'active') {
+                await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
+            }
             return paymentResponse;
         } catch (error) {
             if (!isPaymentCheckoutDismissedError(error)) {
@@ -777,7 +876,9 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         }
     }, [buildPaymentLogContext, dispatcher, isScriptLoaded, session, update]); // Add dependencies used inside the function
 
-    const verifySubscriptionPaymentResponse = async (paymentResponse: unknown): Promise<RazorpayPaymentResponse> => {
+    const verifySubscriptionPaymentResponse = async (
+        paymentResponse: unknown,
+    ): Promise<RazorpayPaymentResponse & { activationStatus: 'active' | 'processing' }> => {
         if (!isRazorpayPaymentResponse(paymentResponse, 'subscription')) {
             logPaymentFailure('payment_subscription_response_invalid', undefined, buildPaymentLogContext('subscription_verify'));
             throw createPaymentStatusError(
@@ -799,7 +900,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                 }),
             });
 
-            await readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>(
+            const verificationResult = await readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>(
                 verificationResponse,
                 'subscription_verify_response',
                 isPaymentSubscriptionVerifyResponse,
@@ -807,13 +908,24 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                 'payment_subscription_verify_response_invalid',
                 'Payment verification failed.',
             );
-            return paymentResponse;
+            return { ...paymentResponse, activationStatus: verificationResult.status };
         } catch (error) {
             logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('subscription_verify'));
             throw error;
         }
     }
-    return { onClickPaymentCard, handleTopupPurchase, pendingPlan, executePostOnboarding, isScriptLoaded, onUpgradePlan, onCancelSubscription, onPauseSubscription, onResumeSubscription };
+    return {
+        onClickPaymentCard,
+        onContinuePendingSubscriptionCheckout,
+        handleTopupPurchase,
+        pendingPlan,
+        executePostOnboarding,
+        isScriptLoaded,
+        onUpgradePlan,
+        onCancelSubscription,
+        onPauseSubscription,
+        onResumeSubscription,
+    };
 };
 
 export default usePaymentHandler;

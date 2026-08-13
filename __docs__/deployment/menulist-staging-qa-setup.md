@@ -9,6 +9,12 @@ This is the dedicated setup file for **MenuList staging/QA**. Follow only this
 file first. Do not set up Answerlattice, CampaignCue, SignalDesk, Neelvara, or
 MyCodex until MenuList QA is live and verified.
 
+## August 13 Razorpay Checkout Recovery Checkpoint
+
+- Read-only QA evidence confirmed the pending yearly subscription is structurally safe in Firestore: exact MenuList/store scope, local `pending`, null cycle dates, empty billing history, and no active entitlement. Razorpay reports provider `created`, one issued/unpaid invoice, no captured payment, and an eMandate payment method still awaiting asynchronous confirmation.
+- The existing hosted payment link returned Razorpay's "Invalid month passed for anchor" error even though the provider create payload has no `start_at` and the yearly plan is valid. Source now avoids that hosted link for authenticated pending owner flows and applies the 48-hour server-checked recovery policy documented under `__docs__/razorpay/`.
+- Local source/emulator certification must pass before release. The hosted QA app remains on the earlier Vercel Preview revision until an explicitly approved staging deployment, so browser proof of Continue Checkout is still a release step rather than current hosted evidence.
+
 ## Final Domain Contract Used By This Guide
 
 | Domain | Purpose | Env |
@@ -2445,13 +2451,86 @@ Operator progress:
   path, and was removed from the queue after acknowledgement. Vercel logs show
   the exact POST route, branch `staging`, environment `preview`, and status 200;
   no image-provider call, durable image job, or production write was created.
-- `2026-08-13` - Razorpay Test Mode read-only smoke confirms the QA key can read
-  payments and orders, both returning an empty result. Plans and subscriptions
-  return HTTP 401, so recurring-billing API access is not enabled for this test
-  account. The locally signed webhook boundary still rejects a false signature
-  and accepted one synthetic signed event. `QA-K21` remains open only for
-  provider-originated Test Mode webhook registration/delivery and recurring API
-  enablement; no Live Mode action was performed.
+- `2026-08-13` - `QA-K21` is complete for Razorpay Test Mode webhook transport.
+  The exact QA endpoint is enabled with 12 route-handled events:
+  `payment.failed`, `order.paid`, `refund.processed`, `subscription.paused`,
+  `subscription.resumed`, `subscription.activated`, `subscription.pending`,
+  `subscription.halted`, `subscription.charged`, `subscription.cancelled`,
+  `subscription.completed`, and `subscription.updated`. One
+  disposable INR 1 Test Mode order completed through Razorpay's mock netbanking
+  success path and generated a provider-originated `order.paid` delivery.
+  Vercel Preview logs record the exact POST to `/api/razorpay/webhook` on branch
+  `staging` with HTTP 200, a present event id, and a present product id. The
+  route's maintained negative smoke still rejects a false signature. Guarded
+  cleanup removed the exact temporary QA payment audit and webhook ledger, and
+  bounded Firestore REST readback confirmed both identities absent. No real
+  money, Live Mode operation, production read, or production write was involved.
+  A later readback superseded the earlier Plans/Subscriptions HTTP 401 result:
+  both APIs now return HTTP 200, and the dashboard exposes subscription events.
+  At the time of this transport certification, `subscription.authenticated`
+  remained intentionally unsubscribed because the hosted route had no handler
+  for that provider-only pre-activation state; the local `pending` row remained
+  non-entitled until an authoritative active/captured transition.
+- `2026-08-13` - Source lifecycle hardening supersedes the earlier 12-event
+  target after the next Vercel staging deployment. The route now explicitly
+  handles all 10 subscription events: authentication and activation remain
+  local `pending`; activation records provider/cycle metadata and marks captured
+  settlement outstanding without entitlement. Only a matching captured charge
+  settles payment, activates paid access, and resets credits. Source, pure contract,
+  and Firestore-emulator matrices pass 10/10 events plus no-quantity
+  `subscription.updated`. Keep the Razorpay Test webhook on its currently
+  certified 12-event set until the hardened route is hosted; then add
+  `subscription.authenticated` as the 13th total configured event and run a
+  provider Test Mode lifecycle matrix.
+- `2026-08-13` - Follow-up code review added canonical
+  `x-razorpay-event-id` dedupe, collision-safe hashing for unsafe event IDs,
+  exact event/provider-status admission before the event claim, and captured
+  payment/subscription identity checks for charged settlement. Emulator proof
+  also covers late charged delivery after cancelled/completed without reopening
+  entitlement or resetting consumed credits. These source changes remain part
+  of the same pending Vercel staging deployment; do not change the dashboard's
+  certified 12-event selection before that deployment is Ready.
+- `2026-08-13` - The reconciliation half of that hardening is deployed to QA.
+  The scoped Firebase deployment was repeated after the shared pending-checkout
+  policy and final reconciliation source were frozen. Readback reports
+  `menulistMaintenanceScheduler` `ACTIVE` in `us-central1` on Node 22 at hash
+  `3ba1fd91827c88f7bd56959324994d5fd38bb226`, with `RAZORPAY_KEY_ID` and
+  `RAZORPAY_KEY_SECRET` still bound to version 1. Hosted app readback remains
+  Vercel Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`,
+  which matches checked-out `HEAD` but not the uncommitted route hardening. No
+  Vercel or production deployment occurred; therefore the Razorpay dashboard
+  must remain on the certified 12-event set until the new Preview is Ready.
+- `2026-08-13` - A read-only Firestore REST audit through the authenticated
+  Firebase CLI session inspected aggregate shape only. The one `ML` subscription
+  is pending, Razorpay-backed, exact-dual-product scoped, exact tenant/store alias
+  scoped, and has a valid provider subscription identity, HTTPS checkout URL,
+  array billing history, and array status history. It has no captured payment
+  evidence and zero active-without-payment, pending-with-payment, provider,
+  scope, alias, or malformed-history anomalies. The legacy row predates explicit
+  `providerStatus: created`; this cannot grant access, and the hardened Continue
+  Checkout route fetches provider truth before deciding whether to reopen, wait,
+  or replace that checkout.
+- `2026-08-13` - A final active-status consumer sweep found that Founder Monitor
+  still projected unverified local `active` rows into current MRR and unpaid
+  `pending` checkout rows into past-due MRR. The shared Functions payment-evidence
+  boundary now requires confirmed manual payment or an exact captured Razorpay
+  `pay_*` history entry; current MRR additionally requires a current paid window.
+  Pending checkout remains visible as payment attention only. Focused Functions
+  and Founder Monitor gates passed before the scoped scheduler redeploy reflected
+  by the active hash above.
+- `2026-08-13` - The hosted MenuList billing flow created exactly one canonical
+  Starter Yearly provider plan (`plan_TPGo0iCOW9gJmT`) and one disposable Test
+  Mode subscription (`sub_TPGo1XmddplChB`) through the application path. This
+  confirms the central provider-plan registry and subscription creation APIs are
+  available; no manual Dashboard plan was created. Card authorisation reached
+  Razorpay's saved-card token OTP boundary but was not bypassed with the dummy
+  contact. A subsequent eMandate attempt reached Razorpay's mock-bank Success
+  result, and bounded API readback records `payment_method=emandate` while the
+  provider subscription remains `created` with no captured payment or billing
+  cycle. No subscription lifecycle webhook has fired yet, so activation,
+  settlement, and local entitlement synchronization remain pending provider
+  transition evidence rather than a failed webhook configuration. No real
+  money, Live Mode operation, production read, or production write was used.
 - `2026-08-13` - The QA Cloud Run service for `messagingOnboarding` had no
   invoker binding even though the callable image service was already public.
   A narrowly scoped `allUsers -> roles/run.invoker` binding was applied only to
@@ -2460,6 +2539,33 @@ Operator progress:
   `ENABLE_MESSAGING_ONBOARDING=false`. `QA-K22` stays open until the flag is
   enabled for a controlled window, Meta verifies the callback, only `messages`
   is subscribed, and one provider-signed test event is captured.
+- `2026-08-13` - `QA-K22` is complete. During one bounded QA-only window,
+  `messagingOnboarding` was deployed with `ENABLE_MESSAGING_ONBOARDING=true`.
+  Meta verified the exact `menulist-qa` callback using the vaulted verify token,
+  and app `MenuList QA Messaging` subscribed only to the WhatsApp Business
+  Account `messages` field at Graph API version `v26.0`. Cloud Logging records
+  the controlled wrong-token GET at HTTP 403, the real Meta challenge at HTTP
+  200 with `[WhatsApp] Webhook verification successful`, and a Meta dashboard
+  test POST at HTTP 200 with no invalid-signature log. Bounded Firestore REST
+  readback found no inbound-message or tracking documents from the provider
+  sample, so no synthetic cleanup write was required. The flag was immediately
+  restored to `false`; scoped redeploy/readback reports active hash
+  `ee465f97efe387e86727b849b8f222534d6a6c84`, provider `whatsapp`, tracking
+  enabled, and all four WhatsApp secret bindings still on version 1. The
+  callback and sole `messages` subscription remain registered, but the app
+  remains unpublished and provider processing is disabled. No production
+  number, payment method, production project, publish-state change, or
+  production message was used.
+- `2026-08-13` - Post-`QA-K22` checklist reconciliation leaves nine unchecked
+  rows: owner-governance items `QA-A05`, `QA-A11`, `QA-A12`, `QA-A13`,
+  `QA-A15`, `QA-A16`, and `QA-A20`; the explicitly excluded Firebase Auth
+  project-reload boundary `QA-K09`; and owner-controlled production-absence
+  evidence `QA-K13`. Razorpay recurring API enablement is now confirmed; only
+  provider-originated subscription activation/charge delivery and resulting
+  local entitlement synchronization remain to be certified. That lifecycle
+  evidence is not misclassified as a failed QA webhook transport check. No
+  production query or destructive account cleanup was performed during this
+  reconciliation.
 - `2026-08-13` - Hosted project creation reached exact QA scope `1/1` and wrote
   its project plus summary entry, but reload certification is not accepted as a
   pass. Chrome's active MenuList PWA service worker continued serving immutable
@@ -2472,6 +2578,36 @@ Operator progress:
   noindex response with `Menu not found`, so `QA-K09` and `QA-K10` remain open
   for a fresh-browser/current-bundle authenticated rerun rather than being
   inferred from source or Admin data.
+- `2026-08-13` - A fresh Chrome rerun on current Preview build
+  `87abeca436e32ab4febaf405dd87f50da73c6d2c` superseded the earlier stale
+  service-worker diagnosis. One zero-value, four-hour QA subscription admitted
+  project creation at exact scope `1/1`; Chrome created and immediately loaded
+  project `1-msrgdura-AIe2cGaeK9XhyBJkf6HN-1` with slug
+  `qa-k09-crud-2026-08-13`. After a normal reload, the current immutable bundle
+  logged bounded `[Firebase Bootstrap]` and `[Projects Page]` failures even
+  though Vercel recorded HTTP 200 for `/api/auth/set-claims`. Update and normal
+  delete therefore remain uncertified inside the explicitly excluded Firebase
+  Auth boundary. No auth state was cleared, replaced, or bypassed, so `QA-K09`
+  remains open.
+- `2026-08-13` - `QA-K10` is complete. Because the clean QA store had no
+  customer host, a unique disposable subdomain
+  `qa-k10-cert-20260813.menulist.digital` was attached only to `stores/1` in
+  `menulist-qa` after confirming no conflicting store. Chrome opened the OBP,
+  followed its generated `View QA K09 CRUD 2026-08-13` link, and rendered the
+  project menu with its honest `No items yet` state. Independent HTTP readback
+  returned 200, `x-matched-path: /client/[[...slug]]`, the exact tenant
+  subdomain headers, and `x-robots-tag: noindex, nofollow, noarchive`.
+- `2026-08-13` - The focused host-routing verifier initially failed because it
+  still asserted the retired unprefixed `BATCH_IMAGE_GENERATION_WORKER_URL`
+  alias. Both environment templates already use the governed full product name
+  `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL`; the verifier was aligned with
+  that source-of-truth contract and rerun.
+- `2026-08-13` - The customer-link rerun left no synthetic residue. Guarded
+  cleanup removed the temporary subdomain, project, sole project-summary
+  document, and zero-value subscription only after their expected identities
+  were asserted. Independent Admin readback reports the three documents absent
+  and `stores/1.subdomain` absent. Production Firebase and Vercel Production
+  were not queried or changed.
 - `2026-08-13` - Final cleanup removed and verified absent every synthetic
   certification artifact from `menulist-qa`: two project documents, the
   project-summary document containing three synthetic entries, the zero-value
@@ -2810,7 +2946,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
 | [x] | QA-K08 | Owner onboarding stays on app host | Browser | `https://menulist.digital/create-menu` redirects to `https://app.menulist.digital/create-menu`; Google auth and preview remain on the app host |
 | [ ] | QA-K09 | Test business/store can be created or loaded | Browser | Basic owner workflow is usable |
-| [ ] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
+| [x] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
 | [x] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
 | [x] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |
 | [ ] | QA-K13 | No production writes observed | Firebase Console -> project `menulist` | Production data remains untouched |
@@ -2821,8 +2957,8 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K18 | QA customer origin cannot use owner API CORS | Terminal | A synthetic wildcard tenant origin receives HTTP 403 `Origin not allowed` and no `Access-Control-Allow-Origin` header from the owner API |
 | [x] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | Only MenuList QA project/Preview/domain setup was performed; production, sister products, and retired QA hosts were not activated |
 | [x] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | Wrong-secret admission returns HTTP 403; one configured-secret QA task reached the current staging worker, returned HTTP 200 through its idempotent missing-job path, disappeared after acknowledgement, and created no provider call or production data |
-| [ ] | QA-K21 | Razorpay Test webhook configured and verified | Razorpay Test Mode and Vercel logs | Exact QA endpoint uses the distinct webhook secret; one signed test/sandbox event is accepted without any live-mode operation |
-| [ ] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verifies with the vaulted token, only `messages` is subscribed, and one bounded signed test event reaches the QA Function without production assets |
+| [x] | QA-K21 | Razorpay Test webhook transport configured and verified | Razorpay Test Mode and Vercel logs | Historical transport proof covers the distinct secret, the then-hosted 12-event set, and one provider-originated `order.paid` HTTP 200 without real money or Live Mode. Source now handles all 10 subscription events; the 13-event dashboard update and provider lifecycle matrix remain pending the hardened Vercel staging deployment. |
+| [x] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verified with the vaulted token; only `messages` is subscribed at v26.0, one Meta dashboard test POST reached the QA Function with HTTP 200, and the QA runtime was restored to `ENABLE_MESSAGING_ONBOARDING=false` without production assets |
 | [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marked completed items and recorded the remaining deploy, provider, production-absence, worker, and webhook blockers; production is not approved |
 
 ## Step-By-Step Setup Order
@@ -4092,11 +4228,17 @@ https://us-central1-menulist-qa.cloudfunctions.net/messagingOnboarding/whatsapp
    show successful challenge/signature handling without logging payloads,
    tokens, or full phone numbers. Keep the test app/account isolated; do not add
    a production number, payment method, or production webhook.
+6. After recording the bounded smoke evidence, restore
+   `ENABLE_MESSAGING_ONBOARDING=false`, rebuild, redeploy only the approved QA
+   Function scope, and read back the active revision. Leave the verified
+   callback and sole `messages` subscription registered; the disabled flag is
+   the runtime gate until a separately approved intake test window.
 
 Record this as `QA-K22` only after the callback, subscription, and signed test
-event are all verified. If current Meta app-mode rules block the intended test
-event, record the exact non-secret blocker and review the current official Meta
-requirement before changing publish state.
+event are all verified and the QA runtime is restored to disabled. If current
+Meta app-mode rules block the intended test event, record the exact non-secret
+blocker and review the current official Meta requirement before changing
+publish state.
 
 #### Razorpay Test Webhook
 
@@ -4110,12 +4252,17 @@ https://app.menulist.digital/api/razorpay/webhook
 
 3. Enter the distinct QA webhook signing secret created in Step 5.3. Do not use
    the Razorpay API key secret.
-4. Subscribe only to the event families handled by the current route:
-   `order.paid`, `payment.failed`, `payment.refunded`, `refund.processed`,
-   `subscription.pending`, `subscription.halted`, `subscription.activated`,
-   `subscription.charged`, `subscription.completed`,
-   `subscription.cancelled`, `subscription.paused`, `subscription.updated`, and
-   `subscription.resumed`.
+4. Subscribe only to events handled by the hosted route. After the August 13
+   lifecycle hardening is deployed to Vercel staging, the QA webhook target is
+   these 13 events: `order.paid`, `payment.failed`,
+   `refund.processed`, `subscription.paused`, `subscription.resumed`,
+   `subscription.authenticated`, `subscription.activated`,
+   `subscription.pending`, `subscription.halted`, `subscription.charged`,
+   `subscription.cancelled`, `subscription.completed`, and
+   `subscription.updated`. Until that exact source is hosted, retain the
+   previously certified 12-event selection without `subscription.authenticated`.
+   Do not select `payment.refunded` unless the route adds an explicit handler
+   for that event.
 5. Use Razorpay's Test Mode webhook test or one bounded sandbox transaction.
    Confirm Vercel accepts the signed event, rejects an invalid signature, and
    writes only QA billing data. Do not perform a Live Mode transaction.
