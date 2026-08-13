@@ -1,5 +1,42 @@
 # Razorpay — Session Verification Log
 
+## Session: August 14, 2026 - Hosted Checkout Recovery and Cancellation Certification
+
+**Task:** Exercise the current Test Mode owner checkout and signed webhook path on `app.menulist.digital`, preserve the retained unpaid baseline, correct defects exposed by real provider payloads, and prove cleanup without touching production.
+
+### Hosted Evidence
+
+- Vercel Preview build `de18a865a1c08603ba3f740c958b827246d99a65` rendered the retained yearly subscription as `Payment Pending`. `Continue Checkout` reopened Standard Checkout for the same provider subscription. Closing and confirming exit returned immediately to the same authoritative pending state with `Continue Checkout`; no payment, entitlement, billing history, MRR, notification, or credit mutation occurred.
+- Provider readback kept retained baseline `sub_TPGo1XmddplChB` at `created`, `paid_count=0`, no current billing cycle, and no authorization attempts. It was not cancelled, replaced, or otherwise mutated.
+- A separate disposable subscription, `sub_TPLMUb5xz8kme6`, was cancelled through the Razorpay Test API after exact identity/status preconditions. The first signed `subscription.cancelled` delivery returned HTTP 503 because the MenuList-only QA route attempted an unconditional Answerlattice Firestore lookup.
+- Vercel Preview build `1234895fdd013fa03d59400dcd8253f6d9fd6d0b` restricted lookup to the event's intended, configured product stores. Razorpay's automatic retry then returned HTTP 200 and the hosted owner Billing surface converged to `No Active Subscription`.
+- Guarded cleanup deleted only the disposable local subscription after asserting its exact identity and terminal provider status. A second Firestore read found no matching document. The retained baseline and its owner/store/tenant fixture remained unchanged; production was not queried or changed.
+- Razorpay Dashboard readback confirms the enabled QA endpoint has 13 events: `payment.failed`, `order.paid`, `subscription.authenticated`, `subscription.paused`, `subscription.resumed`, `subscription.activated`, `subscription.pending`, `subscription.halted`, `subscription.charged`, `subscription.cancelled`, `subscription.completed`, `subscription.updated`, and `refund.processed`.
+
+### Real-Payload Corrections
+
+- Historical Vercel logs showed a genuine Razorpay `payment.failed` delivery returning HTTP 500. Read-only Test API inventory confirmed Razorpay can emit an order-backed failed payment with amount `0` after checkout cancellation and without `subscription_id` or top-up pack notes.
+- Build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` now treats provider amount `0` as valid failed-payment audit data, uses a bounded persisted-subscription amount fallback only when the provider amount is absent, and identifies top-ups only from explicit pack identity. Order presence alone no longer labels a payment as a top-up.
+- Official `subscription.pending` and `subscription.halted` payloads may contain only the subscription entity. The same resolver derives their audit amount from the transaction-current subscription instead of requiring an unrelated payment entity.
+- The original failed-payment event has not yet been observed as an HTTP 200 automatic retry on the corrected build. Razorpay documents at-least-once delivery and retry of non-2xx responses for up to 24 hours; this provider-controlled retry remains an open observation, not a code or deployment blocker.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Hosted checkout dismissal recovery | Passed: the same pending subscription is re-read after dismissal and remains non-entitled with `Continue Checkout` |
+| Provider-originated cancellation | Passed: corrected hosted route returned HTTP 200 on automatic retry and owner Billing converged to no active subscription |
+| Product routing | Passed: MenuList-only QA does not require Answerlattice Firestore configuration; signed/intended configured product stores remain isolated |
+| Failed-payment amount and classification | Passed source gates: provider amount `0`, missing amount with exact subscription fallback, malformed amount failure, explicit top-up notes, subscription identity, and ordinary order-backed payment classification |
+| Lifecycle contract | Passed: exact 10/10 subscription events plus Firestore emulator matrix; authentication/activation remain pending and only captured charged settlement may grant access |
+| TypeScript and scoped ESLint | Passed on the current payment/webhook changes before each staging push |
+| Current Vercel deployment | Passed: build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` is Ready and served by the QA aliases |
+| Disposable cleanup and retained baseline | Passed: disposable local row absent; retained provider baseline remains `created` and unpaid |
+| Original `payment.failed` retry | Pending provider observation: no current-build retry has appeared yet |
+| Immediate-start authorization/charge | Pending external sandbox evidence: checkout did not reach a successful mock-bank authorization, so no `subscription.activated` or captured `subscription.charged` event was fabricated |
+
+Primary contracts rechecked: [subscription test lifecycle](https://razorpay.com/docs/payments/subscriptions/test/?preferred-country=IN), [test card details](https://razorpay.com/docs/payments/payments/test-card-details/?preferred-country=IN), [subscription webhooks](https://razorpay.com/docs/webhooks/subscriptions/), [payment webhooks](https://razorpay.com/docs/webhooks/payments/), and [webhook best practices](https://razorpay.com/docs/webhooks/best-practices/).
+
 ## Session: August 13, 2026 - Complete Subscription Lifecycle Authority
 
 **Task:** Recheck the current Razorpay subscription documentation and the complete callback/webhook/reconciliation implementation, remove browser-trust ambiguity, and verify every documented subscription event.
@@ -31,9 +68,9 @@
 | Firebase QA reconciliation deploy | Passed: `menulistMaintenanceScheduler` is `ACTIVE` in `us-central1` on Node 22 with hash `3ba1fd91827c88f7bd56959324994d5fd38bb226`; Razorpay key ID/secret bindings remain version 1 |
 | QA Firestore subscription shape | Passed read-only aggregate audit: one pending Razorpay row; exact product and tenant/store aliases; valid provider identity and HTTPS checkout URL; array histories; no captured payment and zero entitlement/provider/scope/history anomalies. Its legacy missing `providerStatus` cannot grant access and is resolved from provider truth by checkout recovery. |
 | Founder Monitor revenue authority | Passed: current MRR requires verified payment plus a current paid window; past-due MRR requires prior verified payment; unpaid pending checkout is attention-only. Functions subscription assertions, full Founder Monitor boundary suite, and Functions preflight passed before the active QA redeploy. |
-| Hosted/provider lifecycle delivery | Pending until the updated Vercel staging route is deployed; the current Razorpay Test webhook remains on the earlier certified 12-event set and must not enable `subscription.authenticated` against the old route |
+| Hosted/provider lifecycle delivery | Superseded by the August 14 evidence above: the 13-event webhook is enabled and `subscription.cancelled` reached the corrected route with HTTP 200; immediate authorization/charge and the original failed-payment automatic retry remain pending external evidence |
 
-Hosted readback after the Functions deploy reports Vercel Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`, matching checked-out `HEAD` but not the uncommitted lifecycle hardening. No Vercel or production deployment was performed in this session.
+Historical August 13 readback after the Functions deploy reported Vercel Preview build `87abeca436e32ab4febaf405dd87f50da73c6d2c`, matching that session's checked-out `HEAD` but not its uncommitted lifecycle hardening. This statement is retained as dated evidence and is superseded by the August 14 hosted builds above. No production deployment was performed.
 
 Primary contracts rechecked: [subscription webhooks](https://razorpay.com/docs/webhooks/subscriptions/), [subscription states](https://razorpay.com/docs/payments/subscriptions/states/), [test lifecycle](https://razorpay.com/docs/payments/subscriptions/test/), and [webhook validation](https://razorpay.com/docs/webhooks/validate-test/).
 

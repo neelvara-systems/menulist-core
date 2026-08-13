@@ -2,12 +2,20 @@
 
 > Status: first execution guide
 > Scope: MenuList local plus staging only
-> Last updated: August 13, 2026
+> Last updated: August 14, 2026
 > Launch boundary: this guide does not approve production deployment. Finish this MenuList QA setup, verify it end to end, then create a separate MenuList production guide.
 
 This is the dedicated setup file for **MenuList staging/QA**. Follow only this
 file first. Do not set up Answerlattice, CampaignCue, SignalDesk, Neelvara, or
 MyCodex until MenuList QA is live and verified.
+
+## August 14 Razorpay Hosted Certification Checkpoint
+
+- Vercel Preview build `de18a865a1c08603ba3f740c958b827246d99a65` proved the authenticated pending-checkout recovery UI end to end. Closing the reopened Razorpay Standard Checkout immediately restored the exact `Payment Pending` state and `Continue Checkout` action without creating payment, entitlement, history, MRR, notification, or credit evidence.
+- Cancelling disposable Test Mode subscription `sub_TPLMUb5xz8kme6` produced a signed `subscription.cancelled` delivery. The initial HTTP 503 exposed an unconditional Answerlattice lookup in MenuList-only QA. Build `1234895fdd013fa03d59400dcd8253f6d9fd6d0b` restricted lookup to the event's intended configured product stores; Razorpay's automatic retry returned HTTP 200 and owner Billing converged to `No Active Subscription`.
+- Exact cleanup removed only the disposable local subscription. Retained baseline `sub_TPGo1XmddplChB` remains provider `created`, unpaid, and unchanged. Its synthetic owner/store/tenant fixture remains available for the unfinished authorization smoke. Production Firebase, Razorpay Live Mode, and Vercel Production were not queried or changed; owner-controlled production-absence check `QA-K13` remains open.
+- A real zero-value Razorpay `payment.failed` payload exposed a second route defect: failed-payment audit projection required a positive amount and inferred top-up from order presence. Build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` accepts provider zero for audit, uses only a bounded exact-subscription fallback when amount is absent, and requires explicit pack identity for top-up classification. Focused source/emulator gates pass. The original event's provider-controlled automatic retry is still pending observation under Razorpay's documented retry policy.
+- The Test webhook is enabled with all 13 selected events, including `subscription.authenticated`. Full immediate-start card authorization, `subscription.activated`, and captured `subscription.charged` evidence remain blocked at the Razorpay Test Checkout/mock-bank boundary; these transitions were not synthesized and no money or entitlement was fabricated.
 
 ## August 13 Razorpay Checkout Recovery Checkpoint
 
@@ -2629,6 +2637,19 @@ Operator progress:
   Firebase authentication and scoped-deploy evidence. Changelog and source
   gates record the boundary; no provider setting, Firebase revision, or
   production target changed in this documentation pass.
+- `2026-08-14` - Razorpay hosted certification deployed three bounded staging
+  corrections. Build `de18a865a1c08603ba3f740c958b827246d99a65` proved
+  authoritative pending state after checkout dismissal. Build
+  `1234895fdd013fa03d59400dcd8253f6d9fd6d0b` fixed product-store resolution;
+  a provider-originated `subscription.cancelled` automatic retry returned HTTP
+  200 and owner Billing converged to no active subscription. Build
+  `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` fixed zero-value/missing-amount
+  failed-payment audit projection and ordinary order-backed payment
+  classification. The disposable subscription was cancelled and removed only
+  after exact checks; the retained unpaid baseline was unchanged. The Test
+  endpoint now has 13 events. Immediate authorization/charge and the original
+  `payment.failed` automatic retry remain pending external provider evidence;
+  `QA-K13` remains owner-controlled and open.
 
 Status rules:
 
@@ -2957,7 +2978,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K18 | QA customer origin cannot use owner API CORS | Terminal | A synthetic wildcard tenant origin receives HTTP 403 `Origin not allowed` and no `Access-Control-Allow-Origin` header from the owner API |
 | [x] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | Only MenuList QA project/Preview/domain setup was performed; production, sister products, and retired QA hosts were not activated |
 | [x] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | Wrong-secret admission returns HTTP 403; one configured-secret QA task reached the current staging worker, returned HTTP 200 through its idempotent missing-job path, disappeared after acknowledgement, and created no provider call or production data |
-| [x] | QA-K21 | Razorpay Test webhook transport configured and verified | Razorpay Test Mode and Vercel logs | Historical transport proof covers the distinct secret, the then-hosted 12-event set, and one provider-originated `order.paid` HTTP 200 without real money or Live Mode. Source now handles all 10 subscription events; the 13-event dashboard update and provider lifecycle matrix remain pending the hardened Vercel staging deployment. |
+| [x] | QA-K21 | Razorpay Test webhook transport configured and verified | Razorpay Test Mode and Vercel logs | Distinct-secret transport is active with 13 selected events. Provider-originated `order.paid` and `subscription.cancelled` deliveries have returned HTTP 200 on hosted QA; cancellation also converged the owner UI and was cleaned up exactly. Build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` fixes real zero-value/missing-amount failure projection, but the original `payment.failed` automatic retry and immediate authorization/charged lifecycle remain pending provider evidence. No real money, Live Mode, production read, or production write was used. |
 | [x] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verified with the vaulted token; only `messages` is subscribed at v26.0, one Meta dashboard test POST reached the QA Function with HTTP 200, and the QA runtime was restored to `ENABLE_MESSAGING_ONBOARDING=false` without production assets |
 | [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marked completed items and recorded the remaining deploy, provider, production-absence, worker, and webhook blockers; production is not approved |
 
