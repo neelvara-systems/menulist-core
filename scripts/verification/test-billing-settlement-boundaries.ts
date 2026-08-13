@@ -55,6 +55,7 @@ import {
     resolveRazorpaySubscriptionQuantity,
     resolveRazorpayWebhookProductDeclaration,
     resolveRazorpayWebhookSubscriptionId,
+    resolveRazorpayWebhookSubscriptionLookupProducts,
     resolveRazorpayWebhookSubscriptionProduct,
 } from '../../src/lib/billing/razorpayRevenueProjectionBoundary';
 import { PRODUCT_IDS } from '../../src/constants/product';
@@ -118,6 +119,26 @@ assert.deepEqual(resolveRazorpayWebhookSubscriptionId({
     payload: { payment: { entity: { subscription_id: ' sub_invalid' } } },
 }), { outcome: 'invalid' });
 assert.deepEqual(resolveRazorpayWebhookSubscriptionId({ payload: {} }), { outcome: 'missing' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionLookupProducts({
+    answerlatticeConfigured: false,
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.MENULIST },
+}), [PRODUCT_IDS.MENULIST]);
+assert.deepEqual(resolveRazorpayWebhookSubscriptionLookupProducts({
+    answerlatticeConfigured: false,
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.ANSWERLATTICE },
+}), [PRODUCT_IDS.ANSWERLATTICE]);
+assert.deepEqual(resolveRazorpayWebhookSubscriptionLookupProducts({
+    answerlatticeConfigured: false,
+    declaration: { outcome: 'missing' },
+}), [PRODUCT_IDS.MENULIST]);
+assert.deepEqual(resolveRazorpayWebhookSubscriptionLookupProducts({
+    answerlatticeConfigured: true,
+    declaration: { outcome: 'missing' },
+}), [PRODUCT_IDS.MENULIST, PRODUCT_IDS.ANSWERLATTICE]);
+assert.deepEqual(resolveRazorpayWebhookSubscriptionLookupProducts({
+    answerlatticeConfigured: true,
+    declaration: { outcome: 'invalid' },
+}), []);
 assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
     declaration: { outcome: 'missing' },
     hasAnswerlatticeSubscription: false,

@@ -11,6 +11,7 @@ import {
     applyProductSubscriptionPayment,
     applyProductSubscriptionWebhookEvent,
     getProductSubscriptionById,
+    isProductBillingFirestoreConfigured,
     safeSyncProductSubscriptionEntitlementFromSubscription,
     writeProductPaymentTransactionAudit,
 } from "@lib/billing/productBillingServer";
@@ -35,6 +36,7 @@ import {
     resolveRazorpaySubscriptionState,
     resolveRazorpayWebhookProductDeclaration,
     resolveRazorpayWebhookSubscriptionId,
+    resolveRazorpayWebhookSubscriptionLookupProducts,
     resolveRazorpayWebhookSubscriptionProduct,
 } from '@lib/billing/razorpayRevenueProjectionBoundary';
 import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
@@ -103,10 +105,17 @@ const resolveWebhookEventProduct = async (eventPayload: any): Promise<ResolvedWe
     }
     const { subscriptionId } = subscriptionDeclaration;
 
-    const [menuListSubscription, answerlatticeSubscription] = await Promise.all([
-        getProductSubscriptionById(PRODUCT_IDS.MENULIST, subscriptionId),
-        getProductSubscriptionById(PRODUCT_IDS.ANSWERLATTICE, subscriptionId),
-    ]);
+    const subscriptionProducts = resolveRazorpayWebhookSubscriptionLookupProducts({
+        answerlatticeConfigured: isProductBillingFirestoreConfigured(PRODUCT_IDS.ANSWERLATTICE),
+        declaration,
+    });
+    const subscriptionEntries = await Promise.all(subscriptionProducts.map(async (productId) => ([
+        productId,
+        await getProductSubscriptionById(productId, subscriptionId),
+    ] as const)));
+    const subscriptionsByProduct = new Map<ProductId, FirestoreSubscriptionDoc | null>(subscriptionEntries);
+    const menuListSubscription = subscriptionsByProduct.get(PRODUCT_IDS.MENULIST) ?? null;
+    const answerlatticeSubscription = subscriptionsByProduct.get(PRODUCT_IDS.ANSWERLATTICE) ?? null;
     const productResolution = resolveRazorpayWebhookSubscriptionProduct({
         declaration,
         hasAnswerlatticeSubscription: Boolean(answerlatticeSubscription),

@@ -1111,8 +1111,11 @@ function verifyBillingEntitlementBoundary() {
     'validateRazorpayWebhookSignature(requestBody, signature, secret)',
     'resolveRazorpayWebhookProductDeclaration(eventPayload)',
     'resolveRazorpayWebhookSubscriptionId(eventPayload)',
+    'resolveRazorpayWebhookSubscriptionLookupProducts({',
     'resolveRazorpayWebhookSubscriptionProduct({',
-    'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([',
+    'answerlatticeConfigured: isProductBillingFirestoreConfigured(PRODUCT_IDS.ANSWERLATTICE)',
+    'const subscriptionEntries = await Promise.all(subscriptionProducts.map(async (productId) => ([',
+    'const subscriptionsByProduct = new Map<ProductId, FirestoreSubscriptionDoc | null>(subscriptionEntries);',
     "throw new Error('Razorpay webhook subscription product is unresolved.');",
     "new Error('razorpay_webhook_product_resolution_failed')",
     "return NextResponse.json({ error: 'Invalid product identity.' }, { status: 400 });",
@@ -1138,8 +1141,8 @@ function verifyBillingEntitlementBoundary() {
   assertOrder(webhook, "checkPublicRateLimit(request, 'WEBHOOK')", 'readBoundedTextBody(', 'webhook rate-limit-before-body-read order');
   assertOrder(webhook, 'readBoundedTextBody(', 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'webhook bounded-body-before-signature order');
   assertOrder(webhook, 'eventProductResolution = await resolveWebhookEventProduct(event);', 'claimRazorpayWebhookEvent({', 'webhook product resolution before product-local persistence');
-  assertOrder(webhook, 'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([', "throw new Error('Razorpay webhook subscription product is unresolved.');", 'missing subscription ownership must remain retryable');
-  assertOrder(webhook, 'resolveRazorpayWebhookSubscriptionId(eventPayload)', 'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([', 'exact subscription identity before ownership reads');
+  assertOrder(webhook, 'const subscriptionEntries = await Promise.all(subscriptionProducts.map(async (productId) => ([', "throw new Error('Razorpay webhook subscription product is unresolved.');", 'missing subscription ownership must remain retryable');
+  assertOrder(webhook, 'resolveRazorpayWebhookSubscriptionId(eventPayload)', 'const subscriptionEntries = await Promise.all(subscriptionProducts.map(async (productId) => ([', 'exact subscription identity before ownership reads');
   assertOrder(webhook, 'const subscriptionReads = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();', 'subscriptionReads.set(', 'resolved subscription must seed the request-local cache');
   assertOrder(webhook, 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'claimRazorpayWebhookEvent({', 'webhook signature-before-idempotency order');
   assertNotIncludes(webhook, '.catch(() => null)', 'Webhook product lookup failures must remain retryable rather than defaulting to MenuList');

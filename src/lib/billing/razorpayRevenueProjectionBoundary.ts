@@ -15,6 +15,21 @@ type RazorpayWebhookSubscriptionProductResolution =
     | { outcome: 'conflict' }
     | { outcome: 'unresolved' };
 
+export const resolveRazorpayWebhookSubscriptionLookupProducts = ({
+    answerlatticeConfigured,
+    declaration,
+}: {
+    answerlatticeConfigured: boolean;
+    declaration: RazorpayWebhookProductDeclaration;
+}): ProductId[] => {
+    if (declaration.outcome === 'invalid') return [];
+    if (declaration.outcome === 'declared') return [declaration.productId];
+    return [
+        PRODUCT_IDS.MENULIST,
+        ...(answerlatticeConfigured ? [PRODUCT_IDS.ANSWERLATTICE] : []),
+    ];
+};
+
 export type RazorpaySubscriptionStateProjection = {
     chargeAtMillis: number;
     chargeAtSeconds: number;

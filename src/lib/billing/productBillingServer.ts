@@ -63,6 +63,12 @@ export type ProductBillingScope = {
 export { normalizeAnswerlatticeBillingScopeDocumentId } from '@lib/answerlattice/billingDocumentIdBoundary';
 export { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 
+export const isProductBillingFirestoreConfigured = (productId: ProductId): boolean => (
+    productId === PRODUCT_IDS.ANSWERLATTICE
+        ? Boolean(answerlatticeFirestoreAdmin)
+        : !isProductBillingDisabled(productId)
+);
+
 const isTimestampLike = (value: any) => (
     value
     && typeof value === 'object'
