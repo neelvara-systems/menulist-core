@@ -246,7 +246,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             }
             await refetchSubscription();
         } catch (err) {
-            if (isPaymentCheckoutDismissedError(err)) return;
+            if (isPaymentCheckoutDismissedError(err)) {
+                await refetchSubscription();
+                return;
+            }
             logPaymentFailure('payment_mobile_billing_plan_update_failed', err, buildMobileBillingPaymentLogContext('plan_update', {
                 ...getBoundedPaymentStringContext('targetPlanId', plan.planId),
             }));
@@ -318,7 +321,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             });
             await refetchSubscription();
         } catch (error) {
-            if (isPaymentCheckoutDismissedError(error)) return;
+            if (isPaymentCheckoutDismissedError(error)) {
+                await refetchSubscription();
+                return;
+            }
             logPaymentFailure('payment_mobile_pending_subscription_continue_failed', error, buildMobileBillingPaymentLogContext('pending_payment'));
             Toast.show({ content: 'Could not continue checkout. Refresh Billing and try again.', duration: 2600 });
         } finally {

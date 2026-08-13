@@ -202,7 +202,10 @@ function ActiveSubscriptionCard({
             }
             await refetchActiveSubscription();
         } catch (error) {
-            if (isPaymentCheckoutDismissedError(error)) return;
+            if (isPaymentCheckoutDismissedError(error)) {
+                await refetchActiveSubscription();
+                return;
+            }
             logPaymentFailure('payment_desktop_pending_subscription_continue_failed', error, buildSubscriptionActionPaymentLogContext('pending_payment'));
             message.error('Could not continue checkout. Refresh Billing and try again.');
         } finally {

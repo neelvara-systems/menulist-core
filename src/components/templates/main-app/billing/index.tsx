@@ -251,7 +251,10 @@ function BillingPage() {
             refetchActiveSubscription();
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
         } catch (error) {
-            if (isPaymentCheckoutDismissedError(error)) return;
+            if (isPaymentCheckoutDismissedError(error)) {
+                await refetchActiveSubscription();
+                return;
+            }
             message.error(t('paymentFailed'));
             logPaymentFailure('payment_desktop_billing_upgrade_failed', error, buildBillingPaymentLogContext('confirm_upgrade', {
                 ...getBoundedPaymentStringContext('planId', newPlan.planId),

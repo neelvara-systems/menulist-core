@@ -117,6 +117,26 @@ const pendingDesktopActions = activeSubscriptionCard.slice(
 );
 assert.ok(pendingDesktopActions.includes('handleContinuePendingCheckout'));
 assert.ok(!pendingDesktopActions.includes('handleOpenPaymentLink'));
+const desktopNewCheckoutHandler = desktopBilling.slice(
+  desktopBilling.indexOf('const handleConfirmUpgrade'),
+  desktopBilling.indexOf('const handleAddPaidLocation'),
+);
+const desktopPendingCheckoutHandler = activeSubscriptionCard.slice(
+  activeSubscriptionCard.indexOf('const handleContinuePendingCheckout'),
+  activeSubscriptionCard.indexOf('const openCancellationModal'),
+);
+const mobileNewCheckoutHandler = mobileBilling.slice(
+  mobileBilling.indexOf('const handleUpgrade'),
+  mobileBilling.indexOf('const handleAddPaidLocation'),
+);
+const mobilePendingCheckoutHandler = mobileBilling.slice(
+  mobileBilling.indexOf('const handleContinuePendingCheckout'),
+  mobileBilling.indexOf('const handleBuyCredits'),
+);
+assert.ok(desktopNewCheckoutHandler.includes('await refetchActiveSubscription()'));
+assert.ok(desktopPendingCheckoutHandler.includes('await refetchActiveSubscription()'));
+assert.ok(mobileNewCheckoutHandler.includes('await refetchSubscription()'));
+assert.ok(mobilePendingCheckoutHandler.includes('await refetchSubscription()'));
 assert.equal(
   (mobileBilling.match(/handleOpenExternalBillingLink\(subscriptionCheckoutUrl/g) || []).length,
   1,
