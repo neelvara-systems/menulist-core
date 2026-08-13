@@ -7,6 +7,16 @@
 
 **Current status note (July 2, 2026):** This file is historical Cloud Functions code-audit evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live effect still requires the blocked QA Firebase Functions deploy and the external provider/browser/device/production-host evidence.
 
+**Current credential contract (August 13, 2026):** Retry counts, the `1-4`
+pool, and rotation behavior recorded below describe the March snapshot only.
+Current MenuList shared AI uses `GEMINI_AI_KEY` plus `_2` and `_3` with sticky
+current-key failover. Menu extraction uses only
+`MENULIST_GEMINI_TEXT_AI_KEY`, has no shared-pool fallback, and does not create
+additional Google-project quota. Use the maintained
+[AI System Layer README](../../ai-system-layer/README.md) and
+[MenuList QA setup guide](../../deployment/menulist-staging-qa-setup.md) for
+operator decisions.
+
 ---
 
 ## SECTION 1 — Cloud Function Architecture

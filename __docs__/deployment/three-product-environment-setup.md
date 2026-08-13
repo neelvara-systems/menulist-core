@@ -152,12 +152,11 @@ Complete these in order. Do not skip to production until QA passes.
 4. [ ] Store staging Gemini values in Vercel staging and Firebase Secret Manager for `menulist-qa`.
 5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist`.
 6. [ ] Store Answerlattice Gemini values in `ANSWERLATTICE_GEMINI_AI_KEY` and SignalDesk Gemini values in `SIGNALDESK_GEMINI_AI_KEY` for the matching Vercel environment.
-7. [ ] Create every Firebase-declared AI rotation secret name before deploying
-   the matching Functions target. Prefer separate real failover keys for
-   `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, and
-   `ANSWERLATTICE_GEMINI_AI_KEY_2` style slots; if a slot temporarily uses the
-   same provider/account value, record it as a rotate-later placeholder and do
-   not treat it as quota scaling.
+7. [ ] Create every Firebase-declared AI secret before deploying the matching
+   Functions target. MenuList uses shared `GEMINI_AI_KEY`, `_2`, and `_3` plus
+   isolated `MENULIST_GEMINI_TEXT_AI_KEY`; do not restore `GEMINI_AI_KEY_4`.
+   Answerlattice and SignalDesk retain their own product-scoped slot contracts.
+   Never treat multiple keys in one provider project as quota scaling.
 8. [ ] Configure budget alerts, spend monitoring, and model/project quota checks for the Google Cloud project that owns each Gemini key.
 9. [ ] Deploy MenuList QA Functions after secrets exist:
    ```bash
@@ -1039,7 +1038,7 @@ from.
 | SignalDesk optional providers | `SIGNALDESK_APIFY_*`, `SIGNALDESK_GOOGLE_PLACES_API_KEY`, `SIGNALDESK_META_*`, `SIGNALDESK_MESSENGER_PAGE_ID`, `SIGNALDESK_INSTAGRAM_PAGE_ID`, `SIGNALDESK_WHATSAPP_PHONE_NUMBER_ID`, `SIGNALDESK_EMAIL_*`, `SIGNALDESK_SMTP_*`, `SIGNALDESK_UNSUBSCRIBE_URL`, `SIGNALDESK_PHYSICAL_ADDRESS`, `SIGNALDESK_SMARTLEAD_*` | leave blank until provider account, legal approval, budget cap, and provider-send gate are approved |
 | Neelvara static contact | `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL` | Workspace aliases |
 | MyCodex static auth | `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, `MYCODEX_SESSION_SECRET` | generated credentials/password manager |
-| AI | `GEMINI_AI_KEY`, `GEMINI_API_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `OPENAI_API_KEY` | Google AI Studio and optional OpenAI |
+| MenuList AI | Root/Vercel: `MENULIST_GEMINI_AI_KEY`, `MENULIST_GEMINI_AI_KEY_2`, `MENULIST_GEMINI_AI_KEY_3`, `MENULIST_GEMINI_SPEND_LIMIT_USD_10M`; Functions Secret Manager: `GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `MENULIST_GEMINI_TEXT_AI_KEY`; optional `OPENAI_API_KEY` | Google AI Studio and optional OpenAI |
 | Payments | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `CRON_SECRET`, `INTERNAL_BILLING_EMAIL`, `GCP_BUDGET_WEBHOOK_SECRET` | Razorpay plus generated internal secrets |
 | Cache and revalidation | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REVALIDATION_SECRET` | Upstash plus generated secret |
 | Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
@@ -1149,7 +1148,7 @@ Run after selecting/login to the right Firebase account:
 firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa
 firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa
@@ -1250,12 +1249,16 @@ Open: https://aistudio.google.com/app/apikey
 
 Checklist:
 
-- [ ] Create a dedicated staging key.
-- [ ] Create a dedicated production key.
-- [ ] Restrict each key to the Gemini API.
+- [ ] Create the dedicated staging credential set: shared primary, shared
+      failover slots 2 and 3, and one extraction credential.
+- [ ] Create the equivalent dedicated production credential set with
+      production-only values.
+- [ ] Restrict every credential to the Gemini API.
 - [ ] Confirm the production key is not used by local development or staging.
-- [ ] Store staging key in Vercel staging `GEMINI_AI_KEY`.
-- [ ] Store production key in Vercel production `GEMINI_AI_KEY`.
+- [ ] Store staging shared keys in Vercel Preview as
+      `MENULIST_GEMINI_AI_KEY`, `_2`, and `_3`.
+- [ ] Store production shared keys in Vercel Production under the same canonical
+      MenuList names with production-only values.
 - [ ] Store keys in MenuList Firebase Secret Manager for `menulist-qa` and
       `menulist`.
 - [ ] Create/store Answerlattice keys in `ANSWERLATTICE_GEMINI_AI_KEY` and
@@ -1263,8 +1266,9 @@ Checklist:
 - [ ] Create/store SignalDesk keys in `SIGNALDESK_GEMINI_AI_KEY`.
 - [ ] Confirm budget alerts already exist for the Google Cloud project before
       using the key for paid Gemini calls.
-- [ ] Add rotation keys only when they exist: `GEMINI_AI_KEY_2`,
-      `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`,
+- [ ] Add MenuList shared failover keys only when they exist:
+      `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`; add the required extraction key as
+      `MENULIST_GEMINI_TEXT_AI_KEY`. Keep product-specific pools separate:
       `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`,
       `ANSWERLATTICE_GEMINI_AI_KEY_4`, `SIGNALDESK_GEMINI_AI_KEY_2`,
       `SIGNALDESK_GEMINI_AI_KEY_3`, and
@@ -1280,11 +1284,12 @@ Checklist:
 Use only the Gemini env names already present in code and templates:
 
 - MenuList Vercel/setup records: `MENULIST_GEMINI_AI_KEY` plus
-  `MENULIST_GEMINI_AI_KEY_2`, `MENULIST_GEMINI_AI_KEY_3`, and
-  `MENULIST_GEMINI_AI_KEY_4`.
+  `MENULIST_GEMINI_AI_KEY_2` and `MENULIST_GEMINI_AI_KEY_3`.
 - MenuList Firebase Functions Secret Manager: project-local `GEMINI_AI_KEY`
-  plus `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`. Do not add
-  those names to Vercel/local; the separate Firebase project owns them.
+  plus `GEMINI_AI_KEY_2` and `GEMINI_AI_KEY_3` for shared AI, and
+  `MENULIST_GEMINI_TEXT_AI_KEY` for menu extraction. Do not add those names to
+  Vercel/local; the separate Firebase project owns them. The retired
+  `GEMINI_AI_KEY_4` alias must stay absent.
 - Answerlattice app/Functions: `ANSWERLATTICE_GEMINI_AI_KEY` plus
   `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
   `ANSWERLATTICE_GEMINI_AI_KEY_4`.
@@ -1298,10 +1303,11 @@ Do not invent shorthand env keys such as `ML_GEMINI_AI_KEY`,
 `CAMPAIGNCUE_GEMINI_AI_KEY` until CampaignCue provider-call activation is
 approved in code and docs.
 
-The rotation aliases are for leak response and transient failover. If the keys
-belong to the same Google project, they share that project's Gemini quota.
-Production scaling requires paid billing, model-level quota monitoring, and
-quota increase requests.
+The shared rotation aliases are for leak response and transient failover. The
+dedicated extraction key isolates credential lifecycle and failure containment;
+it is not part of the shared pool. If the keys belong to the same Google
+project, they share that project's Gemini quota. Production scaling requires
+paid billing, model-level quota monitoring, and quota increase requests.
 
 ### 2. OpenAI, optional legacy env
 

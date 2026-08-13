@@ -8,6 +8,12 @@
 
 **Current status note (July 2, 2026):** This file is historical code-readiness evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live production certification still requires the blocked QA Firebase Functions/Storage deploys, provider smoke, authenticated browser/device QA, and production-host evidence. If this slice needs Firestore index redeploy evidence, use the scoped QA command first: `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json`. Production index deploy requires QA evidence and explicit production approval.
 
+**Current credential contract (August 13, 2026):** Any multi-key statements
+inside this March audit are historical. Current MenuList shared AI uses primary
+plus `_2` and `_3`; extraction uses only `MENULIST_GEMINI_TEXT_AI_KEY` and
+cannot fall back into that shared pool. Same-project keys provide credential
+failover and workload isolation, not independent quota.
+
 ---
 
 ## SECTION 1 — Documentation Alignment

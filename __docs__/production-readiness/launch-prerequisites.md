@@ -602,16 +602,16 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | Set GCP budget alerts         | ❌ Manual  | One-time setup (10 min)                        |
 | Verify SAFE_MODE end-to-end   | ❌ Manual  | Step 2C must pass before production            |
 | UptimeRobot setup             | ❌ Manual  | One-time setup (5 min)                         |
-| Deploy Functions blocker set | ☐ Pre-prod verify | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): August 13 CLI authentication/list access pass, and the changed `processMenuImagesJob` revision deployed successfully with the isolated extraction secret. Its hosted synthetic smoke is still provider-blocked: the free project is `Restricted`/403 and `menulist-qa` requires prepay/returns 429. Other changed targets still need their own scoped deploy and live evidence. |
+| Deploy Functions blocker set | ☐ Pre-prod verify | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): August 13 CLI authentication/list access pass, and the changed `processMenuImagesJob` revision deployed successfully with the isolated extraction secret. The retired free-project key is deleted; hosted synthetic extraction remains blocked because `menulist-qa` requires prepay/returns 429. Other changed targets still need their own scoped deploy and live evidence. |
 | Deploy Storage rules cutover  | ❌ Manual  | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): the current August 1 operator attempt stops before upload because Firebase CLI is not authenticated; the last authenticated `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker. |
 | Digital Screens mirror cutover | ❌ Manual | Step 8B: deploy token-free app/Functions writers, dry-run and apply the mirror migration, verify stored data, then deploy the tightened rule and complete device QA. |
 | Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
-| AI key rotation               | ✅ Auto    | Rotates on 429 errors, retries with next key   |
+| AI key failover               | ✅ Auto    | Sticky key selection; transient 429 cools that key and permits the next shared key |
 | SMTP setup for messaging      | ❌ Manual  | QA sender first; approved production sender before launch |
-| Gemini key isolation          | ❌ Manual  | Required — separate restricted staging/prod keys |
-| Optional Gemini rotation keys | ❌ Manual  | Optional — leak response/failover, not quota scaling |
+| Gemini key isolation          | ❌ Manual  | Required — separate staging/prod values plus a dedicated extraction credential |
+| Optional shared failover keys | ❌ Manual  | Slots 2 and 3 only — leak response/failover, not quota scaling |
 | AI provider health records    | ☐ Pre-prod verify | `_health/aiProvider_gemini` and `platformSummary/answerlatticeAiProviderHealth` |
 
 ---
@@ -624,13 +624,18 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 ### Required Owner Steps
 
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey).
-2. Create a dedicated staging key and a dedicated production key.
-3. Restrict each key to the Gemini API.
+2. Create a dedicated credential set for each environment: shared primary,
+   shared failover slots 2 and 3, and one extraction credential.
+3. Restrict every credential to the Gemini API.
 4. Confirm the production key is not used by local development or staging.
-5. Store the QA key in Vercel Preview `GEMINI_AI_KEY`, restricted to the exact
+5. Store the QA shared keys in Vercel Preview `MENULIST_GEMINI_AI_KEY`, `_2`,
+   and `_3`, restricted to the exact
    `staging` Git branch.
-6. Store the production key in Vercel production `GEMINI_AI_KEY`.
-7. Store the MenuList Functions values in Firebase Secret Manager for `menulist-qa` and `menulist`.
+6. Store the production shared keys in Vercel Production under the same
+   canonical MenuList names, using production-only values.
+7. Store `GEMINI_AI_KEY`, `_2`, and `_3` for shared MenuList Functions and
+   `MENULIST_GEMINI_TEXT_AI_KEY` for menu extraction in Firebase Secret Manager
+   for `menulist-qa` and `menulist`.
 8. Configure budget alerts, spend monitoring, and model/project quota checks for the key's Google Cloud project.
 9. Create a separate Preview **Spend cap enforcement** budget scoped to the
    QA project and **Gemini API** service. Keep its monthly amount below the
@@ -661,28 +666,31 @@ passed predeploy lint/build and then failed with Cloud Resource Manager
 `menulist-qa` and `answerlattice-qa` deploy attempts failed at the same Cloud
 Resource Manager permission gate after predeploy build.
 
-### Optional Rotation Keys
+### Shared Failover And Extraction Keys
 
-Add these only when real rotation/failover keys exist. They are useful for
-credential rotation, leak response, and transient failover. They do not create
-unlimited capacity when all keys belong to the same Google project.
+The shared slots are useful for credential rotation, leak response, and
+transient failover. The extraction key is a separate failure-containment and
+credential-lifecycle boundary. None creates extra capacity when the keys belong
+to the same Google project.
 
 ```bash
 firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 ```
 
 Repeat with `--project menulist` for production values after QA passes.
 
-**How it works:** The KeyManager auto-discovers available keys at startup. On a
-transient `429`, the affected key enters cooldown and the gateway honors
+**How it works:** The shared KeyManager auto-discovers primary plus slots 2 and
+3 at startup and remains on its current healthy key. On a transient `429`, the
+exact affected key enters cooldown and the gateway can advance while honoring
 structured provider retry timing with bounded full-jitter backoff. It does not
 immediately hop keys to bypass a project-level limit. Hard quota failures and
 retry windows beyond the inline budget fail fast. Rate and spend limits still
 belong to the Google project/model tier, so production scaling requires billing,
 quota monitoring, alert-only budgets, a Gemini API spend-cap budget, and quota
-increase requests.
+increase requests. Menu extraction does not use this pool; it fails closed on
+its dedicated `MENULIST_GEMINI_TEXT_AI_KEY`.
 
 ---
 
@@ -699,3 +707,4 @@ increase requests.
 | 1.6     | July 16, 2026     | Added the ordered Digital Screens token-free public-mirror migration, rule cutover, and device stop gates |
 | 1.7     | August 2, 2026    | Added Gemini rolling-spend admission, provider spend-cap setup, and safe 429 behavior; Cloud Run cap remains outage-gated |
 | 1.8     | August 2, 2026    | Aligned QA-first setup, single current Firebase region, branch-scoped Preview secrets, and production sender requirements |
+| 1.9     | August 13, 2026   | Aligned MenuList AI setup to a shared 1-3 pool plus one dedicated paid extraction credential |

@@ -1,5 +1,20 @@
 # MenuList — Changelog
 
+## August 13, 2026 - MenuList Gemini Credential Documentation Parity
+
+- Reconciled the maintained AI System Layer docs, environment templates,
+  deployment/setup runbooks, owner actions, and production-readiness records
+  with the deployed MenuList credential contract.
+- Documented three shared paid credentials with sticky current-key failover and
+  one extraction-only paid credential with no shared fallback.
+- Preserved dated four-slot/retry records as historical evidence while adding
+  explicit warnings against using them as current operator instructions.
+- Kept Answerlattice and SignalDesk credential contracts outside this MenuList
+  correction and added focused verifier coverage against retired MenuList
+  slot-4 aliases, stale round-robin wording, and root extraction-secret drift.
+- Changed documentation and source gates only; no secret value, provider
+  setting, Firebase revision, Vercel environment, or production target changed.
+
 ## August 13, 2026 - MenuList QA Owner-Flow Recovery
 
 - Fixed the desktop project selector so opening Edit closes the selector first,

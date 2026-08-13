@@ -251,23 +251,30 @@ No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in th
 
 | #   | Task                                                                         | Why                                                                                                                                                  | Priority                               | Status |
 | --- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
-| 1   | Add 2nd-4th Gemini API keys to Vercel env vars + Firebase Secrets            | Enables key rotation for higher AI throughput. Single key still works with retry/backoff, but multi-key gives immediate failover on 429 rate limits. | Optional (do when hitting rate limits) | ⬜     |
+| 1   | Fund `menulist-qa` Gemini prepay and certify one hosted synthetic extraction | The paid shared 1-3 pool and dedicated extraction credential are already deployed. Provider execution remains blocked by `Prepay required`; the smoke must pass before `QA-E13` closes. | P0 (before extraction QA) | ⬜     |
 | 2   | Review current compact AI operation/cost summaries before adding another metric | `menulistAiOperations` and existing bounded summaries already provide cross-feature accounting evidence. Add a new aggregate only when production review identifies a specific unanswered question. | Optional (evidence-triggered)           | ⬜     |
 | 3   | Evaluate translation/description reuse only after repeated-request evidence | Do not add translation memory or a description cache from a guessed scale threshold or savings claim. Revisit only when bounded telemetry shows materially repeated identical work and defines safe tenant/content invalidation. | Optional (evidence-triggered)           | ⬜     |
 
 **How to do #1:**
 
 ```bash
-# 1. Create 2-3 extra keys at https://aistudio.google.com/apikey
-# 2. Add to Firebase Secrets in QA first:
-firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+# 1. Enable/fund prepay for the existing menulist-qa Gemini project in AI Studio.
+# 2. Confirm secret-version metadata only; do not access or print values.
+gcloud secrets versions list GEMINI_AI_KEY --project=menulist-qa
+gcloud secrets versions list GEMINI_AI_KEY_2 --project=menulist-qa
+gcloud secrets versions list GEMINI_AI_KEY_3 --project=menulist-qa
+gcloud secrets versions list MENULIST_GEMINI_TEXT_AI_KEY --project=menulist-qa
 
-# 3. Add the same QA keys to the Vercel Preview environment only
-# 4. Run npm run verify:functions-deploy-preflight, then use External Certification Gate 1 for the scoped QA Functions deploy
-# 5. Repeat for production values only after QA evidence and explicit production secret/deploy approval
+# 3. Run the maintained preflight, then the hosted synthetic extraction from
+#    External Certification Gate 1 / QA-E13. Redeploy only if source or a bound
+#    secret version changed.
+npm run verify:functions-deploy-preflight
 ```
+
+The shared pool is `GEMINI_AI_KEY`, `_2`, and `_3`. Menu extraction uses only
+`MENULIST_GEMINI_TEXT_AI_KEY`. Do not restore `GEMINI_AI_KEY_4` or
+`MENULIST_GEMINI_AI_KEY_4`; four credentials in one Google project do not create
+four project quotas.
 
 ### AI Data Extraction — Security Fixes
 
@@ -442,5 +449,5 @@ _Move items here when done. Keep as history._
 
 ---
 
-_Last Updated: August 1, 2026_
-_Updated By: Codex (CampaignCue Video Reel Studio Firebase access cross-check)_
+_Last Updated: August 13, 2026_
+_Updated By: Codex (MenuList Gemini credential-contract audit)_

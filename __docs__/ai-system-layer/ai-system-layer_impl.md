@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** August 1, 2026
+**Last Updated:** August 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -108,7 +108,10 @@ The gateway is a transparent proxy with the same interface as `GoogleGenAI`.
 
 ### 1. Key Manager (`keyManager.ts`)
 
-Manages a pool of 1-4 API keys with health tracking.
+Manages the shared MenuList pool of 1-3 API keys with health tracking. Menu
+extraction is deliberately outside this pool and uses one paid
+`MENULIST_GEMINI_TEXT_AI_KEY` through `menuExtractionGenAiClient.ts`, with no
+fallback into the shared credentials.
 
 ```typescript
 // Key discovery from environment variables
@@ -116,7 +119,6 @@ const KEY_ENV_VARS = [
   "GEMINI_AI_KEY", // Required (primary)
   "GEMINI_AI_KEY_2", // Optional
   "GEMINI_AI_KEY_3", // Optional
-  "GEMINI_AI_KEY_4", // Optional
 ];
 
 class KeyManager {
@@ -462,7 +464,8 @@ The legacy `@google/generative-ai` package has been fully removed.
 ```
 functions/src/genAiClient.ts → AI Gateway (exports genAIClient)
 functions/src/ai/aiGateway.ts → Retry + key rotation proxy
-functions/src/ai/keyManager.ts → Pool of 1-4 GoogleGenAI clients
+functions/src/ai/keyManager.ts → Shared pool of 1-3 GoogleGenAI clients
+functions/src/menuExtractionGenAiClient.ts → One paid extraction-only client
 functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClient
 ```
 
@@ -473,9 +476,10 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 | Requirement                | Implementation                         | Location                                   | Status |
 | -------------------------- | -------------------------------------- | ------------------------------------------ | ------ |
 | AI Gateway (transparent)   | `createAIGateway()` proxy              | `functions/src/ai/aiGateway.ts`            | ✅     |
-| Key Manager                | Pool of 1-4 keys with health tracking  | `functions/src/ai/keyManager.ts`           | ✅     |
+| Shared Key Manager         | Pool of 1-3 keys with health tracking  | `functions/src/ai/keyManager.ts`           | ✅     |
+| Extraction credential     | One paid key with no shared fallback   | `functions/src/menuExtractionGenAiClient.ts` | ✅   |
 | Frontend Gateway           | Same transparent proxy                 | `src/lib/google/genAi/aiGateway.ts`        | ✅     |
-| Frontend Key Manager       | Same pool + health logic               | `src/lib/google/genAi/keyManager.ts`       | ✅     |
+| Frontend Key Manager       | Same 1-3 shared pool + health logic    | `src/lib/google/genAi/keyManager.ts`       | ✅     |
 | SDK migration              | All CF use `@google/genai` via gateway | `functions/src/services/gemini/*.ts`       | ✅     |
 | Extraction unchanged       | Zero behavioral change                 | `functions/src/logic/processMenuImages.ts` | ✅     |
 | Circuit breaker reuse      | Existing singleton                     | `functions/src/lib/circuitBreaker.ts`      | ✅     |

@@ -833,12 +833,24 @@ August 13 menu-extraction deployment evidence: the changed
 active secret bindings prove extraction is isolated from `GEMINI_AI_KEY*`.
 Hosted disposable synthetic probes reached that revision and cleaned up their
 Firestore/Storage artifacts, but provider execution remains uncertified. The
-dedicated free-project key returns 403 `PERMISSION_DENIED` and AI Studio marks
-the project `Restricted`; all four existing `menulist-qa` keys return 429 for
-depleted prepayment credits and AI Studio marks that project `Prepay required`.
-Production readiness therefore remains blocked on provider account restoration
-or prepay plus a successful synthetic hosted extraction after secret rotation
-and scoped redeploy.
+retired free-project provider key has been deleted. The three shared paid keys
+plus the dedicated paid extraction credential in `menulist-qa` return 429 for
+prepayment requirements, and AI Studio marks that project `Prepay required`.
+Production readiness therefore remains blocked on prepay plus one successful
+synthetic hosted extraction; no additional key or shared slot changes that
+project/model quota boundary.
+
+August 13 Gemini credential documentation-parity checkpoint: every maintained
+MenuList AI System Layer doc, root environment template, deployment/setup
+guide, launch prerequisite, owner action, and production-readiness guide now
+matches the deployed boundary. Shared MenuList AI discovers primary plus `_2`
+and `_3` with sticky current-key failover; menu extraction binds only
+`MENULIST_GEMINI_TEXT_AI_KEY` and has no shared fallback. Historical March
+audits preserve their original four-slot/retry evidence behind explicit
+historical warnings. Answerlattice and SignalDesk key contracts were excluded
+from the MenuList rewrite. Focused env, agent-readiness, and AI-accounting
+verifiers prevent the retired MenuList slot-4 aliases and old round-robin claim
+from returning to maintained guidance.
 
 This report tracks the feature-by-feature production-readiness pass requested for MenuList. Codebase truth is treated as primary. Docs are corrected only after runtime behavior is verified.
 
@@ -6657,7 +6669,7 @@ app deployment remain external release evidence.
 ## Remaining Known Risks
 
 1. Authenticated platform-owner HTTP and Chrome visual smoke passed for the audited platform/internal route set, and the follow-up Chrome pass covered owner desktop, forced mobile shell, public website, public tenant menu/OBP/compliance/feedback, reseller, and public API missing-key guards. Current 390px browser smokes passed key public website routes, the active `habibis` public tenant/customer fixture, and the local tenant-host safe fallback. Authenticated owner-shell mobile QA now reaches a valid local session but remains blocked by the available QA stores' missing active subscription/starter activation; true physical-device QA also remains pending.
-2. Firebase Function deployments for `processMenuImages`, `processMenuImagesJob`, `menulistMaintenanceScheduler`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`, `mapsPlaceCheck`, and `verifyMenuPublish` remain blocked. The source-file path hardening slice also changes `processMenuImages`, `processMenuImagesJob`, `startGeneration`, `embedArticleWorker`, and `regenerateEmbedding`; `processMenuImagesJob` carries the menu extraction SAFE_MODE worker guard; `menulistMaintenanceScheduler` carries reseller expiry maintenance, lifecycle/owner-notification retention, image batch retention cleanup, AI image prompt-cache source cleanup, Founder Monitor snapshots, and operational maintenance; the staleness lifecycle delivery slice changes the decision-block scheduler bundle through `functions/src/analytics/stalenessCheck.ts`; the scheduler-hour diagnostics slice changes `functions/src/utils/schedulerHour.ts` for `functions:messagingOnboarding` and `functions:backfillStoresSummary`; the Maps Place Check raw provider output slice changes `functions/src/logic/mapsPlaceCheck.ts` for `functions:mapsPlaceCheck`; the owner-notification template-output slice changes `functions/src/messaging/templates.ts` for `functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`; the owner-notification flag/trigger diagnostics slice changes `functions/src/ownerNotifications/processor.ts` for the same target subset; and the legacy lifecycle event/status diagnostics slice changes `functions/src/messaging/messagingEngine.ts` for the same target subset. The current August 1, 2026 operator attempt stops before predeploy or upload because Firebase CLI is not authenticated. The last authenticated package-local scoped staging retry on July 9, 2026 against `menulist-qa` targeted the full Gate 1 function set, passed predeploy lint/build, and then failed with Cloud Resource Manager HTTP 403 caller permission before upload. Earlier documented scoped attempts for the source-file path hardening subset, `functions:processMenuImagesJob`, `functions:menulistMaintenanceScheduler`, the staleness lifecycle delivery subset, the scheduler-hour diagnostics subset, the Maps Place Check raw provider output subset, and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics subsets hit the same historical blocker class after predeploy lint/build; the external certification runbook names the full current retry target set and the changed-function subset commands.
+2. Firebase CLI authentication and QA function-list access now pass. The August 13 scoped deploy activated changed revisions for `processMenuImages`, `processMenuImagesJob`, `menulistMaintenanceScheduler`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`, and `mapsPlaceCheck`; shared consumers bind Gemini slots 1-3 and extraction binds only `MENULIST_GEMINI_TEXT_AI_KEY`. Independent invoker-policy readback remains pending for `menulistMaintenanceScheduler` and `computeDecisionBlocksScores`, and Gemini extraction still needs funded prepay plus one successful hosted synthetic smoke. `verifyMenuPublish` and any other changed source slice not included in that scoped August 13 evidence still require their own deploy/readback/live-behavior proof. The July 9 Cloud Resource Manager 403 and August 1 missing-auth attempts remain historical evidence, not the current operator state; use the External Certification Runbook for the exact current target commands.
 3. Batch image generation local preflight guards now pass and code-side cheap-fail when Cloud Tasks worker config is incomplete. Env templates, setup docs, and source gates now name the full configured worker set, but configured Cloud Tasks enqueue/worker processing still requires actual non-placeholder `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and `BATCH_IMAGE_GENERATION_WORKER_SECRET` values in the app environment.
 4. Razorpay local payment/security guards and the July 14 read-only test-mode provider inventory/signature preflight pass. Disposable test-mode mutation smoke for subscription, top-up, reseller, webhook, post-persistence replay, and inherited-outlet HQ history behavior remains pending.
 5. WhatsApp local provider guards now pass, but real Meta WhatsApp Cloud API testing for messaging onboarding remains pending.

@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** July 26, 2026
+**Last Updated:** August 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -26,7 +26,7 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 
 - ❌ Does not change AI prompts or extraction logic (each feature keeps its own adapter)
 - ❌ Does not introduce a task queue for all features (extraction already has one; other paths use route guards or schedulers)
-- ✅ API key rotation with multi-key pool (1-4 keys, auto-discovered from env vars)
+- ✅ Shared API key failover pool (1-3 keys) plus one dedicated paid menu-extraction credential
 - ❌ Does not add a knowledge caching runtime
 - ✅ Covers BOTH frontend API routes AND Cloud Functions (transparent proxy on both sides)
 
@@ -162,7 +162,7 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 | FR-06 | Per-feature cost tracking                      | P1       | 📝     |
 | FR-07 | SDK standardization to `@google/genai`         | P1       | ✅     |
 | FR-08 | Feature adapter pattern (prompt separation)    | P1       | 📝     |
-| FR-09 | API key pool with failover                     | P0       | ✅     |
+| FR-09 | Shared 1-3 key pool plus isolated extraction credential | P0       | ✅     |
 | FR-10 | Request fingerprint caching                    | P2       | 📝     |
 | FR-11 | Translation memory                             | P3       | 📝     |
 | FR-12 | Description cache                              | P3       | 📝     |
@@ -175,7 +175,7 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 | NFR-01 | Gateway overhead per call           | < 50ms                   |
 | NFR-02 | Zero breaking changes to extraction | Must pass existing tests |
 | NFR-03 | Stable production models            | No preview/latest/experimental aliases in active prod paths |
-| NFR-04 | Key isolation                       | Separate staging and production Gemini keys |
+| NFR-04 | Key isolation                       | Separate staging/production values and no extraction fallback into the shared pool |
 
 ---
 
@@ -231,7 +231,8 @@ Frontend routes use the same gateway entry point from `src/lib/google/genAi/` an
 
 ### Conditional Cost Control Candidates
 
-- ✅ ~~API key pool with failover~~ (DONE — moved to Phase 1)
+- ✅ ~~Shared 1-3 key pool with failover~~ (DONE — moved to Phase 1)
+- ✅ ~~Dedicated paid menu-extraction credential~~ (DONE — one Functions-only key, no shared fallback)
 - ✅ ~~Key health monitoring and cooldown~~ (DONE — exponential cooldown per key)
 - Request fingerprint caching (avoid duplicate calls)
 - Per-tenant AI budget guardrails

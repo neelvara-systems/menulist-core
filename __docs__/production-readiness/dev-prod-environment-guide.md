@@ -1,7 +1,7 @@
 # Dev vs Prod Environment Guide — MenuList Production Readiness
 
 **Created:** March 22, 2026  
-**Last Updated:** August 2, 2026
+**Last Updated:** August 13, 2026
 **Source:** ChatGPT strategic session → Cascade full codebase audit + validation  
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
@@ -42,7 +42,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `menulist-qa.appspot.com` — needs per-env config                                                 |
-| 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | Single `GEMINI_AI_KEY` used everywhere. Multi-key rotation exists but all keys are for same project                            |
+| 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | MenuList uses environment-specific values: a shared 1-3 key pool plus one dedicated paid extraction credential. Keys in one project still share quota. |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
 | 5   | No shared anything between dev/prod              | **PARTIAL**        | Feature flags are code-level (not env-level), so target-specific changes require explicit review and certification evidence rather than env overrides |
 | 6   | `.env.local` for dev, `.env.production` for prod | **WRONG**          | Next.js uses `.env.local` (all envs) + Vercel env vars per environment. No `.env.production` file needed                       |
@@ -136,7 +136,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, optional application credentials | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 2A  | **Firebase (SignalDesk)** | Root app: modular `firebase-admin` v14.2.0; SignalDesk Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Private SignalDesk growth-control data | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `SIGNALDESK_FIREBASE_*` | Auto from the dedicated Functions project | Local/Preview: `menulist-signaldesk-qa` | Production: `menulist-signaldesk` |
 | 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET` | project-local `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys** | Live mode keys |
-| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | `MENULIST_GEMINI_AI_KEY` plus `_2`, `_3`, `_4` | project-local `GEMINI_AI_KEY` plus `_2`, `_3`, `_4` | MenuList QA key set | Separate MenuList production key set |
+| 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | Shared `MENULIST_GEMINI_AI_KEY` plus `_2`, `_3` | Shared `GEMINI_AI_KEY` plus `_2`, `_3`; extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` | MenuList QA paid key set | Separate MenuList production paid key set |
 | 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Product-scoped rate limiting and caches | `MENULIST_UPSTASH_*`; Answerlattice uses `ANSWERLATTICE_UPSTASH_*` | Project-specific when used | MenuList QA database | Separate MenuList production database |
 | 6   | **Sentry**              | Root app: `@sentry/nextjs` v10.66.0; MenuList Functions: `@sentry/node` v10.68.0 | Error tracking                          | `NEXT_PUBLIC_SENTRY_DSN`                                                                               | project-local `SENTRY_DSN`               | QA Sentry project              | Prod Sentry project         |
 | 7   | **NextAuth**            | `next-auth` v4.24.15                         | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
@@ -838,3 +838,4 @@ shared portfolio reference. This environment guide is a companion overview.
 | 1.2     | July 11, 2026  | Added the incident response runbook; corrected SAFE_MODE scope and the already-implemented startup environment/pre-deploy source gates |
 | 1.0     | March 22, 2026 | Initial guide — ChatGPT validation + codebase audit                     |
 | 1.1     | March 22, 2026 | Added complete third-party account creation guide + cross-check summary |
+| 1.3     | August 13, 2026 | Aligned MenuList Gemini env guidance to shared slots 1-3 plus one isolated extraction credential |

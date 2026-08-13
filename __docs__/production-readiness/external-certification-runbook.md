@@ -218,9 +218,10 @@ the worker and were fully cleaned up, but both failed at provider file handling.
 Direct bounded provider probes established the former external blocker: the
 retired free-project key returned HTTP 403 `PERMISSION_DENIED`, while every
 `menulist-qa` paid key returned HTTP 429 because prepayment credits were
-depleted. The permanent policy now requires paid keys in QA and production.
-Paid QA provider slot 4 is reserved for extraction, removed from shared-pool
-discovery, and copied without value exposure into
+depleted. The retired provider key was subsequently deleted from its free
+project. The permanent policy now requires paid keys in QA and production. The
+fourth paid QA provider credential is dedicated to extraction, removed from
+shared-pool discovery, and copied without value exposure into
 `MENULIST_GEMINI_TEXT_AI_KEY` version 2. Live Gemini extraction certification
 still requires funded `menulist-qa` prepay and one successful synthetic hosted
 smoke. A direct version-2 probe reaches the paid project and returns HTTP 429,

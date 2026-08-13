@@ -127,11 +127,16 @@ AI Gateway (aiGateway.ts)
   └── On 4xx / hard quota → fail immediately
      ↓
 Key Manager (keyManager.ts)
-  ├── Pool of 1-4 GoogleGenAI clients
-  ├── Round-robin with health tracking
+  ├── Shared pool of 1-3 GoogleGenAI clients
+  ├── Sticky current-key selection with health tracking
   └── Cooldown: 60s → 120s → 240s → 5min cap
      ↓
 Gemini API (via @google/genai SDK)
+
+Menu extraction worker
+     ↓
+menuExtractionGenAiClient.ts
+  └── One paid MENULIST_GEMINI_TEXT_AI_KEY; no shared-pool fallback
 ```
 
 ---

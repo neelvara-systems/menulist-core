@@ -911,6 +911,16 @@ for (const route of billableRoutes) {
   [aiSystemReadme, aiSystemSpec, aiSystemImpl].forEach((content) => {
     assert(!content.includes('PRODUCTION HARDENING ACTIVE'), 'AI System core docs must not retain production-hardening status as release approval');
   });
+  assert(aiSystemReadme.includes('Shared pool of 1-3 GoogleGenAI clients'), 'AI System README documents the current shared MenuList key count');
+  assert(aiSystemReadme.includes('Sticky current-key selection with health tracking'), 'AI System README documents sticky key selection');
+  assert(aiSystemReadme.includes('One paid MENULIST_GEMINI_TEXT_AI_KEY; no shared-pool fallback'), 'AI System README documents the isolated extraction key');
+  assert(!aiSystemReadme.includes('Pool of 1-4 GoogleGenAI clients'), 'AI System README must not restore the retired four-key shared pool');
+  assert(!aiSystemReadme.includes('Round-robin with health tracking'), 'AI System README must not misstate sticky selection as round-robin');
+  assert(aiSystemSpec.includes('Shared API key failover pool (1-3 keys) plus one dedicated paid menu-extraction credential'), 'AI System spec documents shared and extraction credential roles');
+  assert(!aiSystemSpec.includes('multi-key pool (1-4 keys'), 'AI System spec must not restore the retired four-key shared pool');
+  assert(aiSystemImpl.includes('Shared pool of 1-3 GoogleGenAI clients'), 'AI System implementation documents the current shared MenuList key count');
+  assert(aiSystemImpl.includes('One paid extraction-only client'), 'AI System implementation documents the isolated extraction client');
+  assert(!aiSystemImpl.includes('Pool of 1-4 GoogleGenAI clients'), 'AI System implementation must not restore the retired four-key shared pool');
   [
     'Faster menu processing',
     'More reliable extraction',

@@ -7,6 +7,12 @@
 
 **Launch boundary:** This March 2026 chaos audit is historical failure-mode evidence, not current production certification. Current launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke for the target release.
 
+**Current credential contract (August 13, 2026):** The retry counts and key
+rotation behavior below are retained as March evidence. Current MenuList shared
+AI uses a sticky primary/`_2`/`_3` pool, while menu extraction uses only
+`MENULIST_GEMINI_TEXT_AI_KEY` with no shared fallback. Multiple credentials in
+one Google project do not multiply project/model quota.
+
 ---
 
 ## SECTION 1 — Failure Handling Results

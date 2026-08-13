@@ -8,6 +8,12 @@
 
 **Current status note (July 2, 2026):** This file is historical code-audit evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live production certification still requires the blocked QA Firebase Functions/Storage deploys, provider smoke, authenticated browser/device QA, and production-host evidence.
 
+**Current credential contract (August 13, 2026):** The `_2`, `_3`, `_4`
+rotation references below are retained as March evidence. Current MenuList
+shared AI uses `GEMINI_AI_KEY` plus `_2` and `_3`. Menu extraction binds only
+`MENULIST_GEMINI_TEXT_AI_KEY`, has no shared fallback, and does not gain a
+separate quota because both credentials belong to the same Google project.
+
 ---
 
 ## Audit Summary

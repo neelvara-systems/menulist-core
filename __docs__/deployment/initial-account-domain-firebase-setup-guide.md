@@ -723,12 +723,12 @@ What to do:
    no Firebase Functions codebase in the current repo.
 7. Do not set Firebase Functions secrets for Neelvara or MyCodex.
 
-MenuList primary secrets:
+MenuList shared AI and provider secrets:
 
 - `GEMINI_AI_KEY`
 - `GEMINI_AI_KEY_2`
 - `GEMINI_AI_KEY_3`
-- `GEMINI_AI_KEY_4`
+- `MENULIST_GEMINI_TEXT_AI_KEY`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `WHATSAPP_ACCESS_TOKEN`
@@ -746,6 +746,11 @@ MenuList primary secrets:
 - `TELEGRAM_CHAT_ID`
 - `GCP_BUDGET_WEBHOOK_SECRET`
 - `REVALIDATION_SECRET`
+
+The shared MenuList AI pool uses only `GEMINI_AI_KEY`, `_2`, and `_3`.
+`MENULIST_GEMINI_TEXT_AI_KEY` is bound only to menu extraction and must not
+fallback into the shared pool. Do not restore the retired `GEMINI_AI_KEY_4`
+alias; all keys in one Google project share project/model quota.
 
 Answerlattice declared secrets:
 
