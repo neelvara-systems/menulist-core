@@ -2382,6 +2382,21 @@ Operator progress:
   returned HTTP 429 `PREPAY_REQUIRED_OR_QUOTA`, replacing the former free-key
   HTTP 403 boundary. `QA-E13` is now blocked only by prepay and one successful
   hosted synthetic extraction.
+- `2026-08-13` - Google Payments identity verification completed and the
+  governed `menulist-qa` AI Studio prepay balance was funded with INR 1,000;
+  auto-reload remains off. The maintained Functions preflight and 64-case menu
+  extraction dry-run passed. One disposable hosted public-draft certification
+  job, `public_30770eeb-8ca3-43a1-8f2e-3311cffef7f7`, used the repository-owned
+  205041-byte `featured-choices-public-menu.png` fixture at platform scope
+  `0/0`, with `skipProjectSave=true` and a one-hour draft expiry. The active
+  worker used `MENULIST_GEMINI_TEXT_AI_KEY` version 2 and
+  `gemini-3.5-flash-lite`, completed with 1 category, 8 items, quality score
+  100, and a recorded AI transaction. Cloud Logging showed no error entries
+  for the run. The synthetic Firestore job, public draft, and Storage object
+  were deleted and independently confirmed absent. No real customer data,
+  production target, project save, Firebase deploy, or Vercel deploy was used.
+  `QA-E13` is complete; this evidence does not close project CRUD,
+  customer-link, device, payment, messaging, or other provider gates.
 - `2026-08-13` - Four retired compatibility exports were inadvertently named in
   the first scoped Firebase command: `embedArticleWorker`, `startGeneration`,
   `retryGeneration`, and `finalizePublish`. They were deleted immediately from
@@ -2642,7 +2657,7 @@ until every Phase C2 billing/spend item is complete.
 | [x] | QA-E10 | Cloud Tasks API enabled in `menulist-qa` | Google Cloud APIs | Cloud Tasks is enabled only for the QA project |
 | [x] | QA-E11 | Batch image queue created | Cloud Tasks -> Queues | `batch-image-generation` exists in `us-central1` with bounded dispatch/retry settings |
 | [x] | QA-E12 | Batch worker secret generated | Password vault | One separate random QA-only secret is ready for `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
-| [ ] | QA-E13 | Paid menu-extraction Gemini boundary certified | Google AI Studio, Firebase Secret Manager, scoped Functions deploy, hosted synthetic smoke, and focused verifiers | Free-project use is retired. The fourth paid provider credential is dedicated to extraction and deployed as `MENULIST_GEMINI_TEXT_AI_KEY` version 2; shared source discovery and deployed shared bindings exclude the retired slot-4 aliases. Fund `menulist-qa` prepay and retain one successful synthetic hosted extraction before checking this item |
+| [x] | QA-E13 | Paid menu-extraction Gemini boundary certified | Google AI Studio, Firebase Secret Manager, scoped Functions deploy, hosted synthetic smoke, and focused verifiers | Free-project use is retired. The fourth paid provider credential is dedicated to extraction and deployed as `MENULIST_GEMINI_TEXT_AI_KEY` version 2; shared source discovery and deployed shared bindings exclude the retired slot-4 aliases. INR 1,000 prepay is funded with auto-reload off, and disposable hosted job `public_30770eeb-8ca3-43a1-8f2e-3311cffef7f7` completed with 1 category, 8 items, quality 100, recorded accounting, no project save, no error logs, and full artifact cleanup |
 
 Provider console links for this phase:
 

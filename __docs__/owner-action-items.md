@@ -251,23 +251,23 @@ No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in th
 
 | #   | Task                                                                         | Why                                                                                                                                                  | Priority                               | Status |
 | --- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
-| 1   | Fund `menulist-qa` Gemini prepay and certify one hosted synthetic extraction | The paid shared 1-3 pool and dedicated extraction credential are already deployed. Provider execution remains blocked by `Prepay required`; the smoke must pass before `QA-E13` closes. | P0 (before extraction QA) | ⬜     |
+| 1   | Fund `menulist-qa` Gemini prepay and certify one hosted synthetic extraction | Completed August 13, 2026: INR 1,000 prepay funded with auto-reload off; hosted disposable job `public_30770eeb-8ca3-43a1-8f2e-3311cffef7f7` returned 1 category and 8 items at quality 100, recorded accounting, skipped project save, produced no error log entries, and cleaned its job, draft, and Storage object. `QA-E13` is closed. | P0 (before extraction QA) | ✅     |
 | 2   | Review current compact AI operation/cost summaries before adding another metric | `menulistAiOperations` and existing bounded summaries already provide cross-feature accounting evidence. Add a new aggregate only when production review identifies a specific unanswered question. | Optional (evidence-triggered)           | ⬜     |
 | 3   | Evaluate translation/description reuse only after repeated-request evidence | Do not add translation memory or a description cache from a guessed scale threshold or savings claim. Revisit only when bounded telemetry shows materially repeated identical work and defines safe tenant/content invalidation. | Optional (evidence-triggered)           | ⬜     |
 
-**How to do #1:**
+**Completed evidence for #1:**
 
 ```bash
-# 1. Enable/fund prepay for the existing menulist-qa Gemini project in AI Studio.
+# 1. Prepay for the existing menulist-qa Gemini project is funded.
 # 2. Confirm secret-version metadata only; do not access or print values.
 gcloud secrets versions list GEMINI_AI_KEY --project=menulist-qa
 gcloud secrets versions list GEMINI_AI_KEY_2 --project=menulist-qa
 gcloud secrets versions list GEMINI_AI_KEY_3 --project=menulist-qa
 gcloud secrets versions list MENULIST_GEMINI_TEXT_AI_KEY --project=menulist-qa
 
-# 3. Run the maintained preflight, then the hosted synthetic extraction from
-#    External Certification Gate 1 / QA-E13. Redeploy only if source or a bound
-#    secret version changed.
+# 3. The maintained preflight and hosted synthetic extraction from External
+#    Certification Gate 1 / QA-E13 passed. Redeploy only if source or a bound
+#    secret version changes later.
 npm run verify:functions-deploy-preflight
 ```
 

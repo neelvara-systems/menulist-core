@@ -222,10 +222,17 @@ depleted. The retired provider key was subsequently deleted from its free
 project. The permanent policy now requires paid keys in QA and production. The
 fourth paid QA provider credential is dedicated to extraction, removed from
 shared-pool discovery, and copied without value exposure into
-`MENULIST_GEMINI_TEXT_AI_KEY` version 2. Live Gemini extraction certification
-still requires funded `menulist-qa` prepay and one successful synthetic hosted
-smoke. A direct version-2 probe reaches the paid project and returns HTTP 429,
-confirming that the former free-project HTTP 403 boundary is no longer active.
+`MENULIST_GEMINI_TEXT_AI_KEY` version 2. Google Payments verification and INR
+1,000 AI Studio prepay funding completed on August 13 with auto-reload off. The
+maintained Functions preflight and 64-case extraction dry-run passed, followed
+by disposable hosted job
+`public_30770eeb-8ca3-43a1-8f2e-3311cffef7f7`. The active worker used
+`gemini-3.5-flash-lite`, returned 1 category and 8 items at quality 100,
+recorded its AI transaction, skipped project persistence, emitted no error log
+entries for the run, and completed full Firestore job/draft and Storage-object
+cleanup. This closes `QA-E13` and supersedes the prior HTTP 429 prepay blocker.
+It does not certify unrelated project, publish, device, payment, messaging, or
+provider flows.
 The same final deploy updated the six affected shared-pool functions and live
 readback confirms every revision is `ACTIVE` with slots 1-3 only. Firebase CLI
 could not reapply the existing invoker IAM policy for

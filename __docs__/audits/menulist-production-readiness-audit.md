@@ -6753,6 +6753,44 @@ reachability, authenticated browser/device QA, provider smoke, Firebase and
 Vercel deployment, live Firestore/Storage behavior, and production-host smoke
 remain outside this replay and are governed by the External Certification
 Runbook.
+
+### External Certification Gate 1 Paid Menu Extraction Evidence - August 13, 2026
+
+Gate: Firebase QA menu-extraction provider boundary, `QA-E13`.
+Date: August 13, 2026.
+Environment: Firebase project `menulist-qa`, Cloud Functions region
+`us-central1`, active Node.js 22 `processMenuImagesJob` revision; no production
+Firebase or Vercel target.
+Command or manual path: Google Payments identity verification and AI Studio
+prepay funding; `npm run verify:functions-deploy-preflight`;
+`npm run verify:menu-extraction-pipeline:dry-run`; one bounded Admin-triggered
+public-draft job using the repository fixture; Firebase Function metadata
+readback; Cloud Logging readback; post-run Firestore and Storage absence checks.
+Expected: the isolated paid extraction secret reaches an admitted stable Gemini
+model, the worker produces coherent public-draft menu data without saving a
+project, accounting is recorded, logs contain no run errors, and all disposable
+job/draft/object artifacts are removed.
+Actual: INR 1,000 prepay is available with auto-reload off. The preflight and
+all 64 extraction dry-run cases passed. Disposable job
+`public_30770eeb-8ca3-43a1-8f2e-3311cffef7f7` processed the exact 205041-byte
+fixture with SHA-256
+`eb54b8eff6fd382313ddc84805fa36de0e8a878697d9df22613bc4155ba32c84`.
+`gemini-3.5-flash-lite` returned 1 category and 8 items at quality 100 in 5497
+ms using 9224 total tokens; the AI transaction reported recorded, project save
+was skipped, and the public draft reached `completed`.
+Result: passed for the paid hosted menu-extraction boundary; `QA-E13` closed.
+Evidence: live Function readback reports `ACTIVE`, Node.js 22, `us-central1`,
+source hash `f3103a15d669037839dd6de1c29cb674eda22f4e`, and only
+`MENULIST_GEMINI_TEXT_AI_KEY` version 2 plus its three non-AI worker secrets.
+Cloud Logging records successful provider upload, transaction recording,
+quality 100, 1 category, 8 items, completed job status, and zero severity-error
+entries for the run. Independent cleanup verification reports the Firestore
+job absent, public draft absent, and Storage object absent.
+Follow-up: no extraction redeploy is required because neither Function source
+nor a bound secret version changed. Continue the separate project CRUD,
+customer-link, authenticated device, Razorpay, WhatsApp, POS, batch worker, and
+remaining scoped Function certification gates; do not infer them from this
+result.
 ## Razorpay Checkout Concurrency And Scale Checkpoint - July 14, 2026
 
 Razorpay long-term hardening is implemented in source without changing desktop/mobile request or response contracts. Existing-user subscription and top-up creation use actor/request-bound central server leases with a versioned pre-provider state, a transactional provider-start fence, exact provider attempt recovery, an immutable provider-ID checkpoint, an attempt-derived unique top-up receipt, and a short completed-attempt replay checkpoint. An expired provider-ambiguous subscription can recover or wait but cannot create again; top-up recovery retains the same receipt/attempt. Ordinary cleanup cannot delete provider state, and unversioned rolling-release leases fail into recovery. Provider-plan creation uses a separate versioned durable registry plus complete bounded provider scanning: only expired pre-provider work can change owner, while provider-started or unversioned ambiguity remains recovery-only until the canonical plan appears. Signed webhook coordination now separates processed replay from active work: active work returns retryable `503`, failed/expired work can be re-owned, and exact attempt-fenced terminal replacement prevents stale workers from downgrading success. Deterministic failure alerts/messages and immutable payment-audit creation time keep replay side effects stable; the Admin serializer preserves real FieldValue timestamps. Inherited-outlet top-up audits use the shared HQ billing store so paid packs remain visible in the effective desktop/mobile billing history. New status writes retain the latest 100 diagnostic entries while payment-id idempotency history remains intact. The consolidated Functions reconciler processes five provider calls at a time, checkpoints every complete 100-row page, resumes within a six-minute work budget, and caps detailed result samples. The same scheduler writes one daily server-only `systemHealth/billing` summary that separately observes expired pre-provider, provider-ambiguous, provider-created and webhook state. `billingCheckoutLeases`, `billingProviderPlans`, and `razorpayWebhookEvents` are explicitly client-denied; exact checkout-status/expiry and webhook-status/processing-expiry composite indexes prevent terminal/completed rows from masking live recovery risk. Root TypeScript, scoped lint, Functions build, billing/API source gates, checkout/provider-plan/webhook Admin emulators and coordination-rules emulator pass locally. Owner-pending work remains: restore Firebase CLI authentication and run the maintained combined QA deploy, deploy the app through the separately approved Vercel path, then run disposable Razorpay test-mode concurrent/lost-response subscription, top-up, plan-creation and webhook mutation smoke. No live charge, production deploy, or launch certification is claimed.

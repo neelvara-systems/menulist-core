@@ -1,5 +1,19 @@
 # MenuList — Changelog
 
+## August 13, 2026 - MenuList QA Paid Extraction Certification
+
+- Recorded the owner-completed Google Payments verification and INR 1,000
+  `menulist-qa` AI Studio prepay funding without storing payment identifiers or
+  credential values.
+- Certified the active `processMenuImagesJob` revision through one disposable
+  hosted public-draft extraction using the repository-owned menu fixture.
+- Confirmed `gemini-3.5-flash-lite` returned 1 category and 8 items at quality
+  100, AI accounting recorded the transaction, and no project save occurred.
+- Deleted and independently confirmed absence of the synthetic Firestore job,
+  Firestore draft, and Storage object after result inspection.
+- Closed `QA-E13`; project CRUD, customer-link, physical-device, payment,
+  messaging, and other provider certification gates remain separate.
+
 ## August 13, 2026 - MenuList Gemini Credential Documentation Parity
 
 - Reconciled the maintained AI System Layer docs, environment templates,
