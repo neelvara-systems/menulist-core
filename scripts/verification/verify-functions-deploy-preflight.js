@@ -60,19 +60,19 @@ assertIncludes(
   'Gate 1 external-proof boundary',
 );
 assertIncludes(
-  launchPrerequisites,
-  'Error: Failed to authenticate, have you run firebase login?',
-  'Launch prerequisites current Firebase CLI authentication blocker',
-);
-assertIncludes(
   audit,
-  'The current Firebase CLI environment is not authenticated, so current MenuList QA deploy attempts stop before predeploy or upload with `Error: Failed to authenticate, have you run firebase login?`',
-  'Production audit current Functions deploy blocker',
+  'Firebase CLI was reauthenticated as',
+  'Production audit current Functions list-access evidence',
 );
 assertIncludes(
   runbook,
-  'Current operator boundary refreshed August 1, 2026: Firebase CLI is not authenticated',
-  'Gate 1 current Firebase CLI authentication blocker',
+  'Current operator boundary refreshed August 13, 2026: Firebase CLI is',
+  'Gate 1 current Firebase CLI authentication evidence',
+);
+assertIncludes(
+  launchPrerequisites,
+  'Current operator evidence refreshed August 13, 2026: Firebase CLI is',
+  'Launch prerequisites current Firebase CLI authentication evidence',
 );
 assertIncludes(
   runbook,

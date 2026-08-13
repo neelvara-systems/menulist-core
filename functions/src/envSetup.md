@@ -2,6 +2,7 @@
 
 > Scope: MenuList, Answerlattice, and SignalDesk Firebase Functions
 > Current MenuList primary AI secret: `GEMINI_AI_KEY`
+> Current MenuList menu-extraction AI secret: `MENULIST_GEMINI_TEXT_AI_KEY`
 > Current Answerlattice primary AI secret: `ANSWERLATTICE_GEMINI_AI_KEY`
 > Current SignalDesk app AI env: `SIGNALDESK_GEMINI_AI_KEY`
 
@@ -45,6 +46,7 @@ GEMINI_AI_KEY
 GEMINI_AI_KEY_2
 GEMINI_AI_KEY_3
 GEMINI_AI_KEY_4
+MENULIST_GEMINI_TEXT_AI_KEY
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 WHATSAPP_PHONE_NUMBER_ID
@@ -72,6 +74,7 @@ firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
 firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa
 firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa
@@ -310,6 +313,14 @@ validating Functions secrets.
 Use `GEMINI_AI_KEY` as the primary MenuList Firebase Functions AI secret.
 Rotation keys are `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and
 `GEMINI_AI_KEY_4`.
+
+Use `MENULIST_GEMINI_TEXT_AI_KEY` only for the menu extraction worker. In
+`menulist-qa`, its value may come from the unbilled
+`menulist-gemini-qa-free` provider project only while QA inputs remain
+synthetic. In `menulist`, create this same Secret Manager name with a paid key
+from the single governed production Gemini project before deploying the
+worker. Never fall back from this extraction pool to `GEMINI_AI_KEY*`, and do
+not use multiple provider projects to multiply production quota.
 
 Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY` plus
 `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and

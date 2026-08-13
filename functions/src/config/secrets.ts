@@ -36,6 +36,7 @@ export const SECRETS = {
     GEMINI_AI_KEY_2: 'GEMINI_AI_KEY_2',
     GEMINI_AI_KEY_3: 'GEMINI_AI_KEY_3',
     GEMINI_AI_KEY_4: 'GEMINI_AI_KEY_4',
+    MENULIST_GEMINI_TEXT_AI_KEY: 'MENULIST_GEMINI_TEXT_AI_KEY',
 
     // Rate Limiting (Upstash Redis)
     UPSTASH_REDIS_REST_URL: 'UPSTASH_REDIS_REST_URL',
@@ -86,6 +87,13 @@ export const SECRET_GROUPS = {
         SECRETS.GEMINI_AI_KEY_2,
         SECRETS.GEMINI_AI_KEY_3,
         SECRETS.GEMINI_AI_KEY_4,
+        SECRETS.UPSTASH_REDIS_REST_URL,
+        SECRETS.UPSTASH_REDIS_REST_TOKEN,
+    ] as string[],
+
+    /** Dedicated menu extraction key + rate limiting; never falls back to the shared AI pool. */
+    MENU_EXTRACTION_AI_WITH_RATE_LIMIT: [
+        SECRETS.MENULIST_GEMINI_TEXT_AI_KEY,
         SECRETS.UPSTASH_REDIS_REST_URL,
         SECRETS.UPSTASH_REDIS_REST_TOKEN,
     ] as string[],

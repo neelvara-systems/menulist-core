@@ -2275,6 +2275,79 @@ Operator progress:
   was bypassed and no extraction result was fabricated. `QA-K09` and `QA-K10`
   remain open until provider credit exists and one real menu can finish and be
   published.
+- `2026-08-13` - The operator chose a bounded hybrid Gemini QA policy and
+  created unbilled Google AI Studio project `menulist-gemini-qa-free` for
+  synthetic text extraction only. Real customer data must never use this
+  free-tier credential, and paid-only image models remain on the existing
+  `menulist-qa` credentials. Source inspection confirms the current MenuList
+  gateway uses one shared key pool for text, Files API, and image methods, so
+  the free credential was not yet wired or treated as active at that checkpoint.
+  A separate server-side text-only credential pool, spend admission, failure
+  isolation, and focused verifier coverage were required before `QA-E13` could
+  complete. The new project is a provider billing
+  boundary only; it is not a second Firebase project, deployed environment, or
+  quota-multiplication strategy.
+- `2026-08-13` - The proposal to reserve current key slot 1 for extraction and
+  slot 2 for images was reviewed and rejected because the current `KeyManager`
+  rotates every configured slot through one shared gateway; slot numbers do
+  not enforce workload routing. The production proposal to create four Google
+  projects for four quotas was also rejected. Google applies Gemini limits per
+  project, and production capacity must use one governed paid project, its
+  approved tier/quota-increase path, bounded retry/backpressure, and multiple
+  same-project keys only for rotation, leak response, and availability. The
+  accepted implementation direction is two explicit credential pools selected
+  by operation: one free-project pool for synthetic QA text/File API work and
+  one paid `menulist-qa` pool for image operations. No key value has been
+  deployed under this decision yet.
+- `2026-08-13` - Google AI Studio created exactly one authorization key named
+  `MenuList QA synthetic text` in the filtered free project
+  `menulist-gemini-qa-free` (Google-generated project id
+  `gen-lang-client-0740061827`, project number `534438952454`). Evidence exposed
+  only a masked key value. The credential is created but remains intentionally
+  unwired: `QA-E13` is still pending secure vault capture, distinct text-pool
+  implementation, Firebase Secret Manager wiring, scoped worker deployment,
+  and a synthetic-only hosted extraction smoke. No second key, billing setup,
+  production credential, or paid call was created.
+- `2026-08-13` - The operator confirmed the `MenuList QA synthetic text`
+  credential is vaulted. The repository never receives or records its value.
+  Source now uses the environment-neutral Firebase secret name
+  `MENULIST_GEMINI_TEXT_AI_KEY` for the dedicated menu text/File API gateway;
+  the existing `GEMINI_AI_KEY*` pool remains separate. Vault capture is
+  complete, while Firebase Secret Manager transfer, scoped QA worker deploy,
+  and synthetic hosted smoke evidence remain pending.
+- `2026-08-13` - Firebase Secret Manager created
+  `projects/113909530649/secrets/MENULIST_GEMINI_TEXT_AI_KEY/versions/1` in
+  `menulist-qa` from the vaulted value. The value was entered interactively and
+  is absent from source, shell history, docs, and logs. Secret transfer is
+  complete; scoped `processMenuImagesJob` deployment and synthetic hosted smoke
+  remain pending.
+- `2026-08-13` - The scoped deploy of
+  `functions:processMenuImagesJob` to `menulist-qa` passed predeploy lint/build
+  and completed. The active Node.js 22 revision in `us-central1` has source hash
+  `61d035e45023bb5c8561d2454c9fe24643805f83` and binds only
+  `MENULIST_GEMINI_TEXT_AI_KEY`, `REVALIDATION_SECRET`, and the two Upstash
+  rate-limit secrets. It does not bind any `GEMINI_AI_KEY*` slot, proving the
+  deployed extraction worker cannot rotate onto the paid image/shared pool.
+- `2026-08-13` - Two disposable hosted public-draft extraction probes used a
+  fresh UUID, the repository-owned `featured-choices-public-menu.png` fixture,
+  platform tenant/store scope only, and a one-hour expiry. Both reached the
+  deployed worker, passed the public-draft/routing checks, and terminated with
+  bounded `FILE_ERROR`; each probe then deleted its job document, draft
+  document, and Storage object. An independent fetch of the same synthetic
+  Storage URL returned `200`, `image/png`, and the expected 205041 bytes.
+  Direct in-memory provider probes, with no key value printed, identified the
+  upstream cause: `MENULIST_GEMINI_TEXT_AI_KEY` returns HTTP 403
+  `PERMISSION_DENIED` with `Your project has been denied access` for both text
+  generation and Files API upload. Google AI Studio confirms
+  `menulist-gemini-qa-free` and the account's default Gemini project are
+  `Restricted` with billing `Unavailable`. The four existing `menulist-qa`
+  keys each return HTTP 429 `RESOURCE_EXHAUSTED` because prepayment credits are
+  depleted; AI Studio reports `Prepay required`. The Files API itself is not a
+  paid-only feature. `QA-E13` remains open until Google restores free-project
+  access or the owner funds `menulist-qa`, the secret is rotated to an admitted
+  key, the worker is redeployed to the resulting secret version, and one
+  synthetic hosted extraction completes. No customer data or production key
+  was used.
 - `2026-08-13` - Vercel Preview deployment
   `dpl_4VTwaJ1TAENTffk8ZW3bBhxoySHN` is Ready for staging commit
   `158f19219e3e72936ac3c360330069d7ed59d152`. Live
@@ -2489,6 +2562,7 @@ until every Phase C2 billing/spend item is complete.
 | [x] | QA-E10 | Cloud Tasks API enabled in `menulist-qa` | Google Cloud APIs | Cloud Tasks is enabled only for the QA project |
 | [x] | QA-E11 | Batch image queue created | Cloud Tasks -> Queues | `batch-image-generation` exists in `us-central1` with bounded dispatch/retry settings |
 | [x] | QA-E12 | Batch worker secret generated | Password vault | One separate random QA-only secret is ready for `BATCH_IMAGE_GENERATION_WORKER_SECRET` |
+| [ ] | QA-E13 | Synthetic-text Gemini boundary certified | Google AI Studio, Firebase Secret Manager, scoped Functions deploy, hosted synthetic smoke, and focused verifiers | Runtime/secret/deploy isolation passes, but provider certification is blocked: the free project returns 403 `PERMISSION_DENIED` and is `Restricted`; all four paid-project keys return 429 because `menulist-qa` is `Prepay required`. Rotate the extraction secret to an admitted key, redeploy the worker, and retain one successful synthetic-only hosted extraction before checking this item |
 
 Provider console links for this phase:
 
@@ -2507,6 +2581,15 @@ Gemini rotation note: current MenuList Functions targets declare
 real failover keys. If a slot temporarily uses the same Google account/provider
 value as the primary key, record it in your vault as a rotate-later placeholder;
 do not treat duplicate values as extra quota.
+
+Synthetic-text QA exception: `menulist-gemini-qa-free` is an intentionally
+separate, unbilled Gemini provider project for synthetic text/File API testing
+only. Store it in Firebase Secret Manager as
+`MENULIST_GEMINI_TEXT_AI_KEY`; do not place it into the existing shared
+MenuList key slots. `QA-E13` requires the distinct server-side extraction pool
+before this credential can be activated.
+The exception does not authorize real customer data, a second Firebase project,
+another deployed environment, or multiple free projects for quota scaling.
 
 ### Phase F - Optional QA Provider Decisions
 

@@ -31,7 +31,7 @@ import {
 import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
-import { genAIClient } from "../genAiClient";
+import { menuExtractionGenAIClient } from "../menuExtractionGenAiClient";
 import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitBreaker";
 import { logger } from "../lib/logger";
 import { checkExpensiveAIRateLimit } from "../lib/rateLimit";
@@ -306,7 +306,7 @@ async function uploadFileToGemini(
         fs.writeFileSync(tempFilePath, uint8Array);
 
         // Upload to Gemini
-        const document = await genAIClient.files.upload({
+        const document = await menuExtractionGenAIClient.files.upload({
             file: tempFilePath,
             config: { mimeType: file.type },
         });
@@ -403,7 +403,7 @@ async function cleanupProviderFiles(files: readonly UploadedFile[]): Promise<voi
 
     const providerNames = [...new Set(files.map((file) => file.providerName).filter(Boolean))];
     const cleanupResults = await Promise.allSettled(
-        providerNames.map((name) => genAIClient.files.delete({ name })),
+        providerNames.map((name) => menuExtractionGenAIClient.files.delete({ name })),
     );
     const failedCleanupCount = cleanupResults.filter((result) => result.status === 'rejected').length;
     if (failedCleanupCount > 0) {
@@ -1151,7 +1151,7 @@ async function processSingleBatch(
         // Execute AI call with circuit breaker + retry protection
         const response = await executeWithCircuitBreaker(
             () => retryWithBackoff<GenerateContentResponse>(async () => {
-                return await genAIClient.models.generateContent({
+                return await menuExtractionGenAIClient.models.generateContent({
                     model: AI_MODEL,
                     contents: [createUserContent(contentParts)],
                     config: {

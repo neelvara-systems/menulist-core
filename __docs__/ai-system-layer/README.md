@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** August 2, 2026
+**Last Updated:** August 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -16,6 +16,23 @@ The AI System Layer is a centralized infrastructure that governs AI operations a
 **Core principle:** AI is an expensive, rate-limited external resource. Treat it like a database — centralize access, control cost, and monitor health.
 
 Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate and spend limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, provider health checks, the shared rolling-spend admission controller, and a provider-side Gemini API spend cap.
+
+Menu extraction is the bounded exception to the single MenuList pool. The
+deployed `processMenuImagesJob` worker uses only
+`MENULIST_GEMINI_TEXT_AI_KEY` through
+`functions/src/menuExtractionGenAiClient.ts`; Files API upload/delete and text
+generation cannot rotate onto `GEMINI_AI_KEY*`. In `menulist-qa`, that secret
+may hold the unbilled `menulist-gemini-qa-free` key only for synthetic inputs.
+Paid image operations and other MenuList AI operations keep the existing
+governed pool. Production uses the same extraction secret name but its value
+must come from the one paid production Gemini project.
+
+Current QA provider boundary (August 13, 2026): source isolation, Secret Manager
+wiring, and the scoped `processMenuImagesJob` deploy pass. The free project is
+currently marked `Restricted` by Google and returns HTTP 403 for both text and
+Files API probes; the existing paid QA project returns HTTP 429 because prepay
+is required. No hosted extraction is certified until an admitted key replaces
+the secret value and the scoped worker is redeployed and smoked successfully.
 
 ### 2026 provider migration register
 
@@ -173,6 +190,7 @@ Gemini API (via @google/genai SDK)
 | File                              | Purpose                                       |
 | --------------------------------- | --------------------------------------------- |
 | `functions/src/genAiClient.ts`    | Entry point — exports `genAIClient` (gateway) |
+| `functions/src/menuExtractionGenAiClient.ts` | Dedicated menu text/File API gateway; no shared-pool fallback |
 | `functions/src/ai/aiGateway.ts`   | AI Gateway — rolling-spend admission, bounded retry, key health, and diagnostics |
 | `functions/src/sharedData/geminiSpendPolicy.ts` | Byte-identical spend/pricing policy mirror |
 | `functions/src/ai/keyManager.ts`  | Key Manager — pool + health tracking          |
@@ -207,6 +225,7 @@ Gemini API (via @google/genai SDK)
 | `GEMINI_AI_KEY_2` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_4` | Optional | Vercel + Firebase Secrets |
+| `MENULIST_GEMINI_TEXT_AI_KEY` | Required for `processMenuImagesJob` | MenuList Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY` | ✅ Yes for Answerlattice Functions AI | Answerlattice Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY_2` | Optional | Answerlattice Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY_3` | Optional | Answerlattice Firebase Secrets |

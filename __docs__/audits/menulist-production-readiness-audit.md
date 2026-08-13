@@ -816,7 +816,29 @@ Answerlattice billing persisted-ownership and tenant-registry shard checkpoint: 
 **Latest evidence update:** July 12, 2026
 **Product:** MenuList  
 **Stage:** Stage 6 system audit with Stage 5 feature hardening loop  
-**Current verdict:** **Not production ready** as a full-system certification, because the high-risk feature clusters and whole-app visual/runtime QA are controlled-owner-testing ready after the fixes below, but provider sandbox smoke, real mobile device QA, Firebase Function deployment, Firebase Storage rules deployment, and production deploy smoke remain pending or blocked where noted. Authenticated platform-owner HTTP smoke passed for the audited ops/internal routes, Chrome visual QA found and fixed platform dashboard layout issues, and the follow-up pass covered public website, owner desktop, forced mobile shell, public tenant menu/OBP/compliance/feedback, public API fail-closed behavior, and authenticated localhost `npm run dev` route checks. Later 390px browser smokes covered key public website routes, the active `habibis` tenant/customer fixture, and the local tenant-host safe fallback; physical-device QA and authenticated owner-shell mobile QA remain pending. Firestore rules for Digital Screens, Analytics/Feedback/Reviews, and Roles/Auth slices were deployed successfully. The current Firebase CLI environment is not authenticated, so current MenuList QA deploy attempts stop before predeploy or upload with `Error: Failed to authenticate, have you run firebase login?`. The last authenticated package-local scoped retry on July 9, 2026 targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, completed predeploy lint/build, and was blocked by Cloud Resource Manager HTTP 403 caller permission before upload. Earlier documented subset attempts for source-file path hardening, the SAFE_MODE worker, the consolidated scheduler, staleness lifecycle delivery, scheduler-hour diagnostics, Maps Place Check raw provider output, owner-notification template output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics hit the same historical blocker class after predeploy lint/build. The current Answerlattice Firebase CLI attempts also stop at missing authentication; the last authenticated staging attempt for `functions:answerlattice` targeted `answerlattice-qa`, completed predeploy build, and was blocked by Cloud Resource Manager HTTP 403 caller permission before upload. The last authenticated MenuList QA Storage rules retry on July 9, 2026 ran after `npm run verify:storage-paths` passed, targeted `menulist-qa`, and was blocked before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
+**Current verdict:** **Not production ready** as a full-system certification,
+because provider sandbox smoke, real mobile-device QA, changed-revision Firebase
+deployment evidence, Firebase Storage rules deployment, and production deploy
+smoke remain pending where noted. Firebase CLI was reauthenticated as
+`admin@neelvara.com` on August 13, and `firebase functions:list --project
+menulist-qa --json` now succeeds with the maintained QA exports in `ACTIVE`
+state on Node.js 22 in `us-central1`. This closes the stale missing-auth/current
+list-access blocker, but it does not certify an undeployed source change or any
+production target. Historical July Cloud Resource Manager/Service Usage 403
+attempts remain retained below as historical evidence rather than current
+operator state.
+
+August 13 menu-extraction deployment evidence: the changed
+`processMenuImagesJob` revision deployed successfully to `menulist-qa`, and its
+active secret bindings prove extraction is isolated from `GEMINI_AI_KEY*`.
+Hosted disposable synthetic probes reached that revision and cleaned up their
+Firestore/Storage artifacts, but provider execution remains uncertified. The
+dedicated free-project key returns 403 `PERMISSION_DENIED` and AI Studio marks
+the project `Restricted`; all four existing `menulist-qa` keys return 429 for
+depleted prepayment credits and AI Studio marks that project `Prepay required`.
+Production readiness therefore remains blocked on provider account restoration
+or prepay plus a successful synthetic hosted extraction after secret rotation
+and scoped redeploy.
 
 This report tracks the feature-by-feature production-readiness pass requested for MenuList. Codebase truth is treated as primary. Docs are corrected only after runtime behavior is verified.
 

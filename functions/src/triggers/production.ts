@@ -93,7 +93,7 @@ export const processMenuImagesJob = onDocumentCreated(
     {
         ...FUNCTION_OPTIONS.aiParallel,
         secrets: Array.from(new Set([
-            ...FUNCTION_OPTIONS.aiParallel.secrets,
+            ...SECRET_GROUPS.MENU_EXTRACTION_AI_WITH_RATE_LIMIT,
             ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
         ])),
         document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}`,

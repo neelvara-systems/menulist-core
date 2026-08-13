@@ -200,9 +200,40 @@ npm --prefix functions run build
 
 Passing preflight proves the Functions package lints and compiles locally, the listed source guards still pass, and the current blocked deploy target set remains documented. It does not prove Firebase CLI authentication, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.
 
-Current operator boundary refreshed August 1, 2026: Firebase CLI is not authenticated, so current scoped MenuList QA deploy attempts stop before predeploy or upload with `Error: Failed to authenticate, have you run firebase login?`. Local preflight can still prove source lint/build and documented target scope, but no current cloud authorization or deployment behavior is certified.
+Current operator boundary refreshed August 13, 2026: Firebase CLI is
+authenticated as `admin@neelvara.com`, and `firebase functions:list --project
+menulist-qa --json` succeeds. It reports the maintained QA exports, including
+`processMenuImagesJob`, in `ACTIVE` state on Node.js 22 in `us-central1`.
+Current authentication and list permission are therefore proven. A changed
+Function revision still requires its own scoped deploy result and live behavior
+evidence; listing an existing revision does not certify new source.
 
-Historical authenticated evidence remains relevant but is not the current operator state: the default package-local scoped set was last retried on July 9 with `npm --prefix functions run deploy:menulist-qa`; it targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, completed predeploy lint/build, and failed before upload with Cloud Resource Manager HTTP 403: the caller does not have permission. The July 11 shared AI-gateway 13-target subset above reached the same pre-upload blocker after configured lint/build. Earlier documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) hit the same blocker class after predeploy lint/build.
+Current changed-revision evidence: the scoped August 13 deploy of
+`functions:processMenuImagesJob` completed with source hash
+`61d035e45023bb5c8561d2454c9fe24643805f83`. Its deployed secret bindings are
+`MENULIST_GEMINI_TEXT_AI_KEY`, `REVALIDATION_SECRET`,
+`UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`; no shared
+`GEMINI_AI_KEY*` slot is present. Two disposable synthetic hosted jobs reached
+the worker and were fully cleaned up, but both failed at provider file handling.
+Direct bounded provider probes established the external blocker: the dedicated
+free-project key returns HTTP 403 `PERMISSION_DENIED` because the project is
+denied access, while every existing `menulist-qa` key returns HTTP 429 because
+prepayment credits are depleted. AI Studio shows the free project as
+`Restricted`/billing `Unavailable` and `menulist-qa` as `Prepay required`.
+Therefore deployment/isolation evidence passes, but live Gemini extraction
+certification does not pass. Restore provider access or prepay, rotate
+`MENULIST_GEMINI_TEXT_AI_KEY`, redeploy this target, and rerun the synthetic
+hosted smoke before closing the provider gate.
+
+Historical authenticated evidence remains relevant but is not the current
+operator state: the default package-local scoped set was retried on July 9 with
+`npm --prefix functions run deploy:menulist-qa`; it targeted
+`functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`,
+completed predeploy lint/build, and failed before upload with Cloud Resource
+Manager HTTP 403: the caller did not have permission. The July 11 shared
+AI-gateway 13-target subset above reached the same pre-upload blocker after
+configured lint/build. Earlier documented scoped attempts remain historical
+evidence only.
 
 Staging deploy retry:
 

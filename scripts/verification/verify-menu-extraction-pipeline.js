@@ -3807,6 +3807,10 @@ contains(
 contains(
   'functions/src/logic/processMenuImages.ts',
   [
+    'import { menuExtractionGenAIClient } from "../menuExtractionGenAiClient";',
+    'menuExtractionGenAIClient.files.upload',
+    'menuExtractionGenAIClient.files.delete',
+    'menuExtractionGenAIClient.models.generateContent',
     'MAX_CONCURRENT_FILE_UPLOADS = 3',
     'failedFileIndices.sort',
     'uploadedFiles.length !== files.length',
@@ -3817,6 +3821,45 @@ contains(
     "status: successfulBatches === totalBatches ? 'completed' : 'partial'",
   ],
   'Provider uploads are bounded, ordered, all-or-nothing, source-index checked, accounted, and cleaned up',
+);
+
+notContains(
+  'functions/src/logic/processMenuImages.ts',
+  [
+    'import { genAIClient } from "../genAiClient";',
+    'genAIClient.files.',
+    'genAIClient.models.generateContent',
+  ],
+  'Menu extraction cannot rotate onto the shared MenuList Gemini pool',
+);
+
+contains(
+  'functions/src/menuExtractionGenAiClient.ts',
+  [
+    "['MENULIST_GEMINI_TEXT_AI_KEY']",
+    'createAIGateway(',
+    'menuExtractionSpendAdmission',
+  ],
+  'Menu extraction has a dedicated one-slot Gemini gateway with spend admission',
+);
+
+contains(
+  'functions/src/triggers/production.ts',
+  [
+    '...SECRET_GROUPS.MENU_EXTRACTION_AI_WITH_RATE_LIMIT',
+    '...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION',
+  ],
+  'Production extraction worker binds only its dedicated AI and supporting secrets',
+);
+
+contains(
+  'functions/src/config/secrets.ts',
+  [
+    "MENULIST_GEMINI_TEXT_AI_KEY: 'MENULIST_GEMINI_TEXT_AI_KEY'",
+    'MENU_EXTRACTION_AI_WITH_RATE_LIMIT',
+    'SECRETS.MENULIST_GEMINI_TEXT_AI_KEY',
+  ],
+  'Menu extraction secret is centralized and separately grouped',
 );
 
 {

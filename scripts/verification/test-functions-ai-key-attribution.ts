@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 
 process.env.GEMINI_AI_KEY = "menu-key-one";
 process.env.GEMINI_AI_KEY_2 = "menu-key-two";
+process.env.MENULIST_GEMINI_TEXT_AI_KEY = "menu-extraction-key";
 process.env.ANSWERLATTICE_GEMINI_AI_KEY = "answer-key-one";
 process.env.ANSWERLATTICE_GEMINI_AI_KEY_2 = "answer-key-two";
 
 type KeyManagerConstructor = new () => {
+    readonly totalKeys: number;
     getClient(): object;
     markKeyRateLimited(client: object): void;
     markKeySuccess(client: object): void;
@@ -15,8 +17,12 @@ type KeyManagerConstructor = new () => {
     };
 };
 
+type ConfigurableKeyManagerConstructor = new (
+    candidates?: readonly (readonly string[])[],
+) => InstanceType<KeyManagerConstructor>;
+
 const { KeyManager: MenuListKeyManager } = require("../../functions/src/ai/keyManager") as {
-    KeyManager: KeyManagerConstructor;
+    KeyManager: ConfigurableKeyManagerConstructor;
 };
 const { KeyManager: AnswerlatticeKeyManager } = require("../../functions-answerlattice/src/ai/keyManager") as {
     KeyManager: KeyManagerConstructor;
@@ -45,5 +51,25 @@ for (const [label, Manager] of [
         `${label} attributes delayed feedback to the client that served the request`,
     );
 }
+
+const extractionManager = new MenuListKeyManager([
+    ['MENULIST_GEMINI_TEXT_AI_KEY'],
+]);
+assert.equal(extractionManager.totalKeys, 1, 'Menu extraction discovers only its dedicated text key');
+
+delete process.env.MENULIST_GEMINI_TEXT_AI_KEY;
+const missingExtractionManager = new MenuListKeyManager([
+    ['MENULIST_GEMINI_TEXT_AI_KEY'],
+]);
+assert.equal(
+    missingExtractionManager.totalKeys,
+    0,
+    'Menu extraction never falls back to the configured shared MenuList key pool',
+);
+assert.throws(
+    () => missingExtractionManager.getClient(),
+    { code: 'AI_PROVIDER_CONFIG_MISSING' },
+    'Missing extraction credentials fail before a provider call',
+);
 
 console.log("Functions AI key attribution boundary passed.");
