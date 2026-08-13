@@ -26,7 +26,7 @@ No new collection, rule, or Storage rule was added. The obsolete `claimed + expi
 | New image source | One Storage write plus two Firestore create writes in one draft/job batch; shared worker lifecycle remains existing. |
 | New PDF source | One Storage write per converted page, capped at 15, plus the same two Firestore create writes in one draft/job batch. No raw PDF Storage write. |
 | Poll | One draft document read per request; 5 seconds, maximum 36 status reads, then owner retry. Completion performs at most one additional full-result read. Backend limit is 90 per 5 minutes and fails closed on limiter outage. |
-| Existing-account claim | Transaction reads draft, store, tenant, and compact project summary; current publish permission reuses the read store snapshot. Writes project, summary, applicable store defaults, and claim receipt. |
+| Existing-account claim | Transaction reads draft, store, tenant, and compact project summary; current publish permission reuses the read store snapshot. Writes project, summary, applicable store defaults, and claim receipt. The existing store write also persists deterministic `store-{storeId}` routing only when its current subdomain is missing or invalid. |
 | New-account claim | Existing starter onboarding transaction reads/writes plus project, summary, and receipt. |
 | Idempotent claim retry | Draft receipt read and no duplicate tenant/store/project mutation. |
 | Post-commit effects | Cache invalidation and existing Digital Screens/assistant invalidation; failures do not repeat the transaction. |
@@ -35,6 +35,8 @@ No new collection, rule, or Storage rule was added. The obsolete `claimed + expi
 Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral. The slug, explicit project identity, price validation, phone validation, canonical business type, and in-transaction Menu Correctness stamp are CPU/transaction-shaping boundaries and add no new read or write.
 
 The hosted claim now sanitizes its project payload immediately before the existing project write, omitting nested optional `undefined` properties produced by extraction redistribution. This adds no read, write, delete, Storage, Function, rule, or index operation. It prevents Firestore Admin serialization from aborting the existing transaction while preserving populated extraction data and SDK atomic values.
+
+Existing-account customer-link repair reuses the already-conditional store-default update. A store with a valid subdomain has no additional field mutation; a missing or invalid legacy value adds one `subdomain` field to that same store write. It adds no document read, separate write, collection, rule, index, Storage object, Function, or provider call.
 
 The browser preview projector and request-lifecycle guards add no Firebase operation. Canonical response normalization occurs after the existing bounded HTTP read; an aborted status request does not schedule another poll or mutate current state. The immediate claim single-flight guard prevents duplicate browser POSTs, while the route's transaction receipt remains the durable idempotency authority.
 

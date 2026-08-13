@@ -589,8 +589,11 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                 const persistedSubdomain = typeof storeData.subdomain === 'string'
                     ? storeData.subdomain.trim()
                     : '';
-                subdomain = persistedSubdomain
-                    && normalizeSubdomainCandidate(persistedSubdomain) === persistedSubdomain
+                const hasValidPersistedSubdomain = Boolean(
+                    persistedSubdomain
+                    && normalizeSubdomainCandidate(persistedSubdomain) === persistedSubdomain,
+                );
+                subdomain = hasValidPersistedSubdomain
                     ? persistedSubdomain
                     : `store-${storeId}`;
                 const existingPublicPresence = isRecord(storeData.publicPresence)
@@ -615,6 +618,7 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                     },
                 );
                 const storeDefaultsPatch: Record<string, unknown> = {
+                    ...(!hasValidPersistedSubdomain ? { subdomain } : {}),
                     ...(mergeDefinedObject(publicPresenceDefaults)
                         ? { publicPresence: { ...existingPublicPresence, ...publicPresenceDefaults } }
                         : {}),

@@ -590,6 +590,8 @@ assertCheck(
     && publicClaimRoute.includes('normalizeCompletedClaimResult(draft, userId)')
     && publicClaimRoute.includes('convertedProjectSlug: projectSlug')
     && publicClaimRoute.includes('convertedSubdomain: subdomain')
+    && publicClaimRoute.includes('const hasValidPersistedSubdomain = Boolean(')
+    && publicClaimRoute.includes("...(!hasValidPersistedSubdomain ? { subdomain } : {}),")
     && publicClaimRoute.includes("const safeProjectData = sanitizeForFirestore(projectData, {")
     && publicClaimRoute.includes("undefinedObjectValue: 'omit'")
     && publicClaimRoute.includes('transaction.set(projectRef, safeProjectData)')

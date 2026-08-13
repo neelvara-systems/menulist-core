@@ -1,5 +1,19 @@
 # MenuList — Changelog
 
+## August 13, 2026 - Existing-Account Public Menu Host Repair
+
+- Reproduced a successful hosted existing-account claim whose project, compact
+  summary, and durable receipt were correct while its returned customer link
+  rendered Menu not found.
+- Traced the mismatch to an existing store without a persisted subdomain: the
+  claim returned deterministic `store-{storeId}` routing but did not write that
+  fallback for anonymous store lookup.
+- Persisted the fallback in the claim transaction's existing conditional store
+  update whenever the stored subdomain is missing or invalid. Valid owner
+  subdomains are preserved, and no extra document operation, rule, index,
+  Storage object, Function, or provider call was added.
+- Extended both extraction verifiers to lock the route and write boundary.
+
 ## August 13, 2026 - Hosted Public Menu Claim Firestore Projection Fix
 
 - Reproduced the authenticated hosted link-import flow through extraction and
