@@ -2250,6 +2250,81 @@ Operator progress:
   `tempStatus`. The local Next development server and mobile debug processes
   were stopped after testing. No production Firebase project was queried or
   changed as part of this owner-flow continuation.
+- `2026-08-13` - Firebase CLI owner reauthentication completed as
+  `admin@neelvara.com`. The Functions deploy preflight then exposed and repaired
+  a stale package entrypoint: `functions/package.json` pointed at
+  `lib/functions/src/index.js` even though TypeScript emits `lib/index.js`.
+  The preflight now cleans `lib`, verifies the declared `main`, and rejects a
+  stale output tree before any deploy. Functions lint, TypeScript build, the
+  full 382-case menu-extraction pipeline, focused project/image-batch gates,
+  root typecheck, and root lint all pass.
+- `2026-08-13` - The smallest Firebase deploy published only
+  `processMenuImages` and `processMenuImagesJob` to exact project
+  `menulist-qa`. The active worker revision is
+  `processmenuimagesjob-00005-hek`. The worker compute identity received only
+  `roles/datastore.user`, which was the missing permission needed to claim its
+  Firestore job. A fresh synthetic `onCreate` job then reached Eventarc trigger
+  `processmenuimagesjob-367299`, started the current worker, claimed the job,
+  validated the destination, uploaded to Gemini, and rotated all four QA keys.
+  This supersedes the earlier unclaimed-trigger diagnosis.
+- `2026-08-13` - The current extraction failure is correctly classified as
+  retryable `RATE_LIMIT`, not generic `FILE_ERROR`. All four Gemini Files API
+  attempts return HTTP 429 `RESOURCE_EXHAUSTED` because the AI Studio project
+  reports depleted prepaid credits. The worker preserves that retryable
+  provider classification and bounded processing-stage diagnostics. No limit
+  was bypassed and no extraction result was fabricated. `QA-K09` and `QA-K10`
+  remain open until provider credit exists and one real menu can finish and be
+  published.
+- `2026-08-13` - Vercel Preview deployment
+  `dpl_4VTwaJ1TAENTffk8ZW3bBhxoySHN` is Ready for staging commit
+  `158f19219e3e72936ac3c360330069d7ed59d152`. Live
+  `https://app.menulist.digital/api/version` returns that exact build id,
+  environment `preview`, and deployment URL
+  `menulist-core-bnr9dwfc3-neelvara-systems.vercel.app`.
+- `2026-08-13` - `QA-K20` is complete. The maintained wrong-secret request
+  still returns generic HTTP 403. A real task was then created in
+  `projects/menulist-qa/locations/us-central1/queues/batch-image-generation`
+  with the configured QA secret and an actual-shaped tenant/store project id.
+  The task reached `app.menulist.digital` on the current Preview deployment,
+  returned HTTP 200 through the intended idempotent `job no longer exists`
+  path, and was removed from the queue after acknowledgement. Vercel logs show
+  the exact POST route, branch `staging`, environment `preview`, and status 200;
+  no image-provider call, durable image job, or production write was created.
+- `2026-08-13` - Razorpay Test Mode read-only smoke confirms the QA key can read
+  payments and orders, both returning an empty result. Plans and subscriptions
+  return HTTP 401, so recurring-billing API access is not enabled for this test
+  account. The locally signed webhook boundary still rejects a false signature
+  and accepted one synthetic signed event. `QA-K21` remains open only for
+  provider-originated Test Mode webhook registration/delivery and recurring API
+  enablement; no Live Mode action was performed.
+- `2026-08-13` - The QA Cloud Run service for `messagingOnboarding` had no
+  invoker binding even though the callable image service was already public.
+  A narrowly scoped `allUsers -> roles/run.invoker` binding was applied only to
+  QA service `messagingonboarding`; the exact callback now reaches the handler
+  and returns HTTP 200 `OK`. The handler remains intentionally disabled under
+  `ENABLE_MESSAGING_ONBOARDING=false`. `QA-K22` stays open until the flag is
+  enabled for a controlled window, Meta verifies the callback, only `messages`
+  is subscribed, and one provider-signed test event is captured.
+- `2026-08-13` - Hosted project creation reached exact QA scope `1/1` and wrote
+  its project plus summary entry, but reload certification is not accepted as a
+  pass. Chrome's active MenuList PWA service worker continued serving immutable
+  chunk hashes from an older Preview build while direct server HTML and
+  `/api/version` served `158f19219`; the stale bundle also logged the bounded
+  `[Firebase Bootstrap] Operation failed` diagnostic. Browser policy prevented
+  opening Chrome's internal service-worker controls, and the direct current
+  deployment correctly redirected to sign-in, which is outside this run's
+  excluded Auth scope. The temporary wildcard slug therefore returned the QA
+  noindex response with `Menu not found`, so `QA-K09` and `QA-K10` remain open
+  for a fresh-browser/current-bundle authenticated rerun rather than being
+  inferred from source or Admin data.
+- `2026-08-13` - Final cleanup removed and verified absent every synthetic
+  certification artifact from `menulist-qa`: two project documents, the
+  project-summary document containing three synthetic entries, the zero-value
+  QA subscription, three public-menu drafts, three extraction jobs, the
+  synthetic Razorpay webhook ledger entry, and all three uploaded draft
+  objects. Cloud Tasks retained no probe task. Production Firebase and Vercel
+  Production were not queried or changed; the separately controlled
+  production-absence gate `QA-K13` remains open.
 
 Status rules:
 
@@ -2550,7 +2625,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K01 | `https://menulist.digital` opens | Browser | MenuList main website opens with QA/staging values |
 | [x] | QA-K02 | `https://www.menulist.digital` opens | Browser | `www` reaches the same QA website deployment |
 | [x] | QA-K03 | `https://app.menulist.digital/signin` opens | Browser | Canonical QA owner sign-in loads on the app host |
-| [x] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Live HTTP 200 JSON reports exact staging commit `4bc4d01`, environment `preview`, and the expected Preview deployment URL |
+| [x] | QA-K04 | `https://app.menulist.digital/api/version` opens | Browser | Live HTTP 200 JSON reports exact staging commit `158f19219`, environment `preview`, and Preview deployment `menulist-core-bnr9dwfc3-neelvara-systems.vercel.app` |
 | [x] | QA-K05 | Email/password owner sign-in works | Browser and Firebase Auth | A synthetic QA owner authenticates through the current credential flow on `app.menulist.digital` |
 | [x] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
 | [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
@@ -2566,7 +2641,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K17 | Complete QA crawler isolation works | Browser or `curl` | Apex, `www`, app, and a synthetic wildcard customer host return the full noindex header, `Disallow: /`, and HTTP 404 for `/sitemap.xml` |
 | [x] | QA-K18 | QA customer origin cannot use owner API CORS | Terminal | A synthetic wildcard tenant origin receives HTTP 403 `Origin not allowed` and no `Access-Control-Allow-Origin` header from the owner API |
 | [x] | QA-K19 | Explicit no-go checks confirmed | This guide and dashboards | Only MenuList QA project/Preview/domain setup was performed; production, sister products, and retired QA hosts were not activated |
-| [ ] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | One QA batch request reaches `app.menulist.digital`, rejects a wrong secret, accepts the configured secret through the normal queue flow, and leaves no production data |
+| [x] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | Wrong-secret admission returns HTTP 403; one configured-secret QA task reached the current staging worker, returned HTTP 200 through its idempotent missing-job path, disappeared after acknowledgement, and created no provider call or production data |
 | [ ] | QA-K21 | Razorpay Test webhook configured and verified | Razorpay Test Mode and Vercel logs | Exact QA endpoint uses the distinct webhook secret; one signed test/sandbox event is accepted without any live-mode operation |
 | [ ] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verifies with the vaulted token, only `messages` is subscribed, and one bounded signed test event reaches the QA Function without production assets |
 | [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marked completed items and recorded the remaining deploy, provider, production-absence, worker, and webhook blockers; production is not approved |
