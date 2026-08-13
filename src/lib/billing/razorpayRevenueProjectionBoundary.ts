@@ -280,6 +280,49 @@ export const requireRazorpayRevenueAmountPaise = (value: unknown): number => {
     return value;
 };
 
+export const resolveRazorpayFailedPaymentAmountPaise = ({
+    providerAmountPaise,
+    subscriptionQuantity,
+    subscriptionUnitAmountPaise,
+}: {
+    providerAmountPaise: unknown;
+    subscriptionQuantity: unknown;
+    subscriptionUnitAmountPaise: unknown;
+}): number => {
+    const providerAmount = resolveRazorpayAuditAmountPaise(providerAmountPaise);
+    if (providerAmount !== null) return providerAmount;
+
+    const quantity = subscriptionQuantity == null
+        ? 1
+        : resolveRazorpaySubscriptionQuantity(subscriptionQuantity);
+    if (
+        typeof subscriptionUnitAmountPaise !== 'number'
+        || !Number.isSafeInteger(subscriptionUnitAmountPaise)
+        || subscriptionUnitAmountPaise <= 0
+        || quantity == null
+    ) {
+        throw new Error('Razorpay failed payment amount is invalid.');
+    }
+
+    const totalAmount = subscriptionUnitAmountPaise * quantity;
+    if (!Number.isSafeInteger(totalAmount) || totalAmount <= 0) {
+        throw new Error('Razorpay failed payment amount is invalid.');
+    }
+    return totalAmount;
+};
+
+export const resolveRazorpayPaymentTransactionType = (paymentEntity: unknown): 'payment' | 'subscription' | 'topup' => {
+    const payment = asRecord(paymentEntity);
+    if (!payment) return 'payment';
+    if (typeof payment.subscription_id === 'string' && payment.subscription_id.length > 0) {
+        return 'subscription';
+    }
+    const notes = asRecord(payment.notes);
+    return typeof notes?.packId === 'string' && notes.packId.length > 0
+        ? 'topup'
+        : 'payment';
+};
+
 export const resolveRazorpayAuditAmountPaise = (value: unknown): number | null => {
     if (value == null) return null;
     if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {

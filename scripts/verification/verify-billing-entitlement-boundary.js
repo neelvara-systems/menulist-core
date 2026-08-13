@@ -1128,6 +1128,11 @@ function verifyBillingEntitlementBoundary() {
     'applyProductSubscriptionPayment(eventProductId, {',
     'applyProductSubscriptionWebhookEvent(eventProductId, {',
     'const eventSubscriptionId = eventProductResolution.subscriptionId;',
+    'eventPayloadToUpload.transactionType = resolveRazorpayPaymentTransactionType(paymentEntity);',
+    'amountPaise: resolveRazorpayFailedPaymentAmountPaise({',
+    'providerAmountPaise: paymentEntity?.amount,',
+    'subscriptionQuantity: eventSubscription?.quantity,',
+    'subscriptionUnitAmountPaise: eventSubscription?.amount,',
     'resolveRazorpaySubscriptionState(subscriptionEntity, internalSub.quantity)',
     'getProviderCycleBillingPeriodKey(providerState.currentStartSeconds)',
     'resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity)',
@@ -1145,6 +1150,7 @@ function verifyBillingEntitlementBoundary() {
   assertOrder(webhook, 'resolveRazorpayWebhookSubscriptionId(eventPayload)', 'const subscriptionEntries = await Promise.all(subscriptionProducts.map(async (productId) => ([', 'exact subscription identity before ownership reads');
   assertOrder(webhook, 'const subscriptionReads = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();', 'subscriptionReads.set(', 'resolved subscription must seed the request-local cache');
   assertOrder(webhook, 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'claimRazorpayWebhookEvent({', 'webhook signature-before-idempotency order');
+  assertOrder(webhook, 'const eventSubscription = eventSubscriptionId', 'amountPaise: resolveRazorpayFailedPaymentAmountPaise({', 'failed movement must derive subscription-only event amounts from the resolved local subscription');
   assertNotIncludes(webhook, '.catch(() => null)', 'Webhook product lookup failures must remain retryable rather than defaulting to MenuList');
   assertNotIncludes(webhook, 'paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id', 'Webhook processing must use the canonical exact subscription identity');
   assertNotIncludes(webhook, 'const quantity = Number(updatedSubEntity.quantity);', 'Webhook quantity updates must not coerce provider values');

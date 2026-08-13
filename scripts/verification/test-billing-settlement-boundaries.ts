@@ -50,6 +50,8 @@ import { getProductSubscriptionBillingScope } from '../../src/lib/billing/produc
 import {
     requireRazorpayRevenueAmountPaise,
     resolveRazorpayAuditAmountPaise,
+    resolveRazorpayFailedPaymentAmountPaise,
+    resolveRazorpayPaymentTransactionType,
     resolveRazorpayRevenueOccurredAtMillis,
     resolveRazorpaySubscriptionState,
     resolveRazorpaySubscriptionQuantity,
@@ -82,6 +84,41 @@ assert.throws(() => requireRazorpayRevenueAmountPaise(0), /revenue amount is inv
 assert.equal(resolveRazorpayAuditAmountPaise(0), 0);
 assert.equal(resolveRazorpayAuditAmountPaise(undefined), null);
 assert.throws(() => resolveRazorpayAuditAmountPaise('12000'), /audit amount is invalid/);
+assert.equal(resolveRazorpayFailedPaymentAmountPaise({
+    providerAmountPaise: 0,
+    subscriptionQuantity: undefined,
+    subscriptionUnitAmountPaise: undefined,
+}), 0);
+assert.equal(resolveRazorpayFailedPaymentAmountPaise({
+    providerAmountPaise: undefined,
+    subscriptionQuantity: 3,
+    subscriptionUnitAmountPaise: 499000,
+}), 1497000);
+assert.equal(resolveRazorpayFailedPaymentAmountPaise({
+    providerAmountPaise: undefined,
+    subscriptionQuantity: undefined,
+    subscriptionUnitAmountPaise: 499000,
+}), 499000);
+assert.throws(() => resolveRazorpayFailedPaymentAmountPaise({
+    providerAmountPaise: undefined,
+    subscriptionQuantity: undefined,
+    subscriptionUnitAmountPaise: undefined,
+}), /failed payment amount is invalid/);
+assert.equal(resolveRazorpayPaymentTransactionType({
+    amount: 0,
+    order_id: 'order_checkout_cancelled',
+    notes: { dashboard: '1' },
+}), 'payment');
+assert.equal(resolveRazorpayPaymentTransactionType({
+    amount: 299900,
+    order_id: 'order_topup',
+    notes: { packId: 'enhancement' },
+}), 'topup');
+assert.equal(resolveRazorpayPaymentTransactionType({
+    amount: 499000,
+    order_id: 'order_subscription',
+    subscription_id: 'sub_exact',
+}), 'subscription');
 assert.equal(resolveRazorpayRevenueOccurredAtMillis(1_767_225_600), 1_767_225_600_000);
 assert.equal(resolveRazorpayRevenueOccurredAtMillis(null), undefined);
 assert.throws(() => resolveRazorpayRevenueOccurredAtMillis('1767225600'), /event time is invalid/);

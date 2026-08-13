@@ -31,6 +31,8 @@ import {
     requireRazorpayRevenueAmountPaise,
     resolveRazorpayAuthenticatedSubscriptionState,
     resolveRazorpayAuditAmountPaise,
+    resolveRazorpayFailedPaymentAmountPaise,
+    resolveRazorpayPaymentTransactionType,
     resolveRazorpayRevenueOccurredAtMillis,
     resolveRazorpaySubscriptionQuantity,
     resolveRazorpaySubscriptionState,
@@ -532,7 +534,7 @@ export async function POST(request: NextRequest) {
             const paymentNotes = !Array.isArray(paymentEntity?.notes) ? (paymentEntity?.notes || {}) : {};
             eventPayloadToUpload.storeId = Number(paymentNotes.storeId);
             eventPayloadToUpload.tenantId = Number(paymentNotes.tenantId);
-            eventPayloadToUpload.transactionType = paymentEntity?.subscription_id ? 'subscription' : paymentEntity?.order_id ? 'topup' : 'payment';
+            eventPayloadToUpload.transactionType = resolveRazorpayPaymentTransactionType(paymentEntity);
         }
         if (eventSubscriptionId) {
             eventPayloadToUpload.tenantId = eventSubscriptionScope?.tenantId ?? null;
@@ -578,7 +580,11 @@ export async function POST(request: NextRequest) {
         }
         if (event.event === 'payment.failed' || event.event === 'subscription.pending' || event.event === 'subscription.halted') {
             await recordFounderRevenueMovement({
-                amountPaise: resolvePaymentRevenueAmountPaise(),
+                amountPaise: resolveRazorpayFailedPaymentAmountPaise({
+                    providerAmountPaise: paymentEntity?.amount,
+                    subscriptionQuantity: eventSubscription?.quantity,
+                    subscriptionUnitAmountPaise: eventSubscription?.amount,
+                }),
                 currency: paymentEntity?.currency || auditSummary.currency || 'INR',
                 description: getRazorpayPaymentFailureRemark(event.event),
                 eventName: event.event,
