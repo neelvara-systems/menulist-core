@@ -1,5 +1,10 @@
 # Printable Asset Templates - Mobile Support
 
+MobileShell already enforces active plan admission before the printable-assets
+screen is mounted. Desktop now applies the same check before its project-summary
+read, so both surfaces show honest plan state for an unsubscribed owner instead
+of a false missing-menu state.
+
 ## Mobile Relevance Decision
 
 **Decision:** Partial mobile support is required.

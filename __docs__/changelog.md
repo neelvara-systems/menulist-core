@@ -1,5 +1,14 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Printable Assets Entitlement State
+
+- Settled active subscription state before desktop Printable Assets reads any
+  project or template truth.
+- Unsubscribed owners now see the shared honest plan state instead of a denied
+  project read being mislabeled as a missing menu.
+- The denied path performs zero feature reads or writes and adds no Function,
+  provider call, rule, index, dependency, or production deployment change.
+
 ## August 14, 2026 - Use MenuList Entitlement State
 
 - Prevented desktop Use MenuList from reading project summaries before paid or

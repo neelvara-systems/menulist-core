@@ -32,6 +32,7 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import type { CreativeEditorDocument, CreativeEditorTemplateSaveRequest, CreativeEditorTemplateSummary } from '@/modules/creative-editor/types';
 import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
 import { App as AntApp, Button, Card, Col, Empty, Flex, Modal, Row, Spin, theme, Typography } from 'antd';
@@ -41,6 +42,7 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuBadge, LuBadgePercent, LuCalendarDays, LuContact, LuDownload, LuFileText, LuGift, LuMail, LuMegaphone, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTag, LuTrash2, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
+import NoSubscriptionView from '../billing/NoSubscriptionView';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -212,7 +214,7 @@ function buildExportData(projectData: any) {
 }
 
 export default function PrintableAssetTemplatesRoute() {
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, activeSubscriptionLoading, storeDetails } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
@@ -248,6 +250,7 @@ export default function PrintableAssetTemplatesRoute() {
     const storeStoreId = storeData?.storeId ?? storeData?.sId;
     const sessionTenantId = sessionData?.tId ?? sessionData?.user?.tenantId;
     const sessionStoreId = sessionData?.sId ?? sessionData?.user?.storeId;
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
 
     const labels = useMemo(
         () => getOfferingLabels(storeBusinessType, storeBusinessCategory),
@@ -407,7 +410,12 @@ export default function PrintableAssetTemplatesRoute() {
 
     useEffect(() => {
         async function loadData() {
-            if (!FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || !storeDetails) {
+            if (
+                !FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES
+                || activeSubscriptionLoading
+                || !hasPaidAccess
+                || !storeDetails
+            ) {
                 setPageState('loading');
                 return;
             }
@@ -465,7 +473,7 @@ export default function PrintableAssetTemplatesRoute() {
         }
 
         void loadData();
-    }, [labels.offeringTitle, projectIdQuery, resolveProjectName, storeDetails, storeDisplayName]);
+    }, [activeSubscriptionLoading, hasPaidAccess, labels.offeringTitle, projectIdQuery, resolveProjectName, storeDetails, storeDisplayName]);
 
     const reloadPlatformTemplates = useCallback(async () => {
         if (!canUsePlatformTemplateRegistry || pageState !== 'ready') {
@@ -876,6 +884,18 @@ export default function PrintableAssetTemplatesRoute() {
             setEditorBusyKey(null);
         }
     };
+
+    if (activeSubscriptionLoading) {
+        return (
+            <Flex align="center" justify="center" style={{ minHeight: 420 }}>
+                <Spin size="large" />
+            </Flex>
+        );
+    }
+
+    if (!hasPaidAccess) {
+        return <NoSubscriptionView />;
+    }
 
     if (pageState === 'loading') {
         return (

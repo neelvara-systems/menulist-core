@@ -38,6 +38,11 @@ The current Print Assets screen proves the workflow. The next system must make t
 
 ## Target Owner Flow
 
+The owner workspace is admitted only after active subscription state has
+settled. An owner without valid plan access sees the shared plan state before
+any project summary is read; a denied read must never appear as “Create your
+first menu.”
+
 1. Owner opens **Assets** from the dashboard navigation.
 2. Owner selects an active project when the store has multiple projects.
 3. Owner selects an asset type from the left rail.

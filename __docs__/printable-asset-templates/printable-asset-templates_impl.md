@@ -33,6 +33,13 @@ Route permission note: `/assets`, `/use-menulist/print-assets`, and `/use-menuli
 
 Build a template orchestration layer on top of current output engines. Do not duplicate menu data loading, QR generation, project selection, logo loading, plan checks, or download logic.
 
+`PrintableAssetTemplatesRoute` settles the shared active-subscription context
+and requires `hasValidSubscriptionAccess(activeSubscription)` before calling
+`getExistingProjectsListWithoutLoader(true)`. While entitlement is loading it
+shows the bounded loader; without valid access it renders the shared
+`NoSubscriptionView`. The `no_menu` state is reserved for an admitted,
+successful summary read that genuinely returns no project.
+
 ## Implemented File Structure
 
 ```text

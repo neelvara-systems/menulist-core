@@ -89,6 +89,16 @@ const route = read('src/app/(main)/assets/page.tsx');
 requireToken(route, 'PrintableAssetTemplatesRoute', 'assets route');
 requireToken(route, 'FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES', 'assets route');
 
+const printableAssetsRoute = read('src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx');
+[
+  "import { hasValidSubscriptionAccess } from '@util/razorpay';",
+  "import NoSubscriptionView from '../billing/NoSubscriptionView';",
+  '|| activeSubscriptionLoading',
+  '|| !hasPaidAccess',
+  'if (!hasPaidAccess) {',
+  'return <NoSubscriptionView />;',
+].forEach((token) => requireToken(printableAssetsRoute, token, 'printable assets entitlement boundary'));
+
 const legacyRoute = read('src/app/(main)/use-menulist/print-assets/page.tsx');
 requireToken(legacyRoute, 'PrintableAssetTemplatesRoute', 'legacy print-assets route');
 requireToken(legacyRoute, 'view="print-assets"', 'legacy print-assets fallback');

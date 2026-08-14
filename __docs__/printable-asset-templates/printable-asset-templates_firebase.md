@@ -4,6 +4,10 @@
 
 Normal Printable Asset Templates generation has **zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**. Non-menu printable assets, including flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, and campaign posters, use the already-loaded project summary/store context. Print Menu needs the full project/menu document once per selected project when it is not already cached.
 
+An unsubscribed desktop visit performs zero Printable Asset Templates project,
+template, or full-menu reads. The route waits for subscription state and renders
+the shared plan state before the first project-summary call.
+
 The optional **Saved designs** flow uses the Creative Editor Template Registry only after an explicit owner save. It does not create saved documents during preview, download, or editor open. On page load, registry-backed templates use one platform metadata read from `platformAssetTemplates/{businessCategory}` plus one store metadata read from `storeAssetTemplates/{tenantId}/{storeId}/default`; generated template families remain a fallback when either catalog is unavailable. Generic platform templates are mirrored transactionally into each business-category catalog at platform-admin save/update/delete time, so owners still read only their resolved business-category catalog.
 
 The feature reuses already-loaded owner/store/project/menu data where available and generates files in the browser with Canvas, jsPDF, QR rendering, the existing browser-compatible PDF.js preview loader, JSZip, and the shared Creative Editor document renderer. Desktop customization keeps the edited document in browser memory and downloads directly; it does not create an artifact record.
