@@ -12,7 +12,12 @@ import { readTenantById } from '@database/tenants';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { primeClientSessionCacheFromTrustedSession } from '@lib/auth/getActiveSession';
-import { getBoundedFirebaseStringContext, getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
+import {
+    createFirebaseBootstrapError,
+    getBoundedFirebaseStringContext,
+    getFirebaseAuthSessionLogContext,
+    logFirebaseBootstrapFailure,
+} from '@lib/firebase/firebaseDiagnostics';
 import {
     getAnswerlatticeScopedSession,
     isAnswerlatticeRuntimeRoute,
@@ -368,7 +373,14 @@ export default function SessionProvider({ children, session }: Props) {
                         } catch (error) {
                             await refreshFirebaseAuthForBootstrap();
                             if (cancelled) return null;
-                            return await readTenantById(Number(session.user.tenantId)) as TenantDataType | null;
+                            try {
+                                return await readTenantById(Number(session.user.tenantId)) as TenantDataType | null;
+                            } catch {
+                                throw createFirebaseBootstrapError(
+                                    'Tenant bootstrap read failed',
+                                    'session_provider_tenant_read_failed',
+                                );
+                            }
                         }
                     };
                     const readStoreForBootstrap = async () => {
@@ -377,7 +389,14 @@ export default function SessionProvider({ children, session }: Props) {
                         } catch (error) {
                             await refreshFirebaseAuthForBootstrap();
                             if (cancelled) return null;
-                            return await readStoreById(Number(session.user.storeId)) as StoreDataType | null;
+                            try {
+                                return await readStoreById(Number(session.user.storeId)) as StoreDataType | null;
+                            } catch {
+                                throw createFirebaseBootstrapError(
+                                    'Store bootstrap read failed',
+                                    'session_provider_store_read_failed',
+                                );
+                            }
                         }
                     };
 
@@ -390,11 +409,17 @@ export default function SessionProvider({ children, session }: Props) {
                     if (cancelled) return;
 
                     if (!fetchedStore) {
-                        throw new Error(`Store bootstrap returned no data for store ${session.user.storeId}`);
+                        throw createFirebaseBootstrapError(
+                            'Store bootstrap returned no data',
+                            'session_provider_store_missing',
+                        );
                     }
 
                     if (!primeClientSessionCacheFromTrustedSession(session)) {
-                        throw new Error('Store bootstrap received an invalid authenticated session');
+                        throw createFirebaseBootstrapError(
+                            'Store bootstrap received an invalid authenticated session',
+                            'session_provider_session_prime_failed',
+                        );
                     }
 
                     // Update the tenant details state with the fetched tenant
@@ -415,25 +440,39 @@ export default function SessionProvider({ children, session }: Props) {
                     setStoreDetails(fetchedStore);
 
                     // Fetch subscription data
-                    const subscriptionData = await fetchActiveSubscriptionForStore(
-                        Number(session.user.tenantId),
-                        Number(session.user.storeId),
-                        fetchedStoresList,
-                    )
+                    let subscriptionData: FirestoreSubscriptionDoc | null;
+                    try {
+                        subscriptionData = await fetchActiveSubscriptionForStore(
+                            Number(session.user.tenantId),
+                            Number(session.user.storeId),
+                            fetchedStoresList,
+                        );
+                    } catch {
+                        throw createFirebaseBootstrapError(
+                            'Store subscription bootstrap failed',
+                            'session_provider_subscription_read_failed',
+                        );
+                    }
 
                     // Set user context for Sentry with subscription info (client identification)
-                    setUserContext({
-                        id: session.user.id,
-                        email: (session.user as any).displayEmail || (session.user as any).phone || (session.user as any).phoneUsername || session.user.email,
-                        name: session.user.name,
-                        tId: session.user.tenantId ?? undefined,
-                        sId: session.user.storeId ?? undefined,
-                        tenantName: fetchedTenant?.name,
-                        storeName: fetchedStore.name,
-                        role: session.user.stores?.find((store: any) => Number(store.storeId) === Number(session.user.storeId))?.role || 'user',
-                        subscriptionPlan: subscriptionData?.planId || 'free',
-                        subscriptionStatus: subscriptionData?.status || 'none',
-                    });
+                    try {
+                        setUserContext({
+                            id: session.user.id,
+                            email: (session.user as any).displayEmail || (session.user as any).phone || (session.user as any).phoneUsername || session.user.email,
+                            name: session.user.name,
+                            tId: session.user.tenantId ?? undefined,
+                            sId: session.user.storeId ?? undefined,
+                            tenantName: fetchedTenant?.name,
+                            storeName: fetchedStore.name,
+                            role: session.user.stores?.find((store: any) => Number(store.storeId) === Number(session.user.storeId))?.role || 'user',
+                            subscriptionPlan: subscriptionData?.planId || 'free',
+                            subscriptionStatus: subscriptionData?.status || 'none',
+                        });
+                    } catch (error) {
+                        logRuntimeFailure('session_provider_monitoring_context_failed', error, {
+                            fallbackPolicy: 'store_bootstrap_continues_without_monitoring_context',
+                        });
+                    }
                 } catch (e) {
                     if (cancelled) return;
                     setActiveSubscriptionLoading(false)
