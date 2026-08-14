@@ -2,8 +2,8 @@
 
 July 28, 2026 persisted-scope correction: article entity extraction, FAQ generation, translation and embedding reconcile every supplied `tId`/`tenantId` and `sId`/`storeId` alias before provider work or mutation. Knowledge DAL session scope and article reads apply the same exact agreement; conflicting aliases fail closed.
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-18
+> **Version:** 1.2.1
+> **Last Updated:** 2026-08-14
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -741,6 +741,7 @@ KB source generation and embedding helpers in `functions/src/logic/startGenerati
 ### 8.7 Protected APIs
 
 - Help Center search, article embedding and Answerlattice public-content routes use authenticated server boundaries. Search independently resolves the Answerlattice product-account scope and does not trust browser `Referer` as authorization evidence.
+- The shared authenticated provider keeps MenuList store and subscription bootstrap on the MenuList session, but keys Firebase Auth readiness with the route-aware product/workspace scope. Opening `/help-center` therefore starts dedicated Answerlattice Auth synchronization for a valid product account; returning to a MenuList route restores MenuList claims. Product identity is included in the in-flight sync key so equal numeric workspace IDs cannot coalesce across Firebase projects.
 
 ---
 

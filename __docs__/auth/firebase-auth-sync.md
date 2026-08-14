@@ -95,6 +95,8 @@ Google claim handoff boundary: while `/api/auth/claim-account` is in flight afte
 
 Authenticated provider handoff boundary: after Firebase Auth and the canonical tenant/store records are validated, `src/providers/sessionProvider.tsx` primes the shared client DAL cache from the strictly normalized server session immediately before exposing store data. This prevents the five-second client cache window from expiring during a slow bootstrap and triggering a redundant `/api/auth/session` request, a false `User not logged in` toast, and a transient owner-screen error. Invalid priming input clears prior identity state, and the existing sign-out cleanup still invalidates the cache and every in-flight generation.
 
+Help Center product-scope handoff boundary: `/help-center` remains a MenuList owner surface, but its support DAL uses the explicit Answerlattice product-account scope. The provider therefore keys Firebase Auth readiness with `getFirebaseAuthSessionScopeKey()`, which includes the route-aware product and workspace, while retaining the MenuList session for store data and subscription bootstrap. Entering Help Center triggers the dedicated Answerlattice custom-token sync; leaving it restores MenuList claims. In-flight sync deduplication also includes the product ID so equal numeric tenant/store IDs cannot join the wrong product request.
+
 ---
 
 ## 🔧 **Implementation**

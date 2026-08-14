@@ -177,6 +177,26 @@ assert.doesNotMatch(
     /<Provider\s+session=\{session\}/,
     'the NextAuth client context must not receive the expiry-stripped Server Component session',
 );
+assert.match(
+    sessionProviderSource,
+    /getFirebaseAuthSessionScopeKey\(effectiveSession\)/,
+    'the provider Firebase readiness key must follow the route-aware MenuList or Answerlattice client scope',
+);
+assert.doesNotMatch(
+    sessionProviderSource,
+    /firebaseAuthRequiredScopeKey\s*=\s*requiresFirebaseAuth\s*\?\s*getSessionProviderScopeKey\(effectiveSession\)/,
+    'the provider must not reuse the MenuList data scope key for Answerlattice Help Center auth readiness',
+);
+
+const firebaseAuthSyncSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/lib/auth/firebaseAuthSync.ts'),
+    'utf8',
+);
+assert.match(
+    firebaseAuthSyncSource,
+    /const nextKey = \[\s*shouldUseAnswerlatticeScope\(effectiveSession\) \? PRODUCT_IDS\.ANSWERLATTICE : PRODUCT_IDS\.MENULIST,/,
+    'in-flight Firebase Auth sync deduplication must distinguish MenuList and Answerlattice products',
+);
 
 const sessionCleanupSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/lib/auth/clientSessionCleanup.ts'),

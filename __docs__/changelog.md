@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Help Center Firebase Auth Route Handoff
+
+- Fixed `/help-center` Firebase Auth readiness to use the existing route-aware MenuList/Answerlattice product scope instead of the MenuList store-provider key.
+- Kept MenuList store and subscription bootstrap on the original MenuList session while dedicated Answerlattice support reads authenticate through the separate Answerlattice client.
+- Added product identity to in-flight Firebase Auth sync deduplication so equal numeric workspace IDs cannot join a request for the wrong Firebase product.
+
 ## August 14, 2026 - Menu Manager No-Menu And Recovery Truth
 
 - Replaced the fabricated `Untitled` selected-menu state with explicit loading, retryable project/inbox failure, and confirmed zero-menu states on desktop and mobile.

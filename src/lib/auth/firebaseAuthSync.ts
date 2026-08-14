@@ -368,6 +368,7 @@ export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuth
     const sessionScope = resolveFirebaseAuthSessionScopeState(effectiveSession);
     const currentUid = firebaseAuth?.currentUser?.uid || "none";
     const nextKey = [
+        shouldUseAnswerlatticeScope(effectiveSession) ? PRODUCT_IDS.ANSWERLATTICE : PRODUCT_IDS.MENULIST,
         effectiveSession?.user?.email || "no-email",
         sessionScope.status,
         sessionScope.status === 'valid' ? sessionScope.tenantId : "no-tenant",

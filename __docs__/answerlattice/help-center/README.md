@@ -2,7 +2,7 @@
 
 > **Location:** `__docs__/answerlattice/help-center/`
 > **Purpose:** Documents MenuList's owner-facing support client and its scoped Answerlattice runtime boundary
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-08-14
 
 ---
 
@@ -25,6 +25,8 @@
 `/help-center` is a MenuList owner surface. Search, knowledge content, FAQs, changelog, feedback and support tickets use the signed-in user's explicit Answerlattice product-account scope. MenuList source identity is retained only as bounded `sourceContext`; Answerlattice remains the owner of support data and provider operations.
 
 The Help Center does not mount Answerlattice governance, drift, mutation, coverage or platform administration inside the owner tab set. It also does not become a separate helpdesk product.
+
+The authenticated provider keeps MenuList store/bootstrap data on the MenuList session while using the route-aware Firebase Auth scope key for support access. Entering `/help-center` therefore triggers the dedicated Answerlattice custom-token sync for a valid `productAccounts.AL` scope, and leaving restores the MenuList Firebase claim scope. Product identity is also part of in-flight auth-sync deduplication, so matching numeric tenant/store IDs cannot reuse a request from the other Firebase product.
 
 Current local source gate:
 

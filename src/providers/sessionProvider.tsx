@@ -10,7 +10,10 @@ import { getStoreById, readStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { readTenantById } from '@database/tenants';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
-import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import {
+    ensureFirebaseAuthForSession,
+    getFirebaseAuthSessionScopeKey,
+} from '@lib/auth/firebaseAuthSync';
 import { refreshClientSessionCacheFromApi } from '@lib/auth/getActiveSession';
 import { doesClientSessionMatchTrustedServerSession } from '@lib/auth/loginSessionBoundary';
 import {
@@ -153,7 +156,7 @@ export default function SessionProvider({ children, session }: Props) {
         effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId,
     );
     const firebaseAuthRequiredScopeKey = requiresFirebaseAuth
-        ? getSessionProviderScopeKey(effectiveSession)
+        ? getFirebaseAuthSessionScopeKey(effectiveSession)
         : null;
     const firebaseAuthReady = !requiresFirebaseAuth || Boolean(
         firebaseAuthRequiredScopeKey

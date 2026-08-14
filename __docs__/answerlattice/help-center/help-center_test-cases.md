@@ -1,7 +1,7 @@
 # MenuList Help Center — Test Cases
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-07-18
+> **Version:** 1.0.1
+> **Last Updated:** 2026-08-14
 > **Audience:** Engineering, QA, Product
 
 ## Local Source Gate
@@ -41,6 +41,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | Tickets | Customer replies or changes allowed state | Transaction rechecks stored scope and append-only history |
 | Attachments | File exceeds count, size, type or trusted path | Admission/opening fails before exposing or uploading unsafe data |
 | Mobile | Direct Help Center article/changelog route opens on phone | MobileShell sub-screen retains tab and resource ID |
+| Auth scope | MenuList owner with a valid Answerlattice product account opens `/help-center`, then returns to a MenuList route | Help Center triggers dedicated Answerlattice Firebase Auth sync; returning restores MenuList claims; store/bootstrap data remains MenuList-scoped throughout |
 | Mobile | Customer uses back action | Returns to `/dashboard#mobile/more` |
 | Localization | Non-English locale opens tabs, breadcrumb, feedback summary and mobile header | Maintained locale keys render; no fixed English labels from the audited paths |
 
