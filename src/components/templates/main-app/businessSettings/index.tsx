@@ -218,6 +218,23 @@ function normalizeAnalyticsSettings(analytics?: Record<string, any> | null) {
     return next;
 }
 
+function getFeedbackSettingsDraft(storeDetails: any) {
+    return {
+        feedbackEnabled: storeDetails?.feedbackEnabled !== false,
+        feedbackDefaults: {
+            collectComment: storeDetails?.feedbackDefaults?.collectComment ?? true,
+            collectCommentRequired: storeDetails?.feedbackDefaults?.collectCommentRequired ?? false,
+            collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
+            collectNameRequired: storeDetails?.feedbackDefaults?.collectNameRequired ?? false,
+            collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,
+            collectPhoneRequired: storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false,
+            collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
+            collectEmailRequired: storeDetails?.feedbackDefaults?.collectEmailRequired ?? false,
+        },
+        reviewUrl: storeDetails?.reviewUrl || '',
+    };
+}
+
 function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
@@ -508,22 +525,15 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     }, []);
 
     // Feedback settings state
-    const [feedbackEnabled, setFeedbackEnabled] = useState<boolean>(
-        storeDetails?.feedbackEnabled !== false
-    );
-    const [feedbackDefaults, setFeedbackDefaults] = useState({
-        collectComment: storeDetails?.feedbackDefaults?.collectComment ?? true,
-        collectCommentRequired: storeDetails?.feedbackDefaults?.collectCommentRequired ?? false,
-        collectName: storeDetails?.feedbackDefaults?.collectName ?? false,
-        collectNameRequired: storeDetails?.feedbackDefaults?.collectNameRequired ?? false,
-        collectPhone: storeDetails?.feedbackDefaults?.collectPhone ?? true,
-        collectPhoneRequired: storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false,
-        collectEmail: storeDetails?.feedbackDefaults?.collectEmail ?? true,
-        collectEmailRequired: storeDetails?.feedbackDefaults?.collectEmailRequired ?? false,
-    });
-    const [reviewUrl, setReviewUrl] = useState<string>(
-        storeDetails?.reviewUrl || ''
-    );
+    const [feedbackEnabled, setFeedbackEnabled] = useState<boolean>(() => (
+        getFeedbackSettingsDraft(storeDetails).feedbackEnabled
+    ));
+    const [feedbackDefaults, setFeedbackDefaults] = useState(() => (
+        getFeedbackSettingsDraft(storeDetails).feedbackDefaults
+    ));
+    const [reviewUrl, setReviewUrl] = useState<string>(() => (
+        getFeedbackSettingsDraft(storeDetails).reviewUrl
+    ));
     const businessCopyCoverage = useMemo(
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails],
@@ -1708,6 +1718,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                         <Button
                                             size="large"
                                             onClick={() => {
+                                                const feedbackDraft = getFeedbackSettingsDraft(storeDetails);
                                                 const queuedPhotoDeletes = [...obpPhotoDeleteQueueRef.current];
                                                 obpPhotoDeleteQueueRef.current = [];
                                                 void deleteQueuedOBPPhotos(
@@ -1725,6 +1736,9 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                                     currencySymbol: storeDetails?.currencySymbol,
                                                     country: storeDetails?.country,
                                                 });
+                                                setFeedbackEnabled(feedbackDraft.feedbackEnabled);
+                                                setFeedbackDefaults(feedbackDraft.feedbackDefaults);
+                                                setReviewUrl(feedbackDraft.reviewUrl);
                                                 if (storeDetails?.logo) {
                                                     setSelectedFile({
                                                         name: storeDetails?.logo,

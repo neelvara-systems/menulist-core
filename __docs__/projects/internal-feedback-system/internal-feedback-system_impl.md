@@ -160,6 +160,12 @@ The fingerprint is not rendered by the owner DTO normalizer and contains no reve
 
 Substring hosts such as `evilgoogle.com`, non-HTTPS URLs, arbitrary redirects, and values over 2048 characters are rejected. Invalid settings cannot be persisted. The review CTA is optional and never depends on rating.
 
+The desktop Business Settings Reset action restores the persisted Guest
+Feedback enablement, contact-field defaults, and review URL together with the
+Ant Design form fields. These three values are React-controlled drafts rather
+than `Form` fields, so `getFeedbackSettingsDraft()` is their shared
+initialization and reset boundary. Reset performs no store write.
+
 ---
 
 ## Owner DAL and Rules
@@ -222,4 +228,4 @@ Manual release evidence remains target-specific: public page/form, retry after a
 ---
 
 _Document owner: Engineering_
-_Last updated: July 16, 2026_
+_Last updated: August 14, 2026_

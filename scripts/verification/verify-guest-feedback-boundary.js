@@ -330,6 +330,10 @@ function verifyPublicPageAndForm() {
   assertIncludes(settingsTab, 'href={normalizedReviewUrl}', 'Guest Feedback settings safe preview link');
   assertIncludes(businessSettings, "normalizeGuestFeedbackReviewUrl(trimmedReviewUrl, 'business_settings_review_url')", 'Guest Feedback settings save-time URL guard');
   assertIncludes(businessSettings, "message.error('Enter a valid HTTPS Google review link before saving.')", 'Guest Feedback settings invalid URL refusal');
+  assertIncludes(businessSettings, 'function getFeedbackSettingsDraft(storeDetails: any)', 'Guest Feedback settings canonical draft resolver');
+  assertIncludes(businessSettings, 'setFeedbackEnabled(feedbackDraft.feedbackEnabled);', 'Guest Feedback settings Reset restores enablement');
+  assertIncludes(businessSettings, 'setFeedbackDefaults(feedbackDraft.feedbackDefaults);', 'Guest Feedback settings Reset restores contact-field defaults');
+  assertIncludes(businessSettings, 'setReviewUrl(feedbackDraft.reviewUrl);', 'Guest Feedback settings Reset restores review URL');
   assertOrder(businessSettings, 'const normalizedReviewUrl = trimmedReviewUrl', 'const savedDetails = await updateStore(updatedChanges);', 'Guest Feedback settings validation before store mutation');
 }
 
@@ -619,6 +623,7 @@ function verifyDocsParity() {
   assertIncludes(spec, 'does not aggregate all outlets', 'Guest Feedback spec rejects false HQ aggregation claim');
   assertIncludes(spec, 'Google review ingestion, monitoring, or reply posting', 'Guest Feedback spec separate review boundary');
   assertIncludes(impl, 'Public Page Contract', 'Guest Feedback implementation public page contract');
+  assertIncludes(impl, 'getFeedbackSettingsDraft()', 'Guest Feedback implementation settings reset boundary');
   assertIncludes(impl, 'projectPublicClientStore()', 'Guest Feedback implementation PII projection boundary');
   assertIncludes(impl, 'Idempotency', 'Guest Feedback implementation idempotency section');
   assertIncludes(impl, 'deterministic document ID', 'Guest Feedback implementation deterministic record contract');
@@ -646,6 +651,7 @@ function verifyDocsParity() {
   assertIncludes(marketing, 'HQ sees every outlet', 'Guest Feedback marketing HQ aggregation refusal');
   assertIncludes(marketing, 'MenuList does not send the reply automatically.', 'Guest Feedback marketing manual reply truth');
   assertIncludes(validation, 'Duplicate retry protection', 'Guest Feedback validation retry evidence');
+  assertIncludes(validation, 'Page-level Reset restores the persisted Guest Feedback toggle', 'Guest Feedback validation settings reset evidence');
   assertIncludes(validation, 'Google review ingestion/posting', 'Guest Feedback validation dormant review boundary');
   assertIncludes(website, 'Review URL safety', 'Guest Feedback website review URL safety');
   assertIncludes(audit, 'Guest Feedback strict project ID boundary checkpoint', 'Production readiness audit Guest Feedback strict project ID checkpoint');
@@ -673,6 +679,7 @@ function verifyDocsParity() {
   assertIncludes(changelog, 'guest_feedback_review_url_parse_failed', 'Changelog Guest Feedback review URL parse diagnostic code');
   assertIncludes(changelog, 'Public Feedback Accessibility And Browser Evidence', 'Changelog Guest Feedback accessibility and browser evidence');
   assertIncludes(changelog, 'Guest Feedback Store and Event Isolation', 'Changelog Guest Feedback store/event isolation');
+  assertIncludes(changelog, 'Business Settings Feedback Reset Boundary', 'Changelog Guest Feedback settings reset boundary');
   assertIncludes(changelog, 'Feedback PII requires explicit store membership', 'Changelog Guest Feedback store-membership boundary');
   assertIncludes(changelog, 'Public Media Load Fallbacks', 'Changelog Guest Feedback identity logo fallback evidence');
   assertIncludes(changelog, 'synthetic 320-character fill clamped to `300/300`', 'Changelog Guest Feedback controlled-state browser evidence');

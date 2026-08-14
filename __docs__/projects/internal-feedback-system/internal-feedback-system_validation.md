@@ -87,6 +87,9 @@ The reviews gates prove that the adjacent Google-review scaffolding stays disabl
 - `evilgoogle.com`, HTTP, malformed, oversized, and unrelated URLs show invalid state and cannot save.
 - Accepted HTTPS Google review/maps shapes save normalized trimmed values.
 - Clearing the URL removes it.
+- Page-level Reset restores the persisted Guest Feedback toggle, contact-field
+  defaults, and review URL without a store write; a later unrelated Save cannot
+  carry a cancelled feedback draft.
 - Store setting saves invalidate the public store/menu/OBP cache through the existing mutation contract.
 
 ---
@@ -105,4 +108,4 @@ Keep these pending until the owner/release operator completes them for the targe
 ---
 
 _Document owner: QA and Engineering_
-_Last updated: July 16, 2026_
+_Last updated: August 14, 2026_

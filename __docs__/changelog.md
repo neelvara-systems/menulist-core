@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Business Settings Feedback Reset Boundary
+
+- Restored Guest Feedback enablement, contact-field defaults, and Google Review URL from persisted store truth when the desktop Business Settings Reset action is used.
+- Prevented an unsaved feedback draft from surviving Reset and being included by a later unrelated Save action.
+- Added the reset contract to the Guest Feedback verifier and feature docs. Reset remains Firebase-cost neutral and changes no schema, rule, index, Function, provider, dependency, or production environment.
+
 ## August 14, 2026 - Digital Screens Retry And Rate-Limit Boundary
 
 - Kept a failed owner Digital Screens GET distinct from a successful `screen: null` response, so transport/auth/rate-limit failures no longer fall through to the first-time initialization mutation.
