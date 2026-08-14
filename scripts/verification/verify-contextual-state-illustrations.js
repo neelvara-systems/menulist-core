@@ -32,6 +32,7 @@ const approvedConsumers = new Map([
   ['src/app/error.tsx', { count: 1, softHaloCount: 0, variant: 'serverErrorContext' }],
   ['src/app/global-error.tsx', { count: 1, softHaloCount: 0, variant: 'serverErrorContext' }],
   ['src/components/auth/OwnerPermissionGuard.tsx', { count: 1, softHaloCount: 0, variant: 'accessDeniedContext' }],
+  ['src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx', { count: 2, softHaloCount: 2, variants: ['emptyWorkspace', 'serverErrorContext'] }],
   ['src/components/mobile/screens/MobileDashboardScreen.tsx', { count: 4, softHaloCount: 4, variant: 'analyticsContext' }],
   ['src/components/mobile/screens/MobileDigitalScreensScreen.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/mobile/screens/MobileFeedbackScreen.tsx', { count: 1, softHaloCount: 0, variant: 'feedbackContext' }],
@@ -57,6 +58,7 @@ const approvedConsumers = new Map([
   ['src/components/templates/answerlattice/weeklyDigest/AnswerlatticeWeeklyDigest.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/campaigncue/CampaignCueVideoStudio.tsx', { count: 1, softHaloCount: 1, variant: 'emptyWorkspace' }],
   ['src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx', { count: 6, softHaloCount: 6, variants: ['emptyWorkspace', 'feedbackContext', 'scheduleContext', 'uploadContext'] }],
+  ['src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx', { count: 3, softHaloCount: 3, variants: ['emptyWorkspace', 'serverErrorContext'] }],
   ['src/components/templates/main-app/helpChat/ChatErrorBoundary.tsx', { count: 1, softHaloCount: 0, variant: 'warningContext' }],
   ['src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/templates/main-app/dashboard/AnalyticsDashboard/index.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
@@ -518,12 +520,12 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 69,
-  `Expected 69 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 74,
+  `Expected 74 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
-  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 50,
-  'Expected 50 positive or first-use illustrations to use the branded soft halo',
+  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 55,
+  'Expected 55 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
 );
 
 const actualResultRenderCounts = new Map();
@@ -639,4 +641,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (69 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (74 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

@@ -975,6 +975,8 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
   throwing legacy seconds fields fail closed without aborting recovery.
 - Suggestion chooser selection fills the composer and does not prepare a card until the owner presses Send.
 - Empty-state starter cards prioritize frequent daily operations: Store closed today, Change working hours, and a contextual sold-out item when available. They fill the composer or open a second-layer suggestion choice and do not prepare a card until the owner presses Send.
+- A failed menu-list read shows a persistent retry control and never claims the store has zero menus. A successful empty list shows `Create a menu first`, never a fabricated `Untitled` selection; desktop routes to Menu and mobile points to the existing Menu tab.
+- A failed selected-menu or pending-inbox load keeps the composer, context tools, suggestions, pending-card claims, and receipt claims unavailable until retry succeeds.
 - Suggestion chooser groups are contextual to the selected menu and include quick fixes, promotion, photos/content, style, and publish/import where relevant.
 - Suggestion chooser supports a two-layer guided flow for settings-style work: the owner first chooses the action area, then chooses the exact option such as Premium & Minimal, Grid layout, Closed today, Copy screen link, or Download feedback QR.
 - Moving between suggestion layers is local UI state only and creates zero Firebase reads or writes.

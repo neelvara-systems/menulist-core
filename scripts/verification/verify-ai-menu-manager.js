@@ -1414,6 +1414,13 @@ assert(desktopRoute.includes('resolveClarification') && desktopRoute.includes('r
 assert(desktopRoute.includes('getAiMenuManagerProjectPromptGroups') && desktopRoute.includes('promptGroups.map'), 'Desktop AMM suggestions must use grouped, contextual prompt rows');
 assert(desktopRoute.includes('getAiMenuManagerStarterSuggestions') && desktopRoute.includes('activateStarterSuggestion'), 'Desktop AMM empty-state starter cards must use draft-only suggestion behavior');
 assert(desktopRoute.includes('getAiMenuManagerAttentionSuggestions') && desktopRoute.includes('attentionSuggestions.length ?'), 'Desktop AMM empty state must prioritize loaded-menu attention cards before generic starter cards');
+assert(desktopRoute.includes('projectsLoadError') && desktopRoute.includes('Menus could not be loaded') && desktopRoute.includes('has not confirmed that this store has no menus'), 'Desktop AMM must distinguish a failed menu-list read from confirmed zero menus');
+assert(desktopRoute.includes('selectedProjectStillExists') && desktopRoute.includes('setSelectedProjectId(nextSelectedProjectId)') && desktopRoute.includes('setSelectedProject(null)'), 'Desktop AMM must clear a stale selected project after a successful empty or changed-scope project list');
+assert(desktopRoute.includes('selectedProjectLoadError') && desktopRoute.includes('Selected menu could not be loaded'), 'Desktop AMM must keep selected-menu and inbox failures persistent');
+assert(desktopRoute.includes('Create a menu first') && desktopRoute.includes('href="/projects"'), 'Desktop AMM must show an actionable confirmed-zero-menu state');
+assert(desktopRoute.includes('isComposerUnavailable') && desktopRoute.includes('disabled={isComposerUnavailable || submitting}'), 'Desktop AMM composer tools must fail closed until a real selected menu and inbox are loaded');
+assert(desktopRoute.includes("isComposerUnavailable ? 'Pending cards unavailable' : 'No pending cards'") && desktopRoute.includes("isComposerUnavailable ? 'Receipts unavailable' : 'No receipts yet'"), 'Desktop AMM must not claim empty cards or receipts while selected-menu truth is unavailable');
+assert(desktopRoute.includes('variant="emptyWorkspace"') && desktopRoute.includes('variant="serverErrorContext"'), 'Desktop AMM first-use and recovery states must use shared contextual illustrations');
 assert(desktopRoute.includes('activeSuggestion') && desktopRoute.includes('setActiveSuggestion(suggestion)'), 'Desktop AMM suggestions must support first-level to second-level guided navigation');
 assert(desktopRoute.includes('getAiMenuManagerPromptText(prompt)'), 'Desktop AMM child suggestions must draft their configured prompt text');
 assert(desktopRoute.includes('LuChevronRight') && desktopRoute.includes('Back'), 'Desktop AMM nested suggestions must expose forward and back navigation');
@@ -1506,6 +1513,11 @@ assert(mobileScreen.includes('resolveClarification') && mobileScreen.includes('r
 assert(mobileScreen.includes('getAiMenuManagerProjectPromptGroups') && mobileScreen.includes('promptGroups.map'), 'Mobile AMM suggestions must use grouped, contextual prompt rows');
 assert(mobileScreen.includes('getAiMenuManagerStarterSuggestions') && mobileScreen.includes('activateStarterSuggestion'), 'Mobile AMM empty-state starter cards must use draft-only suggestion behavior');
 assert(mobileScreen.includes('getAiMenuManagerAttentionSuggestions') && mobileScreen.includes('attentionSuggestions.length ?'), 'Mobile AMM empty state must prioritize loaded-menu attention cards before generic starter cards');
+assert(mobileScreen.includes('hasLoadError') && mobileScreen.includes('Menu could not be loaded') && mobileScreen.includes('has not confirmed that this store has no menus'), 'Mobile AMM must distinguish project load failure from confirmed zero menus');
+assert(mobileScreen.includes('Create a menu first') && mobileScreen.includes('Open the Menu tab'), 'Mobile AMM must route confirmed-zero-menu owners to the existing Menu tab');
+assert(mobileScreen.includes('refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })'), 'Mobile AMM project recovery must retry the shared scoped project provider');
+assert(mobileScreen.includes("emptyLabel={isLoading ? 'Loading menu'") && mobileScreen.includes('Loading selected menu…'), 'Mobile AMM must keep provider and selected-project transitions in a plain loading state');
+assert(mobileScreen.includes('variant="emptyWorkspace"') && mobileScreen.includes('variant="serverErrorContext"'), 'Mobile AMM first-use and recovery states must use shared contextual illustrations');
 assert(mobileScreen.includes('activeSuggestion') && mobileScreen.includes('setActiveSuggestion(suggestion)'), 'Mobile AMM suggestions must support first-level to second-level guided navigation');
 assert(mobileScreen.includes('getAiMenuManagerPromptText(prompt)'), 'Mobile AMM child suggestions must draft their configured prompt text');
 assert(mobileScreen.includes('LuChevronRight') && mobileScreen.includes('Back'), 'Mobile AMM nested suggestions must expose forward and back navigation');

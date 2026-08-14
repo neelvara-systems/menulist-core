@@ -851,6 +851,7 @@ Desktop route:
 - theme, layout, color, and display-option cards reuse the existing Menu design tone/layout/color/display settings and show those choices before preparing specific changes.
 - card Edit drafts an owner-readable command back into the composer instead of mutating the pending card silently.
 - pending/history side panel; receipts remain visible in the main conversation timeline.
+- project discovery has three explicit pre-composer states: loading stays plain, a failed menu-list or selected-menu/inbox read uses a persistent retryable recovery state, and a successful zero-menu result routes the owner to `/projects`. The selector says `No menu selected` or `Menus unavailable`; it never fabricates `Untitled` when no project exists. Pending/receipt claims and all drafting controls remain unavailable until a real selected project and inbox are loaded.
 
 Mobile:
 
@@ -865,6 +866,7 @@ Mobile:
 - card stack above the composer inside the main conversation surface.
 - approval-first view.
 - no heavy dashboard.
+- mobile uses the shared project provider's `hasLoadError` and scoped `refreshProjects()` recovery. A confirmed zero-menu state directs the owner to the existing Menu tab; no desktop route bypass or mobile-only read path is added.
 
 No visible UI text should explain internal AI, confidence, algorithms, token details, or implementation.
 

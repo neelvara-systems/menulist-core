@@ -90,6 +90,7 @@ const getInitials = (name: string) => {
 
 interface ProjectSelectorTriggerProps {
     currentProject: ProjectSelectorItem | null;
+    emptyLabel?: string;
     helperText?: string;
     onClick?: () => void;
     rightContent?: React.ReactNode;
@@ -98,6 +99,7 @@ interface ProjectSelectorTriggerProps {
 
 export function ProjectSelectorTrigger({
     currentProject,
+    emptyLabel,
     helperText,
     onClick,
     rightContent,
@@ -107,7 +109,7 @@ export function ProjectSelectorTrigger({
     const { token } = theme.useToken();
     const projectName = currentProject
         ? getLocalizedText(currentProject.name, undefined, getPrimaryLocalizedLanguage(currentProject.name, 'en'), t('untitled'))
-        : t('untitled');
+        : emptyLabel || t('untitled');
     const avatarColors = getAvatarColor(projectName);
     const projectStatus = getProjectStatus(currentProject);
     const statusPresentation = getStatusPresentation(projectStatus, {

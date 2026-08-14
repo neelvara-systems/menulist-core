@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Menu Manager No-Menu And Recovery Truth
+
+- Replaced the fabricated `Untitled` selected-menu state with explicit loading, retryable project/inbox failure, and confirmed zero-menu states on desktop and mobile.
+- Kept starter suggestions, context tools, composer actions, and pending/receipt claims unavailable until a real selected menu and its pending-card inbox are loaded. Desktop routes confirmed zero-menu owners to Menu; mobile points to the existing Menu tab.
+- Reused the existing scoped project DAL/mobile provider and shared contextual illustrations. This adds no Firestore read/write shape, API, Function, provider call, rule, index, dependency, Firebase deploy, Vercel deploy, or production deployment.
+
 ## August 14, 2026 - Owner Feedback And Help Recovery Truth
 
 - Prevented a failed Guest Feedback list/count read from appearing as a confirmed empty inbox or a zero needs-attention total. The desktop inbox now keeps a persistent retryable failure until an authoritative load succeeds.

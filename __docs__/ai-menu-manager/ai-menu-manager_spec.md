@@ -199,6 +199,7 @@ The first screen should not be an empty generic chat screen. It should show:
 16. Clarification options may resolve the pending clarification into the next preview/proposal card in one tap. Item/category choices carry the validated selected-context entity ID into that next resolver pass instead of relying only on display-name text. They must not approve, execute, publish, or persist menu truth by themselves. Normal suggestion and starter choices remain draft-only.
 17. Deterministic routing runs before any provider call. A model-planned mutation must be reproduced by the registered deterministic resolver against validated selected-menu entity IDs.
 18. Compact manager replies and receipts belong in the conversation timeline. Receipt timeline state is appended in the existing completion write, not a separate document or write.
+19. Menu Manager must not invent an `Untitled` selected menu when project discovery returns zero results or fails. A failed list/detail/inbox read remains a persistent retryable recovery state; a successful zero-menu result directs the owner to create a menu. Suggestions, context tools, and the composer stay unavailable until a real selected menu and its pending-card inbox are loaded.
 
 ---
 

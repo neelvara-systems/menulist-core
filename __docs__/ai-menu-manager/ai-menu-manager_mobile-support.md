@@ -297,3 +297,5 @@ Avoid:
 - [ ] Share/export cards preserve browser-local/native-share behavior unless a durable proposal is required.
 - [ ] Domain, customer app, digital screen, feedback, POS, and integration actions use existing DAL/API paths only.
 - [ ] Compliance, communication, presence, item-card, physical-surface, and review-gated actions are represented in the action checklist.
+- [ ] A failed shared project load remains a persistent retryable recovery state and is not presented as zero menus.
+- [ ] A successful zero-menu result says to create a menu from the existing Menu tab; starter suggestions and composer controls remain unavailable until a real selected menu is loaded.

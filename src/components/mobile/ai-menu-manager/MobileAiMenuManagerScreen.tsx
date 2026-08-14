@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import {
@@ -106,8 +107,10 @@ export default function MobileAiMenuManagerScreen({
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const {
+        hasLoadError,
         isLoading,
         projectsList,
+        refreshProjects,
         selectedProject,
         selectedProjectId,
         selectedProjectSummary,
@@ -873,7 +876,12 @@ export default function MobileAiMenuManagerScreen({
                 <ProjectSelectorTrigger
                     clickable={!isLoading && projectsList.length > 1}
                     currentProject={currentProjectSelectorItem}
-                    helperText="Actions apply only to this selected menu."
+                    emptyLabel={isLoading ? 'Loading menu' : hasLoadError ? 'Menus unavailable' : 'No menu selected'}
+                    helperText={isLoading
+                        ? 'Checking the selected menu.'
+                        : selectedProjectId
+                        ? 'Actions apply only to this selected menu.'
+                        : 'Menu Manager needs a menu before it can prepare anything.'}
                     onClick={!isLoading && projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
                 {projectStatusLine ? (
@@ -884,6 +892,50 @@ export default function MobileAiMenuManagerScreen({
 
                 <Card>
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        {isLoading ? (
+                            <Flex align="center" justify="center" style={{ minHeight: 280 }}>
+                                <Text type="secondary">Loading menu…</Text>
+                            </Flex>
+                        ) : hasLoadError && !selectedProject ? (
+                            <Flex align="center" style={{ minHeight: 280, paddingBlock: 24, textAlign: 'center' }} vertical>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={104}
+                                    treatment="softHalo"
+                                    variant="serverErrorContext"
+                                />
+                                <Text strong style={{ display: 'block', fontSize: 17, marginTop: 14 }}>Menu could not be loaded</Text>
+                                <Text type="secondary" style={{ display: 'block', fontSize: 13, marginTop: 6 }}>
+                                    Menu Manager has not confirmed that this store has no menus.
+                                </Text>
+                                <Button
+                                    color="primary"
+                                    fill="solid"
+                                    onClick={() => void refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })}
+                                    style={{ marginTop: 18, minHeight: 44 }}
+                                >
+                                    Try again
+                                </Button>
+                            </Flex>
+                        ) : !selectedProjectId ? (
+                            <Flex align="center" style={{ minHeight: 280, paddingBlock: 24, textAlign: 'center' }} vertical>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={104}
+                                    treatment="softHalo"
+                                    variant="emptyWorkspace"
+                                />
+                                <Text strong style={{ display: 'block', fontSize: 17, marginTop: 14 }}>Create a menu first</Text>
+                                <Text type="secondary" style={{ display: 'block', fontSize: 13, marginTop: 6 }}>
+                                    Open the Menu tab to create a menu before using Menu Manager.
+                                </Text>
+                            </Flex>
+                        ) : !selectedProject ? (
+                            <Flex align="center" justify="center" style={{ minHeight: 280 }}>
+                                <Text type="secondary">Loading selected menu…</Text>
+                            </Flex>
+                        ) : (
+                            <>
                         {!cards.length && !timeline.length && emptyStateSuggestions.length ? (
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                 <div>
@@ -1109,6 +1161,8 @@ export default function MobileAiMenuManagerScreen({
                                 </Button>
                             </Flex>
                         ) : null}
+                            </>
+                        )}
                     </Space>
                 </Card>
             </Space>

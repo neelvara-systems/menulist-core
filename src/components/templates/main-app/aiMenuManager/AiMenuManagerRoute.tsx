@@ -1,5 +1,6 @@
 'use client';
 
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import {
@@ -134,6 +135,8 @@ export default function AiMenuManagerRoute() {
     const [contextSearch, setContextSearch] = useState('');
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [loadingProject, setLoadingProject] = useState(false);
+    const [projectsLoadError, setProjectsLoadError] = useState(false);
+    const [selectedProjectLoadError, setSelectedProjectLoadError] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
     const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
@@ -243,6 +246,12 @@ export default function AiMenuManagerRoute() {
     const selectedProjectSelectorItem = useMemo(() => (
         projectSelectorItems.find((project) => project.id === selectedProjectId) || null
     ), [projectSelectorItems, selectedProjectId]);
+    const isComposerUnavailable = loadingProjects
+        || loadingProject
+        || projectsLoadError
+        || !selectedProjectId
+        || !selectedProject
+        || selectedProjectLoadError;
     const cards = useMemo(() => operations.map((operation) => operation.card), [operations]);
     const pendingSummaryCards = useMemo(() => (
         cards.filter((card) => card.kind === 'proposal' || card.kind === 'manual_task')
@@ -292,15 +301,31 @@ export default function AiMenuManagerRoute() {
         try {
             const result = await getProjectsListWithoutLoader(true);
             const nextProjects = (result?.projects || []) as ProjectSummary[];
+            setProjectsLoadError(false);
             setProjects(nextProjects);
             const preferred = nextProjects.find((project) => project.isDefault && project.active !== false)
                 || nextProjects.find((project) => project.active !== false)
                 || nextProjects[0]
                 || null;
-            if (preferred && !selectedProjectId) {
-                setSelectedProjectId(preferred.projectId);
+            const selectedProjectStillExists = nextProjects.some((project) => project.projectId === selectedProjectId);
+            const nextSelectedProjectId = selectedProjectStillExists
+                ? selectedProjectId
+                : preferred?.projectId || null;
+            if (nextSelectedProjectId !== selectedProjectId) {
+                setSelectedProjectId(nextSelectedProjectId);
+            }
+            if (!nextSelectedProjectId) {
+                sessionIdRef.current = null;
+                sessionProjectIdRef.current = null;
+                setSessionId(null);
+                setSelectedProject(null);
+                setCurrentSession(null);
+                setOperations([]);
+                setReceipts([]);
+                setTimeline([]);
             }
         } catch (error: any) {
+            setProjectsLoadError(true);
             logRuntimeFailure('ai_menu_manager_projects_load_failed', error, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
                 ...getBoundedRuntimeStringContext('selectedProjectId', selectedProjectId),
@@ -314,6 +339,7 @@ export default function AiMenuManagerRoute() {
     const loadSelectedProject = useCallback(async (projectId?: string | null) => {
         if (!projectId || !storeId) return;
         setLoadingProject(true);
+        setSelectedProjectLoadError(false);
         try {
             const project = await getProjectDataWithoutLoader(projectId);
             setSelectedProject(removeObjRef(project) as Project);
@@ -334,6 +360,7 @@ export default function AiMenuManagerRoute() {
                 receipts: nextReceipts,
             }));
         } catch (error: any) {
+            setSelectedProjectLoadError(true);
             logRuntimeFailure('ai_menu_manager_selected_project_load_failed', error, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
                 ...getBoundedRuntimeStringContext('projectId', projectId),
@@ -1015,7 +1042,10 @@ export default function AiMenuManagerRoute() {
                                 <ProjectSelectorTrigger
                                     clickable={projectSelectorItems.length > 1}
                                     currentProject={selectedProjectSelectorItem}
-                                    helperText="Actions apply only to this selected menu."
+                                    emptyLabel={projectsLoadError ? 'Menus unavailable' : 'No menu selected'}
+                                    helperText={selectedProjectId
+                                        ? 'Actions apply only to this selected menu.'
+                                        : 'Menu Manager needs a menu before it can prepare anything.'}
                                     onClick={projectSelectorItems.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                                 />
                             </div>
@@ -1023,8 +1053,50 @@ export default function AiMenuManagerRoute() {
                     </div>
 
                     <div ref={chatScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
-                        {loadingProject ? (
+                        {loadingProjects || loadingProject ? (
                             <Spin />
+                        ) : projectsLoadError ? (
+                            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 320, textAlign: 'center' }}>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={112}
+                                    treatment="softHalo"
+                                    variant="serverErrorContext"
+                                />
+                                <Title level={4} style={{ marginBottom: 6, marginTop: 16 }}>Menus could not be loaded</Title>
+                                <Text type="secondary">Menu Manager has not confirmed that this store has no menus.</Text>
+                                <Button onClick={() => void loadProjects()} style={{ marginTop: 18 }} type="primary">
+                                    Try again
+                                </Button>
+                            </div>
+                        ) : !selectedProjectId ? (
+                            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 320, textAlign: 'center' }}>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={112}
+                                    treatment="softHalo"
+                                    variant="emptyWorkspace"
+                                />
+                                <Title level={4} style={{ marginBottom: 6, marginTop: 16 }}>Create a menu first</Title>
+                                <Text type="secondary">Menu Manager can prepare questions and changes after this store has a menu.</Text>
+                                <Button href="/projects" style={{ marginTop: 18 }} type="primary">
+                                    Go to Menu
+                                </Button>
+                            </div>
+                        ) : selectedProjectLoadError ? (
+                            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 320, textAlign: 'center' }}>
+                                <ContextualStateIllustration
+                                    color={token.colorPrimary}
+                                    size={112}
+                                    treatment="softHalo"
+                                    variant="serverErrorContext"
+                                />
+                                <Title level={4} style={{ marginBottom: 6, marginTop: 16 }}>Selected menu could not be loaded</Title>
+                                <Text type="secondary">No questions or changes can be prepared until this menu and its pending cards are available.</Text>
+                                <Button onClick={() => void loadSelectedProject(selectedProjectId)} style={{ marginTop: 18 }} type="primary">
+                                    Try again
+                                </Button>
+                            </div>
                         ) : (
                             <Space direction="vertical" size={14} style={{ width: '100%' }}>
                                 {timeline.length === 0 && cards.length === 0 ? (
@@ -1623,7 +1695,7 @@ export default function AiMenuManagerRoute() {
                             >
                                 <Button
                                     aria-label="Choose context or suggestions"
-                                    disabled={!selectedProjectId || submitting}
+                                    disabled={isComposerUnavailable || submitting}
                                     icon={<LuPlus size={20} />}
                                     shape="circle"
                                     style={{ flexShrink: 0, height: 44, minWidth: 44, width: 44 }}
@@ -1632,7 +1704,7 @@ export default function AiMenuManagerRoute() {
                             <Input.TextArea
                                 autoSize={{ minRows: 1, maxRows: 4 }}
                                 value={input}
-                                disabled={!selectedProjectId || submitting}
+                                disabled={isComposerUnavailable || submitting}
                                 onChange={(event) => setInput(event.target.value)}
                                 onPressEnter={(event) => {
                                     if (!event.shiftKey) {
@@ -1654,7 +1726,7 @@ export default function AiMenuManagerRoute() {
                             />
                             <Button
                                 aria-label="Send"
-                                disabled={!selectedProjectId || submitting || !input.trim()}
+                                disabled={isComposerUnavailable || submitting || !input.trim()}
                                 icon={<LuSend size={18} />}
                                 loading={submitting}
                                 onClick={() => submitPrompt()}
@@ -1708,7 +1780,10 @@ export default function AiMenuManagerRoute() {
                                     ))}
                                 </Space>
                             ) : (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No pending cards" />
+                                <Empty
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    description={isComposerUnavailable ? 'Pending cards unavailable' : 'No pending cards'}
+                                />
                             )}
                         </Card>
 
@@ -1724,7 +1799,10 @@ export default function AiMenuManagerRoute() {
                                     ))}
                                 </Space>
                             ) : (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No receipts yet" />
+                                <Empty
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    description={isComposerUnavailable ? 'Receipts unavailable' : 'No receipts yet'}
+                                />
                             )}
                         </Card>
 
