@@ -226,6 +226,49 @@ async function verifyPreviewHosts() {
   assert.equal(response.headers.get('location'), 'https://app.menulist.digital/dashboard');
   assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
 
+  response = await proxy(request('https://menulist.digital/product', 'menulist.digital'));
+  assert.equal(response.status, 301);
+  assert.equal(response.headers.get('location'), 'https://menulist.digital/how-it-works');
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+
+  response = await proxy(request('https://menulist.digital/sites/internal', 'menulist.digital'));
+  assert.equal(response.status, 301);
+  assert.equal(response.headers.get('location'), 'https://menulist.digital/');
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+
+  response = await proxy(request(
+    'https://qa-cafe.menulist.digital/Menu?source=qa',
+    'qa-cafe.menulist.digital',
+  ));
+  assert.equal(response.status, 301);
+  assert.equal(
+    response.headers.get('location'),
+    'https://qa-cafe.menulist.digital/menu?source=qa',
+  );
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+
+  response = await proxy(request(
+    'https://qa-cafe.menulist.digital/menu/?source=qa',
+    'qa-cafe.menulist.digital',
+  ));
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get('location'),
+    'https://qa-cafe.menulist.digital/menu?source=qa',
+  );
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+
+  response = await proxy(request(
+    'https://menulist.digital/pricing/?source=qa',
+    'menulist.digital',
+  ));
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get('location'),
+    'https://menulist.digital/pricing?source=qa',
+  );
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+
   response = await proxy(request(
     'https://qa-cafe.menulist.digital/menu',
     'qa-cafe.menulist.digital',

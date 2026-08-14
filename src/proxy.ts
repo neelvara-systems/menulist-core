@@ -706,6 +706,18 @@ export async function proxy(request: NextRequest) {
     const domainInfo = resolveDomain(hostname);
     const knownProductId = resolveKnownProductIdByHostname(hostname);
 
+    // Next's built-in trailing-slash redirect runs before Proxy and therefore
+    // cannot inherit host-aware security headers. next.config.js delegates the
+    // normalization here so QA noindex and the common security policy remain
+    // attached while preserving the canonical no-trailing-slash URL.
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+        // Use the platform URL rather than NextURL here: NextURL retains the
+        // incoming trailing-slash preference when serialized in isolation.
+        const url = new URL(request.url);
+        url.pathname = pathname.slice(0, -1);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 308));
+    }
+
     if (isMenuListQaHost(hostname) && pathname === '/robots.txt') {
         return applySecurityHeaders(request, new NextResponse('User-agent: *\nDisallow: /\n', {
             status: 200,
@@ -733,7 +745,7 @@ export async function proxy(request: NextRequest) {
     ) {
         const target = getProductDeploymentTarget('answerlattice', 'production');
         const url = buildOriginPinnedRedirectUrl(target.url, request);
-        return NextResponse.redirect(url, 308);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 308));
     }
 
     if (
@@ -744,7 +756,7 @@ export async function proxy(request: NextRequest) {
     ) {
         const target = getProductDeploymentTarget(knownProductId);
         const url = buildOriginPinnedRedirectUrl(target.url, request);
-        return NextResponse.redirect(url, 308);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 308));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -772,7 +784,7 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/sites/') && process.env.VERCEL === '1') {
         const url = request.nextUrl.clone();
         url.pathname = '/';
-        return NextResponse.redirect(url, 301);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 301));
     }
 
     // Block direct access to the internal hosted-help route in production.
@@ -785,7 +797,7 @@ export async function proxy(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         url.search = '';
-        return NextResponse.redirect(url, 301);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 301));
     }
 
     // Answerlattice hosted Help Center domains (help.example.com, docs.example.com).
@@ -902,7 +914,7 @@ export async function proxy(request: NextRequest) {
                 url.pathname = pathname === '/answerlattice'
                     ? '/dashboard'
                     : pathname.slice('/answerlattice'.length) || '/dashboard';
-                return NextResponse.redirect(url, 301);
+                return applySecurityHeaders(request, NextResponse.redirect(url, 301));
             }
 
             if (shouldPassThroughAnswerlatticeProductPath(pathname)) {
@@ -996,7 +1008,7 @@ export async function proxy(request: NextRequest) {
     if ((domainInfo.type === 'platform' || domainInfo.type === 'localhost') && pathname === '/product') {
         const url = request.nextUrl.clone();
         url.pathname = '/how-it-works';
-        return NextResponse.redirect(url, 301);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 301));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1024,14 +1036,8 @@ export async function proxy(request: NextRequest) {
     if (domainInfo.isClient && pathname !== pathname.toLowerCase()) {
         const url = request.nextUrl.clone();
         url.pathname = pathname.toLowerCase();
-        return NextResponse.redirect(url, 301);
+        return applySecurityHeaders(request, NextResponse.redirect(url, 301));
     }
-    if (domainInfo.isClient && pathname.length > 1 && pathname.endsWith('/')) {
-        const url = request.nextUrl.clone();
-        url.pathname = pathname.slice(0, -1);
-        return NextResponse.redirect(url, 301);
-    }
-
     let response: NextResponse;
 
     if (domainInfo.isClient) {

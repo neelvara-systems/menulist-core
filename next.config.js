@@ -115,6 +115,9 @@ const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 const nextConfig = {
     poweredByHeader: false,
+    // Keep canonical slash redirects inside Proxy so environment/host-specific
+    // security and crawler headers are preserved on the redirect response.
+    skipTrailingSlashRedirect: true,
     // Allows CI and local release audits to run concurrently without sharing
     // Next's mutable build output. Production keeps the default `.next` path.
     distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR),
