@@ -1,13 +1,13 @@
 # Answerlattice Client Onboarding — Website Contract
 
-> **Last Audited:** 2026-07-19
+> **Last Audited:** 2026-08-13
 
 ## Entry Surface
 
 - Public route: `/get-started`
 - Authentication: Google through the shared NextAuth surface
 - Required input: company name
-- Optional product profile: product name, HTTP(S) URL without embedded credentials, support email, billing model, and initial product surfaces
+- Optional product profile: product name, HTTP(S) URL without embedded credentials, support email, billing model, initial product surfaces, and one closed-list first-discovery source
 - Commercial input: current monthly plan and INR/USD checkout currency
 
 The page may explain that setup is self-service. It must not state that signup alone activates paid service, imports every source, installs the widget, or proves answer quality.
@@ -39,3 +39,4 @@ Do not tell a founder to submit changed plan/company details to “unstick” an
 - Record widget-key generation only when a new plaintext key is actually returned.
 - Keep checkout click separate from payment activation.
 - Never label an onboarding response, checkout open, or dashboard visit as customer-support resolution.
+- Treat optional self-reported discovery as directional cohort evidence. Do not send it as an analytics event or reinterpret it as last-click attribution.

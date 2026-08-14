@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Marketing
 
-> **Last Audited:** 2026-07-19
+> **Last Audited:** 2026-08-13
 
 ## Safe Positioning
 
@@ -14,6 +14,7 @@ Answerlattice offers authenticated self-service setup for founder-led SaaS teams
 - An exact known cancelled, completed, or expired checkout is separated from unknown provider state and can be retried after scoped recovery. This is not a claim that every provider failure self-recovers.
 - The initial widget key is shown once; lost plaintext credentials require rotation.
 - Unknown payment-provider state is held for recovery rather than silently treated as success or failure.
+- The optional first-discovery question uses a closed list, accepts no free text, and does not affect payment or entitlement.
 
 ## Claims Requiring External Evidence
 
@@ -35,3 +36,6 @@ Answerlattice offers authenticated self-service setup for founder-led SaaS teams
 ## Conversion Event
 
 The commercial event is a founder reaching a valid `payment_pending` workspace with a safe checkout link and an explicit next step. It is not a completed payment, accurate answer set, installed widget, or verified customer resolution.
+
+Self-reported discovery is directional acquisition evidence, not proof that one
+channel caused signup and not permission to claim AI recommendation volume.

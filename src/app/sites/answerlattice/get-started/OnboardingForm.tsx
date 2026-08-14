@@ -1,7 +1,9 @@
 'use client';
 
+import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
 import { getAnswerlatticePlans } from '@data/answerlattice/plans';
+import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
 import {
     normalizeAnswerlatticeOnboardResult,
     type AnswerlatticeOnboardResult,
@@ -30,6 +32,17 @@ const SURFACE_OPTIONS = [
     { key: 'team', label: 'Team' },
     { key: 'integrations', label: 'Connected apps' },
     { key: 'release_notes', label: 'Release notes' },
+];
+const DISCOVERY_SOURCE_OPTIONS: Array<{ label: string; value: SelfReportedDiscoveryChannel }> = [
+    { label: 'ChatGPT', value: 'chatgpt' },
+    { label: 'Claude', value: 'claude' },
+    { label: 'Gemini', value: 'gemini' },
+    { label: 'Microsoft Copilot', value: 'microsoft_copilot' },
+    { label: 'Perplexity', value: 'perplexity' },
+    { label: 'Search engine', value: 'search_engine' },
+    { label: 'Social media or community', value: 'social_or_community' },
+    { label: 'Friend or colleague', value: 'friend_or_colleague' },
+    { label: 'Other', value: 'other' },
 ];
 const ONBOARDING_PLANS = getAnswerlatticePlans()
     .filter((plan) => plan.billingInterval === 'MONTH')
@@ -120,6 +133,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
         ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter',
     );
     const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
+    const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
     const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AnswerlatticeOnboardResult | null>(null);
@@ -220,6 +234,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
             supportEmailLength: trimmedSupportEmail.length,
             billingModel,
             currency,
+            hasSelfReportedDiscovery: Boolean(selfReportedDiscoveryChannel),
             planId,
             primarySurfaceCount: primarySurfaces.length,
         };
@@ -238,6 +253,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     supportEmail: trimmedSupportEmail || undefined,
                     billingModel,
                     primarySurfaces,
+                    selfReportedDiscoveryChannel: selfReportedDiscoveryChannel || undefined,
                     planId,
                     interval: 'MONTH',
                     currency,
@@ -512,6 +528,25 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                             <option value="not_sure">Not sure yet</option>
                         </select>
                     </div>
+
+                    {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SELF_REPORTED_DISCOVERY && (
+                        <div style={styles.fieldGroup}>
+                            <label htmlFor="answerlattice-discovery-source" style={styles.label}>
+                                Where did you first hear about AnswerLattice? (optional)
+                            </label>
+                            <select
+                                id="answerlattice-discovery-source"
+                                value={selfReportedDiscoveryChannel}
+                                onChange={(event) => setSelfReportedDiscoveryChannel(event.target.value as SelfReportedDiscoveryChannel | '')}
+                                style={styles.select}
+                            >
+                                <option value="">Select one source</option>
+                                {DISCOVERY_SOURCE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div style={styles.fieldGroup}>
                         <label htmlFor="answerlattice-plan" style={styles.label}>Plan</label>

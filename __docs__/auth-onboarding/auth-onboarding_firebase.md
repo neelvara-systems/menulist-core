@@ -27,6 +27,7 @@ Accepted flow:
 - hashed actor rate limit;
 - one subdomain reservation precheck transaction;
 - one allocation transaction reading the exact user, counters, summaries, candidate entity IDs, and subdomain claims, then writing tenant/store/summaries/user/referral state;
+- optional `selfReportedDiscovery` is an additive field on the tenant created by that same allocation write; it adds no document operation, collection, index, listener, scheduler, Storage object, or Function;
 - one public cache invalidation attempt;
 - one or more Razorpay provider calls;
 - one subscription document write;

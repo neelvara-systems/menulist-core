@@ -1,16 +1,17 @@
 # Set Up Your Answerlattice Workspace
 
-> **Last Audited:** 2026-07-19
+> **Last Audited:** 2026-08-13
 
 ## Create the Workspace
 
 1. Open `/get-started` and sign in with Google.
 2. Enter the company and product details you can verify. Use an `http://` or `https://` product URL without a username or password in the address.
-3. Select a monthly plan and checkout currency.
-4. Select the first product areas where support matters.
-5. Submit setup once and wait for the result.
-6. Store the displayed widget key securely. It is shown only when first created.
-7. Open checkout, then continue to the dashboard and Activation Command Center.
+3. Optionally select where you first heard about AnswerLattice. The question uses a fixed list and can be skipped.
+4. Select a monthly plan and checkout currency.
+5. Select the first product areas where support matters.
+6. Submit setup once and wait for the result.
+7. Store the displayed widget key securely. It is shown only when first created.
+8. Open checkout, then continue to the dashboard and Activation Command Center.
 
 You do not need to connect every support source during this first session.
 

@@ -22,6 +22,7 @@ const input = {
         name: 'Tampered plan name',
         priceINR: { price: 1, monthlyCredits: 999_999 },
     },
+    selfReportedDiscoveryChannel: 'chatgpt',
     timeZone: 'Asia/Kolkata',
 };
 
@@ -31,6 +32,7 @@ assert.equal(normalized.businessName, 'Owner Cafe');
 assert.equal(normalized.businessIndustry, 'Cafe');
 assert.equal(normalized.plan.name, canonicalPlan.name);
 assert.deepEqual(normalized.plan.priceINR, canonicalPlan.priceINR);
+assert.equal(normalized.selfReportedDiscoveryChannel, 'chatgpt');
 
 const serialized = serializePurchaseIntent(input, now);
 assert.ok(serialized);
@@ -44,5 +46,6 @@ assert.equal(normalizePurchaseIntent({ ...input, currency: 'EUR' }), null);
 assert.equal(normalizePurchaseIntent({ ...input, businessName: '' }), null);
 assert.equal(normalizePurchaseIntent({ ...input, plan: { ...input.plan, planId: 'unknown' } }), null);
 assert.equal(normalizePurchaseIntent({ ...input, plan: { ...input.plan, billingInterval: 'WEEK' } }), null);
+assert.equal(normalizePurchaseIntent({ ...input, selfReportedDiscoveryChannel: 'reddit' }), null);
 
 console.log('Purchase intent boundary tests passed.');

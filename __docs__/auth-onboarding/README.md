@@ -1,7 +1,7 @@
 # Auth and Onboarding
 
 **Status:** Local source complete; external certification pending
-**Last updated:** July 16, 2026
+**Last updated:** August 13, 2026
 **Scope:** MenuList owner authentication, account claim, first workspace creation, subscription handoff, session refresh, and returning-owner recovery
 
 This folder describes the behavior implemented in the codebase. It does not certify live Google OAuth, WhatsApp delivery, Razorpay, Firebase Auth token minting, browser/device behavior, or deployed environments.
@@ -13,7 +13,7 @@ Audit continuity marker: current-authority and payment-effect hardening remains 
 1. An owner enters through Google OAuth, email/password or passcode, WhatsApp OTP, or a messaging claim link.
 2. NextAuth creates or resolves one `users` record and issues the server session. New self-serve owner records are active and verified but have no tenant/store scope.
 3. The owner selects a plan and supplies the business details on the responsive pricing flow.
-4. `POST /api/onboarding/create-subscription` re-reads and locks the exact current user in the same transaction that allocates tenant/store IDs. It creates the tenant, master store, default roles, store summary, counters, optional referral attribution, and owner mapping atomically.
+4. `POST /api/onboarding/create-subscription` re-reads and locks the exact current user in the same transaction that allocates tenant/store IDs. It creates the tenant, master store, default roles, store summary, counters, optional referral attribution, optional closed-list self-reported discovery attribution, and owner mapping atomically.
 5. The route creates or recovers one Razorpay subscription for the exact onboarding attempt. Provider plan, quantity, total count and attempt/user/tenant/store/plan notes must all match before local persistence. An exact owned attempt with an invalid commercial contract or checkout URL is cancelled before local workspace compensation; an unrelated provider ID is never cancelled. The route persists one local pending subscription and returns only the subscription ID plus tenant/store IDs. If the local write acknowledgement is ambiguous, recovery succeeds only when both ML product aliases, both user aliases, and both numeric tenant/store aliases exactly agree with the new scope.
 6. The browser refreshes NextAuth from current Firestore truth and opens Razorpay. Payment verification or the webhook moves the local subscription to the provider-confirmed state.
 7. `/api/auth/set-claims` re-reads the current user and canonical store, then mints Firebase claims for the exact tenant/store membership and store role.
@@ -61,6 +61,7 @@ Primary local bundle:
 
 ```bash
 npm run verify:auth-onboarding-flow
+npm run verify:marketing-external-insights
 ```
 
 Additional evidence:

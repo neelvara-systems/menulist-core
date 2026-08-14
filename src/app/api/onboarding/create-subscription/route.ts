@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
+import { FEATURE_FLAGS } from '@config/features';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
+import { buildSelfReportedDiscoveryAttribution } from '@data/shared/selfReportedDiscovery';
 import { createInitialSubscription, getSubscriptionById } from "@database/subscriptions/server";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -362,7 +364,10 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime } = validation.data;
+        const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = validation.data;
+        const selfReportedDiscovery = FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY
+            ? buildSelfReportedDiscoveryAttribution(selfReportedDiscoveryChannel)
+            : null;
         const referralCookiePresent = Boolean(readOwnerReferralCookie(request));
         const resolvedReferral = isOwnerReferralAcquisitionEnabled()
             ? await resolveOwnerReferralCookieForAttribution(request)
@@ -430,6 +435,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                 onboardingSource: 'WEBSITE_ONBOARDING',
                 subdomain: { preChecked: preCheckedSubdomain },
                 includeTimeSlotPresets: true,
+                tenantExtra: selfReportedDiscovery ? { selfReportedDiscovery } : undefined,
             });
 
             // Update User with tenant/store IDs

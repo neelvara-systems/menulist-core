@@ -73,7 +73,7 @@ import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuArrowRight, LuFileImage, LuFilePlus, LuFileText, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
+import { LuArrowRight, LuFileImage, LuFilePlus, LuFileText, LuGlobe2, LuInfo, LuRefreshCw, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
@@ -538,9 +538,9 @@ function ProjectsPage() {
     // SWR cache key for projects list
     const effectiveTenantId = storeDetails?.tenantId || loggedInSession?.tId;
     const effectiveStoreId = storeDetails?.storeId || loggedInSession?.sId;
-    const hasProjectSessionScope = Boolean(loggedInSession && currentProjectScope);
+    const hasProjectReadScope = Boolean(currentProjectScope);
 
-    const projectsListCacheKey = shouldEnableDesktopProjectsData && hasProjectSessionScope && effectiveTenantId && effectiveStoreId
+    const projectsListCacheKey = shouldEnableDesktopProjectsData && hasProjectReadScope && effectiveTenantId && effectiveStoreId
         ? `projects-${effectiveTenantId}-${effectiveStoreId}`
         : null;
 
@@ -553,7 +553,7 @@ function ProjectsPage() {
         selectedProjectStoreId &&
         selectedProjectStoreId === String(effectiveStoreId),
     );
-    const projectDataCacheKey = shouldEnableDesktopProjectsData && hasProjectSessionScope && selectedProjectMatchesStore && selectedProject?.projectId
+    const projectDataCacheKey = shouldEnableDesktopProjectsData && hasProjectReadScope && selectedProjectMatchesStore && selectedProject?.projectId
         ? `project-${effectiveTenantId}-${effectiveStoreId}-${selectedProject.projectId}`
         : null;
 
@@ -561,7 +561,7 @@ function ProjectsPage() {
     const { data: projectsData, error: projectsError, isLoading: projectsLoading, mutate: mutateProjects } = useSWR<ProjectsListData>(
         projectsListCacheKey,
         async () => {
-            if (!loggedInSession || !currentProjectScope) return { projects: [], lastDoc: null };
+            if (!currentProjectScope) return { projects: [], lastDoc: null };
             const result = await getProjectsListWithoutLoader(false, currentProjectScope);
             return normalizeProjectsData(result);
         },
@@ -2982,8 +2982,28 @@ function ProjectsPage() {
                     {/* Master Updates Awareness: Banner + quiet history link for outlet projects */}
                     <MasterUpdateBanner />
 
-                    {/* Show EmptyProjectState only when no projects exist */}
-                    {currentView == 1 && projectsList.length === 0 && !Boolean(selectedProject) && (
+                    {currentView == 1 && projectsLoading && (
+                        <Flex align="center" justify="center" style={{ minHeight: 240 }}>
+                            <Spin />
+                        </Flex>
+                    )}
+
+                    {currentView == 1 && projectsError && (
+                        <Flex align="center" gap={12} justify="center" style={{ minHeight: 240 }} vertical>
+                            <Typography.Text strong>Could not load your menus</Typography.Text>
+                            <Typography.Text type="secondary">Try again to reconnect and load the current menu list.</Typography.Text>
+                            <Button
+                                icon={<LuRefreshCw size={18} />}
+                                onClick={() => void mutateProjects()}
+                                type="primary"
+                            >
+                                Try again
+                            </Button>
+                        </Flex>
+                    )}
+
+                    {/* Show EmptyProjectState only after a successful empty read. */}
+                    {currentView == 1 && projectsData !== undefined && !projectsLoading && !projectsError && projectsList.length === 0 && !Boolean(selectedProject) && (
                         <EmptyProjectState onCreate={() => openModal()} />
                     )}
 

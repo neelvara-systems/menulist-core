@@ -10,6 +10,7 @@ import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProj
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
+import { SELF_REPORTED_DISCOVERY_CHANNELS } from '@data/shared/selfReportedDiscovery';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isValidMediaStoragePathSegment } from '@lib/media/mediaStorage';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
@@ -449,7 +450,8 @@ export const OnboardingSubscriptionSchema = z.object({
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']),
     timeZone: z.string().trim().min(1).max(100).optional(),
-    businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional()
+    businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+    selfReportedDiscoveryChannel: z.enum(SELF_REPORTED_DISCOVERY_CHANNELS).optional(),
 }).strict();
 
 export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptionSchema>;

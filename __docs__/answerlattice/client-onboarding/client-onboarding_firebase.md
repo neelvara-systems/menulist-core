@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Firebase Cost
 
-> **Version:** 1.8.1
-> **Last Updated:** 2026-07-19
+> **Version:** 1.9.0
+> **Last Updated:** 2026-08-13
 > **Audience:** Developers / Ops
 
 ---
@@ -13,7 +13,7 @@
 | `users` | READ/QUERY | 2+ | Direct account check, transaction revalidation, and normalized-email fallback capped at two records so duplicate identity fails closed |
 | `platformSummary` | READ | 2+ | Canonical counter plus compatibility/summary reads used by shared allocation |
 | `tenants` / `stores` | READ | 2+ | Candidate-ID collision probes and finalization ownership checks |
-| `tenants` | WRITE | 1 | Create new tenant |
+| `tenants` | WRITE | 1 | Create new tenant, including optional closed-list `selfReportedDiscovery` in the same document write |
 | `stores` | WRITE | 1 | Create new store |
 | `stores` | WRITE | 1 | Set initial `answerlatticeWidgetApi` key-manager state (`keyHashes`, `keysByHash`, active key metadata, purpose, productId, and widget scopes) |
 | `answerlattice_productSurfaces` | WRITE | 3-8 | Seed initial product surfaces selected during onboarding |
@@ -26,6 +26,12 @@
 **Normal successful onboarding is a bounded one-time path, but it is not a two-read path.** Current source performs roughly 11 or more document/query reads and about 13-18 writes before optional transaction retries, email fallback, collision probes, summary/bootstrap helpers, or provider-recovery work. Firestore may retry transactions, so billed reads are not a fixed promise.
 
 The get-started browser client parses onboarding responses through a 16 KB bounded JSON reader and validates the success, plan, billing, subscription, recovery, and widget-key shape before showing completion state. HTTP(S)-only product URL admission and route-wide private/no-store response headers add no Firestore operations; they prevent unsafe stored URLs and cached account/billing responses.
+
+Optional self-reported discovery adds no read, write, collection, index,
+listener, scheduler, Storage object, Function, or provider operation. It is an
+additive field on the one tenant document already created by the provisioning
+transaction. It is not copied to the store, subscription, user bridge, or
+platform summary.
 
 Resumable provisioning adds correctness reads only on retries or failures:
 

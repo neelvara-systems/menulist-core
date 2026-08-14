@@ -73,6 +73,10 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_SECURITY_OPERATING_SYSTEM: true,
 
+    // Internal-only DistributionOS: Git-backed Bible curation, validation,
+    // product routing, and read-only evidence retrieval. No public/runtime surface.
+    ENABLE_DISTRIBUTION_OPERATING_SYSTEM: true,
+
     /**
      * Enable the CampaignCue public product shell.
      *
@@ -1114,6 +1118,17 @@ export const FEATURE_FLAGS = {
     ENABLE_OWNER_REFERRAL: false,
     ENABLE_OWNER_REFERRAL_REWARD_PROCESSING: false,
     OWNER_REFERRAL_PILOT_STORE_IDS: [] as Array<string | number>,
+
+    /**
+     * Optional, closed-list signup discovery question for MenuList.
+     *
+     * The answer is stored on the tenant created by the existing onboarding
+     * transaction. It adds no free text, provider call, analytics cookie,
+     * collection, index, scheduler, or extra Firestore write.
+     *
+     * @see __docs__/menulist-marketing-distribution/menulist-marketing-distribution_external-insight-ledger.md
+     */
+    ENABLE_MENULIST_SELF_REPORTED_DISCOVERY: true,
 
     /**
      * Owner Action Layer.
@@ -2408,6 +2423,16 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/help-widget/
      */
     ENABLE_ANSWERLATTICE_WIDGET: true,
+
+    /**
+     * Optional, closed-list signup discovery question for Answerlattice.
+     *
+     * The answer is stored on the tenant created by the existing onboarding
+     * transaction and is excluded from billing/provisioning idempotency.
+     *
+     * @see __docs__/answerlattice/client-onboarding/
+     */
+    ENABLE_ANSWERLATTICE_SELF_REPORTED_DISCOVERY: true,
 
     /**
      * Answerlattice Agent Install Layer

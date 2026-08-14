@@ -22,6 +22,10 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
+import {
+    SELF_REPORTED_DISCOVERY_CHANNELS,
+    buildSelfReportedDiscoveryAttribution,
+} from '@data/shared/selfReportedDiscovery';
 import { getOwnerRoleId } from '@data/defaultRoles';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { requireAnswerlatticeOnboardingUserId } from '@lib/answerlattice/onboardingUserIdBoundary';
@@ -113,6 +117,7 @@ const OnboardRequestSchema = z.object({
     planId: z.string().trim().max(80).optional().default('answerlattice_starter'),
     interval: z.literal('MONTH').optional().default('MONTH'),
     currency: z.enum(['INR', 'USD']).optional().default('INR'),
+    selfReportedDiscoveryChannel: z.enum(SELF_REPORTED_DISCOVERY_CHANNELS).optional(),
 }).strict();
 const ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES = 32 * 1024;
 const ANSWERLATTICE_ONBOARDING_ACTIVE_ATTEMPT_MS = 2 * 60 * 1000;
@@ -736,6 +741,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             currency,
             timeZone,
             businessDayEndTime,
+            selfReportedDiscoveryChannel,
         } = validation.data;
         const plan = getAnswerlatticePlanById(planId, interval);
         if (!plan) {
@@ -757,6 +763,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const normalizedSurfaces = normalizeOnboardingSurfaces(primarySurfaces);
         const schedulerTimeZone = normalizeAnswerlatticeTimeZone(timeZone);
         const schedulerBusinessDayEndTime = normalizeAnswerlatticeBusinessDayEndTime(businessDayEndTime);
+        const selfReportedDiscovery = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SELF_REPORTED_DISCOVERY
+            ? buildSelfReportedDiscoveryAttribution(selfReportedDiscoveryChannel)
+            : null;
         const requestFingerprint = buildAnswerlatticeOnboardingRequestFingerprint({
             billingModel,
             businessDayEndTime: schedulerBusinessDayEndTime,
@@ -962,6 +971,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         productName: productName || '',
                         productUrl: productUrl || '',
                         supportEmail: supportEmail || '',
+                        ...(selfReportedDiscovery ? { selfReportedDiscovery } : {}),
                     },
                     storeExtra: {
                         active: true,

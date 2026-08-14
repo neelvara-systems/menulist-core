@@ -1,14 +1,21 @@
 # Product Portfolio Distribution Insight Ledger
 
-**Status:** Active maintained strategy ledger
+**Status:** Supporting portfolio evidence archive
 **Created:** July 28, 2026
 **Owner:** Founder with Codex review
 **Scope:** External distribution, founder-led marketing, organic content, channel, partnership, and audience-building inputs that need a product-by-product decision across the current portfolio.
 
 ## Purpose
 
-This ledger prevents one generic distribution playbook from being applied to
-every product in the repository.
+This ledger preserves selected cross-product evidence and detailed
+product-by-product decisions. The
+[Marketing and Distribution Bible](../distribution-operating-system/distribution-operating-system_bible.md)
+is the primary reusable doctrine.
+
+This is not a log of every article or conversation. Add an entry only when the
+source trail, unstable-claim validation, or a durable product-by-product decision
+will materially help future work. Otherwise, improve the Bible when warranted or
+make no repository change.
 
 Each entry must:
 
@@ -29,6 +36,13 @@ The founder's pseudonymous Proof & State PresenceOS is maintained in
 still governs product-by-product distribution boundaries; PresenceOS must not
 connect the alias to a product, company, domain, repository, or founder hub
 until both this ledger's product gate and the identity-correlation audit pass.
+
+This ledger is registered in
+[DistributionOS](../distribution-operating-system/README.md) as supporting
+evidence. DistributionOS validates this Markdown file in place; it does not copy
+entries into a database or parallel manifest. Read the Bible first, then search
+this archive with `npm run distribution-os:plan -- --product <slug>` when
+provenance or detailed prior validation is needed.
 
 ## Statuses
 
@@ -209,9 +223,114 @@ engagement tactics.
   disclosure claims against primary sources, and recorded a product-by-product
   decision.
 
+### PP-DIST-EXT-002 - Gamma AI Discovery, Attribution, And Agent Distribution
+
+- **Status:** `APPLY_NOW` for bounded signup attribution in MenuList and Answerlattice; other product verdicts vary below.
+- **Shared:** August 13, 2026
+- **Source:** Founder-supplied 23-point Gamma growth summary; no original video URL, transcript, methodology, or evidence workbook was supplied.
+- **Source type:** Founder-supplied article/conversation summary
+- **Topics:** ai-discovery, dark-attribution, comparisons, citations, agent-apps, agent-signup, brand-impersonation, product-boundaries
+- **Use when:** An active product changes signup attribution, public comparison content, AI-readable distribution, agent installation, or branded-search protection.
+- **Revalidate:** Original source methodology, current platform documentation and terms, privacy disclosures, product launch state, current public claims, authentication, billing authority, and observed first-party attribution data.
+
+#### Portfolio Verdict
+
+| Surface | Verdict | Decision |
+| --- | --- | --- |
+| MenuList | `APPLY_NOW` | Add one optional closed-list discovery source to the existing tenant write. Keep factual public truth and existing read-only distribution contracts. Do not add an agent app, autonomous signup, citation-gaming page, or competitor manipulation. |
+| Answerlattice | `APPLY_NOW` | Add the same optional field to the separate onboarding tenant write, excluded from provisioning idempotency. Existing comparison pages must remain factual. MCP, agent installation, billing, and customer-support authority do not expand. |
+| CampaignCue | `ALREADY_COVERED` | Existing source-to-reviewed-output and export/download-only boundaries already fit. The summary does not authorize provider publishing, platform scraping, or agent-operated accounts. |
+| SignalDesk | `ALREADY_COVERED` | Existing source evidence, approval, channel, outcome, and provider-send gates remain the right internal system. Treat future AI-referral evidence as another governed signal, not permission to act. |
+| Growth Kits / GrowthOS | `REJECTED` as separate distribution | It remains a MenuList add-on and receives no separate agent app, signup, comparison funnel, or public audience. |
+| MyCodex | `REJECTED` | Private reader only. No public discovery or signup work. |
+| SurfaceOS and KitStamp | `DEFERRED_REFERENCE` | Revisit only after explicit product activation creates real runtime, buyer, public claims, identity, and launch truth. |
+| Neelvara Systems | `REJECTED` | Keep the company trust surface factual and quiet; do not turn it into an AI-discovery funnel. |
+| Canonica | `REJECTED` | Legacy Answerlattice name. No content or distribution. |
+
+#### Current Decision
+
+Use one shared controlled vocabulary and product-specific feature flags, while
+persisting the answer inside each product's existing tenant creation. No extra
+database operation or shared cross-product tenant is introduced. Manual cohort
+review comes before any summary document or dashboard.
+
+The supplied platform percentages, multipliers, source absolutes, citation
+lifetimes, and indexing delays remain unverified hypotheses. Agent-only urgency,
+prompt injection, fake discounts, autonomous account creation, billing, install,
+publishing, and competitor manipulation are rejected across the portfolio.
+
+#### Outcome History
+
+- August 13, 2026 - Routed the cross-product input through the portfolio ledger, admitted only bounded self-reported discovery for the two active self-serve onboarding paths, and preserved all runtime, provider, billing, publishing, and identity boundaries.
+
+### PP-DIST-EXT-003 - SEO Page Families For SaaS Products
+
+- **Status:** `ALREADY_COVERED` as an opportunity taxonomy; individual page ideas vary below.
+- **Shared:** August 13, 2026
+- **Source:** Founder-supplied full pasted X article attributed to Nicholas Dulait about nine SEO page families for SaaS products; no stable X URL, keyword dataset, Search Console evidence, traffic history, conversion data, automation prompt, or test methodology was supplied. A separate ChatGPT interpretation was also reviewed as secondary input, not independent evidence.
+- **Source type:** X article/post plus AI interpretation
+- **Topics:** seo-page-families, search-intent, alternatives, comparisons, constraints, use-cases, integrations, pricing, feature-pages, company-size-pages, scaled-content, doorway-pages, search-console, indexing, ai-assisted-drafting, signaldesk, answerlattice
+- **Use when:** Reviewing a proposed MenuList or Answerlattice SEO page, page-family roadmap, competitor/alternative page, AI-assisted content workflow, indexing problem, or evidence gate for a new canonical URL.
+- **Revalidate:** Current Google Search spam, sitemap, canonical, crawlable-link, AI-feature, and Search Console guidance; live production-host behavior; current sitemap/index state; product route inventory; query/impression evidence; customer language; competitor capabilities/pricing; proof assets; and page cannibalization before publishing or refreshing a URL.
+
+#### Source Idea
+
+The article proposes nine recurring SaaS SEO page families: alternatives,
+comparisons, constraints, problems/use cases, integrations, pricing,
+differentiated features, and company-size pages, supported by AI-assisted
+research and drafting. Its durable value is as an internal intent taxonomy.
+
+The supplied material does not prove that any family is universally highest
+intent, cheapest, weakly competitive, or guaranteed to pay off on a fixed
+timeline. It also does not justify automated page admission, bulk publishing,
+or a new cross-product SEO runtime.
+
+#### Primary-Source Validation
+
+- [Google Search spam policies](https://developers.google.com/search/docs/essentials/spam-policies) retain doorway-abuse and scaled-content-abuse boundaries. Keyword-swapped or mass-generated pages without distinct user value are not an acceptable distribution system.
+- [Google sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview) treats a sitemap as a discovery aid, not an indexing guarantee.
+- [Google AI features guidance](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) keeps normal SEO fundamentals primary and does not require separate fan-out pages or special AI schema for every query variation.
+- [Google URL Inspection guidance](https://support.google.com/webmasters/answer/9012289) keeps URL-level Search Console evidence central to diagnosing indexing state.
+
+#### Portfolio Verdict
+
+| Surface | Verdict | Decision |
+| --- | --- | --- |
+| MenuList | `ALREADY_COVERED` with one `DEFERRED_REFERENCE` opportunity | Existing public routes, localized resources, discovery governance, canonicals, structured data, and indexing gates already cover most proposed families. Keep the nine families as an audit taxonomy. Strengthen existing canonical pages with permissioned proof. Consider one broad constraint page about keeping a customer list current without replacing the POS, ordering system, or website only after repeated customer language or Search Console evidence. Reject restaurant-only bulk expansion and a Canva-alternative page without demand/migration evidence. |
+| Answerlattice | `ALREADY_COVERED` with one `DEFERRED_REFERENCE` opportunity | Existing doctrine, use cases, category comparisons, governed-answer pages, and proof surfaces already cover most concepts. Strengthen them with verified product proof. Consider a dedicated support-knowledge-drift page only after observed demand. Defer Intercom, Zendesk, or Crisp alternative pages until current capability, maintenance, coexistence, win/loss, and query evidence exist. |
+| SignalDesk | `ALREADY_COVERED` | Use existing demand evidence, approved experiment, attribution, and outcome contracts for MenuList SEO decisions. Do not turn SignalDesk into a cross-product SEO platform or autonomous publisher. |
+| CampaignCue | `ALREADY_COVERED` | AI-assisted briefs and reviewed outputs fit the existing export/download boundary. It does not receive page-admission or publishing authority. |
+| Growth Kits / GrowthOS | `REJECTED` as separate SEO distribution | It remains a MenuList add-on and receives no separate page family, funnel, audience, or public product identity. |
+| MyCodex | `REJECTED` | Private documentation reader; no public SEO program. |
+| SurfaceOS and KitStamp | `DEFERRED_REFERENCE` | Revisit the taxonomy only after explicit activation creates a real product, buyer, public claims, proof, domain, and launch state. |
+| Neelvara Systems | `REJECTED` as a growth-content program | Keep the company trust surface factual and quiet; do not build a generic SaaS SEO factory around it. |
+| Canonica | `REJECTED` | Legacy Answerlattice name; no pages, comparisons, positioning, or distribution. |
+
+#### Current Decision
+
+Use the nine families to classify opportunities, not to generate a publishing
+backlog. The immediate order remains production-host and Search Console truth,
+first permissioned proof, mapping queries to existing canonical pages,
+strengthening those pages, and admitting one new URL only when evidence proves
+a distinct intent and maintainable answer.
+
+AI tools may assist research, page briefs, drafts, metadata, FAQs, internal-link
+suggestions, and contradiction checks. They may not decide that a page deserves
+to exist, verify competitor claims without evidence, resolve cannibalization,
+or publish autonomously. No new DistributionOS, SignalDesk, Answerlattice, or
+Claude-to-Codex SEO runtime is required.
+
+#### Outcome History
+
+- August 13, 2026 - The separate-thread DistributionOS test classified the article claim by claim, checked current MenuList and Answerlattice route/doctrine coverage plus current Google guidance, preserved SignalDesk and publication boundaries, and made no product changes because the request was review-only.
+- August 13, 2026 - Added this canonical record after the founder clarified that substantive DistributionOS reviews must be retained by default for later marketing/distribution retrieval.
+
 ## Maintenance
 
-- Keep one entry per external portfolio-level distribution input.
+- Do not create one entry per external input. Retain only selected evidence that
+  materially supports future product decisions.
+- Synthesize reusable doctrine into the Bible rather than adding chronological
+  article notes here.
 - Link a product-specific ledger or runbook when an entry changes an active
   product's operating guidance.
 - Do not duplicate long platform explanations across product docs; link this

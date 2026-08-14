@@ -43,6 +43,14 @@ Start and verify routes apply fail-closed shared rate limits before paid WhatsAp
 
 `assertCurrentUserAvailableForOnboardingInTransaction()` runs before allocation. `createTenantStoreInTransaction()` creates the tenant, master store, canonical business type/category fields, time settings, subdomain reservation, default roles, `storesSummary`, and counters. `updateUserWithTenantStore()` adds the owner mapping in the same transaction.
 
+When `ENABLE_MENULIST_SELF_REPORTED_DISCOVERY` is enabled, the pricing setup
+modal may send one optional value from the shared closed discovery vocabulary.
+The strict onboarding schema rejects unknown values. The server stores the
+projected `{ method, channel, category }` object as
+`tenantExtra.selfReportedDiscovery` inside the existing allocation transaction.
+It accepts no free text and does not affect plan selection, payment identity,
+referral settlement, or access.
+
 This website-specific admission is not applied blindly to reseller, messaging, public-create-menu, or Answerlattice sources; those callers retain their own identity contract while sharing tenant/store creation.
 
 ## Identity and compensation scope boundary
@@ -77,6 +85,7 @@ The browser signs in with the returned custom token or forces an existing Fireba
 
 ```bash
 npm run verify:auth-onboarding-flow
+npm run verify:marketing-external-insights
 npm run test:phone-otp-transaction:emulator
 npm run test:claim-account-concurrency:emulator
 npm run test:onboarding-user-concurrency:emulator

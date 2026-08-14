@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Test Cases
 
-> **Last Audited:** 2026-07-19
+> **Last Audited:** 2026-08-13
 
 | ID | Case | Expected result | Proof |
 |---|---|---|---|
@@ -27,11 +27,14 @@
 | ONB-20 | New attempt follows compensated failure | Clear stale provider ID/recovery/cancellation fields before provider work | Runtime source gate |
 | ONB-21 | Persisted amount or provider installment count is a string, boolean, fraction, zero or non-finite value | Fail closed; do not coerce or persist billing truth | Contract + runtime source gate |
 | ONB-22 | Recovery timestamp has coercible members, invalid Date, hostile getter or throwing `toMillis` | Treat timestamp as unavailable without throwing or changing recovery timing | Contract |
+| ONB-23 | Optional discovery source is omitted or uses any supported value | Setup proceeds; supported value is projected on the initial tenant write only and does not change the provisioning fingerprint | Contract + source gate |
+| ONB-24 | Discovery source is unknown, wrong-cased, free text, or non-string | Strict request validation rejects it before account/provider work | Contract + runtime source gate |
 
 ## Required Local Gates
 
 ```bash
 npm run test:answerlattice-onboarding-provisioning
+npm run verify:marketing-external-insights
 npm run test:answerlattice-onboarding-provisioning:emulator
 node scripts/verification/verify-answerlattice-runtime-truth.js
 npx tsc --noEmit --pretty false --incremental false

@@ -27,6 +27,7 @@
 | MLD-006 | Create execution plan | Codex | Done | `menulist-marketing-distribution_execution-plan.md` |
 | MLD-007 | Create consultant log | Codex | Done | `menulist-marketing-distribution_consultant-log.md` |
 | MLD-008 | Review launch-platform and international-acquisition ChatGPT response | Codex | Done | `menulist-marketing-distribution_launch-distribution-review.md` |
+| MLD-009 | Create DistributionOS internal knowledge and routing system | Codex | Done | Added the repo-local `$distribution-os` skill, typed product/ledger registry, read-only audit/retrieval commands, verifier, and full internal docs without a database, public/runtime surface, provider action, or SignalDesk duplication |
 
 ## WhatsApp-First Moat Actions
 
@@ -72,6 +73,7 @@
 | MLD-F013 | Structure cancellation intelligence | Codex | Done | Desktop/mobile use stable reason codes; subscription audit stores bounded detail; idempotent founder revenue summaries count codes only |
 | MLD-F014 | Add Apple Business Connect and Bing Places placement | Codex | Done | Added owner-confirmed desktop/mobile placement guides and activation signals; no sync, crawl, or verification claim |
 | MLD-F015 | Add source-to-paid and day-30 pilot evidence contract | Codex | Done | Added a separate proof-and-retention review to the Bengaluru board; runtime remains gated until manual cohort evidence shows a repeated founder decision need |
+| MLD-F016 | Capture optional self-reported discovery at paid onboarding | Codex | Done | MenuList and Answerlattice use one shared closed vocabulary, product-specific flags, privacy disclosure, and the existing tenant creation write; no free text, collection, index, scheduler, provider call, or extra Firestore operation |
 
 ## Asset Actions
 
@@ -129,6 +131,7 @@
 | MLD-R018 | Weekly distribution watch specification | Codex | Done | Created `menulist-marketing-distribution_weekly-distribution-watch.md` with Monday 9:00 AM IST cadence, exact read-only research prompt, source hierarchy, materiality gate, output contract, and safety boundaries; activated supported Codex automation `menulist-distribution-watch`; no raw cron workaround was created |
 | MLD-R019 | Current AI sales, marketing, and distribution workflow research | Codex | Done | Created `../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md` and the self-contained AI revenue market brief; compared current platform and practitioner workflows with SignalDesk code/docs and adopted shadow-mode proof before any new runtime or autonomy |
 | MLD-R020 | Signal-led GTM and MenuList distribution use-case refresh | Codex | Done | August 10 primary-source review confirmed the existing signal -> evidence -> matched play -> permission -> activation -> outcome loop; recorded as `ML-MKT-EXT-009`. No new runtime, provider, CRM, public score, auto-publish, send, or spend authority was admitted |
+| MLD-R021 | Gamma AI discovery and dark-attribution review | Codex | Done | Recorded as `ML-MKT-EXT-011` and `PP-DIST-EXT-002`; adopted bounded self-reported attribution, deferred unsupported platform figures and agent surfaces, and rejected agent-only manipulation and autonomous commercial authority |
 
 ## Learning Cohort and Physical Partner Actions
 
@@ -214,3 +217,7 @@
 | MLD-V030 | First proof run and weekly watch verification | Codex | Done | Passed `npm run verify:signaldesk` with 2,183 checks, `npm run docs:check-links` with 0 broken links and 0 naming violations, exact type/field mapping verification, scoped `git diff --check`, new-file whitespace scan, prohibited-claim scan, and Codex automation view check for `menulist-distribution-watch`; repo-wide `git diff --check` remains blocked by unrelated pre-existing trailing whitespace in `__docs__/cost-self-protection/cost-self-protection_spec.md` |
 | MLD-V031 | AI revenue workflow research verification | Codex | Done | Passed `npm run verify:signaldesk` with 2,221 checks, both SignalDesk and marketing-distribution docs link checks with 0 broken links and 0 naming violations, scoped `git diff --check`, required Overview/Competitors/Guidance/Sources and 24-source HTML contract, desktop and small-screen Chrome render review, and print-to-PDF smoke; no runtime or deploy gate was required |
 | MLD-V032 | Signal-led distribution alignment verification | Codex | Done | `npm run docs:check-links` passed with 0 broken links across 2,927 docs and 5,062 links; 62 existing video/HyperFrames filename warnings remain. Scoped `git diff --check` and exact-entry/field uniqueness checks passed; no runtime, provider, build, deploy, or outreach gate was required |
+| MLD-V033 | External-insight and self-reported discovery verification | Codex | Done | Passed `npm run verify:marketing-external-insights` (11 entries), self-reported mapping, purchase-intent, MenuList onboarding authority, Answerlattice provisioning, exact TypeScript, full lint, focused lint, locale JSON/resource checks, dependency freeze, docs links with 0 broken links, and diff integrity. The broad Answerlattice runtime-truth source gate still stops on a pre-existing checkout-analytics token mismatch that is also present in `HEAD` |
+| MLD-V034 | DistributionOS package, skill, retrieval, and boundary verification | Codex | Done | Passed the focused DistributionOS source/registry suite (13 entries, ten routes), official skill validator, retrieval samples, docs links with 0 broken links, typecheck, full and focused lint, dependency freeze, metadata YAML parse, and diff integrity; evidence is recorded in `../distribution-operating-system/distribution-operating-system_validation.md` |
+| MLD-V035 | DistributionOS default durable-intake correction | Codex | Done | Passed the 14-entry/two-ledger/ten-route DistributionOS suite, exact `PP-DIST-EXT-003` retrieval, official skill validation, focused lint, docs links with 0 broken links, and diff integrity while preserving all product implementation and external-action gates |
+| MLD-V036 | DistributionOS living-Bible selective-curation correction | Codex | Done | Passed the 20-file/14-evidence/ten-route suite, Bible-first planner output, official skill validation, focused lint, typecheck, dependency freeze, docs links with 0 broken links, and diff integrity; existing ledgers remain selected evidence and execution boundaries are unchanged |

@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Spec
 
-> **Version:** 1.5.1
-> **Last Updated:** 2026-07-19
+> **Version:** 1.7.0
+> **Last Updated:** 2026-08-13
 > **Audience:** CEO / PM
 
 ---
@@ -18,7 +18,7 @@ Allow external SaaS founders to create an Answerlattice account via self-service
 2. **Evaluate** → Read product page, pricing, about
 3. **Sign Up** → Click "Get Early Access" → answerlattice.com/get-started
 4. **Authenticate** → Google OAuth (one click)
-5. **Configure** → Enter company/product details, select Starter/Growth/Studio, choose INR or USD, and select initial product surfaces
+5. **Configure** → Enter company/product details, optionally select one closed-list first-discovery source, select Starter/Growth/Studio, choose INR or USD, and select initial product surfaces
 6. **Provisioned** → A resumable attempt creates the tenant/store, pending paid subscription, and one-time widget key without treating a lost browser response as permission to duplicate provider state
 7. **Onboard** → Go to dashboard → Upload KB → Extract entities → Create canonical answers → Embed widget
 
@@ -40,7 +40,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Entity | Collection | Details |
 |--------|-----------|---------|
-| Tenant | `tenants` | Company profile, onboardingSource: ANSWERLATTICE_ONBOARDING, productId: AL |
+| Tenant | `tenants` | Company profile, onboardingSource: ANSWERLATTICE_ONBOARDING, productId: AL, and optional closed-list `selfReportedDiscovery` |
 | Store | `stores` | Product workspace, roles, widget key auto-generated |
 | User update | `users` | Answerlattice project user gets tenantId + storeId; default auth user gets `productAccounts.AL` bridge only |
 | Subscription | `subscriptions` | Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
@@ -65,6 +65,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 - Non-destructive recovery: payment-pending retry requires the original request fingerprint, transactionally restores the current product-account bridge, creates only missing initial surfaces/summary truth, and never merge-resets an existing owner-edited surface
 - Rate limited: 3 onboarding attempts per user per hour
 - Validation: company name is required (min 2 chars); product URLs are HTTP(S)-only and cannot contain embedded credentials
+- Discovery privacy: the optional discovery answer is a strict shared enum with no free text; it does not affect request fingerprint, provider identity, billing, access, or entitlement
 - Duplicate prevention: user with existing `productAccounts.AL` or Answerlattice-project user tenant/store is blocked from re-onboarding; duplicate normalized-email records fail closed rather than selecting one arbitrarily; a MenuList tenant alone does not block Answerlattice onboarding.
 - Retry hygiene: a new attempt after compensated failure clears stale provider ID, recovery time/reason, and cancellation fields before provider work starts
 - Widget key: Unique `al_*` key per generated credential, capped under the store-doc widget key manager
@@ -92,6 +93,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-13 | 1.7.0 | Added optional closed-list self-reported discovery to the existing tenant write, outside provisioning idempotency |
 | 2026-08-01 | 1.6.0 | Added current-auth/transactional bridge authority, exact hosted-checkout finalization, fingerprint-bound payment-pending recovery, and non-destructive bootstrap repair |
 | 2026-07-19 | 1.5.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email admission, HTTP(S)-only product URLs, and route-wide private responses |
 | 2026-07-19 | 1.5.0 | Defined durable provider-recovery hold, created-only exact provider matching, post-finalization recovery, response privacy, entitlement, success, and non-goal boundaries |

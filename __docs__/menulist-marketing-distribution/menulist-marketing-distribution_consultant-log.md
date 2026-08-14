@@ -1621,3 +1621,185 @@ The founder requested a renewed deep internet review of how teams currently use 
 - No provider, CRM, calendar, proposal, payment, ad, or social platform was connected.
 - No runtime code, API, collection, feature flag, Firebase target, build, or deploy was changed.
 - Vendor and practitioner sources remain directional market evidence, not MenuList performance proof or outreach authority.
+
+---
+
+## August 13, 2026 - Gamma AI Discovery Review And External Insight Intake Hardening
+
+### Context
+
+The founder supplied a 23-point summary of a Gamma growth discussion and asked
+for the valid codebase changes plus a durable system for future articles and AI
+conversations.
+
+### Decisions
+
+- Reused the maintained MenuList external-insight ledger and portfolio
+  distribution ledger instead of creating a competing notes folder.
+- Preserved the supplied claims as source assertions because no original video,
+  transcript, methodology, or evidence workbook was supplied.
+- Adopted the real measurement gap: visible click/referrer analytics can miss
+  AI-assisted discovery, so paid onboarding now asks one optional closed-list
+  first-discovery question.
+- Rejected free text and retained only a shared `method`, `channel`, and broad
+  `category` vocabulary.
+- Stored the answer on the existing tenant creation write for MenuList and
+  Answerlattice. No extra collection, index, scheduler, provider call, analytics
+  event, or Firestore operation was introduced.
+- Kept the Answerlattice answer outside the provisioning fingerprint so a
+  marketing field cannot change billing, recovery, ownership, or entitlement.
+- Deferred every unsupported percentage, multiplier, indexing delay, citation
+  lifetime, platform-source absolute, agent app, agent install, and autonomous
+  signup idea to explicit evidence and product gates.
+- Rejected agent-only persuasion, prompt injection, fake urgency, fabricated
+  discounts, competitor manipulation, and autonomous billing, publishing, or
+  business-truth authority.
+
+### Durable Intake System
+
+- MenuList-only sources route to `ML-MKT-EXT-NNN` entries.
+- Cross-product sources route to `PP-DIST-EXT-NNN`, with compact product-local
+  entries only when they change active work.
+- Product-specific sources stay in that product's maintained docs.
+- Every entry carries source limits, status, topics, use trigger, revalidation
+  trigger, verdict, current decision, related truth, and outcome history.
+- `npm run verify:marketing-external-insights` guards sequential IDs, required
+  fields, routing documentation, and the shared signup attribution contract.
+
+### Verification
+
+- `npm run verify:marketing-external-insights` passed with 11 sequential
+  MenuList entries and the shared discovery behavior test.
+- Purchase-intent, MenuList onboarding authority/compensation, and Answerlattice
+  onboarding provisioning contract tests passed.
+- Exact TypeScript, full repo lint, focused changed-file lint, locale JSON,
+  website resource locales, dependency freeze, docs links, and diff integrity
+  passed. Docs reported 0 broken links and the same 62 existing video/HyperFrames
+  naming warnings.
+- The broad `verify-answerlattice-runtime-truth.js` source gate stops on its
+  existing expectation for a checkout analytics label using `result.plan`; the
+  checked-in `HEAD` form already uses `planId` for that setup-submit label. The
+  mismatch predates this change and the focused provisioning gate passes.
+
+### Boundaries
+
+- No external content was published, account was changed, provider was
+  connected, campaign was started, business was contacted, or spend was enabled.
+- No AI app, MCP expansion, autonomous signup, comparison page, Reddit tactic,
+  or reporting dashboard was added.
+- Manual tenant-cohort review remains sufficient until real signup volume shows
+  a repeated reporting need.
+
+---
+
+## August 13, 2026 - DistributionOS Internal System
+
+### Context
+
+The founder decided that repeated marketing and distribution articles should
+use an internal operating system, comparable in governance shape to AssetOS and
+SecurityOS, so future tasks can be coordinated through one stable tag.
+
+### Decision
+
+- Created DistributionOS as a repo-local knowledge intake, validation,
+  retrieval, and product-routing system.
+- Added `$distribution-os` as the stable invocation for future tasks.
+- Kept the existing MenuList and portfolio Markdown ledgers canonical rather
+  than creating another database or duplicate entry manifest.
+- Registered current product/surface classes and their truth paths, execution
+  owners, and exclusions.
+- Preserved SignalDesk as the MenuList execution, experiment, approval,
+  attribution, and outcome owner.
+- Kept `APPLY_NOW` as an internal decision only; it never grants publishing,
+  outreach, account/provider, spend, or deploy authority.
+
+### Implementation
+
+- Added `packages/distribution-os/` with typed boundaries, product/ledger
+  profiles, Markdown parsing, registry audit, and read-only retrieval planner.
+- Added `.agents/skills/distribution-os/` with UI metadata and detailed product
+  routing.
+- Added the complete internal documentation set in
+  `__docs__/distribution-operating-system/`.
+- Added the internal feature flag and focused source/behavior verification.
+
+### Boundaries
+
+- No public route, website promotion, dashboard, mobile screen, API, database,
+  Firebase operation, scheduler, external research automation, AI/provider call,
+  scraping, publishing, outreach, account action, spend, build, or deploy was
+  added.
+- Audit success proves repository integrity only; it does not validate an
+  external source or prove a distribution tactic works.
+
+---
+
+## August 13, 2026 - DistributionOS Default Capture Correction
+
+### Finding
+
+The separate-thread SEO article test correctly invoked DistributionOS,
+preserved source limitations, classified claims, routed MenuList and
+Answerlattice separately, and protected SignalDesk/external-action boundaries.
+It did not preserve the reviewed source because the initial review-only rule
+blocked all documentation writes.
+
+That behavior was safe but incomplete for the founder's intended long-term
+knowledge collection system.
+
+### Correction
+
+- A substantive matching input now authorizes one canonical ledger record by
+  default unless the founder says `do not log this`.
+- Review/default intake may update only the selected insight ledger and directly
+  required internal index, action-log, changelog, and validation records.
+- Product code, public/product docs, campaigns, pages, publishing, outreach,
+  accounts/providers, spend, builds, and deployments remain separately gated.
+- Exact duplicate sources update outcome history instead of creating another
+  ID.
+- Useful confirmation and important rejection are retained so future strategy
+  can retrieve what was already accepted or ruled out.
+
+### Recovered Test Input
+
+The SaaS SEO page-family article is now stored as `PP-DIST-EXT-003`. Its durable
+decision is to use the nine families as an opportunity taxonomy, strengthen
+existing MenuList and Answerlattice canonical pages first, require live demand
+and proof before new URLs, and reject bulk/automatic publishing or a duplicate
+cross-product SEO runtime.
+
+---
+
+## August 14, 2026 - DistributionOS Living-Bible Curation Model
+
+### Founder Correction
+
+The founder clarified that DistributionOS should not preserve every shared X
+post or article. The goal is not to track what was shared, when it was shared,
+or why it appeared in a chat. The goal is a continuously improved marketing and
+distribution Bible that can guide future work after many external inputs have
+been evaluated.
+
+### Final Model
+
+- The Marketing and Distribution Bible is the primary future reading surface.
+- Codex autonomously decides whether an input adds durable value using current
+  repo truth, product strategy, existing doctrine, and evidence quality.
+- Admission requires a material doctrine improvement/correction, reusable
+  workflow or measurement pattern, important risk, real decision/gate change,
+  or credible hypothesis evidence.
+- Repetition, unsupported folklore, temporary tricks, ungrounded tool lists,
+  and interesting but non-decision-useful content create no durable record.
+- Useful knowledge is synthesized thematically; the Bible is not chronological.
+- Existing ledgers remain supporting evidence only when provenance or detailed
+  product/claim validation will help later.
+- SignalDesk and product systems retain execution and outcome ownership.
+
+### Initial Bible
+
+The first edition synthesizes the current durable doctrine for product truth,
+proof before scale, audience/problem alignment, qualified outcomes, SEO page
+admission, AI discovery and dark attribution, organic content, video, paid
+acquisition, permissioned field distribution, measurement, system ownership,
+product routing, and revalidation.

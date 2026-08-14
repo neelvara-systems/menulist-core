@@ -1,0 +1,4 @@
+interface:
+  display_name: "DistributionOS"
+  short_description: "Curate marketing and distribution doctrine"
+  default_prompt: "Use $distribution-os to decide whether this input materially improves our Marketing and Distribution Bible and update only useful doctrine."

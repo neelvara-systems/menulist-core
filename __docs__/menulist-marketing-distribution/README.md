@@ -31,7 +31,9 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 
 | Document | Purpose |
 | --- | --- |
+| [DistributionOS](../distribution-operating-system/README.md) | Repository-wide `$distribution-os` intake, validation, retrieval, and product-routing system over the maintained ledgers |
 | [menulist-marketing-distribution_external-insight-ledger.md](./menulist-marketing-distribution_external-insight-ledger.md) | Maintained intake and retrieval ledger for useful external posts, articles, videos, expert feedback, market observations, and deferred ideas |
+| [Portfolio distribution insight ledger](../strategy/product-portfolio-distribution-insight-ledger.md) | Cross-product verdicts when one external input affects MenuList and one or more separate products |
 | [menulist-marketing-distribution_source-review.md](./menulist-marketing-distribution_source-review.md) | Point-by-point review of the captured ChatGPT conversation, with MenuList decisions |
 | [menulist-marketing-distribution_research.md](./menulist-marketing-distribution_research.md) | Current market, channel, launch, SEO, messaging, and compliance research |
 | [menulist-marketing-distribution_strategy.md](./menulist-marketing-distribution_strategy.md) | Consultant-level strategy, positioning, funnel, channels, assets, and metrics |
@@ -94,6 +96,43 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 - Do not use paid marketing until the upload -> preview -> approval -> publish -> two-surface activation chain is measurable.
 - Do not use WhatsApp, SMS, calls, or email outreach at scale without consent, unsubscribe, suppression, sender health, and jurisdiction review.
 - Keep every execution item tied to one of these outcomes: current list uploaded, preview prepared, owner approval, public link published, two customer surfaces activated, paid plan, partner lead, multi-location review.
+
+## External Input Routing
+
+This is the selective curation contract for future articles, videos, posts,
+transcripts, AI conversations, and founder-supplied summaries:
+
+Use `$distribution-os` in the task when you want this contract applied. The
+repo-local skill reads the
+[Marketing and Distribution Bible](../distribution-operating-system/distribution-operating-system_bible.md),
+checks current product truth and unstable claims, decides whether the input adds
+anything materially useful, and routes only the smallest authorized change. Its
+full internal contract lives in
+[DistributionOS](../distribution-operating-system/README.md).
+
+1. Do not store content merely because it was shared. Admit only a durable
+   principle, material doctrine improvement/correction, reusable workflow or
+   measurement pattern, important risk, real decision/gate change, or credible
+   hypothesis evidence.
+2. Synthesize reusable knowledge into the Bible's thematic sections. Do not
+   create a chronological article diary.
+3. A **MenuList-only source** belongs in the
+   [MenuList evidence ledger](./menulist-marketing-distribution_external-insight-ledger.md)
+   only when its provenance or detailed validation will matter later.
+4. A **cross-product source** belongs in the
+   [portfolio evidence ledger](../strategy/product-portfolio-distribution-insight-ledger.md)
+   only when a durable product-by-product decision trail is valuable.
+5. Product-specific docs change only when separately authorized and active
+   product truth changes.
+6. Before related marketing, SEO, AI-discovery, launch, channel, or conversion
+   work, read the Bible first and retrieve source evidence only when needed.
+
+Guard the system with:
+
+```bash
+npm run verify:distribution-os
+npm run verify:marketing-external-insights
+```
 
 ## Current Decision
 

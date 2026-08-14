@@ -170,7 +170,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         clearStoredPurchaseIntent();
     }
 
-    const handleOnboardingModalSubmit = (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => {
+    const handleOnboardingModalSubmit = (details: Pick<PurchaseIntent, 'businessName' | 'businessIndustry' | 'timeZone' | 'businessDayEndTime' | 'selfReportedDiscoveryChannel'>) => {
         if (!pendingPlan) {
             logPaymentFailure('payment_pricing_pending_plan_missing', undefined, buildPricingPaymentLogContext('onboarding_submit'));
             return;

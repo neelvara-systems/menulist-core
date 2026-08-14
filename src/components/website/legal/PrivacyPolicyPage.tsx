@@ -17,6 +17,7 @@ const dataCollected = [
             'Business content: Menus, price lists, images, and documents you upload',
             'Public media prepared by MenuList removes original image metadata before storage',
             'Payment information: Razorpay handles payment entry and payment method details; MenuList stores payment status and billing references needed for subscriptions',
+            'Optional discovery information: The closed-list source you select when asked where you first heard about MenuList',
         ],
     },
     {
@@ -76,6 +77,7 @@ const howWeUse = [
     { label: 'Communications', value: 'Send important updates and policy changes' },
     { label: 'Staff access control', value: 'Create staff access, apply roles, reset passcodes, and revoke sessions' },
     { label: 'Improve platform', value: 'Use consented analytics and reliability signals to improve public pages and product quality' },
+    { label: 'Understand discovery', value: 'Use optional self-reported signup sources to compare broad acquisition channels without collecting free-text profiles' },
     { label: 'Security', value: 'Detect and prevent fraud and abuse' },
     { label: 'Referral rewards', value: 'Attribute owner invitations, verify paid eligibility, issue credits, and maintain an auditable reward ledger' },
     { label: 'Legal compliance', value: 'Comply with laws and regulations' },
@@ -132,7 +134,7 @@ const retentionFacts = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'July 17, 2026';
+    const lastUpdated = 'August 13, 2026';
 
     return (
         <main className="ws-page">

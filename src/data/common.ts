@@ -1,3 +1,5 @@
+import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
+
 // Common tag colors used across the application
 export const antdTagColors = [
     'red',
@@ -47,6 +49,7 @@ export interface PurchaseIntent {
     businessIndustry: string;
     timeZone?: string;
     businessDayEndTime?: string;
+    selfReportedDiscoveryChannel?: SelfReportedDiscoveryChannel;
 }
 
 export interface Plan {

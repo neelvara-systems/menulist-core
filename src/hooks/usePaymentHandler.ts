@@ -755,7 +755,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         return await new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
             void (async () => {
             try {
-                const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime } = purchaseIntent;
+                const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = purchaseIntent;
 
                 if (!session?.user) {
                     throw new Error('Unauthorized');
@@ -788,7 +788,8 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                         currency,
                         userType: plan.type,
                         timeZone,
-                        businessDayEndTime
+                        businessDayEndTime,
+                        selfReportedDiscoveryChannel,
                     })
                 });
 

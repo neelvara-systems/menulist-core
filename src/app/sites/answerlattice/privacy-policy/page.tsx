@@ -32,6 +32,7 @@ const SECTIONS = [
             'It also handles product support content, knowledge-base imports, FAQs, changelog entries, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
             'Knowledge intake sources can include selected public URLs, pasted support text, starter answers, and supported document text. Customers should avoid importing unnecessary personal data.',
             'Page context should describe the product page, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
+            'During signup, a customer may optionally select a closed-list source describing where they first heard about AnswerLattice. The field does not accept free text.',
         ],
     },
     {
@@ -39,6 +40,7 @@ const SECTIONS = [
         body: [
             'AnswerLattice uses workspace and support content to power help centers, hosted docs, approved answers, widget responses, ticket fallback, changelog relevance, readiness summaries, and support-gap review queues.',
             'Operational logs and ticket debugging context are used to keep the service reliable, investigate reported failures, protect the service from abuse, and understand whether support knowledge is stale or incomplete.',
+            'Optional self-reported signup sources are used to compare broad acquisition channels, including AI assistants, search, communities, and referrals.',
         ],
     },
     {
@@ -94,7 +96,7 @@ export default async function AnswerlatticePrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 19, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: August 13, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how AnswerLattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.

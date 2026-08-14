@@ -1,6 +1,8 @@
 'use client';
 
-import { PlanType } from '@data/common';
+import { FEATURE_FLAGS } from '@config/features';
+import type { PlanType } from '@data/common';
+import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
 import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog';
 import { Button } from '@shadcncomponents/button';
 import { Dialog, DialogContent, DialogHeader } from '@shadcncomponents/dialog';
@@ -19,7 +21,7 @@ import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 interface OnboardingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => void;
+    onSubmit: (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string; selfReportedDiscoveryChannel?: SelfReportedDiscoveryChannel }) => void;
     businessType: PlanType;
 }
 
@@ -29,6 +31,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
     const [businessName, setBusinessName] = useState('');
     const [businessIndustry, setBusinessIndustry] = useState('');
     const [timeZone, setTimeZone] = useState('');
+    const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
     const { data: session } = useSession();
 
     useEffect(() => {
@@ -56,6 +59,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
             businessIndustry: normalizedIndustry,
             timeZone,
             businessDayEndTime: resolveBusinessDayEndTime(normalizedIndustry),
+            selfReportedDiscoveryChannel: selfReportedDiscoveryChannel || undefined,
         });
     };
 
@@ -112,6 +116,31 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY && (
+                        <div className="grid w-full items-center gap-2">
+                            <Label htmlFor="selfReportedDiscoveryChannel">{t('Pricing.discoverySourceLabel')}</Label>
+                            <Select
+                                onValueChange={(value) => setSelfReportedDiscoveryChannel(value as SelfReportedDiscoveryChannel)}
+                                value={selfReportedDiscoveryChannel}
+                            >
+                                <SelectTrigger id="selfReportedDiscoveryChannel" className="w-full justify-between">
+                                    <SelectValue placeholder={t('Pricing.discoverySourcePlaceholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="chatgpt">ChatGPT</SelectItem>
+                                    <SelectItem value="claude">Claude</SelectItem>
+                                    <SelectItem value="gemini">Gemini</SelectItem>
+                                    <SelectItem value="microsoft_copilot">Microsoft Copilot</SelectItem>
+                                    <SelectItem value="perplexity">Perplexity</SelectItem>
+                                    <SelectItem value="search_engine">{t('Pricing.discoverySourceSearch')}</SelectItem>
+                                    <SelectItem value="social_or_community">{t('Pricing.discoverySourceSocial')}</SelectItem>
+                                    <SelectItem value="friend_or_colleague">{t('Pricing.discoverySourceReferral')}</SelectItem>
+                                    <SelectItem value="other">{t('Pricing.discoverySourceOther')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
                     <p className="text-sm text-muted-foreground">{t('Pricing.setupModalNote')}</p>
 

@@ -1,5 +1,62 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Project List Scope And Recovery State
+
+- Removed the desktop project list's redundant dependency on a second nested
+  session snapshot after the shared provider has already established an exact
+  tenant/store project scope.
+- Added stable loading, explicit read-failure, and retry states so a skipped or
+  failed Firestore read cannot render the successful empty-menu experience.
+- Extended the focused project editor verifier to lock the provider-scope read
+  gate and settled-empty boundary. No Firestore rule, write shape, Function,
+  provider call, dependency, or deployment was changed.
+
+## August 14, 2026 - DistributionOS Living Marketing And Distribution Bible
+
+- Replaced automatic per-source capture with selective curation: sharing an
+  article no longer guarantees a repository record.
+- Added one living Marketing and Distribution Bible as the primary synthesis of
+  durable positioning, proof, SEO, AI-discovery, organic-channel, video, paid,
+  permissioned-distribution, measurement, product-routing, and system-ownership
+  doctrine.
+- Added an explicit admission test. DistributionOS stores only material doctrine
+  improvements/corrections, reusable workflows or measurements, important
+  risks, real decision/gate changes, or credible hypothesis evidence.
+- Reframed the MenuList and portfolio ledgers as selected supporting evidence,
+  not a diary of what the founder shared or the primary future reading surface.
+- Updated the repo-local skill, planner, audit, verifier, runbooks, and operator
+  guide to read the Bible first and allow “no durable change” as the correct
+  result for repetitive, unsupported, temporary, or non-decision-useful content.
+- No product runtime, public page, Firebase operation, provider, campaign,
+  publishing, outreach, spend, build, or deployment was added.
+
+## August 13, 2026 - DistributionOS Internal Knowledge And Routing System
+
+- Added the repo-local `$distribution-os` skill so future founder-shared
+  marketing/distribution articles, posts, videos, AI conversations, competitor
+  examples, and claims follow one reusable intake and product-routing workflow.
+- Made the tag optional: content-fit detection now explicitly applies when
+  matching material is shared in another repository task without naming
+  DistributionOS, while never implying access to content absent from that task.
+- Made durable knowledge capture the default for substantive matching inputs,
+  unless the founder explicitly opts out. Review-only still blocks product
+  implementation and every external action; exact duplicate sources update
+  outcome history instead of creating duplicate IDs.
+- Captured the separate-thread SaaS SEO page-family test as
+  `PP-DIST-EXT-003`, preserving its taxonomy value, source limitations,
+  product-by-product verdicts, evidence gates, and rejected automation scope.
+- Kept the existing MenuList and portfolio Markdown insight ledgers canonical;
+  added typed product/ledger profiles plus read-only audit and retrieval commands
+  instead of a duplicate database or entry manifest.
+- Registered ten current product/surface classes with explicit truth paths,
+  execution ownership, and exclusions. SignalDesk remains the MenuList
+  execution, experiment, approval, attribution, and outcome owner.
+- Added the full internal documentation set and focused verification for
+  sequential IDs, required entry fields, product/topic/status/ID retrieval,
+  skill structure, source boundaries, and package separation.
+- Added no public route, UI, API, Firebase operation, scheduler, provider/AI
+  call, scraping, publishing, outreach, account action, spend, build, or deploy.
+
 ## August 13, 2026 - Existing-Account Public Menu Host Repair
 
 - Reproduced a successful hosted existing-account claim whose project, compact
@@ -13,6 +70,26 @@
   subdomains are preserved, and no extra document operation, rule, index,
   Storage object, Function, or provider call was added.
 - Extended both extraction verifiers to lock the route and write boundary.
+
+## August 13, 2026 - External Insight Intake And Self-Reported Discovery
+
+- Extended the existing MenuList and portfolio external-insight ledgers for the
+  founder-supplied Gamma AI-discovery summary, preserving its unsupported
+  platform figures as revalidation-required claims and rejecting agent-only
+  manipulation, fake urgency, and autonomous commercial authority.
+- Added one optional closed-list `Where did you first hear about us?` field to
+  the MenuList and Answerlattice paid onboarding flows behind product-specific
+  flags.
+- Reused one shared controlled vocabulary and projected only `method`,
+  `channel`, and broad `category` onto the tenant created by each existing
+  onboarding transaction. No free text, collection, index, listener, scheduler,
+  provider call, analytics event, or extra Firestore operation was added.
+- Kept Answerlattice discovery outside its provisioning request fingerprint, so
+  marketing attribution cannot change provider recovery, billing identity,
+  entitlement, or workspace ownership.
+- Updated both privacy disclosures, onboarding documentation, marketing action
+  register, and the durable external-insight routing contract. Added focused
+  source and behavior verification for future intake and attribution drift.
 
 ## August 13, 2026 - Hosted Public Menu Claim Firestore Projection Fix
 

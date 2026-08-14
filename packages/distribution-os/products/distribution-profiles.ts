@@ -1,0 +1,140 @@
+import type {
+    DistributionOsLedgerDefinition,
+    DistributionOsProductProfile,
+} from '../schemas/distribution-os-schema';
+
+export const DISTRIBUTION_OS_BIBLE_PATH =
+    '__docs__/distribution-operating-system/distribution-operating-system_bible.md';
+
+const PORTFOLIO_PRODUCTS = [
+    'menulist',
+    'answerlattice',
+    'campaigncue',
+    'signaldesk',
+    'growthos',
+    'mycodex',
+    'surfaceos',
+    'kitstamp',
+    'neelvara',
+    'canonica',
+] as const;
+
+export const DISTRIBUTION_OS_LEDGERS: DistributionOsLedgerDefinition[] = [
+    {
+        id: 'menulist-external-insights',
+        title: 'MenuList External Insight Ledger',
+        path: '__docs__/menulist-marketing-distribution/menulist-marketing-distribution_external-insight-ledger.md',
+        entryPrefix: 'ML-MKT-EXT',
+        productScope: ['menulist'],
+        requiredMetadata: ['Status', 'Shared', 'Source', 'Source type', 'Topics', 'Use when', 'Revalidate'],
+        requiredSections: [
+            '**Source idea**',
+            '**MenuList verdict**',
+            '**Current decision**',
+            '**Related MenuList truth**',
+            '**Outcome history**',
+        ],
+    },
+    {
+        id: 'portfolio-distribution-insights',
+        title: 'Product Portfolio Distribution Insight Ledger',
+        path: '__docs__/strategy/product-portfolio-distribution-insight-ledger.md',
+        entryPrefix: 'PP-DIST-EXT',
+        productScope: [...PORTFOLIO_PRODUCTS],
+        requiredMetadata: ['Status', 'Shared', 'Source', 'Source type', 'Topics', 'Revalidate'],
+        requiredSections: ['#### Current Decision', '#### Outcome History'],
+    },
+];
+
+export const DISTRIBUTION_OS_PRODUCT_PROFILES: DistributionOsProductProfile[] = [
+    {
+        id: 'menulist',
+        displayName: 'MenuList',
+        className: 'active public product',
+        ledgerIds: ['menulist-external-insights', 'portfolio-distribution-insights'],
+        truthPaths: ['__docs__/menulist-marketing-distribution/README.md'],
+        executionOwner: 'SignalDesk for governed execution; MenuList docs for product truth',
+        exclusions: ['No autonomous publishing, outreach, spend, or business-truth changes.'],
+    },
+    {
+        id: 'answerlattice',
+        displayName: 'Answerlattice',
+        className: 'active separate public product',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/answerlattice/doctrine/01-core-doctrine.md', '__docs__/answerlattice/self-sellable-product-strategy.md'],
+        executionOwner: 'Answerlattice maintained docs and explicitly approved workflows',
+        exclusions: ['No MenuList tenant, messaging, Firebase, or launch assumptions.'],
+    },
+    {
+        id: 'campaigncue',
+        displayName: 'CampaignCue',
+        className: 'separate export/download-first product',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/campaigncue/README.md'],
+        executionOwner: 'CampaignCue reviewed-output workflow',
+        exclusions: ['No provider publishing or account operation without a separate authority change.'],
+    },
+    {
+        id: 'signaldesk',
+        displayName: 'SignalDesk',
+        className: 'internal MenuList growth control room',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/menulist-signaldesk/README.md'],
+        executionOwner: 'SignalDesk',
+        exclusions: ['DistributionOS cannot duplicate SignalDesk evidence, experiment, approval, attribution, or outcome records.'],
+    },
+    {
+        id: 'growthos',
+        displayName: 'GrowthOS / Growth Kits',
+        className: 'MenuList add-on',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/growthos-addon/README.md'],
+        executionOwner: 'MenuList distribution only',
+        exclusions: ['No separate audience, account, website, funnel, or public product identity.'],
+    },
+    {
+        id: 'mycodex',
+        displayName: 'MyCodex',
+        className: 'private documentation reader',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/mycodex-pwa-shell/mycodex-pwa-shell_marketing.md'],
+        executionOwner: 'None',
+        exclusions: ['No public distribution, Firebase, account, or active domain dependency.'],
+    },
+    {
+        id: 'surfaceos',
+        displayName: 'SurfaceOS',
+        className: 'reserved planning-only product',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/surface-os/README.md'],
+        executionOwner: 'None until explicit activation',
+        exclusions: ['No account, content, claims, funnel, or channel work before activation.'],
+    },
+    {
+        id: 'kitstamp',
+        displayName: 'KitStamp',
+        className: 'planned product',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/kitstamp/README.md'],
+        executionOwner: 'None until explicit activation',
+        exclusions: ['No account creation, publishing, outreach, or product claims before activation.'],
+    },
+    {
+        id: 'neelvara',
+        displayName: 'Neelvara Systems',
+        className: 'operating-entity trust surface',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/neelvara-main-website/README.md'],
+        executionOwner: 'Factual company trust surface only',
+        exclusions: ['No founder-content funnel or generic portfolio-growth account.'],
+    },
+    {
+        id: 'canonica',
+        displayName: 'Canonica',
+        className: 'legacy Answerlattice name',
+        ledgerIds: ['portfolio-distribution-insights'],
+        truthPaths: ['__docs__/answerlattice/doctrine/01-core-doctrine.md'],
+        executionOwner: 'None',
+        exclusions: ['No separate account, content, positioning, or distribution.'],
+    },
+];

@@ -1,13 +1,21 @@
 # MenuList External Insight Ledger
 
-**Status:** Active maintained ledger
+**Status:** Supporting evidence archive
 **Created:** July 18, 2026
 **Owner:** Founder with Codex review
 **Scope:** External posts, articles, videos, expert feedback, market observations, AI outputs, competitor examples, and operating ideas relevant to MenuList marketing, launch, distribution, video, positioning, conversion, or growth.
 
 ## Purpose
 
-This ledger preserves useful external inputs that may matter later without turning them into immediate work.
+This ledger preserves selected MenuList source evidence when provenance,
+claim-by-claim validation, or a detailed product decision may matter later. The
+[Marketing and Distribution Bible](../distribution-operating-system/distribution-operating-system_bible.md)
+is the primary reusable doctrine.
+
+This is not a diary of everything the founder reads or shares. Most inputs
+should produce no ledger entry. If an input materially improves durable doctrine,
+synthesize the lesson into the Bible; add an entry here only when the supporting
+source trail will be genuinely useful later.
 
 An entry in this file means:
 
@@ -26,26 +34,27 @@ An entry does **not** mean:
 
 Current repo behavior, MenuList doctrine, verified market/platform guidance, founder decisions, and current launch gates continue to outrank this ledger.
 
-## Intake Workflow
+## Evidence Admission Workflow
 
-Whenever the founder shares a potentially useful external input in a MenuList strategy, marketing, launch, distribution, video, or growth conversation:
+For a MenuList-specific input that passes the Bible admission test:
 
-1. **Capture:** Record the source URL, source type, author or publisher when known, date shared, and a concise summary. Do not paste an entire copyrighted article when a summary is sufficient.
-2. **Validate:** Resolve the primary source when possible. Check factual or platform-dependent claims against current official documentation and current repo truth.
-3. **Classify:** Assign one decision:
+1. **Decide whether evidence retention is necessary:** Add an entry only when provenance, detailed validation, a revalidation trigger, or a product-decision trail will matter later. Do not log repetition, folklore, or interesting but non-decision-useful content.
+2. **Capture only useful provenance:** Record the stable source, source type, author/publisher when known, coverage limitations, and a concise summary. Do not preserve a share diary or paste an entire copyrighted article when a summary is sufficient.
+3. **Validate:** Resolve the primary source when possible. Check factual or platform-dependent claims against current official documentation and current repo truth.
+4. **Classify:** Assign one decision:
    - `APPLY_NOW` - useful, current, within scope, and needed by active work.
    - `DEFERRED_REFERENCE` - useful, but only when a named trigger occurs.
    - `ALREADY_COVERED` - useful confirmation of an existing MenuList rule.
    - `RESEARCH_REQUIRED` - potentially useful, but not yet evidence-backed.
    - `REJECTED` - wrong fit, unsafe, unsupported, stale, or contrary to doctrine.
-4. **Route:** Link the existing MenuList doc, workflow, runtime surface, or future decision where the entry belongs. Do not create implementation work merely because the source was logged.
-5. **Retrieve:** Before related strategy or execution, search this ledger using the topic, channel, funnel stage, or tags.
-6. **Revalidate:** Recheck platform rules, pricing, laws, market facts, APIs, and other time-sensitive claims before applying a deferred entry.
-7. **Close the loop:** If an entry is later adopted, rejected, or superseded, update its status, decision date, linked evidence, and outcome.
+5. **Synthesize:** Update the relevant Bible section with the durable lesson; do not append source chronology to the Bible.
+6. **Route:** Link the existing MenuList doc, workflow, runtime surface, or future decision where the evidence belongs. Do not create implementation work merely because evidence was retained.
+7. **Retrieve and revalidate:** Search this archive only when detailed evidence is needed, and recheck time-sensitive claims before applying them.
 
 ## Retrieval Rules
 
-Search this ledger before work involving:
+Read the Bible first. Search this evidence archive when work needs source-level
+detail involving:
 
 - paid acquisition;
 - Google Ads, Meta Ads, or conversion measurement;
@@ -67,6 +76,10 @@ rg -n "paid-acquisition|meta-ads|google-ads|activation|video-retention" \
 ```
 
 ## Entry Template
+
+This template is only for admitted supporting evidence. Historical `Shared`
+fields remain for audit continuity; future curation does not depend on tracking
+when content appeared in chat.
 
 ```markdown
 ### ML-MKT-EXT-NNN - Short title
@@ -865,6 +878,107 @@ audience-language hypothesis be refreshed from observed deltas.
 **Outcome history**
 
 - August 10, 2026 - Checked the founder-supplied article against current YouTube, TikTok, Reddit, Meta, Instagram, and Apify guidance plus MenuList, SignalDesk, CampaignCue, video, owner-learning, and proof-distribution contracts. Retained the evidence-backed manual-first framework, rejected profiling, bulk scraping, duplicate-community testing, and universal algorithm rules, and confirmed that no runtime change is needed.
+
+### ML-MKT-EXT-011 - Gamma AI Discovery And Dark Attribution Claims
+
+- **Status:** `APPLY_NOW` for optional self-reported discovery measurement; `DEFERRED_REFERENCE`, `RESEARCH_REQUIRED`, or `REJECTED` for the remaining claims as described below.
+- **Shared:** August 13, 2026
+- **Source:** Founder-supplied 23-point summary titled `Watched 1 hour of Gamma's insane $100M growth hacks so you don't have to`; no original video URL, speaker identity, transcript, test design, or source spreadsheet was supplied.
+- **Source type:** Founder-supplied article/conversation summary
+- **Topics:** ai-discovery, answer-engine-optimization, dark-attribution, self-reported-attribution, comparisons, citations, ChatGPT, Claude, Gemini, Copilot, Bing, Reddit, YouTube, LinkedIn, Instagram, agent-install, agent-signup, brand-impersonation
+- **Use when:** Planning signup attribution, factual comparison pages, AI-readable product surfaces, agent-install boundaries, branded-search protection, or a quarterly discovery review for MenuList.
+- **Revalidate:** The original Gamma source and methodology; current OpenAI, Anthropic, Google, Microsoft, Bing, Reddit, YouTube, LinkedIn, and Instagram indexing or citation behavior; MenuList referral data; current public claims; and privacy disclosures. Never reuse the supplied percentages, multipliers, indexing delays, citation lifetimes, or platform absolutes as facts without current evidence.
+
+**Source idea**
+
+The summary argues that discovery is shifting from click-based search toward AI
+answers, comparison-shaped content is more citable than praise, visible web
+analytics undercount AI-assisted discovery, open and machine-readable content
+has an advantage, and products should eventually expose safe install or action
+paths for AI clients. It also describes agent-only urgency copy and aggressive
+competitor framing as growth tactics.
+
+**MenuList verdict**
+
+Apply the smallest evidence-safe measurement change now:
+
+- ask one optional closed-list question during paid workspace onboarding:
+  `Where did you first hear about MenuList?`;
+- distinguish ChatGPT, Claude, Gemini, Microsoft Copilot, Perplexity, search,
+  social/community, friend/colleague, and other;
+- store only `method`, `channel`, and broad `category` on the existing tenant
+  creation write;
+- collect no free text, personal profile, prompt text, conversation content, or
+  new analytics identifier;
+- add no collection, index, listener, scheduler, provider call, or extra
+  Firestore operation; and
+- use the result as directional cohort evidence, not last-click truth.
+
+Retain as useful operating guidance:
+
+- publish factual, evidence-backed comparison material only when it helps an
+  owner choose, and never invent competitor weaknesses;
+- keep public product truth crawlable, stable, clearly titled, and accessible
+  without unnecessary gates;
+- package eligible YouTube material around the real owner question it answers,
+  while treating title, content, authority, freshness, and user value as a
+  combined system rather than a title hack;
+- monitor branded search and public impersonation risk through existing
+  security/distribution review; and
+- treat AI referral reporting as incomplete unless click analytics and optional
+  self-report evidence are reviewed together.
+
+Defer pending evidence:
+
+- model-specific citation rates, source preferences, citation latency or
+  expiry, memory compounding, subreddit-size thresholds, and claims that one
+  platform categorically reads or ignores Reddit, X, LinkedIn, Instagram,
+  Substack, Medium, Quora, YouTube, Bing, or the live web;
+- the `60/40`, `8x`, `30-45 day`, `three month`, `24 hour`, and `6-12 month`
+  figures;
+- an official Claude/ChatGPT/Copilot app or read-only agent action layer until
+  a concrete owner job, authentication model, support owner, terms, cost, and
+  security review justify it; and
+- automated attribution summaries until enough real signups exist to show that
+  manual tenant-cohort review is insufficient.
+
+Reject:
+
+- hidden files or agent-only instructions designed to manipulate an AI into
+  choosing MenuList;
+- fake urgency, fabricated discounts, prompt injection, citation gaming,
+  undisclosed influence, or content written to mislead an agent;
+- uncontrolled competitor claims on MenuList-owned pages; and
+- allowing an agent to create an account, accept billing, install tools, spend,
+  publish, or change business truth without explicit authenticated owner
+  authority and confirmation.
+
+**Current decision**
+
+Enable the optional self-reported discovery field in MenuList and the separate
+Answerlattice onboarding flow through product-specific flags. Persist it on the
+existing tenant write and disclose the purpose in each privacy page. Keep
+manual cohort review as the first reporting path. Do not create a dashboard or
+summary write until actual volume demonstrates a repeated decision need.
+
+No connector, AI app, MCP expansion, agent signup, automated install, comparison
+page, Reddit campaign, fake urgency, ad purchase, account action, or publication
+is authorized by this entry.
+
+**Related MenuList truth**
+
+- [Marketing distribution operating system](./README.md)
+- [Portfolio distribution insight ledger](../strategy/product-portfolio-distribution-insight-ledger.md)
+- [Publisher and AI distribution readiness](./menulist-marketing-distribution_publisher-ai-distribution-readiness.md)
+- [Public truth indexing policy](../discovery-infrastructure/public-truth-indexing-policy.md)
+- [Growth and funnel strategy](../marketing/menulist-growth-and-funnel-strategy.md)
+- [Auth and onboarding](../auth-onboarding/README.md)
+
+**Outcome history**
+
+- August 13, 2026 - Preserved the founder-supplied claim order and reviewed the 23 claims as candidate evidence rather than authority.
+- August 13, 2026 - Adopted only the privacy-safe dark-attribution measurement gap: one optional closed-list field on the existing MenuList and Answerlattice tenant writes.
+- August 13, 2026 - Extended the existing external-insight intake system and added a verifier for sequential IDs, required decision fields, cross-product routing, and the self-reported discovery source contract.
 
 ## Maintenance
 

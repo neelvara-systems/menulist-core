@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Implementation
 
-> **Version:** 1.7.1
-> **Last Updated:** 2026-07-19
+> **Version:** 1.8.0
+> **Last Updated:** 2026-08-13
 > **Audience:** Developers
 
 ---
@@ -25,15 +25,15 @@ src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt st
 
 **Auth:** `withAuth()` — requires Google OAuth session
 **Method:** POST
-**Body:** `{ companyName, productName?, productUrl?, supportEmail?, billingModel?, primarySurfaces?, planId?, interval?, currency? }`
+**Body:** `{ companyName, productName?, productUrl?, supportEmail?, billingModel?, primarySurfaces?, selfReportedDiscoveryChannel?, planId?, interval?, currency? }`
 
 **Flow:**
 1. Validate the session user document ID, feature availability, and per-user payment-onboarding rate limit.
-2. Read at most 32 KB of JSON and validate company/product fields, an HTTP(S)-only credential-free product URL, selected surfaces, plan, monthly interval, and INR/USD currency. Email fallback reads at most two normalized-email records and fails closed on duplicates.
+2. Read at most 32 KB of JSON and validate company/product fields, an HTTP(S)-only credential-free product URL, selected surfaces, the optional shared closed-list discovery source, plan, monthly interval, and INR/USD currency. Email fallback reads at most two normalized-email records and fails closed on duplicates.
 3. Build a SHA-256 request fingerprint from normalized setup inputs.
 4. If the workspace is already `payment_pending`, require the exact attempt/fingerprint/store summary, including a positive safe-integer amount, restore the default-auth product bridge, and return the persisted checkout without exposing the original plaintext widget key. Strings, booleans, fractions and non-finite billing values are not coerced.
 5. If the same attempt is `provisioning` or `provider_recovery_pending`, reject changed request details. A recovery-pending attempt with no known provider ID returns a fixed 409 plus `Retry-After` until the 15-minute hold expires.
-6. For a new attempt, create the provisional tenant, store, and Answerlattice user in one transaction with the attempt ID, request fingerprint, and `provisioning` status. Clear stale provider ID, recovery time/reason, and cancellation fields inherited from a compensated user record.
+6. For a new attempt, create the provisional tenant, store, and Answerlattice user in one transaction with the attempt ID, request fingerprint, and `provisioning` status. When the product flag is enabled and a source is supplied, project `{ method: 'self_reported', channel, category }` onto the tenant in that same write. The discovery source is excluded from the request fingerprint. Clear stale provider ID, recovery time/reason, and cancellation fields inherited from a compensated user record.
 7. Resolve the product-scoped Razorpay plan. Copy a known provider ID into the durable recovery variable before fetching so a transient fetch failure cannot erase it. Require exact attempt/product/plan/tenant/store ownership independently from status and accept a supplied provider installment count only as a positive safe integer. A recognized terminal checkout deactivates only its owned provisional scope and returns `ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED`; unknown or nonterminal state remains held. Otherwise, after the recovery hold, search a bounded provider window before allowing one same-attempt create. Admit only provider status `created` as a fresh checkout.
 8. Accept a provider checkout link only when it is an HTTPS URL on the exact `rzp.io` host, with no credentials or non-standard port. Unsafe or malformed provider/recovery links become `null` rather than a browser navigation target.
 9. Generate the widget key, then transactionally commit the pending subscription, store subscription summary, widget-key manager state, and tenant/store/user `payment_pending` status.
@@ -55,7 +55,7 @@ src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt st
 
 **4-step flow:**
 1. **Auth** — Google sign-in button (if not authenticated)
-2. **Details** — Company name, product name, product URL, support email, billing model, monthly plan, INR/USD checkout currency, main product pages, and exact selected price
+2. **Details** — Company name, product name, product URL, support email, billing model, optional first-discovery source, monthly plan, INR/USD checkout currency, main product pages, and exact selected price
 3. **Creating** — Spinner + progress text
 4. **Done** — Success: shows plan, pending subscription price/currency, one-time widget key when newly created, and next steps
 
@@ -101,6 +101,7 @@ Request:
   "supportEmail": "support@acme.test",
   "billingModel": "subscription",
   "primarySurfaces": ["billing", "onboarding", "settings"],
+  "selfReportedDiscoveryChannel": "chatgpt",
   "planId": "answerlattice_starter",
   "interval": "MONTH",
   "currency": "INR"
@@ -122,6 +123,11 @@ Response (success):
 ```
 
 `subscription` contains the Razorpay subscription id, payment URL, and provider status. A new response uses provider status `created`; a persisted recovery summary uses `pending`. The Firestore subscription remains `pending`; activation depends on the shared Razorpay verify/webhook flow, which derives `productId: 'AL'` from request body or Razorpay notes and updates Answerlattice Firebase.
+
+`selfReportedDiscoveryChannel` is optional and accepts only the shared controlled
+vocabulary. It is persisted only on first tenant creation, is not returned in
+the onboarding response, and is excluded from the provisioning fingerprint so
+it cannot alter provider recovery or billing identity.
 
 Errors: 400/404 (invalid input or plan), 401 (not authenticated), 403 (feature unavailable), 409 (account exists, active setup, changed retry details, provider recovery pending, or terminal checkout retired), 413 (body too large), 429 (rate limited with `Retry-After`), 503 (Firebase unavailable), 500 (fixed onboarding failure). `ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED` means the exact prior checkout was terminal and its provisional scope was compensated; the founder can resubmit the same details. Error responses expose fixed product codes and bounded diagnostics, not provider internals. Every route-owned response uses the private/no-store helper.
 

@@ -30,6 +30,7 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         currency: value.currency,
         interval: value.plan.billingInterval,
         planId: value.plan.planId,
+        selfReportedDiscoveryChannel: normalizeOptionalString(value.selfReportedDiscoveryChannel),
         timeZone: normalizeOptionalString(value.timeZone),
         userType: value.plan.type,
     });
@@ -49,6 +50,7 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         businessDayEndTime: parsed.data.businessDayEndTime,
         currency: parsed.data.currency,
         plan,
+        selfReportedDiscoveryChannel: parsed.data.selfReportedDiscoveryChannel,
         timeZone: parsed.data.timeZone,
     };
 };
