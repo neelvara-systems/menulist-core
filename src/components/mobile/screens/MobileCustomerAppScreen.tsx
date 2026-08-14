@@ -1062,7 +1062,12 @@ function ToggleRow({
                 <Text strong>{label}</Text>
                 <Text type="secondary" style={{ fontSize: 13, marginTop: 2 }}>{description}</Text>
             </Flex>
-            <Switch checked={checked} onChange={disabled ? undefined : onChange} />
+            <Switch
+                aria-label={label}
+                checked={checked}
+                disabled={disabled}
+                onChange={disabled ? undefined : onChange}
+            />
         </Flex>
     );
 }

@@ -552,6 +552,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         </Paragraph>
                     </div>
                     <Switch
+                        aria-label="Enable Customer App"
                         checked={enableInstallableApp}
                         onChange={(v) => setEnableInstallableApp(v)}
                     />
@@ -567,6 +568,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         </Paragraph>
                     </div>
                     <Switch
+                        aria-label="Show install prompt"
                         checked={promoteInstallation}
                         disabled={!enableInstallableApp}
                         onChange={(v) => setPromoteInstallation(v)}

@@ -3,7 +3,7 @@
 **Feature Name:** Customer App
 **Document Type:** Validated implementation contract
 **Status:** Runtime implemented; manual device QA still required
-**Last Updated:** June 30, 2026
+**Last Updated:** August 14, 2026
 **Audience:** Engineers, Technical Leads
 
 **Launch boundary:** Not current launch certification or deploy approval. This implementation contract is source-gated runtime evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, target deploy evidence where relevant, and production-host smoke.
@@ -91,6 +91,8 @@ Desktop and mobile install-link copied feedback must wait for Clipboard API succ
 Settings saves must also require explicit DAL acknowledgements. `updatePWASettings()` must return a valid settings acknowledgement before desktop or mobile updates local draft baselines. `updatePWAIconOverride()` must return `success: true` and `pwaIconUpdatedAt` before desktop or mobile updates the local icon state. The pwaShortName business-copy metadata side write must be checked before the UI reports the save as complete.
 
 Desktop and mobile settings are keyed by exact tenant/store identity. A store switch remounts the surface before prior localized short-name/icon drafts can render. Save operations capture their originating tenant/store for settings, business-copy metadata and icon lifecycle work; delayed completion may finish the already-authorized old-store sequence but cannot merge metadata/icon truth, loading state or success/error copy into the newly selected store.
+
+The desktop Enable Customer App and Show install prompt switches expose explicit accessible names. The mobile settings toggle wrapper uses its visible label as the switch accessible name and forwards the disabled state to the underlying control, so the prompt switch is both visibly and semantically disabled when the Customer App master setting is off.
 
 `npm run verify:customer-app-pwa` enforces the desktop/mobile settings diagnostic contract and the Customer App analytics source-chain contract from event field mapping through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, `useCustomerAppDashboard`, and desktop/mobile KPI cards.
 

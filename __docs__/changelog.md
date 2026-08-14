@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Customer App Accessible Settings Toggles
+
+- Added explicit accessible names to the desktop Customer App enablement and install-prompt switches.
+- Named the matching mobile switches and forwarded the prompt switch's disabled semantics when the master setting is off.
+- Extended the Customer App source gate. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Business Attributes Accessible Custom Actions
 
 - Added localized accessible names to the desktop and mobile custom-attribute icon and remove actions.

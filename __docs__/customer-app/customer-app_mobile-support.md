@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Mobile Support Assessment  
 **Status:** Runtime/mobile source evidence; not current mobile launch certification
-**Last Updated:** July 4, 2026
+**Last Updated:** August 14, 2026
 **Audience:** Engineering, Product
 
 > **Launch Boundary:** This mobile-support note records source evidence and mobile admission. Current mobile release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, target deploy evidence, and production-host smoke.
@@ -49,6 +49,8 @@ The Customer App feature has two distinct components with different mobile requi
 **Result: MOBILE SUPPORTED → `MobileCustomerAppScreen` implements settings with bounded save diagnostics**
 
 `MobileCustomerAppScreen` remounts by exact tenant/store identity. Settings, localized short-name drafts, pending icon data and install-guide state cannot survive a store switch. Completed settings/business-copy/icon operations compare their captured tenant/store before any context merge or owner feedback, preventing an old-store save from becoming the current store's browser truth.
+
+Each owner-settings toggle exposes its visible label as the accessible name. The Show install prompt switch also forwards its disabled state to the underlying mobile control whenever Enable Customer App is off.
 
 ---
 

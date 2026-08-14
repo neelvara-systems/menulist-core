@@ -838,11 +838,15 @@ function verifyCustomerAppAssets() {
   assertIncludes(pwaDal, 'summarizeStorageCleanupResults(results)', 'PWA icon cleanup explicit Storage acknowledgement accounting');
   assertIncludes(pwaDal, 'pwa_icon_storage_cleanup_failed', 'PWA icon bounded cleanup diagnostics');
   assertIncludes(desktopSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'desktop customer app settings acknowledgement guard');
+  assertIncludes(desktopSettings, 'aria-label="Enable Customer App"', 'desktop customer app enable switch accessible name');
+  assertIncludes(desktopSettings, 'aria-label="Show install prompt"', 'desktop customer app prompt switch accessible name');
   assertIncludes(desktopSettings, 'await replacePWAIconOverride({', 'desktop customer app uses shared replacement lifecycle');
   assertIncludes(desktopSettings, 'await removePWAIconOverride({', 'desktop customer app uses shared removal lifecycle');
   assertNotIncludes(desktopSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'desktop customer app direct Storage deletion bypass');
   assertIncludes(desktopSettings, "customer_app_business_copy_meta_update_rejected", 'desktop customer app metadata acknowledgement guard');
   assertIncludes(mobileSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'mobile customer app settings acknowledgement guard');
+  assertIncludes(mobileSettings, 'aria-label={label}', 'mobile customer app toggle accessible name');
+  assertIncludes(mobileSettings, 'disabled={disabled}', 'mobile customer app toggle disabled semantics');
   assertIncludes(mobileSettings, 'await replacePWAIconOverride({', 'mobile customer app uses shared replacement lifecycle');
   assertIncludes(mobileSettings, 'await removePWAIconOverride({', 'mobile customer app uses shared removal lifecycle');
   assertNotIncludes(mobileSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'mobile customer app direct Storage deletion bypass');
