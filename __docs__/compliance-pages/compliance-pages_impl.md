@@ -1,8 +1,8 @@
 # Compliance Pages — Implementation Plan
 
 **Status:** Runtime implemented source evidence; not current launch or legal certification
-**Version:** 1.4
-**Date:** July 16, 2026
+**Version:** 1.5
+**Date:** August 15, 2026
 **Audience:** Developers
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
@@ -11,6 +11,12 @@
 ---
 
 ## 1. Architecture Overview
+
+## August 15, 2026 - Owner Control Accessibility
+
+Desktop Privacy, Terms, and Refund selectors expose their active state through `aria-pressed` in both Official Page and Custom Domain settings. Mobile icon-only editor triggers expose the exact policy page name and retain 44px touch targets, while the expandable MenuList baseline disclosure is focusable, reports `aria-expanded`, and accepts Enter or Space as well as touch. These changes preserve the existing owner load, override, reset, cache, sanitizer, and public composition paths.
+
+Cost impact: `$0.00`. This adds no Firestore read, write, delete, Storage operation, Cloud Function, provider call, schema, rule, index, cache invalidation, or public route.
 
 ## July 16, 2026 - End-to-End Scope, Cache, and Template Truth
 

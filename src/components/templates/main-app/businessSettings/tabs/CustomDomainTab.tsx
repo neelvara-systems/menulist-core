@@ -1024,6 +1024,7 @@ function CompliancePagesSection({
             {/* Tab switcher */}
             <Space style={{ marginBottom: 12 }}>
                 <Button
+                    aria-pressed={activeTab === 'privacy'}
                     size="small"
                     type={activeTab === 'privacy' ? 'primary' : 'default'}
                     onClick={() => { setActiveTab('privacy'); setEditMode(false); }}
@@ -1031,6 +1032,7 @@ function CompliancePagesSection({
                     Privacy Policy
                 </Button>
                 <Button
+                    aria-pressed={activeTab === 'terms'}
                     size="small"
                     type={activeTab === 'terms' ? 'primary' : 'default'}
                     onClick={() => { setActiveTab('terms'); setEditMode(false); }}
@@ -1038,6 +1040,7 @@ function CompliancePagesSection({
                     Terms & Conditions
                 </Button>
                 <Button
+                    aria-pressed={activeTab === 'refund'}
                     size="small"
                     type={activeTab === 'refund' ? 'primary' : 'default'}
                     onClick={() => { setActiveTab('refund'); setEditMode(false); }}

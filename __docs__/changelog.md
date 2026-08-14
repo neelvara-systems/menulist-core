@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Compliance Page Accessible Owner Controls
+
+- Added pressed-state semantics to the Privacy, Terms, and Refund selectors in both desktop compliance editors.
+- Named every mobile icon-only policy editor trigger, retained 44px touch targets, and made the expandable MenuList baseline disclosure keyboard-focusable with expanded-state semantics and Enter/Space activation.
+- Extended the Compliance Pages source gate. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Official Page Visibility Control Accessibility
 
 - Added localized accessible names to all seven mobile Official Business Page action-visibility switches and all three policy-link switches.

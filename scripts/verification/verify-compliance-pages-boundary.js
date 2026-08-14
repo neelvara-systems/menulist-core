@@ -323,6 +323,8 @@ function verifyOwnerEditorsBoundary() {
 
   assertOccurrenceAtLeast(standalone, "...AUTH_BROWSER_REQUEST_POLICY", 2, 'standalone desktop compliance mutations spread shared request policy');
   assertOccurrenceAtLeast(customDomain, "...AUTH_BROWSER_REQUEST_POLICY", 2, 'custom-domain desktop compliance mutations spread shared request policy');
+  assertIncludes(standalone, 'aria-pressed={activeTab === tab}', 'Standalone desktop compliance selector pressed state');
+  assertOccurrenceAtLeast(customDomain, 'aria-pressed={activeTab ===', 3, 'Custom-domain desktop compliance selector pressed states');
 
   assertIncludes(mobile, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile compliance shared browser request policy');
   assertIncludes(mobile, 'readJsonResponseWithLimit', 'Mobile compliance bounded response reader');
@@ -342,6 +344,13 @@ function verifyOwnerEditorsBoundary() {
   assertIncludes(mobile, 'compliancePagesRequests.get(scope.key) !== request', 'Mobile compliance stale same-scope response settlement guard');
   assertIncludes(mobile, 'getCachedCompliancePages(scope.key)', 'Mobile compliance exact scope cache lookup');
   assertIncludes(mobile, 'isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)', 'Mobile compliance mutation scope acknowledgement');
+  assertIncludes(mobile, 'aria-label={`Manage ${pageLabel}`}', 'Mobile compliance editor accessible name');
+  assertOccurrenceAtLeast(mobile, 'minHeight: 44', 2, 'Mobile compliance editor touch targets');
+  assertIncludes(mobile, 'minWidth: 44', 'Mobile compliance icon trigger touch width');
+  assertIncludes(mobile, 'aria-expanded={isBaselineExpanded}', 'Mobile compliance baseline disclosure expanded state');
+  assertIncludes(mobile, 'onClick={toggleBaselineContent}', 'Mobile compliance baseline disclosure activation');
+  assertIncludes(mobile, 'type="button"', 'Mobile compliance baseline disclosure semantic button');
+  assertNotIncludes(mobile, 'onKeyDown={handleBaselineKeyDown}', 'Mobile compliance baseline disclosure must use native button keyboard behavior');
   assertIncludes(ownerResponseBoundary, 'key: JSON.stringify([normalizedTenantId, normalizedStoreId])', 'Owner compliance collision-safe tenant/store cache key');
   assertIncludes(ownerResponseBoundary, 'normalizeExactDocumentId(record.tenantId) !== expectedScope.tenantId', 'Owner compliance tenant response match');
   assertIncludes(ownerResponseBoundary, 'normalizeExactDocumentId(record.storeId) !== expectedScope.storeId', 'Owner compliance store response match');

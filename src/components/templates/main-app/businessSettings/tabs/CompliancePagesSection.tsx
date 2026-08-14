@@ -388,6 +388,7 @@ export default function CompliancePagesSection({
             <Space style={{ marginBottom: 12 }} wrap>
                 {(['privacy', 'terms', 'refund'] as ComplianceTab[]).map((tab) => (
                     <Button
+                        aria-pressed={activeTab === tab}
                         key={tab}
                         size="small"
                         type={activeTab === tab ? 'primary' : 'default'}

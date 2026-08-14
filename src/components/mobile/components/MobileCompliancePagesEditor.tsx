@@ -231,7 +231,6 @@ async function loadCompliancePages(scope: OwnerComplianceScope, force = false) {
 
 export default function MobileCompliancePagesEditor({
     baseUrl,
-    compact,
     storeId,
     tenantId,
     type,
@@ -303,6 +302,10 @@ export default function MobileCompliancePagesEditor({
         setIsEditing(false);
         setIsBaselineExpanded(false);
         setIsOpen(true);
+    };
+
+    const toggleBaselineContent = () => {
+        setIsBaselineExpanded((previous) => !previous);
     };
 
     const handleSave = async () => {
@@ -417,12 +420,14 @@ export default function MobileCompliancePagesEditor({
     return (
         <>
             <Button
+                aria-label={`Manage ${pageLabel}`}
                 fill="none"
                 onClick={openSheet}
                 size="small"
                 style={{
                     flex: '0 0 auto',
-                    minWidth: compact ? 36 : 40,
+                    minHeight: 44,
+                    minWidth: 44,
                     paddingInline: 8,
                 }}
             >
@@ -439,7 +444,7 @@ export default function MobileCompliancePagesEditor({
                     <NavBar
                         onBack={() => setIsOpen(false)}
                         right={
-                            <Button fill="none" onClick={handleOpenPage} size="small">
+                            <Button fill="none" onClick={handleOpenPage} size="small" style={{ minHeight: 44 }}>
                                 View page
                             </Button>
                         }
@@ -477,26 +482,37 @@ export default function MobileCompliancePagesEditor({
                                     </Flex>
                                 </Card>
 
-                                <Card
-                                    size="small"
-                                    onClick={() => setIsBaselineExpanded((previous) => !previous)}
-                                    style={{ cursor: 'pointer' }}
+                                <button
+                                    aria-expanded={isBaselineExpanded}
+                                    aria-label={`${isBaselineExpanded ? 'Hide' : 'Show'} MenuList baseline content`}
+                                    onClick={toggleBaselineContent}
+                                    style={{
+                                        background: 'none',
+                                        border: 0,
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        textAlign: 'inherit',
+                                        width: '100%',
+                                    }}
+                                    type="button"
                                 >
-                                    <Flex gap={6} vertical>
-                                        <Flex align="center" justify="space-between">
-                                            <Text strong>MenuList baseline content</Text>
-                                            <Text type="secondary">{isBaselineExpanded ? 'Hide' : 'Show'}</Text>
-                                        </Flex>
-                                        <Text type="secondary">
-                                            This baseline policy and platform disclosure content is appended automatically.
-                                        </Text>
-                                        {isBaselineExpanded ? (
-                                            <Text style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                                                {currentData?.systemContent || 'MenuList baseline policy content will be generated automatically from your business information.'}
+                                    <Card size="small">
+                                        <Flex gap={6} vertical>
+                                            <Flex align="center" justify="space-between">
+                                                <Text strong>MenuList baseline content</Text>
+                                                <Text type="secondary">{isBaselineExpanded ? 'Hide' : 'Show'}</Text>
+                                            </Flex>
+                                            <Text type="secondary">
+                                                This baseline policy and platform disclosure content is appended automatically.
                                             </Text>
-                                        ) : null}
-                                    </Flex>
-                                </Card>
+                                            {isBaselineExpanded ? (
+                                                <Text style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                                                    {currentData?.systemContent || 'MenuList baseline policy content will be generated automatically from your business information.'}
+                                                </Text>
+                                            ) : null}
+                                        </Flex>
+                                    </Card>
+                                </button>
 
                                 {isEditing ? (
                                     <Card size="small">
