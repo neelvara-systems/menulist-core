@@ -1,6 +1,6 @@
 # MenuList Help Center — Test Cases
 
-> **Version:** 1.0.2
+> **Version:** 1.0.3
 > **Last Updated:** 2026-08-15
 > **Audience:** Engineering, QA, Product
 
@@ -40,6 +40,8 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | Draft | Screenshot is selected | Screenshot data is never written to draft storage |
 | Tickets | Customer opens history or direct ticket detail | Only exact workspace rows pass DAL and Firestore rules |
 | Ticket recovery | Ticket create is rejected before persistence | Completed fields remain and a persistent `Request not sent` alert is shown; no success state appears |
+| Feedback history | Latest-feedback read fails | A persistent retryable failure remains; missing history is not presented as a confirmed empty read |
+| Feedback recovery | Valid active-step submission is rejected before persistence | Completed fields remain, a persistent localized failure appears, and no success/last-submitted state is fabricated |
 | Tickets | Customer replies or changes allowed state | Transaction rechecks stored scope and append-only history |
 | Attachments | File exceeds count, size, type or trusted path | Admission/opening fails before exposing or uploading unsafe data |
 | Mobile | Direct Help Center article/changelog route opens on phone | MobileShell sub-screen retains tab and resource ID |

@@ -6,8 +6,8 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Feedback } from '@type/feedback';
 import { Alert, Button, Col, Flex, Form, List, message, Rate, Row, Steps, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
-import { LuArrowLeft, LuArrowRight, LuHeartHandshake, LuInbox, LuLightbulb, LuStar, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LuArrowLeft, LuArrowRight, LuHeartHandshake, LuInbox, LuLightbulb, LuRefreshCw, LuStar, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 import FeatureRequests from './FeatureRequests';
 import FeatureUsage from './FeatureUsage';
 import GeneralFeedback from './GeneralFeedback';
@@ -19,7 +19,10 @@ const ShareFeedbackView = () => {
     const [form] = Form.useForm();
     const [currentStep, setCurrentStep] = useState(0);
     const [latestFeedback, setLatestFeedback] = useState<Feedback | null>(null);
+    const [latestFeedbackLoadFailed, setLatestFeedbackLoadFailed] = useState(false);
+    const [isLoadingLatestFeedback, setIsLoadingLatestFeedback] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitFailed, setSubmitFailed] = useState(false);
     const submittingRef = useRef(false);
     const dispatch = useAppDispatch();
 
@@ -47,26 +50,37 @@ const ShareFeedbackView = () => {
         },
     ];
 
-    useEffect(() => {
-        const fetchLatestFeedback = async () => {
-            dispatch(startLoader('fetch-latest-feedback'));
-            try {
-                const feedback = await getLatestFeedbackForUser();
-                setLatestFeedback(feedback);
-            } catch (error) {
-                message.error(t('failedToFetchFeedback'));
-            } finally {
-                dispatch(stopLoader('fetch-latest-feedback'));
-            }
-        };
-
-        fetchLatestFeedback();
+    const fetchLatestFeedback = useCallback(async () => {
+        setLatestFeedbackLoadFailed(false);
+        setIsLoadingLatestFeedback(true);
+        dispatch(startLoader('fetch-latest-feedback'));
+        try {
+            const feedback = await getLatestFeedbackForUser();
+            setLatestFeedback(feedback);
+        } catch (error) {
+            setLatestFeedback(null);
+            setLatestFeedbackLoadFailed(true);
+            message.error(t('failedToFetchFeedback'));
+        } finally {
+            dispatch(stopLoader('fetch-latest-feedback'));
+            setIsLoadingLatestFeedback(false);
+        }
     }, [dispatch, t]);
+
+    useEffect(() => {
+        void fetchLatestFeedback();
+    }, [fetchLatestFeedback]);
+
+    const moveToStep = (step: number) => {
+        setSubmitFailed(false);
+        setCurrentStep(step);
+    };
 
     const handleSendFeedback = async (values: Record<string, unknown>) => {
         if (submittingRef.current) return;
         submittingRef.current = true;
         setIsSubmitting(true);
+        setSubmitFailed(false);
         const feedbackType = steps[currentStep].key as AnswerlatticeFeedbackSubmission['type'];
         const feedbackPayload = {
             type: feedbackType,
@@ -85,6 +99,7 @@ const ShareFeedbackView = () => {
             form.resetFields();
             setLatestFeedback(submittedFeedback as Feedback);
         } catch (error) {
+            setSubmitFailed(true);
             message.error(t('failedToSendFeedback'));
         } finally {
             dispatch(stopLoader('send-feedback'));
@@ -104,26 +119,53 @@ const ShareFeedbackView = () => {
 
     return (
         <>
+            {latestFeedbackLoadFailed && (
+                <Alert
+                    style={{ marginTop: 24 }}
+                    message={t('failedToFetchFeedback')}
+                    type="error"
+                    showIcon
+                    action={(
+                        <Button
+                            aria-label={t('failedToFetchFeedback')}
+                            icon={<LuRefreshCw aria-hidden="true" />}
+                            loading={isLoadingLatestFeedback}
+                            onClick={() => void fetchLatestFeedback()}
+                            size="small"
+                        />
+                    )}
+                />
+            )}
+
             <Form form={form} layout="vertical" style={{ marginTop: 24 }}>
                 <Steps
                     current={currentStep}
                     items={steps.map(item => ({ key: item.key, title: item.title, icon: item.icon }))}
-                    onChange={isSubmitting ? undefined : setCurrentStep}
+                    onChange={isSubmitting ? undefined : moveToStep}
                     style={{ marginBottom: 24 }} />
                 <div>{steps[currentStep].content}</div>
 
+                {submitFailed && (
+                    <Alert
+                        style={{ marginTop: 24 }}
+                        message={t('failedToSendFeedback')}
+                        type="error"
+                        showIcon
+                    />
+                )}
+
                 <Row justify="end" gutter={8} style={{ marginTop: 24 }}>
                     <Col style={{ marginRight: "auto" }}>
-                        <Button disabled={isSubmitting} onClick={() => { form.resetFields(); setCurrentStep(0); }}>{t('cancel')}</Button>
+                        <Button disabled={isSubmitting} onClick={() => { form.resetFields(); setSubmitFailed(false); setCurrentStep(0); }}>{t('cancel')}</Button>
                     </Col>
                     {currentStep > 0 && (
                         <Col>
-                            <Button disabled={isSubmitting} onClick={() => setCurrentStep(currentStep - 1)} icon={<LuArrowLeft />}>{t('previous')}</Button>
+                            <Button disabled={isSubmitting} onClick={() => moveToStep(currentStep - 1)} icon={<LuArrowLeft />}>{t('previous')}</Button>
                         </Col>
                     )}
                     {currentStep < steps.length - 1 && (
                         <Col>
-                            <Button disabled={isSubmitting} onClick={() => setCurrentStep(currentStep + 1)} icon={<LuArrowRight />}>{t('next')}</Button>
+                            <Button disabled={isSubmitting} onClick={() => moveToStep(currentStep + 1)} icon={<LuArrowRight />}>{t('next')}</Button>
                         </Col>
                     )}
                     <Col>

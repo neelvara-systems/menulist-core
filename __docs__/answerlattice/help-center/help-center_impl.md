@@ -2,7 +2,7 @@
 
 July 28, 2026 persisted-scope correction: article entity extraction, FAQ generation, translation and embedding reconcile every supplied `tId`/`tenantId` and `sId`/`storeId` alias before provider work or mutation. Knowledge DAL session scope and article reads apply the same exact agreement; conflicting aliases fail closed.
 
-> **Version:** 1.2.2
+> **Version:** 1.2.3
 > **Last Updated:** 2026-08-15
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
@@ -31,6 +31,8 @@ The July 18 feature-flow pass binds every Help Center context cache to an exact 
 The Help Center home follows the same truth boundary. Failed category, popular-article, changelog, or open-ticket-summary requests render persistent translated error alerts with scoped retry controls; they do not render `No categories available`, `No articles available`, a blank What's New panel, or a hidden ticket summary as if the current approved source loaded successfully. Retry reuses the existing protected public-content/ticket transports and adds no fallback source or alternate support backend.
 
 Rejected owner mutations preserve recoverable input. When the active account has no valid Answerlattice workspace, Help Chat keeps the unsent question and renders a persistent account-availability error instead of clearing the draft into a false local `No matches` result. A failed support-ticket create keeps all completed fields and renders an inline `Request not sent` alert in addition to the bounded toast. These states do not add a fallback backend, alternate scope, provider call, Storage upload, or Firestore write.
+
+Help feedback uses the same truthful failure boundary. If the latest-feedback read fails, `ShareFeedbackView` renders a persistent error with a scoped retry action instead of silently looking like confirmed no history. If submission fails, the active rating/comment, feature-usage, or feature-request form stays intact and a persistent localized error remains beside the existing submit action. Cancel or step navigation clears only the local failure state and draft; no fallback scope or alternate write path is introduced.
 
 The changelog viewer treats its device-local last-viewed marker as untrusted: only canonical non-future integer timestamps are admitted, invalid values are evicted, and the marker advances only after an initial changelog page has actually loaded. A failed or empty initial fetch therefore cannot suppress future New badges.
 

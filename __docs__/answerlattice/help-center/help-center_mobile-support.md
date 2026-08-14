@@ -1,6 +1,6 @@
 # MenuList Help Center — Mobile Support
 
-> **Version:** 1.2.1
+> **Version:** 1.2.2
 > **Last Updated:** 2026-08-15
 > **Audience:** Mobile, Product, QA
 > **Source:** Current `MobileShell` and Help Center components
@@ -31,6 +31,7 @@ Mobile does not load a separate MenuList support database. `getActiveSession()` 
 - A workspace-unavailable search keeps the unsent question and shows a persistent error instead of a false local-empty result.
 - Ticket load failure keeps any already cached ticket list and shows fixed owner-safe copy.
 - Ticket-create failure keeps the completed form and shows a persistent inline `Request not sent` alert.
+- Latest-feedback read failure stays visible with a retry action, and feedback-submit failure keeps the completed step values with a persistent localized error.
 - Attachment admission uses the shared four-file/10 MB/type boundary.
 - Attachment opening requires the configured Answerlattice Storage bucket and selected ticket tenant/store path.
 - A delivered ticket is not rolled back because notification delivery is asynchronous.

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Help Feedback Recovery States
+
+- Kept a failed latest-feedback read visibly unavailable with a retry action instead of silently presenting absent history.
+- Preserved the completed feedback step after submission failure and added a persistent localized error beside the existing retryable submit action.
+- These are shared desktop/mobile recovery-state fixes only. They add no alternate scope, Firebase/provider operation, schema, rule, index, Function, dependency, direct deployment, or production change.
+
 ## August 15, 2026 - Help Request Recovery States
 
 - Kept an owner Help question in place when the account has no admitted Answerlattice workspace and replaced the misleading local-empty result with a persistent availability message.
