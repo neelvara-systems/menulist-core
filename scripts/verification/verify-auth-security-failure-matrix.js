@@ -1581,6 +1581,27 @@ const stagingEnv = read('.env.staging.example');
 const productionEnv = read('.env.production.example');
 
 assertIncludes(
+    authMiddleware,
+    "import { withAuthPrivateHeaders } from '@lib/auth/authApiResponse';",
+    'Authenticated API middleware must reuse the shared private response-header policy.',
+);
+assertIncludes(
+    authMiddleware,
+    'return addCORSHeaders(withAuthPrivateHeaders(response), request);',
+    'Authenticated API handler responses must be private and non-storable before CORS headers are applied.',
+);
+assertIncludes(
+    authMiddleware,
+    'withAuthPrivateHeaders(NextResponse.json(body, { status }))',
+    'Authenticated API middleware failures must be private and non-storable.',
+);
+assertIncludes(
+    authMiddleware,
+    'return withAuthPrivateHeaders(corsError);',
+    'Authenticated API CORS failures must be private and non-storable.',
+);
+
+assertIncludes(
     storePermissionServer,
     'import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";',
     'Store permission guards must resolve current persisted platform authority.',

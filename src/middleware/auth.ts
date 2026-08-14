@@ -18,6 +18,7 @@
  */
 
 import { authOptions } from '@lib/auth';
+import { withAuthPrivateHeaders } from '@lib/auth/authApiResponse';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import {
     resolveExactSessionPlatformRole,
@@ -47,6 +48,10 @@ export type AuthenticatedHandler = (
 type AuthenticatedRouteContext = {
     params: Promise<Record<string, string | string[] | undefined>>;
 };
+
+const authenticatedErrorJson = (body: Record<string, string>, status: number) => (
+    withAuthPrivateHeaders(NextResponse.json(body, { status }))
+);
 
 const getSessionAccessDeniedReason = (session: any): string | null => {
     const user = session?.user || {};
@@ -99,7 +104,7 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                     }),
                 }, 'high'); // HIGH severity - potential CSRF attack
 
-                return corsError;
+                return withAuthPrivateHeaders(corsError);
             }
 
             // 2️⃣ HANDLE OPTIONS: Preflight requests (CORS)
@@ -119,9 +124,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                     }),
                 }, 'medium');
 
-                return NextResponse.json(
+                return authenticatedErrorJson(
                     { error: 'Unauthorized', message: 'Authentication required' },
-                    { status: 401 }
+                    401,
                 );
             }
 
@@ -133,9 +138,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                     }),
                 }, 'high');
 
-                return NextResponse.json(
+                return authenticatedErrorJson(
                     { error: 'Forbidden', message: 'Account access has ended' },
-                    { status: 403 }
+                    403,
                 );
             }
             const sessionUserId = resolveCurrentSessionUserDocumentId(session);
@@ -146,9 +151,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                     }),
                 }, 'high');
 
-                return NextResponse.json(
+                return authenticatedErrorJson(
                     { error: 'Forbidden', message: 'Invalid session identity' },
-                    { status: 403 },
+                    403,
                 );
             }
 
@@ -172,9 +177,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                         }),
                     }, 'high'); // HIGH - privilege escalation attempt
 
-                    return NextResponse.json(
+                    return authenticatedErrorJson(
                         { error: 'Forbidden', message: 'Insufficient permissions' },
-                        { status: 403 }
+                        403,
                     );
                 }
             }
@@ -192,9 +197,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                         }),
                     }, 'high'); // HIGH - privilege escalation attempt
 
-                    return NextResponse.json(
+                    return authenticatedErrorJson(
                         { error: 'Forbidden', message: 'Insufficient permissions' },
-                        { status: 403 }
+                        403,
                     );
                 }
             }
@@ -207,16 +212,16 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
             const response = await handler(request, session, routeParams);
 
             // 5️⃣ ADD CORS HEADERS: Add to successful responses
-            return addCORSHeaders(response, request);
+            return addCORSHeaders(withAuthPrivateHeaders(response), request);
         } catch (error) {
             // ✅ SECURITY FIX: Use secure logging to prevent sensitive data leakage
             secureError('[Auth Middleware] Error', error as Error, {
                 ...getBoundedSecurityStringContext('path', request.nextUrl.pathname),
                 ...getBoundedSecurityStringContext('method', request.method),
             });
-            return NextResponse.json(
+            return authenticatedErrorJson(
                 { error: 'Internal Server Error' },
-                { status: 500 }
+                500,
             );
         }
     };

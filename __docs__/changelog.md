@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Authenticated API Private Response Boundary
+
+- Applied the shared private, non-storable auth response policy centrally in
+  `withAuth()` for authentication, authorization, CORS rejection, unexpected
+  failure, and admitted protected-route responses.
+- Closed a hosted QA gap where an unauthenticated protected API correctly
+  returned `401` but inherited a public revalidation cache policy.
+- Kept OPTIONS preflight on its dedicated CORS policy and added verifier
+  coverage for the central boundary. No Firebase read, write, rule, index,
+  Function, provider, dependency, or production deployment change was added.
+
 ## August 14, 2026 - Authenticated DAL Bootstrap Handoff
 
 - Primed the shared client DAL session cache from the strictly normalized
