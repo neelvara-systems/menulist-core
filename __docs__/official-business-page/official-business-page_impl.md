@@ -831,6 +831,12 @@ hours or social-profile changes. Independently persisted panels such as
 External Menu Sync, special hours, and time-slot presets retain their own save
 semantics and are not presented as form drafts.
 
+Enter inside an Ant Design date/time picker is reserved for the picker. The
+parent form prevents that key's native submit default only when the event
+originates inside `.ant-picker`; the picker still receives the key, while the
+owner must use the explicit Save Changes action to persist the wider Business
+Settings form. Other form submission paths are unchanged.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Business Settings Picker Enter Boundary
+
+- Prevented Enter inside desktop Business Settings date/time pickers from submitting and persisting the entire parent form.
+- Kept Enter available to the picker itself while requiring the explicit Save Changes action for the wider form.
+- Extended the controlled-draft verifier. This changes no Firebase schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Business Settings Controlled-Draft Reset Boundary
 
 - Extended the desktop page-level Reset action to restore social profile URLs and regular weekly hours from current persisted store truth, alongside the existing Guest Feedback draft restoration.

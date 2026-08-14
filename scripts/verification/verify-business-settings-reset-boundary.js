@@ -38,6 +38,10 @@ assertIncludes(businessSettings, 'setSocialMedia(socialMediaDraft);', 'Business 
 assertIncludes(businessSettings, 'setWorkingHours(workingHoursDraft);', 'Business Settings working-hours Reset');
 assertIncludes(businessSettings, 'setWorkingHoursDirty(false);', 'Business Settings working-hours dirty Reset');
 assertIncludes(businessSettings, 'setWorkingHoursDirtyDays([]);', 'Business Settings working-hours dirty-day Reset');
+assertIncludes(businessSettings, 'function preventBusinessSettingsPickerEnterSubmit(', 'Business Settings picker Enter guard');
+assertIncludes(businessSettings, "if (!event.target.closest('.ant-picker')) return;", 'Business Settings picker-only Enter guard');
+assertIncludes(businessSettings, 'event.preventDefault();', 'Business Settings picker Enter submit prevention');
+assertIncludes(businessSettings, 'onKeyDown={preventBusinessSettingsPickerEnterSubmit}', 'Business Settings form picker Enter guard wiring');
 assertIncludes(implementation, 'Desktop Business Settings Reset boundary', 'Business Settings Reset implementation documentation');
 assertIncludes(changelog, 'Business Settings Controlled-Draft Reset Boundary', 'Business Settings Reset changelog evidence');
 

@@ -68,6 +68,7 @@ import {
     useRef,
     useState,
     type Dispatch,
+    type KeyboardEvent as ReactKeyboardEvent,
     type SetStateAction,
 } from "react";
 import {
@@ -131,6 +132,15 @@ function buildWorkingHourSlots(workingHours?: Record<string, string>): WorkingHo
             start: range ? dayjs(`2025-04-02 ${range.startTime}`, 'YYYY-MM-DD HH:mm', true) : null,
         };
     });
+}
+
+function preventBusinessSettingsPickerEnterSubmit(
+    event: ReactKeyboardEvent<HTMLFormElement>,
+) {
+    if (event.key !== 'Enter') return;
+    if (!(event.target instanceof HTMLElement)) return;
+    if (!event.target.closest('.ant-picker')) return;
+    event.preventDefault();
 }
 
 const BUSINESS_SETTINGS_FOCUS_SECTION: Record<string, string> = {
@@ -1681,6 +1691,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                             form={form}
                             layout="vertical"
                             onFinish={addUpdateDetails}
+                            onKeyDown={preventBusinessSettingsPickerEnterSubmit}
                             initialValues={{
                                 ...getBusinessSettingsInitialValues(storeDetails),
                                 currencyCode: storeDetails?.currencyCode || "INR",
