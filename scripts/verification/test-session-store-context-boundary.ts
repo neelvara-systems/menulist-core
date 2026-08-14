@@ -201,6 +201,9 @@ assert.match(providerSource, /activeSubscriptionRequestScopeKeyRef\.current === 
 assert.match(providerSource, /activeSubscriptionScopeKeyRef\.current !== requestScopeKey/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? activeSubscription : null/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? tenantDetails : null/);
+assert.match(providerSource, /firebaseAuthReadyScopeKey === firebaseAuthRequiredScopeKey/);
+assert.match(providerSource, /setFirebaseAuthReadyScopeKey\(firebaseAuthRequiredScopeKey\)/);
+assert.doesNotMatch(providerSource, /useState\(\s*!session\?\.user\?\.storeId/);
 assert.match(providerSource, /setUserPermissions\(null\);\s+setStoreDetails\(targetStore\);/);
 assert.match(providerSource, /const rolePermissions = getPermissionsForRole\(userRoleId, authorityStoreDetails\.roles\);/);
 assert.doesNotMatch(providerSource, /if \(userRole\?\.permissions\)/);

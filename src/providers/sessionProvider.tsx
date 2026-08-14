@@ -125,9 +125,7 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
-    const [firebaseAuthReady, setFirebaseAuthReady] = useState(
-        !session?.user?.storeId && !(session?.user as any)?.productAccounts?.AL?.storeId
-    )
+    const [firebaseAuthReadyScopeKey, setFirebaseAuthReadyScopeKey] = useState<string | null>(null)
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
     const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
@@ -136,6 +134,16 @@ export default function SessionProvider({ children, session }: Props) {
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
     const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(session) : null;
     const effectiveSession = isAnswerlatticeRoute ? getAnswerlatticeScopedSession(session as any) : session;
+    const requiresFirebaseAuth = Boolean(
+        effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId,
+    );
+    const firebaseAuthRequiredScopeKey = requiresFirebaseAuth
+        ? getSessionProviderScopeKey(effectiveSession)
+        : null;
+    const firebaseAuthReady = !requiresFirebaseAuth || Boolean(
+        firebaseAuthRequiredScopeKey
+        && firebaseAuthReadyScopeKey === firebaseAuthRequiredScopeKey,
+    );
     const isPlatformSession = session?.user?.platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
     const isStoreIndependentRoute =
@@ -226,26 +234,26 @@ export default function SessionProvider({ children, session }: Props) {
 
     useEffect(() => {
         let cancelled = false;
-        const requiresFirebaseAuth = Boolean(effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId);
 
         if (!session) {
-            setFirebaseAuthReady(false);
+            setFirebaseAuthReadyScopeKey(null);
             setFirebaseAuthSyncError(null);
             return;
         }
 
         if (!requiresFirebaseAuth) {
-            setFirebaseAuthReady(true);
+            setFirebaseAuthReadyScopeKey(null);
             setFirebaseAuthSyncError(null);
             return;
         }
 
-        setFirebaseAuthReady(false);
         setFirebaseAuthSyncError(null);
 
         ensureFirebaseAuthForSession(effectiveSession)
             .then(() => {
-                if (!cancelled) setFirebaseAuthReady(true);
+                if (!cancelled && firebaseAuthRequiredScopeKey) {
+                    setFirebaseAuthReadyScopeKey(firebaseAuthRequiredScopeKey);
+                }
             })
             .catch((error) => {
                 const normalizedError = new Error('Firebase Auth sync failed');
@@ -255,6 +263,7 @@ export default function SessionProvider({ children, session }: Props) {
                     pathLength: pathname?.length || 0,
                 });
                 if (!cancelled) {
+                    setFirebaseAuthReadyScopeKey(null);
                     setFirebaseAuthSyncError(normalizedError);
                     setActiveSubscriptionLoading(false);
                 }
@@ -271,6 +280,8 @@ export default function SessionProvider({ children, session }: Props) {
         session?.user?.tenantId,
         effectiveSession?.user?.storeId,
         effectiveSession?.user?.tenantId,
+        firebaseAuthRequiredScopeKey,
+        requiresFirebaseAuth,
     ]);
 
     // Listen for AI balance updates from API responses (saves Firebase reads)

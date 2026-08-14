@@ -19,8 +19,10 @@ MyCodex until MenuList QA is live and verified.
 
 ## August 14 Project, Production-Absence, And Account-Security Checkpoint
 
-- Current Preview build `3fbff578cbef46c7b61f99afe17f416c9c889663` created disposable project `2-msrxlimn-7qbKwAAvs5AHBLwhkDO1-2` at exact QA scope `2/2`, and Admin plus owner-rule readback proved the canonical project and literal summary field were written. A normal reload then rendered a false empty state without issuing the Firestore list read. Source now enables the list from the provider's validated project scope instead of redundantly requiring a second nested session snapshot, and exposes explicit loading, failure, and retry states. Focused project verification, ESLint, and TypeScript pass. `QA-K09` remains open until this app-side fix is included in an explicitly approved staging deployment and update/delete are certified through the normal hosted UI.
-- Guarded cleanup asserted the exact project identity, sole summary entry, and zero-value manual entitlement before deleting only those three QA artifacts. Readback confirms all three are absent. Retained Razorpay baseline `sub_TPGo1XmddplChB` remains at scope `1/1`, pending, provider-identified, and unchanged across cleanup.
+- Preview build `3fbff578cbef46c7b61f99afe17f416c9c889663` was the live build used for the hosted CRUD probe. The branch then advanced, and current build `89e5dbcc367147456b83987b702ef5c3c3b5c907` exactly matches `origin/staging` and contains the earlier project-list scope and explicit recovery-state correction. Disposable project `2-mssd0zhv-aP93xWok4w5KZERTHoTw-2` was created at exact QA scope `2/2`, edited through the hosted UI, and read back through Firestore REST with exact localized name, description, active/default state, and updated slug in the literal compact-summary field.
+- A normal reload first exposed a short Firebase-auth bootstrap race: the project read failed, then SWR recovered without user action. Independent owner-rule reads proved that the exact claims, canonical project, and summary were valid. The shared provider now records Firebase Auth readiness against the exact user/product/tenant/store scope key, so hydration or a scope change cannot carry a stale ready bit into a Firestore read.
+- Hosted Duplicate and Delete then exposed a separate confirmation defect: the static Ant Design confirmation calls closed the selector without rendering a dialog. The selector now owns a controlled pending-action dialog, awaits the existing scoped callback, keeps destructive loading locked, and preserves the duplicate rename handoff. Focused session, project, ESLint, and TypeScript gates pass. `QA-K09` remains open until these two local corrections are pushed to staging and a clean reload plus hosted duplicate-cancel and delete rerun pass.
+- Because the deployed confirmation could not invoke normal deletion, guarded QA-only cleanup asserted the exact updated project, sole literal summary entry, zero-value manual entitlement, and retained baseline before atomically deleting only the three disposable artifacts. REST readback confirms the project, summary field, and entitlement are absent. Retained Razorpay baseline `sub_TPGo1XmddplChB` kept the same update time at scope `1/1`, local `pending`, provider `created`; hosted owner UI returned to `No Active Subscription` with no test menu visible.
 - Read-only production checks did not establish absence. Google Cloud confirms project `menulist` exists, but `admin@neelvara.com` and the founder account both lack `resourcemanager.projects.get`; direct Firebase Console access reports that the project is unavailable or unauthorized, and the reauthenticated Firebase CLI lists only `menulist-qa`. Failed unauthenticated Cloud Shell probes returned HTTP 403 and are not counted as absence. `QA-K13` remains open until the controlled production owner grants read-only access or performs the exact two-document and one-object checks.
 - The provider security audit confirmed the existing secured evidence for GoDaddy, Google, GitHub, Vercel, and Sentry. Live readback found Upstash Multi-Factor Authentication off and Razorpay reporting `No verification method is active`; Meta required owner email confirmation before revealing its 2FA state. No authenticator seed, OTP, password, or recovery code was requested, viewed, or stored. `QA-A11` remains open until Upstash and Razorpay MFA plus independent recovery are configured and Meta 2FA/recovery is verified.
 
@@ -2657,6 +2659,18 @@ Operator progress:
   endpoint now has 13 events. Immediate authorization/charge and the original
   `payment.failed` automatic retry remain pending external provider evidence;
   `QA-K13` remains owner-controlled and open.
+- `2026-08-14` - Preview commit `3fbff578cbef46c7b61f99afe17f416c9c889663`
+  was confirmed live and matching `origin/staging`. Hosted project create and
+  edit passed at scope `2/2`, including exact REST readback of the canonical
+  project and updated literal summary projection. Reload then exposed a
+  transient stale Firebase-auth readiness frame, and Duplicate/Delete exposed
+  non-rendering static confirmation dialogs. Local source now keys Auth
+  readiness to the exact session scope and uses one controlled selector action
+  dialog. Session/project verifiers, focused ESLint, and TypeScript pass.
+  Guarded cleanup removed only the disposable project, summary field, and
+  zero-value entitlement; retained baseline `sub_TPGo1XmddplChB` remained
+  unchanged. `QA-K09` stays open pending one staging push and clean hosted
+  reload, duplicate-cancel, and delete proof.
 
 Status rules:
 
@@ -2973,7 +2987,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
 | [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
 | [x] | QA-K08 | Owner onboarding stays on app host | Browser | `https://menulist.digital/create-menu` redirects to `https://app.menulist.digital/create-menu`; Google auth and preview remain on the app host |
-| [ ] | QA-K09 | Test business/store can be created or loaded | Browser | Current hosted creation and exact-scope persistence pass, but reload exposed a redundant nested-session read gate. The source fix and loading/error/retry coverage pass focused verifier, ESLint, and TypeScript checks; hosted update/delete certification awaits an explicitly approved staging deployment |
+| [ ] | QA-K09 | Test business/store can be created or loaded | Browser | Hosted create/edit and exact Firestore projection pass. Reload exposed a stale Firebase-auth readiness frame, and Duplicate/Delete exposed non-rendering static confirmations. Both local fixes pass focused gates; push them to staging, then certify clean reload, duplicate cancel, and normal hosted delete |
 | [x] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
 | [x] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
 | [x] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |

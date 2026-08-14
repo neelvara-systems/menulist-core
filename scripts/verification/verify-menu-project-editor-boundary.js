@@ -149,6 +149,16 @@ requireOrder(projectSelector, [
 ], 'desktop project selector edit modal handoff');
 
 [
+  'const [pendingAction, setPendingAction] = useState<PendingProjectAction | null>(null);',
+  "setPendingAction({ type: 'duplicate', project });",
+  "setPendingAction({ type: 'delete', project });",
+  'open={Boolean(pendingAction)}',
+  'await onDuplicateProject(action.project);',
+  'await onDeleteProject(action.project);',
+].forEach((token) => requireToken(projectSelector, token, 'desktop project selector controlled action confirmation'));
+forbidToken(projectSelector, 'Modal.confirm(', 'desktop project selector static action confirmation');
+
+[
   "'mobile_projects_list_load_failed'",
   "'mobile_project_detail_load_failed'",
   'hasLoadError: hasCurrentHydratedScope ? hasLoadError : false,',

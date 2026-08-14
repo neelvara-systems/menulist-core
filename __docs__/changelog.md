@@ -1,5 +1,20 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Firebase Auth Readiness And Project Action Dialogs
+
+- Replaced the shared provider's render-lagging Firebase Auth boolean with an
+  exact user/product/tenant/store scope key. Project reads now remain closed
+  during initial hydration and every scope transition until Firebase Auth is
+  synchronized for that same scope.
+- Replaced the desktop project selector's non-rendering static Duplicate and
+  Delete confirmations with one controlled pending-action dialog. It preserves
+  duplicate rename handoff, awaits scoped deletion, and prevents dismissal
+  while the destructive callback is active.
+- Extended the session and project verifiers to lock both boundaries. Hosted
+  create/edit and exact QA persistence passed; final hosted reload/delete proof
+  requires the next staging push. No Firestore rule, data contract, Function,
+  provider setting, dependency, or production target changed.
+
 ## August 14, 2026 - Project List Scope And Recovery State
 
 - Removed the desktop project list's redundant dependency on a second nested

@@ -44,6 +44,10 @@ const getInitials = (name: string) => {
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
 type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
+type PendingProjectAction = {
+    type: 'duplicate' | 'delete';
+    project: SelectorProjectMetadata;
+};
 type SelectorProjectMetadata = ProjectMetadata & {
     active?: boolean;
     deleted?: boolean;
@@ -348,8 +352,8 @@ interface ProjectSelectorProps {
     selectedProject: SelectorProjectMetadata | null;
     setSelectedProject: (project: SelectorProjectMetadata | null) => void;
     onOpenModal: (project?: SelectorProjectMetadata) => void;
-    onDuplicateProject: (project: SelectorProjectMetadata) => void;
-    onDeleteProject: (project: SelectorProjectMetadata) => void;
+    onDuplicateProject: (project: SelectorProjectMetadata) => void | Promise<void>;
+    onDeleteProject: (project: SelectorProjectMetadata) => void | Promise<void>;
 }
 
 const normalizeSelectorProjects = (projects: unknown): SelectorProjectMetadata[] => {
@@ -379,6 +383,8 @@ export const ProjectSelector = ({
 }: ProjectSelectorProps) => {
     const { token } = useToken();
     const [modalOpen, setModalOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState<PendingProjectAction | null>(null);
+    const [pendingActionLoading, setPendingActionLoading] = useState(false);
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     const safeProjects = useMemo(() => normalizeSelectorProjects(projects), [projects]);
@@ -395,42 +401,40 @@ export const ProjectSelector = ({
     const selectedBaseProjectName = selectedProject?.specialMenuBaseProjectId
         ? baseProjectNameById[selectedProject.specialMenuBaseProjectId]
         : null;
+    const pendingProjectName = pendingAction
+        ? getLocalizedText(
+            pendingAction.project.name,
+            undefined,
+            getPrimaryLocalizedLanguage(pendingAction.project.name, 'en'),
+            'Untitled',
+        )
+        : 'Untitled';
 
     const confirmDuplicate = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
-        const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
-        Modal.confirm({
-            title: `Duplicate ${offeringName}`,
-            content: (
-                <div>
-                    <p>Create a copy of <strong>&quot;{projectName}&quot;</strong>?</p>
-                    <p style={{ fontSize: 12, opacity: 0.7 }}>This will duplicate all files, {labels.itemsPlural}, and settings.</p>
-                </div>
-            ),
-            okText: 'Duplicate',
-            cancelText: 'Cancel',
-            onOk: () => onDuplicateProject(project),
-        });
+        setPendingAction({ type: 'duplicate', project });
     };
 
     const confirmDelete = (project: SelectorProjectMetadata) => {
         setModalOpen(false);
-        const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
-        Modal.confirm({
-            title: `Delete ${offeringName}`,
-            content: (
-                <div>
-                    <p>Permanently delete <strong>&quot;{projectName}&quot;</strong>?</p>
-                    <p style={{ fontSize: 12, color: '#ff4d4f' }}>
-                        Customers will no longer see this {labels.offeringLower}. This action cannot be undone. All {labels.offeringPhrase} data will be lost.
-                    </p>
-                </div>
-            ),
-            okText: 'Delete',
-            okButtonProps: { danger: true },
-            cancelText: 'Cancel',
-            onOk: () => onDeleteProject(project),
-        });
+        setPendingAction({ type: 'delete', project });
+    };
+
+    const handlePendingAction = async () => {
+        if (!pendingAction || pendingActionLoading) return;
+
+        const action = pendingAction;
+        setPendingActionLoading(true);
+        try {
+            if (action.type === 'duplicate') {
+                await onDuplicateProject(action.project);
+            } else {
+                await onDeleteProject(action.project);
+            }
+            setPendingAction(null);
+        } finally {
+            setPendingActionLoading(false);
+        }
     };
 
     return (
@@ -548,6 +552,37 @@ export const ProjectSelector = ({
                         />
                     </Flex>
                 </Flex>
+            </Modal>
+
+            <Modal
+                title={`${pendingAction?.type === 'delete' ? 'Delete' : 'Duplicate'} ${offeringName}`}
+                open={Boolean(pendingAction)}
+                centered
+                confirmLoading={pendingActionLoading}
+                okText={pendingAction?.type === 'delete' ? 'Delete' : 'Duplicate'}
+                okButtonProps={pendingAction?.type === 'delete' ? { danger: true } : undefined}
+                cancelText="Cancel"
+                onCancel={() => {
+                    if (!pendingActionLoading) setPendingAction(null);
+                }}
+                onOk={handlePendingAction}
+                destroyOnHidden
+            >
+                {pendingAction?.type === 'delete' ? (
+                    <div>
+                        <p>Permanently delete <strong>&quot;{pendingProjectName}&quot;</strong>?</p>
+                        <p style={{ fontSize: 12, color: token.colorError }}>
+                            Customers will no longer see this {labels.offeringLower}. This action cannot be undone. All {labels.offeringPhrase} data will be lost.
+                        </p>
+                    </div>
+                ) : (
+                    <div>
+                        <p>Create a copy of <strong>&quot;{pendingProjectName}&quot;</strong>?</p>
+                        <p style={{ fontSize: 12, opacity: 0.7 }}>
+                            This will duplicate all files, {labels.itemsPlural}, and settings.
+                        </p>
+                    </div>
+                )}
             </Modal>
         </>
     );
