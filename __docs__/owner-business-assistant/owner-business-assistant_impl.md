@@ -206,6 +206,7 @@ The platform monitor must not show operation usage or recent operation records.
 - Business Health remains cache-first and bounded
 - current, analytics, locations, thread, and platform monitor callers use the shared bounded read-model response parser and do not call `response.json()` directly
 - thread route params and answer request thread IDs use the shared `oba_` runtime ID boundary before `ownerBusinessAssistantThreads` reads/writes
+- a valid browser-created thread ID is available before its first answer persists a row; the protected thread read returns the same `{ thread: null, messages: [] }` envelope for absent and foreign-scope rows, preserving first-use truth without exposing row existence
 - the consolidated daily retention task deletes expiry-matched threads, answer events, feedback, and dated snapshots regardless of feature activation; write flags cannot pause cleanup of already-expired private data
 - answer hook response parsing is capped, logs `owner_business_assistant_answer_response_parse_failed`, rejects invalid response shape through the owner-safe error sentinel, and does not use `response.json().catch(() => null)`
 - platform monitor route and browser response failures use bounded runtime diagnostics

@@ -183,6 +183,7 @@ assertOrder(
 
 assertIncludes(summaryRoute, 'withAuth', 'summary route auth');
 assertIncludes(summaryRoute, 'checkAIRateLimit("DATA_READ"', 'summary route read rate limit');
+assertIncludes(summaryRoute, 'failClosedOnProviderError: true,\n            session,', 'summary route reuses withAuth session for rate limiting');
 assertIncludes(summaryRoute, 'verifyTenantAccess', 'summary route tenant check');
 assertIncludes(summaryRoute, 'requireAnyStorePermissionForStoreData', 'summary route store permission check');
 assertIncludes(summaryRoute, 'PERMISSIONS.VIEW_ANALYTICS', 'summary route Business Health permission');
@@ -198,6 +199,7 @@ assertNotIncludes(summaryRoute, 'Number(session.sId)', 'summary route must not l
 assertNotIncludes(summaryRoute, 'Number(session.tId)', 'summary route must not loose-coerce tenant scope');
 assertIncludes(refreshRoute, 'withAuth', 'refresh route auth');
 assertIncludes(refreshRoute, 'checkDataWriteLimit', 'refresh route write rate limit');
+assertIncludes(refreshRoute, 'failClosedOnProviderError: true,\n            session,', 'refresh route reuses withAuth session for rate limiting');
 assertIncludes(refreshRoute, 'validateAPIInput', 'refresh route input validation');
 assertIncludes(refreshRoute, 'parsePublicTruthMonitorJsonBody', 'refresh route bounded parser');
 assertIncludes(refreshRoute, 'verifyTenantAccess', 'refresh route tenant check');

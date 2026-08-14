@@ -90,6 +90,8 @@ No Business Health path should write:
 
 The active Business Health APIs remain protected read/answer routes with auth, tenant/store/project validation, request validation, rate limiting where provider-backed answering is possible, and generic owner-safe errors.
 
+Thread first use is an explicit successful empty state: the browser-created ID can precede its first persisted answer, and the thread route returns the same empty envelope for an absent row and a row outside the admitted actor scope. Exact actor ownership remains required before any persisted metadata or message is projected.
+
 Browser read-model hooks now send current, analytics, locations, and thread requests with same-origin credentials, no browser cache, and manual redirect handling, then parse responses through a shared bounded reader before SWR cache/state updates. Non-OK, malformed, oversized, or invalid successful read-model envelopes fail closed with bounded diagnostics instead of direct `response.json()` parsing. The answer hook also discards malformed stored thread IDs and replaces them with a fresh `oba_` ID before sending a new answer request. The answer hook and platform monitor use the same request policy before their bounded response readers.
 
 Removing owner operation handling reduces mutation risk because Business Health no longer exposes a write route for owner operations.

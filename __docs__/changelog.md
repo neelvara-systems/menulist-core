@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Business Health First-Use And Rate-Limit Session Truth
+
+- Reused each Public Truth Monitor route's already-authorized `withAuth()` session for read and refresh rate limiting, preventing a second request-context session lookup from rejecting an admitted owner.
+- Made Business Health thread reads return the same empty private envelope for both a browser-created ID that has not persisted its first answer and any row outside the admitted actor scope. This removes expected first-use 404 noise without revealing foreign thread existence or data.
+- Preserved fail-closed provider behavior, selected-store permission checks, exact thread ownership checks, bounded response parsing, and the existing one-document thread read. No Firebase rule, index, Function, provider, dependency, direct deploy, or production change was added.
+
 ## August 14, 2026 - Help Center Firebase Auth Route Handoff
 
 - Fixed `/help-center` Firebase Auth readiness to use the existing route-aware MenuList/Answerlattice product scope instead of the MenuList store-provider key.

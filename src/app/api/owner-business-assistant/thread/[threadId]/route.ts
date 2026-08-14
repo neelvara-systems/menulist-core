@@ -61,7 +61,15 @@ export const GET = withAuth(async (request: NextRequest, session, params) => {
   const threadSnap = await threadRef.get();
   const thread = threadSnap.exists ? threadSnap.data() : null;
   if (!isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // A browser-generated thread ID exists before the first answer persists a
+    // row. Return the same empty envelope for absent and foreign-scope rows so
+    // first use is quiet without exposing whether another actor owns the ID.
+    return NextResponse.json({
+      data: {
+        thread: null,
+        messages: [],
+      },
+    });
   }
 
   const messages = Array.isArray(thread.messages)

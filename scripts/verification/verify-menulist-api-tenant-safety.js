@@ -564,6 +564,25 @@ function verifyCoreAuthHelpers() {
     ],
     'session access-status read limiter before Firestore reads',
   );
+
+  assertIncludes(
+    'src/lib/rateLimit/helpers.ts',
+    [
+      'session?: LoginUserType | null;',
+      'const session = options.session ?? await getActiveSession();',
+    ],
+    'shared rate-limit helper must reuse an already-authorized route session when supplied',
+  );
+  assertIncludes(
+    'src/app/api/public-truth-monitor/summary/route.ts',
+    ['failClosedOnProviderError: true,', 'session,'],
+    'Public Truth Monitor summary rate limit must reuse the withAuth session',
+  );
+  assertIncludes(
+    'src/app/api/public-truth-monitor/refresh/route.ts',
+    ['failClosedOnProviderError: true,', 'session,'],
+    'Public Truth Monitor refresh rate limit must reuse the withAuth session',
+  );
   const accessStatusRoute = read('src/app/api/auth/access-status/route.ts');
   assert(!accessStatusRoute.includes('key: `${ACCESS_STATUS_RATE_LIMIT_KEY}:${userId}:${tenantId}:${storeId}`'), 'access-status route must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!accessStatusRoute.includes('tenantId: userData.tenantId'), 'access-status route must not log raw tenant IDs');
@@ -7501,6 +7520,8 @@ function verifyOwnerUtilitySecureLogging() {
   assert(ownerBusinessAssistantThreadRoute.includes('resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId)'), 'Owner Business Assistant thread route must resolve selected store scope');
   assert(ownerBusinessAssistantThreadRoute.includes('requireAnyStorePermissionForStore('), 'Owner Business Assistant thread route must require store permission before thread reads');
   assert(ownerBusinessAssistantThreadRoute.includes('isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)'), 'Owner Business Assistant thread route must require exact actor ownership');
+  assert(ownerBusinessAssistantThreadRoute.includes('thread: null'), 'Owner Business Assistant absent or foreign-scope thread reads must return the same empty envelope');
+  assert(ownerBusinessAssistantThreadRoute.includes('messages: []'), 'Owner Business Assistant empty thread envelope must contain no messages');
   assert(ownerBusinessAssistantThreadRoute.includes('projectOwnerBusinessAssistantMessage'), 'Owner Business Assistant thread route must project allowlisted messages');
   assert(!ownerBusinessAssistantThreadRoute.includes('const threadMeta = { ...thread };'), 'Owner Business Assistant thread route must not expose raw persisted thread fields');
   assert(ownerBusinessAssistantThreadResponse.includes('export const projectOwnerBusinessAssistantMessage = (value: unknown) => {'), 'Owner Business Assistant thread messages must use a pure allowlist projector');

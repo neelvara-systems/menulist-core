@@ -33,6 +33,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read", {
             failClosedOnProviderError: true,
+            session,
         });
         if (rateLimitResponse) return withPublicTruthMonitorPrivateHeaders(rateLimitResponse);
 

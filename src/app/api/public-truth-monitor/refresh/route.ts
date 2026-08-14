@@ -54,6 +54,7 @@ export const POST = withAuth(async (request, session) => {
 
         const rateLimitResponse = await checkDataWriteLimit({
             failClosedOnProviderError: true,
+            session,
         });
         if (rateLimitResponse) return withPublicTruthMonitorPrivateHeaders(rateLimitResponse);
 

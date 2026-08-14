@@ -339,6 +339,8 @@ forbidToken(
   'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS',
   '.doc(parsed.data.threadId)',
   'isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)',
+  'thread: null',
+  'messages: []',
   'projectOwnerBusinessAssistantMessage',
   'threadId: parsed.data.threadId',
 ].forEach((token) => requireToken(threadRoute, token, 'thread route'));

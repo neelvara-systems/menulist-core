@@ -13,6 +13,7 @@ import { getRateLimitForFeature, RateLimitFeature } from './configs';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import type LoginUserType from '@type/loginUser';
 
 const normalizeRateLimitHelperError = (error: unknown): Error => {
     const normalized = new Error('Rate limit helper failure');
@@ -25,6 +26,7 @@ const normalizeRateLimitHelperError = (error: unknown): Error => {
 
 type AIRateLimitOptions = {
     failClosedOnProviderError?: boolean;
+    session?: LoginUserType | null;
 };
 
 /**
@@ -51,7 +53,10 @@ export async function checkAIRateLimit(
     options: AIRateLimitOptions = {},
 ): Promise<NextResponse | null> {
     try {
-        const session = await getActiveSession();
+        // Protected routes already hold the normalized session from withAuth().
+        // Reuse it so rate limiting cannot disagree with the route admission
+        // because of a second, request-context-sensitive NextAuth lookup.
+        const session = options.session ?? await getActiveSession();
         
         if (!session?.user?.id) {
             return NextResponse.json(

@@ -30,6 +30,8 @@ Public Truth Monitor session-scope admission is cost-neutral: `/api/public-truth
 
 Concurrent refresh hardening keeps the same normal-path summary read/write count but moves both operations into one Firestore transaction. This prevents last-writer-wins history loss. Contention can cause transaction retries, so the practical cost ceiling is the normal read/write set multiplied by Firebase retry count; the stored history remains capped at six. Production rate-limit-provider failure blocks the summary/refresh route before the protected work proceeds.
 
+Protected summary and refresh rate limits reuse the normalized session already admitted by `withAuth()` instead of performing a second request-context NextAuth lookup. Hashing, limiter profiles, fail-closed provider behavior, and Firestore operation counts are unchanged.
+
 ## Storage
 
 Use capped summary documents:

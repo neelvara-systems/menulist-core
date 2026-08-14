@@ -32,6 +32,7 @@
 | PTM-MOB-001 | Mobile opens Business Health | Public truth history card stays inside `MobileShell` and uses the shared hook |
 | PTM-BOUNDARY-001 | Runtime tries to fetch external sources or call providers | Fail source gate |
 | PTM-BOUNDARY-002 | Production rate-limit provider is unavailable | Summary/refresh fails closed; protected owner-data operation does not bypass admission |
+| PTM-BOUNDARY-003 | Authenticated route reaches summary or refresh rate limiting | The normalized session admitted by `withAuth()` is reused; no second request-context session lookup can produce a false 401 |
 | PTM-DATA-003 | Two manual refreshes overlap | Each transaction rebuilds from the current summary; one refresh cannot silently overwrite the other's history entry |
 | PTM-AUTH-001 | Compact and nested session tenant/store aliases disagree | 403 before protected monitor reads or writes |
 | PTM-AUTH-002 | Store is reassigned, disabled, deleted, or blocked after initial route admission | Summary transaction rejects current scope; no saved summary is disclosed or written |

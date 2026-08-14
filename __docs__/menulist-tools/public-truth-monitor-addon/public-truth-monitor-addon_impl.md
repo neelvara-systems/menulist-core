@@ -33,6 +33,8 @@ Implemented:
 
 Public Truth Monitor session scope boundary: `/api/public-truth-monitor/summary`, `/api/public-truth-monitor/refresh`, and `serverPublicTruthMonitorEntitlements.ts` normalize authenticated session tenant/store scope as exact positive numeric Firestore document IDs before tenant access checks, Business Health permission checks, store reads, subscription lookups, project summary reads, summary reads/writes, or report entry scope persistence. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails before Firestore document access.
 
+Both protected routes pass their already-normalized `withAuth()` session into the shared rate-limit helper. The helper falls back to active-session lookup only for callers that do not provide an admitted session, so rate-limit admission cannot contradict the enclosing protected route because of a second NextAuth lookup.
+
 Not implemented in this slice:
 
 1. Background monthly scheduler task.
