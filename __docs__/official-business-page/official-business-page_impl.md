@@ -821,7 +821,17 @@ Desktop Business Settings and the standalone Mobile Official Page editor remount
 
 Mobile unmount cleanup does not run while an admitted store save is unresolved. The save first acknowledges `updateStore()`, then filters cleanup candidates against the complete committed public-presence model. Failed saves retain staged media while the source editor remains mounted so the owner can retry; after that editor becomes obsolete, only media not referenced by the previous committed presence is eligible for cleanup. Desktop and mobile uploads that complete after their exact editor unmounts delete the newly returned URL instead of applying it to stale form state.
 
+### Desktop Business Settings Reset boundary
+
+The page-level Reset action restores every parent-controlled draft from the
+current persisted store model, including social profile URLs, regular weekly
+hours, Guest Feedback settings, and the review URL. It also clears the weekly
+hours dirty/day tracking so a later unrelated Save cannot carry cancelled
+hours or social-profile changes. Independently persisted panels such as
+External Menu Sync, special hours, and time-slot presets retain their own save
+semantics and are not presented as form drafts.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** March 18, 2026 (Distribution Strategy Update — ADR-12, ADR-13, WhatsApp share, OBP_SHARE tracking)
+**Last Updated:** August 14, 2026 (desktop Business Settings Reset boundary)

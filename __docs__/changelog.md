@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Business Settings Controlled-Draft Reset Boundary
+
+- Extended the desktop page-level Reset action to restore social profile URLs and regular weekly hours from current persisted store truth, alongside the existing Guest Feedback draft restoration.
+- Cleared weekly-hours dirty/day tracking during Reset so a later unrelated Save cannot persist cancelled hours or social-profile edits.
+- Added a focused source verifier. Reset remains Firebase-cost neutral and changes no schema, rule, index, Function, provider, dependency, or production environment.
+
 ## August 14, 2026 - Business Settings Feedback Reset Boundary
 
 - Restored Guest Feedback enablement, contact-field defaults, and Google Review URL from persisted store truth when the desktop Business Settings Reset action is used.

@@ -421,6 +421,7 @@
     "verify:functions-analytics-persistence": "node scripts/verification/verify-functions-analytics-persistence.js && npm run test:functions-analytics-persistence",
     "verify:publish-verification-scope": "npm run verify:menulist-api-tenant-safety && npm run test:publish-verification-scope",
     "verify:guest-feedback-boundary": "node scripts/verification/verify-guest-feedback-boundary.js",
+    "verify:business-settings-reset-boundary": "node scripts/verification/verify-business-settings-reset-boundary.js",
     "test:public-feedback-defaults-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-public-feedback-defaults-boundary.ts",
     "verify:reviews-reputation-boundary": "node scripts/verification/verify-reviews-reputation-boundary.js",
     "verify:qr-whatsapp-experiments-boundary": "node scripts/verification/verify-qr-whatsapp-experiments-boundary.js",

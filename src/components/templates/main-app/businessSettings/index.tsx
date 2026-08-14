@@ -1719,6 +1719,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                             size="large"
                                             onClick={() => {
                                                 const feedbackDraft = getFeedbackSettingsDraft(storeDetails);
+                                                const socialMediaDraft = sanitizeSocialMediaMap(storeDetails?.socialMedia);
+                                                const workingHoursDraft = buildWorkingHourSlots(storeDetails?.workingHours);
                                                 const queuedPhotoDeletes = [...obpPhotoDeleteQueueRef.current];
                                                 obpPhotoDeleteQueueRef.current = [];
                                                 void deleteQueuedOBPPhotos(
@@ -1739,6 +1741,10 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                                 setFeedbackEnabled(feedbackDraft.feedbackEnabled);
                                                 setFeedbackDefaults(feedbackDraft.feedbackDefaults);
                                                 setReviewUrl(feedbackDraft.reviewUrl);
+                                                setSocialMedia(socialMediaDraft);
+                                                setWorkingHours(workingHoursDraft);
+                                                setWorkingHoursDirty(false);
+                                                setWorkingHoursDirtyDays([]);
                                                 if (storeDetails?.logo) {
                                                     setSelectedFile({
                                                         name: storeDetails?.logo,
