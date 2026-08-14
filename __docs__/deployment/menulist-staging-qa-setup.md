@@ -21,7 +21,7 @@ MyCodex until MenuList QA is live and verified.
 
 - Preview commit `6acb68b487de151bb369babb0fda323bef07decb` exactly matches `origin/staging`, hosted `/api/version`, and Vercel deployment `dpl_7g1jsmpk1gJ2tHy9nXBDhRzMvGvH`. Vercel reports the Preview deployment `READY` with the apex, `www`, app, wildcard, and staging-branch aliases. It contains the exact-scope Firebase Auth readiness gate and controlled Duplicate/Delete dialog corrections.
 - The remaining deterministic first-project rules boundary was corrected and released separately. A fresh exact-scope `2/2` owner then completed hosted first-project create, reload persistence, edit, duplicate, duplicate-cancel, and normal delete. Firestore REST readback verified the canonical project, duplicate, two soft-delete tombstones, literal compact-summary projection, exact `ML`/tenant/store/user identity, one-language configuration, and no files.
-- A later hard reload exposed a narrower client-session race: the provider had already validated the server session and Firebase/store scope, but the independent five-second DAL session cache expired during bootstrap and briefly emitted `User not logged in` before recovering. Local source now strictly normalizes and primes that DAL cache after Firebase/store validation and before exposing owner screens. Invalid input fails closed and clears prior identity; logout and in-flight request invalidation remain unchanged. Focused auth/session gates pass, but this correction is not in deployed commit `6acb68b`; `QA-K09` remains open for its next staging push and one clean hosted hard-reload rerun.
+- A later hard reload exposed a narrower client-session boundary: NextAuth intentionally removes `expires` from the React Server Component form of `getServerSession()`, so passing that projection into the strict client-session validator left the DAL cache and client `SessionProvider` without a complete session. Commit `2bdeeb076e789c379c0d43f3382fd88030b6bd0e` now refreshes the complete `/api/auth/session` payload, validates its stable identity and MenuList tenant/store/product scope against the trusted server projection, and only then exposes owner screens. Invalid input and scope mismatches fail closed; logout and in-flight request invalidation remain unchanged. Vercel deployment `dpl_FWspseXxHrDmC4QxKkkNbvorJJ5Y` reached `READY`, `app.menulist.digital/api/version` reported that exact commit, and two authenticated hosted reloads rendered the full owner shell and expected no-subscription gate without another `session_provider_session_prime_failed` or store-bootstrap failure. `QA-K09` is complete.
 - Guarded cleanup asserted every disposable identity and update time before atomically deleting the exact three project documents, compact summary, manual QA entitlement, and disposable user document, then removed the matching Firebase Auth user. Readback proves all six Firestore documents and the Auth user absent. Retained baseline `sub_TPGo1XmddplChB` remains unchanged at scope `1/1`, local `pending`, provider `created`, with the same update time.
 - Read-only production checks did not establish absence. Google Cloud confirms project `menulist` exists, but `admin@neelvara.com` and the founder account both lack `resourcemanager.projects.get`; direct Firebase Console access reports that the project is unavailable or unauthorized, and the reauthenticated Firebase CLI lists only `menulist-qa`. Failed unauthenticated Cloud Shell probes returned HTTP 403 and are not counted as absence. `QA-K13` remains open until the controlled production owner grants read-only access or performs the exact two-document and one-object checks.
 - The provider security audit confirmed the existing secured evidence for GoDaddy, Google, GitHub, Vercel, and Sentry. Current live readback still finds Upstash Multi-Factor Authentication off. Razorpay reports `No verification method is active`, no phone number, and an owner-only phone/OTP setup gate. Meta reaches an authenticity-verification code sent to a masked personal recovery email before revealing or changing the selected Facebook profile's 2FA state. No authenticator seed, OTP, password, phone number, recovery code, or recovery mailbox content was requested, viewed, or stored. `QA-A11` remains open until the owner completes these private verification steps and independently records recovery evidence.
@@ -2698,6 +2698,23 @@ Operator progress:
   session-cache expiry race. Its strict trusted-session priming fix passes
   focused local gates but is not in deployed commit `6acb68b`; `QA-K09` remains
   open only for that push and one clean hosted hard-reload rerun.
+- `2026-08-14` - Staging commit
+  `2bdeeb076e789c379c0d43f3382fd88030b6bd0e` exactly matched
+  `origin/staging` and the custom-domain `/api/version` response; Vercel
+  deployment `dpl_FWspseXxHrDmC4QxKkkNbvorJJ5Y` was `READY`. Source inspection
+  confirmed that NextAuth deliberately omits `expires` from the RSC
+  `getServerSession()` projection. The client session boundary now obtains one
+  complete `/api/auth/session` payload, validates its stable identity and
+  tenant/store/product scope against the trusted server projection, and passes
+  only that complete session to both the DAL cache and client provider. Two
+  authenticated hard reloads of `/projects` rendered the full owner shell and
+  expected no-subscription guard. The prior
+  `session_provider_session_prime_failed` and store-bootstrap failure did not
+  recur. The only new console diagnostic was the already documented,
+  intentionally non-blocking `app_check_site_key_missing` first-boot message.
+  Combined with the completed hosted CRUD, exact Firestore projection, guarded
+  cleanup, and customer-link proof on the preceding build, this closes
+  `QA-K09`; `QA-K10` remains complete.
 - `2026-08-14` - Secret-handling governance and the maintenance calendar were
   closed without exposing credentials. Secrets remain vaulted; this guide stores
   names, versions, redacted identifiers, and non-secret outcomes only. The
@@ -3032,7 +3049,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K06 | Google OAuth sign-in works | Browser, Google Auth Platform, and Vercel logs | A listed OAuth test user completes the exact QA callback with no redirect/domain error |
 | [x] | QA-K07 | Single owner dashboard route works | Browser | `https://app.menulist.digital/dashboard` loads and session scope selects the tenant/store |
 | [x] | QA-K08 | Owner onboarding stays on app host | Browser | `https://menulist.digital/create-menu` redirects to `https://app.menulist.digital/create-menu`; Google auth and preview remain on the app host |
-| [ ] | QA-K09 | Test business/store can be created or loaded | Browser | Exact ruleset `fd3bf828-2c33-4732-af32-4a4bf56a7735` is active. Hosted first-project create, reload persistence, edit, duplicate, duplicate cancel, normal delete, exact Firestore projection, and guarded cleanup passed on build `6acb68b`. A later hard reload exposed a transient five-second DAL session-cache expiry race; its strict provider-to-DAL priming fix passes locally but still needs a staging push and one clean hosted hard-reload rerun |
+| [x] | QA-K09 | Test business/store can be created or loaded | Browser | Exact ruleset `fd3bf828-2c33-4732-af32-4a4bf56a7735` is active. Hosted first-project create, reload persistence, edit, duplicate, duplicate cancel, normal delete, exact Firestore projection, and guarded cleanup passed on build `6acb68b`. Build `2bdeeb076e789c379c0d43f3382fd88030b6bd0e` then completed two authenticated hard reloads without recurrence of the RSC/session-cache bootstrap failure |
 | [x] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
 | [x] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
 | [x] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |
