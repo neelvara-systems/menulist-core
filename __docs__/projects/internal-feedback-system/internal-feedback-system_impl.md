@@ -38,6 +38,7 @@ Authenticated desktop/mobile owner
 - Runtime list admission requires every row to match the expected tenant/store, row IDs to be unique, the cursor to equal the last admitted row, and empty pages not to claim more data.
 - Status acknowledgement requires the response's own feedback ID and status to match the requested row. Counts must be nonnegative safe integers.
 - Status mutations settle only while the exact source row still owns current state. A tenant/store or newer row replacement suppresses obsolete owner feedback and local projection.
+- A failed initial list/count settlement is not an empty inbox. Desktop keeps a persistent retryable error in the list region, suppresses the healthy empty-state illustration/copy, and marks the attention total unavailable until an authoritative retry succeeds. Load-more failure may retain already admitted rows but still uses the bounded failure diagnostic and transient notice.
 
 ---
 

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Owner Feedback And Help Recovery Truth
+
+- Prevented a failed Guest Feedback list/count read from appearing as a confirmed empty inbox or a zero needs-attention total. The desktop inbox now keeps a persistent retryable failure until an authoritative load succeeds.
+- Prevented failed Help Center category, popular-article, and changelog requests from appearing as healthy empty panels. Each affected landing panel now shows translated persistent failure copy with a retry control.
+- Reused the existing scoped DAL and protected Answerlattice public-content transports. This adds no Firestore read/write shape, collection, index, rule, Function, provider call, dependency, Firebase deploy, or production deployment.
+
 ## August 14, 2026 - Printable Assets Entitlement State
 
 - Settled active subscription state before desktop Printable Assets reads any

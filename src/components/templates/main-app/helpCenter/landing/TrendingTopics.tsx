@@ -1,10 +1,10 @@
 'use client'
-import { Button, Card, Empty, Flex, List, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Empty, Flex, List, Typography, message, theme } from 'antd';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import ArticleViewModal from '@organisms/ArticleViewModal';
@@ -19,6 +19,7 @@ function TrendingTopics() {
     const [hovered, setHovered] = useState<string | null>(null);
     const [articles, setArticles] = useState<(KnowledgeBaseArticleMeta & { categoryTitle?: string, sectionTitle?: string })[]>([]);
     const [modal, setModal] = useState<{ active: boolean; article: KnowledgeBaseArticleMeta | null }>({ active: false, article: null });
+    const [loadFailed, setLoadFailed] = useState(false);
 
     const buildArticles = useCallback((categories: KnowledgeBaseCategoriesType['categories']) => {
         const allArticles: (KnowledgeBaseArticleMeta & { categoryTitle?: string, sectionTitle?: string })[] = [];
@@ -43,18 +44,20 @@ function TrendingTopics() {
         setArticles(sortedArticles.slice(0, 5));
     }, []);
 
-    const fetchInitialData = async () => {
+    const fetchInitialData = useCallback(async (forceRefresh = false) => {
+        setLoadFailed(false);
         try {
-            const result = await getCategoriesCached();
+            const result = await getCategoriesCached({ forceRefresh });
             buildArticles(result?.categories || {});
-        } catch (error) {
+        } catch {
+            setLoadFailed(true);
             message.error(t('failedToLoadArticles'));
         }
-    };
+    }, [buildArticles, getCategoriesCached, t]);
 
     useEffect(() => {
-        fetchInitialData();
-    }, [buildArticles, getCategoriesCached]);
+        void fetchInitialData();
+    }, [fetchInitialData]);
 
     const handleArticleClick = (articleMeta: KnowledgeBaseArticleMeta & { categoryTitle?: string, sectionTitle?: string }) => {
         // Set article metadata - ArticleViewModal will handle fetching
@@ -72,7 +75,21 @@ function TrendingTopics() {
                     <Typography.Title level={4} style={{ margin: 0 }}>{t('popularResources')}</Typography.Title>
                     <Button type="text" size="small" icon={<LuArrowRight />} iconPosition='end' onClick={() => router.push(helpCenterTabRouting('kb'))}>{t('viewAll')}</Button>
                 </Flex>
-                {categoriesData ? <List
+                {loadFailed ? (
+                    <Alert
+                        action={(
+                            <Button
+                                aria-label={t('failedToLoadArticles')}
+                                icon={<LuRefreshCw aria-hidden="true" />}
+                                onClick={() => void fetchInitialData(true)}
+                                size="small"
+                            />
+                        )}
+                        message={t('failedToLoadArticles')}
+                        showIcon
+                        type="error"
+                    />
+                ) : categoriesData ? <List
                     dataSource={articles}
                     renderItem={(item, index) => (
                         <List.Item

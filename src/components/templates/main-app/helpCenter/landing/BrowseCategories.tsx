@@ -3,11 +3,11 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { KnowledgeBaseCategory } from '@type/knowledgeBase';
-import { Button, Card, Col, Empty, Flex, Row, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, Row, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -16,18 +16,21 @@ function BrowseCategories() {
     const { token } = theme.useToken();
     const router = useRouter();
     const { categoriesMap, getCategoriesCached } = useKBCategoriesCache();
+    const [loadFailed, setLoadFailed] = useState(false);
+
+    const fetchKbData = useCallback(async (forceRefresh = false) => {
+        setLoadFailed(false);
+        try {
+            await getCategoriesCached({ forceRefresh });
+        } catch {
+            setLoadFailed(true);
+            message.error(t('failedToLoadCategories'));
+        }
+    }, [getCategoriesCached, t]);
 
     useEffect(() => {
-        const fetchKbData = async () => {
-            try {
-                await getCategoriesCached();
-            } catch (error) {
-                message.error(t('failedToLoadCategories'));
-            }
-        };
-
-        fetchKbData();
-    }, [getCategoriesCached, t]);
+        void fetchKbData();
+    }, [fetchKbData]);
 
     const categories = useMemo<KnowledgeBaseCategory[]>(
         () => Object.values(categoriesMap) as KnowledgeBaseCategory[],
@@ -37,7 +40,21 @@ function BrowseCategories() {
     return (
         <Flex vertical gap="large" style={{ width: '100%', maxWidth: 1200 }}>
             <Title level={4}>{t('browseByCategory')}</Title>
-            {categories.length === 0 ? (
+            {loadFailed ? (
+                <Alert
+                    action={(
+                        <Button
+                            aria-label={t('failedToLoadCategories')}
+                            icon={<LuRefreshCw aria-hidden="true" />}
+                            onClick={() => void fetchKbData(true)}
+                            size="small"
+                        />
+                    )}
+                    message={t('failedToLoadCategories')}
+                    showIcon
+                    type="error"
+                />
+            ) : categories.length === 0 ? (
                 <Empty description={t('noCategories')} />
             ) : (
                 <Row gutter={[16, 16]}>

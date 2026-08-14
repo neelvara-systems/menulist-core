@@ -23,7 +23,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
-import { Button, Card, Empty, Flex, Spin, Typography, theme, notification } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Spin, Typography, theme, notification } from 'antd';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
@@ -65,6 +65,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
     const [needsAttentionCount, setNeedsAttentionCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
     const [lastDocId, setLastDocId] = useState<string | null>(null);
     const currentScopeRef = useRef<GuestFeedbackExpectedScope | null>(resolveFeedbackInboxScope(storeDetails));
@@ -100,6 +101,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
         } else {
             dispatch(startLoader('feedbackInbox'));
             setIsLoading(true);
+            setLoadError(null);
         }
 
         try {
@@ -141,6 +143,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
             }
             setHasMore(result.hasMore);
             setLastDocId(result.lastDocId);
+            setLoadError(null);
         } catch (error) {
             if (
                 latestRequestRef.current === requestId
@@ -156,6 +159,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                     message: 'Error',
                     description: 'Failed to load feedback',
                 });
+                if (!loadMore) setLoadError('Feedback could not be loaded. Your inbox has not been confirmed empty.');
             }
         } finally {
             if (loadMore) loadMoreInFlightRef.current = false;
@@ -276,6 +280,18 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                         <div className="flex items-center justify-center py-12">
                             <Spin size="large" />
                         </div>
+                    ) : loadError ? (
+                        <Alert
+                            action={(
+                                <Button onClick={() => void fetchFeedback(false, null)} size="small">
+                                    Try again
+                                </Button>
+                            )}
+                            description="Try again before relying on the feedback count or empty state."
+                            message={loadError}
+                            showIcon
+                            type="error"
+                        />
                     ) : feedbackItems.length === 0 ? (
                         <Empty
                             image={filter === 'all' ? (
@@ -326,10 +342,12 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                         <Flex vertical gap={4}>
                             <Text type="secondary">Needs attention</Text>
                             <Title level={3} style={{ margin: 0, color: needsAttentionCount > 0 ? token.colorError : token.colorText }}>
-                                {needsAttentionCount}
+                                {loadError ? '—' : needsAttentionCount}
                             </Title>
                             <Text type="secondary">
-                                Low-rating feedback remains here until the owner marks it resolved.
+                                {loadError
+                                    ? 'Feedback totals are unavailable until the inbox loads.'
+                                    : 'Low-rating feedback remains here until the owner marks it resolved.'}
                             </Text>
                         </Flex>
                     </Card>

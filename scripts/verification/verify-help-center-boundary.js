@@ -46,6 +46,9 @@ function verifySearchBoundary() {
   const helpChatDrafts = read('src/lib/answerlattice/helpChatDrafts.ts');
   const cacheScopeHook = read('src/hooks/answerlattice/useAnswerlatticeCacheScope.ts');
   const categoriesCache = read('src/hooks/useKBCategoriesCache.ts');
+  const browseCategories = read('src/components/templates/main-app/helpCenter/landing/BrowseCategories.tsx');
+  const trendingTopics = read('src/components/templates/main-app/helpCenter/landing/TrendingTopics.tsx');
+  const whatsNew = read('src/components/templates/main-app/helpCenter/landing/WhatsNew.tsx');
   const articleCache = read('src/hooks/useArticleCache.ts');
   const knowledgeBaseArticles = read('src/components/organisms/KnowledgeBaseExplorer/Articles.tsx');
   const ticketCache = read('src/hooks/useTicketCache.ts');
@@ -151,6 +154,12 @@ function verifySearchBoundary() {
   assertIncludes(cacheScopeHook, 'resolveAnswerlatticeWorkspaceCacheScopeKey(session)', 'Help Center exact workspace cache scope');
   assertIncludes(categoriesCache, 'new Map<string, Promise<KnowledgeBaseCategoriesType | null>>()', 'Help Center category request coalescing per scope');
   assertIncludes(categoriesCache, 'cachedKBCategories?.scopeKey === scopeKey', 'Help Center category cache scope check');
+  assertIncludes(browseCategories, 'loadFailed ? (', 'Help Center category load failure precedes empty state');
+  assertIncludes(browseCategories, "message={t('failedToLoadCategories')}", 'Help Center category persistent failure copy');
+  assertIncludes(trendingTopics, 'loadFailed ? (', 'Help Center article load failure precedes empty state');
+  assertIncludes(trendingTopics, "message={t('failedToLoadArticles')}", 'Help Center article persistent failure copy');
+  assertIncludes(whatsNew, 'loadFailed ? (', 'Help Center changelog load failure is visible');
+  assertIncludes(whatsNew, "message={t('failedToLoadChangelog')}", 'Help Center changelog persistent failure copy');
   assertIncludes(articleCache, 'cachedArticles.scopeKey === scopeKey', 'Help Center article cache scope check');
   assertIncludes(articleCache, 'cacheScopeKey: scopeKey', 'Help Center article consumer scope exposure');
   assertIncludes(knowledgeBaseArticles, 'const requestKey = JSON.stringify([cacheScopeKey, articles.map((article) => article.id)]);', 'Help Center article-list scoped request identity');

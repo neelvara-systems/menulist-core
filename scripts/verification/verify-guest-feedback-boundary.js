@@ -518,6 +518,9 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(desktop, 'getFeedbackList(filter, 50, cursorId || undefined, expectedScope)', 'Guest Feedback desktop list retains captured tenant/store scope');
   assertIncludes(desktop, "getFeedbackCount('needs_attention', expectedScope)", 'Guest Feedback desktop count retains captured tenant/store scope');
   assertIncludes(desktop, 'latestRequestRef.current !== requestId', 'Guest Feedback desktop latest request settlement');
+  assertIncludes(desktop, "setLoadError('Feedback could not be loaded. Your inbox has not been confirmed empty.')", 'Guest Feedback desktop persistent load failure');
+  assertIncludes(desktop, ": loadError ? (", 'Guest Feedback desktop error state precedes empty state');
+  assertIncludes(desktop, "loadError ? '—' : needsAttentionCount", 'Guest Feedback desktop count does not show a false zero');
   assertIncludes(desktop, 'mutationInFlightRef.current', 'Guest Feedback desktop status duplicate admission');
   assertIncludes(desktop, 'feedbackItemsRef.current.find((item) => item.id === feedbackId) !== sourceItem', 'Guest Feedback desktop source-row mutation ownership');
   assertIncludes(desktop, 'await fetchFeedback(false, null);', 'Guest Feedback desktop committed status race reconciliation');

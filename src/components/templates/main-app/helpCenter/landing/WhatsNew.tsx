@@ -1,10 +1,10 @@
 'use client'
 import { helpCenterChangelogRouting } from '@constant/navigations';
-import { Button, Card, Flex, Grid, Modal, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Grid, Modal, Typography, message } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { fetchAnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentClient';
@@ -34,23 +34,33 @@ function WhatsNew() {
     const screens = Grid.useBreakpoint();
     const [selectedEntry, setSelectedEntry] = useState<AnswerlatticePublicChangelogEntry | null>(null);
     const [changelog, setChangelog] = useState<AnswerlatticePublicChangelogPage | null>(null);
+    const [loadFailed, setLoadFailed] = useState(false);
     const requestScope = useAnswerlatticePublicContentRequestScope();
+    const loadRequestRef = useRef(0);
 
-    useEffect(() => {
+    const loadChangelog = useCallback(() => {
         if (!requestScope) return;
-        let mounted = true;
+        const requestId = ++loadRequestRef.current;
+        setLoadFailed(false);
         setChangelog(null);
-        fetchAnswerlatticePublicChangelogPage(requestScope)
+        return fetchAnswerlatticePublicChangelogPage(requestScope)
             .then((changelogData) => {
-                if (mounted) setChangelog(changelogData);
+                if (requestId === loadRequestRef.current) setChangelog(changelogData);
             })
             .catch(() => {
-                if (mounted) message.error(t('failedToLoadChangelog'));
+                if (requestId === loadRequestRef.current) {
+                    setLoadFailed(true);
+                    message.error(t('failedToLoadChangelog'));
+                }
             });
-        return () => {
-            mounted = false;
-        };
     }, [requestScope, t]);
+
+    useEffect(() => {
+        void loadChangelog();
+        return () => {
+            loadRequestRef.current += 1;
+        };
+    }, [loadChangelog]);
 
     const latestEntries = useMemo(() => changelog?.entries?.slice(0, 3) || [], [changelog?.entries]);
     const isMobile = screens.md === false;
@@ -62,7 +72,21 @@ function WhatsNew() {
                     <Title level={4} style={{ margin: 0 }}>{t('whatsNewTitle')}</Title>
                     <Button type='text' size='small' icon={<LuArrowRight />} iconPosition='end' onClick={() => router.push(helpCenterChangelogRouting())}>{t('viewAll')}</Button>
                 </Flex>
-                {latestEntries.map((update) => {
+                {loadFailed ? (
+                    <Alert
+                        action={(
+                            <Button
+                                aria-label={t('failedToLoadChangelog')}
+                                icon={<LuRefreshCw aria-hidden="true" />}
+                                onClick={() => void loadChangelog()}
+                                size="small"
+                            />
+                        )}
+                        message={t('failedToLoadChangelog')}
+                        showIcon
+                        type="error"
+                    />
+                ) : latestEntries.map((update) => {
                     const excerpt = getExcerpt(update);
                     return (
                         <Card
