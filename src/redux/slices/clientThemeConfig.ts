@@ -35,6 +35,22 @@ export type ClientThemeConfigType = {
     fullscreenMode: boolean,
 }
 
+export type PersistedClientThemePreferences = Pick<ClientThemeConfigType,
+    | "darkMode"
+    | "lightColor"
+    | "darkColor"
+    | "collapsedSidebar"
+    | "stickyHeader"
+    | "verticalSidebarLayout"
+    | "verticalBreadcrumbLayout"
+    | "headerBgBlur"
+    | "isRTLDirection"
+    | "showDateInHeader"
+    | "showUserDetailsInHeader"
+>;
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 const initialState: ClientThemeConfigType = {
     darkMode: true,
     lightColor: DEFAULT_LIGHT_COLOR,
@@ -94,10 +110,33 @@ export const clientThemeConfig = createSlice({
         toggleBreadcrumbLayout(state, action: PayloadAction<boolean>) {
             state.verticalBreadcrumbLayout = action.payload;
         },
+        syncPersistedClientThemePreferences(
+            state,
+            action: PayloadAction<Partial<PersistedClientThemePreferences>>,
+        ) {
+            const next = action.payload;
+
+            if (typeof next.darkMode === "boolean") state.darkMode = next.darkMode;
+            if (typeof next.collapsedSidebar === "boolean") state.collapsedSidebar = next.collapsedSidebar;
+            if (typeof next.stickyHeader === "boolean") state.stickyHeader = next.stickyHeader;
+            if (typeof next.verticalSidebarLayout === "boolean") state.verticalSidebarLayout = next.verticalSidebarLayout;
+            if (typeof next.verticalBreadcrumbLayout === "boolean") state.verticalBreadcrumbLayout = next.verticalBreadcrumbLayout;
+            if (typeof next.headerBgBlur === "boolean") state.headerBgBlur = next.headerBgBlur;
+            if (typeof next.isRTLDirection === "boolean") state.isRTLDirection = next.isRTLDirection;
+            if (typeof next.showDateInHeader === "boolean") state.showDateInHeader = next.showDateInHeader;
+            if (typeof next.showUserDetailsInHeader === "boolean") state.showUserDetailsInHeader = next.showUserDetailsInHeader;
+
+            if (typeof next.lightColor === "string" && HEX_COLOR.test(next.lightColor.trim())) {
+                state.lightColor = next.lightColor.trim();
+            }
+            if (typeof next.darkColor === "string" && HEX_COLOR.test(next.darkColor.trim())) {
+                state.darkColor = next.darkColor.trim();
+            }
+        },
     }
 });
 
-const { toggleDarkMode, updateLightThemeColor, updateDarkThemeColor, toggleSidbar, toggleSidebarLayout, toggleBreadcrumbLayout, toggleAppSettingsPanel, toggleHeaderPosition, toggleHeaderBgBlur, toggleRTLDirection, toggleShowDateInHeader, toggleShowUserDetailsInHeader, toggleFullscreenMode } = clientThemeConfig.actions;
+const { toggleDarkMode, updateLightThemeColor, updateDarkThemeColor, toggleSidbar, toggleSidebarLayout, toggleBreadcrumbLayout, toggleAppSettingsPanel, toggleHeaderPosition, toggleHeaderBgBlur, toggleRTLDirection, toggleShowDateInHeader, toggleShowUserDetailsInHeader, toggleFullscreenMode, syncPersistedClientThemePreferences } = clientThemeConfig.actions;
 const getDarkModeState = (state: AppState) => state.clientThemeConfig?.darkMode;
 const getLightColorState = (state: AppState) => state.clientThemeConfig?.lightColor;
 const getDarkColorState = (state: AppState) => state.clientThemeConfig?.darkColor;
@@ -112,4 +151,4 @@ const getShowDateInHeaderState = (state: AppState) => state.clientThemeConfig?.s
 const getShowUserDetailsInHeaderState = (state: AppState) => state.clientThemeConfig?.showUserDetailsInHeader;
 const getFullscreenModeState = (state: AppState) => state.clientThemeConfig?.fullscreenMode;
 
-export { getAppSettingsPanelStatus, getBreadcrumbLayoutState, getDarkColorState, getDarkModeState, getFullscreenModeState, getHeaderBgBlurState, getHeaderPositionState, getLightColorState, getRTLDirectionState, getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState, getSidebarState, toggleAppSettingsPanel, toggleBreadcrumbLayout, toggleDarkMode, toggleFullscreenMode, toggleHeaderBgBlur, toggleHeaderPosition, toggleRTLDirection, toggleShowDateInHeader, toggleShowUserDetailsInHeader, toggleSidbar, toggleSidebarLayout, updateDarkThemeColor, updateLightThemeColor };
+export { getAppSettingsPanelStatus, getBreadcrumbLayoutState, getDarkColorState, getDarkModeState, getFullscreenModeState, getHeaderBgBlurState, getHeaderPositionState, getLightColorState, getRTLDirectionState, getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState, getSidebarState, syncPersistedClientThemePreferences, toggleAppSettingsPanel, toggleBreadcrumbLayout, toggleDarkMode, toggleFullscreenMode, toggleHeaderBgBlur, toggleHeaderPosition, toggleRTLDirection, toggleShowDateInHeader, toggleShowUserDetailsInHeader, toggleSidbar, toggleSidebarLayout, updateDarkThemeColor, updateLightThemeColor };

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Live App Appearance Across Open Tabs
+
+- Synchronized durable Redux-backed theme, colour, layout, reading-direction, and header-display preferences between open owner tabs through the existing local browser persistence record.
+- Kept the App Settings drawer and real browser fullscreen state tab-local, and rejected malformed cross-tab booleans or theme colours before state changes.
+- This adds no Firebase, server preference document, provider, tenant/store/project/public-data operation, dependency, direct deployment, or production change. Cookie-backed locale preferences continue to settle in another tab on its next navigation or refresh.
+
 ## August 15, 2026 - Social Profile Link Admission And Accessible Actions
 
 - Added one shared owner social-link boundary across desktop and mobile settings so known platforms require their matching HTTPS hosts, handles canonicalize consistently, and custom platforms accept only public HTTPS links before persistence.

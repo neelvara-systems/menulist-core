@@ -3,10 +3,15 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
     clientThemeConfig,
+    syncPersistedClientThemePreferences,
     toggleDarkMode,
     toggleRTLDirection,
     updateDarkThemeColor,
 } from "../../src/redux/slices/clientThemeConfig";
+import {
+    parsePersistedClientThemePreferences,
+    PERSISTED_REDUX_STORAGE_KEY,
+} from "../../src/redux/store";
 import {
     activeModalPage,
     MODAL_PAGES_LIST,
@@ -27,6 +32,50 @@ assert.equal(rtlState.isRTLDirection, true);
 
 const colorState = clientThemeConfig.reducer(rtlState, updateDarkThemeColor("#123456"));
 assert.equal(colorState.darkColor, "#123456");
+
+const synchronizedThemeState = clientThemeConfig.reducer(
+    colorState,
+    syncPersistedClientThemePreferences({
+        collapsedSidebar: true,
+        darkColor: "#ABCDEF",
+        darkMode: true,
+        showDateInHeader: true,
+    }),
+);
+assert.equal(synchronizedThemeState.collapsedSidebar, true);
+assert.equal(synchronizedThemeState.darkColor, "#ABCDEF");
+assert.equal(synchronizedThemeState.darkMode, true);
+assert.equal(synchronizedThemeState.showDateInHeader, true);
+assert.equal(synchronizedThemeState.showSettingsPanel, false);
+assert.equal(synchronizedThemeState.fullscreenMode, false);
+
+const invalidSynchronizedThemeState = clientThemeConfig.reducer(
+    synchronizedThemeState,
+    syncPersistedClientThemePreferences({
+        darkColor: "url(https://attacker.example/pixel)",
+        darkMode: "true",
+    } as never),
+);
+assert.equal(invalidSynchronizedThemeState.darkColor, "#ABCDEF");
+assert.equal(invalidSynchronizedThemeState.darkMode, true);
+
+assert.equal(PERSISTED_REDUX_STORAGE_KEY, "persist:nextjs");
+assert.deepEqual(
+    parsePersistedClientThemePreferences(JSON.stringify({
+        clientThemeConfig: JSON.stringify({
+            darkMode: false,
+            fullscreenMode: true,
+            showSettingsPanel: true,
+        }),
+    })),
+    {
+        darkMode: false,
+        fullscreenMode: true,
+        showSettingsPanel: true,
+    },
+);
+assert.equal(parsePersistedClientThemePreferences("{"), null);
+assert.equal(parsePersistedClientThemePreferences(null), null);
 
 const modalInitial = activeModalPage.reducer(undefined, { type: "@@INIT" });
 const openModalState = activeModalPage.reducer(
@@ -65,6 +114,16 @@ assert.doesNotMatch(
     storeSource,
     /whitelist:\s*\[[^\]]*["']auth["']/,
     "the persistence whitelist must not claim a nonexistent auth reducer",
+);
+assert.match(
+    storeSource,
+    /addEventListener\("storage"/,
+    "the singleton Redux store must subscribe to cross-tab persisted preference updates",
+);
+assert.match(
+    storeSource,
+    /syncPersistedClientThemePreferences\(preferences\)/,
+    "cross-tab storage updates must use the bounded preference-only reducer",
 );
 
 console.log("Redux state contract tests passed.");

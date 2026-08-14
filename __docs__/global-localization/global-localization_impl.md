@@ -1,7 +1,7 @@
 # Global Localization Implementation
 
 **Status:** Implemented
-**Last updated:** August 11, 2026
+**Last updated:** August 15, 2026
 
 ## End-to-end Flow
 
@@ -111,6 +111,8 @@ Server actions validate every value at runtime before writing a one-year, same-s
 The cookies are deliberately not `HttpOnly` because client preference previews read them. They contain no authentication, tenant, business, or personal data.
 
 Desktop App Settings exposes programmatic names for the Language, Timezone, Date Format, and Time Format selectors. Its custom theme-colour trigger is a named button, every colour choice and both manual direction controls expose current state, and the optional favourite action retains double-click while adding a declared `F` keyboard shortcut. These controls remain browser-local and do not add a Firebase, provider, tenant, store, or public-data operation. Source gate: `npm run test:browser-runtime-boundaries`.
+
+Redux-backed appearance, layout, direction, and header-display preferences synchronize live between open owner tabs through the existing `persist:nextjs` local-storage record. The storage listener admits only the durable preference fields and revalidates booleans plus six-digit theme colours before dispatch. The settings drawer and fullscreen state remain tab-local because one tab must never open another tab's drawer or claim another tab entered browser fullscreen. Cookie-backed language, timezone, and date/time preferences remain server-authoritative and settle in another open tab on its next navigation or refresh; they are not duplicated into Redux or Firebase. Source gate: `npx tsx scripts/verification/test-redux-state-contract.ts`.
 
 ## Date and Time
 
