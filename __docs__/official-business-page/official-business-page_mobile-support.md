@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Mobile Support Assessment
 
-**Date:** May 10, 2026 | June 30, 2026
+**Date:** May 10, 2026 | June 30, 2026 | August 15, 2026
 
 ---
 
@@ -25,7 +25,7 @@ OBP has TWO surfaces — each assessed separately:
 | ------------- | ----------------------------------------- | ------------------------------------------------------------- | ---------- |
 | **Frequency** | Is this done daily or multiple times/day? | Link sharing is frequent. Content setup is occasional. Cover/gallery changes happen when the owner has phone photos. | ⚠️ PARTIAL |
 | **Speed**     | Completes in <5 seconds on mobile?        | Copy/share is instant. Cover upload/generation is one focused action. Long text/link editing is slower but still supported. | ⚠️ PARTIAL |
-| **Touch**     | Works with thumb-only?                    | Yes for link, preview, cover upload/generate, gallery upload, toggles, and simple fields. Color picker remains less ideal. | ⚠️ PARTIAL |
+| **Touch**     | Works with thumb-only?                    | Yes for link, preview, cover upload/generate, gallery upload, toggles, simple fields, and the 44px accent-colour controls. | ✅ PASS |
 | **Value**     | Needed while away from desk?              | Yes for sharing, photo/cover updates, and quick public-page corrections. | ✅ PASS |
 
 ### Gate Results
@@ -50,8 +50,8 @@ OBP has TWO surfaces — each assessed separately:
 | Custom attributes      | ✅ Mobile More tab + desktop | Uses the shared category icon/emoji picker and same `publicPresence.customAttributes` save path; shared runtime normalization caps unique entries at six and public output omits disabled entries |
 | Business cover         | ✅ Mobile More tab + desktop | Upload/generate/adjust through shared media system   |
 | Photo upload           | ✅ Mobile More tab + desktop | Shared media card, two-column mobile grid, modal actions |
-| Google review fields   | ❌ Desktop only             | One-time setup, number inputs                        |
-| Descriptor/knownFor    | ❌ Desktop only             | Rare, small text field, not urgent                   |
+| Google review fields   | ✅ Mobile More tab + desktop | Uses the same bounded public-presence draft and store update |
+| Descriptor/knownFor    | ✅ Mobile More tab + desktop | Uses the same localized public-presence draft and store update |
 
 ---
 
@@ -73,6 +73,7 @@ OBP has TWO surfaces — each assessed separately:
 - Descriptor, known for, special note, links, rating fields, action visibility, policy links
 - Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
 - Public-page icon style with a localized accessible switch name and the same persisted `publicPresence.iconVariant` value as desktop
+- Accent colour opens from a named 44px native button, exposes pressed-state presets plus labelled native/hex inputs, and can return to the public default without retaining the old nested value
 - All seven customer-action visibility switches and all three policy-link switches use their localized visible text as accessible names and persist through the same mobile OBP draft/save path
 - Desktop and mobile initialize controlled attributes through the same known-key/strict-boolean runtime boundary used by public projections, so malformed legacy values cannot appear enabled or be resaved as owner truth.
 - Business photo gallery with shared media upload and per-photo action sheet
@@ -132,4 +133,4 @@ Already mobile-first by design:
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** June 29, 2026
+**Last Updated:** August 15, 2026

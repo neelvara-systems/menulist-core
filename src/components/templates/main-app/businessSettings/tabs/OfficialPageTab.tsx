@@ -12,7 +12,7 @@ import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, message, theme } from 'antd';
+import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
@@ -126,7 +126,14 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedSpecialNote = Form.useWatch(['publicPresence', 'specialNote']);
         const watchedPhotos = Form.useWatch(['publicPresence', 'photos']);
         const watchedBusinessCoverValue = Form.useWatch(['publicPresence', 'businessCover']);
-        const watchedAccentColor = Form.useWatch(['publicPresence', 'accentColor']) || publicPresence?.accentColor;
+        const watchedAccentColorValue = Form.useWatch(['publicPresence', 'accentColor']);
+        const watchedAccentColor = watchedAccentColorValue !== undefined
+            ? watchedAccentColorValue
+            : publicPresence?.accentColor;
+        const accentColorInputValue = typeof watchedAccentColor === 'string'
+            && /^#[0-9a-f]{6}$/i.test(watchedAccentColor)
+            ? watchedAccentColor
+            : '#111111';
         const watchedTenantName = Form.useWatch('tenantName');
         const watchedStoreName = Form.useWatch('name');
         const watchedBusinessCover = watchedBusinessCoverValue !== undefined
@@ -820,26 +827,46 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             </Form.Item>
                         </Col>
                         <Col {...accentCol}>
+                            <Form.Item hidden name={['publicPresence', 'accentColor']}>
+                                <Input />
+                            </Form.Item>
                             <Form.Item
-                                name={['publicPresence', 'accentColor']}
                                 label={t('accentColor')}
                                 extra={t('accentColorHelp')}
                             >
-                                <ColorPicker
-                                    showText
-                                    format="hex"
-                                    onChange={(color) => {
-                                        const hex = color.toHexString();
-                                        form.setFieldValue(['publicPresence', 'accentColor'], hex);
-                                        onPublicPresenceChange?.('accentColor', hex);
-                                    }}
-                                    presets={[
-                                        {
-                                            label: 'Recommended',
-                                            colors: ['#111111', '#1677ff', '#52c41a', '#fa8c16', '#f5222d', '#722ed1', '#eb2f96', '#13c2c2'],
-                                        },
-                                    ]}
-                                />
+                                <Flex align="center" gap={8} wrap>
+                                    <input
+                                        aria-label={t('accentColor')}
+                                        onChange={(event) => {
+                                            const hex = event.currentTarget.value.toLowerCase();
+                                            form.setFieldValue(['publicPresence', 'accentColor'], hex);
+                                            onPublicPresenceChange?.('accentColor', hex);
+                                        }}
+                                        style={{
+                                            background: token.colorBgContainer,
+                                            border: `1px solid ${token.colorBorder}`,
+                                            borderRadius: token.borderRadius,
+                                            cursor: 'pointer',
+                                            height: 44,
+                                            padding: 4,
+                                            width: 56,
+                                        }}
+                                        type="color"
+                                        value={accentColorInputValue}
+                                    />
+                                    <Text code>{watchedAccentColor || t('default')}</Text>
+                                    <Button
+                                        disabled={!watchedAccentColor}
+                                        onClick={() => {
+                                            const hex = '';
+                                            form.setFieldValue(['publicPresence', 'accentColor'], hex);
+                                            onPublicPresenceChange?.('accentColor', hex);
+                                        }}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        {t('reset')}
+                                    </Button>
+                                </Flex>
                             </Form.Item>
                         </Col>
                         <Col {...accentCol}>

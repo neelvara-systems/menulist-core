@@ -120,6 +120,7 @@ function verifyPublicLinkHelperRuntime() {
 function verifyOwnerMutationBoundary() {
   const { normalizeGeoCoordinateDraft } = require(path.join(root, 'src/lib/businessIdentity/geoCoordinates.ts'));
   const { normalizeOwnerPublicPresenceLinks } = require(path.join(root, 'src/lib/obp/ownerPublicPresenceBoundary.ts'));
+  const { getStoreDeepDifference, isStoreNestedDelete } = require(path.join(root, 'src/lib/store/storeNestedUpdateProjection.ts'));
   const { buildVisualProfileCompletion } = require(path.join(root, 'src/lib/visualProfile/visualProfileCompletion.ts'));
 
   assert(JSON.stringify(normalizeGeoCoordinateDraft('', '')) === JSON.stringify({ ok: true, geo: null }), 'blank geo pair must clear geo');
@@ -139,6 +140,22 @@ function verifyOwnerMutationBoundary() {
   assert(
     normalizeOwnerPublicPresenceLinks({ googleMapsUrl: 'https://example.com/not-maps' }).invalidKeys.includes('googleMapsUrl'),
     'invalid owner Maps URL must fail before persistence',
+  );
+  const clearedOwnerAccent = normalizeOwnerPublicPresenceLinks({
+    accentColor: '',
+    reservationUrl: 'https://example.com/reserve',
+  });
+  assert(
+    !Object.prototype.hasOwnProperty.call(clearedOwnerAccent.presence, 'accentColor'),
+    'blank owner accent must become a nested deletion instead of retained hidden truth',
+  );
+  const clearedOwnerAccentDifference = getStoreDeepDifference(
+    { publicPresence: clearedOwnerAccent.presence },
+    { publicPresence: { accentColor: '#1677ff', reservationUrl: 'https://example.com/reserve' } },
+  );
+  assert(
+    isStoreNestedDelete(clearedOwnerAccentDifference.publicPresence?.accentColor),
+    'blank owner accent must project to the existing nested delete marker',
   );
 
   const duplicatePhotoCompletion = buildVisualProfileCompletion({
@@ -190,7 +207,16 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(officialTab, "getValueProps={(value) => ({ checked: value === 'emoji' })}", 'desktop icon variant checked projection');
   assertIncludes(officialTab, "getValueFromEvent={(checked: boolean) => checked ? 'emoji' : 'icons'}", 'desktop icon variant persistence projection');
   assertIncludes(officialTab, "<Switch aria-label={t('obpUseEmojiIcons')} />", 'desktop accessible icon variant switch');
+  assertIncludes(officialTab, 'aria-label={t(\'accentColor\')}', 'desktop accessible native accent control');
+  assertIncludes(officialTab, 'type="color"', 'desktop native accent control');
+  assertIncludes(officialTab, "form.setFieldValue(['publicPresence', 'accentColor'], hex)", 'desktop accent form registration');
   assertIncludes(mobileOfficial, "aria-label={t('obpUseEmojiIcons')}", 'mobile accessible icon variant switch');
+  assertIncludes(mobileOfficial, 'aria-haspopup="dialog"', 'mobile accent picker dialog semantics');
+  assertIncludes(mobileOfficial, 'showDefaultColorOption', 'mobile accent default restoration');
+  const mobileColorPicker = read('src/components/mobile/sheets/ColorPickerSheet.tsx');
+  assertIncludes(mobileColorPicker, 'aria-pressed={isToneStyleColorSelected}', 'mobile accent default pressed state');
+  assertIncludes(mobileColorPicker, 'aria-pressed={isBusinessBrandColorSelected}', 'mobile business accent pressed state');
+  assertIncludes(mobileColorPicker, 'type="color"', 'mobile native custom accent control');
   for (const translationKey of [
     'showCallButton',
     'showWhatsAppButton',

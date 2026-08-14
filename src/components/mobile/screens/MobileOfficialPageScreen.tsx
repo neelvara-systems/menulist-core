@@ -1588,29 +1588,38 @@ function MobileOfficialPageScreenContent({
                     </Flex>
                 </Card>
 
-                <Card onClick={() => setIsColorPickerOpen(true)}>
-                    <Flex align="center" justify="space-between" gap={12}>
-                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                            <Text strong>{t('accentColor')}</Text>
-                            <Text type="secondary">{t('accentColorHelp')}</Text>
+                <button
+                    aria-expanded={isColorPickerOpen}
+                    aria-haspopup="dialog"
+                    aria-label={t('accentColor')}
+                    onClick={() => setIsColorPickerOpen(true)}
+                    style={{ background: 'none', border: 0, color: 'inherit', minHeight: 44, padding: 0, textAlign: 'inherit', width: '100%' }}
+                    type="button"
+                >
+                    <Card>
+                        <Flex align="center" justify="space-between" gap={12}>
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text strong>{t('accentColor')}</Text>
+                                <Text type="secondary">{t('accentColorHelp')}</Text>
+                            </Flex>
+                            <Flex align="center" gap={10} style={{ flex: '0 0 auto' }}>
+                                <span
+                                    aria-hidden
+                                    style={{
+                                        backgroundColor: activeAccentColor,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 999,
+                                        display: 'inline-block',
+                                        height: 32,
+                                        width: 32,
+                                    }}
+                                />
+                                <Text strong>{activeAccentColorLabel}</Text>
+                                <LuPalette color={token.colorTextTertiary} size={18} />
+                            </Flex>
                         </Flex>
-                        <Flex align="center" gap={10} style={{ flex: '0 0 auto' }}>
-                            <span
-                                aria-hidden
-                                style={{
-                                    backgroundColor: activeAccentColor,
-                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                    borderRadius: 999,
-                                    display: 'inline-block',
-                                    height: 32,
-                                    width: 32,
-                                }}
-                            />
-                            <Text strong>{activeAccentColorLabel}</Text>
-                            <LuPalette color={token.colorTextTertiary} size={18} />
-                        </Flex>
-                    </Flex>
-                </Card>
+                    </Card>
+                </button>
 
                 <Card>
                     <Flex gap={10} vertical>
@@ -2162,7 +2171,7 @@ function MobileOfficialPageScreenContent({
                 defaultMoodColor={defaultObpAccentColor}
                 onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color }))}
                 onClose={() => setIsColorPickerOpen(false)}
-                showDefaultColorOption={false}
+                showDefaultColorOption
                 value={formData.accentColor}
                 visible={isColorPickerOpen}
             />

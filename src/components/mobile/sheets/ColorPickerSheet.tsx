@@ -1,7 +1,7 @@
 'use client'
 
 import { BRAND_COLOR_PRESETS } from '@config/designSystem';
-import { ColorPicker, theme } from 'antd';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuCheck } from 'react-icons/lu';
@@ -108,49 +108,77 @@ export default function ColorPickerSheet({
                     </Card>
 
                     {normalizedBusinessBrandColor ? (
-                        <Card
+                        <button
+                            aria-pressed={isBusinessBrandColorSelected}
                             onClick={() => {
                                 setHexInput(normalizedBusinessBrandColor);
                                 onChange(normalizedBusinessBrandColor);
                             }}
                             style={{
-                                ...sectionCardStyle,
-                                borderColor: isBusinessBrandColorSelected ? token.colorPrimary : token.colorBorderSecondary,
-                                cursor: 'pointer',
+                                background: 'none',
+                                border: 0,
+                                color: 'inherit',
+                                minHeight: 44,
+                                padding: 0,
+                                textAlign: 'inherit',
+                                width: '100%',
                             }}
+                            type="button"
                         >
-                            <Flex align="center" gap={12}>
-                                {renderSwatch(normalizedBusinessBrandColor)}
-                                <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                    <Text strong>{t('useBusinessBrandColor')}</Text>
-                                    <Text type="secondary">{t('useBusinessBrandColorDesc')}</Text>
+                            <Card
+                                style={{
+                                    ...sectionCardStyle,
+                                    borderColor: isBusinessBrandColorSelected ? token.colorPrimary : token.colorBorderSecondary,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <Flex align="center" gap={12}>
+                                    {renderSwatch(normalizedBusinessBrandColor)}
+                                    <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                        <Text strong>{t('useBusinessBrandColor')}</Text>
+                                        <Text type="secondary">{t('useBusinessBrandColorDesc')}</Text>
+                                    </Flex>
+                                    {isBusinessBrandColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
                                 </Flex>
-                                {isBusinessBrandColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
-                            </Flex>
-                        </Card>
+                            </Card>
+                        </button>
                     ) : null}
 
                     {showDefaultColorOption ? (
-                        <Card
+                        <button
+                            aria-pressed={isToneStyleColorSelected}
                             onClick={() => {
                                 setHexInput('');
                                 onChange(undefined);
                             }}
                             style={{
-                                ...sectionCardStyle,
-                                borderColor: isToneStyleColorSelected ? token.colorPrimary : token.colorBorderSecondary,
-                                cursor: 'pointer',
+                                background: 'none',
+                                border: 0,
+                                color: 'inherit',
+                                minHeight: 44,
+                                padding: 0,
+                                textAlign: 'inherit',
+                                width: '100%',
                             }}
+                            type="button"
                         >
-                            <Flex align="center" gap={12}>
-                                {renderSwatch(normalizeHexColor(defaultMoodColor) || defaultMoodColor)}
-                                <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                    <Text strong>{t('useMoodDefault', { tone: toneLabel })}</Text>
-                                    <Text type="secondary">{t('useMoodDefaultDesc', { tone: toneLabel })}</Text>
+                            <Card
+                                style={{
+                                    ...sectionCardStyle,
+                                    borderColor: isToneStyleColorSelected ? token.colorPrimary : token.colorBorderSecondary,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <Flex align="center" gap={12}>
+                                    {renderSwatch(normalizeHexColor(defaultMoodColor) || defaultMoodColor)}
+                                    <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                        <Text strong>{t('useMoodDefault', { tone: toneLabel })}</Text>
+                                        <Text type="secondary">{t('useMoodDefaultDesc', { tone: toneLabel })}</Text>
+                                    </Flex>
+                                    {isToneStyleColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
                                 </Flex>
-                                {isToneStyleColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
-                            </Flex>
-                        </Card>
+                            </Card>
+                        </button>
                     ) : null}
 
                     <Card style={sectionCardStyle} title={t('presetColors')}>
@@ -165,6 +193,7 @@ export default function ColorPickerSheet({
                                 const isSelected = Boolean(value && normalizeHexColor(value) === normalizeHexColor(preset.color));
                                 return (
                                     <Button
+                                        aria-pressed={isSelected}
                                         key={preset.color}
                                         fill="none"
                                         onClick={() => { setHexInput(preset.color); onChange(preset.color); }}
@@ -198,15 +227,26 @@ export default function ColorPickerSheet({
                         <Flex gap={8} vertical>
                             <Text type="secondary">{t('customColorHint')}</Text>
                             <Flex align="center" gap={8}>
-                            <Input onChange={handleHexInputChange} placeholder="#FF5500" style={{ flex: 1 }} value={hexInput} />
-                            <ColorPicker
-                                onChange={(color) => {
-                                    const nextHex = color.toHexString().toUpperCase();
-                                    setHexInput(nextHex);
-                                    onChange(nextHex);
-                                }}
-                                value={activeColor}
-                            />
+                                <Input aria-label={t('customColor')} onChange={handleHexInputChange} placeholder="#FF5500" style={{ flex: 1 }} value={hexInput} />
+                                <input
+                                    aria-label={t('customColor')}
+                                    onChange={(event) => {
+                                        const nextHex = event.currentTarget.value.toUpperCase();
+                                        setHexInput(nextHex);
+                                        onChange(nextHex);
+                                    }}
+                                    style={{
+                                        background: token.colorBgContainer,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 12,
+                                        cursor: 'pointer',
+                                        height: 44,
+                                        padding: 4,
+                                        width: 56,
+                                    }}
+                                    type="color"
+                                    value={normalizeHexColor(activeColor) || '#000000'}
+                                />
                             </Flex>
                         </Flex>
                     </Card>

@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement) | July 16, 2026 (Public Delivery Parity) | July 17, 2026 (Store Index Cost Boundary)
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement) | July 16, 2026 (Public Delivery Parity) | July 17, 2026 (Store Index Cost Boundary) | August 15, 2026 (Accessible Accent Reset)
 **Audience:** Developers
 
 ---
@@ -851,7 +851,18 @@ label as its accessible name. Saving the complete visibility set still uses
 one existing store update, and the public OBP continues to treat only explicit
 `false` as hidden.
 
+The desktop accent control uses a labelled native colour input plus an
+explicit Reset action instead of an unnamed pointer-only popup. The mobile OBP
+accent card is a named 44px native button with dialog state, and the shared
+colour sheet uses native buttons, pressed-state semantics, a labelled hex
+field, and a labelled native colour input. Both editors expose the existing
+default-colour option. Clearing an accent removes `publicPresence.accentColor`
+through the shared nested-difference/delete-marker path, so a previously saved
+colour cannot remain as hidden owner truth. This is still the existing single
+store update and cache invalidation; no collection, rule, index, Function, or
+additional Firebase operation is introduced.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** August 14, 2026 (desktop Business Settings Reset boundary)
+**Last Updated:** August 15, 2026 (accessible accent reset boundary)

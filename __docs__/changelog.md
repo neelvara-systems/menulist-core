@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Official Page Accessible Accent Reset
+
+- Replaced the unnamed desktop accent trigger with a labelled native colour input and an explicit Reset action.
+- Made the mobile Official Page accent card and shared colour-sheet choices keyboard-operable, touch-sized, named, and stateful; restored the existing public-default choice for the owner editor.
+- Clearing a saved accent now removes the nested `publicPresence.accentColor` field through the existing store-difference boundary instead of retaining hidden owner truth. This adds no Firebase operation, schema, rule, index, Function, provider, dependency, direct deployment, or production change.
+
 ## August 15, 2026 - Compliance Page Accessible Owner Controls
 
 - Added pressed-state semantics to the Privacy, Terms, and Refund selectors in both desktop compliance editors.
