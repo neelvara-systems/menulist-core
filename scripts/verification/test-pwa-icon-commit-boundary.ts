@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import {
+import { readCommittedPWAIconOverride } from "../../src/lib/pwa/pwaIconCommitBoundary";
+
+process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET = 'example';
+const {
     clampCustomerAppIconSize,
     normalizeCustomerAppDisplayName,
     normalizeCustomerAppRenderableImageUrl,
     resolveCustomerAppIconSource,
-} from "../../src/lib/pwa/customerAppAssets";
-import { readCommittedPWAIconOverride } from "../../src/lib/pwa/pwaIconCommitBoundary";
+} = require("../../src/lib/pwa/customerAppAssets") as typeof import("../../src/lib/pwa/customerAppAssets");
 
 const url = "https://firebasestorage.googleapis.com/v0/b/example/o/stores%2Fpwa-icons%2F10%2F11%2Ficon.png";
 const store = {
@@ -44,7 +46,6 @@ assert.equal(clampCustomerAppIconSize('0192'), 512);
 assert.equal(normalizeCustomerAppDisplayName(`  ${'A'.repeat(140)}  `).length, 120);
 assert.equal(normalizeCustomerAppDisplayName({ hostile: true }), 'Menu');
 
-process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET = 'example';
 const trustedStorageUrl = 'https://firebasestorage.googleapis.com/v0/b/example/o/tenants%2F10%2Fstores%2F11%2Fpwa-icons%2Ficon.png?alt=media';
 assert.equal(normalizeCustomerAppRenderableImageUrl(trustedStorageUrl), trustedStorageUrl);
 for (const unsafeUrl of [

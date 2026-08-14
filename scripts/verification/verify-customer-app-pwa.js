@@ -781,7 +781,8 @@ function verifyCustomerAppAssets() {
   assertIncludes(assetHelpers, "'firebasestorage.googleapis.com'", 'customer app asset helpers trusted image host');
   assertIncludes(assetHelpers, "'storage.googleapis.com'", 'customer app asset helpers trusted image host');
   assertIncludes(assetHelpers, 'normalizeCustomerAppRenderableImageUrl', 'customer app asset helpers server-rendered image URL boundary');
-  assertIncludes(assetHelpers, 'process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET', 'customer app asset helpers configured bucket boundary');
+  assertIncludes(assetHelpers, "import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';", 'customer app asset helpers centralized public env boundary');
+  assertIncludes(assetHelpers, 'menulistPublicEnv.firebaseStorageBucket', 'customer app asset helpers configured bucket boundary');
   assertIncludes(assetHelpers, 'getCustomerAppStorageBucketFromUrl(url) !== configuredBucket', 'customer app asset helpers exact bucket admission');
   assertIncludes(assetHelpers, "CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL = 'private, no-store, max-age=0'", 'customer app transient fallback shared-cache boundary');
   assertIncludes(assetHelpers, 'normalizeCustomerAppDisplayName', 'customer app rendered display-name boundary');
@@ -1025,7 +1026,7 @@ function verifyAnalyticsCoverage() {
     assertIncludes(content, 'totalInstalled - (summary?.installsBySource?.[\'ios-standalone\'] ?? 0)', `${label} prompt conversion excludes manual iOS installs`);
     assertIncludes(content, 'summary?.shortcutClicks', `${label} shortcut KPI`);
     assertIncludes(content, 'summary?.installsByPlatform', `${label} platform install KPI`);
-    assertIncludes(content, 'customerApp.appStickiness', `${label} app stickiness copy`);
+    assertIncludes(content, 'customerApp.avgOpensPerInstall', `${label} average opens per install copy`);
   }
 
   for (const [label, content] of [
