@@ -4,7 +4,7 @@
 
 - Added one shared owner social-link boundary across desktop and mobile settings so known platforms require their matching HTTPS hosts, handles canonicalize consistently, and custom platforms accept only public HTTPS links before persistence.
 - Invalid social drafts now remain write-free instead of polluting owner truth that customer rendering would later hide.
-- Named desktop custom-platform clear/removal and mobile open/edit/remove/close controls, preserving 44px mobile icon-action targets. Custom desktop rows now retain focus while their label changes. Valid changes keep the existing single store update; no Firebase schema, rule, index, Function, Storage, provider, dependency, direct deployment, or production change was added.
+- Named desktop custom-platform clear/removal and mobile open/edit/remove/close controls, preserving 44px mobile icon-action targets. Custom desktop rows now retain focus while their label changes, and functional draft updates prevent rapid multi-field cleanup from restoring stale links. Valid changes keep the existing single store update; no Firebase schema, rule, index, Function, Storage, provider, dependency, direct deployment, or production change was added.
 
 ## August 15, 2026 - Official Page Accessible Accent Reset
 

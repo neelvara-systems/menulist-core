@@ -238,6 +238,10 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(socialMediaTab, 'aria-label={`Remove ${key}`}', 'desktop named custom social removal');
   assertIncludes(socialMediaTab, 'key={getCustomPlatformRowId(key)}', 'desktop stable custom social row identity');
   assertIncludes(socialMediaTab, 'transferCustomPlatformRowId(key, nextKey)', 'desktop custom social rename focus continuity');
+  assert(
+    (socialMediaTab.match(/setSocialMedia\(\(currentSocialMedia\)/g) || []).length >= 5,
+    'desktop social add, default edit, custom rename, custom removal, and custom URL edit must use functional draft updates',
+  );
   assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLink(', 'mobile shared single social-link boundary');
   assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLinks(socialMedia)', 'mobile shared full social-map boundary');
   assertIncludes(mobileAdvancedSettings, 'aria-label={`Open ${platform.label}`}', 'mobile named social open action');

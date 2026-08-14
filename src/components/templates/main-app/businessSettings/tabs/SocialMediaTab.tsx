@@ -1,6 +1,6 @@
 import { Button, Card, Flex, Input, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useRef } from 'react';
+import { useRef, type Dispatch, type SetStateAction } from 'react';
 import { LuMessageCircle, LuPlus, LuTrash, LuX } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -14,7 +14,7 @@ interface SocialMediaPlatform {
 interface SocialMediaTabProps {
     scrollRef?: React.RefObject<HTMLDivElement | null>;
     socialMedia: Record<string, string>;
-    setSocialMedia: (media: Record<string, string>) => void;
+    setSocialMedia: Dispatch<SetStateAction<Record<string, string>>>;
 }
 
 const defaultPlatforms: SocialMediaPlatform[] = [
@@ -62,13 +62,15 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                         type="link"
                         icon={<LuPlus />}
                         onClick={() => {
-                            let newKey = '';
-                            let counter = 1;
-                            while (newKey in socialMedia || !newKey) {
-                                newKey = `platform_${counter}`;
-                                counter++;
-                            }
-                            setSocialMedia({ ...socialMedia, [newKey]: '' });
+                            setSocialMedia((currentSocialMedia) => {
+                                let newKey = '';
+                                let counter = 1;
+                                while (newKey in currentSocialMedia || !newKey) {
+                                    newKey = `platform_${counter}`;
+                                    counter++;
+                                }
+                                return { ...currentSocialMedia, [newKey]: '' };
+                            });
                         }}
                     >
                         {t('addPlatform')}
@@ -89,10 +91,11 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                         placeholder={placeholder}
                                         value={value}
                                         onChange={(e) => {
-                                            setSocialMedia({
-                                                ...socialMedia,
-                                                [key]: e.target.value
-                                            });
+                                            const nextValue = e.target.value;
+                                            setSocialMedia((currentSocialMedia) => ({
+                                                ...currentSocialMedia,
+                                                [key]: nextValue,
+                                            }));
                                         }}
                                     />
                                 </Flex>
@@ -120,11 +123,17 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                                     && nextKey !== key
                                                     && !Object.prototype.hasOwnProperty.call(socialMedia, nextKey)
                                                 ) {
-                                                    const newState = { ...socialMedia };
-                                                    delete newState[key];
-                                                    newState[nextKey] = value;
                                                     transferCustomPlatformRowId(key, nextKey);
-                                                    setSocialMedia(newState);
+                                                    setSocialMedia((currentSocialMedia) => {
+                                                        if (Object.prototype.hasOwnProperty.call(currentSocialMedia, nextKey)) {
+                                                            return currentSocialMedia;
+                                                        }
+                                                        const newState = { ...currentSocialMedia };
+                                                        const currentValue = newState[key] ?? value;
+                                                        delete newState[key];
+                                                        newState[nextKey] = currentValue;
+                                                        return newState;
+                                                    });
                                                 }
                                             }}
                                         />
@@ -133,10 +142,12 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                             danger
                                             icon={<LuTrash />}
                                             onClick={() => {
-                                                const newState = { ...socialMedia };
-                                                delete newState[key];
                                                 customPlatformRowIdsRef.current.delete(key);
-                                                setSocialMedia(newState);
+                                                setSocialMedia((currentSocialMedia) => {
+                                                    const newState = { ...currentSocialMedia };
+                                                    delete newState[key];
+                                                    return newState;
+                                                });
                                             }}
                                         />
                                     </Flex>
@@ -147,10 +158,11 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                         placeholder={t('profileUrl')}
                                         value={value}
                                         onChange={(e) => {
-                                            setSocialMedia({
-                                                ...socialMedia,
-                                                [key]: e.target.value
-                                            });
+                                            const nextValue = e.target.value;
+                                            setSocialMedia((currentSocialMedia) => ({
+                                                ...currentSocialMedia,
+                                                [key]: nextValue,
+                                            }));
                                         }}
                                     />
                                 </Flex>
