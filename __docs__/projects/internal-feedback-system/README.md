@@ -135,6 +135,13 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 | `functions/src/analytics/guestFeedbackRetention.ts`                               | Nightly 90-day retention cleanup CF                                               | ✅     |
 | `scripts/verification/verify-guest-feedback-boundary.js`                          | Source gate for public submit, safe review URL, owner/mobile parity, docs parity   | ✅     |
 
+The desktop store-level settings expose explicit accessible names for the
+master toggle, each collection toggle, each required-field toggle, the Google
+review URL input, and its safe preview link. The shared mobile Switch wrapper
+forwards `aria-label`, and the matching mobile Guest Feedback controls use the
+same owner-facing labels. This is presentation-only and does not change the
+store update, public cache invalidation, or feedback submission contracts.
+
 Public feedback pages reuse the same temporary-status banner, business identity header, and shared public footer pattern as the customer menu. The feedback footer keeps the same Call / WhatsApp / Directions, policy, social, Share Feedback, and MenuList attribution treatment, plus the same OBP theme toggle behavior, so the footer stays consistent across the menu, OBP, and feedback surfaces.
 
 ### Modified Files

@@ -404,7 +404,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         </Text>
                     ) : null}
                 </Flex>
-                <Switch checked={value} onChange={(nextValue) => {
+                <Switch aria-label={label} checked={value} onChange={(nextValue) => {
                     if (!isEnabled) return;
                     handleToggleCollectField(toggleField, nextValue);
                 }} />
@@ -414,7 +414,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                     <Text color="weak" style={{ fontSize: 13 }}>
                         {mandatoryLabel}
                     </Text>
-                    <Switch checked={requiredValue} onChange={(nextValue) => {
+                    <Switch aria-label={mandatoryLabel} checked={requiredValue} onChange={(nextValue) => {
                         if (!isEnabled) return;
                         handleToggleRequiredField(toggleRequiredField, nextValue);
                     }} />
@@ -616,7 +616,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         <List>
                             <List.Item
                                 prefix={<LuMessageSquare color={token.colorSuccess} size={18} />}
-                                extra={<Switch checked={feedbackEnabled} onChange={handleToggleFeedback} />}
+                                extra={<Switch aria-label={t('enableFeedback')} checked={feedbackEnabled} onChange={handleToggleFeedback} />}
                                 title={<Text>{t('enableFeedback')}</Text>}
                             />
                         </List>

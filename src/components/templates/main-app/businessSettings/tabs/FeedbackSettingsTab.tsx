@@ -94,6 +94,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                     </Text>
                 </Flex>
                 <Switch
+                    aria-label={label}
                     checked={checked}
                     onChange={(nextChecked) => setFeedbackDefaults({
                         ...feedbackDefaults,
@@ -112,6 +113,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                         </Text>
                     </Flex>
                     <Switch
+                        aria-label={mandatoryLabel}
                         checked={mandatoryChecked}
                         onChange={(nextChecked) => setFeedbackDefaults({
                             ...feedbackDefaults,
@@ -139,6 +141,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                         </Text>
                     </Flex>
                     <Switch
+                        aria-label={t('enableFeedback')}
                         checked={feedbackEnabled}
                         onChange={setFeedbackEnabled}
                     />
@@ -204,6 +207,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                         help={showUrlError ? t('googleReviewUrlError') : undefined}
                     >
                         <Input
+                            aria-label={t('googleReviewUrl')}
                             placeholder={t('googleReviewUrlPlaceholder')}
                             value={reviewUrl}
                             onChange={(e) => setReviewUrl(e.target.value)}
@@ -212,6 +216,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                             suffix={
                                 normalizedReviewUrl ? (
                                     <a
+                                        aria-label={t('googleReviewUrl')}
                                         href={normalizedReviewUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"

@@ -222,6 +222,8 @@ function verifyPublicPageAndForm() {
   const diagnostics = read('src/lib/feedback/publicFeedbackDiagnostics.ts');
   const settingsTab = read('src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const mobileAntd = read('src/components/mobile/antd.tsx');
+  const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
 
   assertIncludes(page, 'FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK', 'Guest Feedback public page feature flag');
   assertIncludes(page, "import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback public page project/target ID normalizer import');
@@ -326,6 +328,10 @@ function verifyPublicPageAndForm() {
   assertIncludes(diagnostics, "secureError('[Public Feedback] Form operation failed'", 'Guest Feedback public form secure diagnostics');
 
   assertIncludes(settingsTab, 'normalizeGuestFeedbackReviewUrl(reviewUrl)', 'Guest Feedback settings shared review URL allowlist');
+  assertIncludes(settingsTab, 'aria-label={t(\'enableFeedback\')}', 'Guest Feedback desktop master-toggle accessible name');
+  assertIncludes(settingsTab, 'aria-label={label}', 'Guest Feedback desktop field-toggle accessible name');
+  assertIncludes(settingsTab, 'aria-label={mandatoryLabel}', 'Guest Feedback desktop required-toggle accessible name');
+  assertIncludes(settingsTab, 'aria-label={t(\'googleReviewUrl\')}', 'Guest Feedback desktop review URL accessible name');
   assertNotIncludes(settingsTab, "host.includes('google.com')", 'Guest Feedback settings lookalike Google host admission');
   assertIncludes(settingsTab, 'href={normalizedReviewUrl}', 'Guest Feedback settings safe preview link');
   assertIncludes(businessSettings, "normalizeGuestFeedbackReviewUrl(trimmedReviewUrl, 'business_settings_review_url')", 'Guest Feedback settings save-time URL guard');
@@ -335,6 +341,11 @@ function verifyPublicPageAndForm() {
   assertIncludes(businessSettings, 'setFeedbackDefaults(feedbackDraft.feedbackDefaults);', 'Guest Feedback settings Reset restores contact-field defaults');
   assertIncludes(businessSettings, 'setReviewUrl(feedbackDraft.reviewUrl);', 'Guest Feedback settings Reset restores review URL');
   assertOrder(businessSettings, 'const normalizedReviewUrl = trimmedReviewUrl', 'const savedDetails = await updateStore(updatedChanges);', 'Guest Feedback settings validation before store mutation');
+  assertIncludes(mobileAntd, "'aria-label': ariaLabel", 'Mobile Switch accessible-name prop');
+  assertIncludes(mobileAntd, 'aria-label={ariaLabel}', 'Mobile Switch accessible-name forwarding');
+  assertIncludes(mobileAdvancedSettings, "<Switch aria-label={t('enableFeedback')}", 'Guest Feedback mobile master-toggle accessible name');
+  assertIncludes(mobileAdvancedSettings, '<Switch aria-label={label}', 'Guest Feedback mobile field-toggle accessible name');
+  assertIncludes(mobileAdvancedSettings, '<Switch aria-label={mandatoryLabel}', 'Guest Feedback mobile required-toggle accessible name');
 }
 
 function verifyFirestoreDalAndRetention() {

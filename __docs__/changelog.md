@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Guest Feedback Accessible Settings Controls
+
+- Added explicit accessible names to every desktop Guest Feedback master, collection, required-field, and Google review-link control.
+- Extended the shared mobile Switch wrapper to forward accessible names, then named the matching mobile Guest Feedback controls without changing their persistence behavior.
+- Extended the Guest Feedback source gate. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Time Slot Preset Accessible Actions
 
 - Added localized accessible names to the desktop preset edit/delete icon actions.

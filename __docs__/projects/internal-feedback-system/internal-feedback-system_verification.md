@@ -21,6 +21,7 @@ This report is source-verified evidence for the Guest Feedback feature, not stan
 | One feedback record and one compact event after replay | Pass in Admin/Firestore emulator |
 | HTTPS Google review URL allowlist and unsafe URL rejection | Pass |
 | Save-time invalid review URL refusal | Pass |
+| Desktop/mobile Guest Feedback settings control names | Pass in source gate; hosted desktop pending exact fixed build |
 | Desktop store scope, filters, pagination, resolve acknowledgement | Pass |
 | Mobile single filter read, cursor pagination, selected-detail sync | Pass |
 | Mobile manual copy/WhatsApp and separate resolve boundary | Pass |

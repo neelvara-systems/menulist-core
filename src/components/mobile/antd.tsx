@@ -966,8 +966,8 @@ export function Text(props: ComponentProps<typeof AntText>) {
     return <AntText {...props} style={shouldInherit ? { color: 'inherit', ...(props.style || {}) } : props.style} />;
 }
 
-export function Switch({ checked, disabled, loading, onChange, style }: { checked?: boolean; disabled?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
-    return <AntSwitch checked={checked} disabled={disabled} loading={loading} onChange={onChange} size="small" style={sanitizeStyle(style)} />;
+export function Switch({ 'aria-label': ariaLabel, checked, disabled, loading, onChange, style }: { 'aria-label'?: string; checked?: boolean; disabled?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
+    return <AntSwitch aria-label={ariaLabel} checked={checked} disabled={disabled} loading={loading} onChange={onChange} size="small" style={sanitizeStyle(style)} />;
 }
 
 export const Toast = {

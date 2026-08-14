@@ -24,6 +24,11 @@ Mobile shell route-map source gate: `npm run verify:mobile-shell-route-map` must
 - Mobile reply drafts come from `src/lib/feedback/feedbackReplyTemplates.ts`. The owner may edit a draft in browser state, copy it, or open WhatsApp; MenuList does not persist or send it. Resolve is a separate action with a loading guard.
 - Browser-local reply drafts remain capped at 500 characters. The persisted `ownerNote` DAL boundary remains 300 characters, but this mobile surface does not write drafts into that field.
 - Mobile diagnostics route through `logMobileOwnerFailure()` and must not direct-console raw feedback records, guest contact details, tenant IDs, store IDs, project IDs, or browser/provider exceptions.
+- The shared mobile Switch adapter forwards `aria-label`. Guest Feedback's
+  master, collection, and required-field switches supply the same visible
+  owner-facing labels so assistive technology does not encounter unnamed
+  controls. Persistence, optimistic rollback, and the shared store DAL remain
+  unchanged.
 
 ---
 

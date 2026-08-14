@@ -69,6 +69,14 @@ never retained in the feedback destination.
 | Rules/indexes | `firestore.rules`, `firestore.indexes.json` |
 | Source verifier | `scripts/verification/verify-guest-feedback-boundary.js` |
 
+Store-level Guest Feedback settings remain one owner-controlled draft on
+desktop and one bounded optimistic save on mobile. Desktop explicitly names
+the master, collection, required-field, review URL, and safe preview controls.
+The shared mobile Switch adapter forwards `aria-label`, and the mobile settings
+screen supplies the matching visible label for every Guest Feedback switch.
+These accessibility semantics do not add a read, write, API route, listener,
+cache invalidation, provider call, or alternate mobile DAL.
+
 There are no authenticated `/api/feedback` list/update routes. Owner reads and status writes use the client DAL and Firestore rules.
 
 ---
