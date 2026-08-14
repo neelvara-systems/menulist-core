@@ -39,6 +39,7 @@ const categoryRenderer = read('src/components/atoms/CategoryIcon/index.tsx');
 const desktopCategoryEditor = read('src/components/templates/main-app/projects/editorView/editCategoryModal.tsx');
 const mobileCategoryEditor = read('src/components/mobile/sheets/MobileCategoryEditSheet.tsx');
 const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
+const ownerDashboardEnglish = read('public/locales/menulist.ai/en-GB.json');
 const desktopShare = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
 const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 const imageUploadModal = read('src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx');
@@ -80,7 +81,11 @@ assertCheck(desktopCategoryEditor.includes('<IconPicker'), 'Desktop category edi
 assertCheck(mobileCategoryEditor.includes('<IconPicker'), 'Mobile category editing exposes the shared icon picker');
 
 assertCheck(FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES === true, 'Behavior-copy guidance remains enabled');
-assertCheck(ownerDashboard.includes('Official customer source is active'), 'Owner Dashboard carries current official-source guidance');
+assertCheck(
+    ownerDashboard.includes("t('publicTruthStatus.title.active')")
+        && ownerDashboardEnglish.includes('"active": "Official customer source is active"'),
+    'Owner Dashboard carries current localized official-source guidance',
+);
 assertCheck(desktopShare.includes('FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES'), 'Desktop share uses the behavior-copy gate');
 assertCheck(mobileShare.includes('FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES'), 'Mobile share uses the behavior-copy gate');
 assertCheck(
