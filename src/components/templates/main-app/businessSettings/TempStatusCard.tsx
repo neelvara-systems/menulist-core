@@ -51,6 +51,20 @@ interface TempStatusCardProps {
     setStoreDetails: Dispatch<SetStateAction<StoreDataType | null>>;
 }
 
+interface PendingSetConfirmation {
+    expectedStoreId: StoreDataType['storeId'];
+    expectedTenantId: StoreDataType['tenantId'];
+    previousStatus: StoreDataType['tempStatus'];
+    requestMessage?: string;
+    status: NonNullable<StoreDataType['tempStatus']>;
+}
+
+interface PendingClearConfirmation {
+    expectedStoreId: StoreDataType['storeId'];
+    expectedTenantId: StoreDataType['tenantId'];
+    previousStatus: StoreDataType['tempStatus'];
+}
+
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
@@ -66,6 +80,8 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     ).startOf('hour'));
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pendingSetConfirmation, setPendingSetConfirmation] = useState<PendingSetConfirmation | null>(null);
+    const [pendingClearConfirmation, setPendingClearConfirmation] = useState<PendingClearConfirmation | null>(null);
     const currentScopeRef = useRef({ storeId: storeDetails.storeId, tenantId: storeDetails.tenantId });
     const actionInFlightRef = useRef(false);
     currentScopeRef.current = { storeId: storeDetails.storeId, tenantId: storeDetails.tenantId };
@@ -106,134 +122,149 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             createdAt: new Date().toISOString(),
         };
 
-        Modal.confirm({
-            title: 'Show this status to customers?',
-            content: `Customers will see "${message}" until ${formatDateTime(newStatus.expiresAt, 'datetime', formatter)}.`,
-            okText: 'Show to customers',
-            cancelText: 'Cancel',
-            onOk: async () => {
-                if (actionInFlightRef.current || !isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                actionInFlightRef.current = true;
-                setIsLoading(true);
-                setError(null);
-
-                // Optimistic update
-                setStoreDetails((prev) => prev
-                    && String(prev.tenantId) === String(expectedTenantId)
-                    && String(prev.storeId) === String(expectedStoreId)
-                    ? { ...prev, tempStatus: newStatus }
-                    : prev);
-
-                try {
-                    const res = await fetch('/api/store/temp-status', {
-                        ...AUTH_BROWSER_REQUEST_POLICY,
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'set',
-                            expectedStoreId: String(expectedStoreId),
-                            expectedTenantId: String(expectedTenantId),
-                            type: statusType,
-                            message: statusType === 'custom' ? customMessage.trim() : undefined,
-                            expiresAt: expiryInstant,
-                        }),
-                    });
-
-                    const result = await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
-                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                    if (result.effectsPending) {
-                        antdMessage.warning('Status saved. Customer pages may take a moment to refresh.');
-                    } else {
-                        antdMessage.success('Temporary status is live.');
-                    }
-                } catch (err) {
-                    // Revert optimistic update
-                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                    setStoreDetails((prev) => prev
-                        && String(prev.tenantId) === String(expectedTenantId)
-                        && String(prev.storeId) === String(expectedStoreId)
-                        ? { ...prev, tempStatus: storedStatus }
-                        : prev);
-                    logBusinessSettingsFailure(
-                        'desktop_temp_status_set_failed',
-                        err,
-                        buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
-                    );
-                    setError('Failed to set status');
-                } finally {
-                    actionInFlightRef.current = false;
-                    if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
-                }
-            },
+        setPendingSetConfirmation({
+            expectedStoreId,
+            expectedTenantId,
+            previousStatus: storedStatus,
+            requestMessage: statusType === 'custom' ? customMessage.trim() : undefined,
+            status: newStatus,
         });
-    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter, isExpectedScope, resolveExpiryInstant]);
+    }, [statusType, customMessage, expiresAt, storedStatus, storeDetails, resolveExpiryInstant]);
+
+    const confirmSetStatus = useCallback(async () => {
+        const pending = pendingSetConfirmation;
+        if (!pending || actionInFlightRef.current) return;
+        const { expectedTenantId, expectedStoreId, previousStatus, requestMessage, status } = pending;
+        if (!isExpectedScope(expectedTenantId, expectedStoreId)) {
+            setPendingSetConfirmation(null);
+            return;
+        }
+
+        actionInFlightRef.current = true;
+        setIsLoading(true);
+        setError(null);
+
+        // Optimistic update
+        setStoreDetails((prev) => prev
+            && String(prev.tenantId) === String(expectedTenantId)
+            && String(prev.storeId) === String(expectedStoreId)
+            ? { ...prev, tempStatus: status }
+            : prev);
+
+        try {
+            const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'set',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                    type: status.type,
+                    message: requestMessage,
+                    expiresAt: status.expiresAt,
+                }),
+            });
+
+            const result = await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', status.type));
+            if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+            if (result.effectsPending) {
+                antdMessage.warning('Status saved. Customer pages may take a moment to refresh.');
+            } else {
+                antdMessage.success('Temporary status is live.');
+            }
+        } catch (err) {
+            // Revert optimistic update
+            if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+            setStoreDetails((prev) => prev
+                && String(prev.tenantId) === String(expectedTenantId)
+                && String(prev.storeId) === String(expectedStoreId)
+                ? { ...prev, tempStatus: previousStatus }
+                : prev);
+            logBusinessSettingsFailure(
+                'desktop_temp_status_set_failed',
+                err,
+                buildTempStatusLogContext(storeDetails, 'set_temp_status', status.type),
+            );
+            setError('Failed to set status');
+        } finally {
+            actionInFlightRef.current = false;
+            setPendingSetConfirmation(null);
+            if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
+        }
+    }, [isExpectedScope, pendingSetConfirmation, setStoreDetails, storeDetails]);
 
     const handleClear = useCallback(() => {
         const expectedTenantId = storeDetails.tenantId;
         const expectedStoreId = storeDetails.storeId;
         const prevStatus = storeDetails?.tempStatus;
 
-        Modal.confirm({
-            title: 'Clear customer status?',
-            content: prevStatus?.message
-                ? `Customers will no longer see "${prevStatus.message}" on your public page.`
-                : 'Customers will no longer see the temporary status on your public page.',
-            okText: 'Clear status',
-            okType: 'danger',
-            cancelText: 'Cancel',
-            onOk: async () => {
-                if (actionInFlightRef.current || !isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                actionInFlightRef.current = true;
-                setIsLoading(true);
-                setError(null);
-
-                // Optimistic update
-                setStoreDetails((prev) => {
-                    if (!prev || String(prev.tenantId) !== String(expectedTenantId) || String(prev.storeId) !== String(expectedStoreId)) return prev;
-                    const { tempStatus, ...rest } = prev || {};
-                    return rest;
-                });
-
-                try {
-                    const res = await fetch('/api/store/temp-status', {
-                        ...AUTH_BROWSER_REQUEST_POLICY,
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'clear',
-                            expectedStoreId: String(expectedStoreId),
-                            expectedTenantId: String(expectedTenantId),
-                        }),
-                    });
-
-                    const result = await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
-                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                    if (result.effectsPending) {
-                        antdMessage.warning('Status cleared. Customer pages may take a moment to refresh.');
-                    } else {
-                        antdMessage.success('Temporary status cleared.');
-                    }
-                } catch (err) {
-                    // Revert optimistic update
-                    if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
-                    setStoreDetails((prev) => prev
-                        && String(prev.tenantId) === String(expectedTenantId)
-                        && String(prev.storeId) === String(expectedStoreId)
-                        ? { ...prev, tempStatus: prevStatus }
-                        : prev);
-                    logBusinessSettingsFailure(
-                        'desktop_temp_status_clear_failed',
-                        err,
-                        buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
-                    );
-                    setError('Failed to clear status');
-                } finally {
-                    actionInFlightRef.current = false;
-                    if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
-                }
-            },
+        setPendingClearConfirmation({
+            expectedStoreId,
+            expectedTenantId,
+            previousStatus: prevStatus,
         });
-    }, [storeDetails, setStoreDetails, isExpectedScope]);
+    }, [storeDetails]);
+
+    const confirmClearStatus = useCallback(async () => {
+        const pending = pendingClearConfirmation;
+        if (!pending || actionInFlightRef.current) return;
+        const { expectedTenantId, expectedStoreId, previousStatus } = pending;
+        if (!isExpectedScope(expectedTenantId, expectedStoreId)) {
+            setPendingClearConfirmation(null);
+            return;
+        }
+
+        actionInFlightRef.current = true;
+        setIsLoading(true);
+        setError(null);
+
+        // Optimistic update
+        setStoreDetails((prev) => {
+            if (!prev || String(prev.tenantId) !== String(expectedTenantId) || String(prev.storeId) !== String(expectedStoreId)) return prev;
+            const { tempStatus, ...rest } = prev || {};
+            return rest;
+        });
+
+        try {
+            const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'clear',
+                    expectedStoreId: String(expectedStoreId),
+                    expectedTenantId: String(expectedTenantId),
+                }),
+            });
+
+            const result = await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', previousStatus?.type));
+            if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+            if (result.effectsPending) {
+                antdMessage.warning('Status cleared. Customer pages may take a moment to refresh.');
+            } else {
+                antdMessage.success('Temporary status cleared.');
+            }
+        } catch (err) {
+            // Revert optimistic update
+            if (!isExpectedScope(expectedTenantId, expectedStoreId)) return;
+            setStoreDetails((prev) => prev
+                && String(prev.tenantId) === String(expectedTenantId)
+                && String(prev.storeId) === String(expectedStoreId)
+                ? { ...prev, tempStatus: previousStatus }
+                : prev);
+            logBusinessSettingsFailure(
+                'desktop_temp_status_clear_failed',
+                err,
+                buildTempStatusLogContext(storeDetails, 'clear_temp_status', previousStatus?.type),
+            );
+            setError('Failed to clear status');
+        } finally {
+            actionInFlightRef.current = false;
+            setPendingClearConfirmation(null);
+            if (isExpectedScope(expectedTenantId, expectedStoreId)) setIsLoading(false);
+        }
+    }, [isExpectedScope, pendingClearConfirmation, setStoreDetails, storeDetails]);
 
     const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
     const previewMessage = statusType === 'custom'
@@ -245,6 +276,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
         : 'the selected time';
 
     return (
+        <>
         <Card style={{ marginBottom: 16 }}>
             {/* Header */}
             <Flex align="center" gap={10} style={{ marginBottom: 16 }}>
@@ -375,5 +407,42 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                 </Flex>
             )}
         </Card>
+        <Modal
+            cancelText="Cancel"
+            confirmLoading={isLoading}
+            okText="Show to customers"
+            onCancel={() => {
+                if (!isLoading) setPendingSetConfirmation(null);
+            }}
+            onOk={confirmSetStatus}
+            open={Boolean(pendingSetConfirmation)}
+            title="Show this status to customers?"
+        >
+            {pendingSetConfirmation && (
+                <Text>
+                    Customers will see &quot;{pendingSetConfirmation.status.message}&quot; until{' '}
+                    {formatDateTime(pendingSetConfirmation.status.expiresAt, 'datetime', formatter)}.
+                </Text>
+            )}
+        </Modal>
+        <Modal
+            cancelText="Cancel"
+            confirmLoading={isLoading}
+            okText="Clear status"
+            okType="danger"
+            onCancel={() => {
+                if (!isLoading) setPendingClearConfirmation(null);
+            }}
+            onOk={confirmClearStatus}
+            open={Boolean(pendingClearConfirmation)}
+            title="Clear customer status?"
+        >
+            <Text>
+                {pendingClearConfirmation?.previousStatus?.message
+                    ? `Customers will no longer see "${pendingClearConfirmation.previousStatus.message}" on your public page.`
+                    : 'Customers will no longer see the temporary status on your public page.'}
+            </Text>
+        </Modal>
+        </>
     );
 }

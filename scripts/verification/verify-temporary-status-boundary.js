@@ -231,6 +231,12 @@ forbidToken(clientResponse, '.json().catch', 'Temporary Status client response p
   'const expiryInstant = resolveExpiryInstant(expiresAt);',
   'expiresAt: expiryInstant',
   "formatDateTime(previewExpiryInstant, 'datetime', formatter)",
+  'setPendingSetConfirmation({',
+  'open={Boolean(pendingSetConfirmation)}',
+  'onOk={confirmSetStatus}',
+  'setPendingClearConfirmation({',
+  'open={Boolean(pendingClearConfirmation)}',
+  'onOk={confirmClearStatus}',
   'String(prev.tenantId) === String(expectedTenantId)',
   'String(prev.storeId) === String(expectedStoreId)',
   "setError('Failed to set status')",
@@ -255,6 +261,7 @@ forbidToken(desktopCard, '.json().catch', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'data.error ||', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'err.message ||', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'expiresAt.toISOString()', 'Desktop Temporary Status browser-timezone expiry conversion');
+forbidToken(desktopCard, 'Modal.confirm({', 'Desktop Temporary Status static confirmation');
 
 [
   'getMobileTempStatusFailureCode',

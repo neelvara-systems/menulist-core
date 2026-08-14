@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Temporary Status Controlled Confirmations
+
+- Replaced the desktop Temporary Status static set/clear dialogs with controlled confirmation modals owned by the hydrated card.
+- Kept cancel actions write-free and preserved initiating-scope checks, single-flight mutation ownership, optimistic rollback, exact-expiry wording, and acknowledged success handling.
+- Extended the Temporary Status source gate. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Customer App Accessible Settings Toggles
 
 - Added explicit accessible names to the desktop Customer App enablement and install-prompt switches.

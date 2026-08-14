@@ -1,7 +1,7 @@
 # Temporary Status Layer - Implementation
 
 **Status:** Current runtime evidence; not deploy approval
-**Last reviewed:** July 25, 2026
+**Last reviewed:** August 14, 2026
 
 ## Source Gate
 
@@ -57,6 +57,13 @@ Standard public status types (`closed_today`, `kitchen_closed`, `opening_late`, 
 - MobileShell route: `src/components/mobile/screens/MobileMoreScreen.tsx`
 
 All mutation callers use `AUTH_BROWSER_REQUEST_POLICY` and `readTempStatusResponse()`. The response parser caps JSON at 8KB, accepts legacy `{ success: true }`, normalizes it to `effectsPending: false`, and rejects all other successful envelopes. Optimistic changes are restored on failure; normal or pending-refresh success copy appears only after the parser returns.
+
+The desktop set and clear confirmations are controlled `Modal` instances owned
+by the card. Opening either action records the initiating store scope and prior
+status in component state; only the explicit modal confirmation starts the
+mutation. This keeps both confirmations visible and keyboard-operable in the
+hydrated owner app while preserving scope-drift rejection, single-flight
+mutation ownership, optimistic rollback, and cancel-without-write behavior.
 
 Exact-expiry drafts use the shared zoned date-time input helpers. Desktop converts the Ant Design picker wall time through the active `next-intl` timezone before validation, preview, confirmation, and persistence; mobile uses the same conversion boundary for its native date-time input. Browser-local timezone offsets therefore cannot make the visible picker disagree with the customer-facing expiry or persist a different instant.
 
