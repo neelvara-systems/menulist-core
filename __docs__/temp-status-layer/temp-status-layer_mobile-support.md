@@ -23,6 +23,7 @@ The dedicated `MobileTempStatusScreen` remounts by exact tenant/store, admits on
 - Regular weekday edits remain explicit Working Hours changes.
 
 Both owner surfaces expose the same six status types and future expiry controls as desktop. Exact date/time values are converted through the shared date helpers before the API call.
+The desktop picker now uses that same active-app-timezone conversion, so desktop and mobile preserve one wall-time-to-instant contract instead of inheriting the browser machine timezone.
 
 ## Mutation Contract
 

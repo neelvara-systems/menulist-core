@@ -1,5 +1,10 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Temporary Status Expiry Timezone Alignment
+
+- Fixed the desktop Temporary Status expiry picker so its entered wall time, customer preview, confirmation, and persisted ISO instant all use the active app timezone.
+- Added an Asia/Kolkata round-trip regression and source guards preventing browser-system timezone conversion from returning.
+
 ## August 14, 2026 - Guest Feedback Accessible Settings Controls
 
 - Added explicit accessible names to every desktop Guest Feedback master, collection, required-field, and Google review-link control.

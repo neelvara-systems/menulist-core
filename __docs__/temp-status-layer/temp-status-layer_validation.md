@@ -4,6 +4,8 @@
 **Date:** July 25, 2026
 **Feature flag:** default `true`
 
+The focused gate also locks the exact-expiry timezone contract: a desktop picker value is interpreted in the active app timezone, the preview and confirmation format that same instant, and the submitted ISO value round-trips to the entered wall time. This prevents browser-system timezone drift from changing or mislabeling a customer-visible expiry.
+
 ## Current Source Boundary
 
 Primary gate:

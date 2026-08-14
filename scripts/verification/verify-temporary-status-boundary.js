@@ -225,6 +225,12 @@ forbidToken(clientResponse, '.json().catch', 'Temporary Status client response p
   'desktop_temp_status_clear_failed',
   'actionInFlightRef.current',
   'isExpectedScope(expectedTenantId, expectedStoreId)',
+  'const timeZone = useTimeZone();',
+  'toNativeDateTimeInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000), timeZone)',
+  "fromNativeDateTimeInputValue(value.format('YYYY-MM-DDTHH:mm'), timeZone)",
+  'const expiryInstant = resolveExpiryInstant(expiresAt);',
+  'expiresAt: expiryInstant',
+  "formatDateTime(previewExpiryInstant, 'datetime', formatter)",
   'String(prev.tenantId) === String(expectedTenantId)',
   'String(prev.storeId) === String(expectedStoreId)',
   "setError('Failed to set status')",
@@ -248,6 +254,7 @@ forbidToken(desktopCard, 'res.json()', 'Desktop Temporary Status card');
 forbidToken(desktopCard, '.json().catch', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'data.error ||', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'err.message ||', 'Desktop Temporary Status card');
+forbidToken(desktopCard, 'expiresAt.toISOString()', 'Desktop Temporary Status browser-timezone expiry conversion');
 
 [
   'getMobileTempStatusFailureCode',

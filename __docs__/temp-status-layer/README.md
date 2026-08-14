@@ -23,6 +23,7 @@ The gate covers route admission, expiry, owner acknowledgement and rollback, pub
 - The route is feature-gated, permissioned, bounded to 4KB JSON, Zod-validated, and protected by a hashed fail-closed `DATA_WRITE` limiter.
 - A successful set writes the existing store document's `tempStatus` field. A successful clear deletes it.
 - Desktop Business Settings and the two MobileShell entry points update optimistically, but keep that state and show success only after a bounded valid `{ success: true }` response.
+- Desktop and mobile exact-expiry controls interpret the entered wall time in the active app timezone, so the field, preview, confirmation, and persisted instant stay aligned even when the browser system timezone differs.
 - Public menu, Official Business Page (OBP), feedback, browser store payload, and pull API share the canonical active-status boundary. Invalid or expired truth is omitted.
 - Mounted public and owner components schedule expiry locally, so a notice disappears when its expiry passes without requiring a reload.
 - Only `closed_today` produces a whole-business closure in structured data. `kitchen_closed` and other notices never mark the complete business closed.

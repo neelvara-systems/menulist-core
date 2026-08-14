@@ -7,9 +7,17 @@ import {
     normalizeTempStatusType,
 } from '@lib/tempStatus/statusBoundary';
 import { buildTempStatusSchema } from '@lib/schema';
+import {
+    fromNativeDateTimeInputValue,
+    toNativeDateTimeInputValue,
+} from '@util/dateTime';
 
 const now = new Date('2026-07-16T20:00:00.000Z');
 const future = '2026-07-18T00:00:00.000Z';
+
+const kolkataExpiry = fromNativeDateTimeInputValue('2026-08-15T22:00', 'Asia/Kolkata');
+assert.equal(kolkataExpiry, '2026-08-15T16:30:00.000Z');
+assert.equal(toNativeDateTimeInputValue(kolkataExpiry, 'Asia/Kolkata'), '2026-08-15T22:00');
 
 assert.equal(normalizeTempStatusType('closed_today'), 'closed_today');
 assert.equal(normalizeTempStatusType('unknown'), null);

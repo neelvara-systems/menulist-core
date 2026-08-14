@@ -58,6 +58,8 @@ Standard public status types (`closed_today`, `kitchen_closed`, `opening_late`, 
 
 All mutation callers use `AUTH_BROWSER_REQUEST_POLICY` and `readTempStatusResponse()`. The response parser caps JSON at 8KB, accepts legacy `{ success: true }`, normalizes it to `effectsPending: false`, and rejects all other successful envelopes. Optimistic changes are restored on failure; normal or pending-refresh success copy appears only after the parser returns.
 
+Exact-expiry drafts use the shared zoned date-time input helpers. Desktop converts the Ant Design picker wall time through the active `next-intl` timezone before validation, preview, confirmation, and persistence; mobile uses the same conversion boundary for its native date-time input. Browser-local timezone offsets therefore cannot make the visible picker disagree with the customer-facing expiry or persist a different instant.
+
 ## Special Menu Integration
 
 Browser/Admin lifecycle code in `src/database/projects/specialMenuLifecycle.ts` and scheduled lifecycle code in `functions/src/schedulers/specialMenuLifecycle.ts` write a `special_menu` status with the menu end time and `sourceProjectId`. Deactivate/cancel/repair deletes the notice only when ownership matches, with a legacy fallback tied to the active pointer.

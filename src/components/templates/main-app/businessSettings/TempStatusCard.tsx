@@ -11,10 +11,15 @@
 
 import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, message as antdMessage, theme } from 'antd';
 import dayjs from 'dayjs';
-import { useFormatter } from 'next-intl';
+import { useFormatter, useTimeZone } from 'next-intl';
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
-import { formatDateTime } from '@util/dateTime';
+import {
+    formatDateTime,
+    fromNativeDateTimeInputValue,
+    toDate,
+    toNativeDateTimeInputValue,
+} from '@util/dateTime';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
@@ -49,13 +54,16 @@ interface TempStatusCardProps {
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
+    const timeZone = useTimeZone();
     const storedStatus = storeDetails?.tempStatus;
     const currentStatus = useActiveTempStatus(storedStatus);
     const isActive = Boolean(currentStatus);
 
     const [statusType, setStatusType] = useState<(typeof STATUS_OPTIONS)[number]['value']>('closed_today');
     const [customMessage, setCustomMessage] = useState('');
-    const [expiresAt, setExpiresAt] = useState<dayjs.Dayjs | null>(dayjs().add(1, 'day').startOf('hour'));
+    const [expiresAt, setExpiresAt] = useState<dayjs.Dayjs | null>(() => dayjs(
+        toNativeDateTimeInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000), timeZone),
+    ).startOf('hour'));
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const currentScopeRef = useRef({ storeId: storeDetails.storeId, tenantId: storeDetails.tenantId });
@@ -65,6 +73,11 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
         String(currentScopeRef.current.tenantId ?? '') === String(tenantId ?? '')
         && String(currentScopeRef.current.storeId ?? '') === String(storeId ?? '')
     ), []);
+    const resolveExpiryInstant = useCallback((value: dayjs.Dayjs | null): string => (
+        value
+            ? fromNativeDateTimeInputValue(value.format('YYYY-MM-DDTHH:mm'), timeZone)
+            : ''
+    ), [timeZone]);
 
     const handleSet = useCallback(() => {
         const expectedTenantId = storeDetails.tenantId;
@@ -73,7 +86,9 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             setError('Please set an expiry time');
             return;
         }
-        if (!expiresAt.isAfter(dayjs())) {
+        const expiryInstant = resolveExpiryInstant(expiresAt);
+        const expiryDate = toDate(expiryInstant);
+        if (!expiryInstant || Number.isNaN(expiryDate.getTime()) || expiryDate.getTime() <= Date.now()) {
             setError('Expiry must be in the future');
             return;
         }
@@ -87,7 +102,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
         const newStatus = {
             type: statusType,
             message,
-            expiresAt: expiresAt.toISOString(),
+            expiresAt: expiryInstant,
             createdAt: new Date().toISOString(),
         };
 
@@ -120,7 +135,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                             expectedTenantId: String(expectedTenantId),
                             type: statusType,
                             message: statusType === 'custom' ? customMessage.trim() : undefined,
-                            expiresAt: expiresAt.toISOString(),
+                            expiresAt: expiryInstant,
                         }),
                     });
 
@@ -151,7 +166,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                 }
             },
         });
-    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter, isExpectedScope]);
+    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter, isExpectedScope, resolveExpiryInstant]);
 
     const handleClear = useCallback(() => {
         const expectedTenantId = storeDetails.tenantId;
@@ -224,7 +239,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     const previewMessage = statusType === 'custom'
         ? (customMessage.trim() || 'Temporary notice')
         : (selectedOption?.defaultMsg || statusType);
-    const previewExpiry = expiresAt ? formatDateTime(expiresAt.toISOString(), 'datetime', formatter) : 'the selected time';
+    const previewExpiryInstant = resolveExpiryInstant(expiresAt);
+    const previewExpiry = previewExpiryInstant
+        ? formatDateTime(previewExpiryInstant, 'datetime', formatter)
+        : 'the selected time';
 
     return (
         <Card style={{ marginBottom: 16 }}>
