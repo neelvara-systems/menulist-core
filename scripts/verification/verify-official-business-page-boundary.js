@@ -120,6 +120,7 @@ function verifyPublicLinkHelperRuntime() {
 function verifyOwnerMutationBoundary() {
   const { normalizeGeoCoordinateDraft } = require(path.join(root, 'src/lib/businessIdentity/geoCoordinates.ts'));
   const { normalizeOwnerPublicPresenceLinks } = require(path.join(root, 'src/lib/obp/ownerPublicPresenceBoundary.ts'));
+  const { normalizeOwnerSocialMediaLinks } = require(path.join(root, 'src/lib/obp/ownerSocialMediaBoundary.ts'));
   const { getStoreDeepDifference, isStoreNestedDelete } = require(path.join(root, 'src/lib/store/storeNestedUpdateProjection.ts'));
   const { buildVisualProfileCompletion } = require(path.join(root, 'src/lib/visualProfile/visualProfileCompletion.ts'));
 
@@ -157,6 +158,37 @@ function verifyOwnerMutationBoundary() {
     isStoreNestedDelete(clearedOwnerAccentDifference.publicPresence?.accentColor),
     'blank owner accent must project to the existing nested delete marker',
   );
+  const normalizedOwnerSocialMedia = normalizeOwnerSocialMediaLinks({
+    instagram: '@menulist',
+    twitter: 'https://x.com/menulist',
+    tripadvisor: 'tripadvisor.com/example',
+    youtube: '',
+  });
+  assert(normalizedOwnerSocialMedia.invalidKeys.length === 0, 'valid owner social links must normalize');
+  assert(
+    normalizedOwnerSocialMedia.socialMedia.instagram === 'https://instagram.com/menulist',
+    'owner Instagram handle must normalize to the public renderer contract',
+  );
+  assert(
+    normalizedOwnerSocialMedia.socialMedia.twitter === 'https://x.com/menulist',
+    'owner X link must retain its admitted HTTPS host',
+  );
+  assert(
+    normalizedOwnerSocialMedia.socialMedia.tripadvisor === 'https://tripadvisor.com/example',
+    'owner custom social link must normalize as generic HTTPS',
+  );
+  assert(
+    !Object.prototype.hasOwnProperty.call(normalizedOwnerSocialMedia.socialMedia, 'youtube'),
+    'blank owner social links must be omitted for nested deletion',
+  );
+  assert(
+    normalizeOwnerSocialMediaLinks({ instagram: 'https://example.com/not-instagram' }).invalidKeys.includes('instagram'),
+    'wrong-host owner Instagram link must fail before persistence',
+  );
+  assert(
+    normalizeOwnerSocialMediaLinks({ twitter: 'http://twitter.com/menulist' }).invalidKeys.includes('twitter'),
+    'insecure owner social link must fail before persistence',
+  );
 
   const duplicatePhotoCompletion = buildVisualProfileCompletion({
     businessCategory: 'food',
@@ -175,6 +207,8 @@ function verifyOwnerMutationBoundary() {
   const mobileBasic = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
   const mobileOfficial = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
   const officialTab = read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx');
+  const socialMediaTab = read('src/components/templates/main-app/businessSettings/tabs/SocialMediaTab.tsx');
+  const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const b2cView = read('src/components/templates/main-app/projects/b2cView/index.tsx');
   const storageHelper = read('src/database/stores/uploadOBPPhoto.ts');
   const obpContent = read('src/app/client/obp/OBPContent.tsx');
@@ -197,6 +231,18 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(businessSettings, "postalCode: storeDetails?.postalCode || storeDetails?.pincode || ''", 'desktop legacy postal hydration');
   assertIncludes(businessSettings, 'normalizeGeoCoordinateDraft(latitudeInput, longitudeInput)', 'desktop shared geo boundary');
   assertIncludes(businessSettings, 'normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence)', 'desktop owner public-link boundary');
+  assertIncludes(businessSettings, 'normalizeOwnerSocialMediaLinks(socialMedia)', 'desktop owner social-link boundary');
+  assertIncludes(businessSettings, "message.error('Enter valid public social profile links before saving.')", 'desktop owner social-link rejection');
+  assertIncludes(socialMediaTab, 'aria-label={placeholder}', 'desktop named default social inputs');
+  assertIncludes(socialMediaTab, 'aria-label={`Clear ${placeholder}`}', 'desktop named default social clear actions');
+  assertIncludes(socialMediaTab, 'aria-label={`Remove ${key}`}', 'desktop named custom social removal');
+  assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLink(', 'mobile shared single social-link boundary');
+  assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLinks(socialMedia)', 'mobile shared full social-map boundary');
+  assertIncludes(mobileAdvancedSettings, 'aria-label={`Open ${platform.label}`}', 'mobile named social open action');
+  assertIncludes(mobileAdvancedSettings, 'aria-label={`Edit ${platform.label}`}', 'mobile named social edit action');
+  assertIncludes(mobileAdvancedSettings, 'aria-label={`Remove ${platform.label}`}', 'mobile named social remove action');
+  assertIncludes(mobileAdvancedSettings, 'aria-label="Close social link editor"', 'mobile named social editor close action');
+  assertIncludes(mobileAdvancedSettings, 'minHeight: 44, minWidth: 44', 'mobile social icon action touch target');
   assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
   assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
   assertIncludes(mobileBasic, 'MOBILE_BASIC_STORE_UPDATE_KEYS', 'mobile exact optimistic store-key registry');

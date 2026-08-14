@@ -20,6 +20,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, 
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
+import { normalizeOwnerSocialMediaLinks } from "@lib/obp/ownerSocialMediaBoundary";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import {
     hasFeedbackPresenceReadiness,
@@ -1295,7 +1296,12 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             changesToUpload.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
         }
 
-        changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
+        const normalizedSocialMedia = normalizeOwnerSocialMediaLinks(socialMedia);
+        if (normalizedSocialMedia.invalidKeys.length > 0) {
+            message.error('Enter valid public social profile links before saving.');
+            return;
+        }
+        changesToUpload.socialMedia = normalizedSocialMedia.socialMedia;
         if (workingHoursDirty) {
             changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
         } else {

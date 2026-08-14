@@ -2,6 +2,10 @@
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+import {
+    normalizeOwnerSocialMediaLink,
+    normalizeOwnerSocialMediaLinks,
+} from '@lib/obp/ownerSocialMediaBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import type { StoreDataType } from '@type/platform/store';
@@ -57,28 +61,6 @@ function getInitialFeedbackDraft(storeDetails: StoreDataType | null): FeedbackDr
         collectPhoneRequired: storeDetails?.feedbackDefaults?.collectPhoneRequired ?? false,
         feedbackEnabled: storeDetails?.feedbackEnabled !== false,
     };
-}
-
-function normalizeAndValidateSocialLink(value: string, platformKey: string): { normalized: string; valid: boolean } {
-    const trimmed = value.trim();
-    if (!trimmed) return { normalized: '', valid: true };
-
-    if (platformKey === 'whatsapp') {
-        const digits = trimmed.replace(/[^\d]/g, '');
-        if (digits.length < 8 || digits.length > 15) return { normalized: trimmed, valid: false };
-        return { normalized: `https://wa.me/${digits}`, valid: true };
-    }
-
-    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    try {
-        const parsed = new URL(normalized);
-        if (!parsed.hostname || !parsed.hostname.includes('.')) {
-            return { normalized, valid: false };
-        }
-        return { normalized: parsed.toString(), valid: true };
-    } catch {
-        return { normalized, valid: false };
-    }
 }
 
 function sanitizeSocialMediaMap(source: Record<string, string> | null | undefined): Record<string, string> {
@@ -291,25 +273,34 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
         if (!editingPlatformKey) return;
         const normalizedLabel = editingPlatformLabel.trim();
         const rawValue = editingPlatformValue.trim();
+        const isKnownPlatform = knownPlatformMap.has(editingPlatformKey);
 
-        const { normalized: normalizedValue, valid } = normalizeAndValidateSocialLink(rawValue, editingPlatformKey);
-        if (!valid) {
-            const validationHint = editingPlatformKey === 'whatsapp'
-                ? 'Please enter a valid WhatsApp number with country code.'
-                : 'Please enter a valid link (e.g. https://instagram.com/yourbusiness)';
-            Toast.show({ content: validationHint, duration: 2500 });
+        if (!isKnownPlatform && !normalizedLabel) {
+            Toast.show({ content: 'Add a platform name before saving.', duration: 2500 });
             return;
         }
 
-        const isKnownPlatform = knownPlatformMap.has(editingPlatformKey);
+        const normalizedValue = normalizeOwnerSocialMediaLink(
+            isKnownPlatform ? editingPlatformKey : normalizedLabel,
+            rawValue,
+        );
+        if (rawValue && !normalizedValue) {
+            Toast.show({ content: 'Please enter a valid public profile link.', duration: 2500 });
+            return;
+        }
+
         const nextSocialMedia = { ...socialMedia };
 
         if (isKnownPlatform) {
-            nextSocialMedia[editingPlatformKey] = normalizedValue;
+            if (normalizedValue) {
+                nextSocialMedia[editingPlatformKey] = normalizedValue;
+            } else {
+                delete nextSocialMedia[editingPlatformKey];
+            }
         } else {
             delete nextSocialMedia[editingPlatformKey];
             if (normalizedLabel) {
-                nextSocialMedia[normalizedLabel.toLowerCase()] = normalizedValue;
+                if (normalizedValue) nextSocialMedia[normalizedLabel.toLowerCase()] = normalizedValue;
             }
         }
 
@@ -495,7 +486,12 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
         const updates: AdvancedSettingsStoreUpdate = {};
 
         if (showSocial && isSocialDirty) {
-            updates.socialMedia = socialMedia;
+            const normalizedSocialMedia = normalizeOwnerSocialMediaLinks(socialMedia);
+            if (normalizedSocialMedia.invalidKeys.length > 0) {
+                Toast.show({ content: 'Fix invalid public profile links before saving.', duration: 2500 });
+                return;
+            }
+            updates.socialMedia = normalizedSocialMedia.socialMedia;
         }
 
         if (showFeedback && isFeedbackDirty) {
@@ -545,21 +541,24 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                                                 </Flex>
                                                 <Flex gap={8}>
                                                     <Button
+                                                        aria-label={`Open ${platform.label}`}
                                                         fill="outline"
                                                         onClick={() => openSocialLink(platform.value, platform.key)}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuExternalLink size={12} />}
                                                     />
                                                     <Button
+                                                        aria-label={`Edit ${platform.label}`}
                                                         color="primary"
                                                         fill="outline"
                                                         onClick={() => handleOpenEditSheet(platform.key)}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuPencil size={12} />}
                                                     />
                                                     <Button
+                                                        aria-label={`Remove ${platform.label}`}
                                                         color="danger"
                                                         fill="outline"
                                                         onClick={() => {
@@ -568,7 +567,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                                                             persistSocialMedia(nextSocialMedia);
                                                         }}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuTrash size={12} />}
                                                     />
                                                 </Flex>
@@ -601,6 +600,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                             color="primary"
                             onClick={() => setIsSocialPickerOpen(true)}
                             size="large"
+                            style={{ minHeight: 44 }}
                         >
                             <Flex align="center" gap={6}>
                                 <LuPlus size={16} />
@@ -720,6 +720,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         onBack={() => setIsSocialPickerOpen(false)}
                         right={(
                             <Button
+                                aria-label="Close social link editor"
                                 fill="none"
                                 onClick={() => setIsSocialPickerOpen(false)}
                                 style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -809,6 +810,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                                             <Text strong>Platform name</Text>
                                             <Text type="secondary">Use the customer-facing platform name, for example Zomato, Instagram, or Tripadvisor.</Text>
                                             <Input
+                                                aria-label="Platform name"
                                                 onChange={setEditingPlatformLabel}
                                                 placeholder="Platform name"
                                                 value={editingPlatformLabel}
@@ -821,6 +823,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                                             Add the public link customers should open.
                                         </Text>
                                         <TextArea
+                                            aria-label={`${editingPlatform.label} public link`}
                                             autoSize={{ minRows: 3, maxRows: 5 }}
                                             onChange={setEditingPlatformValue}
                                             placeholder={editingPlatform.placeholder}

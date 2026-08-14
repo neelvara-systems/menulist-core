@@ -1,6 +1,6 @@
 import { Button, Card, Flex, Input, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { LuMessageCircle, LuPlus, LuTrash } from 'react-icons/lu';
+import { LuMessageCircle, LuPlus, LuTrash, LuX } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -64,7 +64,8 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                 <Flex gap={10} vertical>
                                     <Text strong style={{ textTransform: 'capitalize' }}>{key}</Text>
                                     <Input
-                                        allowClear
+                                        aria-label={placeholder}
+                                        allowClear={{ clearIcon: <LuX aria-label={`Clear ${placeholder}`} /> }}
                                         prefix={<Icon />}
                                         placeholder={placeholder}
                                         value={value}
@@ -88,7 +89,8 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                 <Flex gap={10} vertical>
                                     <Flex align="center" gap={8}>
                                         <Input
-                                            allowClear
+                                            aria-label={t('platformName')}
+                                            allowClear={{ clearIcon: <LuX aria-label={`Clear ${t('platformName')}`} /> }}
                                             style={{ minWidth: 180 }}
                                             placeholder={t('platformName')}
                                             value={key}
@@ -102,6 +104,7 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                             }}
                                         />
                                         <Button
+                                            aria-label={`Remove ${key}`}
                                             danger
                                             icon={<LuTrash />}
                                             onClick={() => {
@@ -112,6 +115,8 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                         />
                                     </Flex>
                                     <Input.TextArea
+                                        aria-label={`${key} ${t('profileUrl')}`}
+                                        allowClear={{ clearIcon: <LuX aria-label={`Clear ${key} ${t('profileUrl')}`} /> }}
                                         autoSize={{ minRows: 2, maxRows: 4 }}
                                         placeholder={t('profileUrl')}
                                         value={value}

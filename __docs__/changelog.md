@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Social Profile Link Admission And Accessible Actions
+
+- Added one shared owner social-link boundary across desktop and mobile settings so known platforms require their matching HTTPS hosts, handles canonicalize consistently, and custom platforms accept only public HTTPS links before persistence.
+- Invalid social drafts now remain write-free instead of polluting owner truth that customer rendering would later hide.
+- Named desktop custom-platform removal and mobile open/edit/remove/close controls, preserving 44px mobile icon-action targets. Valid changes keep the existing single store update; no Firebase schema, rule, index, Function, Storage, provider, dependency, direct deployment, or production change was added.
+
 ## August 15, 2026 - Official Page Accessible Accent Reset
 
 - Replaced the unnamed desktop accent trigger with a labelled native colour input and an explicit Reset action.

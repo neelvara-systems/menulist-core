@@ -92,6 +92,8 @@
 
 **Public link safety is render-time and cost-neutral:** OBP action links, social links, Google review links, Schema.org `sameAs`/ReserveAction/OrderAction targets, customer app manifest shortcuts, and PWA directions/reservation/order handoffs normalize stored owner URLs before public output. Invalid, non-HTTPS, wrong-host, credentialed, or oversized values are hidden from public `href`, manifest, redirect, and JSON-LD output instead of being rewritten to Firestore. This adds no reads, writes, deletes, Storage operations, Cloud Functions, rules, indexes, cache invalidations, or deploy requirement. Source gate: `npm run verify:official-business-page-boundary`.
 
+**Owner social-link admission is pre-write and cost-neutral for rejection:** Desktop and mobile normalize the complete `socialMedia` map before the existing store update. Invalid, insecure, wrong-host, credentialed, oversized, reserved, or conflicting entries stop before Firestore. Valid changes retain the existing single store-document update; blank/removal changes use the existing nested field-delete projection and do not add a second write. No collection, schema, rule, index, Function, Storage, provider, listener, cache, or deploy change is introduced. Source gate: `npm run verify:official-business-page-boundary`.
+
 **Public link parse diagnostics:** Malformed public-link URL parse failures log bounded `obp_public_link_url_parse_failed` diagnostics only. The helper still returns `null` and hides the unsafe public link. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 ### Deletes
