@@ -104,23 +104,20 @@ ChatGPT had zero awareness of these built features:
 
 ## Current Homepage Section Order
 
-**Changed from V2** — the homepage is compressed so first-time SMB owners see the problem, workflow, setup proof, customer preview, and CTA before advanced feature density.
+**Changed from V2** — the homepage is compressed so first-time SMB owners see the private-preview path, the before/after problem, customer proof, owner proof, and CTA without advanced feature density.
 
 ```
-1. HeroSection              — Upload current menu -> one official version
-2. ProblemSection           — Internet menus are broken
-3. InteractiveWorkflow      — Upload, review, publish, share
-4. SetupReliefSection       — Setup work prepared before publishing
-5. SurfacesSection          — Public output proof
-6. CustomerBrowseSection    — Customer-facing menu preview
-7. PreparedForYouSection    — Real-world rollout proof
-8. BusinessHealthSection    — Owner-dashboard check and No action needed proof
-9. ResourcesSection         — Evergreen owner-useful resources
-10. FaqSection              — Questions answered
-11. FinalCtaSection         — Close with owner-approved menu CTA
+1. HeroSection                  — Current list -> one official customer link
+2. CreateMenuPreviewSection     — Try-first private-preview path
+3. BeforeAfterSection           — Old scattered-menu state vs one current link
+4. CustomerBrowseSection        — Customer-facing menu preview
+5. CustomerLinkIncludesSection  — Compact official-link output proof
+6. OwnerProofSection            — AI Menu Manager + Business Health proof
+7. FaqSection                   — Conversion-critical questions
+8. FinalCtaSection              — Close with owner-approved menu CTA
 ```
 
-**Rationale:** After showing the transformation and public-menu pain, immediately prove the workflow and public customer result. Business Health is now the single focused owner-dashboard USP because it shows what happens after publishing without forcing the owner into raw analytics. The older `SolutionSection` was removed because its one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof without adding new buyer evidence. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
+**Rationale:** After showing the private-preview path and public-menu pain, immediately prove the customer result and what the approved link includes. Business Health stays inside `OwnerProofSection`, where Weekly Menu Review is one supporting proof rather than a new homepage section. The deeper `BusinessHealthSection` remains unmounted. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
 
 ---
 

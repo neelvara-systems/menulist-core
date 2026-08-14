@@ -37,6 +37,7 @@ const proofCards = [
 ] as const;
 
 const pointIcons = [LuClipboardCheck, LuShieldCheck, LuCheckCircle];
+const healthPointKeys = ['healthWeeklyPoint', 'healthPoint1', 'healthPoint2'] as const;
 
 export default function OwnerProofSection() {
   const t = useTranslations('Website');
@@ -55,7 +56,11 @@ export default function OwnerProofSection() {
         {proofCards.map((card, cardIndex) => {
           const points = pointIcons.map((Icon, pointIndex) => ({
             Icon,
-            text: t(`OwnerProof.${card.key}Point${pointIndex}`),
+            text: t(
+              card.key === 'health'
+                ? `OwnerProof.${healthPointKeys[pointIndex]}`
+                : `OwnerProof.${card.key}Point${pointIndex}`,
+            ),
           }));
 
           return (
@@ -74,7 +79,9 @@ export default function OwnerProofSection() {
                 </div>
               </div>
 
-              <p className="ws-owner-proof__desc">{t(`OwnerProof.${card.key}Desc`)}</p>
+              <p className="ws-owner-proof__desc">
+                {t(card.key === 'health' ? 'OwnerProof.healthWeeklyDesc' : `OwnerProof.${card.key}Desc`)}
+              </p>
 
               <figure className="ws-owner-proof__image">
                 <Image

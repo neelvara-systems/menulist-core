@@ -23,6 +23,7 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
     const router = useRouter();
     const { token } = useToken();
     const t = useTranslations('Dashboard.owner.menuSetup');
+    const tOwner = useTranslations('Dashboard.owner');
     const summary = useMemo(
         () => buildMenuSetupProgress({ project, storeDetails, translate: t }),
         [project, storeDetails, t],
@@ -40,6 +41,10 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
 
     if (!summary.shouldShow) return null;
 
+    const title = FEATURE_FLAGS.ENABLE_LOCATION_LAUNCH_READINESS && summary.context === 'location_launch'
+        ? `${tOwner('businessHealth.locations.title')} · ${t('title')}`
+        : t('title');
+
     return (
         <Card
             size="small"
@@ -47,7 +52,7 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
             title={(
                 <Flex align="center" gap={8}>
                     <LuListChecks size={16} color={token.colorPrimary} />
-                    <Text strong style={{ fontSize: 14 }}>{t('title')}</Text>
+                    <Text strong style={{ fontSize: 14 }}>{title}</Text>
                 </Flex>
             )}
         >
@@ -55,7 +60,7 @@ export default function MenuSetupProgress({ loading = false, project, storeDetai
                 <Flex align="center" justify="space-between" gap={12} wrap="wrap">
                     <Flex vertical gap={2} style={{ flex: '1 1 260px', minWidth: 0 }}>
                         <Text strong style={{ fontSize: 13 }}>
-                            {summary.nextStep?.label || t('title')}
+                            {summary.nextStep?.label || title}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             {summary.compactCopy}

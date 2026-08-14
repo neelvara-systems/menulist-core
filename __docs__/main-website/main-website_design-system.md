@@ -383,17 +383,17 @@ Rules:
 - Use the compact variant for dense supporting pages such as Features, Pricing decision cards, About principles, and Trust/Security pillars.
 - Do not copy Answerlattice colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
 
-### 5.2.2 Business Health Homepage Panel
+### 5.2.2 Business Health Homepage Proof
 
-Use `src/components/website/home/BusinessHealthSection.tsx` as the homepage owner-dashboard USP proof. The section should feel like a MenuList AI health check, not a chatbot demo or decorative illustration.
+Use the Business Health card inside `src/components/website/home/OwnerProofSection.tsx` as the mounted homepage owner-dashboard proof. `BusinessHealthSection.tsx` remains an unmounted deeper reference; do not restore it without reopening the compressed homepage composition.
 
 Rules:
 
-- The visual is a product-style panel built from website tokens, not a separate gradient hero, stock image, or unrelated SVG illustration.
-- The panel must include status, freshness, a No action needed state, compact metrics, one owner question, and a source-backed answer.
-- Proof cards use the shared compact `WebsiteFeatureCard` pattern so the section stays visually connected to the rest of the homepage.
+- The mounted visual uses the generated Business Health product proof already assigned to the card, not a separate gradient hero, stock image, or unrelated illustration.
+- Keep the proof compact: Weekly Menu Review, the location-level current check, and a stable `No action needed` state belong in the existing card.
+- Keep deeper status, freshness, metric, and source-backed detail on `/features/business-health` instead of expanding the homepage card.
 - Green is used only for stable status and No action needed. Brand blue remains the action/context color.
-- Mobile layout collapses to one column, keeps the status badge readable, and avoids showing chat UI as the main promise.
+- Mobile layout collapses the owner-proof cards to one column and avoids showing chat UI as the main promise.
 - Copy may say AI health check or AI diagnostic. It must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
 
 ### 5.2.3 Business Health Campaign Page

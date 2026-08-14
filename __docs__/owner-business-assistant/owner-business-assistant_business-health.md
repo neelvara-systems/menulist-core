@@ -2,7 +2,7 @@
 
 **Feature:** Owner Business Assistant / Business Health
 **Status:** Read-only AI diagnostic runtime
-**Last Updated:** July 9, 2026
+**Last Updated:** August 14, 2026
 
 ## Purpose
 
@@ -27,6 +27,13 @@ Public positioning may call Business Health an AI health check or AI diagnostic 
 - Suggested questions
 - Grounded typed answers
 - Safe handoff wording to AI Menu Manager or existing owner screens
+- Weekly Menu Review from the already-built this-week and last-week analytics periods plus the current read-only checks
+
+## Weekly Menu Review
+
+The weekly review is a compact Business Health view, not a separate agent runtime. It prefers the selected menu's `thisWeek` and `lastWeek` periods, shows MenuList activity only, labels the current check count or no-action-needed state as location-level, preserves freshness disclosure, and stays read-only on desktop and in MobileShell.
+
+It must not describe menu views or item taps as orders, sales, revenue, profitability, popularity outside MenuList, or competitor evidence. Missing weekly data produces no invented recommendation.
 
 ## Explicit Non-Capability
 

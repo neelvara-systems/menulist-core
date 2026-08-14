@@ -12,6 +12,14 @@
   closed. Existing logout and in-flight session-request invalidation remain
   unchanged. Focused auth/session tests cover the handoff and ordering.
 
+## August 14, 2026 - Weekly Menu Review And Location Launch Readiness
+
+- Added a read-only Weekly Menu Review inside Business Health on desktop and MobileShell. It uses the existing selected-scope `thisWeek` and `lastWeek` analytics periods plus the current health checks; it adds no sales, margin, competitor, or external-review claims.
+- Added location-aware launch-readiness presentation for outlet stores and master-linked outlet projects by extending the existing Menu Setup summary context. The five current source/import/details/publish/link gates remain the single computation and only one next action is shown.
+- Added separate presentation flags, focused source/behavior gates, mobile parity, and the existing localized copy path. No collection, field, rule, index, Function, API, provider call, dependency, build, or deployment was added.
+- Cross-check restored the existing desktop analytics fallback, made the location-level current-check scope explicit on both surfaces, and corrected the Hindi activation-evidence product label without adding a locale key.
+- Added narrow website proof without adding a route or homepage section: the existing homepage Business Health card, `/features`, and `/features/business-health` now mention Weekly Menu Review, while `/features` and `/multi-location` explain the outlet's next required menu, publish, or customer-link step.
+
 ## August 14, 2026 - Deterministic First-Project Rule Boundary
 
 - Allowed an authenticated owner to read an absent deterministic project only

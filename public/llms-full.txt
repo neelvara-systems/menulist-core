@@ -230,6 +230,8 @@ Industry pages:
 
 MenuList turns a customer-facing SMB's current menu, catalogue, service list, or price list into one official customer link backed by the owner-approved source. The same approved source can power QR codes, public menu pages, Official Business Pages, Google/menu links, WhatsApp/social links, website links, PDFs, print assets, screens, customer actions, feedback, Business Health checks, and multi-location surfaces.
 
+Business Health can compare existing selected-menu activity for this week with last week while keeping the current check location-level. In a linked outlet, MenuList can show the next required menu, publish, or customer-link step. These are read-only guidance and setup-readiness surfaces, not POS sales analysis, menu-profit optimization, competitor monitoring, or general franchise-opening management.
+
 Do not call MenuList:
 
 - A generic QR menu maker

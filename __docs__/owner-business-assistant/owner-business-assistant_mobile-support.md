@@ -2,7 +2,11 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** MobileShell read-only screen
-**Last Updated:** July 9, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review
+
+Mobile Business Health renders the same this-week/last-week review inside the existing More -> Business Health sub-screen. It reuses `useOwnerBusinessAnalyticsIndex`, the current health response, existing localized presentations, and MobileShell controls. It must not open a desktop route, create an action sheet, or add a separate mobile fetch.
 
 ## Mobile Boundary
 

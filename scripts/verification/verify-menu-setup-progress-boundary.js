@@ -64,11 +64,14 @@ docs.forEach(read);
 docs.forEach((docPath) => assertIncludes(docPath, 'Local source complete', 'local source status'));
 
 assertIncludes('src/config/features.ts', 'ENABLE_MENU_SETUP_PROGRESS');
+assertIncludes('src/config/features.ts', 'ENABLE_LOCATION_LAUNCH_READINESS');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'buildMenuSetupProgress');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'lastPublishedAt');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'buildStarterActivationSummary');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'normalizeStarterActivationTimestamp');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'const hasProjectSource = hasText(project?.projectId);', 'loaded project source boundary');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "context: 'location_launch' | 'menu_setup';", 'location launch derived context');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'storeDetails?.isMaster === false || hasText(project?.masterProjectId)', 'location context source truth');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'const files = Array.isArray(project?.files) ? project.files : [];', 'malformed project files boundary');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', '!starterActivation.appliesToStarterActivation', 'non-starter placement compatibility');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', '|| starterActivation.activated', 'starter activation target contract');
@@ -77,9 +80,11 @@ assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "id: 'tran
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "translationSignals.length > 0", 'translation step only when language signals exist');
 assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'activeCategories.length > 0', 'category-only import completion');
 assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', "useTranslations('Dashboard.owner.menuSetup')", 'desktop setup locale namespace');
-assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', "{t('title')}", 'desktop localized setup title');
+assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'ENABLE_LOCATION_LAUNCH_READINESS', 'desktop location launch flag');
+assertIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', '{title}', 'desktop derived setup title');
 assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', "useTranslations('Dashboard.owner.menuSetup')", 'mobile setup locale namespace');
-assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', "{t('title')}", 'mobile localized setup title');
+assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', 'ENABLE_LOCATION_LAUNCH_READINESS', 'mobile location launch flag');
+assertIncludes('src/components/mobile/components/MenuSetupProgress.tsx', '{title}', 'mobile derived setup title');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.progressPercent', 'desktop setup percentage');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', 'summary.requiredSteps.map', 'desktop setup checklist');
 assertNotIncludes('src/components/templates/main-app/dashboard/MenuSetupProgress.tsx', '<Progress', 'desktop setup progress bar');
@@ -98,6 +103,7 @@ assertIncludes('src/components/mobile/MobileShell.tsx', "'main',", 'More root se
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'buildMenuSetupProgress', 'More shortcut uses shared setup computation');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'if (projectsLoading) return null;', 'More shortcut waits for project truth');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', "key: 'menuSetup'", 'More shortcut item');
+assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'translate: tMenuSetup', 'More shortcut localized setup summary');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'onOpenMenuTab?.()', 'More shortcut menu shell callback');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'onOpenShareTab?.()', 'More shortcut share shell callback');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', "openOfficialPage('main')", 'More shortcut official page shell callback');
@@ -106,6 +112,7 @@ assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_spec.md', 'Tran
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'categories exist but zero active items', 'category-only test case');
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'Mobile More root while setup is incomplete', 'More shortcut test case');
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'exactly one recorded placement action', 'single-action starter test case');
+assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'context: location_launch', 'location launch test case');
 assertIncludes('FEATURE_SWEEP_MASTER_INVENTORY.md', 'Menu Setup Progress and Activation Concierge Boundary', 'feature inventory boundary');
 assertIncludes('FEATURE_SWEEP_MASTER_REPORT.md', 'Menu Setup Progress and Activation Concierge Boundary', 'feature report boundary');
 assertIncludes('__docs__/audits/menulist-production-readiness-audit.md', 'Menu Setup Progress and Activation Concierge Boundary', 'production audit boundary');
@@ -175,6 +182,22 @@ function linkPlacementStep(summary) {
 
 const starterWithNoSignals = buildProgress();
 assert.equal(linkPlacementStep(starterWithNoSignals).done, false, 'starter with no placement actions must remain incomplete');
+assert.equal(starterWithNoSignals.context, 'menu_setup', 'ordinary selected menu must retain menu setup context');
+
+const outletStoreProgress = buildMenuSetupProgress({
+  project: { ...projectWithPublishedMenu, lastPublishedAt: undefined },
+  qualitySignals: [],
+  storeDetails: { isMaster: false },
+});
+assert.equal(outletStoreProgress.context, 'location_launch', 'outlet store truth must derive location launch context');
+assert.equal(outletStoreProgress.requiredSteps.length, starterWithNoSignals.requiredSteps.length, 'location context must reuse the five setup gates');
+
+const linkedOutletProgress = buildMenuSetupProgress({
+  project: { ...projectWithPublishedMenu, lastPublishedAt: undefined, masterProjectId: 'master-menu-1' },
+  qualitySignals: [],
+  storeDetails: {},
+});
+assert.equal(linkedOutletProgress.context, 'location_launch', 'master-linked project truth must derive location launch context');
 
 const starterWithOneSignal = buildProgress({ signals: ['menu_link_copied'] });
 assert.equal(linkPlacementStep(starterWithOneSignal).done, false, 'one starter placement action must not meet the two-action target');

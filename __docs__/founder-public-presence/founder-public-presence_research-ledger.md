@@ -1,7 +1,7 @@
 # Founder Public Presence Research Ledger
 
 **Status:** Active and revalidation-dependent
-**Last Updated:** August 12, 2026
+**Last Updated:** August 14, 2026
 
 ## Purpose
 
@@ -38,6 +38,7 @@ research without converting any single source into doctrine.
 | FPP-R024 | 2026-08-12 | [0xngmi account snapshot](https://www.proofofbuild.app/builders/0xngmi) | A pseudonymous technical identity can accumulate trust through a stable role, visible product work, direct answers, and a long public history. The source is third-party and crypto-specific. | Directional pseudonymity example only; do not import crypto aesthetics, claims, or behavior. | Revalidate before any public comparison |
 | FPP-R025 | 2026-08-12 | [OpenAI ChatGPT use cases](https://learn.chatgpt.com/use-cases) | OpenAI documents recurring goal-following, automation workflows, research, and keeping documentation current as supported ways to use ChatGPT/Codex. | Use a daily internal research heartbeat. Keep external social actions outside the automation. | Before material automation redesign |
 | FPP-R026 | 2026-08-12 | [r/SaaS promotion-tool rule](https://www.reddit.com/r/SaaS/comments/1u0z4vz/new_rule_banning_a_saas_product_category_no/) | In June 2026 moderators banned promotion/advertising SaaS and reaffirmed highly restricted self-promotion for other categories. | Never use PresenceOS to automate Reddit promotion or concealed opportunity detection. Recheck rules before every participation session. | Before every relevant post/comment |
+| FPP-R027 | 2026-08-14 | [Nikita Bier's September 2025 X post](https://x.com/nikitabier/status/1963498520805007470), [current X recommendation guidance](https://help.x.com/en/rules-and-policies/recommendations), and [August 2026 role-transition post](https://x.com/nikitabier/status/2085105586966827343) | Bier published the advice while serving as X Head of Product: choose one subject, share one concise unexpected insight from experience, and repeat consistently. He also promised platform promotion after daily posting for six months and predicted global-expert status and unrestricted pricing power. He stepped back from product leadership on August 6, 2026 and remains an advisor. Current X guidance still describes recommendations as a multi-signal system with no permanently dominant signal. | Adopt one recognizable territory, experience-backed non-obvious lessons, and concise writing. Treat daily cadence, six months, guaranteed promotion, global-expert status, and pricing power as rhetoric or hypotheses—not platform guarantees. Keep the current three-post weekly baseline and change it only from Proof & State's own evidence. | Before citing X promotion behavior or changing cadence |
 
 ## Live X Profile Review — August 12, 2026
 

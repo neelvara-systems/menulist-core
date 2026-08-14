@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Current read-only test contract
-**Last Updated:** July 27, 2026
+**Last Updated:** August 14, 2026
 
 ## Verification Script
 
@@ -111,3 +111,13 @@ Business Health does not own those mutation paths; it must remain read-only whil
 6. Confirm no action sheet or action button appears.
 7. Open mobile Business Health through `MobileShell`.
 8. Confirm mobile checks are read-only and the composer works with keyboard open.
+## Weekly Menu Review
+
+- `thisWeek` available: show existing localized MenuList metrics and current check state.
+- `lastWeek` available: show a clearly labelled last-week menu-view comparison.
+- `lastWeek` absent: omit comparison without inventing a delta.
+- `thisWeek` absent or not available: omit Weekly Menu Review and preserve the existing Business Health fallback.
+- Current action count zero: show the existing no-action-needed presentation.
+- Current action count positive: show the existing customer-facing details need review presentation.
+- Selected menu changes: use the same selected-scope analytics cache key on desktop and mobile.
+- Verify there is no action hook, proposal record, provider call, external lookup, revenue/margin claim, or menu write.

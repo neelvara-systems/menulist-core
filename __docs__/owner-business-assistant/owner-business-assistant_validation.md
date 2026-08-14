@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Read-only validation after action-support removal
-**Last Updated:** July 13, 2026
+**Last Updated:** August 14, 2026
 
 ## Validation Decision
 
@@ -118,3 +118,17 @@ Retention validation must cover disabled-feature state. `owner_business_assistan
 - The answer route rate limit precedes body parsing; optional SAFE_MODE follows selected-store and permission admission.
 - AI-operation limiter-provider outages return 503 and stop before model work; ordinary deterministic data reads keep their existing behavior.
 - The shared Business Health source gate checks these boundaries. No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in this pass.
+
+## August 14, 2026 Weekly Menu Review Extension
+
+The extension is admitted only as a deterministic presentation of existing `thisWeek`, `lastWeek`, and current-health facts. Source gates require desktop and MobileShell parity, the dedicated presentation flag, no action hook/sheet, and the unchanged read-only Business Health boundary. It adds no Firebase artifact, provider path, external source, or deployment target.
+
+### Post-implementation parity audit
+
+| Finding | Classification | Resolution |
+| --- | --- | --- |
+| Desktop did not preserve the existing analytics fallback when `thisWeek` was unavailable | Mismatch | The Weekly Menu Review component now renders the existing analytics strip, matching mobile and the implementation contract. |
+| Current-health check count could appear selected-menu scoped beside weekly selected-menu metrics | Drift | Both surfaces now display the existing localized location-level scope label beside the check state. |
+| Weekly review could accidentally regain action-generation behavior | Regression risk | Focused gates require read-only presentation, no action hook/sheet, the dedicated flag, and unchanged cached analytics/current-health contracts. |
+
+**Final verdict:** Pass. The extension is source-complete, desktop/mobile aligned, and remains read-only with no new data or provider boundary.

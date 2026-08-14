@@ -4,7 +4,16 @@
 **Internal Slug:** `owner-business-assistant`
 **Product:** MenuList
 **Status:** Implemented as read-only health and grounded answer surface
-**Last Updated:** June 17, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review Requirements
+
+1. Derive the review from the existing selected-scope Business Health analytics response and current health response.
+2. Prefer `thisWeek`; use `lastWeek` only as a clearly labelled comparison.
+3. Show only facts already represented by the read model and existing localized metric/check presentations. Weekly activity follows the selected menu scope; the current health/check state stays explicitly labelled as location-level.
+4. Render the same decision state on desktop and MobileShell.
+5. Preserve the read-only boundary: no proposal record, approval sheet, menu write, external lookup, or provider call.
+6. Do not claim sales, margin, profitability, competitor comparison, or external-review sentiment without an admitted source contract.
 
 ## Product Boundary
 

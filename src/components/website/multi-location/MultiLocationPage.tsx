@@ -55,7 +55,12 @@ export default function MultiLocationPage() {
   const t = useTranslations('Website');
   const step1Points = Array.from({ length: 4 }, (_, i) => t(`MultiLocation.step1P${i}`));
   const step2Points = Array.from({ length: 4 }, (_, i) => t(`MultiLocation.step2P${i}`));
-  const step3Points = Array.from({ length: 4 }, (_, i) => t(`MultiLocation.step3P${i}`));
+  const step3Points = [
+    t('MultiLocation.step3P0'),
+    t('MultiLocation.step3P1'),
+    t('MultiLocation.step3P2'),
+    t('MultiLocation.step3ReadinessPoint'),
+  ];
   return (
     <main>
       {/* ── Hero ─────────────────────────────── */}
@@ -242,7 +247,7 @@ export default function MultiLocationPage() {
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>03</span>
               <WebsiteHeadline as="h2" text={t('MultiLocation.step3Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
-                {t('MultiLocation.step3Subtitle')}
+                {t('MultiLocation.step3ReadinessSubtitle')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
                 {step3Points.map((p) => (

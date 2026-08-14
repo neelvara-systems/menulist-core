@@ -5,7 +5,7 @@
 **Internal Slug:** `owner-business-assistant`
 **Product:** MenuList
 **Status:** Implemented as a read-only Business Health and grounded answer surface
-**Last Updated:** July 13, 2026
+**Last Updated:** August 14, 2026
 
 ## Current Decision
 
@@ -25,6 +25,7 @@ The accepted product shape is:
 6. Desktop dashboard card, public readiness fix list, analytics strip, full `/business-health` route, and mobile screen inside `MobileShell`.
 7. Internal platform monitoring for answer quality, unsupported gaps, source coverage, feedback, and route read/write cost.
 8. Explicit packet invalidation tied to scheduler rebuilds and public-truth changes.
+9. A read-only Weekly Menu Review that compares this week's existing MenuList activity with last week and places current owner checks beside it. It does not infer revenue, profit, item margin, competitor performance, or external-review sentiment.
 
 The rejected product shape is:
 
@@ -37,6 +38,13 @@ The rejected product shape is:
 7. Raw Firebase collection data passed directly to the AI model.
 8. Always-on long transcript storage or token-by-token message writes.
 9. Public website hype about an assistant beyond implemented proof.
+10. Autonomous menu optimization or a claim that customer activity is the same as POS sales.
+
+## Weekly Menu Review Boundary
+
+Weekly Menu Review is a deterministic presentation over the existing Business Health analytics index and current health document. Weekly activity follows the selected menu scope; the current attention state is explicitly location-level. It renders this-week activity, a last-week comparison when available, and the existing freshness disclosure. It adds no collection, API, scheduler, provider call, write, or action draft.
+
+Business Health remains diagnostic. If the review indicates that a menu detail deserves a change, the owner performs that work through Menu Manager or the existing destination screen; the review never applies the change.
 
 ## Ownership Boundary
 

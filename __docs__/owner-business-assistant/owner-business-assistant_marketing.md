@@ -4,7 +4,13 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Internal positioning; read-only runtime implemented; homepage and campaign page live
-**Last Updated:** June 17, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review Claim Boundary
+
+Allowed: "See this week's MenuList activity, compare it with last week, and review customer-facing checks in one place."
+
+Rejected: "optimizes your menu automatically", "finds your most profitable dishes", "combines POS sales and competitor data", or any claim that MenuList views equal orders or revenue.
 
 ---
 

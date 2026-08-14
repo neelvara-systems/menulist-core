@@ -121,6 +121,11 @@ function verifyPackageScript() {
     'package.json must expose verify:website-public-copy-boundary',
   );
   assert(
+    packageJson.scripts['verify:website-operational-proof-placement'] ===
+      'node scripts/verification/verify-website-public-copy-boundary.js --operational-proof-only',
+    'package.json must expose verify:website-operational-proof-placement',
+  );
+  assert(
     packageJson.scripts['test:website-product-path-boundary'] ===
       'ts-node --compiler-options \'{"module":"CommonJS","jsx":"react-jsx"}\' -r tsconfig-paths/register scripts/verification/test-website-product-path-boundary.ts',
     'package.json must expose test:website-product-path-boundary',
@@ -291,6 +296,99 @@ function verifyLocaleAndDiscoveryCopy() {
 
   assertNoBlockedClaims('public/llms.txt', read('public/llms.txt'));
   assertNoBlockedClaims('public/llms-full.txt', read('public/llms-full.txt'));
+}
+
+function verifyOperationalProofPlacementBoundary() {
+  const homepage = read(HOMEPAGE);
+  const ownerProof = read('src/components/website/home/OwnerProofSection.tsx');
+  const businessHealthPage = read('src/components/website/features/BusinessHealthFeaturePage.tsx');
+  const featuresPage = read('src/components/website/features/FeaturesPage.tsx');
+  const multiLocationPage = read('src/components/website/multi-location/MultiLocationPage.tsx');
+  const english = JSON.parse(read('public/locales/menulist.ai/en-US.json')).Website;
+  const hindi = JSON.parse(read('public/locales/menulist.ai/hi-IN.json')).Website;
+  const mainWebsiteReadme = read('__docs__/main-website/README.md');
+  const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
+  const mainWebsiteSpec = read('__docs__/main-website/main-website_spec.md');
+  const mainWebsiteDesignSystem = read('__docs__/main-website/main-website_design-system.md');
+  const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
+  const businessHealthWebsite = read('__docs__/owner-business-assistant/owner-business-assistant_website.md');
+  const menuSetupWebsite = read('__docs__/menu-setup-progress/menu-setup-progress_website.md');
+  const multiOutletWebsite = read('__docs__/multi-outlet-consistency/multi-outlet-consistency_website.md');
+  const llms = read('public/llms.txt');
+  const llmsFull = read('public/llms-full.txt');
+  const changelog = read('__docs__/changelog.md');
+
+  assertIncludes(homepage, '<OwnerProofSection />', 'Mounted compact Business Health homepage proof');
+  assertNotIncludes(homepage, 'import BusinessHealthSection', 'Unmounted deep Business Health homepage section');
+  assertIncludes(ownerProof, "'healthWeeklyPoint'", 'Homepage Weekly Menu Review locale key');
+  assertIncludes(ownerProof, "'OwnerProof.healthWeeklyDesc'", 'Homepage weekly-review description locale key');
+  assertIncludes(businessHealthPage, "{ icon: LuBarChart3, key: 'weeklyReview' }", 'Business Health weekly-review proof card');
+  assertIncludes(businessHealthPage, "navSummaryKey: 'storyChecksWeeklySummary'", 'Business Health weekly-review navigation summary');
+  assertIncludes(featuresPage, "['4-1', 'Features.group4F1WeeklyDesc']", 'Features Business Health weekly-review proof');
+  assertIncludes(featuresPage, "['4-4', 'Features.group4F4LaunchDesc']", 'Features Multi-location readiness proof');
+  assertIncludes(multiLocationPage, "t('MultiLocation.step3ReadinessPoint')", 'Multi-location owner-view readiness proof');
+
+  assert(
+    english.OwnerProof.healthWeeklyPoint === 'Weekly menu review',
+    'English homepage owner proof must name Weekly menu review',
+  );
+  assert(
+    english.BusinessHealthFeature.weeklyReviewDesc ===
+      'See this week’s selected-menu activity alongside last week, then check whether the location needs attention.',
+    'English Business Health page must preserve weekly selected-menu and location-level scope',
+  );
+  assert(
+    english.Features.group4F4LaunchDesc.includes('next menu, publish, or customer-link step'),
+    'English Features card must keep location launch readiness bounded to MenuList steps',
+  );
+  assert(
+    english.MultiLocation.step3ReadinessPoint.includes('menu and price review to publishing and sharing its customer link'),
+    'English Multi-location page must explain the bounded outlet next step',
+  );
+  assert(
+    hindi.OwnerProof.healthWeeklyPoint === 'Weekly menu review' &&
+      hindi.BusinessHealthFeature.weeklyReviewDesc.includes('selected-menu activity') &&
+      hindi.MultiLocation.step3ReadinessPoint.includes('customer link'),
+    'Hindi website proof must preserve Weekly Menu Review and outlet-readiness meaning',
+  );
+
+  const operationalProofCopy = [
+    english.OwnerProof.healthWeeklyDesc,
+    english.BusinessHealthFeature.weeklyReviewDesc,
+    english.Features.group4F1WeeklyDesc,
+    english.Features.group4F4LaunchDesc,
+    english.MultiLocation.step3ReadinessSubtitle,
+    english.MultiLocation.step3ReadinessPoint,
+  ].join('\n');
+  [
+    'POS sales',
+    'margin',
+    'competitor',
+    'vendor',
+    'compliance audit',
+    'HQ approval',
+  ].forEach((claim) => assertNotIncludes(operationalProofCopy, claim, 'Bounded operational website proof'));
+
+  [
+    'Version 3.6.119 adds the smallest public proof for two shipped owner improvements',
+    'Weekly Menu Review and outlet launch readiness appear as narrow proof',
+  ].forEach((token) => assertIncludes(mainWebsiteReadme, token, 'Main website operational proof release boundary'));
+  assertIncludes(mainWebsiteContent, '### Supporting Homepage Proof: Business Health', 'Main website compact homepage proof docs');
+  assertIncludes(mainWebsiteContent, 'not general franchise opening management', 'Main website outlet-readiness claim boundary');
+  assertIncludes(mainWebsiteSpec, '6. OwnerProofSection', 'Canonical homepage section order');
+  assertNotIncludes(mainWebsiteSpec, '8. BusinessHealthSection', 'Retired full Business Health homepage section order');
+  assertIncludes(mainWebsiteDesignSystem, 'Business Health card inside `src/components/website/home/OwnerProofSection.tsx`', 'Mounted Business Health design-system proof');
+  assertIncludes(mainWebsiteImpl, 'The current compressed homepage no longer mounts that deeper section', 'Business Health implementation history and current mount boundary');
+  assertIncludes(businessHealthWebsite, 'The deeper `BusinessHealthSection` component remains intentionally unmounted', 'Business Health homepage placement docs');
+  assertIncludes(businessHealthWebsite, '`src/components/website/home/OwnerProofSection.tsx`', 'Business Health website runtime-impact boundary');
+  assertIncludes(menuSetupWebsite, 'narrow `/features` and `/multi-location` proof implemented', 'Location Launch Readiness website docs');
+  assertIncludes(multiOutletWebsite, '**CTA Link:** /multi-location', 'Canonical Multi-location website CTA route');
+  assertIncludes(multiOutletWebsite, '## Location Launch Readiness Boundary', 'Multi-location launch-readiness claim boundary');
+  assertNotIncludes(multiOutletWebsite, 'Once set up, you never think about menu consistency again', 'Multi-location no-maintenance absolute claim');
+  assertIncludes(llms, 'weekly comparison of existing MenuList menu activity', 'Business Health discovery proof');
+  assertIncludes(llms, 'next required menu, publish, or customer-link step', 'Multi-location discovery proof');
+  assertIncludes(llmsFull, 'not POS sales analysis, menu-profit optimization, competitor monitoring, or general franchise-opening management', 'LLM claim boundary');
+  assertIncludes(changelog, 'Added narrow website proof without adding a route or homepage section', 'Operational website proof changelog');
 }
 
 function verifyWhatsAppOnboardingFailClosedBoundary() {
@@ -1556,19 +1654,26 @@ function verifyDocsBoundary() {
   );
 }
 
-verifyPackageScript();
-verifyWebsiteSocialMetadataBoundary();
-verifyWebsiteAuditHardeningBoundary();
-verifyWebsiteThemeStorageBoundary();
-verifyMountedHomepageBoundary();
-verifyLocaleAndDiscoveryCopy();
-verifyWhatsAppOnboardingFailClosedBoundary();
-verifyMenuListLaunchAssetPackBoundary();
-verifyAssetOsPublicMediaBoundary();
-verifyPricingPublicCopyBoundary();
-verifyWebsiteAliasAndLocaleRoutingBoundary();
-verifyWebsiteLegalRuntimeTruthBoundary();
-verifyWebsiteAnalyticsBoundary();
-verifyDocsBoundary();
+if (process.argv.includes('--operational-proof-only')) {
+  verifyPackageScript();
+  verifyOperationalProofPlacementBoundary();
+  console.log('Website operational proof placement verifier passed.');
+} else {
+  verifyPackageScript();
+  verifyWebsiteSocialMetadataBoundary();
+  verifyWebsiteAuditHardeningBoundary();
+  verifyWebsiteThemeStorageBoundary();
+  verifyMountedHomepageBoundary();
+  verifyLocaleAndDiscoveryCopy();
+  verifyOperationalProofPlacementBoundary();
+  verifyWhatsAppOnboardingFailClosedBoundary();
+  verifyMenuListLaunchAssetPackBoundary();
+  verifyAssetOsPublicMediaBoundary();
+  verifyPricingPublicCopyBoundary();
+  verifyWebsiteAliasAndLocaleRoutingBoundary();
+  verifyWebsiteLegalRuntimeTruthBoundary();
+  verifyWebsiteAnalyticsBoundary();
+  verifyDocsBoundary();
 
-console.log('Website public copy boundary verifier passed.');
+  console.log('Website public copy boundary verifier passed.');
+}

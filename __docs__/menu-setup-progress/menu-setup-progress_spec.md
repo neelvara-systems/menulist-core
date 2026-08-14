@@ -1,11 +1,13 @@
 # Menu Setup Progress - Specification
 
 **Status:** Local source complete
-**Last reviewed:** July 16, 2026
+**Last reviewed:** August 14, 2026
 
 ## Goal
 
 Give an owner one quiet next step from source to a published, placed customer link without creating a second onboarding system.
+
+For an outlet store or master-linked outlet project, present the same path as current-location launch readiness. The feature remains limited to MenuList menu and customer-link readiness.
 
 ## Requirements
 
@@ -20,6 +22,8 @@ Give an owner one quiet next step from source to a published, placed customer li
 | Suppression | Hide immediately after all required steps are complete; optional improvements never become a hidden completion gate. |
 | Loading/error | Wait for selected-project loading; missing/malformed truth stays incomplete and routes to recovery. |
 | Routing | Desktop uses current routes; mobile uses Menu/Share/Official Page callbacks inside MobileShell. |
+| Location context | Detect from existing `storeDetails.isMaster === false` or `project.masterProjectId`; add no stored readiness flag. |
+| Feature flag | `ENABLE_LOCATION_LAUNCH_READINESS` changes the outlet presentation only; the five readiness gates remain the Menu Setup single source of truth. |
 
 ## Non-goals
 
@@ -27,6 +31,7 @@ Give an owner one quiet next step from source to a published, placed customer li
 - An API route, background worker, scheduler, or new Firestore collection.
 - A profile-completion checklist or duplicate Menu Correctness system.
 - Customer-use verification; recorded owner actions and owner-confirmed placements are evidence of setup action only.
+- Franchise onboarding, vendors, store design, compliance, audits, owner submissions, HQ approvals, or opening-date project management.
 
 ## Permissions
 

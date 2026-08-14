@@ -32,6 +32,7 @@ export default function MobileMenuSetupProgress({
 }: MobileMenuSetupProgressProps) {
     const { token } = theme.useToken();
     const t = useTranslations('Dashboard.owner.menuSetup');
+    const tOwner = useTranslations('Dashboard.owner');
     const summary = useMemo(
         () => buildMenuSetupProgress({ project, storeDetails, translate: t }),
         [project, storeDetails, t],
@@ -39,6 +40,10 @@ export default function MobileMenuSetupProgress({
 
     if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || !summary.shouldShow) return null;
     if (hideUntilPublished && summary.phase !== 'place') return null;
+
+    const title = FEATURE_FLAGS.ENABLE_LOCATION_LAUNCH_READINESS && summary.context === 'location_launch'
+        ? `${tOwner('businessHealth.locations.title')} · ${t('title')}`
+        : t('title');
 
     const handleAction = (action?: MenuSetupProgressAction) => {
         if (!action) return;
@@ -58,11 +63,11 @@ export default function MobileMenuSetupProgress({
             <Flex gap={12} vertical>
                 <Flex align="center" gap={8}>
                     <LuListChecks color={token.colorPrimary} size={17} />
-                    <Text strong>{t('title')}</Text>
+                    <Text strong>{title}</Text>
                 </Flex>
 
                 <Flex gap={3} vertical>
-                    <Text strong>{summary.nextStep?.label || t('title')}</Text>
+                    <Text strong>{summary.nextStep?.label || title}</Text>
                     <Text type="secondary">{summary.compactCopy}</Text>
                 </Flex>
 

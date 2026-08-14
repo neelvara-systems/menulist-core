@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** August 10, 2026
+**Last Updated:** August 14, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -93,11 +93,11 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
-**Business Health placement policy (June 17, 2026):** keep the homepage Business Health section compact and direct, with the deeper public campaign story on `/features/business-health`. Both surfaces may use AI health-check language, but only for diagnostics: latest check, No action needed state, freshness, cached analytics periods, multi-location awareness, phone support, and safe handoff to AI Menu Manager or existing owner screens. Do not imply realtime sales, POS revenue, external competitor tracking, unsupported date ranges, autonomous reasoning, or direct Business Health-owned public-truth mutation.
+**Business Health placement policy (updated August 14, 2026):** keep Business Health as one compact card inside the mounted homepage `OwnerProofSection`, with the deeper public campaign story on `/features/business-health`. The separate `BusinessHealthSection` stays unmounted. Public copy may describe Weekly Menu Review as this week's selected-menu activity beside last week, paired with an explicitly location-level current check. Do not imply realtime sales, POS revenue, margins, external competitor tracking, unsupported date ranges, autonomous reasoning, or direct Business Health-owned public-truth mutation.
 
-**Business Health Features-page policy (June 17, 2026):** the Features page should also list Business Health as one compact Operations card because the homepage now treats it as a MenuList USP. It must remain a feature-inventory proof, not a second full section and not part of the analytics cross-map. Approved copy can mention AI health checks, latest MenuList check, last checked date, customer attention, whether anything needs action, No action needed stable state, and fix handoff to AI Menu Manager or existing owner screens.
+**Business Health Features-page policy (updated August 14, 2026):** the Features page lists Business Health as one compact Operations card aligned with the homepage owner proof. It remains a feature-inventory proof, not a second full section and not part of the analytics cross-map. Approved copy can mention this week's menu activity beside last week, the location-level current check, No action needed stable state, and fix handoff to AI Menu Manager or existing owner screens.
 
-**Business Health campaign page policy (June 17, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section and may describe Business Health as an AI health check, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, No action needed when stable, and safe handoff to AI Menu Manager or existing owner-screen routing. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
+**Business Health campaign page policy (updated August 14, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The `What it checks` story may name Weekly Menu Review and its existing this-week/last-week selected-menu comparison while keeping the current check location-level. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, margins, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
 
 **Analytics feature page policy (June 22, 2026; updated July 1, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; item status labels; searches; no-result search fix prompts; unavailable demand; actions while open, closed, or unknown; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files.
 
@@ -860,7 +860,9 @@ Key FAQ topics:
 
 ---
 
-### Section: Business Health
+### Supporting Homepage Proof: Business Health
+
+`OwnerProofSection` mounts this as one compact owner-side proof card. The deeper `BusinessHealthSection` remains unmounted so the compressed homepage does not add another full feature section.
 
 **Heading:**
 
@@ -873,7 +875,7 @@ Key FAQ topics:
 **Homepage proof cards:**
 
 1. **Latest check first** — The dashboard opens with status, freshness, and whether anything needs attention.
-2. **Analytics without raw tables** — Standard periods such as today, this week, last month, and overall come from cached summaries.
+2. **Weekly menu review** — This week's selected-menu activity appears beside last week, while the current check remains explicitly location-level.
 3. **Fixes hand off safely** — When a change is needed, Business Health points to AI Menu Manager or the existing owner screen instead of changing public truth by itself.
 4. **Works on phone** — The same Business Health view appears inside the mobile owner app.
 
@@ -1168,11 +1170,11 @@ Title:
 
 Description:
 
-> See the latest MenuList check, last checked date, customer attention, and whether anything needs action. Stable checks show No action needed.
+> Review this week's menu activity alongside last week, see the location-level check, and keep stable states at No action needed.
 
 **Notes:**
 
-- This is the first Operations card because Business Health is now the website's owner-dashboard USP proof.
+- This is the first Operations card because Business Health is the website's compact owner-dashboard proof.
 - Keep the card compact and grounded in the shipped owner dashboard, mobile screen, scheduler read models, cache-first context packets, and safety guards.
 - Do not call it an AI assistant, chatbot, realtime monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-menu editor.
 
@@ -1288,7 +1290,7 @@ The preview must show:
 - Last checked date shown
 - Business looks stable
 - No action needed
-- Customer attention, standard period data, and location state
+- Weekly selected-menu activity beside last week, plus the location-level current check
 - One owner question and one source-fresh answer
 
 ### Sticky Story Section
@@ -1311,7 +1313,7 @@ Left-side tabs:
 
 Right-side sticky cards:
 
-1. **What it checks** — Latest MenuList check, public surface status, customer attention, and location view.
+1. **What it checks** — Latest MenuList check, public surface status, Weekly Menu Review, and location view. Weekly Menu Review shows this week's selected-menu activity beside last week; the current check remains location-level.
 2. **Owner outcome** — Stable means quiet, freshness stays visible, and fixes hand off safely.
 3. **Why owners can trust it** — No hidden menu changes, cached checks control cost, and the same view works on desktop and phone.
 
@@ -1404,14 +1406,16 @@ Right-side sticky cards:
 
 **Body:**
 
-> The Locations page shows all your outlets in one place. See which outlets are active, view billing per store, and switch between locations with one click.
+> The Locations page keeps outlet status and activity in one place. Switch to an outlet, then follow its next required menu, publish, or customer-link step.
 
 **Key points:**
 
 - Add a new outlet and let it inherit the master menu structure
 - Billing adjusts automatically — per-outlet pricing, no plan changes needed
 - Switch between any location from one screen
-- See status and activity across all outlets at a glance
+- Open an outlet to see its next required step, from menu and price review to publishing and sharing its customer link
+
+**Boundary:** This is MenuList menu and customer-link readiness, not general franchise opening management. Do not imply vendor coordination, compliance audits, HQ approvals, or automatic third-party placement.
 
 ---
 

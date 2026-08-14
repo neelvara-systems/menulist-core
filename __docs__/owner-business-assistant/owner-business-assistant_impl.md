@@ -2,7 +2,16 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Implemented read-only runtime
-**Last Updated:** July 13, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review Extension
+
+- `buildLocalizedOwnerBusinessWeeklyMenuReview()` composes the already-parsed `thisWeek` and `lastWeek` periods with current Business Health checks.
+- `BusinessHealthWeeklyMenuReview` renders the derived review on desktop and reuses the existing analytics hook/cache key.
+- If `thisWeek` is unavailable, desktop and mobile preserve the existing primary-period activity fallback rather than rendering an empty analytics area.
+- `MobileBusinessHealthScreen` uses the same presentation helper and current MobileShell data, so it adds no route bypass or mobile-only read.
+- `ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW` is the presentation flag. Disabling it restores the prior analytics strip/card behavior.
+- No server route, scheduler, Firestore shape, provider integration, or Menu Manager operation changes are part of this extension.
 
 ## Implementation Contract
 

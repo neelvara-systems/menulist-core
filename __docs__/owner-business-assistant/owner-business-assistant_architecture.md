@@ -2,7 +2,11 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Current read-only architecture
-**Last Updated:** June 29, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review Presentation Layer
+
+Weekly Menu Review is a client presentation over the existing selected-scope analytics-index response and current-health response. It adds no server route, read model, scheduler task, provider call, or write. When `thisWeek` is unavailable, the desktop and MobileShell surfaces preserve the existing primary-period activity fallback through the same cached analytics contract.
 
 ## Architecture Summary
 

@@ -1,6 +1,7 @@
 # Menu Setup Progress - Test Cases
 
 **Status:** Local source complete
+**Last reviewed:** August 14, 2026
 
 | ID | Case | Expected |
 | --- | --- | --- |
@@ -22,3 +23,18 @@
 | MSP-16 | setup card is visible | owner sees one next step and one action; no percentage, step-pill list, or optional checklist is rendered |
 
 Run `npm run verify:menu-setup-progress-boundary` and `npm run verify:menulist-activation-concierge`.
+
+## Location Launch Readiness
+
+- An outlet store with incomplete menu setup returns `context: location_launch` and keeps the same one next required step.
+- A master store without an outlet-linked project returns `context: menu_setup`.
+- A project with `masterProjectId` returns `context: location_launch` even when the compact store payload omits `isMaster`.
+- Disabling `ENABLE_LOCATION_LAUNCH_READINESS` changes only the outlet-facing title; required steps, routing, reads, and writes remain unchanged.
+- Location mode must not render a full checklist, percentage, HQ approval, vendor/compliance task, or direct mobile route.
+
+## August 14, 2026 Cross-check
+
+- Desktop and Mobile More use the same helper result and the same five existing setup gates.
+- Outlet detection is limited to `store.isMaster === false` or an outlet-linked project with `masterProjectId`.
+- Activation evidence remains owned by the existing activation summary; its source verifier now follows the translated runtime contract.
+- Corrected the Hindi `menuListRecorded` label to the protected product name `MenuList` and refreshed deterministic locale evidence. No locale key or runtime contract changed.

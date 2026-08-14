@@ -4,7 +4,11 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented owner-help source; screenshots and publication remain owner-controlled
-**Last Updated:** July 16, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review
+
+Open Business Health to see this week's menu activity and, when available, the same period from last week. The review can show MenuList menu views, the item receiving the most attention, the strongest known link source, and current customer-facing checks. These are MenuList activity signals, not confirmed orders, revenue, profit, or competitor results. Use Menu Manager or the linked owner screen if you decide to change the menu.
 
 ---
 

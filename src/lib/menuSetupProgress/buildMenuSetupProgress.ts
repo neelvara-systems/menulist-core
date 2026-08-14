@@ -60,6 +60,7 @@ export interface MenuSetupProgressStep {
 
 export interface MenuSetupProgressSummary {
     compactCopy: string;
+    context: 'location_launch' | 'menu_setup';
     nextAction?: MenuSetupProgressAction;
     nextStep?: MenuSetupProgressStep;
     optionalDone: number;
@@ -169,6 +170,9 @@ export function buildMenuSetupProgress({
     const allItems = getAllItems(files);
     const activeItems = allItems.filter((item) => item.active !== false);
     const hasProjectSource = hasText(project?.projectId);
+    const context: MenuSetupProgressSummary['context'] = (
+        storeDetails?.isMaster === false || hasText(project?.masterProjectId)
+    ) ? 'location_launch' : 'menu_setup';
     const hasMenuItems = activeItems.length > 0;
     const criticalWarnings = signals.filter((signal) => (
         signal.status === 'warning' && CRITICAL_MENU_SETUP_SIGNAL_IDS.has(signal.id)
@@ -354,6 +358,7 @@ export function buildMenuSetupProgress({
 
     return {
         compactCopy,
+        context,
         nextAction,
         nextStep,
         optionalDone,

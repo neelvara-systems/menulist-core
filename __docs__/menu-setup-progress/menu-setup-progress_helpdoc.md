@@ -1,6 +1,7 @@
 # Menu Setup - Help
 
 **Status:** Local source complete
+**Last reviewed:** August 14, 2026
 
 Menu setup shows the next action for the menu currently selected in MenuList.
 
@@ -17,3 +18,5 @@ Descriptions, images, extra languages, official-page links, and photos are optio
 If the card shows the wrong menu, choose the correct project first. If project data cannot load, the card remains incomplete rather than guessing. Use the button on the card; mobile stays inside the Menu, Share, or Official Page screen.
 
 Recorded sharing means MenuList acknowledged the owner action. External placement means the owner confirmed it; MenuList does not automatically verify the third-party platform or customer usage.
+
+For an outlet, MenuList may label this path as Locations · Menu setup. It checks the same five facts for the current location: a menu source, visible items, key details, publication, and the customer link. Vendor work, store design, compliance, staff onboarding, and opening approvals are outside this check.

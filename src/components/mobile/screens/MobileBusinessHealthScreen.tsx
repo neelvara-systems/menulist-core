@@ -9,6 +9,7 @@ import { useOwnerBusinessLocationsSummary } from '@hook/ownerBusinessAssistant/u
 import { useOwnerPublicTruthReadiness } from '@hook/publicTruthTools/useOwnerPublicTruthReadiness';
 import {
     buildLocalizedOwnerBusinessActivityMetrics,
+    buildLocalizedOwnerBusinessWeeklyMenuReview,
     getLocalizedOwnerBusinessPrimaryPeriod,
     getOwnerBusinessHealthCheckPresentation,
     getOwnerBusinessHealthDashboardPresentation,
@@ -185,6 +186,10 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
             t,
         ),
         [analytics?.periods, t],
+    );
+    const weeklyMenuReview = useMemo(
+        () => buildLocalizedOwnerBusinessWeeklyMenuReview(analytics?.periods, current, t),
+        [analytics?.periods, current, t],
     );
     const getLocationStatusColor = (status: string) => {
         if (status === 'stable') return 'success';
@@ -484,7 +489,34 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                     tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}
                 />
 
-                {isHealthReady && analyticsMetrics.length ? (
+                {isHealthReady && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW && weeklyMenuReview?.metrics.length ? (
+                    <Card title={t('businessHealth.latestActivity')}>
+                        <Flex gap={8} vertical>
+                            <Flex align="center" justify="space-between" gap={8} wrap="wrap">
+                                <Text type="secondary">{t('businessHealth.periods.thisWeek')}</Text>
+                                <Flex align="center" gap={6} wrap="wrap">
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{t('businessHealth.scope.locationLevel')}</Text>
+                                    <Tag color={weeklyMenuReview.status === 'needs_review' ? 'warning' : 'success'}>
+                                        {weeklyMenuReview.statusLabel}
+                                    </Tag>
+                                </Flex>
+                            </Flex>
+                            {weeklyMenuReview.metrics.map((metric) => (
+                                <Metric
+                                    key={metric.key}
+                                    label={metric.label}
+                                    value={metric.detail ? `${metric.value} - ${metric.detail}` : metric.value}
+                                />
+                            ))}
+                            {weeklyMenuReview.comparison ? (
+                                <Metric
+                                    label={`${weeklyMenuReview.comparison.label} · ${weeklyMenuReview.comparison.detail}`}
+                                    value={weeklyMenuReview.comparison.value}
+                                />
+                            ) : null}
+                        </Flex>
+                    </Card>
+                ) : isHealthReady && analyticsMetrics.length ? (
                     <Card title={t('businessHealth.today')}>
                         <Flex gap={8} vertical>
                             {analyticsMetrics.map((metric) => (

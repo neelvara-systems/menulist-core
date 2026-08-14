@@ -42,6 +42,10 @@ const featurePageHrefByCard = new Map<string, string>([
   ['5-1', '/features/menu-quality-validation'],
   ['5-2', '/features/menu-quality-validation'],
 ]);
+const featureDescriptionKeyByCard = new Map<string, string>([
+  ['4-1', 'Features.group4F1WeeklyDesc'],
+  ['4-4', 'Features.group4F4LaunchDesc'],
+]);
 const lifecycleIcons = [LuCamera, LuFileText, LuBadgeCheck, LuQrCode, LuBot, LuActivity];
 
 export default function FeaturesPage() {
@@ -54,7 +58,7 @@ export default function FeaturesPage() {
     features: groupIcons[gi].map((icon, fi) => ({
       icon,
       title: t(`Features.group${gi}F${fi}Title`),
-      desc: t(`Features.group${gi}F${fi}Desc`),
+      desc: t(featureDescriptionKeyByCard.get(`${gi}-${fi}`) || `Features.group${gi}F${fi}Desc`),
       href: featurePageHrefByCard.get(`${gi}-${fi}`),
     })),
   }));

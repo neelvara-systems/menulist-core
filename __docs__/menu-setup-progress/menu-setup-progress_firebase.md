@@ -1,7 +1,9 @@
 # Menu Setup Progress - Firebase and Scale
 
 **Status:** Local source complete; scoped Firestore index deployment pending
-**Last reviewed:** July 17, 2026
+**Last reviewed:** August 14, 2026
+
+Location Launch Readiness has the same zero-incremental-write contract. The location context is derived from `storeDetails.isMaster` and `project.masterProjectId`, which are already loaded for current MenuList behavior. It adds no collection, field, index, rule, Function, listener, or provider operation.
 
 ## Read boundary
 

@@ -14,6 +14,7 @@ import { BusinessHealthLocationSummary } from './BusinessHealthLocationSummary';
 import { BusinessHealthPriorityChecks } from './BusinessHealthPriorityChecks';
 import { BusinessHealthProjectScopeSelector } from './BusinessHealthProjectScopeSelector';
 import { BusinessHealthSummaryCard } from './BusinessHealthSummaryCard';
+import { BusinessHealthWeeklyMenuReview } from './BusinessHealthWeeklyMenuReview';
 import { OwnerAssistantPanel } from './OwnerAssistantPanel';
 import { PublicTruthMonitorPanel } from './PublicTruthMonitorPanel';
 import { PublicTruthOwnerCheckCard } from './PublicTruthOwnerCheckCard';
@@ -89,11 +90,20 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
                 scopeKey={tenantDetails?.tenantId || storeDetails?.tenantId || storeDetails?.storeId}
                 storeScopeKey={storeDetails?.storeId}
               />
-              <BusinessHealthAnalyticsStrip
-                enabled={isHealthReady}
-                projectId={scopedProjectId}
-                storeScopeKey={storeDetails?.storeId}
-              />
+              {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW ? (
+                <BusinessHealthWeeklyMenuReview
+                  current={current}
+                  enabled={isHealthReady}
+                  projectId={scopedProjectId}
+                  storeScopeKey={storeDetails?.storeId}
+                />
+              ) : (
+                <BusinessHealthAnalyticsStrip
+                  enabled={isHealthReady}
+                  projectId={scopedProjectId}
+                  storeScopeKey={storeDetails?.storeId}
+                />
+              )}
               {isHealthReady ? (
                 <BusinessHealthPriorityChecks
                   checks={current?.suggestedChecks}

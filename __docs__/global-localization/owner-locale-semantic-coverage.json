@@ -75,9 +75,9 @@
       "provider": "indictrans2",
       "target": "hin_Deva",
       "generatedValues": 230,
-      "identicalValues": 47,
+      "identicalValues": 48,
       "ownerValueCount": 4025,
-      "ownerSha256": "45396690c511b25093f9d89f089359b00cfa7d64a4d07c85aedf94802e590bd3"
+      "ownerSha256": "ae33845bf9971e9fe7150ebe29e22356cb868bd41b5b5b8450402674df7c71d8"
     },
     "ar-SA": {
       "provider": "madlad400",

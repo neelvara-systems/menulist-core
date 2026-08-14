@@ -1163,6 +1163,7 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_OWNER_BUSINESS_HEALTH: true,
     ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW: true,
     ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
     ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: true,
     ENABLE_OWNER_BUSINESS_HEALTH_PAGE: true,
@@ -2130,6 +2131,7 @@ export const FEATURE_FLAGS = {
      * @see __docs__/menu-setup-progress/README.md
      */
     ENABLE_MENU_SETUP_PROGRESS: true,
+    ENABLE_LOCATION_LAUNCH_READINESS: true,
 
     /**
      * Customer Communication Kit — Pre-generated message templates

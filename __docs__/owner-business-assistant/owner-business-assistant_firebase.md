@@ -2,7 +2,11 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Compact read-only model
-**Last Updated:** July 27, 2026
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review Cost Boundary
+
+Weekly Menu Review adds zero Firestore documents, writes, indexes, listeners, Functions, queues, Storage objects, or AI calls. Desktop and mobile derive it from the existing bounded analytics-index and current-health responses. The review itself performs no Firebase operation.
 
 ## Cost Position
 

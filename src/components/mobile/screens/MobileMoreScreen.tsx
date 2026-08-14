@@ -280,6 +280,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tShare = useTranslations('MobileShare');
     const tPosSync = useTranslations('PosSync');
     const tPresence = useTranslations('MobilePresenceMonitor');
+    const tOwner = useTranslations('Dashboard.owner');
+    const tMenuSetup = useTranslations('Dashboard.owner.menuSetup');
     const { token } = theme.useToken();
     const router = useRouter();
     const {
@@ -353,9 +355,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         () => {
             if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS) return null;
             if (projectsLoading) return null;
-            return buildMenuSetupProgress({ project: selectedProject as any, storeDetails: storeDetails as any });
+            return buildMenuSetupProgress({
+                project: selectedProject as any,
+                storeDetails: storeDetails as any,
+                translate: tMenuSetup,
+            });
         },
-        [projectsLoading, selectedProject, selectedProjectId, storeDetails],
+        [projectsLoading, selectedProject, selectedProjectId, storeDetails, tMenuSetup],
     );
     const canOpenMenuSetupShortcut = useMemo(() => {
         const actionId = menuSetupSummary?.nextAction?.id;
@@ -560,7 +566,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             key: 'menuSetup',
             icon: <LuListChecks color={token.colorPrimary} size={20} />,
             keywords: ['menu setup', 'onboarding', 'progress', 'publish', 'share', 'menu check'],
-            label: 'Menu setup',
+            label: FEATURE_FLAGS.ENABLE_LOCATION_LAUNCH_READINESS && menuSetupSummary.context === 'location_launch'
+                ? `${tOwner('businessHealth.locations.title')} · ${tOwner('menuSetup.title')}`
+                : tOwner('menuSetup.title'),
             description: menuSetupSummary.compactCopy,
             statusTag: {
                 color: menuSetupSummary.requiredDone === menuSetupSummary.requiredTotal ? 'success' as const : menuSetupSummary.nextStep?.status === 'needs_attention' ? 'warning' as const : 'default' as const,

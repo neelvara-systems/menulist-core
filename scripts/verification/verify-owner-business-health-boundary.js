@@ -52,6 +52,7 @@ function requireOrder(source, tokens, label) {
 const packageJson = read('package.json');
 const businessHealthRoute = read('src/app/(main)/business-health/page.tsx');
 const businessHealthPage = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx');
+const weeklyMenuReview = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthWeeklyMenuReview.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
 const ownerAssistantMessageList = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantMessageList.tsx');
 const publicTruthOwnerCard = read('src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx');
@@ -88,6 +89,7 @@ const answerEventLogger = read('src/lib/ownerBusinessAssistant/server/answerEven
 const threadStore = read('src/lib/ownerBusinessAssistant/server/threadStore.ts');
 const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
 const businessSignals = read('src/lib/ownerBusinessAssistant/businessSignals.ts');
+const dashboardPresentation = read('src/lib/ownerBusinessAssistant/dashboardPresentation.ts');
 const ownerPublicTruthReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
 const currentHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts');
 const analyticsHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts');
@@ -134,6 +136,8 @@ requireToken(
   'BusinessHealthProjectScopeSelector',
   'BusinessHealthLocationSummary',
   '<BusinessHealthAnalyticsStrip',
+  '<BusinessHealthWeeklyMenuReview',
+  'ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW',
   'enabled={isHealthReady}',
   '<BusinessHealthPriorityChecks',
   '<OwnerAssistantPanel',
@@ -141,6 +145,27 @@ requireToken(
   'storeScopeKey={storeDetails?.storeId}',
   "key={`${storeDetails?.storeId || 'store'}:${scopedProjectId || 'all'}`}",
 ].forEach((token) => requireToken(businessHealthPage, token, 'desktop business health page'));
+
+[
+  'ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW',
+  'useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey',
+  'buildLocalizedOwnerBusinessWeeklyMenuReview(analytics?.periods, current, t)',
+  "t('businessHealth.periods.thisWeek')",
+  "t('businessHealth.scope.locationLevel')",
+  'review.comparison',
+  'review.statusLabel',
+  '<BusinessHealthAnalyticsStrip',
+].forEach((token) => requireToken(weeklyMenuReview, token, 'weekly menu review'));
+forbidToken(weeklyMenuReview, 'fetch(', 'weekly menu review direct network read');
+forbidToken(weeklyMenuReview, 'useOwnerBusinessAssistantAction', 'weekly menu review action hook');
+
+[
+  'export function buildLocalizedOwnerBusinessWeeklyMenuReview(',
+  'const period = periods?.thisWeek;',
+  'const lastWeek = periods?.lastWeek;',
+  "status: actionCount > 0 ? 'needs_review' : 'stable'",
+  "t('businessHealth.noActionNeeded')",
+].forEach((token) => requireToken(dashboardPresentation, token, 'weekly menu review presentation'));
 
 [
   'useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId)',
@@ -157,6 +182,9 @@ requireToken(
   'onOpenShareTab?.()',
   'onOpenMoreScreen?.(moreTarget)',
   'mobile_business_health_answer_failed',
+  'buildLocalizedOwnerBusinessWeeklyMenuReview(analytics?.periods, current, t)',
+  'FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW',
+  "t('businessHealth.scope.locationLevel')",
 ].forEach((token) => requireToken(mobileHealthScreen, token, 'mobile business health screen'));
 forbidToken(mobileHealthScreen, 'useOwnerBusinessAssistantAction', 'mobile business health action hook');
 forbidToken(mobileHealthScreen, 'MobileBusinessHealthActionSheet', 'mobile business health action sheet');

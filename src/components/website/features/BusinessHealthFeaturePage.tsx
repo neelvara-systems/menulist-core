@@ -24,7 +24,7 @@ import Link from '../shared/WebsiteLink';
 const checks = [
   { icon: LuClipboardCheck, key: 'check0' },
   { icon: LuEye, key: 'check1' },
-  { icon: LuBarChart3, key: 'check2' },
+  { icon: LuBarChart3, key: 'weeklyReview' },
   { icon: LuMapPin, key: 'check3' },
 ];
 
@@ -44,7 +44,7 @@ const storySections = [
   {
     id: 'business-health-checks',
     navLabelKey: 'checksEyebrow',
-    navSummaryKey: 'storyChecksSummary',
+    navSummaryKey: 'storyChecksWeeklySummary',
     eyebrowKey: 'checksEyebrow',
     titleKey: 'checksTitle',
     descriptionKey: 'checksSubtitle',

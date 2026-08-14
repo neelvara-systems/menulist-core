@@ -1,7 +1,15 @@
 # Menu Setup Progress - Implementation
 
 **Status:** Local source complete
-**Last reviewed:** July 16, 2026
+**Last reviewed:** August 14, 2026
+
+## Location Launch Readiness Extension
+
+- `buildMenuSetupProgress()` returns a derived `context` of `menu_setup` or `location_launch` from existing store/project truth.
+- Desktop and mobile use that context only to present the existing five required gates as current-location readiness.
+- The Mobile More shortcut uses the same summary and current `MobileProjectsProvider` data.
+- `ENABLE_LOCATION_LAUNCH_READINESS` can remove the location-specific presentation without changing the underlying setup calculation.
+- No new component owns a second checklist, percentage, persisted state, route, API, or background job.
 
 ## Authority
 

@@ -157,6 +157,44 @@ export function getLocalizedOwnerBusinessPrimaryPeriod(
   return getOwnerBusinessPrimaryAnalyticsPeriod(periods);
 }
 
+export interface OwnerBusinessWeeklyMenuReviewPresentation {
+  comparison: OwnerBusinessActivityMetric | null;
+  metrics: OwnerBusinessActivityMetric[];
+  period: OwnerBusinessAnalyticsPeriod;
+  status: 'needs_review' | 'stable';
+  statusLabel: string;
+}
+
+export function buildLocalizedOwnerBusinessWeeklyMenuReview(
+  periods: OwnerBusinessAnalyticsIndexDoc['periods'] | undefined,
+  current: OwnerBusinessHealthCurrentDoc | null | undefined,
+  t: DashboardTranslator,
+): OwnerBusinessWeeklyMenuReviewPresentation | null {
+  const period = periods?.thisWeek;
+  if (!period || period.status === 'not_available') return null;
+
+  const lastWeek = periods?.lastWeek;
+  const actionCount = Math.max(0, Number(current?.summary.actionCount || 0));
+  const comparison = lastWeek && lastWeek.status !== 'not_available'
+    ? {
+      key: 'last-week-menu-views',
+      label: t('businessHealth.periods.lastWeek'),
+      value: formatNumber(lastWeek.metrics.menuVisits || 0),
+      detail: t('businessHealth.metrics.menuViews'),
+    }
+    : null;
+
+  return {
+    comparison,
+    metrics: buildLocalizedOwnerBusinessActivityMetrics(period, t),
+    period,
+    status: actionCount > 0 ? 'needs_review' : 'stable',
+    statusLabel: actionCount > 0
+      ? t('businessHealth.summary.actionsNeedReview', { count: actionCount })
+      : t('businessHealth.noActionNeeded'),
+  };
+}
+
 export function getOwnerBusinessHealthQuestionLabel(
   question: OwnerBusinessHealthQuestion,
   t: DashboardTranslator,

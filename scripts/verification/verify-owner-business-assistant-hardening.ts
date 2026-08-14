@@ -40,6 +40,7 @@ import {
   getOwnerBusinessCheckOwnerMessage,
   getOwnerBusinessPrimaryAnalyticsPeriod,
 } from '@lib/ownerBusinessAssistant/businessSignals';
+import { buildLocalizedOwnerBusinessWeeklyMenuReview } from '@lib/ownerBusinessAssistant/dashboardPresentation';
 import type {
   OwnerBusinessAnalyticsPeriod,
   OwnerBusinessHealthCheck,
@@ -415,6 +416,28 @@ assert.equal(
 const activityMetrics = buildOwnerBusinessActivityMetrics(lastMonthPeriod);
 assert.equal(activityMetrics.find((metric) => metric.key === 'top-demand')?.detail, 'Promote: 5 views');
 assert.equal(activityMetrics.find((metric) => metric.key === 'best-source')?.detail, 'Update link: 7 visits');
+const weeklyTranslator = (key: string, values?: Record<string, string | number>) => (
+  values?.count === undefined ? key : `${key}:${values.count}`
+);
+const weeklyReview = buildLocalizedOwnerBusinessWeeklyMenuReview({
+  thisWeek: { ...lastMonthPeriod, key: 'thisWeek', label: 'This week', metrics: { menuVisits: 18 } },
+  lastWeek: { ...lastMonthPeriod, key: 'lastWeek', label: 'Last week', metrics: { menuVisits: 12 } },
+}, health, weeklyTranslator);
+assert.ok(weeklyReview);
+assert.equal(weeklyReview.period.key, 'thisWeek');
+assert.equal(weeklyReview.comparison?.value, '12');
+assert.equal(weeklyReview.status, 'stable');
+assert.equal(weeklyReview.statusLabel, 'businessHealth.noActionNeeded');
+assert.equal(
+  buildLocalizedOwnerBusinessWeeklyMenuReview({ lastWeek: lastMonthPeriod }, health, weeklyTranslator),
+  null,
+  'weekly review must not invent a current week from last-week-only data',
+);
+const weeklyReviewWithChecks = buildLocalizedOwnerBusinessWeeklyMenuReview({
+  thisWeek: { ...lastMonthPeriod, key: 'thisWeek', label: 'This week' },
+}, { ...health, summary: { ...health.summary, actionCount: 2, noActionNeeded: false } }, weeklyTranslator);
+assert.equal(weeklyReviewWithChecks?.status, 'needs_review');
+assert.equal(weeklyReviewWithChecks?.statusLabel, 'businessHealth.summary.actionsNeedReview:2');
 const unavailableCheck: OwnerBusinessHealthCheck = {
   id: 'unavailable_item_taps',
   title: 'Check unavailable items',
@@ -678,9 +701,20 @@ assert.match(analyticsStrip, /useOwnerBusinessAnalyticsIndex/);
 assert.doesNotMatch(analyticsStrip, /useOwnerBusinessHealthCurrent/);
 assert.match(analyticsStrip, /enabled = true/);
 assert.match(analyticsStrip, /useOwnerBusinessAnalyticsIndex\(projectId, storeScopeKey, \{ enabled \}\)/);
-assert.match(analyticsStrip, /buildOwnerBusinessActivityMetrics/);
-assert.match(analyticsStrip, /getOwnerBusinessPrimaryAnalyticsPeriod/);
+assert.match(analyticsStrip, /buildLocalizedOwnerBusinessActivityMetrics/);
+assert.match(analyticsStrip, /getLocalizedOwnerBusinessPrimaryPeriod/);
 assert.doesNotMatch(analyticsStrip, /numberFormatter/);
+const weeklyMenuReview = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthWeeklyMenuReview.tsx'), 'utf8');
+assert.match(weeklyMenuReview, /ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW/);
+assert.match(weeklyMenuReview, /useOwnerBusinessAnalyticsIndex\(projectId, storeScopeKey/);
+assert.match(weeklyMenuReview, /buildLocalizedOwnerBusinessWeeklyMenuReview\(analytics\?\.periods, current, t\)/);
+assert.match(weeklyMenuReview, /<BusinessHealthAnalyticsStrip/);
+assert.doesNotMatch(weeklyMenuReview, /useOwnerBusinessHealthCurrent/);
+assert.doesNotMatch(weeklyMenuReview, /fetch\(/);
+const dashboardPresentation = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/dashboardPresentation.ts'), 'utf8');
+assert.match(dashboardPresentation, /buildLocalizedOwnerBusinessWeeklyMenuReview/);
+assert.match(dashboardPresentation, /const period = periods\?\.thisWeek/);
+assert.match(dashboardPresentation, /const lastWeek = periods\?\.lastWeek/);
 const businessSignals = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/businessSignals.ts'), 'utf8');
 assert.match(businessSignals, /numberFormatter/);
 assert.match(businessSignals, /OwnerBusinessSignalAction = 'promote' \| 'fix' \| 'restock' \| 'update'/);
@@ -726,7 +760,8 @@ assert.match(functionsInvalidator, /serverPacketPrefix\}:\$\{params\.tId\}:\$\{p
 assert.match(functionsInvalidator, /OWNER_BUSINESS_ASSISTANT_CACHE_INVALIDATION_FAILED/);
 
 const desktopLocations = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthLocationSummary.tsx'), 'utf8');
-assert.match(desktopLocations, /Checked/);
+assert.match(desktopLocations, /presentation\.checkedLabel/);
+assert.match(desktopLocations, /getOwnerBusinessLocationPresentation/);
 assert.match(desktopLocations, /storeScopeKey/);
 const businessHealthPage = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx'), 'utf8');
 assert.match(businessHealthPage, /useOwnerBusinessContextPacket\(undefined, storeDetails\?\.storeId\)/);
@@ -736,19 +771,19 @@ assert.match(businessHealthPage, /scopedProjectId/);
 assert.match(businessHealthPage, /isHealthReady/);
 assert.match(businessHealthPage, /styles\.summaryGridSingle/);
 assert.match(businessHealthPage, /<BusinessHealthAnalyticsStrip\s+enabled=\{isHealthReady\}/);
+assert.match(businessHealthPage, /<BusinessHealthWeeklyMenuReview/);
 assert.match(businessHealthPage, /key=\{`\$\{storeDetails\?\.storeId \|\| 'store'\}:\$\{scopedProjectId \|\| 'all'\}`\}/);
 const publicTruthOwnerCard = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx'), 'utf8');
-assert.match(publicTruthOwnerCard, /Official customer source/);
+assert.match(publicTruthOwnerCard, /businessHealth\.publicTruth\.title/);
 assert.match(publicTruthOwnerCard, /report\.modules\.map/);
 assert.match(publicTruthOwnerCard, /report\.setupJobList/);
-assert.match(publicTruthOwnerCard, /Next public fixes/);
+assert.match(publicTruthOwnerCard, /businessHealth\.publicTruth\.nextFixes/);
 assert.match(publicTruthOwnerCard, /job\.fixHref/);
-assert.match(publicTruthOwnerCard, /job\.actionLabel/);
+assert.match(publicTruthOwnerCard, /getOwnerPublicTruthSetupJobPresentation\(job, t\)/);
+assert.match(publicTruthOwnerCard, /presentation\.actionLabel/);
 assert.match(publicTruthOwnerCard, /module\.fixHref/);
-assert.match(publicTruthOwnerCard, /moduleAction = report\.modules\.find/);
-assert.match(publicTruthOwnerCard, /moduleAction\.fixHref/);
-assert.match(publicTruthOwnerCard, /moduleAction\.actionLabel/);
-assert.match(publicTruthOwnerCard, /External platforms stay owner-confirmed/);
+assert.match(publicTruthOwnerCard, /getOwnerPublicTruthModulePresentation\(module, t\)/);
+assert.match(publicTruthOwnerCard, /businessHealth\.publicTruth\.boundary/);
 const ownerPublicTruthReadiness = readFileSync(join(repoRoot, 'src/lib/public-truth-tools/ownerPublicTruthReadiness.ts'), 'utf8');
 assert.match(ownerPublicTruthReadiness, /OwnerPublicTruthSetupJob/);
 assert.match(ownerPublicTruthReadiness, /OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS = 6/);
@@ -766,7 +801,7 @@ assert.match(businessHealthScopeSelector, /ALL_MENUS_SCOPE/);
 assert.match(businessHealthScopeSelector, /if \(isLoading \|\| !selectedProjectId\) return/);
 assert.match(businessHealthScopeSelector, /onChange\(undefined\)/);
 const mobileHealthScreen = readFileSync(join(repoRoot, 'src/components/mobile/screens/MobileBusinessHealthScreen.tsx'), 'utf8');
-assert.match(mobileHealthScreen, /Checked/);
+assert.match(mobileHealthScreen, /presentation\.checkedLabel/);
 assert.match(mobileHealthScreen, /useOwnerBusinessAnalyticsIndex/);
 assert.match(mobileHealthScreen, /useOwnerBusinessAnalyticsIndex\(scopedProjectId, storeDetails\?\.storeId, \{ enabled: isHealthReady \}\)/);
 assert.match(mobileHealthScreen, /useOwnerBusinessHealthCurrent\(undefined, storeDetails\?\.storeId\)/);
@@ -787,13 +822,14 @@ assert.doesNotMatch(mobileHealthScreen, /<Card title="Open">/);
 const mobilePublicTruthOwnerCard = readFileSync(join(repoRoot, 'src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx'), 'utf8');
 assert.match(mobilePublicTruthOwnerCard, /report\.modules\.map/);
 assert.match(mobilePublicTruthOwnerCard, /report\?\.setupJobList/);
-assert.match(mobilePublicTruthOwnerCard, /Next public fixes/);
+assert.match(mobilePublicTruthOwnerCard, /businessHealth\.publicTruth\.nextFixes/);
 assert.match(mobilePublicTruthOwnerCard, /job\.mobileFixTarget/);
-assert.match(mobilePublicTruthOwnerCard, /job\.actionLabel/);
-assert.match(mobilePublicTruthOwnerCard, /External platforms stay owner-confirmed/);
+assert.match(mobilePublicTruthOwnerCard, /getOwnerPublicTruthSetupJobPresentation\(job, t\)/);
+assert.match(mobilePublicTruthOwnerCard, /presentation\.actionLabel/);
+assert.match(mobilePublicTruthOwnerCard, /businessHealth\.publicTruth\.boundaryShort/);
 assert.match(mobilePublicTruthOwnerCard, /onFixTarget/);
 assert.match(mobilePublicTruthOwnerCard, /module\.mobileFixTarget/);
-assert.match(mobilePublicTruthOwnerCard, /module\.actionLabel/);
+assert.match(mobilePublicTruthOwnerCard, /getOwnerPublicTruthModulePresentation\(module, t\)/);
 assert.doesNotMatch(mobilePublicTruthOwnerCard, /window\.location/);
 assert.match(mobileHealthScreen, /handlePublicTruthFixTarget/);
 assert.match(mobileHealthScreen, /onOpenMenuTab\?\.\(\)/);
@@ -899,6 +935,7 @@ assert.match(ownerBusinessAssistantFirebaseDoc, /Malformed, whitespace-mutated, 
 assert.match(productionReadinessAudit, /Owner Business Assistant strict document-ID boundary checkpoint/);
 assert.match(changelog, /Owner Business Assistant Strict Document ID Boundary/);
 const featureFlags = readFileSync(join(repoRoot, 'src/config/features.ts'), 'utf8');
+assert.match(featureFlags, /ENABLE_OWNER_BUSINESS_HEALTH_WEEKLY_MENU_REVIEW: true/);
 assert.doesNotMatch(featureFlags, /ENABLE_OWNER_BUSINESS_ACTION/);
 
 const ownerBusinessAssistantTypes = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/types.ts'), 'utf8');

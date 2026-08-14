@@ -61,8 +61,10 @@ contains(
   'src/components/onboarding/StarterActivationBanner.tsx',
   [
     'buildStarterActivationSummary',
-    'How we know: MenuList recorded',
-    'owner confirmed',
+    "useTranslations('StarterActivation')",
+    "t('evidenceRecorded'",
+    'ownerCount: activationSummary.ownerConfirmedCount',
+    'systemCount: activationSummary.systemRecordedCount',
   ],
   'Starter banner explains how completed activation actions are known',
 );

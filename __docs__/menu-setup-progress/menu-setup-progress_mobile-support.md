@@ -1,7 +1,9 @@
 # Menu Setup Progress - Mobile Support
 
 **Status:** Local source complete; physical-device evidence pending
-**Last reviewed:** July 16, 2026
+**Last reviewed:** August 14, 2026
+
+For an outlet, the existing Menu and Share cards and More shortcut identify the same summary as location menu setup. All actions continue through the current `onOpenMenu`, `onOpenShare`, and `onOpenOfficialPage` callbacks; no direct route navigation or separate outlet query is added.
 
 Menu Setup Progress is a layer inside current MobileShell screens, not a route.
 

@@ -3,8 +3,12 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Read-only runtime implemented; main website homepage section, Features card, and campaign page published
-**Last Updated:** June 17, 2026
+**Status:** Read-only runtime implemented; compact homepage proof, Features card, and campaign page published
+**Last Updated:** August 14, 2026
+
+## Weekly Menu Review
+
+Weekly Menu Review is now referenced as a supporting Business Health proof in the existing homepage owner-proof card, the `/features` Operations card, and the `What it checks` story on `/features/business-health`. It summarizes existing selected-menu activity for this week beside last week and keeps the current check explicitly location-level. It must not imply POS sales, margins, competitor crawling, external-review ingestion, or automatic menu changes.
 
 ---
 
@@ -16,9 +20,9 @@ Reason: the owner dashboard card, `/business-health` route, mobile shell screen,
 
 ## Website Placement
 
-Business Health appears as a dedicated homepage section after `PreparedForYouSection` and before `ResourcesSection`.
+The compressed homepage keeps Business Health inside the existing `OwnerProofSection`. The deeper `BusinessHealthSection` component remains intentionally unmounted; Weekly Menu Review does not add a new homepage section or change section order.
 
-Business Health also appears as the first compact Operations card on `/features`. This keeps the feature inventory aligned with the homepage USP without creating a second full website section, separate landing page, or analytics proof block.
+Business Health also appears as the first compact Operations card on `/features`. This keeps the feature inventory aligned with the compact homepage proof without creating a second full website section, separate landing page, or analytics proof block.
 
 Business Health has a dedicated public campaign page at `/features/business-health`. Do not use `/business-health` for public marketing because that route is the logged-in owner app screen.
 
@@ -27,15 +31,15 @@ The campaign page uses the same stacked sticky layout pattern as Answerlattice's
 Rationale:
 
 - It is now a real owner-facing capability, not a planning concept.
-- It is strong enough to act as the homepage owner-dashboard USP proof.
-- It fits the main website buyer journey after MenuList explains what it prepares for the owner.
+- It is strong enough to remain a compact homepage owner-dashboard proof.
+- Its full explanation belongs on the dedicated feature page so the compressed homepage buyer journey stays focused.
 - It belongs in the Features page Operations group because buyers who inspect the feature inventory should see the same owner-dashboard capability.
 - It deserves a dedicated campaign page because Business Health is now a primary MenuList USP and paid/founder-led campaigns need a public URL.
 - The campaign page may use AI diagnostic language, but it must remain a Business Health explanation, not a generic assistant, chatbot, or autonomous action page.
 
 ## Approved Public Copy Draft
 
-Live homepage framing:
+Compact homepage framing:
 
 > Business Health is your AI health check.
 
@@ -44,6 +48,8 @@ Live homepage framing:
 ## Short Website Bullets
 
 - Latest MenuList check in the owner dashboard
+- Weekly selected-menu activity beside last week
+- Location-level current check state
 - AI health check for menu and public presence
 - Source freshness shown with answers and cards
 - Recent customer attention in plain language
@@ -93,11 +99,15 @@ Website copy went live only after these proof points existed or were explicitly 
 
 This website update changes only:
 
-- `src/components/website/home/BusinessHealthSection.tsx`
-- `src/components/website/home/HomePage.tsx`
-- `src/styles/website.css`
+- `src/components/website/home/OwnerProofSection.tsx`
+- `src/components/website/features/BusinessHealthFeaturePage.tsx`
+- `src/components/website/features/FeaturesPage.tsx`
+- `src/components/website/multi-location/MultiLocationPage.tsx`
 - `public/locales/menulist.ai/en-US.json`
 - `public/locales/menulist.ai/hi-IN.json`
-- website and Business Health docs/changelog
+- website, Business Health, Menu Setup Progress, and Multi-outlet docs/changelog
+- `public/llms.txt`, `public/llms-full.txt`, and the focused website verifier
 
 It does not change owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
+Focused website gate: `npm run verify:website-operational-proof-placement`.

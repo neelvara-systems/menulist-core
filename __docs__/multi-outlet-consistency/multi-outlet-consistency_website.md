@@ -1,13 +1,13 @@
 # Multi-Outlet Consistency — Website Content
 
-**Last Updated:** July 4, 2026
+**Last Updated:** August 14, 2026
 
 ## Hero Section
 
 - **Headline:** One Menu for Every Location
 - **Subheadline:** Update your menu once. Linked stores receive the saved changes through the outlet sync/cache path. Local adjustments stay controlled.
 - **CTA Text:** See How It Works
-- **CTA Link:** /features/multi-outlet
+- **CTA Link:** /multi-location
 
 ## Problem Statement
 
@@ -37,11 +37,11 @@ Core menu items, names, and descriptions stay locked. No store manager can renam
 
 > **Visual:** Lock icon on key menu items with "HQ Controlled" badge
 
-### 4. Zero Daily Effort
+### 4. Less Repeated Daily Work
 
-Once set up, you never think about menu consistency again. The system handles inheritance, merging, and sync automatically.
+The master-menu structure reduces repeated branch-by-branch updates while keeping local differences inside the current location controls.
 
-### 5. Add Outlets in Seconds
+### 5. Add Outlets From One Place
 
 Open the Locations page, click "Add Outlet", name it, done. Mobile owners can use More → Locations for the same flow. The new store gets all your master menus automatically. Billing adjusts to include the new location — no plan changes needed.
 
@@ -49,9 +49,9 @@ Open the Locations page, click "Add Outlet", name it, done. Mobile owners can us
 
 ### 6. One Dashboard, Every Location
 
-The Chain Control Panel shows all your stores in one place. See which outlets are active, view billing per store, and switch between locations with one click.
+The Locations page shows all your stores in one place. See outlet status and activity, view billing per store, and switch into the location that needs review. When an outlet is open, MenuList shows its next required menu, publish, or customer-link step.
 
-> **Visual:** Locations table with HQ star badge, outlet rows with status badges, "View" buttons
+> **Visual:** Locations table with HQ star badge, outlet rows with status badges, and an opened outlet showing its next menu or publish step
 
 ## How It Works
 
@@ -59,7 +59,11 @@ The Chain Control Panel shows all your stores in one place. See which outlets ar
 2. **Add Outlets** — Click "Add Outlet" from the Locations page. Menus are copied automatically.
 3. **Local Adjustments** — Each store can adjust prices or availability
 4. **Automatic Sync** — Saved master changes flow to linked stores through the current sync/cache path; customer menus can take up to 60 seconds to refresh
-5. **Manage from HQ** — Switch between stores, view billing, control outlet permissions
+5. **Manage from HQ** — Switch between stores, view billing, control outlet permissions, and follow the opened outlet's next menu, publish, or customer-link step
+
+## Location Launch Readiness Boundary
+
+This is readiness for the MenuList menu and customer link only. Do not describe it as franchise opening management, vendor coordination, compliance auditing, HQ approval workflow, or automatic third-party placement.
 
 ## SEO Meta
 

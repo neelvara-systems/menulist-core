@@ -1,10 +1,12 @@
 # Menu Setup Progress
 
 **Status:** Local source complete; app/browser evidence pending
-**Flag:** `ENABLE_MENU_SETUP_PROGRESS`
-**Last reviewed:** July 16, 2026
+**Flags:** `ENABLE_MENU_SETUP_PROGRESS`, `ENABLE_LOCATION_LAUNCH_READINESS`
+**Last reviewed:** August 14, 2026
 
 Menu Setup Progress is one pure owner-side computation over the selected project, already-loaded store details, Menu Quality signals, and starter activation evidence. It adds no setup document, API route, listener, queue, or Function.
+
+When `ENABLE_LOCATION_LAUNCH_READINESS` is on and the current project/store is an outlet, the same computation is presented as **Locations · Menu setup**. This is Location Launch Readiness: one next customer-menu readiness step for the current location, not a second checklist or franchise operations product.
 
 ## Current required path
 
@@ -24,6 +26,8 @@ Descriptions, images, translations, official-page links, and public photos remai
 - One Mobile More root shortcut while setup remains incomplete.
 
 All mobile actions stay inside MobileShell through current callbacks. The summary hides when required setup is complete; optional quality/profile work remains available in its normal feature surfaces.
+
+Location Launch Readiness follows the same suppression rule. A completed location does not keep a permanent progress card, and HQ does not receive a new approval queue or cross-location audit workflow.
 
 ## Data and recovery
 
