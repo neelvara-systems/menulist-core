@@ -23,8 +23,9 @@ import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/sc
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { DigitalScreenSeenByMode, ScreenSlide } from "@type/campaigns";
-import { Card, Divider, Empty, message, Spin, Switch, theme, Typography } from "antd";
+import { Button, Card, Divider, Empty, message, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { LuRefreshCw } from "react-icons/lu";
 import OwnerUploads from "./OwnerUploads";
 import ScreenLink from "./ScreenLink";
 
@@ -183,7 +184,17 @@ export default function DigitalScreenSettings() {
     if (error || !settings) {
         return (
             <Card title="Digital Screen" className="digital-screen-settings">
-                <Empty description={error || 'Unable to load settings'} />
+                <Empty
+                    description={error || 'Unable to load settings'}
+                >
+                    <Button
+                        icon={<LuRefreshCw />}
+                        onClick={() => void fetchSettings()}
+                        style={{ minHeight: 44 }}
+                    >
+                        Try again
+                    </Button>
+                </Empty>
             </Card>
         );
     }

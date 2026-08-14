@@ -1,5 +1,12 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Digital Screens Retry And Rate-Limit Boundary
+
+- Kept a failed owner Digital Screens GET distinct from a successful `screen: null` response, so transport/auth/rate-limit failures no longer fall through to the first-time initialization mutation.
+- Split authenticated owner GET and POST traffic into hashed read/write rate-limit buckets using the existing `DATA_READ` and `DATA_WRITE` policies.
+- Added explicit retryable failure states on desktop and mobile. Mobile now withholds screen links and mutation controls until a real screen state loads.
+- This changes no Firestore schema, operation count for admitted success, collection, index, rule, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Projects Entitlement Read Boundary
 
 - Settled paid or starter-workspace access before desktop Projects enables project summary/full-document reads, editor preloads, or extraction-job listeners.

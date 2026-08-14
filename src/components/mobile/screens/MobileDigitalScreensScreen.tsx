@@ -173,6 +173,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         storeDetails?.customDomain
     );
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [refreshingStatus, setRefreshingStatus] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [screenUrl, setScreenUrl] = useState('');
@@ -269,10 +270,12 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setScreenSeenByMode(state.screenSeenByMode);
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
+            setLoadError(false);
             return true;
         } catch (error) {
             if (requestId !== loadRequestRef.current) return;
             logScreenSettingsFailure('mobile_digital_screen_state_load_failed', error, buildMobileDigitalScreenLogContext('load_state'));
+            if (!background) setLoadError(true);
             if (!background) Toast.show({ content: t('failedToLoad'), duration: 2000 });
             return false;
         } finally {
@@ -291,6 +294,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setScreenSeenByMode(undefined);
             setOwnerOverride(false);
             setPinnedSlides([]);
+            setLoadError(false);
             setLoading(false);
             return;
         }
@@ -463,6 +467,37 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 />
                 <Flex align="center" flex={1} justify="center">
                     <DotLoading color="primary" />
+                </Flex>
+            </Flex>
+        );
+    }
+
+    if (loadError || !screenUrl) {
+        return (
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <MobileSettingsScreenHeader
+                    description={t('setupTip')}
+                    infoContent={infoContent}
+                    onBack={onBack}
+                    title={t('title')}
+                />
+                <Flex gap={12} style={{ padding: 16 }} vertical>
+                    <Card>
+                        <Flex align="center" gap={10} vertical>
+                            <Text strong>Unable to load screen settings</Text>
+                            <Text type="secondary">Check your connection and try again.</Text>
+                            <Button
+                                block
+                                onClick={() => void fetchState()}
+                                style={{ minHeight: 44 }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuRefreshCw size={17} />
+                                    <Text>Try again</Text>
+                                </Flex>
+                            </Button>
+                        </Flex>
+                    </Card>
                 </Flex>
             </Flex>
         );

@@ -873,14 +873,9 @@ async function callDigitalScreenManagementApi(
 }
 
 export const getScreenState = async (): Promise<DigitalScreenOwnerState | null> => {
-    const result = await apiCallComposer(
-        async () => {
-            return callDigitalScreenManagementApi();
-        },
-        null,
-        "getScreenState"
-    );
-    return isDigitalScreenOwnerState(result) ? result : null;
+    const result = await callDigitalScreenManagementApi();
+    if (result === null || isDigitalScreenOwnerState(result)) return result;
+    throw new Error("digital_screen_management_response_invalid");
 };
 
 /**

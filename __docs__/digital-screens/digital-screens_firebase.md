@@ -57,6 +57,8 @@
 
 None.
 
+> **August 14, 2026 owner-read recovery note:** A protected GET failure is no longer converted into `screen: null`, so it cannot trigger the explicit initialization POST. Only a successful absent response may initialize. Owner GET and POST requests use separate hashed `DATA_READ` and `DATA_WRITE` buckets. Admitted read, initialization, and mutation Firestore operation counts are unchanged; rejected or rate-limited reads perform no initialization write.
+
 ---
 
 ## Firebase Storage

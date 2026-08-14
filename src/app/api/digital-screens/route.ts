@@ -57,6 +57,7 @@ const MutationSchema = z.discriminatedUnion("action", [
 const MAX_BODY_BYTES = 8 * 1024;
 
 async function applyDigitalScreenRateLimit(
+    request: NextRequest,
     session: unknown,
     scope: { storeId: string; tenantId: string },
 ) {
@@ -64,9 +65,10 @@ async function applyDigitalScreenRateLimit(
     if (!identity) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const isRead = request.method === "GET";
     const result = await checkRateLimit({
-        key: `digital-screen-management:${hashPublicRateLimitValue(identity)}:${hashPublicRateLimitValue(scope.tenantId)}:${hashPublicRateLimitValue(scope.storeId)}`,
-        ...getRateLimitForFeature("DATA_WRITE"),
+        key: `digital-screen-management-${isRead ? "read" : "write"}:${hashPublicRateLimitValue(identity)}:${hashPublicRateLimitValue(scope.tenantId)}:${hashPublicRateLimitValue(scope.storeId)}`,
+        ...getRateLimitForFeature(isRead ? "DATA_READ" : "DATA_WRITE"),
     });
     return result.allowed
         ? null
@@ -89,7 +91,7 @@ async function authorize(request: NextRequest, session: any): Promise<DigitalScr
         storeId: sessionScope.storeScope.documentId,
         tenantId: sessionScope.tenantScope.documentId,
     };
-    const rateLimitResponse = await applyDigitalScreenRateLimit(session, scope);
+    const rateLimitResponse = await applyDigitalScreenRateLimit(request, session, scope);
     if (rateLimitResponse) return { ok: false, response: rateLimitResponse };
 
     const permissionResponse = await requireAnyStorePermission(

@@ -34,6 +34,7 @@
 | Edit/delete custom slides         | `MobileDigitalScreensScreen`        | ✅     |
 | Safe custom slide captions        | `MobileDigitalScreensScreen` + DAL  | ✅     |
 | Initialize screen token           | `MobileDigitalScreensScreen` (auto) | ✅     |
+| Retry failed owner-state load     | `MobileDigitalScreensScreen`        | ✅ links and mutations withheld until success |
 | Feature kill switch               | More, Share, settings screen, public page, seen endpoint | ✅     |
 | Digital Screens permission        | More, Share, Output Center/settings parity | ✅     |
 | Expired slide capacity recovery   | Shared DAL filters/prunes before cap enforcement | ✅     |
@@ -42,6 +43,7 @@
 
 - Uses same `getScreenState`, `initializeScreenState`, `updateScreenSettings`, pinned-slide DAL functions, and `assertDigitalScreenMutationSucceeded()` acknowledgement guard as desktop before local state or success copy changes
 - Those DAL functions call the permission-checked owner API; the bearer token is returned from the server-only private control only to a session with `MANAGE_DIGITAL_SCREENS`. Mobile never reads or writes the canonical summary/private control directly.
+- A failed owner API read remains a retryable failure and cannot be mistaken for first-time absence. Mobile renders no link, copy/open action, override, or slide mutation control until `getScreenState()` or an authoritative first-time initialization succeeds.
 - Uses same `uploadScreenSlide`, `updatePinnedSlideCaption`, and `removePinnedSlide` DAL functions; `uploadScreenSlide()` now rejects outer `apiCallComposer()` fallback values with `assertDigitalScreenSlideUploadSucceeded()` before desktop or mobile upload success copy can show
 - Canonical screen state and the public listener mirror commit atomically through the shared DAL; concurrent three-slide limits and immutable create-or-reuse media behavior are identical on desktop and mobile
 - Same `buildScreenUrl` utility

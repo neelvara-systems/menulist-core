@@ -46,7 +46,8 @@ function verifyManagementAuthority() {
   assertIncludes(route, 'requireAnyStorePermission(', 'Digital Screens management API store authorization');
   assertIncludes(route, 'readBoundedJsonBody(request, MAX_BODY_BYTES', 'Digital Screens management API bounded body');
   assertIncludes(route, 'z.discriminatedUnion("action"', 'Digital Screens management API mutation schema');
-  assertIncludes(route, 'getRateLimitForFeature("DATA_WRITE")', 'Digital Screens management API rate limit');
+  assertIncludes(route, 'getRateLimitForFeature(isRead ? "DATA_READ" : "DATA_WRITE")', 'Digital Screens method-aware rate limit');
+  assertIncludes(route, 'digital-screen-management-${isRead ? "read" : "write"}', 'Digital Screens split read/write rate-limit bucket');
   assertIncludes(route, 'resolveCurrentSessionUserDocumentId(session)', 'Digital Screens exact actor rate-limit identity');
   assertIncludes(route, 'hashPublicRateLimitValue(scope.tenantId)', 'Digital Screens tenant-partitioned rate limit');
   assertIncludes(route, 'hashPublicRateLimitValue(scope.storeId)', 'Digital Screens store-partitioned rate limit');
@@ -82,6 +83,8 @@ function verifyManagementAuthority() {
   assertIncludes(client, 'isDigitalScreenManagementResponse(result)', 'Digital Screens response runtime validation');
   assertNotIncludes(client, 'response.json() as Partial<DigitalScreenManagementResponse>', 'Digital Screens unbounded cast response parser');
   assertIncludes(client, 'callDigitalScreenManagementApi({ action: "initialize" })', 'Digital Screens explicit setup call');
+  assertIncludes(client, 'const result = await callDigitalScreenManagementApi();', 'Digital Screens read failure propagation');
+  assertNotIncludes(client, 'null,\n        "getScreenState"', 'Digital Screens read failure is not collapsed into absence');
   assertNotIncludes(client, 'transaction.set(getCampaignsSummaryDocRef(session), { screen }', 'Digital Screens client canonical write');
 
   assertIncludes(rules, "document.matches('^screenControl_[^_]+$')", 'Digital Screens private control rules');
@@ -306,7 +309,10 @@ function verifyOwnerExperience() {
   assertIncludes(desktopLink, '.screen-link-section .screen-mode-qr {\n                        display: none;', 'Digital Screens desktop narrow-viewport QR overflow guard');
   assertIncludes(mobile, 'Refresh TV status', 'Digital Screens mobile status refresh');
   assertIncludes(desktop, 'contentVersion: screenState.contentVersion', 'Digital Screens desktop current-version owner state');
+  assertIncludes(desktop, 'Try again', 'Digital Screens desktop retryable load failure');
   assertIncludes(mobile, 'setContentVersion(state.contentVersion)', 'Digital Screens mobile current-version owner state');
+  assertIncludes(mobile, 'if (loadError || !screenUrl)', 'Digital Screens mobile failure-before-controls boundary');
+  assertIncludes(mobile, 'Try again', 'Digital Screens mobile retryable load failure');
   assertNotIncludes(desktop, 'Running', 'Digital Screens desktop overclaim');
   assertNotIncludes(mobile, "'Connected'", 'Digital Screens mobile overclaim');
   assertIncludes(output, 'href="/business-settings?section=digital-screens"', 'Digital Screens setup deep link');
