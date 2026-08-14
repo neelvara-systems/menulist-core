@@ -159,15 +159,67 @@ a hosted flow into `PASS`.
 | 2026-08-14 | `npm run verify:auth-onboarding-flow` | FIXED, THEN PASS | The verifier still required the retired website-side checkout URL path even though the hardened website intentionally routes pending owners to authenticated `/billing`. Updated the verifier to require `Continue in Billing` and the canonical owner-app billing redirect while forbidding website-side Razorpay URL admission. The complete auth/onboarding gate then passed. No runtime code or hosted QA state changed. |
 | 2026-08-14 | `npx eslint scripts/verification/verify-auth-onboarding-flow.js` | PASS | Focused lint passed after the verifier correction. |
 | 2026-08-14 | `npx tsc --noEmit` | PASS | Root strict TypeScript check passed with no output. |
+| 2026-08-14 | `npm run test:menulist-host-routing` | FIXED, THEN PASS | Hosted QA exposed redirect responses that bypassed host-aware security headers. Redirect branches now pass through the shared security-header boundary, and canonical trailing-slash redirects are delegated from Next to Proxy so QA noindex is retained. Preview and production host-routing assertions pass. |
+| 2026-08-14 | `npm run verify:next-build-compatibility` | PASS | Next 16 source/config compatibility passed after delegating trailing-slash normalization to Proxy. |
+| 2026-08-14 | `npx eslint src/proxy.ts scripts/verification/test-menulist-host-routing.ts` | PASS | Focused routing/security lint passed. |
+| 2026-08-14 | `npx tsc --noEmit` | PASS | Root strict TypeScript check passed after the routing correction. |
+
+## Hosted Certification Notes
+
+- `2026-08-14` - Vercel Preview commit
+  `f05001553bc41525564351a6bcbb7d1826ad1792` reached `Ready`, and
+  `https://menulist.digital/api/version` returned that exact build with
+  environment `preview` and deployment
+  `menulist-core-7vfywushy-neelvara-systems.vercel.app`.
+- `2026-08-14` - The retained authenticated QA owner session restored on the
+  exact build. `/billing` settled to the complete owner shell and the honest
+  `No Active Subscription` state. Direct navigation to `/projects`, followed
+  by a hard reload, again rendered the complete owner shell and the same
+  subscription guard. The former `session_provider_session_prime_failed` and
+  store-bootstrap diagnostics did not recur. The only browser diagnostic was
+  the previously documented, intentionally non-blocking
+  `app_check_site_key_missing` message while QA App Check remains skipped.
+- `2026-08-14` - A `390x844` responsive viewport check did not claim mobile
+  certification. Current shell selection deliberately requires a true
+  handheld signal from user agent, touch/coarse pointer, or mobile user-agent
+  data; viewport width alone must not reclassify a narrow desktop browser.
+  This browser runner exposes viewport control but not handheld/user-agent
+  emulation. Hosted MobileShell tab and route/hash restoration therefore
+  remain blocked on a true mobile browser or suitable device emulation.
+- `2026-08-14` - A hosted HTTP sweep exercised all 62 static MenuList website
+  page routes discovered under `src/app/(website)`. Every route reached an
+  HTML 200 response; `/create-menu`, `/create-menu/success`, and `/invite`
+  reached the canonical QA owner-app host, while `/product` reached canonical
+  `/how-it-works`. Direct header checks found that the initial `/product` 301
+  omitted `X-Robots-Tag`; adjacent checks reproduced the same omission on
+  blocked `/sites/*`, tenant case-normalization, and Next's pre-Proxy
+  trailing-slash redirect. Local code now routes controlled redirects through
+  `applySecurityHeaders` and delegates the global canonical slash redirect to
+  Proxy. Commit `fccff11f6329ad6979853b6220ca736d86e461c3` reached the
+  branch-triggered Preview, and `/api/version` returned that exact build.
+  Hosted reruns proved the corrected header on `/product`, blocked `/sites/*`,
+  tenant case normalization, tenant trailing-slash normalization, and website
+  trailing-slash normalization. The complete 62-route static header sweep then
+  passed on the fixed build, and Chrome followed `/product` to
+  `/how-it-works`, rendered the expected page, and emitted no browser warning
+  or error. This defect is `FIXED`.
+- `2026-08-14` - The public resource matrix added 143 hosted URLs: 15
+  canonical English resource articles plus each resource hub and all 15
+  articles under the eight admitted URL locales (`en-US`, `hi-IN`, `ar-SA`,
+  `bn-IN`, `es-ES`, `mr-IN`, `ta-IN`, and `te-IN`). Every URL returned HTML
+  200. `npm run verify:website-resource-locales` also passed. Together with
+  the 62 static website routes, the current transport sweep covers 205 unique
+  public website URLs.
 
 ## Execution Ledger
 
 | ID | Surface | Flow | Viewport | Preconditions | Expected | Actual | Status | Evidence | Data mutations | Cleanup | Fix commit | Hosted build | Remaining risk |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ML-QA-000 | Deployment | Exact source/host alignment | HTTP | `staging` checkout | Local, remote, and hosted Preview report one commit | All report `40c428d5f9b177a2d6ce85db9577badf0bbdf679`; hosted env is `preview` | PASS | `git rev-parse HEAD`; `git rev-parse origin/staging`; `GET https://app.menulist.digital/api/version` on 2026-08-14 | None | None | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Vercel dashboard readiness/deployment ID not re-read in this ledger yet |
-| ML-QA-001 | QA hosts | Website and sign-in transport plus crawler isolation header | HTTP | Public network | Both hosts return 200 and QA noindex header | Both returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive` | PASS | Response headers from `menulist.digital` and `app.menulist.digital/signin` on 2026-08-14 | None | None | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Full robots/sitemap and rendered website route sweep pending |
-| ML-QA-010 | Authentication | Existing session restoration and owner shell | Desktop Chrome | Logged-in QA owner at scope `2/2` | Trusted session restores, exact scope loads, no cross-product or subscription bypass | Awaiting direct hosted rerun in the controlled Chrome session | IN PROGRESS | Source authorities identified; prior setup evidence is not substituted for this rerun | None yet | None yet | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Logout/relogin, hard reload, stale session, store scope, console and network proof pending |
-| ML-QA-011 | Authentication | Existing session restoration and owner shell | Mobile Chrome | Same session and `ENABLE_MOBILE_UI` | MobileShell loads inside owner app with correct visible tabs and scope | Not exercised in this certification ledger | NOT STARTED | Pending | None | None | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Responsive viewport and PWA route/hash restoration pending |
+| ML-QA-000 | Deployment | Exact source/host alignment | HTTP | `staging` checkout | Runtime source, remote, and hosted Preview report one commit | Runtime fix commit, `origin/staging`, and hosted Preview reported `fccff11f6329ad6979853b6220ca736d86e461c3`; hosted env is `preview` | PASS | `git rev-parse HEAD`; `git rev-parse origin/staging`; Vercel Preview `Ready`; `GET https://menulist.digital/api/version` on 2026-08-14 | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | A later evidence-only ledger commit does not change the certified runtime files |
+| ML-QA-001 | QA hosts | Website and sign-in transport plus crawler isolation header | HTTP | Public network | Both hosts return 200 and QA noindex header | Both returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive`; full static route and redirect sweep also retained the QA header | PASS | Response headers from `menulist.digital` and `app.menulist.digital/signin`; 62-route exact-build sweep on 2026-08-14 | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | Robots/sitemap policy is retained setup evidence; public route transport is covered below |
+| ML-QA-002 | QA website | Static and localized resource transport, canonical redirects, rendered smoke, and crawler isolation | HTTP and desktop Chrome | Exact hosted Preview and source-derived route inventory | All 205 inventoried URLs resolve; owner paths use canonical app host; every QA response, including redirects, is noindex | 62 static URLs and 143 resource/locale URLs resolved successfully. The missing redirect headers were corrected and reran cleanly; Chrome rendered `/product` at canonical `/how-it-works` without console issues | FIXED | Hosted GET/HEAD matrices; controlled Chrome DOM/console; `test:menulist-host-routing`; `verify:website-resource-locales`; Next compatibility; focused lint; TypeScript | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | Page-specific interactions and form mutations remain under their owning feature rows; transport/render coverage is complete |
+| ML-QA-010 | Authentication | Existing session restoration and owner shell | Desktop Chrome | Logged-in QA owner at scope `2/2` | Trusted session restores, exact scope loads, no cross-product or subscription bypass | Retained session restored; `/billing` and hard-reloaded `/projects` rendered the full owner shell and honest no-plan guard; prior session-prime/store-bootstrap errors did not recur | IN PROGRESS | Controlled Chrome DOM and console inspection on 2026-08-14; only the documented non-blocking App Check skip diagnostic appeared | None | None | None | `f05001553bc41525564351a6bcbb7d1826ad1792` | Exact `2/2` scoped readback, logout/relogin, stale-session expiry, and permission-denial cases remain |
+| ML-QA-011 | Authentication | Existing session restoration and owner shell | Mobile Chrome | Same session and `ENABLE_MOBILE_UI` | MobileShell loads inside owner app with correct visible tabs and scope | A `390x844` resize remained in desktop shell as designed because the runner cannot provide handheld UA/touch signals | BLOCKED | Hosted viewport proof plus `useDeviceType`/layout-wrapper source boundary; local `verify:mobile-shell-route-map` is PASS but is not hosted proof | None | None | None | `f05001553bc41525564351a6bcbb7d1826ad1792` | Requires true mobile Chrome or handheld emulation for tabs, route/hash restoration, reload, and scope proof |
 | ML-QA-020 | Onboarding | First project and onboarding continuity | Desktop and mobile | QA owner `2/2`; snapshot before mutation | Existing default project loads without recreating or escaping scope | Not rerun; historical `QA-K09` setup proof retained in setup guide only | NOT STARTED | Pending current-build hosted proof | Pending | Pending | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Avoid destroying retained fixture |
 | ML-QA-030 | Dashboard/Today | Dashboard, Today, Business Health, and Feedback entry | Desktop and mobile | Auth and owner shell pass | Each visible entry loads correct scoped state and honest empty/no-plan behavior | Not exercised | NOT STARTED | Pending | None | None | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Feature flags and analytics availability may change visible matrix |
 | ML-QA-040 | Projects | Full CRUD, cancel, reload, recovery | Desktop and mobile | Snapshot project and compact summary | Bounded operations are idempotent and remain inside `2/2` | Not rerun in current ledger | NOT STARTED | Pending | Pending | Pending | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Historical setup proof exists but does not certify current feature matrix |
@@ -194,7 +246,8 @@ These remain open and must never be marked complete without direct evidence:
 
 ## Next Certification Action
 
-Rerun authenticated session restoration and the desktop owner shell on hosted
-build `40c428d5…` using the existing Chrome session at tenant/store `2/2`, then
-repeat at a mobile viewport. Capture visible route/scope state, browser errors,
-and bounded backend evidence before changing ML-QA-010 or ML-QA-011 to `PASS`.
+Complete the remaining ML-QA-010 exact-scope and negative-session cases without
+exposing session material. Then begin ML-QA-020 onboarding continuity on the
+retained `2/2` fixture without recreating or deleting it. ML-QA-011 remains
+blocked until true handheld browser evidence is available; a narrow desktop
+viewport is not a substitute.
