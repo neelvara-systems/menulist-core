@@ -26,6 +26,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | FAQ | Management flag is off | Maintained static MenuList FAQ copy is shown intentionally |
 | FAQ | Managed FAQ request fails | Failure is visible; Knowledge Base and ticket recovery actions remain |
 | Landing content | Category, popular-article, or changelog request fails | The affected panel shows a persistent retryable failure and does not claim confirmed empty content |
+| Landing tickets | Open-ticket summary request fails | A persistent retryable failure remains; the panel is hidden only after a successful confirmed-empty response |
 | Cache | Workspace A cache exists and workspace B becomes active | A data is ignored; B performs its authoritative read/listener |
 | Public content | Category/article/FAQ/changelog request starts in workspace A and session changes to B | Route rejects an A expectation under B before content reads, or the client rejects a non-A acknowledgement; no A/B response enters the wrong cache/UI |
 | Cache | Platform ticket cache exists and customer Help Center opens | Platform data is ignored because the audience key differs |

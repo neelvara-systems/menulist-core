@@ -1,6 +1,6 @@
 'use client'
 import { helpCenterTabRouting } from '@constant/navigations';
-import { Button, Card, Col, Empty, Flex, message, Row, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, message, Row, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
@@ -10,9 +10,11 @@ import { useTicketCache } from '@hook/useTicketCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import TicketDetailView from '@template/platform/supportTickets/TicketDetailView';
 import { SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 import TicketItem from '../TicketItem';
+
+const TICKET_SUMMARY_LOADER_KEY = 'helpCenterTicketSummary';
 
 function RunningTickets() {
     const t = useTranslations('HelpCenter');
@@ -20,7 +22,9 @@ function RunningTickets() {
     const { setAllItems, updateItem, cachedItems } = useTicketCache();
     const dispatch = useAppDispatch();
     const [selectedTicket, setSelectedTicket] = useState<SupportTicketType | null>(null);
+    const [loadFailed, setLoadFailed] = useState(false);
     const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
+    const loadRequestRef = useRef(0);
 
     const onTicketSubmitted = (ticket: SupportTicketType) => {
         updateItem(ticket, 'first', 'displayId');
@@ -31,43 +35,36 @@ function RunningTickets() {
         }
     };
 
+    const loadTicketSummary = useCallback(async () => {
+        const requestId = ++loadRequestRef.current;
+        setLoadFailed(false);
+        dispatch(startLoader(TICKET_SUMMARY_LOADER_KEY));
+        try {
+            const tickets = await getStoresTickets();
+            if (requestId !== loadRequestRef.current) return;
+            setAllItems(tickets as SupportTicketType[]);
+        } catch {
+            if (requestId !== loadRequestRef.current) return;
+            setLoadFailed(true);
+            message.error(t('failedToLoadTickets'));
+        } finally {
+            if (requestId === loadRequestRef.current) {
+                dispatch(stopLoader(TICKET_SUMMARY_LOADER_KEY));
+            }
+        }
+    }, [dispatch, setAllItems, t]);
+
     // Landing summary only needs an initial snapshot; the full ticket tab owns live updates.
     useEffect(() => {
         if (cachedTicketsOnMountRef.current.length > 0) return;
 
-        let mounted = true;
-        let loaderActive = true;
-        if (loaderActive) {
-            dispatch(startLoader("Fetching ticket history..."));
-        }
-
-        const stopInitialLoader = () => {
-            if (loaderActive) {
-                dispatch(stopLoader("Fetching ticket history..."));
-                loaderActive = false;
-            }
-        };
-
-        const loadTicketSummary = async () => {
-            try {
-                const tickets = await getStoresTickets();
-                if (!mounted) return;
-                setAllItems(tickets as SupportTicketType[]);
-                stopInitialLoader();
-            } catch (error) {
-                if (!mounted) return;
-                stopInitialLoader();
-                message.error(t('failedToLoadTickets'));
-            }
-        };
-
-        loadTicketSummary();
+        void loadTicketSummary();
 
         return () => {
-            mounted = false;
-            stopInitialLoader();
+            loadRequestRef.current += 1;
+            dispatch(stopLoader(TICKET_SUMMARY_LOADER_KEY));
         };
-    }, [dispatch, setAllItems, t]);
+    }, [dispatch, loadTicketSummary]);
 
     useEffect(() => {
         if (!selectedTicket?.id) return;
@@ -119,8 +116,28 @@ function RunningTickets() {
     const cardStyle = useMemo(() => ({ width: '100%' }), []);
     const titleStyle = useMemo(() => ({ margin: 0 }), []);
 
-    if (tickets?.length === 0) {
+    if (tickets?.length === 0 && !loadFailed) {
         return null;
+    }
+
+    if (loadFailed) {
+        return (
+            <Card variant="borderless" style={cardStyle}>
+                <Alert
+                    action={(
+                        <Button
+                            aria-label={t('failedToLoadTickets')}
+                            icon={<LuRefreshCw aria-hidden="true" />}
+                            onClick={() => void loadTicketSummary()}
+                            size="small"
+                        />
+                    )}
+                    message={t('failedToLoadTickets')}
+                    showIcon
+                    type="error"
+                />
+            </Card>
+        );
     }
 
     return (

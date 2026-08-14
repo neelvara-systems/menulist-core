@@ -49,6 +49,7 @@ function verifySearchBoundary() {
   const browseCategories = read('src/components/templates/main-app/helpCenter/landing/BrowseCategories.tsx');
   const trendingTopics = read('src/components/templates/main-app/helpCenter/landing/TrendingTopics.tsx');
   const whatsNew = read('src/components/templates/main-app/helpCenter/landing/WhatsNew.tsx');
+  const runningTickets = read('src/components/templates/main-app/helpCenter/landing/RunningTickets.tsx');
   const articleCache = read('src/hooks/useArticleCache.ts');
   const knowledgeBaseArticles = read('src/components/organisms/KnowledgeBaseExplorer/Articles.tsx');
   const ticketCache = read('src/hooks/useTicketCache.ts');
@@ -160,6 +161,9 @@ function verifySearchBoundary() {
   assertIncludes(trendingTopics, "message={t('failedToLoadArticles')}", 'Help Center article persistent failure copy');
   assertIncludes(whatsNew, 'loadFailed ? (', 'Help Center changelog load failure is visible');
   assertIncludes(whatsNew, "message={t('failedToLoadChangelog')}", 'Help Center changelog persistent failure copy');
+  assertIncludes(runningTickets, 'if (tickets?.length === 0 && !loadFailed)', 'Help Center ticket summary distinguishes empty from failed');
+  assertIncludes(runningTickets, "message={t('failedToLoadTickets')}", 'Help Center ticket summary persistent failure copy');
+  assertIncludes(runningTickets, 'onClick={() => void loadTicketSummary()}', 'Help Center ticket summary retry control');
   assertIncludes(articleCache, 'cachedArticles.scopeKey === scopeKey', 'Help Center article cache scope check');
   assertIncludes(articleCache, 'cacheScopeKey: scopeKey', 'Help Center article consumer scope exposure');
   assertIncludes(knowledgeBaseArticles, 'const requestKey = JSON.stringify([cacheScopeKey, articles.map((article) => article.id)]);', 'Help Center article-list scoped request identity');
