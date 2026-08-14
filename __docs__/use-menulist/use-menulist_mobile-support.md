@@ -33,6 +33,11 @@
 
 ## Current Mobile Contract
 
+MobileShell already settles paid/starter entitlement before mounting Mobile
+Share. Desktop Use MenuList now uses the same paid-or-starter admission rule
+before its project-summary read, so an unsubscribed non-starter owner sees the
+shared plan state on both surfaces instead of a false empty-menu state.
+
 Mobile covers the owner output actions that previously required desktop:
 - copy/open main menu link
 - copy/open direct project link, with copied feedback only after Clipboard API or acknowledged textarea fallback success

@@ -20,6 +20,11 @@ Menu Card Export, Printable Asset Templates, Digital Screens, and Feedback own t
 
 Expected desktop page load: 2 Firestore reads when screen state is checked and project summaries are not already cached by the app layer.
 
+An unsubscribed non-starter desktop visit performs zero Use MenuList project or
+screen reads. The hub waits for entitlement loading to settle, then renders the
+shared plan state before calling `getExistingProjectsListWithoutLoader(true)`.
+Starter workspaces keep the existing bounded read path.
+
 The explicit **Refresh TV status** action performs one additional authorized
 `getScreenState()` read. It does not poll and creates no write.
 

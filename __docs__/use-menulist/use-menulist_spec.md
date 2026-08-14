@@ -94,11 +94,18 @@ Micro-guides (modal-based):
 
 | State | Condition | Behavior |
 |-------|-----------|----------|
+| `checking_access` | Subscription/starter entitlement is still loading | Keep the hub in a loading state and do not read project summaries. |
+| `no_subscription` | Neither paid nor starter-workspace access is valid | Show the shared honest plan state and do not claim the owner has no menu. |
 | `ready` | At least one existing non-deleted active project is available | Full page with available outputs |
 | `no_menu` | No projects exist | "Create your first menu" CTA |
 | `not_published` | Type exists but no current runtime branch | Reserved in type only; do not claim as implemented UI |
 | `no_screen` | Screen not initialized | Screen section shows "Set up" button |
 | `generating` | Menu Kit being generated | Loading state on download button |
+
+The `no_menu` state is valid only after entitlement is admitted and the bounded
+project-summary read succeeds with no project. A denied or failed read must not
+be translated into “Create your first menu.” Starter workspaces retain their
+existing access to the output hub.
 
 ## 7. Output Governance Rules
 

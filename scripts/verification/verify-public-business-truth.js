@@ -5111,6 +5111,13 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   assertIncludes(useMenuListDiagnostics, 'export type UseMenuListLogContext', 'Use MenuList diagnostics typed bounded context');
   assertIncludes(useMenuListDiagnostics, 'getBoundedUseMenuListStringContext', 'Use MenuList diagnostics bounded string context');
   assertIncludes(useMenuListDiagnostics, 'logUseMenuListFailure', 'Use MenuList diagnostics normalized failure logger');
+  assertIncludes(desktopUseMenuList, "import { hasValidSubscriptionAccess } from '@util/razorpay';", 'Desktop Use MenuList paid-access authority');
+  assertIncludes(desktopUseMenuList, 'hasStarterWorkspaceAccess,', 'Desktop Use MenuList starter-workspace authority');
+  assertIncludes(desktopUseMenuList, "import NoSubscriptionView from '../billing/NoSubscriptionView';", 'Desktop Use MenuList honest no-subscription state');
+  assertIncludes(desktopUseMenuList, '|| activeSubscriptionLoading', 'Desktop Use MenuList must wait for settled entitlement before project reads');
+  assertIncludes(desktopUseMenuList, '|| (!hasPaidAccess && !hasStarterAccess)', 'Desktop Use MenuList must not read project summaries without paid or starter access');
+  assertIncludes(desktopUseMenuList, 'if (!hasPaidAccess && !hasStarterAccess) {', 'Desktop Use MenuList no-subscription render gate');
+  assertIncludes(desktopUseMenuList, 'return <NoSubscriptionView />;', 'Desktop Use MenuList no-subscription owner copy');
   assertIncludes(desktopUseMenuList, 'use_menulist_copy_failed', 'Desktop Use MenuList page-level copy diagnostics');
   assertIncludes(desktopUseMenuList, 'copyUseMenuListText', 'Desktop Use MenuList page-level copy acknowledgement helper');
   assertIncludes(desktopUseMenuList, 'USE_MENULIST_COPY_UNAVAILABLE', 'Desktop Use MenuList unavailable clipboard code');

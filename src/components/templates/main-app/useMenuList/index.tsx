@@ -53,6 +53,7 @@ import { type MenuKitPrintAssetId } from '@lib/print-assets/printAssetCatalog';
 import {
     STARTER_ACTIVATION_SIGNALS,
     applyStarterActivationSignalToStoreDetails,
+    hasStarterWorkspaceAccess,
     isStarterActivationSignal,
     shouldRecordStarterActivationSignal,
     type StarterActivationSignal,
@@ -64,6 +65,7 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -89,6 +91,7 @@ import {
 } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import CommunicationKit from './CommunicationKit';
+import NoSubscriptionView from '../billing/NoSubscriptionView';
 import OwnerReferralModal from './OwnerReferralModal';
 import PresenceMonitor from './PresenceMonitor';
 import ShareLinkCard from '../ShareLinkCard';
@@ -157,7 +160,15 @@ interface UseMenuListProps {
 }
 
 export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
-    const { storeDetails, setStoreDetails, tenantDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
+    const {
+        activeSubscription,
+        activeSubscriptionLoading,
+        storeDetails,
+        setStoreDetails,
+        tenantDetails,
+        isMasterUser,
+        userPermissions,
+    } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -176,6 +187,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     const labels = useMemo(
         () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
@@ -198,10 +211,17 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
     // Load data on mount
     useEffect(() => {
-        if (!FEATURE_FLAGS.ENABLE_USE_MENULIST) return;
+        if (
+            !FEATURE_FLAGS.ENABLE_USE_MENULIST
+            || activeSubscriptionLoading
+            || (!hasPaidAccess && !hasStarterAccess)
+        ) return;
         loadData();
     }, [
+        activeSubscriptionLoading,
         canAccessDigitalScreens,
+        hasPaidAccess,
+        hasStarterAccess,
         labels.offeringTitle,
         projectIdQuery,
         storeDetails?.businessType,
@@ -678,6 +698,18 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     };
 
     // ── Render states ────────────────────────────────────────────
+
+    if (activeSubscriptionLoading) {
+        return (
+            <div style={{ textAlign: 'center', padding: 80 }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    if (!hasPaidAccess && !hasStarterAccess) {
+        return <NoSubscriptionView />;
+    }
 
     if (pageState === 'loading') {
         return (

@@ -13,6 +13,7 @@ Runtime data flow:
 ```text
 UseMenuList
   -> PlatformGlobalDataContext for store, tenant, plan, master-owner state
+  -> settle paid/starter workspace access before any output read
   -> getExistingProjectsListWithoutLoader(true) for project summaries
   -> generateOBPUrl(), generateProjectUrl(), getFeedbackUrl() for links
   -> getScreenState() for screen token / last-seen state
@@ -26,6 +27,13 @@ Project-specific share, QR, print, Menu Kit, and PDF links must use the store's 
 ## Empty State
 
 If no existing project summary is returned, the page shows the `no_menu` state with a create-menu CTA. It must not auto-create a default project. Default creation belongs to menu-management entry points, not output surfaces.
+
+Desktop first waits for `activeSubscriptionLoading` to settle. It admits the
+summary read only when `hasValidSubscriptionAccess(activeSubscription)` or
+`hasStarterWorkspaceAccess(storeDetails, hasPaidAccess)` is true. Otherwise it
+renders the shared `NoSubscriptionView`. This matches Projects and MobileShell,
+preserves starter-workspace access, and prevents an authorization failure from
+being mislabeled as a missing menu.
 
 The `PageState` type still contains `not_published`, but the current runtime does not branch on a separate unpublished state. The current readiness check is based on whether at least one non-deleted, active project exists.
 

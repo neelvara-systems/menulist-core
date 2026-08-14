@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Use MenuList Entitlement State
+
+- Prevented desktop Use MenuList from reading project summaries before paid or
+  starter-workspace entitlement had settled.
+- Unsubscribed non-starter owners now see the shared honest plan state instead
+  of a failed read being mislabeled as “Create your first menu.” Starter
+  workspace access remains unchanged.
+- The denied path now performs zero Use MenuList project/screen reads and no
+  writes, Functions, provider calls, rules, indexes, dependencies, or
+  production deployment changes.
+
 ## August 14, 2026 - Authenticated API Private Response Boundary
 
 - Applied the shared private, non-storable auth response policy centrally in
