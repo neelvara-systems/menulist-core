@@ -35,6 +35,8 @@
 
 ## Writes
 
+The desktop Projects entitlement guard is cost-protective. Project summary/full-document reads and menu-processing, master-job, and image-batch listeners remain disabled until paid or starter-workspace admission has settled. Denied owners render the no-subscription state with zero project/job reads or default-project writes; restoring entitlement re-enables the existing read and listener contracts without adding a new operation.
+
 | Operation | Writes | Public cache impact | Notes |
 | --- | ---: | --- | --- |
 | Create project | 1 project doc + 1 summary write | Yes | One transaction; deterministic-ID recovery writes only the missing/updated summary and never rewrites the existing project. Default handoff is folded into the summary mutation. |

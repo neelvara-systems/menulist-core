@@ -228,8 +228,14 @@ requireNamedImport(projectsPage, '@database/projects', [
   'projects_page_upload_create_project_update_rejected',
   'const [projectFormScope, setProjectFormScope] = useState<ProjectExpectedScope | null>(null);',
   'const hasProjectReadScope = Boolean(currentProjectScope);',
+  'const hasProjectFeatureAccess = !activeSubscriptionLoading && (hasPaidAccess || hasStarterAccess);',
+  'const shouldEnableDesktopProjectsData = hasMounted && hasProjectFeatureAccess;',
+  'setActiveProcessingJobIdState(null);\n        if (!hasProjectFeatureAccess) return;',
   'shouldEnableDesktopProjectsData && hasProjectReadScope && effectiveTenantId && effectiveStoreId',
   'shouldEnableDesktopProjectsData && hasProjectReadScope && selectedProjectMatchesStore',
+  'useMenuProcessingJob(hasProjectFeatureAccess ? activeProcessingJobId : null)',
+  'const masterProjectId = hasProjectFeatureAccess ? activeProject?.masterProjectId || null : null;',
+  'project: hasProjectFeatureAccess && selectedProjectMatchesStore ? (selectedProject as Project) : null,',
   'currentView == 1 && projectsLoading',
   'currentView == 1 && projectsError',
   'onClick={() => void mutateProjects()}',
@@ -241,6 +247,7 @@ requireNamedImport(projectsPage, '@database/projects', [
   "throw new Error('menu_upload_project_scope_changed');",
   'logProjectPageFailure',
 ].forEach((token) => requireToken(projectsPage, token, 'desktop projects page'));
+forbidToken(projectsPage, 'const shouldEnableDesktopProjectsData = hasMounted;', 'desktop projects entitlement read gate');
 forbidToken(
   projectsPage,
   'projects_page_public_content_translation_metadata_update_rejected',

@@ -314,6 +314,9 @@ function ProjectsPage() {
     const [fileProcessingId, setFileProcessingId] = useState<string | null>(null)
     const [currentView, setCurrentView] = useState(1);
     const [pendingQualityAction, setPendingQualityAction] = useState<PendingQualityAction | null>(null);
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
+    const hasProjectFeatureAccess = !activeSubscriptionLoading && (hasPaidAccess || hasStarterAccess);
     useEffect(() => {
         setPendingQualityAction(null);
         if (typeof window === 'undefined' || !pendingQualityActionStorageKey) return;
@@ -419,6 +422,7 @@ function ProjectsPage() {
     const [activeProcessingJobId, setActiveProcessingJobIdState] = useState<string | null>(null);
     useEffect(() => {
         setActiveProcessingJobIdState(null);
+        if (!hasProjectFeatureAccess) return;
         if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
             clearExpiredMenuProcessingJobDismissals(menuProcessingDismissalScope);
             const dismissedJobIds = new Set(getDismissedMenuProcessingJobIds(menuProcessingDismissalScope));
@@ -432,7 +436,7 @@ function ProjectsPage() {
 
             setActiveProcessingJobIdState(storedJobId || null);
         }
-    }, [activeProcessingJobStorageKey, menuProcessingDismissalScope]);
+    }, [activeProcessingJobStorageKey, hasProjectFeatureAccess, menuProcessingDismissalScope]);
     const setActiveProcessingJobId = useCallback((id: string | null) => {
         setActiveProcessingJobIdState(id);
         if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
@@ -457,8 +461,6 @@ function ProjectsPage() {
     // Preview modal state (for Upload view)
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [previewLanguage, setPreviewLanguage] = useState('en');
-    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
-    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     const resolveProjectImageForSave = useCallback(async (
         projectImage?: string | null,
@@ -504,6 +506,7 @@ function ProjectsPage() {
 
     // Mount effect: Preload lazy components + first-time visit check
     useEffect(() => {
+        if (!hasProjectFeatureAccess) return;
         // Preload lazy components in background for instant navigation
         import('./editorView/Editor');
         import('./b2cView');
@@ -513,7 +516,7 @@ function ProjectsPage() {
         if (!localStorage.getItem('projects_visited')) {
             localStorage.setItem('projects_visited', 'true');
         }
-    }, []);
+    }, [hasProjectFeatureAccess]);
 
     // Preview - both views use modal
     const handlePreview = () => {
@@ -533,7 +536,7 @@ function ProjectsPage() {
         }
     };
 
-    const shouldEnableDesktopProjectsData = hasMounted;
+    const shouldEnableDesktopProjectsData = hasMounted && hasProjectFeatureAccess;
 
     // SWR cache key for projects list
     const effectiveTenantId = storeDetails?.tenantId || loggedInSession?.tId;
@@ -603,6 +606,7 @@ function ProjectsPage() {
     )));
 
     useEffect(() => {
+        if (!hasProjectFeatureAccess) return;
         const hasDeepLinkIntent = Boolean(projectIdQuery || viewQuery === 'editor' || viewQuery === 'b2c' || focusQuery === 'menu-readiness' || qualityActionQuery);
         if (!hasDeepLinkIntent || projectsList.length === 0) return;
 
@@ -658,10 +662,13 @@ function ProjectsPage() {
                 window.sessionStorage.setItem(pendingQualityActionStorageKey, JSON.stringify(nextAction));
             }
         }
-    }, [focusQuery, pendingQualityActionStorageKey, projectIdQuery, projectsList, qualityActionQuery, selectedProject, viewQuery]);
+    }, [focusQuery, hasProjectFeatureAccess, pendingQualityActionStorageKey, projectIdQuery, projectsList, qualityActionQuery, selectedProject, viewQuery]);
 
     useEffect(() => {
         setSelectedProject(null);
+        if (!hasProjectFeatureAccess) {
+            setActiveBatchImageJob(null);
+        }
         setCurrentView(1);
         setIsModalOpen(false);
         setEditingProject(null);
@@ -674,12 +681,15 @@ function ProjectsPage() {
         setMenuLinkImporting(false);
         setMenuLinkImportModalOpen(false);
         form.resetFields();
-    }, [currentProjectScopeKey, form]);
+    }, [currentProjectScopeKey, form, hasProjectFeatureAccess]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CHECK FOR EXISTING ACTIVE JOB ON PROJECT LOAD
     // ═══════════════════════════════════════════════════════════════════════════
     useEffect(() => {
+        if (!hasProjectFeatureAccess) {
+            return;
+        }
         if (!activeProject?.projectId) {
             return;
         }
@@ -709,7 +719,7 @@ function ProjectsPage() {
         };
 
         checkExistingJob();
-    }, [activeProject?.projectId, activeProcessingJobId, menuProcessingDismissalScope, setActiveProcessingJobId]);
+    }, [activeProject?.projectId, activeProcessingJobId, hasProjectFeatureAccess, menuProcessingDismissalScope, setActiveProcessingJobId]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // JOB QUEUE: Listen to active processing job status
@@ -727,7 +737,7 @@ function ProjectsPage() {
         result: jobResult,
         error: jobError,
         cancel: cancelJob,
-    } = useMenuProcessingJob(activeProcessingJobId);
+    } = useMenuProcessingJob(hasProjectFeatureAccess ? activeProcessingJobId : null);
     const activeJobProjectId = activeJob?.projectId ? String(activeJob.projectId) : null;
     const isActiveProcessingJob = Boolean(activeProcessingJobId && activeJob?.id === activeProcessingJobId);
     const activeJobMatchesActiveProject = Boolean(
@@ -755,7 +765,7 @@ function ProjectsPage() {
     // MASTER JOB MONITORING: For outlet projects, listen to master's active job
     // When master job is running, outlet UI is blocked
     // ═══════════════════════════════════════════════════════════════════════════
-    const masterProjectId = activeProject?.masterProjectId || null;
+    const masterProjectId = hasProjectFeatureAccess ? activeProject?.masterProjectId || null : null;
     const {
         isMasterJobActive,
         blockingMessage: masterBlockingMessage,
@@ -1915,7 +1925,7 @@ function ProjectsPage() {
     };
 
     useImageBatchJobListener({
-        project: selectedProjectMatchesStore ? (selectedProject as Project) : null,
+        project: hasProjectFeatureAccess && selectedProjectMatchesStore ? (selectedProject as Project) : null,
         setActiveBatchImageJob,
     });
 
@@ -1960,6 +1970,7 @@ function ProjectsPage() {
 
     // Auto-select first project + handle SWR errors
     useEffect(() => {
+        if (!hasProjectFeatureAccess) return;
         if (pendingQualityAction && projectsList.length > 0) {
             if (Date.now() - pendingQualityAction.createdAt > PENDING_QUALITY_ACTION_MAX_AGE_MS) {
                 clearPendingQualityAction();
@@ -2001,10 +2012,11 @@ function ProjectsPage() {
             });
             message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
-    }, [clearPendingQualityAction, currentView, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [clearPendingQualityAction, currentView, hasProjectFeatureAccess, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject, storeDetails?.storeId, storeDetails?.tenantId]);
 
     // Smart initial view: Auto-navigate to Editor if project has processed files
     useEffect(() => {
+        if (!hasProjectFeatureAccess) return;
         if (!activeProject?.files?.length) return;
 
         // If ALL files are processed → go to Editor (view 2)
@@ -2012,7 +2024,7 @@ function ProjectsPage() {
         if (allProcessed && currentView === 1) {
             setCurrentView(2);
         }
-    }, [activeProject?.projectId]); // Only run when project changes, not on every file update
+    }, [activeProject?.projectId, hasProjectFeatureAccess]); // Only run when project or admission changes
 
     useEffect(() => {
         // Guard: Only process when PDF conversion is complete AND we have a target count

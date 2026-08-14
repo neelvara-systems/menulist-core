@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Projects Entitlement Read Boundary
+
+- Settled paid or starter-workspace access before desktop Projects enables project summary/full-document reads, editor preloads, or extraction-job listeners.
+- Denied owners now reach the existing no-subscription state without an editor-only default-project path, stale selected-project state, or background menu-processing, master-job, or image-batch listeners.
+- This changes denied-path reads only. It adds no Firebase write, collection, index, rule, Function, provider call, dependency, direct deployment, or production change.
+
 ## August 14, 2026 - Business Health First-Use And Rate-Limit Session Truth
 
 - Reused each Public Truth Monitor route's already-authorized `withAuth()` session for read and refresh rate limiting, preventing a second request-context session lookup from rejecting an admitted owner.

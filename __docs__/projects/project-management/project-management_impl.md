@@ -35,6 +35,8 @@ The historical `projectsMetadata` / `projectsData` split is no longer the active
 
 ## Read Models
 
+Desktop project-management admission settles paid or starter-workspace access before enabling the summary/full-project SWR keys, preloading editor bundles, or restoring any tracked extraction job. Losing access clears the selected project and disables menu-processing, master-job, and image-batch listeners before the no-subscription view renders. A denied owner therefore cannot enter the editor-only default-project auto-create path or retain background project/job reads from a previously admitted render.
+
 ### Management Reads
 
 `getProjectsList()` and `getProjectsListWithoutLoader()` read `platformSummary/projects_{sId}` and auto-create a default project when the store has no projects. This is intentional only for owner menu-management entry points. The auto-create branch must require `assertProjectUpdateSucceeded()` with `projects_list_default_project_create_rejected` before returning the default project in memory.
