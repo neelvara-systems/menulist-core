@@ -55,6 +55,21 @@ export const readActiveStoreContextId = (): number | null => {
     return readActiveStoreContextValue()?.storeId || null;
 };
 
+export const readActiveStoreContextIdForSession = (
+    session: LoginUserType | null,
+): number | null => {
+    const activeContext = readActiveStoreContextValue();
+    if (!activeContext) return null;
+
+    const scopedSession = applyActiveStoreContextValueToSession(session, activeContext);
+    if (!scopedSession || scopedSession === session) {
+        writeActiveStoreContextId(null);
+        return null;
+    }
+
+    return normalizeStoreSwitchStoreId(scopedSession.sId);
+};
+
 export const writeActiveStoreContextId = (
     storeId: number | null,
     owner?: { baseStoreId?: number | null; tenantId?: number | null },

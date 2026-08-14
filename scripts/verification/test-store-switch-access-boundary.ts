@@ -13,6 +13,7 @@ import {
     applyActiveStoreContextValueToSession,
     normalizeActiveStoreContextValue,
     readActiveStoreContextId,
+    readActiveStoreContextIdForSession,
 } from '../../src/lib/multiOutlet/activeStoreContext';
 import type LoginUserType from '../../src/types/loginUser';
 
@@ -155,6 +156,40 @@ Object.defineProperty(globalThis, 'window', {
 
 storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, JSON.stringify(validActiveContext));
 assert.equal(readActiveStoreContextId(), 33, 'structured owner-scoped context should survive refresh');
+assert.equal(
+    readActiveStoreContextIdForSession(baseSession),
+    33,
+    'the matching owner session should restore its accessible active store',
+);
+
+const otherOwnerSession = {
+    ...baseSession,
+    sId: 44,
+    tId: 55,
+    uId: 'user-2',
+    user: {
+        ...baseSession.user,
+        id: 'user-2',
+        storeId: 44,
+        storeIds: [44],
+        tenantId: 55,
+    },
+} satisfies LoginUserType;
+storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, JSON.stringify(validActiveContext));
+assert.equal(
+    readActiveStoreContextIdForSession(otherOwnerSession),
+    null,
+    'a persisted context owned by another session must not block the new owner bootstrap',
+);
+assert.equal(storageValues.has(ACTIVE_STORE_CONTEXT_STORAGE_KEY), false);
+
+storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, JSON.stringify(forgedActiveContext));
+assert.equal(
+    readActiveStoreContextIdForSession(baseSession),
+    null,
+    'an unmapped persisted store must be evicted before SessionProvider renders',
+);
+assert.equal(storageValues.has(ACTIVE_STORE_CONTEXT_STORAGE_KEY), false);
 
 storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, '33');
 assert.equal(readActiveStoreContextId(), null, 'legacy scalar context must not drive SessionProvider');

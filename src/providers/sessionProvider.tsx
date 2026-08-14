@@ -22,7 +22,7 @@ import { startLogCapture } from '@lib/localLogs/localLogsTracker';
 import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
-    readActiveStoreContextId,
+    readActiveStoreContextIdForSession,
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
 import { isMasterLocationContext } from '@lib/multiOutlet/locationAccess';
@@ -53,6 +53,7 @@ import { objectNullCheck, removeObjRef } from '@util/utils';
 import { normalizeAiBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
+import type LoginUserType from '@type/loginUser';
 import { SessionProvider as Provider } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -105,7 +106,7 @@ export default function SessionProvider({ children, session }: Props) {
     // Persisted to localStorage so store context survives page refresh
     const [activeStoreContext, setActiveStoreContextRaw] = useState<number | null>(() => {
         if (typeof window === 'undefined') return null;
-        return readActiveStoreContextId();
+        return readActiveStoreContextIdForSession(session as unknown as LoginUserType | null);
     });
     const setActiveStoreContext = useCallback((storeId: number | null) => {
         setActiveStoreContextRaw(storeId);
