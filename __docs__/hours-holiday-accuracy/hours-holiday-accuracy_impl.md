@@ -2,7 +2,7 @@
 
 **Status:** Current source map
 
-**Last verified:** July 30, 2026
+**Last verified:** August 14, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation doc is source-gated working-hours runtime evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
 
@@ -54,7 +54,7 @@ Every owner surface additionally owns browser settlement. The complete desktop B
 
 `SpecialHoursEditor.tsx` lives below regular hours and provides date, optional occasion, closed/different-hours modes, and acknowledged add/edit/remove actions. Upcoming entries sort first in ascending order; historical entries sort newest-first below them and remain removable without entering an unsavable edit state. It uses existing Ant Design tokens, so the owner theme color controls the primary action.
 
-Time-slot changes run through `TimeSlotPresetsTab.tsx`, `updateTimeSlotPresets()`, and `reconcileTimeSlotPresetCascade()`. Create writes only the normalized preset list. Edit/delete uses one store transaction to write the normalized list and an operation-owned `timeSlotPresetCascadePending` marker. The parent updates local and global store context only after the project cascade and exact marker clear acknowledge success.
+Time-slot changes run through `TimeSlotPresetsTab.tsx`, `updateTimeSlotPresets()`, and `reconcileTimeSlotPresetCascade()`. Create writes only the normalized preset list. Edit/delete uses one store transaction to write the normalized list and an operation-owned `timeSlotPresetCascadePending` marker. The parent updates local and global store context only after the project cascade and exact marker clear acknowledge success. Desktop edit/delete icon actions expose localized accessible names, while the shared preset-color control uses keyboard-focusable buttons with an explicit pressed state.
 
 ## Mobile Owner Flow
 

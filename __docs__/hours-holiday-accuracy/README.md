@@ -2,7 +2,7 @@
 
 **Status:** Current code-truth reference
 
-**Last verified:** July 30, 2026
+**Last verified:** August 14, 2026
 
 **Current Source Contract:** Weekly hours, owner-set date-specific special hours, status output, and time-slot presets are implemented from existing store/project truth. Automatic holiday calendars are not shipped.
 
@@ -24,6 +24,7 @@ Run `npm run verify:working-hours-boundary`. It includes deterministic weekly-ho
 - Desktop Business Settings and MobileShell support regular weekly-hour edits. Mobile Today supports a quick edit of the current store-timezone weekday.
 - Desktop Business Settings, mobile full-week hours, and Mobile Today remount by exact tenant/store. Delayed acknowledgement, rollback, loading, dialog and success state cannot settle into a newly selected store.
 - Store-level time-slot presets are reusable category windows. Category `days` restrictions use the weekday on which an overnight slot starts, and the end minute is exclusive.
+- Desktop time-slot preset edit/delete icon actions expose localized accessible names, and the shared color choices are real keyboard-focusable pressed-state buttons on desktop and compact callers.
 - Preset edits/deletes atomically persist the store change with a durable pending-cascade marker. Desktop and mobile reconcile the marker against the exact tenant/store project set, repeat required cache invalidation after partial progress, clear it only after acknowledged project/cache work, and retry an interrupted marker when that store screen is opened again.
 - Decision Blocks use the same category time-slot evaluator as normal customer category rendering.
 - Special hours are managed inside the existing desktop/mobile Working Hours surface. An exact-date entry replaces the weekly schedule for that complete store-local date and suppresses previous-day overnight carry.

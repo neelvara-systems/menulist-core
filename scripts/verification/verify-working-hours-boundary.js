@@ -117,7 +117,7 @@ function verifyProjectCascade(projectsDal) {
   ].forEach((token) => assertIncludes(projectsDal, token, 'Project time-slot cascade boundary'));
 }
 
-function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
+function verifyDesktopSettings(businessSettings, timeSlotPresetsTab, timeSlotPresetForm) {
   [
     'buildWorkingHourSlots(storeDetails?.workingHours)',
     'const [workingHoursDirty, setWorkingHoursDirty] = useState(false);',
@@ -171,7 +171,15 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
     'const actionInFlightRef = useRef(false);',
     'const activeScopeRef = useRef(scopeKey);',
     'const componentActiveRef = useRef(true);',
+    "aria-label={t('editTimeSlot')}",
+    "aria-label={t('delete' as any)}",
   ].forEach((token) => assertIncludes(timeSlotPresetsTab, token, 'Desktop time-slot preset boundary'));
+
+  [
+    'aria-label={`Preset color ${color}`}',
+    'aria-pressed={formData.color === color}',
+    'htmlType="button"',
+  ].forEach((token) => assertIncludes(timeSlotPresetForm, token, 'Shared time-slot preset color control boundary'));
 }
 
 function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore) {
@@ -603,6 +611,7 @@ function main() {
   const cascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const timeSlotPresetsTab = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
+  const timeSlotPresetForm = read('src/components/atoms/timeSlotPresetForm/index.tsx');
   const desktopSpecialHours = read('src/components/templates/main-app/businessSettings/tabs/SpecialHoursEditor.tsx');
   const mobileWorkingHours = read('src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx');
   const mobileSpecialHours = read('src/components/mobile/components/MobileSpecialHoursManager.tsx');
@@ -640,7 +649,7 @@ function main() {
   verifyFirestoreCostBoundary(firestoreIndexes);
   verifyStoreDal(storesDal, presetBoundary, cascadeReconciler);
   verifyProjectCascade(projectsDal);
-  verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
+  verifyDesktopSettings(businessSettings, timeSlotPresetsTab, timeSlotPresetForm);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
   verifySpecialHoursOwnerSettings(
     storesDal,

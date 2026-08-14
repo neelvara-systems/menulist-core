@@ -326,6 +326,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                             </Flex>
                             <Flex gap={8}>
                                 <Button
+                                    aria-label={t('editTimeSlot')}
                                     type="text"
                                     size="small"
                                     icon={<LuPen size={14} />}
@@ -339,6 +340,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                                     okButtonProps={{ danger: true }}
                                 >
                                     <Button
+                                        aria-label={t('delete' as any)}
                                         type="text"
                                         size="small"
                                         danger

@@ -1,6 +1,6 @@
 import { antdTagsColorCodes } from '@data/common';
 import { getClockTimeInputFormat } from '@util/dateTime';
-import { Flex, Input, TimePicker, Typography } from 'antd';
+import { Button, Flex, Input, TimePicker, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { LuCheck } from 'react-icons/lu';
 
@@ -66,7 +66,10 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 </Flex>
                 <Flex gap={6} wrap="wrap">
                     {DEFAULT_PRESET_COLORS.map(color => (
-                        <div
+                        <Button
+                            aria-label={`Preset color ${color}`}
+                            aria-pressed={formData.color === color}
+                            htmlType="button"
                             key={color}
                             onClick={() => handleChange('color', color)}
                             style={{
@@ -78,11 +81,14 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                border: formData.color === color ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)'
+                                border: formData.color === color ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)',
+                                minWidth: 20,
+                                padding: 0,
                             }}
+                            type="text"
                         >
                             {formData.color === color && <LuCheck size={12} color="#fff" />}
-                        </div>
+                        </Button>
                     ))}
                 </Flex>
             </Flex>
@@ -129,7 +135,10 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>Color</Text>}
                 <Flex gap={8} wrap="wrap">
                     {DEFAULT_PRESET_COLORS.map(color => (
-                        <div
+                        <Button
+                            aria-label={`Preset color ${color}`}
+                            aria-pressed={formData.color === color}
+                            htmlType="button"
                             key={color}
                             onClick={() => handleChange('color', color)}
                             style={{
@@ -141,11 +150,14 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                border: formData.color === color ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)'
+                                border: formData.color === color ? '2px solid #333' : '1px solid rgba(0,0,0,0.1)',
+                                minWidth: 24,
+                                padding: 0,
                             }}
+                            type="text"
                         >
                             {formData.color === color && <LuCheck size={14} color="#fff" />}
-                        </div>
+                        </Button>
                     ))}
                 </Flex>
             </div>

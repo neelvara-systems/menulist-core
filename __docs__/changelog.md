@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Time Slot Preset Accessible Actions
+
+- Added localized accessible names to the desktop preset edit/delete icon actions.
+- Replaced pointer-only preset-color swatches with keyboard-focusable buttons that expose their selected state.
+- Extended the working-hours boundary verifier. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Business Settings Picker Enter Boundary
 
 - Prevented Enter inside desktop Business Settings date/time pickers from submitting and persisting the entire parent form.
