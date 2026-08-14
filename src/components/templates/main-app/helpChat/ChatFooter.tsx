@@ -16,7 +16,7 @@ interface ChatFooterProps {
     draftScope?: string | null;
     searchQuery?: string; // For controlled input clearing
     showQnAActions?: boolean;
-    onSendMessage: (message: string, image?: UserUploadedFileType) => void;
+    onSendMessage: (message: string, image?: UserUploadedFileType) => boolean | void | Promise<boolean | void>;
     onSearchQueryChange: (query: string) => void;
     onStartFollowUp?: () => void;
     onNewQuestion?: () => void;

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Help Request Recovery States
+
+- Kept an owner Help question in place when the account has no admitted Answerlattice workspace and replaced the misleading local-empty result with a persistent availability message.
+- Added a persistent `Request not sent` alert after ticket-creation failure while retaining every completed form field.
+- These are shared desktop/mobile recovery-state fixes only. They add no alternate support backend, Firebase/Storage/provider operation, scope, schema, rule, index, Function, dependency, direct deployment, or production change.
+
 ## August 15, 2026 - Live App Appearance Across Open Tabs
 
 - Synchronized durable Redux-backed theme, colour, layout, reading-direction, and header-display preferences between open owner tabs through the existing local browser persistence record.

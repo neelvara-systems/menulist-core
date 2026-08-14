@@ -22,7 +22,7 @@ interface ChatPanelProps {
     searchQuery: string;
     categoriesData: KnowledgeBaseCategoriesType | null;
     onSearchQueryChange: (query: string) => void;
-    onSendMessage: (message: string, image?: UserUploadedFileType, targetMode?: ChatMode) => void;
+    onSendMessage: (message: string, image?: UserUploadedFileType, targetMode?: ChatMode) => boolean | void | Promise<boolean | void>;
     onRetry?: (query: string, image?: UserUploadedFileType) => void;
     isNewChat: boolean;
     sessionId?: string | null;
@@ -160,13 +160,19 @@ const ChatPanel = ({
                                 padding: isMobile ? '24px 14px' : '48px 24px'
                             }}
                         >
-                            {/* Welcome Message - Ultra Clean Design */}
-                            {!searchQuery && (
+                            {/* Rejected searches must remain visible instead of looking like empty local results. */}
+                            {chatState?.status === 'error' && chatState.error ? (
+                                <ErrorMessage
+                                    message={chatState.error}
+                                    onRetry={() => {
+                                        if (chatState.lastQuery && onRetry) {
+                                            onRetry(chatState.lastQuery);
+                                        }
+                                    }}
+                                />
+                            ) : !searchQuery ? (
                                 <WelcomeScreen onSendMessage={onSendMessage} isMobile={isMobile} />
-                            )}
-
-                            {/* Local Search Results */}
-                            {searchQuery && (
+                            ) : (
                                 <div style={{ width: '100%', maxWidth: 800 }}>
                                     <LocalSearchResults
                                         query={searchQuery}

@@ -183,17 +183,22 @@ export function useChatHandlers({
 
     // Handler: Send Message
     // targetMode: Optional mode override to fix race condition with suggested questions
-    const onSendMessage = async (content: string, image?: UserUploadedFileType, targetMode?: ChatMode) => {
+    const onSendMessage = async (content: string, image?: UserUploadedFileType, targetMode?: ChatMode): Promise<boolean> => {
         const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
         const initiatingSession = loggedInSession;
         if (!initiatingActorScope) {
-            antMessage.error('Your Answerlattice workspace is unavailable.');
-            return;
+            dispatchChatState({ type: 'SEARCH_START', payload: { query: content } });
+            dispatchChatState({
+                type: 'SEARCH_ERROR',
+                payload: 'Help search is not available for this account yet. Your question is still here.',
+            });
+            antMessage.error('Help search is not available for this account yet.');
+            return false;
         }
         // 🔒 FIX: Prevent rapid sends while previous request is processing
         if (isProcessing()) {
             antMessage.warning('Please wait for the previous message to complete');
-            return;
+            return false;
         }
 
         const requestId = `req-${Date.now()}`;
@@ -428,13 +433,19 @@ export function useChatHandlers({
                 }
             }
         });
+        return true;
     };
 
     // Handler: Retry search
     const onRetry = async (content: string, image?: UserUploadedFileType, retryReason: 'error' | 'regenerate' = 'error', replacedMessageId?: string) => {
         const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
         if (!initiatingActorScope) {
-            antMessage.error('Your Answerlattice workspace is unavailable.');
+            dispatchChatState({ type: 'SEARCH_START', payload: { query: content } });
+            dispatchChatState({
+                type: 'SEARCH_ERROR',
+                payload: 'Help search is not available for this account yet. Your question is still here.',
+            });
+            antMessage.error('Help search is not available for this account yet.');
             return;
         }
         setSearchQuery('');

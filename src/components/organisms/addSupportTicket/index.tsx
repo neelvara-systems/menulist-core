@@ -11,7 +11,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { getBase64 } from '@util/utils';
 import type { UploadProps } from 'antd';
-import { Button, Card, Flex, Form, Grid, Input, message, Modal, Select, Typography } from 'antd';
+import { Alert, Button, Card, Flex, Form, Grid, Input, message, Modal, Select, Typography } from 'antd';
 import { RcFile } from 'antd/es/upload';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
@@ -32,6 +32,7 @@ interface AddTicketModalProps {
 const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onClose = () => { }, onTicketSubmitted, mode = "modal", showHeader = true }) => {
     const [form] = Form.useForm();
     const [attachments, setAttachments] = useState<any[]>([]);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const isFormActive = useRef(false);
     const dispatch = useAppDispatch();
     const { data: session } = useSession();
@@ -70,6 +71,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
             message.error('Authentication Error, You must be logged in to create a ticket.');
             return;
         }
+        setSubmitError(null);
         dispatch(startLoader("Submitting ticket..."));
         try {
             const documents = [];
@@ -124,6 +126,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                 ...getBoundedSupportTicketStringContext('category', values?.category),
                 ...getBoundedSupportTicketStringContext('priority', values?.priority),
             });
+            setSubmitError("We couldn't send this request. Your details are still here. Please try again or use Contact Us.");
             message.error('Submission failed. Please try again.');
         } finally {
             dispatch(stopLoader("Submitting ticket..."));
@@ -198,6 +201,17 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                         <PasteUpload {...props} onPaste={onPasteFiles} isPastingEnabled={isFormActive} />
                         <Text type="secondary" italic>Screenshots help us fix issues faster.</Text>
                     </Form.Item>
+
+                    {submitError && (
+                        <Alert
+                            type="error"
+                            showIcon
+                            closable
+                            message="Request not sent"
+                            description={submitError}
+                            onClose={() => setSubmitError(null)}
+                        />
+                    )}
 
                     <Form.Item style={{ width: '100%' }}>
                         <Flex align='center' justify='center' gap='small' vertical>

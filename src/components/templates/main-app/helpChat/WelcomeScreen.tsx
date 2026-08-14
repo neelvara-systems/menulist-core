@@ -7,7 +7,7 @@ import { LuSparkles } from 'react-icons/lu';
 const { Title, Text } = Typography;
 
 interface WelcomeScreenProps {
-    onSendMessage: (message: string) => void;
+    onSendMessage: (message: string) => boolean | void | Promise<boolean | void>;
     isMobile?: boolean;
 }
 

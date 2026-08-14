@@ -43,6 +43,9 @@ function verifySearchBoundary() {
   const helpCenter = read('src/components/templates/main-app/helpCenter/index.tsx');
   const tabsConfig = read('src/components/templates/main-app/helpCenter/tabsConfig.tsx');
   const chatInput = read('src/components/templates/main-app/helpChat/ChatInput.tsx');
+  const chatPanel = read('src/components/templates/main-app/helpChat/ChatPanel.tsx');
+  const helpChat = read('src/components/templates/main-app/helpChat/index.tsx');
+  const helpChatHandlers = read('src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts');
   const helpChatDrafts = read('src/lib/answerlattice/helpChatDrafts.ts');
   const cacheScopeHook = read('src/hooks/answerlattice/useAnswerlatticeCacheScope.ts');
   const categoriesCache = read('src/hooks/useKBCategoriesCache.ts');
@@ -148,6 +151,11 @@ function verifySearchBoundary() {
   assertIncludes(chatInput, 'serializeAnswerlatticeHelpChatDraft(inputValue)', 'Help Chat versioned draft serializer');
   assertIncludes(chatInput, 'localStorage.removeItem(draftKeys.draftKey);', 'Help Chat invalid or empty draft removal');
   assertIncludes(chatInput, 'clearDraft(sessionId, draftScope);', 'Help Chat failure-contained draft clearing');
+  assertIncludes(chatInput, 'if (accepted === false) return;', 'Help Chat rejected-send draft retention');
+  assertIncludes(chatPanel, "chatState?.status === 'error' && chatState.error", 'Help Chat pre-conversation persistent failure state');
+  assertIncludes(helpChat, "if (chatState.status === 'error')", 'Help Chat failure reset on owner draft revision');
+  assertIncludes(helpChatHandlers, "payload: 'Help search is not available for this account yet. Your question is still here.'", 'Help Chat unavailable-workspace recovery copy');
+  assertIncludes(helpChatHandlers, 'return false;', 'Help Chat rejected-send result');
   assertIncludes(chatInput, "'help_chat_draft_cleanup_failed'", 'Help Chat draft cleanup diagnostics');
   assertIncludes(chatInput, '[selectedImage, draftKeys, draftScope, legacyDraftKeys, sessionId]', 'Help Chat scope-change draft purge dependency');
   assertNotIncludes(chatInput, '// Draft cleanup is best-effort only.', 'Help Chat silent draft cleanup failure');
@@ -223,6 +231,7 @@ function verifyMobileBoundary() {
 
 function verifyTicketBoundary() {
   const ticketsDal = read('src/database/tickets/index.ts');
+  const addSupportTicket = read('src/components/organisms/addSupportTicket/index.tsx');
   const firestoreRules = read('firestore-answerlattice.rules');
   const sharedFirestoreRules = read('firestore.rules');
   const ticketHistoryView = read('src/components/templates/main-app/helpCenter/TicketHistoryView.tsx');
@@ -244,6 +253,9 @@ function verifyTicketBoundary() {
   }
 
   assertIncludes(ticketsDal, 'getScopedTicketConstraints(session)', 'Support ticket platform/client scoped query helper');
+  assertIncludes(addSupportTicket, 'const [submitError, setSubmitError] = useState<string | null>(null);', 'Support ticket persistent submit failure state');
+  assertIncludes(addSupportTicket, 'message="Request not sent"', 'Support ticket persistent submit failure title');
+  assertIncludes(addSupportTicket, 'Your details are still here.', 'Support ticket retained-form recovery copy');
   assertIncludes(ticketsDal, 'SUPPORT_TICKET_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Support ticket exact numeric scope helper');
   assertIncludes(ticketsDal, 'documentId !== raw', 'Support ticket scope must not trim mutated IDs');
   assertIncludes(ticketsDal, '!isValidFirestoreDocumentId(documentId)', 'Support ticket scope Firestore document ID guard');

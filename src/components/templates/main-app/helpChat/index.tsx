@@ -82,6 +82,13 @@ function HelpChatScoped({ open, onClose, productContext, loggedInSession }: Help
         setFeedbackModalVisible
     });
 
+    const handleSearchQueryChange = (query: string) => {
+        setSearchQuery(query);
+        if (chatState.status === 'error') {
+            dispatchChatState({ type: 'CLEAR' });
+        }
+    };
+
     // Reset to new chat when modal closes
     useEffect(() => {
         if (!open) {
@@ -147,7 +154,7 @@ function HelpChatScoped({ open, onClose, productContext, loggedInSession }: Help
             messages={activeSession?.messages || []}
             searchQuery={searchQuery}
             categoriesData={categoriesData}
-            onSearchQueryChange={setSearchQuery}
+            onSearchQueryChange={handleSearchQueryChange}
             onSendMessage={handlers.onSendMessage}
             onRetry={(query) => handlers.onRetry(query)}
             isNewChat={isNewChat}

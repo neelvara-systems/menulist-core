@@ -31,7 +31,7 @@ const { TextArea } = Input;
 const MAX_INPUT_LENGTH = 2000; // Character limit for input (industry standard for chat apps)
 
 interface ChatInputProps {
-    onSendMessage: (message: string, image?: UserUploadedFileType) => void;
+    onSendMessage: (message: string, image?: UserUploadedFileType) => boolean | void | Promise<boolean | void>;
     onInputChange?: (value: string) => void;
     onImageUpload?: (file: File) => void;
     placeholder?: string;
@@ -98,10 +98,11 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
         validateFile: (file) => validateImageFile(file),
     });
 
-    const handleSend = () => {
+    const handleSend = async () => {
         // Require text input for accurate KB search (image is context, not query)
         if (inputValue.trim()) {
-            onSendMessage(inputValue.trim(), selectedImage || undefined);
+            const accepted = await onSendMessage(inputValue.trim(), selectedImage || undefined);
+            if (accepted === false) return;
             setInputValue('');
             hasShownLimitWarning.current = false;
             // Clear selected image after sending (no URL revocation needed for base64)

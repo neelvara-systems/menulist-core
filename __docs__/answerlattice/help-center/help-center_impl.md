@@ -2,8 +2,8 @@
 
 July 28, 2026 persisted-scope correction: article entity extraction, FAQ generation, translation and embedding reconcile every supplied `tId`/`tenantId` and `sId`/`storeId` alias before provider work or mutation. Knowledge DAL session scope and article reads apply the same exact agreement; conflicting aliases fail closed.
 
-> **Version:** 1.2.1
-> **Last Updated:** 2026-08-14
+> **Version:** 1.2.2
+> **Last Updated:** 2026-08-15
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -29,6 +29,8 @@ The July 16 item-28 pass adds no alternate support backend. Browser search respo
 The July 18 feature-flow pass binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key and gives platform ticket lists a separate `platform` audience. Category and changelog request coalescing use per-scope maps rather than process-wide promises. Help Chat draft keys include exact workspace and consistent authenticated user identity; text is stored in a strict 24-hour envelope, legacy/foreign-scope keys are purged, and image drafts are never persisted. Draft clearing and cleanup are failure-contained and emit bounded diagnostics when browser storage is denied, so clearing a parent-controlled input cannot crash Help Chat. Managed FAQ load failure stays visible instead of silently replacing approved data with static copy.
 
 The Help Center home follows the same truth boundary. Failed category, popular-article, changelog, or open-ticket-summary requests render persistent translated error alerts with scoped retry controls; they do not render `No categories available`, `No articles available`, a blank What's New panel, or a hidden ticket summary as if the current approved source loaded successfully. Retry reuses the existing protected public-content/ticket transports and adds no fallback source or alternate support backend.
+
+Rejected owner mutations preserve recoverable input. When the active account has no valid Answerlattice workspace, Help Chat keeps the unsent question and renders a persistent account-availability error instead of clearing the draft into a false local `No matches` result. A failed support-ticket create keeps all completed fields and renders an inline `Request not sent` alert in addition to the bounded toast. These states do not add a fallback backend, alternate scope, provider call, Storage upload, or Firestore write.
 
 The changelog viewer treats its device-local last-viewed marker as untrusted: only canonical non-future integer timestamps are admitted, invalid values are evicted, and the marker advances only after an initial changelog page has actually loaded. A failed or empty initial fetch therefore cannot suppress future New badges.
 

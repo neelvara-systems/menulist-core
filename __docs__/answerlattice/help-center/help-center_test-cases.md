@@ -1,7 +1,7 @@
 # MenuList Help Center — Test Cases
 
-> **Version:** 1.0.1
-> **Last Updated:** 2026-08-14
+> **Version:** 1.0.2
+> **Last Updated:** 2026-08-15
 > **Audience:** Engineering, QA, Product
 
 ## Local Source Gate
@@ -18,6 +18,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | --- | --- | --- |
 | Entry | Signed-out user requests `/help-center` | Main layout redirects to sign-in; private content is not rendered |
 | Scope | Session has no valid Answerlattice product account | Search/content/ticket work fails closed |
+| Search recovery | Owner submits a question without a valid Answerlattice workspace | No request is admitted; the question remains in the input and a persistent account-availability error replaces local-empty results |
 | Navigation | Unknown `tab` query or path segment | Route normalizes to Help Center home |
 | Deep link | `/help-center/kb/articles/{id}` | Current scoped published article loads or shows not found |
 | Deep link | `/help-center/changelog/{id}` | Current scoped published entry loads or shows not found |
@@ -38,6 +39,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | Draft | Draft is expired, malformed, legacy or from another scope | Value is removed and not rendered |
 | Draft | Screenshot is selected | Screenshot data is never written to draft storage |
 | Tickets | Customer opens history or direct ticket detail | Only exact workspace rows pass DAL and Firestore rules |
+| Ticket recovery | Ticket create is rejected before persistence | Completed fields remain and a persistent `Request not sent` alert is shown; no success state appears |
 | Tickets | Customer replies or changes allowed state | Transaction rechecks stored scope and append-only history |
 | Attachments | File exceeds count, size, type or trusted path | Admission/opening fails before exposing or uploading unsafe data |
 | Mobile | Direct Help Center article/changelog route opens on phone | MobileShell sub-screen retains tab and resource ID |

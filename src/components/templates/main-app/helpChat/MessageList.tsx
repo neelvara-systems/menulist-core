@@ -14,7 +14,7 @@ interface MessageListProps {
     onRegenerate?: (messageId: string) => void;
     onFeedback?: (messageId: string, type: 'up' | 'down') => void;
     onSkipTyping?: () => void;
-    onSendMessage: (message: string, image?: undefined, targetMode?: ChatMode) => void;
+    onSendMessage: (message: string, image?: undefined, targetMode?: ChatMode) => boolean | void | Promise<boolean | void>;
     mode?: ChatMode;
     onStartFollowUp?: () => void;
     onEscalate?: (message: ChatMessage) => void;
