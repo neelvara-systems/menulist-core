@@ -41,7 +41,10 @@ service cloud.firestore {
           || (
             belongsToTenant(tId)
             && belongsToStoreById(sId)
-            && isProjectReadIdentityBounded(resource.data, tId, sId, projectId)
+            && (
+              resource == null
+              || isProjectReadIdentityBounded(resource.data, tId, sId, projectId)
+            )
           )
         );
 

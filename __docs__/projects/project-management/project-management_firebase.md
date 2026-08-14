@@ -52,6 +52,8 @@
 
 ## Cost Findings From June 11, 2026 Audit
 
+- Deterministic first-project recovery uses the already documented supplied-ID project read. `firestore.rules` admits the absent resource only after exact tenant/store membership and uses `resource == null`, so it adds no dependent `get()`/`exists()` rule lookup. Existing project reads still require path-bound project, tenant, and store identity; cross-store and cross-tenant missing reads remain denied. No DAL read/write, document, collection, index, Function, or provider call was added.
+
 - July 16 second-pass hardening replaced the create/rename/duplicate scan of up to 50 arbitrary deleted project documents with exact current-slug and redirect-slug queries capped at 25 matches each. Empty queries have a two-query minimum, but unrelated tombstones are no longer billed, the total result cap remains 50, and stores with more than 50 unrelated deletions cannot silently lose a recent URL reservation. A full matching page or query failure fails closed. No write, collection, rule, or composite index was added.
 
 - Hidden default-project creation was removed from read-only owner surfaces. Dashboard selector, OBP link card, Use MenuList, Past Activity, and GrowthOS now use `getExistingProjectsListWithoutLoader()`.

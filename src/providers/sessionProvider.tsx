@@ -11,6 +11,7 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { readTenantById } from '@database/tenants';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { primeClientSessionCacheFromTrustedSession } from '@lib/auth/getActiveSession';
 import { getBoundedFirebaseStringContext, getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
 import {
     getAnswerlatticeScopedSession,
@@ -389,6 +390,10 @@ export default function SessionProvider({ children, session }: Props) {
 
                     if (!fetchedStore) {
                         throw new Error(`Store bootstrap returned no data for store ${session.user.storeId}`);
+                    }
+
+                    if (!primeClientSessionCacheFromTrustedSession(session)) {
+                        throw new Error('Store bootstrap received an invalid authenticated session');
                     }
 
                     // Update the tenant details state with the fetched tenant

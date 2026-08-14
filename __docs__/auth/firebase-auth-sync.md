@@ -93,6 +93,8 @@ Client/server module boundary: `src/lib/auth/firebaseAuthSync.ts` imports claim 
 
 Google claim handoff boundary: while `/api/auth/claim-account` is in flight after OAuth return, `src/components/templates/loginPage/index.tsx` holds a synchronous ref guard. Session rerenders cannot start Firebase sync or redirect until the ownership transaction finishes, avoiding a race where the browser enters the old unclaimed scope.
 
+Authenticated provider handoff boundary: after Firebase Auth and the canonical tenant/store records are validated, `src/providers/sessionProvider.tsx` primes the shared client DAL cache from the strictly normalized server session immediately before exposing store data. This prevents the five-second client cache window from expiring during a slow bootstrap and triggering a redundant `/api/auth/session` request, a false `User not logged in` toast, and a transient owner-screen error. Invalid priming input clears prior identity state, and the existing sign-out cleanup still invalidates the cache and every in-flight generation.
+
 ---
 
 ## 🔧 **Implementation**

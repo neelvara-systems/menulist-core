@@ -27,6 +27,22 @@ export const clearClientSessionCache = (): void => {
     clientSessionRequest = null;
 };
 
+/**
+ * Seed the client DAL session cache from the server-validated session passed to
+ * the authenticated provider. Invalid input clears any prior identity instead
+ * of preserving stale tenant state.
+ */
+export const primeClientSessionCacheFromTrustedSession = (session: unknown): boolean => {
+    const normalizedSession = normalizeLoginUserSession(session);
+
+    clientSessionGeneration += 1;
+    clientSessionRequest = null;
+    clientSessionCache = normalizedSession;
+    clientSessionCacheAt = normalizedSession ? Date.now() : 0;
+
+    return Boolean(normalizedSession);
+};
+
 const readClientSessionResponseJson = async (response: Response): Promise<unknown> => {
     try {
         return await readJsonResponseWithLimit<unknown>(response, AUTH_SESSION_RESPONSE_JSON_MAX_BYTES);

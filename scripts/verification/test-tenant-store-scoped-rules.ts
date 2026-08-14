@@ -5,7 +5,14 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+    deleteDoc,
+    doc,
+    getDoc,
+    runTransaction,
+    setDoc,
+    updateDoc,
+} from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-tenant-store-scoped-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -260,6 +267,9 @@ async function run(): Promise<void> {
         }));
 
         await assertSucceeds(getDoc(doc(storeOneDb, 'projects/1/101/1-outlet-101')));
+        await assertSucceeds(getDoc(doc(storeOneDb, 'projects/1/101/1-default-101')));
+        await assertFails(getDoc(doc(storeOneDb, 'projects/1/102/1-default-102')));
+        await assertFails(getDoc(doc(storeOneDb, 'projects/2/201/2-default-201')));
         await assertFails(getDoc(doc(storeOneDb, 'projects/1/102/1-master-102')));
         await assertSucceeds(getDoc(doc(multiStoreDb, 'projects/1/102/1-master-102')));
         await assertFails(getDoc(doc(foreignTenantDb, 'projects/1/101/1-outlet-101')));
@@ -385,6 +395,20 @@ async function run(): Promise<void> {
             sId: 101,
             tId: 1,
         }));
+        await assertSucceeds(runTransaction(storeOneDb, async (transaction) => {
+            const projectRef = doc(storeOneDb, 'projects/1/101/1-default-101');
+            const snapshot = await transaction.get(projectRef);
+
+            if (!snapshot.exists()) {
+                transaction.set(projectRef, {
+                    files: [],
+                    projectId: '1-default-101',
+                    sId: 101,
+                    tId: 1,
+                });
+            }
+        }));
+        await assertSucceeds(getDoc(doc(storeOneDb, 'projects/1/101/1-default-101')));
         await assertFails(setDoc(doc(storeOneDb, 'projects/1/101/1-forged-identity-101'), {
             files: [{}],
             projectId: '1-forged-identity-101',

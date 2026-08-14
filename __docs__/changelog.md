@@ -1,5 +1,30 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Authenticated DAL Bootstrap Handoff
+
+- Primed the shared client DAL session cache from the strictly normalized
+  server session only after Firebase Auth and the canonical tenant/store scope
+  are validated, and before authenticated owner screens are exposed.
+- Prevented a slow bootstrap from expiring the independent five-second session
+  cache, issuing a redundant `/api/auth/session` request, and briefly showing a
+  false `User not logged in` owner-screen failure.
+- Invalid trusted-session input clears prior identity and fails bootstrap
+  closed. Existing logout and in-flight session-request invalidation remain
+  unchanged. Focused auth/session tests cover the handoff and ordering.
+
+## August 14, 2026 - Deterministic First-Project Rule Boundary
+
+- Allowed an authenticated owner to read an absent deterministic project only
+  inside the exact claimed tenant/store path, enabling the existing atomic
+  first-project transaction to distinguish missing state from retry recovery.
+- Kept existing project reads identity-bound to the project, tenant, and store
+  path aliases. Cross-store and cross-tenant missing reads remain denied.
+- Added emulator proof for the missing read, read-then-create transaction,
+  cross-scope denial, and existing misbound-document denial. The rule uses the
+  request's null resource rather than a dependent `get()` or `exists()` lookup,
+  so no DAL read/write, rule access call, document, index, Function, provider
+  call, dependency, or Vercel deployment was added.
+
 ## August 14, 2026 - Firebase Auth Readiness And Project Action Dialogs
 
 - Replaced the shared provider's render-lagging Firebase Auth boolean with an
