@@ -2,7 +2,7 @@
 
 > Controlled vocabulary for business attributes with schema.org mappings.
 > Phase 1C of Infrastructure Expansion.
-> Last Updated: May 10, 2026
+> Last Updated: August 14, 2026
 
 ---
 
@@ -90,6 +90,13 @@ Business attributes can be suggested by menu extraction, but owner-entered store
 - AI suggestions must be positive and `confidence: "high"` before they can fill a missing store attribute.
 - Deterministic dietary inference uses canonical taxonomy tags, including `gluten_free`, so `glutenFree` is not missed when taxonomy normalization runs.
 - Existing `store.businessAttributes.<key> === true|false` is never overwritten by extraction.
+
+### 5.2 Owner Editing And Accessibility
+
+- Desktop Business Settings edits the controlled attributes and custom attributes through the parent store form.
+- Mobile Business Attributes uses the same normalization boundary and a scoped changed-leaf store update.
+- Custom-attribute icon and remove actions expose localized accessible names on both surfaces. The shared icon picker also retains an accessible fallback name for every icon-only trigger.
+- `scripts/verification/verify-public-business-truth.js` guards the normalization, persistence, scope, and accessible-action contracts.
 
 ## 6. Feature Flag
 

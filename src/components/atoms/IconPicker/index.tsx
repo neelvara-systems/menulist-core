@@ -10,6 +10,7 @@ import LucideIconGrid from './LucideIconGrid';
 import './iconPicker.scss';
 
 interface IconPickerProps {
+    ariaLabel?: string;
     value?: string;
     onChange?: (value: string) => void;
     suggestedIcons?: string[];
@@ -23,6 +24,7 @@ interface IconPickerProps {
 }
 
 const IconPicker = ({
+    ariaLabel = 'Choose icon',
     value,
     onChange,
     suggestedIcons = [],
@@ -162,6 +164,7 @@ const IconPicker = ({
     const trigger = (
         <div className="icon-picker-trigger">
             <Button
+                aria-label={ariaLabel}
                 icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" size={resolvedIconSize} />}
                 onClick={() => setOpen(true)}
                 size={buttonSize}

@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 14, 2026 - Business Attributes Accessible Custom Actions
+
+- Added localized accessible names to the desktop and mobile custom-attribute icon and remove actions.
+- Added a shared accessible-name fallback to the icon picker so icon-only triggers are never unnamed.
+- Extended the Public Business Truth source gate. This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Temporary Status Expiry Timezone Alignment
 
 - Fixed the desktop Temporary Status expiry picker so its entered wall time, customer preview, confirmation, and persisted ISO instant all use the active app timezone.

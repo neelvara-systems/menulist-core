@@ -3814,6 +3814,8 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const mobileBasicSettings = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
   const mobileBusinessAttributes = read('src/components/mobile/screens/MobileBusinessAttributesScreen.tsx');
+  const desktopBusinessAttributes = read('src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx');
+  const iconPicker = read('src/components/atoms/IconPicker/index.tsx');
   const mobileBusinessCopySetup = read('src/components/mobile/screens/MobileBusinessCopySetupScreen.tsx');
   const mobileCustomerApp = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const mobileLocaleSettings = read('src/components/mobile/screens/MobileLocaleSettingsScreen.tsx');
@@ -4123,6 +4125,12 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     'mobile_business_attributes_save_failed',
     'Mobile Business Attributes save diagnostics',
   );
+  assertIncludes(iconPicker, "ariaLabel = 'Choose icon'", 'Shared icon picker accessible trigger fallback');
+  assertIncludes(iconPicker, 'aria-label={ariaLabel}', 'Shared icon picker trigger accessible name');
+  assertIncludes(desktopBusinessAttributes, "ariaLabel={`${tCommon('select')} ${t('customBusinessAttributes')}`}", 'Desktop custom business-attribute icon picker accessible name');
+  assertIncludes(desktopBusinessAttributes, "aria-label={`${tCommon('remove')} ${t('customBusinessAttributes')}`}", 'Desktop custom business-attribute remove accessible name');
+  assertIncludes(mobileBusinessAttributes, "ariaLabel={`${tCommon('select')} ${t('customBusinessAttributes')}`}", 'Mobile custom business-attribute icon picker accessible name');
+  assertIncludes(mobileBusinessAttributes, "aria-label={`${tCommon('remove')} ${t('customBusinessAttributes')}`}", 'Mobile custom business-attribute remove accessible name');
   assertIncludes(
     mobileBusinessAttributes,
     'assertStoreUpdateSucceeded(',

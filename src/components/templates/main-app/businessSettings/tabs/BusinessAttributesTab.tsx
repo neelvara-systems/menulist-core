@@ -18,6 +18,7 @@ interface BusinessAttributesTabProps {
 const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabProps>(
     ({ scrollRef }, ref) => {
         const t = useTranslations('BusinessSettings');
+        const tCommon = useTranslations('Common');
         const businessType = Form.useWatch('businessType');
         const businessCategory = Form.useWatch('businessCategory');
         const { token } = theme.useToken();
@@ -82,6 +83,7 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                                         >
                                             <IconPicker
                                                 allowClear
+                                                ariaLabel={`${tCommon('select')} ${t('customBusinessAttributes')}`}
                                                 buttonSize="large"
                                                 buttonStyle={{ height: 44, minWidth: 44 }}
                                                 iconSize={21}
@@ -100,7 +102,12 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                                     </Col>
                                     <Col xs={4}>
                                         <Flex justify="flex-end">
-                                            <Button danger icon={<LuTrash2 size={14} />} onClick={() => remove(field.name)} />
+                                            <Button
+                                                aria-label={`${tCommon('remove')} ${t('customBusinessAttributes')}`}
+                                                danger
+                                                icon={<LuTrash2 size={14} />}
+                                                onClick={() => remove(field.name)}
+                                            />
                                         </Flex>
                                     </Col>
                                 </Row>

@@ -24,6 +24,7 @@ interface MobileBusinessAttributesScreenProps {
 
 function MobileBusinessAttributesScreenContent({ onBack }: MobileBusinessAttributesScreenProps) {
     const t = useTranslations('BusinessSettings');
+    const tCommon = useTranslations('Common');
     const tMobile = useTranslations('MobileSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
@@ -185,6 +186,7 @@ function MobileBusinessAttributesScreenContent({ onBack }: MobileBusinessAttribu
                             <Flex align="center" gap={8} key={attribute.id || index}>
                                 <IconPicker
                                     allowClear
+                                    ariaLabel={`${tCommon('select')} ${t('customBusinessAttributes')}`}
                                     buttonSize="large"
                                     buttonStyle={{ height: 48, minWidth: 48 }}
                                     iconSize={22}
@@ -204,7 +206,12 @@ function MobileBusinessAttributesScreenContent({ onBack }: MobileBusinessAttribu
                                     placeholder={t('customBusinessAttributePlaceholder')}
                                     value={attribute.label}
                                 />
-                                <Button color="danger" fill="none" onClick={() => setCustomAttributes((previous) => previous.filter((_, entryIndex) => entryIndex !== index))}>
+                                <Button
+                                    aria-label={`${tCommon('remove')} ${t('customBusinessAttributes')}`}
+                                    color="danger"
+                                    fill="none"
+                                    onClick={() => setCustomAttributes((previous) => previous.filter((_, entryIndex) => entryIndex !== index))}
+                                >
                                     <LuTrash2 size={16} />
                                 </Button>
                             </Flex>
