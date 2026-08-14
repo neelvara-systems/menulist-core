@@ -57,10 +57,11 @@ assert.match(serverUserContext, /const userToAdd = sanitizeForFirestore\(\{/);
 assert.doesNotMatch(serverUserContext, /const sanitizeForAdminFirestore/);
 assert.doesNotMatch(serverUserContext, /constructor\?\.name === 'Timestamp'/);
 
-assert.match(pricingSubscription, /normalizeRazorpaySubscriptionCheckoutUrl/);
+assert.doesNotMatch(pricingSubscription, /normalizeRazorpaySubscriptionCheckoutUrl/);
 assert.match(pricingSubscription, /activeSubscription\.status === 'pending'/);
 assert.match(pricingSubscription, /Complete payment/);
-assert.match(pricingSubscription, /returning_owner_pending_payment/);
+assert.match(pricingSubscription, /Continue in Billing/);
+assert.match(pricingSubscription, /window\.location\.assign\(`\$\{OWNER_APP_URL\}\/billing`\)/);
 for (const source of [desktopBillingSubscription, mobileBilling]) {
   assert.match(source, /normalizeRazorpaySubscriptionCheckoutUrl/);
   assert.match(source, /subscriptionCheckoutUrl/);

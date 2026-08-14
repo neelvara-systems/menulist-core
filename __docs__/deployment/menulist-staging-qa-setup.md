@@ -9,6 +9,9 @@ This is the dedicated setup file for **MenuList staging/QA**. Follow only this
 file first. Do not set up Answerlattice, CampaignCue, SignalDesk, Neelvara, or
 MyCodex until MenuList QA is live and verified.
 
+Application flow certification after infrastructure setup is tracked separately
+in [menulist-staging-feature-certification.md](./menulist-staging-feature-certification.md).
+
 ## August 14 Razorpay Hosted Certification Checkpoint
 
 - Vercel Preview build `de18a865a1c08603ba3f740c958b827246d99a65` proved the authenticated pending-checkout recovery UI end to end. Closing the reopened Razorpay Standard Checkout immediately restored the exact `Payment Pending` state and `Continue Checkout` action without creating payment, entitlement, history, MRR, notification, or credit evidence.
