@@ -163,6 +163,10 @@ a hosted flow into `PASS`.
 | 2026-08-14 | `npm run verify:next-build-compatibility` | PASS | Next 16 source/config compatibility passed after delegating trailing-slash normalization to Proxy. |
 | 2026-08-14 | `npx eslint src/proxy.ts scripts/verification/test-menulist-host-routing.ts` | PASS | Focused routing/security lint passed. |
 | 2026-08-14 | `npx tsc --noEmit` | PASS | Root strict TypeScript check passed after the routing correction. |
+| 2026-08-14 | `node scripts/verification/verify-auth-security-failure-matrix.js` | FIXED, THEN PASS | Hosted QA showed that central `withAuth()` failures inherited a public revalidation cache policy. The middleware now applies the shared private/no-store auth policy to admitted responses and every non-preflight failure; the focused security matrix guards the boundary. |
+| 2026-08-14 | `npx eslint src/middleware/auth.ts scripts/verification/verify-auth-security-failure-matrix.js` | PASS | Focused auth middleware and verifier lint passed. |
+| 2026-08-14 | `npx tsc --noEmit` | PASS | Root strict TypeScript check passed after the protected-response cache correction. |
+| 2026-08-14 | `npm run docs:check-links` | PASS WITH EXISTING WARNINGS | Zero broken links; the same 62 approved pre-existing uppercase/space naming warnings remain outside this fix. |
 
 ## Hosted Certification Notes
 
@@ -214,17 +218,41 @@ a hosted flow into `PASS`.
   200. `npm run verify:website-resource-locales` also passed. Together with
   the 62 static website routes, the current transport sweep covers 205 unique
   public website URLs.
+- `2026-08-14` - Authenticated onboarding entry was exercised with retained QA
+  owner B at tenant/store `2/2`. `/create-menu` rendered both upload and owned
+  public-link modes. Empty input, a valid-shaped link without permission, and a
+  checked localhost link all remained on the route with bounded recovery copy;
+  no draft, Storage object, extraction job, or provider work was admitted by
+  those failure paths. Switching back to upload and hard reloading restored the
+  default upload state. Authenticated navigation to `/signin`,
+  `/forgot-password`, `/403`, and `/unauthorized` returned through the existing
+  dashboard/no-plan guard rather than exposing a second auth surface. The
+  retained session was not logged out because no password or recovery material
+  may be inspected.
+- `2026-08-14` - Unauthenticated hosted checks reproduced a protected-response
+  cache defect: `/api/auth/access-status` and
+  `/api/auth/change-password` correctly returned `401`, but inherited
+  `Cache-Control: public, max-age=0, must-revalidate`. Central `withAuth()` now
+  applies the shared private/non-storable response headers. Commit
+  `edc9446fead4974b731663248fcbdd543d653ffc` reached Preview deployment
+  `menulist-core-4dqrjabne-neelvara-systems.vercel.app`; `/api/version`
+  returned that exact build. Hosted reruns proved `private, no-store,
+  max-age=0`, `Pragma: no-cache`, and `nosniff` on both `401` paths and a
+  deliberate `403` CORS rejection. The authenticated owner session still
+  loaded `/create-menu`, and `/signin` still settled through `/dashboard` to
+  the honest `/billing` no-subscription state. This defect is `FIXED`.
 
 ## Execution Ledger
 
 | ID | Surface | Flow | Viewport | Preconditions | Expected | Actual | Status | Evidence | Data mutations | Cleanup | Fix commit | Hosted build | Remaining risk |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ML-QA-000 | Deployment | Exact source/host alignment | HTTP | `staging` checkout | Runtime source, remote, and hosted Preview report one commit | Runtime fix commit, `origin/staging`, and hosted Preview reported `fccff11f6329ad6979853b6220ca736d86e461c3`; hosted env is `preview` | PASS | `git rev-parse HEAD`; `git rev-parse origin/staging`; Vercel Preview `Ready`; `GET https://menulist.digital/api/version` on 2026-08-14 | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | A later evidence-only ledger commit does not change the certified runtime files |
+| ML-QA-000 | Deployment | Exact source/host alignment | HTTP | `staging` checkout | Runtime source, remote, and hosted Preview report one commit | Runtime fix commit, `origin/staging`, and hosted Preview reported `edc9446fead4974b731663248fcbdd543d653ffc`; hosted env is `preview` | PASS | `git rev-parse HEAD`; `git rev-parse origin/staging`; branch-triggered Vercel Preview; `GET https://app.menulist.digital/api/version` on 2026-08-14 | None | None | `edc9446fead4974b731663248fcbdd543d653ffc` | `edc9446fead4974b731663248fcbdd543d653ffc` | A later evidence-only ledger commit does not change the certified runtime files |
 | ML-QA-001 | QA hosts | Website and sign-in transport plus crawler isolation header | HTTP | Public network | Both hosts return 200 and QA noindex header | Both returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive`; full static route and redirect sweep also retained the QA header | PASS | Response headers from `menulist.digital` and `app.menulist.digital/signin`; 62-route exact-build sweep on 2026-08-14 | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | Robots/sitemap policy is retained setup evidence; public route transport is covered below |
 | ML-QA-002 | QA website | Static and localized resource transport, canonical redirects, rendered smoke, and crawler isolation | HTTP and desktop Chrome | Exact hosted Preview and source-derived route inventory | All 205 inventoried URLs resolve; owner paths use canonical app host; every QA response, including redirects, is noindex | 62 static URLs and 143 resource/locale URLs resolved successfully. The missing redirect headers were corrected and reran cleanly; Chrome rendered `/product` at canonical `/how-it-works` without console issues | FIXED | Hosted GET/HEAD matrices; controlled Chrome DOM/console; `test:menulist-host-routing`; `verify:website-resource-locales`; Next compatibility; focused lint; TypeScript | None | None | `fccff11f6329ad6979853b6220ca736d86e461c3` | `fccff11f6329ad6979853b6220ca736d86e461c3` | Page-specific interactions and form mutations remain under their owning feature rows; transport/render coverage is complete |
-| ML-QA-010 | Authentication | Existing session restoration and owner shell | Desktop Chrome | Logged-in QA owner at scope `2/2` | Trusted session restores, exact scope loads, no cross-product or subscription bypass | Retained `QA owner B` session restored; fixture authority maps it to `2/2`; `/billing` and hard-reloaded `/projects` rendered the full owner shell and honest no-plan guard; prior session-prime/store-bootstrap errors did not recur | IN PROGRESS | Controlled Chrome DOM, account-menu identity, and console inspection on 2026-08-14; retained QA fixture mapping; only the documented non-blocking App Check skip diagnostic appeared | None | None | None | `f05001553bc41525564351a6bcbb7d1826ad1792` | Logout/relogin, stale-session expiry, and explicit permission-denial cases remain; fixture is intentionally unsubscribed |
+| ML-QA-010 | Authentication | Existing session restoration and owner shell | Desktop Chrome | Logged-in QA owner at scope `2/2` | Trusted session restores, exact scope loads, no cross-product or subscription bypass | Retained `QA owner B` session restored; fixture authority maps it to `2/2`; `/billing` and hard-reloaded `/projects` rendered the full owner shell and honest no-plan guard; prior session-prime/store-bootstrap errors did not recur. On exact build `edc9446fe`, authenticated `/signin` returned through `/dashboard` to the honest `/billing` no-plan guard. | IN PROGRESS | Controlled Chrome DOM, account-menu identity, and console inspection on 2026-08-14; retained QA fixture mapping; only the documented non-blocking App Check skip diagnostic appeared | None | None | None | `edc9446fead4974b731663248fcbdd543d653ffc` | Logout/relogin, stale-session expiry, and explicit permission-denial cases remain; fixture is intentionally unsubscribed |
 | ML-QA-011 | Authentication | Existing session restoration and owner shell | Mobile Chrome | Same session and `ENABLE_MOBILE_UI` | MobileShell loads inside owner app with correct visible tabs and scope | A `390x844` resize remained in desktop shell as designed because the runner cannot provide handheld UA/touch signals | BLOCKED | Hosted viewport proof plus `useDeviceType`/layout-wrapper source boundary; local `verify:mobile-shell-route-map` is PASS but is not hosted proof | None | None | None | `f05001553bc41525564351a6bcbb7d1826ad1792` | Requires true mobile Chrome or handheld emulation for tabs, route/hash restoration, reload, and scope proof |
-| ML-QA-020 | Onboarding | First project and onboarding continuity | Desktop and mobile | QA owner `2/2`; snapshot before mutation | Existing default project loads without recreating or escaping scope | Not rerun; historical `QA-K09` setup proof retained in setup guide only | NOT STARTED | Pending current-build hosted proof | Pending | Pending | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Avoid destroying retained fixture |
+| ML-QA-012 | Authentication/API | Protected response storage and CORS rejection | HTTP and desktop Chrome | Exact hosted Preview; no browser credentials for negative HTTP checks | Protected responses are never shared-cache state; auth flow remains usable | Reproduced public revalidation headers on protected `401` responses; central middleware correction reached QA. Hosted `401` and deliberate CORS `403` reruns now return private/no-store, no-cache, and nosniff. Authenticated owner smoke remained intact. | FIXED | Exact `/api/version`; response headers for access-status, change-password, public create-menu, and rejected Origin; focused auth matrix, lint, TypeScript | None | None | `edc9446fead4974b731663248fcbdd543d653ffc` | `edc9446fead4974b731663248fcbdd543d653ffc` | OPTIONS preflight intentionally keeps the dedicated CORS policy |
+| ML-QA-020 | Onboarding | First project and onboarding continuity | Desktop and mobile | QA owner `2/2`; snapshot before mutation | Existing default project loads without recreating or escaping scope | Authenticated entry, both input modes, empty/unconfirmed/private-link failures, tab recovery, and hard reload passed without admitted draft/job/provider work. Existing first-project continuity was not rerun. | IN PROGRESS | Controlled Chrome DOM on exact hosted builds through `edc9446fe`; server source confirms rejected input does not reach Storage/draft/job creation | None | None | None | `edc9446fead4974b731663248fcbdd543d653ffc` | Valid upload/link success and preview/claim continuity require bounded before/after data proof; mobile remains blocked; avoid destroying retained fixture |
 | ML-QA-030 | Dashboard/Today | Dashboard, Today, Business Health, and Feedback entry | Desktop and mobile | Auth and owner shell pass | Each visible entry loads correct scoped state and honest empty/no-plan behavior | Not exercised | NOT STARTED | Pending | None | None | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Feature flags and analytics availability may change visible matrix |
 | ML-QA-040 | Projects | Full CRUD, cancel, reload, recovery | Desktop and mobile | Snapshot project and compact summary | Bounded operations are idempotent and remain inside `2/2` | Not rerun in current ledger | NOT STARTED | Pending | Pending | Pending | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Historical setup proof exists but does not certify current feature matrix |
 | ML-QA-050 | Menu | Categories, items, pricing, visibility, variants, translations, publish, import, extraction, images, failure recovery | Desktop and mobile | Stable test project and bounded source assets | Every supported edit persists, publishes, reloads, and fails safely | Not exercised | NOT STARTED | Pending | Pending | Pending | None | `40c428d5f9b177a2d6ce85db9577badf0bbdf679` | Paid AI/provider calls require cost and fixture control |
@@ -250,8 +278,9 @@ These remain open and must never be marked complete without direct evidence:
 
 ## Next Certification Action
 
-Complete the remaining ML-QA-010 exact-scope and negative-session cases without
-exposing session material. Then begin ML-QA-020 onboarding continuity on the
-retained `2/2` fixture without recreating or deleting it. ML-QA-011 remains
-blocked until true handheld browser evidence is available; a narrow desktop
-viewport is not a substitute.
+Complete the remaining ML-QA-010 logout/relogin, stale-session, and explicit
+permission-denial cases only when disposable credentials or a bounded fixture
+make them safe. Continue ML-QA-020 with before/after proof for one authorized
+valid intake without recreating or deleting the retained `2/2` project.
+ML-QA-011 remains blocked until true handheld browser evidence is available; a
+narrow desktop viewport is not a substitute.
