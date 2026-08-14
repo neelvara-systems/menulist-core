@@ -23,6 +23,7 @@ function LanguageSwitcher() {
         <Flex gap={10} vertical>
             <Text strong>{t('language')}</Text>
             <Select
+                aria-label={t('language')}
                 placeholder={t('selectLanguage')}
                 optionFilterProp="label"
                 showSearch

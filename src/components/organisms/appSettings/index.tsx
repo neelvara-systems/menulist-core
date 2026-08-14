@@ -111,6 +111,7 @@ const AppSettingsPanel = () => {
               <Flex vertical gap={10}>
                 <TextElement text={t('themeColors')} size="medium" />
                 <EnhancedColorPicker
+                  ariaLabel={t('themeColors')}
                   key={isDarkMode ? 'dark-mode' : 'light-mode'}
                   colors={colorsList[isDarkMode ? "dark" : "light"]}
                   selectedColor={isDarkMode ? darkThemeColor : lightThemeColor}

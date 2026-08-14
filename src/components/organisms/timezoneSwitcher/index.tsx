@@ -37,6 +37,7 @@ function TimezoneSwitcher() {
         <Flex gap={10} vertical>
             <Text strong>{t('timezone')}   <Text>({format.dateTime(getUTCDate().newDate, "date")} {format.dateTime(getUTCDate().newDate, "time")})</Text></Text>
             <Select
+                aria-label={t('timezone')}
                 showSearch
                 placeholder={t('selectTimezone')}
                 optionFilterProp="label"

@@ -87,6 +87,21 @@ const enhancedColorPickerSource = fs.readFileSync(
 );
 assert.match(enhancedColorPickerSource, /recentColors\.map\(/);
 assert.doesNotMatch(enhancedColorPickerSource, /rgbaColors:\s*any/);
+assert.match(enhancedColorPickerSource, /aria-label=\{ariaLabel\}/);
+assert.match(enhancedColorPickerSource, /aria-haspopup="dialog"/);
+assert.match(enhancedColorPickerSource, /aria-label=\{ariaLabel\} role="dialog"/);
+assert.match(enhancedColorPickerSource, /aria-keyshortcuts="F"/);
+assert.match(enhancedColorPickerSource, /aria-pressed=\{isSelected\}/);
+
+for (const [sourcePath, ariaLabel] of [
+    ['src/components/organisms/languageSwitcher/index.tsx', "aria-label={t('language')}"],
+    ['src/components/organisms/timezoneSwitcher/index.tsx', "aria-label={t('timezone')}"],
+    ['src/components/organisms/dateFormatSwitcher/index.tsx', "aria-label={t('dateFormat')}"],
+    ['src/components/organisms/timeFormatSwitcher/index.tsx', "aria-label={t('timeFormat')}"],
+] as const) {
+    const source = fs.readFileSync(path.resolve(process.cwd(), sourcePath), 'utf8');
+    assert.ok(source.includes(ariaLabel), `${sourcePath} must expose ${ariaLabel}`);
+}
 
 assert.equal(
     matchesKeyboardShortcut(

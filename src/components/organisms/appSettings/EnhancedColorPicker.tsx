@@ -4,19 +4,21 @@ import { useRecentColors } from '@hook/useRecentColors';
 import { hexToRgbA } from '@util/utils';
 import { ColorPicker as AntColorPicker, Button, Flex, Tooltip, Typography } from 'antd';
 import { Color } from 'antd/es/color-picker';
-import { Fragment, memo } from 'react';
+import { Fragment, memo, type KeyboardEvent } from 'react';
 import { LuHeart, LuPipette } from 'react-icons/lu';
 import styles from './appSettings.module.scss';
 
 const { Text } = Typography;
 
 interface EnhancedColorPickerProps {
+    ariaLabel: string;
     colors: string[];
     selectedColor: string;
     onSelect: (color: string) => void;
 }
 
 const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
+    ariaLabel,
     colors,
     selectedColor,
     onSelect
@@ -46,6 +48,12 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
         handleColorSelect(hexColor);
     };
 
+    const handleFavoriteKeyDown = (event: KeyboardEvent<HTMLElement>, color: string) => {
+        if (event.key.toLowerCase() !== 'f') return;
+        event.preventDefault();
+        toggleFavorite(color);
+    };
+
     return (
         <Flex vertical gap={16}>
             {/* Custom Color Picker */}
@@ -53,7 +61,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                 <Flex justify="space-between" align="center">
                     <Text strong>Custom Color</Text>
                     <Tooltip title="Pick any color">
-                        <LuPipette style={{ fontSize: 16 }} />
+                        <LuPipette aria-hidden="true" style={{ fontSize: 16 }} />
                     </Tooltip>
                 </Flex>
                 <AntColorPicker
@@ -69,12 +77,28 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                         },
                     ]}
                     panelRender={(_, { components: { Picker, Presets } }) => (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div aria-label={ariaLabel} role="dialog" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <Picker />
                             <Presets />
                         </div>
                     )}
-                />
+                >
+                    <Button
+                        aria-label={ariaLabel}
+                        aria-haspopup="dialog"
+                        size="large"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                    >
+                        <Flex align="center" gap={8}>
+                            <span
+                                aria-hidden="true"
+                                style={{ background: selectedColor, borderRadius: 4, height: 20, width: 20 }}
+                            />
+                            <span>{selectedColor.toUpperCase()}</span>
+                        </Flex>
+                        <LuPipette aria-hidden="true" />
+                    </Button>
+                </AntColorPicker>
             </Flex>
 
             {/* Recent Colors */}
@@ -82,7 +106,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                 <Flex vertical gap={8}>
                     <Flex justify="space-between" align="center">
                         <Text strong>Recent Colors</Text>
-                        <Button onClick={clearRecent} size="small" type="text">
+                        <Button aria-label="Clear recent colors" onClick={clearRecent} size="small" type="text">
                             Clear
                         </Button>
                     </Flex>
@@ -91,6 +115,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                             <Tooltip key={color} title={`${color}\nClick to select`}>
                                 <Button
                                     aria-label={`Select recent ${color} color`}
+                                    aria-pressed={selectedColor === color}
                                     className={styles.colorElement}
                                     onClick={() => handleRecentOrFavoriteClick(color)}
                                     style={{
@@ -131,7 +156,10 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                                             className={styles.colorElement}
                                             onClick={() => handleRecentOrFavoriteClick(color)}
                                             onDoubleClick={() => toggleFavorite(color)}
-                                            aria-label={`Select ${color} color`}
+                                            onKeyDown={(event) => handleFavoriteKeyDown(event, color)}
+                                            aria-keyshortcuts="F"
+                                            aria-label={`Select ${color} color; press F to remove from favorite colors`}
+                                            aria-pressed={isSelected}
                                             style={{
                                                 background: hexToRgbA(color, 0.6),
                                                 borderColor: color,
@@ -183,7 +211,10 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                                         className={styles.colorElement}
                                         onClick={() => handleColorSelect(color)}
                                         onDoubleClick={() => toggleFavorite(color)}
-                                        aria-label={`Select ${color} color`}
+                                        onKeyDown={(event) => handleFavoriteKeyDown(event, color)}
+                                        aria-keyshortcuts="F"
+                                        aria-label={`Select ${color} color; press F to ${isFav ? 'remove from' : 'add to'} favorite colors`}
+                                        aria-pressed={isSelected}
                                         style={{
                                             background: hexToRgbA(color, 0.6),
                                             borderColor: color,
@@ -211,7 +242,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                     })}
                 </Flex>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                    Click to select • Double-click to favorite
+                    Click to select • Double-click or press F to favorite
                 </Text>
             </Flex>
         </Flex>

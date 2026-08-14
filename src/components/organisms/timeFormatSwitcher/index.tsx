@@ -37,6 +37,7 @@ function TimeFormatSwitcher() {
         <Flex gap={10} vertical>
             <Text strong>{t('timeFormat')}</Text>
             <Select
+                aria-label={t('timeFormat')}
                 showSearch
                 placeholder={t('selectTimeFormat')}
                 optionFilterProp="label"

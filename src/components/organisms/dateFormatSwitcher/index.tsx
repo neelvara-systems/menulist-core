@@ -46,6 +46,7 @@ function DateFormatSwitcher() {
         <Flex gap={10} vertical>
             <Text strong>{t('dateFormat')}</Text>
             <Select
+                aria-label={t('dateFormat')}
                 showSearch
                 placeholder={t('selectDateFormat')}
                 optionFilterProp="label"

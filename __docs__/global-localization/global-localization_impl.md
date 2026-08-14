@@ -110,6 +110,8 @@ Server actions validate every value at runtime before writing a one-year, same-s
 
 The cookies are deliberately not `HttpOnly` because client preference previews read them. They contain no authentication, tenant, business, or personal data.
 
+Desktop App Settings exposes programmatic names for the Language, Timezone, Date Format, and Time Format selectors. Its custom theme-colour trigger is a named button, every colour choice exposes its selected state, and the optional favourite action retains double-click while adding a declared `F` keyboard shortcut. These controls remain browser-local and do not add a Firebase, provider, tenant, store, or public-data operation. Source gate: `npm run test:browser-runtime-boundaries`.
+
 ## Date and Time
 
 `toDate()` accepts Firestore timestamps, serialized timestamps, dates, strings, and numeric epoch values. Epoch zero is valid. `formatDateTime()` uses next-intl when a formatter exists and a locale/timezone-aware native fallback otherwise (`src/utils/dateTime/index.tsx:128`).

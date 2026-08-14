@@ -6,6 +6,12 @@
 - Invalid social drafts now remain write-free instead of polluting owner truth that customer rendering would later hide.
 - Named desktop custom-platform clear/removal and mobile open/edit/remove/close controls, preserving 44px mobile icon-action targets. Custom desktop rows now retain focus while their label changes, and functional draft updates prevent rapid multi-field cleanup from restoring stale links. Valid changes keep the existing single store update; no Firebase schema, rule, index, Function, Storage, provider, dependency, direct deployment, or production change was added.
 
+## August 15, 2026 - Accessible App Settings Controls
+
+- Named the Language, Timezone, Date Format, Time Format, and custom theme-colour controls in desktop App Settings.
+- Theme-colour choices now expose selected state, and the optional favourite action supports the declared `F` keyboard shortcut alongside double-click.
+- This is browser-local settings accessibility only; it adds no Firebase, provider, tenant, store, project, entitlement, public-data, dependency, direct deployment, or production operation.
+
 ## August 15, 2026 - Official Page Accessible Accent Reset
 
 - Replaced the unnamed desktop accent trigger with a labelled native colour input and an explicit Reset action.
