@@ -27,6 +27,7 @@ import {
     getBoundedFunctionsErrorContext as getSignalDeskFunctionsErrorContext,
 } from '../../functions-signaldesk/src/utils/boundedErrorContext';
 import { normalizeRuntimeDiagnosticUrl } from '../../src/lib/runtime/runtimeDiagnostics';
+import { getFirebaseBootstrapConsoleMessage } from '../../src/lib/firebase/firebaseDiagnostics';
 
 const throwingError = new Error('original failure');
 Object.defineProperties(throwingError, {
@@ -101,6 +102,19 @@ assert.deepEqual(getGeminiErrorContext(throwingProxy), {
     name: 'object',
     status: undefined,
 });
+
+const firebaseNetworkError = Object.assign(new Error('request failed'), {
+    code: 'auth/network-request-failed',
+    status: 503,
+});
+assert.equal(
+    getFirebaseBootstrapConsoleMessage('firebase_auth_session_provider_sync_failed', firebaseNetworkError),
+    '[Firebase Bootstrap] Operation failed failure=firebase_auth_session_provider_sync_failed source=auth/network-request-failed status=503',
+);
+assert.equal(
+    getFirebaseBootstrapConsoleMessage('token=must-not-log', { code: 'secret value' }),
+    '[Firebase Bootstrap] Operation failed failure=unknown source=unknown',
+);
 
 let analyticsIdCoercionAttempted = false;
 assert.deepEqual(getAnalyticsIdContext({

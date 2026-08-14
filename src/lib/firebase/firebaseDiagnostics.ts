@@ -13,6 +13,8 @@ type FirebaseErrorLike = Error & {
     status?: unknown;
 };
 
+const FIREBASE_BOOTSTRAP_CONSOLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_/-]{0,79}$/;
+
 export const getBoundedFirebaseStringContext = (
     label: string,
     value: unknown,
@@ -30,6 +32,27 @@ const getFirebaseErrorCode = (error: unknown): string | undefined => {
 
 const getFirebaseErrorStatus = (error: unknown): number | undefined => {
     return getBoundedErrorStatus(error);
+};
+
+const getSafeFirebaseBootstrapConsoleCode = (value: unknown): string => {
+    return typeof value === 'string' && FIREBASE_BOOTSTRAP_CONSOLE_CODE_PATTERN.test(value)
+        ? value
+        : 'unknown';
+};
+
+export const getFirebaseBootstrapConsoleMessage = (
+    failureCode: unknown,
+    error?: unknown,
+): string => {
+    const sourceErrorCode = getFirebaseErrorCode(error);
+    const sourceStatusCode = getFirebaseErrorStatus(error);
+    const statusSuffix = typeof sourceStatusCode === 'number'
+        ? ` status=${sourceStatusCode}`
+        : '';
+
+    return `[Firebase Bootstrap] Operation failed failure=${getSafeFirebaseBootstrapConsoleCode(failureCode)}`
+        + ` source=${getSafeFirebaseBootstrapConsoleCode(sourceErrorCode)}`
+        + statusSuffix;
 };
 
 export const getFirebaseAuthSessionLogContext = (session: any): FirebaseBootstrapLogContext => ({
@@ -61,7 +84,7 @@ export const logFirebaseBootstrapFailure = (
     error?: unknown,
     context: FirebaseBootstrapLogContext = {},
 ): void => {
-    secureError('[Firebase Bootstrap] Operation failed', new Error(failureCode), {
+    secureError(getFirebaseBootstrapConsoleMessage(failureCode, error), new Error(failureCode), {
         ...context,
         sourceErrorName: getFirebaseErrorName(error),
         sourceErrorCode: getFirebaseErrorCode(error),
