@@ -9,7 +9,7 @@
 ## August 15, 2026 - Accessible App Settings Controls
 
 - Named the Language, Timezone, Date Format, Time Format, and custom theme-colour controls in desktop App Settings.
-- Theme-colour choices now expose selected state, and the optional favourite action supports the declared `F` keyboard shortcut alongside double-click.
+- Theme-colour choices and the RTL/LTR controls now expose current state, and the optional favourite action supports the declared `F` keyboard shortcut alongside double-click.
 - This is browser-local settings accessibility only; it adds no Firebase, provider, tenant, store, project, entitlement, public-data, dependency, direct deployment, or production operation.
 
 ## August 15, 2026 - Official Page Accessible Accent Reset

@@ -103,6 +103,13 @@ for (const [sourcePath, ariaLabel] of [
     assert.ok(source.includes(ariaLabel), `${sourcePath} must expose ${ariaLabel}`);
 }
 
+const appSettingsPanelSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/organisms/appSettings/index.tsx'),
+    'utf8',
+);
+assert.match(appSettingsPanelSource, /aria-pressed=\{isRTLDirection\}/);
+assert.match(appSettingsPanelSource, /aria-pressed=\{!isRTLDirection\}/);
+
 assert.equal(
     matchesKeyboardShortcut(
         { key: 'k', ctrlKey: false, metaKey: true, shiftKey: false },

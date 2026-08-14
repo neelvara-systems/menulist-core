@@ -132,6 +132,7 @@ const AppSettingsPanel = () => {
                 <TextElement text={t('textDirection')} size="medium" />
                 <Flex gap={10}>
                   <Button
+                    aria-pressed={isRTLDirection}
                     block
                     onClick={() => dispatch(toggleRTLDirection(true))}
                     size="large"
@@ -142,6 +143,7 @@ const AppSettingsPanel = () => {
                     {t('rtl')}
                   </Button>
                   <Button
+                    aria-pressed={!isRTLDirection}
                     block
                     onClick={() => dispatch(toggleRTLDirection(false))}
                     size="large"
