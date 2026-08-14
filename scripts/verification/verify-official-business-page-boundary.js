@@ -186,6 +186,11 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileBasic, 'ownsMobileBasicOptimisticValues(previous, optimisticUpdates)', 'mobile exact optimistic rollback ownership');
   assertIncludes(mobileBasic, '? { ...previous, ...previousOptimisticValues }', 'mobile canonical field rollback projection');
   assertIncludes(mobileOfficial, 'normalizeOwnerPublicPresenceLinks(publicPresenceDraft)', 'mobile owner public-link boundary');
+  assertIncludes(officialTab, "name={['publicPresence', 'iconVariant']}", 'desktop registered icon variant field');
+  assertIncludes(officialTab, "getValueProps={(value) => ({ checked: value === 'emoji' })}", 'desktop icon variant checked projection');
+  assertIncludes(officialTab, "getValueFromEvent={(checked: boolean) => checked ? 'emoji' : 'icons'}", 'desktop icon variant persistence projection');
+  assertIncludes(officialTab, "<Switch aria-label={t('obpUseEmojiIcons')} />", 'desktop accessible icon variant switch');
+  assertIncludes(mobileOfficial, "aria-label={t('obpUseEmojiIcons')}", 'mobile accessible icon variant switch');
   assertIncludes(mobileOfficial, 'businessCopyMeta: previousBusinessCopyMeta', 'mobile optimistic metadata rollback');
   assertIncludes(mobileOfficial, '&& previous?.businessCopyMeta === payload.businessCopyMeta', 'mobile attempt-owned metadata rollback');
   assertIncludes(mobileOfficial, '&& previous?.publicPresence === payload.publicPresence', 'mobile attempt-owned presence rollback');

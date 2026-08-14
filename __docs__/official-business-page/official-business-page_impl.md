@@ -837,6 +837,13 @@ originates inside `.ant-picker`; the picker still receives the key, while the
 owner must use the explicit Save Changes action to persist the wider Business
 Settings form. Other form submission paths are unchanged.
 
+The desktop OBP icon-style control is a registered `publicPresence.iconVariant`
+form field. Its switch maps `icons`/`emoji` to checked state and back before the
+explicit Save Changes action, so the preference cannot become a visually inert
+unregistered draft. Desktop and mobile expose the localized control label as
+the switch's accessible name. Public rendering continues to consume the same
+persisted `icons`/`emoji` value.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  

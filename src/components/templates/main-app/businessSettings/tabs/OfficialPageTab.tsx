@@ -138,7 +138,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             businessType,
             photos,
         }), [businessCategory, businessType, photos, watchedBusinessCover]);
-        const watchedIconVariant = Form.useWatch(['publicPresence', 'iconVariant']) || publicPresence?.iconVariant || 'icons';
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
         const referenceLanguage = getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
@@ -1029,14 +1028,14 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 <LuSmile size={16} />
                                 <Text>{t('obpUseEmojiIcons')}</Text>
                             </Flex>
-                            <Switch
-                                checked={watchedIconVariant === 'emoji'}
-                                onChange={(checked) => {
-                                    const nextVariant = checked ? 'emoji' : 'icons';
-                                    form.setFieldValue(['publicPresence', 'iconVariant'], nextVariant);
-                                    onPublicPresenceChange?.('iconVariant', nextVariant);
-                                }}
-                            />
+                            <Form.Item
+                                name={['publicPresence', 'iconVariant']}
+                                noStyle
+                                getValueProps={(value) => ({ checked: value === 'emoji' })}
+                                getValueFromEvent={(checked: boolean) => checked ? 'emoji' : 'icons'}
+                            >
+                                <Switch aria-label={t('obpUseEmojiIcons')} />
+                            </Form.Item>
                         </Flex>
                     </Form.Item>
 

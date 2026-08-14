@@ -1794,6 +1794,7 @@ function MobileOfficialPageScreenContent({
                                 <Text>{t('obpUseEmojiIcons')}</Text>
                             </Flex>
                             <Switch
+                                aria-label={t('obpUseEmojiIcons')}
                                 checked={formData.iconVariant === 'emoji'}
                                 onChange={(value) => setFormData((previous) => ({ ...previous, iconVariant: value ? 'emoji' : 'icons' }))}
                             />

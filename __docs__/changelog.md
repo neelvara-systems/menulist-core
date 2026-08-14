@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Official Page Icon Style Persistence
+
+- Registered the desktop Official Business Page icon-style switch with the parent form so `icons`/`emoji` changes reach the existing explicit Save Changes path.
+- Added localized accessible names to the desktop and mobile icon-style switches and extended the OBP source gate.
+- This uses the existing store update and public projection. It changes no Firebase schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 14, 2026 - Temporary Status Controlled Confirmations
 
 - Replaced the desktop Temporary Status static set/clear dialogs with controlled confirmation modals owned by the hydrated card.
