@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Official Page Visibility Control Accessibility
+
+- Added localized accessible names to all seven mobile Official Business Page action-visibility switches and all three policy-link switches.
+- Extended the OBP source gate while preserving the existing desktop/mobile save paths and public hide-on-explicit-false projection.
+- This changes no Firebase operation shape, schema, rule, index, Function, provider, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Official Page Icon Style Persistence
 
 - Registered the desktop Official Business Page icon-style switch with the parent form so `icons`/`emoji` changes reach the existing explicit Save Changes path.

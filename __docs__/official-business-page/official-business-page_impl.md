@@ -844,6 +844,13 @@ unregistered draft. Desktop and mobile expose the localized control label as
 the switch's accessible name. Public rendering continues to consume the same
 persisted `icons`/`emoji` value.
 
+The seven action-visibility switches and three policy-link switches remain
+registered values in the desktop Business Settings form and fields in the
+mobile OBP draft. Every matching mobile switch exposes its localized visible
+label as its accessible name. Saving the complete visibility set still uses
+one existing store update, and the public OBP continues to treat only explicit
+`false` as hidden.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  

@@ -1811,49 +1811,49 @@ function MobileOfficialPageScreenContent({
                                 {renderQuickActionSettingIcon('☎️', <LuPhone size={16} />)}
                                 <Text>{t('showCallButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showCall} onChange={(value) => setFormData((previous) => ({ ...previous, showCall: value }))} />
+                            <Switch aria-label={t('showCallButton')} checked={formData.showCall} onChange={(value) => setFormData((previous) => ({ ...previous, showCall: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('🟢', <LuMessageSquare size={16} />)}
                                 <Text>{t('showWhatsAppButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showWhatsApp} onChange={(value) => setFormData((previous) => ({ ...previous, showWhatsApp: value }))} />
+                            <Switch aria-label={t('showWhatsAppButton')} checked={formData.showWhatsApp} onChange={(value) => setFormData((previous) => ({ ...previous, showWhatsApp: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('📍', <LuMapPin size={16} />)}
                                 <Text>{t('showDirectionsButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showDirections} onChange={(value) => setFormData((previous) => ({ ...previous, showDirections: value }))} />
+                            <Switch aria-label={t('showDirectionsButton')} checked={formData.showDirections} onChange={(value) => setFormData((previous) => ({ ...previous, showDirections: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('📅', <LuCalendar size={16} />)}
                                 <Text>{t('showReservationButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showReservation} onChange={(value) => setFormData((previous) => ({ ...previous, showReservation: value }))} />
+                            <Switch aria-label={t('showReservationButton')} checked={formData.showReservation} onChange={(value) => setFormData((previous) => ({ ...previous, showReservation: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('🛍️', <LuShoppingBag size={16} />)}
                                 <Text>{t('showOrderButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showOrder} onChange={(value) => setFormData((previous) => ({ ...previous, showOrder: value }))} />
+                            <Switch aria-label={t('showOrderButton')} checked={formData.showOrder} onChange={(value) => setFormData((previous) => ({ ...previous, showOrder: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('⭐', <LuStar size={16} />)}
                                 <Text>{t('showGoogleReviewButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showGoogleReview} onChange={(value) => setFormData((previous) => ({ ...previous, showGoogleReview: value }))} />
+                            <Switch aria-label={t('showGoogleReviewButton')} checked={formData.showGoogleReview} onChange={(value) => setFormData((previous) => ({ ...previous, showGoogleReview: value }))} />
                         </Flex>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
                                 {renderQuickActionSettingIcon('💬', <LuMessageSquarePlus size={16} />)}
                                 <Text>{t('showFeedbackButton')}</Text>
                             </Flex>
-                            <Switch checked={formData.showFeedback} onChange={(value) => setFormData((previous) => ({ ...previous, showFeedback: value }))} />
+                            <Switch aria-label={t('showFeedbackButton')} checked={formData.showFeedback} onChange={(value) => setFormData((previous) => ({ ...previous, showFeedback: value }))} />
                         </Flex>
                     </Flex>
                 </Card>
@@ -1874,7 +1874,7 @@ function MobileOfficialPageScreenContent({
                                         />
                                         <Text>{t('showPrivacyLink')}</Text>
                                     </Flex>
-                                    <Switch checked={formData.showPrivacyLink} onChange={(value) => setFormData((previous) => ({ ...previous, showPrivacyLink: value }))} />
+                                    <Switch aria-label={t('showPrivacyLink')} checked={formData.showPrivacyLink} onChange={(value) => setFormData((previous) => ({ ...previous, showPrivacyLink: value }))} />
                                 </Flex>
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
@@ -1887,7 +1887,7 @@ function MobileOfficialPageScreenContent({
                                         />
                                         <Text>{t('showTermsLink')}</Text>
                                     </Flex>
-                                    <Switch checked={formData.showTermsLink} onChange={(value) => setFormData((previous) => ({ ...previous, showTermsLink: value }))} />
+                                    <Switch aria-label={t('showTermsLink')} checked={formData.showTermsLink} onChange={(value) => setFormData((previous) => ({ ...previous, showTermsLink: value }))} />
                                 </Flex>
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
@@ -1900,7 +1900,7 @@ function MobileOfficialPageScreenContent({
                                         />
                                         <Text>{t('showRefundLink')}</Text>
                                     </Flex>
-                                    <Switch checked={formData.showRefundLink} onChange={(value) => setFormData((previous) => ({ ...previous, showRefundLink: value }))} />
+                                    <Switch aria-label={t('showRefundLink')} checked={formData.showRefundLink} onChange={(value) => setFormData((previous) => ({ ...previous, showRefundLink: value }))} />
                                 </Flex>
                             </Flex>
                         </Card>

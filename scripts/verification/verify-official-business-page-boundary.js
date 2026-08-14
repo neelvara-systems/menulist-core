@@ -191,6 +191,24 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(officialTab, "getValueFromEvent={(checked: boolean) => checked ? 'emoji' : 'icons'}", 'desktop icon variant persistence projection');
   assertIncludes(officialTab, "<Switch aria-label={t('obpUseEmojiIcons')} />", 'desktop accessible icon variant switch');
   assertIncludes(mobileOfficial, "aria-label={t('obpUseEmojiIcons')}", 'mobile accessible icon variant switch');
+  for (const translationKey of [
+    'showCallButton',
+    'showWhatsAppButton',
+    'showDirectionsButton',
+    'showReservationButton',
+    'showOrderButton',
+    'showGoogleReviewButton',
+    'showFeedbackButton',
+    'showPrivacyLink',
+    'showTermsLink',
+    'showRefundLink',
+  ]) {
+    assertIncludes(
+      mobileOfficial,
+      `aria-label={t('${translationKey}')}`,
+      `mobile accessible OBP visibility switch ${translationKey}`,
+    );
+  }
   assertIncludes(mobileOfficial, 'businessCopyMeta: previousBusinessCopyMeta', 'mobile optimistic metadata rollback');
   assertIncludes(mobileOfficial, '&& previous?.businessCopyMeta === payload.businessCopyMeta', 'mobile attempt-owned metadata rollback');
   assertIncludes(mobileOfficial, '&& previous?.publicPresence === payload.publicPresence', 'mobile attempt-owned presence rollback');

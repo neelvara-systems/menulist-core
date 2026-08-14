@@ -73,6 +73,7 @@ OBP has TWO surfaces — each assessed separately:
 - Descriptor, known for, special note, links, rating fields, action visibility, policy links
 - Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
 - Public-page icon style with a localized accessible switch name and the same persisted `publicPresence.iconVariant` value as desktop
+- All seven customer-action visibility switches and all three policy-link switches use their localized visible text as accessible names and persist through the same mobile OBP draft/save path
 - Desktop and mobile initialize controlled attributes through the same known-key/strict-boolean runtime boundary used by public projections, so malformed legacy values cannot appear enabled or be resaved as owner truth.
 - Business photo gallery with shared media upload and per-photo action sheet
 
