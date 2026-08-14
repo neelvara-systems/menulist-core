@@ -426,12 +426,22 @@ These remain open and must never be marked complete without direct evidence:
 
 ## Next Certification Action
 
-Complete the remaining ML-QA-010 logout/relogin, stale-session, and explicit
-permission-denial cases only when disposable credentials or a bounded fixture
-make them safe. Continue ML-QA-020 with before/after proof for one authorized
-valid intake without recreating or deleting the retained `2/2` project.
-ML-QA-011 remains blocked until true handheld browser evidence is available; a
-narrow desktop viewport is not a substitute.
-Continue the read-only owner-route matrix after the auth-sync limiter cools;
-do not treat the expected bounded `429` from the rapid navigation sweep as a
-feature failure or bypass it.
+Do not fabricate the remaining fixture-dependent evidence:
+
+- ML-QA-010 logout/relogin and stale-session recovery require disposable QA
+  credentials whose recovery path can be completed without exposing secrets.
+- ML-QA-020/040/050/070 require an explicitly authorized entitled disposable
+  `2/2`-family store before intake, project/menu CRUD, publish, link, QR, or
+  asset success can be mutated and cleaned up. Retained `1/1` remains
+  Razorpay-Test-only.
+- ML-QA-011 and the mobile remainder require true handheld Chrome/MobileShell
+  evidence; a narrow desktop viewport is not a substitute.
+- ML-QA-031/101 successful data paths require repaired/authorized Feedback and
+  Answerlattice QA backing data, respectively.
+- ML-QA-090 final checkout remains owner-assisted Razorpay Test Mode only.
+- ML-QA-110 elevated success requires explicitly authorized PLATFORM and
+  RESELLER fixtures. Ordinary-owner denial is complete under ML-QA-111.
+
+Within the retained ordinary-owner fixture, continue only reversible
+Business Settings/App Settings checks that preserve the captured baseline and
+do not open physical screens, provider handoffs, or paid operations.
