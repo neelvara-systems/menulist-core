@@ -1,5 +1,6 @@
 import { Button, Card, Flex, Input, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRef } from 'react';
 import { LuMessageCircle, LuPlus, LuTrash, LuX } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -28,6 +29,24 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
     const t = useTranslations('BusinessSettings');
     const defaultPlatformKeys = defaultPlatforms.map((platform) => platform.key);
     const customPlatforms = Object.entries(socialMedia).filter(([key]) => !defaultPlatformKeys.includes(key) && key !== 'whatsapp');
+    const customPlatformRowIdsRef = useRef(new Map<string, string>());
+    const nextCustomPlatformRowIdRef = useRef(1);
+
+    const getCustomPlatformRowId = (platformKey: string) => {
+        const existingId = customPlatformRowIdsRef.current.get(platformKey);
+        if (existingId) return existingId;
+
+        const nextId = `custom-social-platform-${nextCustomPlatformRowIdRef.current}`;
+        nextCustomPlatformRowIdRef.current += 1;
+        customPlatformRowIdsRef.current.set(platformKey, nextId);
+        return nextId;
+    };
+
+    const transferCustomPlatformRowId = (previousKey: string, nextKey: string) => {
+        const rowId = getCustomPlatformRowId(previousKey);
+        customPlatformRowIdsRef.current.delete(previousKey);
+        customPlatformRowIdsRef.current.set(nextKey, rowId);
+    };
 
     return (
         <Card size='small' ref={scrollRef}>
@@ -85,7 +104,7 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                 {customPlatforms.length > 0 ? (
                     <Flex vertical gap={12}>
                         {customPlatforms.map(([key, value]) => (
-                            <Card key={key} size="small">
+                            <Card key={getCustomPlatformRowId(key)} size="small">
                                 <Flex gap={10} vertical>
                                     <Flex align="center" gap={8}>
                                         <Input
@@ -95,10 +114,16 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                             placeholder={t('platformName')}
                                             value={key}
                                             onChange={(e) => {
-                                                if (e.target.value && e.target.value !== key) {
+                                                const nextKey = e.target.value.toLowerCase();
+                                                if (
+                                                    nextKey
+                                                    && nextKey !== key
+                                                    && !Object.prototype.hasOwnProperty.call(socialMedia, nextKey)
+                                                ) {
                                                     const newState = { ...socialMedia };
                                                     delete newState[key];
-                                                    newState[e.target.value.toLowerCase()] = value;
+                                                    newState[nextKey] = value;
+                                                    transferCustomPlatformRowId(key, nextKey);
                                                     setSocialMedia(newState);
                                                 }
                                             }}
@@ -110,6 +135,7 @@ const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia,
                                             onClick={() => {
                                                 const newState = { ...socialMedia };
                                                 delete newState[key];
+                                                customPlatformRowIdsRef.current.delete(key);
                                                 setSocialMedia(newState);
                                             }}
                                         />

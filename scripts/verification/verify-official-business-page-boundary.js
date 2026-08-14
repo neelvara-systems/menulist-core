@@ -236,6 +236,8 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(socialMediaTab, 'aria-label={placeholder}', 'desktop named default social inputs');
   assertIncludes(socialMediaTab, 'aria-label={`Clear ${placeholder}`}', 'desktop named default social clear actions');
   assertIncludes(socialMediaTab, 'aria-label={`Remove ${key}`}', 'desktop named custom social removal');
+  assertIncludes(socialMediaTab, 'key={getCustomPlatformRowId(key)}', 'desktop stable custom social row identity');
+  assertIncludes(socialMediaTab, 'transferCustomPlatformRowId(key, nextKey)', 'desktop custom social rename focus continuity');
   assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLink(', 'mobile shared single social-link boundary');
   assertIncludes(mobileAdvancedSettings, 'normalizeOwnerSocialMediaLinks(socialMedia)', 'mobile shared full social-map boundary');
   assertIncludes(mobileAdvancedSettings, 'aria-label={`Open ${platform.label}`}', 'mobile named social open action');
