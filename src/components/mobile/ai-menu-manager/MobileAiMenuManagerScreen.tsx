@@ -185,7 +185,7 @@ export default function MobileAiMenuManagerScreen({
     const [digitalScreenToken, setDigitalScreenToken] = useState<string | undefined>();
     useEffect(() => {
         let active = true;
-        if (!canAccessDigitalScreens) {
+        if (!canAccessDigitalScreens || !selectedProjectId) {
             setDigitalScreenToken(undefined);
             return () => {
                 active = false;
@@ -204,7 +204,7 @@ export default function MobileAiMenuManagerScreen({
         return () => {
             active = false;
         };
-    }, [canAccessDigitalScreens, (storeDetails as any)?.storeId]);
+    }, [canAccessDigitalScreens, selectedProjectId, (storeDetails as any)?.storeId]);
     const storePublicContext = useMemo(() => ({
         customDomain: (storeDetails as any)?.customDomain,
         screenToken: canAccessDigitalScreens ? digitalScreenToken : undefined,

@@ -852,6 +852,7 @@ Desktop route:
 - card Edit drafts an owner-readable command back into the composer instead of mutating the pending card silently.
 - pending/history side panel; receipts remain visible in the main conversation timeline.
 - project discovery has three explicit pre-composer states: loading stays plain, a failed menu-list or selected-menu/inbox read uses a persistent retryable recovery state, and a successful zero-menu result routes the owner to `/projects`. The selector says `No menu selected` or `Menus unavailable`; it never fabricates `Untitled` when no project exists. Pending/receipt claims and all drafting controls remain unavailable until a real selected project and inbox are loaded.
+- optional Digital Screen context is not requested until a real menu is selected. Confirmed zero-menu and project-list recovery states therefore add no screen-state read or related runtime failure.
 
 Mobile:
 
