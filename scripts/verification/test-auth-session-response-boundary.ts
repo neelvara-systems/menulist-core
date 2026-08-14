@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { normalizeLoginUserSession } from '@lib/auth/loginSessionBoundary';
+import {
+    doesClientSessionMatchTrustedServerSession,
+    normalizeLoginUserSession,
+} from '@lib/auth/loginSessionBoundary';
 
 const validSession = {
     authIssuedAt: 1_720_000_000,
@@ -75,6 +78,26 @@ assert.equal(
 const dateExpiry = clone();
 dateExpiry.expires = new Date(validSession.expires) as unknown as string;
 assert.equal(normalizeLoginUserSession(dateExpiry), null, 'Date objects must not cross the JSON session boundary');
+
+const trustedServerComponentSession = clone() as Partial<typeof validSession>;
+delete trustedServerComponentSession.expires;
+assert.equal(
+    normalizeLoginUserSession(trustedServerComponentSession),
+    null,
+    'the public JSON boundary must continue to reject sessions without an expiry',
+);
+assert.equal(
+    doesClientSessionMatchTrustedServerSession(trustedServerComponentSession, normalized),
+    true,
+    'a complete client session must match the expiry-stripped Server Component projection',
+);
+const mismatchedTrustedServerSession = structuredClone(trustedServerComponentSession);
+mismatchedTrustedServerSession.uId = 'user-2';
+assert.equal(
+    doesClientSessionMatchTrustedServerSession(mismatchedTrustedServerSession, normalized),
+    false,
+    'server and client identity aliases must agree before client state is exposed',
+);
 
 const looseDateString = clone();
 looseDateString.expires = '2026';

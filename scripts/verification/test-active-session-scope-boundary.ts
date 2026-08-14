@@ -5,7 +5,7 @@ import path from 'node:path';
 import getActiveSession, {
     clearClientSessionCache,
     getProductScopedClientSession,
-    primeClientSessionCacheFromTrustedSession,
+    refreshClientSessionCacheFromApi,
 } from '@lib/auth/getActiveSession';
 import type LoginUserType from '@type/loginUser';
 
@@ -65,7 +65,7 @@ assert.ok(menuListAfterAnswerlattice);
 assert.equal(menuListAfterAnswerlattice.tId, 11);
 assert.equal(menuListAfterAnswerlattice.sId, 22);
 
-const verifyTrustedSessionCacheBoundary = async () => {
+const verifyClientSessionRefreshBoundary = async () => {
     const originalWindow = globalThis.window;
     const originalFetch = globalThis.fetch;
     let sessionFetchCount = 0;
@@ -85,22 +85,22 @@ const verifyTrustedSessionCacheBoundary = async () => {
     });
     globalThis.fetch = async () => {
         sessionFetchCount += 1;
-        throw new Error('the trusted provider session should avoid a duplicate session fetch');
+        return new Response(JSON.stringify(session), {
+            headers: { 'content-type': 'application/json' },
+            status: 200,
+        });
     };
 
     try {
         clearClientSessionCache();
-        assert.equal(primeClientSessionCacheFromTrustedSession(session), true);
+        const refreshedSession = await refreshClientSessionCacheFromApi();
+        assert.equal(refreshedSession?.uId, session.uId);
+        assert.equal(sessionFetchCount, 1, 'the provider must refresh the complete JSON session once');
         const primedSession = await getActiveSession();
         assert.equal(primedSession?.uId, session.uId);
         assert.equal(primedSession?.tId, session.tId);
         assert.equal(primedSession?.sId, session.sId);
-        assert.equal(sessionFetchCount, 0);
-        assert.equal(
-            primeClientSessionCacheFromTrustedSession({ user: { id: 'incomplete' } }),
-            false,
-            'invalid trusted-session input must clear rather than retain the prior identity',
-        );
+        assert.equal(sessionFetchCount, 1, 'the refreshed session must seed the short-lived DAL cache');
         clearClientSessionCache();
     } finally {
         Object.defineProperty(globalThis, 'window', {
@@ -111,7 +111,7 @@ const verifyTrustedSessionCacheBoundary = async () => {
     }
 };
 
-const trustedSessionCacheBoundary = verifyTrustedSessionCacheBoundary();
+const clientSessionRefreshBoundary = verifyClientSessionRefreshBoundary();
 
 const activeSessionSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/lib/auth/getActiveSession.ts'),
@@ -155,22 +155,27 @@ assert.doesNotMatch(
 );
 assert.match(
     activeSessionSource,
-    /clientSessionGeneration \+= 1;\s+clientSessionRequest = null;\s+clientSessionCache = normalizedSession;/,
-    'trusted-session priming must invalidate an older request before replacing raw session memory',
+    /refreshClientSessionCacheFromApi[\s\S]*clientSessionGeneration \+= 1;[\s\S]*clientSessionCache = null;/,
+    'an explicit provider refresh must invalidate older client identity before starting its request',
 );
 
 const sessionProviderSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/providers/sessionProvider.tsx'),
     'utf8',
 );
-const trustedPrimeIndex = sessionProviderSource.indexOf(
-    'primeClientSessionCacheFromTrustedSession(session)',
+const clientRefreshIndex = sessionProviderSource.indexOf(
+    'refreshClientSessionCacheFromApi()',
 );
 const exposeStoreIndex = sessionProviderSource.indexOf('setLoginStoreDetails(fetchedStore);');
-assert.ok(trustedPrimeIndex >= 0, 'the authenticated provider must prime the client DAL session cache');
+assert.ok(clientRefreshIndex >= 0, 'the authenticated provider must refresh the complete client session');
 assert.ok(
-    trustedPrimeIndex < exposeStoreIndex,
-    'the provider must prime the client DAL session before exposing bootstrapped store data',
+    clientRefreshIndex < exposeStoreIndex,
+    'the provider must refresh the complete client session before exposing bootstrapped store data',
+);
+assert.doesNotMatch(
+    sessionProviderSource,
+    /<Provider\s+session=\{session\}/,
+    'the NextAuth client context must not receive the expiry-stripped Server Component session',
 );
 
 const sessionCleanupSource = fs.readFileSync(
@@ -183,6 +188,6 @@ assert.match(
     'authenticated browser cleanup must invalidate raw session memory before other tenant state',
 );
 
-trustedSessionCacheBoundary.then(() => {
+clientSessionRefreshBoundary.then(() => {
     console.log('Active session product-scope boundary tests passed.');
 });

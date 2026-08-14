@@ -27,22 +27,6 @@ export const clearClientSessionCache = (): void => {
     clientSessionRequest = null;
 };
 
-/**
- * Seed the client DAL session cache from the server-validated session passed to
- * the authenticated provider. Invalid input clears any prior identity instead
- * of preserving stale tenant state.
- */
-export const primeClientSessionCacheFromTrustedSession = (session: unknown): boolean => {
-    const normalizedSession = normalizeLoginUserSession(session);
-
-    clientSessionGeneration += 1;
-    clientSessionRequest = null;
-    clientSessionCache = normalizedSession;
-    clientSessionCacheAt = normalizedSession ? Date.now() : 0;
-
-    return Boolean(normalizedSession);
-};
-
 const readClientSessionResponseJson = async (response: Response): Promise<unknown> => {
     try {
         return await readJsonResponseWithLimit<unknown>(response, AUTH_SESSION_RESPONSE_JSON_MAX_BYTES);
@@ -119,6 +103,57 @@ const getClientSessionFromApi = async (): Promise<LoginUserType | null> => {
         throw invalid;
     }
     return session;
+};
+
+/**
+ * Server Components intentionally receive a NextAuth session without its
+ * expiry. Refresh the complete JSON boundary once before exposing client
+ * session consumers or tenant-scoped DAL state.
+ */
+export const refreshClientSessionCacheFromApi = async (): Promise<LoginUserType | null> => {
+    if (typeof window === 'undefined') {
+        throw createAuthDiagnosticError('Client session refresh requires a browser');
+    }
+
+    clientSessionGeneration += 1;
+    const requestGeneration = clientSessionGeneration;
+    clientSessionCache = null;
+    clientSessionCacheAt = 0;
+
+    const request = getClientSessionFromApi();
+    clientSessionRequest = request;
+    logAuthDiagnostic('auth_session_refresh_start', {
+        ...getBoundedAuthStringContext('pathname', window.location.pathname),
+        ...getBoundedAuthStringContext('hostname', window.location.hostname),
+    }, { developmentOnly: true });
+
+    try {
+        const session = await request;
+        if (
+            requestGeneration !== clientSessionGeneration
+            || clientSessionRequest !== request
+        ) {
+            return null;
+        }
+        clientSessionCache = session;
+        clientSessionCacheAt = session ? Date.now() : 0;
+        logAuthDiagnostic(
+            'auth_session_refresh_success',
+            getAuthSessionLogContext(session),
+            { developmentOnly: true },
+        );
+        return session;
+    } catch (error) {
+        logAuthFailure('auth_session_refresh_failed', error, {
+            ...getBoundedAuthStringContext('pathname', window.location.pathname),
+            ...getBoundedAuthStringContext('hostname', window.location.hostname),
+        });
+        throw error;
+    } finally {
+        if (clientSessionRequest === request) {
+            clientSessionRequest = null;
+        }
+    }
 };
 
 export const getProductScopedClientSession = (

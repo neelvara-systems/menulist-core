@@ -11,7 +11,8 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { readTenantById } from '@database/tenants';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
-import { primeClientSessionCacheFromTrustedSession } from '@lib/auth/getActiveSession';
+import { refreshClientSessionCacheFromApi } from '@lib/auth/getActiveSession';
+import { doesClientSessionMatchTrustedServerSession } from '@lib/auth/loginSessionBoundary';
 import {
     createFirebaseBootstrapError,
     getBoundedFirebaseStringContext,
@@ -132,6 +133,10 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
+    const [clientProviderSession, setClientProviderSession] = useState<LoginUserType | null | undefined>(
+        session ? undefined : null,
+    )
+    const [clientSessionSyncError, setClientSessionSyncError] = useState<Error | null>(null)
     const [firebaseAuthReadyScopeKey, setFirebaseAuthReadyScopeKey] = useState<string | null>(null)
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
@@ -139,8 +144,11 @@ export default function SessionProvider({ children, session }: Props) {
     const normalizedPathname = pathname === '/' ? pathname : (pathname || '').replace(/\/+$/, '');
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
-    const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(session) : null;
-    const effectiveSession = isAnswerlatticeRoute ? getAnswerlatticeScopedSession(session as any) : session;
+    const authenticatedSession = clientProviderSession ?? session;
+    const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(authenticatedSession) : null;
+    const effectiveSession = isAnswerlatticeRoute
+        ? getAnswerlatticeScopedSession(authenticatedSession as LoginUserType | null)
+        : authenticatedSession;
     const requiresFirebaseAuth = Boolean(
         effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId,
     );
@@ -243,6 +251,55 @@ export default function SessionProvider({ children, session }: Props) {
         let cancelled = false;
 
         if (!session) {
+            setClientProviderSession(null);
+            setClientSessionSyncError(null);
+            return;
+        }
+
+        setClientProviderSession(undefined);
+        setClientSessionSyncError(null);
+
+        refreshClientSessionCacheFromApi()
+            .then((refreshedSession) => {
+                if (!doesClientSessionMatchTrustedServerSession(session, refreshedSession)) {
+                    throw createFirebaseBootstrapError(
+                        'Client session does not match the authenticated server session',
+                        'session_provider_client_session_mismatch',
+                    );
+                }
+                if (!cancelled) {
+                    setClientProviderSession(refreshedSession);
+                }
+            })
+            .catch((error) => {
+                const normalizedError = new Error('Client session validation failed');
+                logFirebaseBootstrapFailure('session_provider_client_session_refresh_failed', error, {
+                    ...getFirebaseAuthSessionLogContext(session),
+                });
+                if (!cancelled) {
+                    setClientProviderSession(null);
+                    setClientSessionSyncError(normalizedError);
+                    setActiveSubscriptionLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        session?.authIssuedAt,
+        session?.pId,
+        session?.role,
+        session?.sId,
+        session?.tId,
+        session?.uId,
+        session?.user?.id,
+    ]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!session) {
             setFirebaseAuthReadyScopeKey(null);
             setFirebaseAuthSyncError(null);
             return;
@@ -337,6 +394,10 @@ export default function SessionProvider({ children, session }: Props) {
             return;
         }
 
+        if (session && !clientProviderSession) {
+            return;
+        }
+
         if (effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId && !firebaseAuthReady) {
             return;
         }
@@ -344,7 +405,7 @@ export default function SessionProvider({ children, session }: Props) {
         // Create a key from relevant session data for comparison
         const currentSessionKey = JSON.stringify({
             user: effectiveSession?.user,
-            expires: session?.expires
+            expires: clientProviderSession?.expires
         });
 
         // Skip if session data hasn't meaningfully changed
@@ -415,10 +476,10 @@ export default function SessionProvider({ children, session }: Props) {
                         );
                     }
 
-                    if (!primeClientSessionCacheFromTrustedSession(session)) {
+                    if (!doesClientSessionMatchTrustedServerSession(session, clientProviderSession ?? null)) {
                         throw createFirebaseBootstrapError(
-                            'Store bootstrap received an invalid authenticated session',
-                            'session_provider_session_prime_failed',
+                            'Store bootstrap received a mismatched authenticated session',
+                            'session_provider_client_session_mismatch',
                         );
                     }
 
@@ -495,6 +556,7 @@ export default function SessionProvider({ children, session }: Props) {
     }, [
         effectiveSession?.user?.storeId,
         effectiveSession?.user?.tenantId,
+        clientProviderSession,
         fetchActiveSubscriptionForStore,
         firebaseAuthReady,
         isAnswerlatticeRoute,
@@ -860,9 +922,17 @@ export default function SessionProvider({ children, session }: Props) {
     const providerStateMatchesCurrentSession = providerSessionScopeKeyRef.current === undefined
         || providerSessionScopeKeyRef.current === renderedProviderScopeKey;
 
+    if (session && !clientProviderSession && !clientSessionSyncError) {
+        return <BrandedPageLoader page="Validating Account" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />;
+    }
+
+    if (session && clientSessionSyncError) {
+        return <BrandedPageLoader page="Unable to validate account" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />;
+    }
+
     return (
         <Provider
-            session={session}
+            session={clientProviderSession as Session | null}
             refetchInterval={0}              // ✅ Disable auto-polling (was causing 15+ calls)
             refetchOnWindowFocus={false}     // ✅ Disable refetch on window focus
         >

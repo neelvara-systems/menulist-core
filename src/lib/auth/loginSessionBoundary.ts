@@ -361,3 +361,32 @@ export const normalizeLoginUserSession = (value: unknown): LoginUserType | null 
         return null;
     }
 };
+
+/**
+ * NextAuth removes `expires` from Server Component sessions. Validate that
+ * trusted server projection by borrowing only the already-validated client
+ * expiry, then require the stable identity and authorization aliases to agree.
+ */
+export const doesClientSessionMatchTrustedServerSession = (
+    trustedServerSession: unknown,
+    clientSession: LoginUserType | null,
+): boolean => {
+    try {
+        if (!clientSession || !isRecord(trustedServerSession)) return false;
+        const normalizedServerSession = normalizeLoginUserSessionValue({
+            ...trustedServerSession,
+            expires: clientSession.expires,
+        });
+        if (!normalizedServerSession) return false;
+
+        return normalizedServerSession.uId === clientSession.uId
+            && normalizedServerSession.tId === clientSession.tId
+            && normalizedServerSession.sId === clientSession.sId
+            && normalizedServerSession.pId === clientSession.pId
+            && normalizedServerSession.platformRole === clientSession.platformRole
+            && normalizedServerSession.role === clientSession.role
+            && normalizedServerSession.authIssuedAt === clientSession.authIssuedAt;
+    } catch {
+        return false;
+    }
+};
