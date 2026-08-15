@@ -125,7 +125,7 @@ const INITIAL_FORM: MenuPdfCleanupInput = {
   mode: 'self_report',
   businessName: '',
   cityOrArea: '',
-  sourceKind: 'menu_pdf',
+  sourceKind: 'unknown_pdf',
   pdfLocation: 'unknown',
   pdfReference: '',
   lastUpdated: 'unknown',

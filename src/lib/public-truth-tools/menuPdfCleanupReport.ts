@@ -187,7 +187,11 @@ export function buildMenuPdfCleanupReport(input: MenuPdfCleanupInput): MenuPdfCl
           : sourcePresent
             ? 'unclear'
           : 'not_checked',
-      sourcePresent ? 'owner_selected' : 'not_checked',
+      !sourcePresent
+        ? 'not_checked'
+        : input.oldVersionsRemoved || input.qrOrPrintStillUsesPdf
+          ? 'owner_selected'
+          : 'not_provided',
     ),
     makeCheck(
       'current_customer_link',

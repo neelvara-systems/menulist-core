@@ -139,6 +139,7 @@ assertIncludes(component, 'copyRuntimeTextToClipboard(reportText)', 'Menu PDF Cl
 assertIncludes(component, 'downloadTextFile(getSafeReportFilename(report), reportText)', 'Menu PDF Cleanup Check report download action');
 assertIncludes(component, "trackWebsiteMarketingEvent('menu_pdf_cleanup_check_completed'", 'Menu PDF Cleanup Check completion analytics');
 assertIncludes(component, "mode: 'self_report'", 'Menu PDF Cleanup Check input contract');
+assertIncludes(component, "sourceKind: 'unknown_pdf'", 'Menu PDF Cleanup Check honest empty-source default');
 
 assertIncludes(types, 'evidenceText: string', 'Menu PDF Cleanup Check evidence text type');
 assertIncludes(types, 'pdfUploaded: false', 'Menu PDF Cleanup Check upload boundary type');
@@ -161,6 +162,8 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Menu PDF Cleanup Check
 assertIncludes(report, 'aiOrSearchChecked: false', 'Menu PDF Cleanup Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Menu PDF Cleanup Check report ranking boundary');
 assertIncludes(report, 'getMenuPdfCleanupEvidenceText', 'Menu PDF Cleanup Check explicit evidence text');
+assertIncludes(report, "input.oldVersionsRemoved || input.qrOrPrintStillUsesPdf", 'Menu PDF Cleanup Check QR or print evidence selection');
+assertIncludes(report, ": 'not_provided'", 'Menu PDF Cleanup Check unconfirmed dependency evidence');
 assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'Menu PDF Cleanup Check public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'The PDF was not uploaded, opened, fetched, parsed, OCRed, or stored.', 'Menu PDF Cleanup Check upload/parser/OCR evidence boundary');
 assertIncludes(report, 'PDF files, external URLs, QR scans, print materials, search results, and AI answers were not inspected.', 'Menu PDF Cleanup Check external inspection evidence boundary');
