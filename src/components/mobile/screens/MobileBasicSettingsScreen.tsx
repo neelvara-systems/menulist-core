@@ -449,7 +449,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <LuBuilding2 size={14} />
                             <Text type="secondary">Brand Name</Text>
                         </Flex>
-                        <Input autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, tenantName: value }))} placeholder="Brand / chain name" value={formData.tenantName} />
+                        <Input aria-label="Brand name" autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, tenantName: value }))} placeholder="Brand / chain name" value={formData.tenantName} />
                     </Flex>
                 </Card>
 
@@ -459,7 +459,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <LuBuilding2 size={14} />
                             <Text type="secondary">{tBusiness('businessName')}</Text>
                         </Flex>
-                        <Input autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={tBusiness('businessNamePlaceholder')} value={formData.name} />
+                        <Input aria-label="Location name" autoCapitalize="words" onChange={(value) => setFormData((previous) => ({ ...previous, name: value }))} placeholder={tBusiness('businessNamePlaceholder')} value={formData.name} />
                     </Flex>
                 </Card>
 
@@ -470,6 +470,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <Text type="secondary">{tBusiness('businessType')}</Text>
                         </Flex>
                         <Select
+                            aria-label={tBusiness('businessType')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, businessType: value }))}
                             options={BUSINESS_TYPE_OPTIONS}
                             placeholder={tBusiness('selectBusinessType')}
@@ -484,7 +485,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <LuMail size={14} />
                             <Text type="secondary">{tBusiness('businessEmail')}</Text>
                         </Flex>
-                        <Input autoComplete="email" inputMode="email" name="businessEmail" onChange={(value) => setFormData((previous) => ({ ...previous, email: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.email} />
+                        <Input aria-label={tBusiness('businessEmail')} autoComplete="email" inputMode="email" name="businessEmail" onChange={(value) => setFormData((previous) => ({ ...previous, email: value }))} placeholder={tBusiness('emailPlaceholder')} type="email" value={formData.email} />
                     </Flex>
                 </Card>
 
@@ -495,6 +496,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <Text type="secondary">{tBusiness('phoneNumber')}</Text>
                         </Flex>
                         <Select
+                            aria-label="Business phone country code"
                             onChange={(value: string) => setFormData((previous) => ({
                                 ...previous,
                                 countryCode: value,
@@ -508,7 +510,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             placeholder="Country code"
                             value={formData.countryCode || DEFAULT_PHONE_COUNTRY_CODE}
                         />
-                        <Input autoComplete="tel" inputMode="tel" name="businessPhone" onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
+                        <Input aria-label="Business phone number" autoComplete="tel" inputMode="tel" name="businessPhone" onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
                     </Flex>
                 </Card>
 
@@ -519,6 +521,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <Text type="secondary">{tBusiness('contactPerson')}</Text>
                         </Flex>
                         <Input
+                            aria-label={tBusiness('contactPersonName')}
                             autoCapitalize="words"
                             autoComplete="name"
                             inputMode="text"
@@ -528,6 +531,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             value={formData.contactPersonName}
                         />
                         <Input
+                            aria-label={tBusiness('contactPersonEmail')}
                             autoComplete="email"
                             inputMode="email"
                             name="contactPersonEmail"
@@ -537,6 +541,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             value={formData.contactPersonEmail}
                         />
                         <Input
+                            aria-label={tBusiness('contactPersonNumber')}
                             autoComplete="tel"
                             inputMode="tel"
                             name="contactPersonNumber"

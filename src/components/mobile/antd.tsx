@@ -872,6 +872,7 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
 type SelectOption = { label: ReactNode; value: string };
 
 type BaseSelectProps = {
+    'aria-label'?: string;
     disabled?: boolean;
     options: SelectOption[];
     placeholder?: string;
@@ -904,6 +905,7 @@ export function Select(props: SingleSelectProps): ReactElement;
 export function Select(props: MultiSelectProps): ReactElement;
 export function Select(props: SelectImplementationProps): ReactElement {
     const {
+        'aria-label': ariaLabel,
         disabled,
         maxCount,
         mode,
@@ -929,6 +931,7 @@ export function Select(props: SelectImplementationProps): ReactElement {
     return (
         <AntSelect
             allowClear={false}
+            aria-label={ariaLabel}
             filterOption={(input, option) => {
                 const label = option?.label;
                 if (typeof label === 'string') return label.toLowerCase().includes(input.toLowerCase());
@@ -1230,6 +1233,7 @@ export function Picker({
 }
 
 export function Input({
+    'aria-label': ariaLabel,
     autoCapitalize,
     autoComplete,
     autoFocus,
@@ -1250,6 +1254,7 @@ export function Input({
     type,
     value,
 }: {
+    'aria-label'?: string;
     autoCapitalize?: string;
     autoComplete?: string;
     autoFocus?: boolean;
@@ -1298,6 +1303,7 @@ export function Input({
 
     return (
         <AntInput
+            aria-label={ariaLabel}
             autoCapitalize={autoCapitalize}
             autoComplete={autoComplete}
             autoFocus={autoFocus}

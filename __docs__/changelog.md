@@ -1,5 +1,10 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Accessible Business Phone And Contact Controls
+
+- Named the desktop Business Settings phone-country selector and phone input, and added matching names to the mobile Basic Settings business and contact controls.
+- Extended the Public Business Truth source gate. This changes no phone normalization, validation, persistence, store/tenant write, Firebase operation, provider, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Accessible SEO And AEO Actions
 
 - Named the desktop SEO and AEO Reset and Save actions so they remain distinguishable from the other repeated Business Settings controls.

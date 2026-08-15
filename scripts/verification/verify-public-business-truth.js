@@ -3813,6 +3813,9 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const desktopBusinessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const mobileBasicSettings = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
+  const mobileAntd = read('src/components/mobile/antd.tsx');
+  const desktopBasicInfo = read('src/components/templates/main-app/businessSettings/tabs/BasicInfoTab.tsx');
+  const phoneNumberInput = read('src/components/atoms/phoneNumberInput/index.tsx');
   const mobileBusinessAttributes = read('src/components/mobile/screens/MobileBusinessAttributesScreen.tsx');
   const desktopBusinessAttributes = read('src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx');
   const iconPicker = read('src/components/atoms/IconPicker/index.tsx');
@@ -4021,6 +4024,16 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     'Mobile Basic Settings tenant rejected acknowledgement code',
   );
   assertIncludes(mobileBasicSettings, 'return <MobileBasicSettingsScreenContent key={scopeKey} {...props} />;', 'Mobile Basic Settings exact tenant/store keyed mount');
+  assertIncludes(phoneNumberInput, 'aria-label={countryCodeAriaLabel}', 'Shared phone country selector accessible name forwarding');
+  assertIncludes(phoneNumberInput, 'aria-label={phoneNumberAriaLabel}', 'Shared phone number input accessible name forwarding');
+  assertIncludes(desktopBasicInfo, 'countryCodeAriaLabel="Business phone country code"', 'Desktop Business Settings phone country selector name');
+  assertIncludes(desktopBasicInfo, 'phoneNumberAriaLabel="Business phone number"', 'Desktop Business Settings phone input name');
+  assertIncludes(mobileAntd, "'aria-label'?: string;", 'Mobile form controls accessible-name contract');
+  assertIncludes(mobileBasicSettings, 'aria-label="Business phone country code"', 'Mobile Basic Settings phone country selector name');
+  assertIncludes(mobileBasicSettings, 'aria-label="Business phone number"', 'Mobile Basic Settings phone input name');
+  assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonName')}", 'Mobile Basic Settings contact name input');
+  assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonEmail')}", 'Mobile Basic Settings contact email input');
+  assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonNumber')}", 'Mobile Basic Settings contact phone input');
   assertIncludes(mobileBasicSettings, 'basicSettingsSaveInFlightRef.current', 'Mobile Basic Settings immediate duplicate-save guard');
   assertIncludes(mobileBasicSettings, 'previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId', 'Mobile Basic Settings exact-scope optimistic settlement');
   assertIncludes(mobileBasicSettings, 'MOBILE_BASIC_STORE_UPDATE_KEYS', 'Mobile Basic Settings exact persisted-store update key registry');

@@ -167,8 +167,10 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                             {() => (
                                 <PhoneNumberInput
                                     countryCode={form.getFieldValue('countryCode') || 'IN'}
+                                    countryCodeAriaLabel="Business phone country code"
                                     dialCode={form.getFieldValue('dialCode') || ''}
                                     phoneNumber={form.getFieldValue('phoneNumber') || ''}
+                                    phoneNumberAriaLabel="Business phone number"
                                     onChange={(value) => form.setFieldsValue(value)}
                                 />
                             )}

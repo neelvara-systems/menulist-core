@@ -7,10 +7,19 @@ interface PhoneNumberInputProps {
     countryCode: string;
     phoneNumber: string;
     dialCode: string;
+    countryCodeAriaLabel?: string;
+    phoneNumberAriaLabel?: string;
     onChange?: (value: { countryCode: string; phoneNumber: string, dialCode: string }) => void;
 }
 
-const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneNumber, dialCode, onChange }) => {
+const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
+    countryCode,
+    countryCodeAriaLabel,
+    dialCode,
+    onChange,
+    phoneNumber,
+    phoneNumberAriaLabel,
+}) => {
     const selectedCountryCode = countryCode || DEFAULT_PHONE_COUNTRY_CODE;
     const selectedDialCode = getDialCodeForCountry(selectedCountryCode, dialCode);
 
@@ -46,6 +55,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneN
     return (
         <Flex gap={8} style={{ width: '100%' }}>
             <Select
+                aria-label={countryCodeAriaLabel}
                 placeholder="Country Code"
                 showSearch
                 style={{ width: 150 }}
@@ -58,6 +68,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneN
                 }))}
             />
             <Input
+                aria-label={phoneNumberAriaLabel}
                 autoComplete="tel"
                 inputMode="tel"
                 prefix={<LuPhoneCall />}
