@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Implementation
 
-> **Version:** 1.8.0
-> **Last Updated:** 2026-08-13
+> **Version:** 1.9.0
+> **Last Updated:** 2026-08-14
 > **Audience:** Developers
 
 ---
@@ -13,6 +13,8 @@ src/app/api/answerlattice/onboard/route.ts           # Onboarding API (server-si
 src/app/sites/answerlattice/get-started/page.tsx      # Get-started page (server component)
 src/app/sites/answerlattice/get-started/OnboardingForm.tsx  # Signup form (client component)
 src/data/answerlattice/plans.ts                       # Answerlattice plans config
+src/lib/answerlattice/firstTrustedAnswerStarterQuestions.ts # Shared First 10 question definitions
+src/lib/answerlattice/onboardingProof.ts              # Pure surface-to-preview projection
 src/lib/answerlattice/onboardingProvisioning.ts       # Pure attempt/provider/recovery contract
 src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt state
 ```
@@ -20,6 +22,12 @@ src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt st
 ---
 
 ## Components
+
+### 0. Product proof before plan selection
+
+`OnboardingForm.tsx` first validates company, URL, and selected-surface inputs locally, then enters a `proof` step. `buildAnswerlatticeOnboardingProof()` admits only the six known surface keys, preserves the founder's surface order, removes duplicates/unknowns, and chooses at most four questions from the same definitions used to seed First Trusted Answers. Generic starter questions fill any remaining slots deterministically.
+
+This transition performs no fetch, AI/provider call, Firebase read/write, workspace creation, or billing mutation. The UI labels the result as a starter preview rather than imported knowledge, generated answers, or approved guidance. Plan and currency controls render only inside this proof step. The `onboarding_proof_viewed` event is consent-gated and carries only a bounded surface-count label to Google; it sends no company, product, URL, email, or surface names.
 
 ### 1. Onboarding API (`/api/answerlattice/onboard`)
 
@@ -164,6 +172,7 @@ This allows querying Answerlattice-specific tenants without a separate collectio
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-14 | 1.9.0 | Added the shared deterministic onboarding-proof helper, proof-before-plan client state, and privacy-bounded proof analytics without changing the onboarding API |
 | 2026-08-01 | 1.7.3 | Added current default-auth admission and transaction-current bridge authority, required an exact provider checkout before finalization, bound payment-pending replay to the original fingerprint, and replayed bootstrap with create-only persistence |
 | 2026-07-28 | 1.7.2 | Rejected contradictory pending-subscription payload scope before transaction work and projected all four canonical workspace aliases from provisioning authority |
 | 2026-07-19 | 1.7.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email fail-closed admission, HTTP(S)-only product URLs, and route-wide private responses |

@@ -14,6 +14,11 @@ import {
     answerlatticeFirestoreAdmin,
 } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import { MSG_EMAIL_DOMAIN } from '@constant/urls';
+import {
+    isInternalNotificationEmail,
+    type NotificationOsChannelMode,
+} from '@data/shared/notificationOs';
 import type { Firestore } from 'firebase-admin/firestore';
 import type {
     OwnerNotificationEventDoc,
@@ -42,6 +47,45 @@ function cleanString(value?: unknown, maxLength = 160): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function resolvePreferredChannels(settings: Record<string, unknown>): Array<'email' | 'whatsapp'> {
+    if (!Array.isArray(settings.preferredChannels)) return [];
+    return Array.from(new Set(
+        settings.preferredChannels.filter((value): value is 'email' | 'whatsapp' => (
+            value === 'email' || value === 'whatsapp'
+        )),
+    ));
+}
+
+function resolveChannelMode(settings: Record<string, unknown>): NotificationOsChannelMode {
+    const mode = settings.channelMode;
+    return mode === 'email_only' || mode === 'whatsapp_only' || mode === 'email_and_whatsapp' || mode === 'preferred_available'
+        ? mode
+        : 'preferred_available';
+}
+
+function buildRecipientCapabilities(params: {
+    email?: string;
+    whatsappNumber?: string;
+    settings: Record<string, unknown>;
+    data: Record<string, unknown>;
+}) {
+    const settings = params.settings;
+    const whatsappConsent = hasOwnerNotificationWhatsAppConsent(settings);
+    const emailInternalIdentity = isInternalNotificationEmail(params.email, [MSG_EMAIL_DOMAIN]);
+    return {
+        whatsappConsent,
+        emailVerified: Boolean(params.email) && !emailInternalIdentity && settings.emailVerified !== false,
+        emailInternalIdentity,
+        phoneVerified: Boolean(params.whatsappNumber) && (
+            settings.whatsappVerified === true
+            || params.data.phoneVerifiedAt != null
+            || params.data.whatsappVerifiedAt != null
+        ),
+        preferredChannels: resolvePreferredChannels(settings),
+        channelMode: resolveChannelMode(settings),
+    };
 }
 
 function cleanPhone(value?: unknown, context?: Record<string, unknown> | null): string | undefined {
@@ -160,9 +204,14 @@ export function resolveOwnerNotificationRecipient(
     const hintWhatsappNumber = cleanPhone(hints.whatsappNumber, phoneContext);
 
     if (event.productId === PRODUCT_IDS.ANSWERLATTICE) {
+        const primaryEmail = cleanEmail(settings.primaryEmail)
+            || cleanEmail(data.ownerEmail)
+            || cleanEmail(data.supportEmail);
         const resolvedEmail = event.recipientRole === 'support_owner'
-            ? cleanEmail(data.supportEmail) || cleanEmail(settings.primaryEmail)
-            : cleanEmail(settings.primaryEmail) || cleanEmail(data.ownerEmail);
+            ? cleanEmail(data.supportEmail) || primaryEmail
+            : event.recipientRole === 'billing_owner'
+                ? cleanEmail(settings.billingEmail) || primaryEmail
+                : primaryEmail;
         const resolvedWhatsappNumber = resolveFirstPhone(
             phoneContext,
             settings.whatsappNumber,
@@ -171,12 +220,14 @@ export function resolveOwnerNotificationRecipient(
             data.phoneNumber,
         );
 
+        const email = forceHintRecipient ? hintEmail || resolvedEmail : resolvedEmail;
+        const whatsappNumber = forceHintRecipient ? hintWhatsappNumber || resolvedWhatsappNumber : resolvedWhatsappNumber;
         return {
             role: event.recipientRole,
-            email: forceHintRecipient ? hintEmail || resolvedEmail : resolvedEmail,
+            email,
             name: cleanString(hints.name || data.productName || data.companyName || data.businessName),
-            whatsappNumber: forceHintRecipient ? hintWhatsappNumber || resolvedWhatsappNumber : resolvedWhatsappNumber,
-            whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
+            whatsappNumber,
+            ...buildRecipientCapabilities({ email, whatsappNumber, settings, data }),
         };
     }
 
@@ -202,6 +253,6 @@ export function resolveOwnerNotificationRecipient(
         email: forceHintRecipient ? hintEmail || email : email,
         name: cleanString(hints.name || data.name || data.businessName),
         whatsappNumber: forceHintRecipient ? hintWhatsappNumber || whatsappNumber : whatsappNumber,
-        whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
+        ...buildRecipientCapabilities({ email: forceHintRecipient ? hintEmail || email : email, whatsappNumber: forceHintRecipient ? hintWhatsappNumber || whatsappNumber : whatsappNumber, settings, data }),
     };
 }

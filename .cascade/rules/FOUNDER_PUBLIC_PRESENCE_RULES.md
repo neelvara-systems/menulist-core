@@ -115,6 +115,13 @@ advice merely to satisfy cadence.
 - Preserve checked dates, links, decisions, and revalidation triggers in the
   research ledger.
 - Borrow mechanisms, not persona, wording, visuals, identity, or outcome.
+- For open recommender code, pin the reviewed commit and keep candidate
+  retrieval, predicted-action scoring, parameter defaults, reranking,
+  visibility filtering, and report eligibility separate. Never turn a raw
+  coefficient or tool threshold into a growth instruction, and never divide
+  coefficients into likes-equivalent engagement targets.
+- Prefer the account's own results and `Under the Hood` label evidence when
+  eligible. Low impressions alone do not prove a visibility restriction.
 - “No material change” is preferred over repetitive research filler.
 
 ## Draft And Engagement Rule

@@ -1,7 +1,7 @@
 # Founder Public Presence Content Ledger
 
 **Status:** Active intake ledger
-**Last Updated:** August 12, 2026
+**Last Updated:** August 15, 2026
 
 ## Rules
 
@@ -16,7 +16,7 @@
 
 | ID | Captured | Trigger or lesson | Product/source | Intended audience | Candidate format | Evidence and public boundary | Status | Next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| FPP-C001 | 2026-08-12 | A hidden or disabled button is not an entitlement system; the server and data layer own truth. | Cross-product security pattern | AI-built SaaS founders | X short post; later Reddit architecture answer | Requires a sanitized general example; no active endpoint or bypass detail | captured | Find one current public-safe implementation example and verify all layers |
+| FPP-C001 | 2026-08-12 | A hidden or disabled button is not an entitlement system; the server and data layer own truth. | Cross-product security pattern | AI-built SaaS founders | X short post; later Reddit architecture answer | Current implementation verifies the three-layer pattern: the interface evaluates entitlement before loading or rendering the feature (`src/components/templates/main-app/growthos/index.tsx:157-175`, `:431-455`); the authenticated server route independently verifies scope and entitlement (`src/app/api/growthos/kits/generate/route.ts:28-45`, `:69-89`); direct browser access to the generated artifacts is denied (`firestore.rules:773-777`). Public copy remains generalized: no product name, route, collection, tenant detail, bypass procedure, or claim of perfect security. | founder-review | Publish the reviewed text-only X draft manually, then record its URL |
 | FPP-C002 | 2026-08-12 | RAG retrieves conflicts; it does not decide which source is authoritative. | Answerlattice canonical-answer doctrine | AI-built SaaS founders and support-system builders | X short post plus diagram | Use approved demo/canonical doctrine only; no customer sources or claims | validated | Draft a compact X version and an optional authority-flow diagram |
 | FPP-C003 | 2026-08-12 | An AI code audit is useful only when it traces the complete request-to-write-and-read path. | Cross-product audit practice | AI-assisted founders and developers | X deeper post; Reddit technical post | Use general workflow and public repo-safe examples; do not imply every audit is exhaustive | captured | Attach a representative sanitized flow and limitations |
 | FPP-C004 | 2026-08-12 | More public copies increase drift unless one customer-facing source is authoritative. | MenuList public-business-truth pattern | Founders building public or read-heavy products | X visual post | Use fictional/demo or approved public MenuList assets; no unverified owner outcome | validated | Select one clean public-safe before/after artifact |
@@ -28,6 +28,7 @@
 | FPP-C010 | 2026-08-12 | A passing test creates false confidence when it proves the wrong scope or environment. | Cross-product verification practice | AI-assisted builders | X short post | Explain local/source/hosted evidence labels without naming private failures | validated | Draft the first-month X version |
 | FPP-C011 | 2026-08-12 | Immutable snapshots can reduce read amplification on public surfaces, but make invalidation and freshness explicit obligations. | Cross-product Firebase/public data pattern | Firebase and SaaS builders | X diagram; later Reddit post | Use a modeled architecture and label it; no customer volume or private schema | captured | Prepare a simplified trade-off diagram |
 | FPP-C012 | 2026-08-12 | Documentation drift is part of runtime reliability when customers or support systems depend on the answer. | Answerlattice-aligned general pattern | SaaS founders | X proof card | General lesson only; product naming waits for identity-correlation gate | validated | Draft without product name or link |
+| FPP-C013 | 2026-08-14 | Open recommendation code is not a growth checklist: candidate retrieval, predicted-action ranking, visibility filtering, and transparency-tool eligibility are different systems. | [X's August 13 release](https://github.com/xai-org/x-algorithm/tree/a389166f6cf5da70a286b568c87695d4dcdce3a1) and [August 14 clarification](https://github.com/xai-org/x-algorithm/commit/c65aa179db7bdd61e2c2821eac87f208a105c053) | Technical founders building an evidence-based public presence | Concise X source note; optional architecture card | Use only official public sources and a pinned commit. Explain that weights multiply personalized predictions rather than raw engagement counts; state that parameters and experiments can change. Do not expose the founder's original account, imply privileged access, or promise reach. | validated | Keep behind production-proof posts; draft only when a real audience question makes the distinction useful |
 
 ## New Entry Template
 

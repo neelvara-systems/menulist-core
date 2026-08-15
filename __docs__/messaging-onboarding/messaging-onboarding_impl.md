@@ -2434,7 +2434,7 @@ firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project menulist-qa
 firebase functions:secrets:set WHATSAPP_APP_SECRET --project menulist-qa
 ```
 
-Production values require QA provider smoke evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
+Production values require QA provider smoke evidence and explicit production secret approval before repeating the same commands with `--project menulist-prod`.
 
 ### 19.6 NextAuth Phone Login Integration
 

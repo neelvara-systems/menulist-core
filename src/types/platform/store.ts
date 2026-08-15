@@ -779,12 +779,24 @@ export type StoreDataType = {
      * Owners can override in Business Settings > Notifications when that surface is enabled.
      */
     notificationSettings?: {
-        /** Primary email for operational messages. Default: contactPersonEmail */
-        primaryEmail: string;
+        /** Primary verified account email for operational messages. */
+        primaryEmail?: string;
         /** Separate billing email (invoices, payment alerts). Default: same as primaryEmail */
         billingEmail?: string;
-        /** Preferred notification channel. Current implementation: email only */
-        preferredChannel: 'email';
+        emailVerified?: boolean;
+        /** Legacy projection retained while all readers migrate to preferredChannels. */
+        preferredChannel?: 'email' | 'whatsapp';
+        preferredChannels?: Array<'email' | 'whatsapp'>;
+        channelMode?: 'email_only' | 'whatsapp_only' | 'email_and_whatsapp' | 'preferred_available';
+        whatsappNumber?: string;
+        whatsappVerified?: boolean;
+        whatsappConsent?: boolean;
+        whatsappConsented?: boolean;
+        whatsappConsentStatus?: 'granted' | 'revoked';
+        whatsappConsentedAt?: string;
+        whatsappConsentRevokedAt?: string;
+        whatsappConsentSource?: 'owner_settings';
+        whatsappConsentPolicyVersion?: string;
         /** When owner consented to receive messages (ISO 8601) */
         consentedAt?: string;
         /** Suppress non-critical messages 9pm-9am local time. Default: true */

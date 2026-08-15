@@ -10,17 +10,16 @@
 export type OwnerNotificationProductId = 'ML' | 'AL';
 export type OwnerNotificationChannel = 'email' | 'whatsapp';
 export type OwnerNotificationPriority = 'critical' | 'required' | 'advisory' | 'conversational';
-export type OwnerNotificationRecipientRole =
-  | 'primary_owner'
-  | 'billing_owner'
-  | 'support_owner'
-  | 'whatsapp_owner';
+export type OwnerNotificationRecipientRole = 'primary_owner' | 'billing_owner' | 'support_owner' | 'whatsapp_owner';
 export type OwnerNotificationDedupeStrategy = 'per_reference' | 'per_day' | 'per_state_transition';
 export type OwnerNotificationQuietHoursPolicy = 'respect' | 'bypass';
+export type OwnerNotificationProducerStatus = 'active' | 'reserved' | 'alias';
 
 export type OwnerNotificationRegistryEntry = {
   productId: OwnerNotificationProductId;
   triggerType: string;
+  producerStatus: OwnerNotificationProducerStatus;
+  canonicalTriggerType?: string;
   priority: OwnerNotificationPriority;
   defaultChannels: OwnerNotificationChannel[];
   recipientRole: OwnerNotificationRecipientRole;
@@ -42,7 +41,9 @@ export const OWNER_NOTIFICATION_TRIGGER_TYPES = {
   STORE_PUBLISHED: 'STORE_PUBLISHED',
   MENU_PUBLISH_FAILED: 'MENU_PUBLISH_FAILED',
   PAYMENT_SUCCESS: 'PAYMENT_SUCCESS',
+  PAYMENT_RECOVERED: 'PAYMENT_RECOVERED',
   PAYMENT_FAILED: 'PAYMENT_FAILED',
+  PAYMENT_METHOD_ACTION_REQUIRED: 'PAYMENT_METHOD_ACTION_REQUIRED',
   GRACE_PERIOD_STARTED: 'GRACE_PERIOD_STARTED',
   RENEWAL_REMINDER: 'RENEWAL_REMINDER',
   SUSPENSION_WARNING: 'SUSPENSION_WARNING',
@@ -50,10 +51,39 @@ export const OWNER_NOTIFICATION_TRIGGER_TYPES = {
   CREDITS_LOW: 'CREDITS_LOW',
   CREDITS_EXHAUSTED: 'CREDITS_EXHAUSTED',
   SUBSCRIPTION_CANCELLED: 'SUBSCRIPTION_CANCELLED',
+  SUBSCRIPTION_ACTIVATED: 'SUBSCRIPTION_ACTIVATED',
+  SUBSCRIPTION_COMPLETED: 'SUBSCRIPTION_COMPLETED',
   SUBSCRIPTION_PAUSED: 'SUBSCRIPTION_PAUSED',
   SUBSCRIPTION_RESUMED: 'SUBSCRIPTION_RESUMED',
   SUBSCRIPTION_UPGRADED: 'SUBSCRIPTION_UPGRADED',
   MENU_STALE: 'MENU_STALE',
+  REFUND_PROCESSED: 'REFUND_PROCESSED',
+  MENU_IMPORT_READY: 'MENU_IMPORT_READY',
+  MENU_IMPORT_FAILED: 'MENU_IMPORT_FAILED',
+  PUBLIC_MENU_UNAVAILABLE: 'PUBLIC_MENU_UNAVAILABLE',
+  PUBLIC_MENU_RECOVERED: 'PUBLIC_MENU_RECOVERED',
+  MULTI_LOCATION_PROPAGATION_FAILED: 'MULTI_LOCATION_PROPAGATION_FAILED',
+  TEMPORARY_STATUS_EXPIRING: 'TEMPORARY_STATUS_EXPIRING',
+  ACCOUNT_CLAIM_COMPLETED: 'ACCOUNT_CLAIM_COMPLETED',
+  BACKGROUND_IMAGE_JOB_FAILED: 'BACKGROUND_IMAGE_JOB_FAILED',
+  STAFF_INVITATION_SENT: 'STAFF_INVITATION_SENT',
+  STAFF_INVITATION_ACCEPTED: 'STAFF_INVITATION_ACCEPTED',
+  STAFF_ACCESS_CHANGED: 'STAFF_ACCESS_CHANGED',
+  STAFF_REMOVED: 'STAFF_REMOVED',
+  OWNER_EMAIL_CHANGED: 'OWNER_EMAIL_CHANGED',
+  VERIFIED_PHONE_CHANGED: 'VERIFIED_PHONE_CHANGED',
+  WHATSAPP_CONSENT_CHANGED: 'WHATSAPP_CONSENT_CHANGED',
+  ACCOUNT_RECOVERY_COMPLETED: 'ACCOUNT_RECOVERY_COMPLETED',
+  ACCOUNT_DELETION_SCHEDULED: 'ACCOUNT_DELETION_SCHEDULED',
+  ACCOUNT_DELETION_CANCELLED: 'ACCOUNT_DELETION_CANCELLED',
+  ACCOUNT_DELETION_COMPLETED: 'ACCOUNT_DELETION_COMPLETED',
+  DATA_EXPORT_READY: 'DATA_EXPORT_READY',
+  DATA_EXPORT_FAILED: 'DATA_EXPORT_FAILED',
+  WEEKLY_FEEDBACK_SUMMARY: 'WEEKLY_FEEDBACK_SUMMARY',
+  NEGATIVE_FEEDBACK_THRESHOLD: 'NEGATIVE_FEEDBACK_THRESHOLD',
+  MENU_FRESHNESS_REVIEW: 'MENU_FRESHNESS_REVIEW',
+  MULTI_LOCATION_ISSUES_DIGEST: 'MULTI_LOCATION_ISSUES_DIGEST',
+  BUSINESS_HEALTH_ACTION_DIGEST: 'BUSINESS_HEALTH_ACTION_DIGEST',
   WHATSAPP_INTAKE_STARTED: 'WHATSAPP_INTAKE_STARTED',
   WHATSAPP_INTAKE_PROGRESS: 'WHATSAPP_INTAKE_PROGRESS',
   WHATSAPP_PREVIEW_READY: 'WHATSAPP_PREVIEW_READY',
@@ -70,10 +100,60 @@ export const OWNER_NOTIFICATION_TRIGGER_TYPES = {
   HIGH_PRIORITY_ESCALATION: 'HIGH_PRIORITY_ESCALATION',
 } as const;
 
+function reservedMenuListNotification(params: {
+  triggerType: string;
+  templateKey: string;
+  priority?: OwnerNotificationPriority;
+  recipientRole?: OwnerNotificationRecipientRole;
+  defaultChannels?: OwnerNotificationChannel[];
+}): OwnerNotificationRegistryEntry {
+  const priority = params.priority || 'required';
+  const defaultChannels = params.defaultChannels || ['email'];
+  return {
+    productId: 'ML',
+    triggerType: params.triggerType,
+    producerStatus: 'reserved',
+    priority,
+    defaultChannels,
+    recipientRole: params.recipientRole || 'primary_owner',
+    dedupeStrategy: 'per_reference',
+    quietHours: priority === 'critical' ? 'bypass' : 'respect',
+    requiresWhatsAppConsent: defaultChannels.includes('whatsapp'),
+    templateKey: params.templateKey,
+    requiredMetadata: [],
+  };
+}
+
+function activeAnswerlatticeBillingNotification(params: {
+  triggerType: string;
+  templateKey: string;
+  priority?: OwnerNotificationPriority;
+  defaultChannels?: OwnerNotificationChannel[];
+  dedupeStrategy?: OwnerNotificationDedupeStrategy;
+}): OwnerNotificationRegistryEntry {
+  const priority = params.priority || 'required';
+  const defaultChannels = params.defaultChannels || ['email'];
+  return {
+    productId: 'AL',
+    triggerType: params.triggerType,
+    producerStatus: 'active',
+    priority,
+    defaultChannels,
+    recipientRole: 'billing_owner',
+    dedupeStrategy: params.dedupeStrategy || 'per_reference',
+    quietHours: priority === 'critical' ? 'bypass' : 'respect',
+    requiresWhatsAppConsent: defaultChannels.includes('whatsapp'),
+    templateKey: params.templateKey,
+    requiredMetadata: [],
+  };
+}
+
 export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_PUBLISHED,
+    producerStatus: 'alias',
+    canonicalTriggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STORE_PUBLISHED,
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'primary_owner',
@@ -86,6 +166,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STORE_PUBLISHED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'primary_owner',
@@ -98,6 +179,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_PUBLISH_FAILED,
+    producerStatus: 'active',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'primary_owner',
@@ -110,6 +192,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_SUCCESS,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -121,7 +204,21 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   },
   {
     productId: 'ML',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_RECOVERED,
+    producerStatus: 'active',
+    priority: 'required',
+    defaultChannels: ['email', 'whatsapp'],
+    recipientRole: 'billing_owner',
+    dedupeStrategy: 'per_reference',
+    quietHours: 'respect',
+    requiresWhatsAppConsent: true,
+    templateKey: 'menulist.payment_recovered',
+    requiredMetadata: [],
+  },
+  {
+    productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_FAILED,
+    producerStatus: 'active',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'billing_owner',
@@ -134,6 +231,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.GRACE_PERIOD_STARTED,
+    producerStatus: 'active',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'billing_owner',
@@ -146,6 +244,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.RENEWAL_REMINDER,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -158,6 +257,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUSPENSION_WARNING,
+    producerStatus: 'active',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'billing_owner',
@@ -170,6 +270,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDIT_PURCHASE_SUCCESS,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -182,6 +283,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDITS_LOW,
+    producerStatus: 'active',
     priority: 'advisory',
     defaultChannels: ['email'],
     recipientRole: 'primary_owner',
@@ -194,6 +296,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDITS_EXHAUSTED,
+    producerStatus: 'active',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'primary_owner',
@@ -206,6 +309,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_CANCELLED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -217,7 +321,34 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   },
   {
     productId: 'ML',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_ACTIVATED,
+    producerStatus: 'active',
+    priority: 'required',
+    defaultChannels: ['email'],
+    recipientRole: 'billing_owner',
+    dedupeStrategy: 'per_state_transition',
+    quietHours: 'respect',
+    requiresWhatsAppConsent: false,
+    templateKey: 'menulist.subscription_activated',
+    requiredMetadata: [],
+  },
+  {
+    productId: 'ML',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_COMPLETED,
+    producerStatus: 'active',
+    priority: 'required',
+    defaultChannels: ['email'],
+    recipientRole: 'billing_owner',
+    dedupeStrategy: 'per_state_transition',
+    quietHours: 'respect',
+    requiresWhatsAppConsent: false,
+    templateKey: 'menulist.subscription_completed',
+    requiredMetadata: [],
+  },
+  {
+    productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_PAUSED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -230,6 +361,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_RESUMED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -242,6 +374,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_UPGRADED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'billing_owner',
@@ -254,6 +387,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'ML',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_STALE,
+    producerStatus: 'active',
     priority: 'advisory',
     defaultChannels: ['email'],
     recipientRole: 'primary_owner',
@@ -264,8 +398,166 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
     requiredMetadata: [],
   },
   {
+    productId: 'ML',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.REFUND_PROCESSED,
+    producerStatus: 'active',
+    priority: 'required',
+    defaultChannels: ['email'],
+    recipientRole: 'billing_owner',
+    dedupeStrategy: 'per_reference',
+    quietHours: 'respect',
+    requiresWhatsAppConsent: false,
+    templateKey: 'menulist.refund_processed',
+    requiredMetadata: [],
+  },
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_METHOD_ACTION_REQUIRED,
+    templateKey: 'menulist.payment_method_action_required',
+    priority: 'critical',
+    recipientRole: 'billing_owner',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_IMPORT_READY,
+    templateKey: 'menulist.menu_import_ready',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_IMPORT_FAILED,
+    templateKey: 'menulist.menu_import_failed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PUBLIC_MENU_UNAVAILABLE,
+    templateKey: 'menulist.public_menu_unavailable',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PUBLIC_MENU_RECOVERED,
+    templateKey: 'menulist.public_menu_recovered',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MULTI_LOCATION_PROPAGATION_FAILED,
+    templateKey: 'menulist.multi_location_propagation_failed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.TEMPORARY_STATUS_EXPIRING,
+    templateKey: 'menulist.temporary_status_expiring',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ACCOUNT_CLAIM_COMPLETED,
+    templateKey: 'menulist.account_claim_completed',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.BACKGROUND_IMAGE_JOB_FAILED,
+    templateKey: 'menulist.background_image_job_failed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STAFF_INVITATION_SENT,
+    templateKey: 'menulist.staff_invitation_sent',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STAFF_INVITATION_ACCEPTED,
+    templateKey: 'menulist.staff_invitation_accepted',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STAFF_ACCESS_CHANGED,
+    templateKey: 'menulist.staff_access_changed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.STAFF_REMOVED,
+    templateKey: 'menulist.staff_removed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.OWNER_EMAIL_CHANGED,
+    templateKey: 'menulist.owner_email_changed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.VERIFIED_PHONE_CHANGED,
+    templateKey: 'menulist.verified_phone_changed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.WHATSAPP_CONSENT_CHANGED,
+    templateKey: 'menulist.whatsapp_consent_changed',
+    priority: 'critical',
+    defaultChannels: ['email'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ACCOUNT_RECOVERY_COMPLETED,
+    templateKey: 'menulist.account_recovery_completed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ACCOUNT_DELETION_SCHEDULED,
+    templateKey: 'menulist.account_deletion_scheduled',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ACCOUNT_DELETION_CANCELLED,
+    templateKey: 'menulist.account_deletion_cancelled',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ACCOUNT_DELETION_COMPLETED,
+    templateKey: 'menulist.account_deletion_completed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.DATA_EXPORT_READY,
+    templateKey: 'menulist.data_export_ready',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.DATA_EXPORT_FAILED,
+    templateKey: 'menulist.data_export_failed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.WEEKLY_FEEDBACK_SUMMARY,
+    templateKey: 'menulist.weekly_feedback_summary',
+    priority: 'advisory',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.NEGATIVE_FEEDBACK_THRESHOLD,
+    templateKey: 'menulist.negative_feedback_threshold',
+    priority: 'advisory',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MENU_FRESHNESS_REVIEW,
+    templateKey: 'menulist.menu_freshness_review',
+    priority: 'advisory',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.MULTI_LOCATION_ISSUES_DIGEST,
+    templateKey: 'menulist.multi_location_issues_digest',
+    priority: 'advisory',
+  }),
+  reservedMenuListNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.BUSINESS_HEALTH_ACTION_DIGEST,
+    templateKey: 'menulist.business_health_action_digest',
+    priority: 'advisory',
+  }),
+  {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.ANSWERLATTICE_NOTIFICATION_TEST,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'support_owner',
@@ -275,9 +567,95 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
     templateKey: 'answerlattice.notification_test',
     requiredMetadata: [],
   },
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_SUCCESS,
+    templateKey: 'answerlattice.payment_success',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_RECOVERED,
+    templateKey: 'answerlattice.payment_recovered',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.PAYMENT_FAILED,
+    templateKey: 'answerlattice.payment_failed',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.GRACE_PERIOD_STARTED,
+    templateKey: 'answerlattice.grace_period_started',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDIT_PURCHASE_SUCCESS,
+    templateKey: 'answerlattice.credit_purchase_success',
+  }),
+  {
+    productId: 'AL',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDITS_LOW,
+    producerStatus: 'active',
+    priority: 'advisory',
+    defaultChannels: ['email'],
+    recipientRole: 'primary_owner',
+    dedupeStrategy: 'per_day',
+    quietHours: 'respect',
+    requiresWhatsAppConsent: false,
+    templateKey: 'answerlattice.credits_low',
+    requiredMetadata: [],
+  },
+  {
+    productId: 'AL',
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CREDITS_EXHAUSTED,
+    producerStatus: 'active',
+    priority: 'critical',
+    defaultChannels: ['email', 'whatsapp'],
+    recipientRole: 'primary_owner',
+    dedupeStrategy: 'per_day',
+    quietHours: 'bypass',
+    requiresWhatsAppConsent: true,
+    templateKey: 'answerlattice.credits_exhausted',
+    requiredMetadata: [],
+  },
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_ACTIVATED,
+    templateKey: 'answerlattice.subscription_activated',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_COMPLETED,
+    templateKey: 'answerlattice.subscription_completed',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_CANCELLED,
+    templateKey: 'answerlattice.subscription_cancelled',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_PAUSED,
+    templateKey: 'answerlattice.subscription_paused',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_RESUMED,
+    templateKey: 'answerlattice.subscription_resumed',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUBSCRIPTION_UPGRADED,
+    templateKey: 'answerlattice.subscription_upgraded',
+    dedupeStrategy: 'per_state_transition',
+  }),
+  activeAnswerlatticeBillingNotification({
+    triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.REFUND_PROCESSED,
+    templateKey: 'answerlattice.refund_processed',
+  }),
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SUPPORT_EMAIL_MISSING,
+    producerStatus: 'reserved',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'support_owner',
@@ -290,6 +668,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.WIDGET_CONNECTION_VERIFIED,
+    producerStatus: 'active',
     priority: 'required',
     defaultChannels: ['email'],
     recipientRole: 'support_owner',
@@ -302,6 +681,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.WIDGET_CONNECTION_FAILED,
+    producerStatus: 'reserved',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'support_owner',
@@ -314,6 +694,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.SOURCE_SYNC_FAILED,
+    producerStatus: 'reserved',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'support_owner',
@@ -326,6 +707,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.CANONICAL_APPROVAL_REQUIRED,
+    producerStatus: 'reserved',
     priority: 'advisory',
     defaultChannels: ['email'],
     recipientRole: 'support_owner',
@@ -338,6 +720,7 @@ export const OWNER_NOTIFICATION_REGISTRY: OwnerNotificationRegistryEntry[] = [
   {
     productId: 'AL',
     triggerType: OWNER_NOTIFICATION_TRIGGER_TYPES.HIGH_PRIORITY_ESCALATION,
+    producerStatus: 'reserved',
     priority: 'critical',
     defaultChannels: ['email', 'whatsapp'],
     recipientRole: 'support_owner',
@@ -353,14 +736,9 @@ export function getOwnerNotificationRegistryEntry(
   productId: OwnerNotificationProductId,
   triggerType: string,
 ): OwnerNotificationRegistryEntry | undefined {
-  return OWNER_NOTIFICATION_REGISTRY.find((entry) => (
-    entry.productId === productId && entry.triggerType === triggerType
-  ));
+  return OWNER_NOTIFICATION_REGISTRY.find((entry) => entry.productId === productId && entry.triggerType === triggerType);
 }
 
-export function isOwnerNotificationTrigger(
-  productId: OwnerNotificationProductId,
-  triggerType: string,
-): boolean {
+export function isOwnerNotificationTrigger(productId: OwnerNotificationProductId, triggerType: string): boolean {
   return Boolean(getOwnerNotificationRegistryEntry(productId, triggerType));
 }

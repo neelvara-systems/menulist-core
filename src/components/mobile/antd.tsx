@@ -869,7 +869,7 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
     );
 }
 
-type SelectOption = { label: ReactNode; value: string };
+type SelectOption = { disabled?: boolean; label: ReactNode; value: string };
 
 type BaseSelectProps = {
     'aria-label'?: string;

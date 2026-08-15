@@ -107,6 +107,14 @@ is recorded, it uses `unconfirmed`; it never says the founder failed.
 - “No material change” is a valid and preferred result over filler.
 - Never print secrets, private diffs, customer material, personal identity, or
   unpublished vulnerability detail.
+- For an X recommendation or visibility change, inspect an exact current source
+  or pinned code commit and report deltas between candidate retrieval,
+  predicted-action ranking, parameter defaults, reranking, visibility labels,
+  and transparency-tool eligibility. Never turn a coefficient or eligibility
+  threshold into a posting instruction.
+- Treat the account's own `Under the Hood` report as higher-quality diagnostic
+  evidence when eligible. Until then, low reach is an observation—not proof of
+  a visibility label or platform restriction.
 
 ## Repository Maintenance
 

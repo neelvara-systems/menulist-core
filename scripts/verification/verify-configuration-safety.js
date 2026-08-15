@@ -78,11 +78,46 @@ for (const [label, template, stage] of [
     `${label} must not expose private credentials through NEXT_PUBLIC variables`,
   );
 }
+const productionEmailOsOnlyKeys = new Set([
+  'ANSWERLATTICE_EMAIL_OS_FROM',
+  'ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN',
+  'ANSWERLATTICE_EMAIL_OS_REPLY_TO',
+  'ANSWERLATTICE_RESEND_API_KEY',
+  'MENULIST_EMAIL_OS_FROM',
+  'MENULIST_EMAIL_OS_FROM_DOMAIN',
+  'MENULIST_EMAIL_OS_REPLY_TO',
+  'MENULIST_RESEND_API_KEY',
+]);
+const stagingKeys = environmentKeys(stagingTemplate);
+const productionKeys = environmentKeys(productionTemplate);
+const stagingSharedKeys = [...stagingKeys]
+  .sort();
+const productionSharedKeys = [...productionKeys]
+  .filter((key) => !productionEmailOsOnlyKeys.has(key))
+  .sort();
 assert(
-  JSON.stringify([...environmentKeys(stagingTemplate)].sort())
-    === JSON.stringify([...environmentKeys(productionTemplate)].sort()),
-  'staging and production env templates must declare the same configuration keys',
+  JSON.stringify(stagingSharedKeys) === JSON.stringify(productionSharedKeys),
+  'staging and production env templates may differ only by explicitly approved environment-specific keys',
 );
+for (const key of productionEmailOsOnlyKeys) {
+  assert(productionKeys.has(key) && !stagingKeys.has(key), `${key} must remain production-only`);
+}
+for (const [label, template] of [
+  ['staging', stagingTemplate],
+  ['production', productionTemplate],
+]) {
+  includes(template, 'MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', `${label} MenuList Admin identity mode`);
+  includes(template, 'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', `${label} Answerlattice Admin identity mode`);
+  for (const forbiddenName of [
+    'MENULIST_FIREBASE_CLIENT_EMAIL=',
+    'MENULIST_FIREBASE_PRIVATE_KEY=',
+    'ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=',
+    'ANSWERLATTICE_FIREBASE_PRIVATE_KEY=',
+    'ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=',
+  ]) {
+    assert(!template.includes(forbiddenName), `${label} must not retain ${forbiddenName}`);
+  }
+}
 
 includes(setupGuide, '`NEXT_PUBLIC_VERCEL_ENV`', 'deployment setup runtime identity');
 includes(environmentGuide, 'source-controlled build/runtime constants', 'feature flag deployment truth');

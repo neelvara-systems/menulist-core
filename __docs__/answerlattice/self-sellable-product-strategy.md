@@ -1,7 +1,7 @@
 # Answerlattice — Self-Sellable Product Strategy and Task List
 
 > **Status:** Active operating strategy
-> **Last Updated:** 2026-07-31
+> **Last Updated:** 2026-08-14
 > **Owner:** Answerlattice Product
 > **Audience:** Product, Engineering, Website, Sales
 > **Doctrine:** Must follow `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`
@@ -23,6 +23,8 @@ The durable category is:
 This keeps Answerlattice aligned with the locked doctrine: knowledge is the spine, canonical answers come before generation, and tickets/chat remain fallback signal sources rather than the product center.
 
 Solo technical founders remain the primary first-use ICP. The product must also support a small team or a bounded product/support group inside a larger company without exposing that operating depth to every new founder. The progression is Start, Coordinate, and Govern over one product model; it is not three products, automatic maturity scoring, or a new workspace-mode field.
+
+The public signup sequence now gives the founder a bounded product-specific proof moment before commercial commitment: selected product surfaces deterministically prioritize four questions from the maintained First Trusted Answer starter set, followed by the real add-sources, review, First 10, and widget-verification path. This is a client-only preview, not website analysis, imported knowledge, generated answers, or a free workspace. Paid plan selection and provisioning remain explicit after that proof.
 
 Website and campaign copy may refer to "vibe-coded" SaaS only as an SEO or campaign wedge. The core brand should use "AI-built SaaS", "AI-native SaaS founders", "solo founders", and "small SaaS teams" so the product stays credible for serious operators and does not sound like a prototype-only tool.
 
@@ -330,6 +332,7 @@ Do not force deeper controls on the primary ICP:
 - [x] Keep usage limits understandable and predictable.
 - [x] Avoid per-resolution pricing as the default public model.
 - [x] Keep paid self-service setup explicit, resumable, and tied to the selected public plan.
+- [x] Show a deterministic product-surface launch preview before paid plan selection without weakening paid entitlement or claiming source ingestion.
 
 ### K. Cost and Production Readiness
 
@@ -361,6 +364,7 @@ Do not force deeper controls on the primary ICP:
 
 ### L. QA Checklist Before Sellable Launch
 
+- [x] Get Started shows relevant starter questions before plan selection and makes the preview boundary explicit.
 - [ ] Fresh Answerlattice account can complete onboarding.
 - [ ] Fresh account can import knowledge.
 - [ ] Entity candidates and canonical answer drafts appear.

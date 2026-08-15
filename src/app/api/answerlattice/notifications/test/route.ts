@@ -104,8 +104,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!readiness.enabled) {
             return notificationTestJson({ error: 'Answerlattice notifications are not enabled', readiness }, 403);
         }
-        if (!readiness.smtpConfigured) {
-            return notificationTestJson({ error: 'SMTP sender is not configured', readiness }, 503);
+        if (!readiness.emailConfigured) {
+            return notificationTestJson({ error: 'Email sender is not configured', readiness }, 503);
         }
 
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();

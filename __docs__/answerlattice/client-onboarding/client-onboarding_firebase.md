@@ -1,12 +1,14 @@
 # Answerlattice Client Onboarding — Firebase Cost
 
-> **Version:** 1.9.0
-> **Last Updated:** 2026-08-13
+> **Version:** 1.10.0
+> **Last Updated:** 2026-08-14
 > **Audience:** Developers / Ops
 
 ---
 
 ## Collections Used (Per Onboarding)
+
+The pre-plan launch preview is a pure browser projection over locally entered product-surface choices and the bundled First Trusted Answer starter definitions. Viewing it adds **zero Firestore reads, writes, listeners, Storage objects, Function calls, AI/provider calls, payment objects, collections, or indexes**. The table below begins only when the founder chooses a paid plan and submits workspace creation.
 
 | Collection | Operation | Count | Purpose |
 |------------|-----------|-------|---------|
@@ -114,6 +116,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-14 | 1.10.0 | Documented the zero-I/O client-only proof step before the unchanged paid provisioning request |
 | 2026-08-01 | 1.8.4 | Added current-auth/bridge transaction reads and bounded non-destructive payment-pending bootstrap repair costs |
 | 2026-07-28 | 1.8.3 | Documented exact pending-subscription payload admission, canonical four-alias projection, and no-write behavior on scope conflict |
 | 2026-07-19 | 1.8.2 | Corrected workspace-profile cost and atomic downstream synchronization after the Feature 29 audit |

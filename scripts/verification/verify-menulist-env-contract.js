@@ -86,8 +86,16 @@ const REQUIRED_CANONICAL_NAMES = [
   'MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID',
   'MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET',
   'MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL',
-  'MENULIST_FIREBASE_CLIENT_EMAIL',
-  'MENULIST_FIREBASE_PRIVATE_KEY',
+  'MENULIST_FIREBASE_ADMIN_AUTH_MODE',
+  'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE',
+  'MENULIST_GCP_PROJECT_NUMBER',
+  'MENULIST_GCP_SERVICE_ACCOUNT_EMAIL',
+  'MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID',
+  'MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
+  'ANSWERLATTICE_GCP_PROJECT_NUMBER',
+  'ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL',
+  'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID',
+  'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
   'MENULIST_FIREBASE_PROJECT_LOCATION',
   'MENULIST_GEMINI_AI_KEY',
   'MENULIST_GEMINI_AI_KEY_2',
@@ -133,6 +141,16 @@ for (const relativePath of ['.env.staging.example', '.env.production.example']) 
   if (legacyNames.length > 0) fail(`${relativePath} contains legacy, redundant, or Functions-only names: ${legacyNames.join(', ')}`);
   const missingNames = REQUIRED_CANONICAL_NAMES.filter((name) => !names.has(name));
   if (missingNames.length > 0) fail(`${relativePath} is missing canonical names: ${missingNames.join(', ')}`);
+  const forbiddenStaticKeyNames = [
+    'MENULIST_FIREBASE_CLIENT_EMAIL',
+    'MENULIST_FIREBASE_PRIVATE_KEY',
+    'ANSWERLATTICE_FIREBASE_CLIENT_EMAIL',
+    'ANSWERLATTICE_FIREBASE_PRIVATE_KEY',
+    'ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS',
+  ].filter((name) => names.has(name));
+  if (forbiddenStaticKeyNames.length > 0) {
+    fail(`${relativePath} must not contain managed Vercel static Firebase Admin credentials: ${forbiddenStaticKeyNames.join(', ')}`);
+  }
 }
 
 for (const relativePath of ['.env', '.env.local', '.env.prod']) {
@@ -159,11 +177,33 @@ if (!publicEnvSource.includes('NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY')) {
 if (!serverEnvSource.includes("'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID'")) {
   fail('MenuList server env reader lost canonical-first legacy migration behavior');
 }
+for (const name of [
+  'MENULIST_FIREBASE_ADMIN_AUTH_MODE',
+  'MENULIST_GCP_PROJECT_NUMBER',
+  'MENULIST_GCP_SERVICE_ACCOUNT_EMAIL',
+  'MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID',
+  'MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
+]) {
+  if (!serverEnvSource.includes(`'${name}'`)) {
+    fail(`MenuList server env reader is missing ${name}`);
+  }
+}
 if (!answerlatticeServerEnvSource.includes('ANSWERLATTICE_UPSTASH_REDIS_REST_URL')) {
   fail('Answerlattice Redis does not have a product-scoped namespace');
 }
 if (!answerlatticeServerEnvSource.includes('NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY')) {
   fail('Answerlattice server Firebase auth does not reuse the canonical public API key');
+}
+for (const name of [
+  'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE',
+  'ANSWERLATTICE_GCP_PROJECT_NUMBER',
+  'ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL',
+  'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID',
+  'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
+]) {
+  if (!answerlatticeServerEnvSource.includes(`'${name}'`)) {
+    fail(`Answerlattice server env reader is missing ${name}`);
+  }
 }
 for (const name of [
   'NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_API_KEY',
@@ -202,4 +242,4 @@ const directReaders = sourceFiles
   .map((file) => path.relative(root, file));
 if (directReaders.length > 0) fail(`runtime files bypass product-scoped readers: ${directReaders.join(', ')}`);
 
-console.log('Managed MenuList, Answerlattice, and CampaignCue environment contracts verified: one key per shared product value.');
+console.log('Managed MenuList and Answerlattice OIDC environment contracts plus shared product env naming verified.');

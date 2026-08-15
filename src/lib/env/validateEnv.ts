@@ -63,8 +63,30 @@ const PAYMENT_VARS: readonly EnvRequirement[] = [
 /** Required for Firebase Admin SDK (server-side operations) */
 const ADMIN_VARS: readonly EnvRequirement[] = [
     ['NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', 'MENULIST_FIREBASE_PROJECT_ID', 'FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'],
+] as const;
+
+const MENULIST_ADMIN_STATIC_KEY_VARS: readonly EnvRequirement[] = [
     ['MENULIST_FIREBASE_CLIENT_EMAIL', 'FIREBASE_CLIENT_EMAIL'],
     ['MENULIST_FIREBASE_PRIVATE_KEY', 'FIREBASE_PRIVATE_KEY'],
+] as const;
+
+const MENULIST_ADMIN_WORKLOAD_IDENTITY_VARS: readonly EnvRequirement[] = [
+    'MENULIST_GCP_PROJECT_NUMBER',
+    'MENULIST_GCP_SERVICE_ACCOUNT_EMAIL',
+    'MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID',
+    'MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
+] as const;
+
+const ANSWERLATTICE_ADMIN_STATIC_KEY_VARS: readonly EnvRequirement[] = [
+    'ANSWERLATTICE_FIREBASE_CLIENT_EMAIL',
+    'ANSWERLATTICE_FIREBASE_PRIVATE_KEY',
+] as const;
+
+const ANSWERLATTICE_ADMIN_WORKLOAD_IDENTITY_VARS: readonly EnvRequirement[] = [
+    'ANSWERLATTICE_GCP_PROJECT_NUMBER',
+    'ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL',
+    'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID',
+    'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
 ] as const;
 
 /** Optional — feature-flagged, app works without them */
@@ -184,7 +206,9 @@ export function validateEnvironment(): EnvValidationResult {
     const warnings: string[] = [];
     const stageResolution = resolveDeploymentStage(getDeploymentStageEnvSnapshot());
     const stage = stageResolution.stage;
-    const isVercel = process.env.VERCEL === '1' || Boolean(getEnvValue('VERCEL_ENV'));
+    const isVercel = process.env.VERCEL === '1'
+        || Boolean(getEnvValue('VERCEL_ENV'))
+        || Boolean(getEnvValue('VERCEL_TARGET_ENV'));
     const addEnvironmentIssue = (message: string) => {
         if (isVercel) missing.push(message);
         else warnings.push(message);
@@ -239,6 +263,74 @@ export function validateEnvironment(): EnvValidationResult {
             missing.push(describeRequirement(requirement));
         }
     }
+
+    const validFirebaseAdminAuthModes = new Set(['adc', 'service_account_key', 'vercel_oidc']);
+    const isManagedVercel = isVercel && (stage === 'preview' || stage === 'production');
+    if (isManagedVercel) {
+        const expectedTargetEnvironment = stage === 'preview' ? 'qa' : 'production';
+        if (getEnvValue('VERCEL_TARGET_ENV')?.toLowerCase() !== expectedTargetEnvironment) {
+            missing.push(`VERCEL_TARGET_ENV must be ${expectedTargetEnvironment} for ${stage} deployments`);
+        }
+    }
+
+    const validateAdminIdentity = ({
+        authModeVar,
+        credentialFileVar,
+        productName,
+        staticKeyVars,
+        workloadIdentityVars,
+    }: {
+        authModeVar: string;
+        credentialFileVar?: string;
+        productName: string;
+        staticKeyVars: readonly EnvRequirement[];
+        workloadIdentityVars: readonly EnvRequirement[];
+    }) => {
+        const authMode = getEnvValue(authModeVar)?.toLowerCase();
+        const hasStaticClientEmail = hasAnyEnvVar(staticKeyVars[0]);
+        const hasStaticPrivateKey = hasAnyEnvVar(staticKeyVars[1]);
+        const hasCredentialFile = Boolean(credentialFileVar && getEnvValue(credentialFileVar));
+
+        if (authMode && !validFirebaseAdminAuthModes.has(authMode)) {
+            addEnvironmentIssue(`${authModeVar} must be adc, service_account_key, or vercel_oidc`);
+        }
+        if (hasStaticClientEmail !== hasStaticPrivateKey) {
+            addEnvironmentIssue(`${productName} Firebase service-account key configuration is incomplete`);
+        }
+
+        if (isManagedVercel) {
+            if (authMode !== 'vercel_oidc') {
+                missing.push(`${productName}: ${authModeVar} must be vercel_oidc for managed Vercel QA and production`);
+            }
+            for (const requirement of workloadIdentityVars) {
+                if (!hasAnyEnvVar(requirement)) missing.push(`${productName}: ${describeRequirement(requirement)}`);
+            }
+            if (hasStaticClientEmail || hasStaticPrivateKey || hasCredentialFile) {
+                missing.push(`${productName} managed Vercel QA and production must not retain static service-account credentials`);
+            }
+            return;
+        }
+
+        if (authMode === 'vercel_oidc') {
+            for (const requirement of workloadIdentityVars) {
+                if (!hasAnyEnvVar(requirement)) addEnvironmentIssue(describeRequirement(requirement));
+            }
+            return;
+        }
+
+        if (authMode === 'service_account_key' && !hasCredentialFile) {
+            for (const requirement of staticKeyVars) {
+                if (!hasAnyEnvVar(requirement)) addEnvironmentIssue(describeRequirement(requirement));
+            }
+        }
+    };
+
+    validateAdminIdentity({
+        authModeVar: 'MENULIST_FIREBASE_ADMIN_AUTH_MODE',
+        productName: 'MenuList',
+        staticKeyVars: MENULIST_ADMIN_STATIC_KEY_VARS,
+        workloadIdentityVars: MENULIST_ADMIN_WORKLOAD_IDENTITY_VARS,
+    });
 
     // Check payment vars (warn, don't fail)
     for (const requirement of PAYMENT_VARS) {
@@ -309,19 +401,13 @@ export function validateEnvironment(): EnvValidationResult {
     });
 
     if (hasProductFirebaseConfiguration('answerlattice')) {
-        const answerlatticeAdminCredentialReady = Boolean(
-            getEnvValue('ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS')
-            || (
-                (getEnvValue('NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID') || getEnvValue('ANSWERLATTICE_FIREBASE_PROJECT_ID'))
-                && getEnvValue('ANSWERLATTICE_FIREBASE_CLIENT_EMAIL')
-                && getEnvValue('ANSWERLATTICE_FIREBASE_PRIVATE_KEY')
-            )
-        );
-        if (!answerlatticeAdminCredentialReady) {
-            const message = 'Answerlattice Admin SDK credentials are missing — Answerlattice APIs cannot access the dedicated Firebase project';
-            if (isVercel) missing.push(message);
-            else warnings.push(message);
-        }
+        validateAdminIdentity({
+            authModeVar: 'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE',
+            credentialFileVar: 'ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS',
+            productName: 'Answerlattice',
+            staticKeyVars: ANSWERLATTICE_ADMIN_STATIC_KEY_VARS,
+            workloadIdentityVars: ANSWERLATTICE_ADMIN_WORKLOAD_IDENTITY_VARS,
+        });
     }
 
     if (hasProductFirebaseConfiguration('signaldesk')) {
@@ -465,7 +551,9 @@ export function runEnvValidation(): void {
 
     const result = validateEnvironment();
     const isProd = process.env.NODE_ENV === 'production';
-    const isVercel = process.env.VERCEL === '1' || Boolean(getEnvValue('VERCEL_ENV'));
+    const isVercel = process.env.VERCEL === '1'
+        || Boolean(getEnvValue('VERCEL_ENV'))
+        || Boolean(getEnvValue('VERCEL_TARGET_ENV'));
     const validationContext = {
         isProduction: isProd,
         isVercel,

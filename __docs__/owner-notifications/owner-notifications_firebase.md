@@ -1,7 +1,7 @@
 # Owner Notifications - Firebase And Cost Plan
 
 **Status:** Local source complete; current target deploy and provider certification pending
-**Date:** 2026-07-28
+**Date:** 2026-08-15
 **Audience:** Engineering, platform owner
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -97,6 +97,8 @@ The July 5 Functions owner-notification flag/trigger diagnostics add no Firestor
 
 The July 5 template output boundary update adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, owner/customer UI, durable event streams, retention fields, rate-limit changes, or cache invalidation path. It changes only email/manual-message rendering: MenuList publish failure reasons and `menulist.menu_stale` reason metadata are mapped to fixed owner copy, MenuList owner/lifecycle templates escape metadata before HTML output, and rendered email links must parse as `http:` or `https:` before rendering. The app-side path requires the normal Next.js release path when released; the Functions lifecycle mirror requires a scoped Firebase Functions deploy before live effect.
 
+The August 15 firing correction adds no Firestore operations. Existing producer calls now wait for the already-defined enqueue/processing work instead of allowing the server runtime to end early, and payment-failure/grace-period events no longer depend on an email hint. Recipient scope is still resolved once by the processor under the existing read budget.
+
 The July 5 Answerlattice template output boundary update also adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, owner/customer UI, durable event streams, retention fields, rate-limit changes, Cloud Function logic, or cache invalidation path. It changes only app-side owner-notification rendering for Answerlattice templates: metadata text is normalized and capped, rendered action links must parse as `http:` or `https:`, and widget/source-sync/high-priority failure metadata renders fixed owner copy instead of arbitrary `failureReason` or `reason` strings. This app-side path requires the normal Next.js release path when released; no Firebase deploy is implied by this update.
 
 Deployment of the July 5, 2026 Functions lifecycle template-output boundary was attempted against `menulist-qa` for the scoped target list `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; the exact command is recorded in `__docs__/audits/menulist-production-readiness-audit.md`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission. Live Functions effect remains blocked until an account with project access can deploy the changed Functions bundle.
@@ -183,6 +185,10 @@ No new standalone scheduled function was added. Existing deployed Functions that
 | Answerlattice Functions worker | Not implemented in this pass | Reserved for future Answerlattice Cloud Functions owner triggers |
 
 ## Cost Model Per Notification
+
+August 15, 2026 catalogue expansion is read-neutral at the product boundary. Razorpay activation/recovery/completion/refund classification reuses webhook-resolved subscription and settlement state. Low-credit classification reuses the subscription and balance returned by the capacity transaction. Combined delivery still resolves the owner/store context once. The only incremental Firebase operations are the existing deterministic NotificationOS event/channel claim and finalization operations for notifications that actually qualify. A scoped QA Functions deployment completed for `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler` in `us-central1`; no production or Vercel deployment occurred.
+
+The Answerlattice completion pass applies the same cost rule. Shared Razorpay routes reuse their already-resolved `AL` subscription and workspace scope; AI accounting reuses the transaction-returned post-consumption balance and loaded subscription allowance; first widget verification reuses the authenticated widget credential and already-loaded workspace data to decide that the first runtime transition occurred. NotificationOS then performs its single authoritative workspace read for recipient, settings, formatting and both channel plans. Email-only, WhatsApp-only and combined delivery therefore remain one workspace read per processing attempt; no channel performs a second workspace lookup. The added cost is limited to qualifying deterministic event/delivery/rate-limit writes and provider calls.
 
 ### Happy path email only
 

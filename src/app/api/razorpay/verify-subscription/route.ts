@@ -543,11 +543,13 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        if (!isAnswerlatticeBillingProduct(productId) && paymentApplication.applied) {
-            // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
+        if (paymentApplication.applied) {
+            // Lifecycle delivery is best-effort for the response outcome, but
+            // awaited so the server runtime cannot terminate before enqueue.
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
-                sendLifecycleMessage({
+                await sendLifecycleMessage({
+                    productId,
                     storeId: String(internalSub.storeId),
                     tenantId: String(internalSub.tenantId),
                     eventType: 'PAYMENT_SUCCESS',

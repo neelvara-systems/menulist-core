@@ -80,16 +80,20 @@ function verifyProviderRuntimeBoundary(
   });
 
   [
-    'if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {',
+    'const messagingOnboardingEnabled = FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING;',
+    'const whatsappOsEnabled = FUNCTION_FLAGS.ENABLE_WHATSAPP_OS;',
+    'if (!messagingOnboardingEnabled && !whatsappOsEnabled) {',
     'res.status(200).send("OK");',
     'const provider = getProviderFromWebhookPath(req.path);',
+    'await persistWhatsAppOsProviderStatuses(req.body);',
+    'if (!messagingOnboardingEnabled) {',
   ].forEach((token) => assertIncludes(webhookHandler, token, 'Messaging onboarding webhook fail-closed boundary'));
   assertOrder(webhookHandler, [
-    'if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {',
+    'if (!messagingOnboardingEnabled && !whatsappOsEnabled) {',
     'res.status(200).send("OK");',
     'return;',
     'const provider = getProviderFromWebhookPath(req.path);',
-  ], 'Messaging onboarding webhook disabled-before-provider order');
+  ], 'Messaging and WhatsAppOS disabled-before-provider order');
 }
 
 function verifyRoute(route) {
@@ -560,9 +564,9 @@ function verifyMessagingOnboardingMonitorBoundary() {
     healthMonitor: read('functions/src/messagingOnboarding/healthMonitor.ts'),
     functionsEnvFiles: {
       functionsQa: read('functions/.env.menulist-qa'),
-      functionsProduction: read('functions/.env.menulist'),
+      functionsProduction: read('functions/.env.menulist-prod'),
       functionsQaExample: read('functions/.env.menulist-qa.example'),
-      functionsProductionExample: read('functions/.env.menulist.example'),
+      functionsProductionExample: read('functions/.env.menulist-prod.example'),
     },
     rootEnvFiles: {
       stagingExample: read('.env.staging.example'),

@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Website Contract
 
-> **Last Audited:** 2026-08-13
+> **Last Audited:** 2026-08-14
 
 ## Entry Surface
 
@@ -9,6 +9,14 @@
 - Required input: company name
 - Optional product profile: product name, HTTP(S) URL without embedded credentials, support email, billing model, initial product surfaces, and one closed-list first-discovery source
 - Commercial input: current monthly plan and INR/USD checkout currency
+
+## Proof Before Commercial Choice
+
+- Product details and admitted surface choices come before plan selection.
+- The browser displays up to four starter questions prioritized from those surfaces and the four-step path: add sources, review answers, run First 10, verify/go live.
+- The preview uses bundled deterministic definitions only. It does not fetch the product URL, import sources, call AI, create a workspace, or start billing.
+- Copy must say the preview is not imported knowledge, generated answers, or approved guidance.
+- Paid plan and currency controls appear after the preview; there is no free-plan implication.
 
 The page may explain that setup is self-service. It must not state that signup alone activates paid service, imports every source, installs the widget, or proves answer quality.
 
@@ -35,6 +43,8 @@ Do not tell a founder to submit changed plan/company details to “unstick” an
 
 ## Analytics Boundary
 
+- Record `onboarding_proof_viewed` only after local detail validation. Plausible receives a property-free event; the Google label is only the selected-surface count.
+- Never send company name, product name, URL, email, or selected surface names in proof analytics.
 - Record workspace completion only after strict response validation.
 - Record widget-key generation only when a new plaintext key is actually returned.
 - Keep checkout click separate from payment activation.

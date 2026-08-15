@@ -1,7 +1,7 @@
 # Deployment — Documentation Hub
 
 > **Category:** Infrastructure  
-> **Last Updated:** August 2, 2026
+> **Last Updated:** August 15, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This hub links deployment runbooks; current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
@@ -11,11 +11,13 @@
 
 | Document | Purpose |
 |----------|---------|
-| [menulist-staging-qa-setup.md](./menulist-staging-qa-setup.md) | Sole first execution guide for MenuList local/staging setup: domain purchase, Workspace mail/DNS, break-glass/daily accounts, GitHub/Vercel Git access, QA domains on exact branch `staging`, branch-restricted Preview secrets, wildcard DNS preservation, `us-central1` Firebase resources, emulator-first local safety, all-host QA crawler isolation, billing/provider setup, Firebase rule emulator/deploy/readback/authenticated-smoke gates, and recurring ownership reviews |
+| [menulist-staging-qa-setup.md](./menulist-staging-qa-setup.md) | Sole first execution guide for MenuList local/staging setup: domain purchase, Workspace mail/DNS, break-glass/daily accounts, GitHub/Vercel Git access, QA domains on exact branch `staging`, the branch-restricted custom `qa` environment, wildcard DNS preservation, `us-central1` Firebase resources, emulator-first local safety, all-host QA crawler isolation, billing/provider setup, Firebase rule emulator/deploy/readback/authenticated-smoke gates, and recurring ownership reviews |
+| [menulist-production-provider-setup.md](./menulist-production-provider-setup.md) | Live provider-preparation ledger and four-project keyless rollout contract: one shared Vercel project, MenuList/Answerlattice QA and production OIDC/Google Workload Identity Federation, exact provider order, and the strict boundary that keeps deploys, DNS, payments, messages, data, and launch certification gated |
 | [initial-account-domain-firebase-setup-guide.md](./initial-account-domain-firebase-setup-guide.md) | Owner-facing one-time setup guide for domain purchase, Workspace, Google Cloud/Firebase projects, billing accounts, budget alerts before paid services/API keys, Vercel, DNS, provider accounts, env placement, and staging-before-production order |
 | [three-product-environment-setup.md](./three-product-environment-setup.md) | Technical product/domain/account/env setup checklist for Neelvara, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex, billing ownership, budget alerts, and provider spend guardrails |
 | [production-deployment-checklist.md](./production-deployment-checklist.md) | Guarded production handoff checklist; routes external gates through the production-readiness runbook and does not authorize deploys without active approval |
 | [domain-environment-setup.md](./domain-environment-setup.md) | Exact env variables for production, preview/staging, and localhost domain handling |
+| [.env.production.example](../../.env.production.example) | Canonical production-only key inventory; use only when the production provider ledger reaches `PROD-E01`, never as permission to deploy or activate production traffic |
 
 ## Summary
 
@@ -39,6 +41,17 @@ readback, and real-auth allow/deny smoke before Functions. Tell Codex `QA-A01
 done`, `QA-B04 done`, and so on; Codex will mark the live checklist and guide
 the next item.
 
+[MenuList Production Provider Setup](./menulist-production-provider-setup.md)
+Use this live ledger after the QA infrastructure setup is reconciled. Inactive
+production provider preparation may proceed while feature certification runs,
+but its activation phase remains blocked until certification and the guarded
+production release gates pass. Report exact `PROD-*` IDs one at a time.
+
+[.env.production.example](../../.env.production.example)
+Open this only when the production provider ledger reaches `PROD-E01`. It is
+the canonical production key inventory; never copy QA values into it, upload
+literal placeholders, or treat completed env entry as deploy approval.
+
 [.env.staging.example](../../.env.staging.example)
 Open this only when the QA guide reaches Phase G. Use it for both local and
 Vercel Preview/Staging values as a key inventory; never upload its literal
@@ -53,9 +66,14 @@ for a declared secret.
 
 [Initial Account, Domain, Firebase, And Vercel Setup Guide](./initial-account-domain-firebase-setup-guide.md)
 Do not follow this portfolio-wide guide during the first MenuList QA pass. Use
-it after MenuList QA is verified, when setting up production and the remaining
-products.
+it as a cross-product reference after MenuList QA is verified. For MenuList
+production execution, use the dedicated production provider ledger above.
 
 [Three-Product Environment Setup](./three-product-environment-setup.md)
 Do not follow this portfolio-wide technical checklist during MenuList QA. It is
 a later cross-product reference.
+
+When an older portfolio-wide reference conflicts with the live MenuList QA or
+production ledger, the environment examples, or current source verifiers, stop
+and follow the dedicated live ledger. Update the stale reference before
+continuing rather than blending instructions from both documents.

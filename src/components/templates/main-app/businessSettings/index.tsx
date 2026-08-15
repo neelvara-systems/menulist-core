@@ -60,6 +60,7 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { motion } from "framer-motion";
 import { useFormatter, useTimeZone, useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import {
     createRef,
@@ -83,6 +84,7 @@ import {
     LuList,
     LuMapPin,
     LuMessageSquare,
+    LuBell,
     LuSave,
     LuSearch,
     LuShield,
@@ -95,6 +97,7 @@ import {
 import DigitalScreenSettings from "../settings/DigitalScreenSettings";
 import PresenceMonitor from "../useMenuList/PresenceMonitor";
 import TempStatusCard from "./TempStatusCard";
+import NotificationSettingsTab from "./NotificationSettingsTab";
 import {
     AnalyticsTab,
     BasicInfoTab,
@@ -442,6 +445,8 @@ type BusinessSettingsContentProps = {
 
 function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails }: BusinessSettingsContentProps) {
     const { userPermissions } = useContext(PlatformGlobalDataContext);
+    const { data: session } = useSession();
+    const isOwnerAccount = session?.user?.role === 'owner';
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const t = useTranslations('BusinessSettings');
@@ -1112,6 +1117,22 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 />
             ),
         },
+        ...(FEATURE_FLAGS.ENABLE_NOTIFICATION_OS && isOwnerAccount ? [{
+            key: "notifications",
+            label: "Notifications",
+            icon: <LuBell />,
+            tab: (
+                <div ref={scrollRefs.current[canAccessDigitalScreens ? 9 : 8]}>
+                    <NotificationSettingsTab
+                        storeDetails={storeDetails}
+                        onSaved={(notificationSettings) => setStoreDetails((previous) => ({
+                            ...(previous || storeDetails),
+                            notificationSettings,
+                        }))}
+                    />
+                </div>
+            ),
+        }] : []),
     ];
     scrollRefs.current = TAB_ITEMS_LIST.map(
         (_, i) => scrollRefs.current[i] ?? createRef(),

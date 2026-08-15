@@ -14,7 +14,7 @@ import { DB_COLLECTIONS } from '../src/constants/database';
 import { classifyMenuListBillingRecordIdentityBackfill } from '../src/lib/billing/billingRecordProductIdentity';
 
 const args = process.argv.slice(2);
-const ALLOWED_PROJECTS = new Set(['menulist', 'menulist-qa']);
+const ALLOWED_PROJECTS = new Set(['menulist-prod', 'menulist-qa']);
 const ALLOWED_COLLECTIONS = new Set<string>([
     DB_COLLECTIONS.PAYMENT_TRANSACTIONS,
     DB_COLLECTIONS.SUBSCRIPTIONS,
@@ -31,7 +31,7 @@ const getArg = (name: string): string | null => {
 async function main(): Promise<void> {
     const projectId = getArg('--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
     if (!ALLOWED_PROJECTS.has(projectId)) {
-        throw new Error('Billing record identity backfill requires --project-id menulist-qa or menulist.');
+        throw new Error('Billing record identity backfill requires --project-id menulist-qa or menulist-prod.');
     }
     const collectionName = getArg('--collection') || '';
     if (!ALLOWED_COLLECTIONS.has(collectionName)) {

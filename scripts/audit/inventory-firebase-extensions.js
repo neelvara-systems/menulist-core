@@ -3,7 +3,7 @@ const { spawnSync } = require('node:child_process');
 const FIREBASE_CLI_VERSION = '15.24.0';
 const DEFAULT_PROJECTS = [
   'menulist-qa',
-  'menulist',
+  'menulist-prod',
   'answerlattice-qa',
   'answerlattice',
   'campaigncue-qa',

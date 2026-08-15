@@ -152,7 +152,7 @@ Alert-rule evaluation keeps the existing fail-open behavior for monitoring calle
    firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
    firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
    ```
-   Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
+   Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist-prod`.
 
 ## File Structure
 

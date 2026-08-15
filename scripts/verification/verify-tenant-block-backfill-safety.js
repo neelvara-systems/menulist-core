@@ -86,7 +86,7 @@ runRefusalCase(
 );
 runRefusalCase(
   'mismatched project write',
-  ['--project-id', 'menulist-qa', '--write', '--confirm-project', 'menulist', '--store-id', '42'],
+  ['--project-id', 'menulist-qa', '--write', '--confirm-project', 'menulist-prod', '--store-id', '42'],
   'Refusing write: pass --confirm-project menulist-qa',
 );
 runRefusalCase(

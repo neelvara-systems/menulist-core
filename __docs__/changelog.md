@@ -1,5 +1,70 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Four-Project Vercel Keyless Identity Contract
+
+- Extended the Vercel OIDC and Google Workload Identity Federation source
+  contract across `menulist-qa`, `menulist-prod`, `answerlattice-qa`, and
+  `answerlattice` while retaining one shared Vercel project.
+- Added a reusable federation client with product-specific identity wrappers,
+  wired both Firebase Admin runtimes, and kept MenuList Cloud Tasks on the same
+  short-lived MenuList credential.
+- Made managed QA require the Vercel custom `qa` environment attached to branch
+  `staging`; generic Preview and static Admin credentials fail closed.
+- Updated env templates, startup validation, deployment docs, and executable
+  four-target regressions. Local development retains ADC compatibility.
+- Provider setup is intentionally pending and will run one target at a time:
+  MenuList QA, MenuList production, Answerlattice QA, then Answerlattice
+  production. Firebase Functions, deploys, and provider IAM were not changed.
+
+## August 15, 2026 - DistributionOS Outcome, Proof, And Channel Integrity Doctrine
+
+- Refined the Marketing and Distribution Bible so outcome-led positioning must
+  still name the truthful product mechanism, customer work, and proof boundary.
+- Added relevant-proof authority rules, including context, privacy, and the
+  distinction between a visible metric and channel-causality or retention proof.
+- Added community-first AI-discovery, permissioned lead-magnet delivery,
+  concept-level reuse, synthetic-presenter disclosure, anti-spam,
+  anti-account-warming, and anti-ban-evasion guardrails.
+- Clarified that no channel is admitted through founder anecdotes or platform
+  folklore, and that annual cash collection does not repair weak unit economics.
+- No source-ledger diary entry, provider/account action, campaign, product-code
+  change, deployment, or spend was created.
+
+## August 15, 2026 - MenuList Production Keyless Vercel Identity
+
+- Replaced the planned MenuList production Vercel Firebase Admin private-key
+  contract with Vercel OIDC and Google Workload Identity Federation using
+  short-lived service-account impersonation.
+- Shared the federated Google auth client across Firebase Admin and Cloud Tasks,
+  and configured Firebase custom-token signing through the exact impersonated
+  service-account ID.
+- Initially kept MenuList QA on its explicit-key mode; the later four-project
+  contract above supersedes that QA decision. Firebase Functions remain on
+  their native Google-managed Application Default Credentials path.
+- Added fail-closed production env validation, exact dependency pins, focused
+  regression coverage, and provider/IAM runbook evidence. No provider IAM
+  resource, build, deployment, production credential exchange, or production
+  data operation was performed.
+
+## August 15, 2026 - NotificationOS And WhatsAppOS Implementation
+
+- Added complete long-term documentation and source implementation for NotificationOS as the cross-channel policy/orchestration layer and WhatsAppOS as the official Meta delivery layer.
+- Froze email-only, WhatsApp-only and combined delivery modes around one product-scope/contact fetch per processing attempt, reused across every channel.
+- Preserved existing Owner Notifications collections and ledgers as the implementation substrate, avoiding a parallel queue or duplicated Firebase business data.
+- Separated phone OTP verification from WhatsApp notification opt-in and prohibited generated phone-login email identities from email delivery.
+- Added shared planners and WhatsApp contracts, migrated OTP/onboarding/owner callers, added product-local provider receipts and signed webhook reconciliation, and shipped authenticated desktop/mobile preference surfaces with audited consent and server-only Firestore boundaries.
+- Final firing audit removed the legacy email prerequisite from payment-failure/grace-period enqueueing, made every Next.js lifecycle producer await durable processing, and taught Answerlattice readiness to recognize either EmailOS/Resend or the migration SMTP bridge.
+- Added active-producer wiring checks and executable dry firing for all 68 product-trigger policies; reserved registry entries remain explicitly non-live.
+- Completed Answerlattice owner-notification wiring for exact shared Razorpay payment/refund/top-up/subscription transitions, post-consumption support-credit low/exhausted state, and the first authenticated widget-runtime proof. Answerlattice billing delivery keeps `productId: AL`, resolves `billingEmail` from the AL workspace, and cannot fall through to MenuList Firebase or the legacy MenuList sender.
+- Provider-send flags remain off until Meta/Resend onboarding, approved templates, secrets, DNS/webhook subscription, scoped QA deployment and live certification are completed; no live provider send or Vercel deployment was activated here.
+
+## August 15, 2026 - Cross-Product EmailOS Source Foundation
+
+- Added the provider-disabled EmailOS contract, React Email rendering, Resend adapters, durable delivery claims, product-scoped suppressions, signed webhook receipts and TTL declarations for MenuList and Answerlattice.
+- Preserved separate product credentials, Firebase state and activation flags; CampaignCue remains export-only, SignalDesk remains separately disabled, and MyCodex/Neelvara receive no runtime path.
+- Migrated existing email callers behind controlled product-specific cutover branches while retaining SMTP until provider onboarding and QA certification.
+- Added source/behavior verification and a workflow-by-workflow validation record. No live email, provider onboarding, Vercel build/deploy or production activation was performed.
+
 ## August 15, 2026 - Accessible Business Phone And Contact Controls
 
 - Named the desktop Business Settings phone-country selector and phone input, and added matching names to the mobile Basic Settings business and contact controls.
@@ -103,6 +168,12 @@
 
 - Fixed the desktop Temporary Status expiry picker so its entered wall time, customer preview, confirmation, and persisted ISO instant all use the active app timezone.
 - Added an Asia/Kolkata round-trip regression and source guards preventing browser-system timezone conversion from returning.
+
+## August 14, 2026 - AnswerLattice Proof-Before-Plan Onboarding
+
+- Added a deterministic product-surface launch preview before paid plan selection on AnswerLattice Get Started.
+- Reused the maintained First Trusted Answer starter questions and showed the real add-sources, review, First 10, and widget-verification sequence without claiming imported or approved product truth.
+- Added privacy-bounded proof analytics and source verifiers. The preview performs no network, Firebase, AI/provider, workspace, billing, or entitlement operation; paid provisioning remains unchanged and no deployment was run.
 
 ## August 14, 2026 - Guest Feedback Accessible Settings Controls
 

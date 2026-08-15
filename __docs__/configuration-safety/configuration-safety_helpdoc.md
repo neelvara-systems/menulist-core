@@ -9,7 +9,7 @@ Release operators use:
 - `.env.staging.example` for local/preview Vercel values;
 - `.env.production.example` for production Vercel values;
 - `functions/.env.menulist-qa.example` and
-  `functions/.env.menulist.example` for non-secret Functions values;
+  `functions/.env.menulist-prod.example` for non-secret Functions values;
 - Firebase Secret Manager and Vercel secret storage for credentials.
 
 Unknown boolean text is a configuration error. Use explicit `true` or `false`

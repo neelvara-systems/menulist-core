@@ -164,7 +164,7 @@ Treat `/pre-onboarding` as the primary human route for this feature. Keep the ma
 
 ## Rule 10: Infrastructure Separation
 
-Answerlattice has its OWN Firebase project (separate from MenuList's current `menulist-qa` local/preview target and `menulist` production target):
+Answerlattice has its OWN Firebase project (separate from MenuList's current `menulist-qa` local/preview target and `menulist-prod` production target):
 
 - **Separate:** Firestore, Auth, Storage, Cloud Functions, App Check
 - **Separate:** `answerlatticeFirebaseClient.ts`, `answerlatticeFirebaseAdmin.ts`, `answerlatticeConfig.ts`

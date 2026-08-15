@@ -11,7 +11,8 @@
 1. Recheck `@proofandstate`; use the backup order only if unavailable.
 2. Set display name to `Proof & State`.
 3. Upload `assets/proof-and-state-avatar.png`.
-4. Upload `assets/proof-and-state-x-banner.png`.
+4. Upload `assets/proof-and-state-x-banner-upload.png`, the under-500-KB
+   derivative of the canonical X banner.
 5. Use the bio and pinned post from the [strategy](./founder-public-presence_strategy.md).
 6. Add no location, product link, repository, personal site, birthday, or other
    social profile.
@@ -21,12 +22,21 @@
 ### Reddit
 
 1. Recheck and use the same username if available.
-2. Use the same avatar and a short version of the bio.
+2. Upload `assets/proof-and-state-avatar-reddit.png`, the under-500-KB
+   derivative of the same canonical avatar, and use a short version of the bio.
 3. Do not add product links or a founder story.
 4. Join `r/SaaS` and one current technical community only.
 5. Read for two sessions before commenting.
 
 Account creation, verification, and publishing remain manual external actions.
+
+### First-post launch exception
+
+The founder selected Sunday morning, August 16, 2026, for the first original X
+post. Publish FPP-C001 after the 8:30 AM Presence Brief, then return to the
+controlled 8:00 PM baseline for later original posts. Record the actual time,
+but do not compare this launch post's timing with the later baseline or infer an
+algorithm effect from one result.
 
 ## Daily Operating Rhythm
 
@@ -71,7 +81,7 @@ product.
 
 | Week/day | Content ID | Topic | Format |
 | --- | --- | --- | --- |
-| W1 Monday | FPP-C001 | A paywall is not a disabled button | text |
+| Launch day, Sunday | FPP-C001 | A paywall is not a disabled button | text |
 | W1 Wednesday | FPP-C003 | A system audit traces the complete path | text plus simple flow |
 | W1 Friday | FPP-C002 | RAG retrieves; authority decides | proof card |
 | W2 Monday | FPP-C007 | Cache invalidation belongs on every public write path | text |

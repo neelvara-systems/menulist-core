@@ -1,7 +1,7 @@
 # Proof & State Strategy
 
 **Status:** Active
-**Last Updated:** August 12, 2026
+**Last Updated:** August 14, 2026
 
 ## Objective
 
@@ -182,6 +182,35 @@ It must also contain at least one non-obvious mechanism, reproducible pattern,
 real trade-off, public-safe artifact, corrected assumption, or useful open
 question.
 
+## X Distribution Strategy
+
+X's For You system is treated as a per-viewer prediction and filtering system,
+not a universal account score or posting formula. Proof & State therefore
+optimizes for the following durable behaviors:
+
+- publish material that is closely matched to the intended technical-founder
+  audience and useful without a product purchase;
+- earn genuine discussion, sharing, following, and attentive reading through a
+  specific mechanism, artifact, or decision rather than asking for engagement;
+- avoid audience mismatch and repeated low-value formats that can produce “Not
+  interested,” mute, block, report, or spam-like signals;
+- use original, non-duplicative posts and trustworthy links;
+- maintain account security and transparent pseudonymity so compromised,
+  impersonation, or authenticity enforcement does not become a reach risk;
+- keep the three-post weekly starting cadence. X's ten-post monthly threshold
+  governs access to a transparency report, not distribution;
+- use the account's observed audience quality, post results, and eventual
+  `Under the Hood` label report before diagnosing visibility or changing the
+  strategy.
+
+Published ranking parameters are interpreted only at a pinned source commit.
+Candidate retrieval, predicted-action scoring, parameter defaults, author and
+network adjustments, reranking, visibility filtering, and transparency-report
+eligibility must remain separate. Coefficients are not interchangeable action
+values: dividing one by another does not show that a share, reply, or report is
+worth a fixed number of likes. Coefficients and experiments can change, and
+some anti-gaming and deployment details are not public.
+
 ## Explicit Rejections
 
 - no real name, face, natural voice, personal account, personal contact detail,
@@ -199,3 +228,6 @@ question.
 - no publishing merely to satisfy a quota;
 - no assumption that Premium, verification, hashtags, or a particular time
   guarantees distribution.
+- no treating an engagement coefficient, freshness filter, author boost, or
+  transparency-tool threshold as a guaranteed reach tactic.
+- no converting coefficient ratios into likes-equivalent engagement targets.

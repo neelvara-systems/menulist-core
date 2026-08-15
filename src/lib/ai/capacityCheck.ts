@@ -6,6 +6,7 @@ import {
     getNonNegativeCreditInteger,
     getPositiveCreditInteger,
 } from "@data/shared/aiCreditScalarContract";
+import { resolveMenuListCreditNotification } from "@data/shared/creditNotificationPolicy";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
@@ -319,32 +320,40 @@ function readPersistedReservation(
     return {
         ...expected,
         recoveryMode: data.accountingRecoveryMode === "durable_retry" ? "durable_retry" : "automatic_refund",
-        remainingBalance: { billingStoreId: Number(expected.billingStoreId), monthlyCredits, topUpCredits },
+        remainingBalance: {
+            billingStoreId: Number(expected.billingStoreId),
+            monthlyCredits,
+            topUpCredits,
+        },
         state: data.accountingStatus,
     };
 }
 
-async function sendCreditsExhaustedLifecycleMessage(
+async function sendCreditBalanceLifecycleMessage(
     subscription: FirestoreSubscriptionDoc,
     unitsToConsume: number,
     balance: RemainingBalance,
 ) {
-    if (balance.monthlyCredits !== 0 || balance.topUpCredits !== 0) return;
+    const totalRemaining = balance.monthlyCredits + balance.topUpCredits;
+    const monthlyAllowance = getNonNegativeCreditInteger(subscription.monthlyCreditsAllowance ?? 0) ?? 0;
+    const { eventType } = resolveMenuListCreditNotification({ monthlyAllowance, remainingCredits: totalRemaining });
+    if (!eventType) return;
     const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
     if (!subscriptionScope) return;
+    const billingPeriod = getBillingPeriodKey(subscription.cycleStartDate) || new Date().toISOString().slice(0, 7);
     try {
         const { sendLifecycleMessage } = await import('@lib/messaging');
-        sendLifecycleMessage({
+        await sendLifecycleMessage({
             storeId: String(subscriptionScope.storeId),
             tenantId: String(subscriptionScope.tenantId),
-            eventType: 'CREDITS_EXHAUSTED',
-            referenceId: `credits-exhausted-${subscriptionScope.storeId}-${new Date().toISOString().split('T')[0]}`,
+            eventType,
+            referenceId: `${eventType.toLowerCase()}-${subscriptionScope.storeId}-${billingPeriod}`,
             recipientEmail: subscription.email || '',
             storeName: subscription.name || '',
-            metadata: {},
+            metadata: { remainingCredits: totalRemaining },
         }).catch((notificationError) => {
             logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_failed', notificationError, {
-                eventType: 'CREDITS_EXHAUSTED',
+                eventType,
                 unitsToConsume,
                 monthlyCredits: balance.monthlyCredits,
                 topUpCredits: balance.topUpCredits,
@@ -355,7 +364,7 @@ async function sendCreditsExhaustedLifecycleMessage(
         });
     } catch (notificationImportError) {
         logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_import_failed', notificationImportError, {
-            eventType: 'CREDITS_EXHAUSTED',
+            eventType,
             unitsToConsume,
             monthlyCredits: balance.monthlyCredits,
             topUpCredits: balance.topUpCredits,
@@ -402,8 +411,14 @@ function calculateConsumedBalance(
 
     if (monthlyRemaining >= unitsToConsume) {
         return {
-            balance: { monthlyCredits: monthlyRemaining - unitsToConsume, topUpCredits: topUpRemaining },
-            beforeBalance: { monthlyCredits: monthlyRemaining, topUpCredits: topUpRemaining },
+            balance: {
+                monthlyCredits: monthlyRemaining - unitsToConsume,
+                topUpCredits: topUpRemaining,
+            },
+            beforeBalance: {
+                monthlyCredits: monthlyRemaining,
+                topUpCredits: topUpRemaining,
+            },
             billingPeriod,
             chargedBalance: { monthlyCredits: unitsToConsume, topUpCredits: 0 },
         };
@@ -414,9 +429,15 @@ function calculateConsumedBalance(
             monthlyCredits: 0,
             topUpCredits: topUpRemaining - chargedTopUpCredits,
         },
-        beforeBalance: { monthlyCredits: monthlyRemaining, topUpCredits: topUpRemaining },
+        beforeBalance: {
+            monthlyCredits: monthlyRemaining,
+            topUpCredits: topUpRemaining,
+        },
         billingPeriod,
-        chargedBalance: { monthlyCredits: monthlyRemaining, topUpCredits: chargedTopUpCredits },
+        chargedBalance: {
+            monthlyCredits: monthlyRemaining,
+            topUpCredits: chargedTopUpCredits,
+        },
     };
 }
 
@@ -487,7 +508,10 @@ export async function reserveAiCapacity({
         if (operationSnap.exists) assertReservationContract(existing, expected);
         if (!subscriptionSnap.exists) throw new Error("Billing subscription is not available.");
 
-        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const current = {
+            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
+            id: subscriptionSnap.id,
+        };
         const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
             !currentScope
@@ -547,7 +571,10 @@ export async function reserveAiCapacity({
         return {
             ...expected,
             recoveryMode,
-            remainingBalance: { billingStoreId: Number(expected.billingStoreId), ...balance },
+            remainingBalance: {
+                billingStoreId: Number(expected.billingStoreId),
+                ...balance,
+            },
             state: "reserved" as const,
         };
     });
@@ -573,7 +600,10 @@ export async function finalizeAiCapacityReservation({
         const persisted = readPersistedReservation(existing, reservation);
         if (existing.accountingStatus === "consumed") {
             const replaySubscription = subscriptionSnap.exists
-                ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
+                ? {
+                      ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
+                      id: subscriptionSnap.id,
+                  }
                 : null;
             const replayScope = replaySubscription
                 ? getMenuListSubscriptionEntitlementScope(replaySubscription)
@@ -636,7 +666,7 @@ export async function finalizeAiCapacityReservation({
     });
 
     if (!result.alreadyConsumed && result.subscription) {
-        await sendCreditsExhaustedLifecycleMessage(result.subscription, reservation.unitsReserved, result.balance);
+        await sendCreditBalanceLifecycleMessage(result.subscription, reservation.unitsReserved, result.balance);
     }
     return { alreadyConsumed: result.alreadyConsumed, remainingBalance: result.balance };
 }
@@ -895,7 +925,7 @@ export async function consumeAICapacity(
 
     if (!updatedBalance) return null;
 
-    await sendCreditsExhaustedLifecycleMessage(updatedBalance.subscription, unitsToConsume, updatedBalance);
+    await sendCreditBalanceLifecycleMessage(updatedBalance.subscription, unitsToConsume, updatedBalance);
 
     return {
         billingStoreId: updatedBalance.billingStoreId,
@@ -976,7 +1006,10 @@ export async function consumeAICapacityIdempotently({
             }
         }
         if (!subscriptionSnap.exists) throw new Error('Billing subscription is not available.');
-        const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const current = {
+            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
+            id: subscriptionSnap.id,
+        };
         const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
             !currentScope
@@ -1010,7 +1043,10 @@ export async function consumeAICapacityIdempotently({
     });
 
     if (!result.alreadyConsumed) {
-        await sendCreditsExhaustedLifecycleMessage(result.subscription, unitsToConsume, result.balance);
+        await sendCreditBalanceLifecycleMessage(result.subscription, unitsToConsume, result.balance);
     }
-    return { alreadyConsumed: result.alreadyConsumed, remainingBalance: result.balance };
+    return {
+        alreadyConsumed: result.alreadyConsumed,
+        remainingBalance: result.balance,
+    };
 }

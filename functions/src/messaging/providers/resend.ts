@@ -1,16 +1,15 @@
 /**
- * Nodemailer Email Provider Adapter
+ * MenuList email provider compatibility adapter.
  * 
- * Uses nodemailer with any SMTP server (Gmail, custom domain, etc.).
- * FREE — no paid API key needed. Gmail SMTP: 500/day personal, 2000/day Workspace.
+ * Routes through EmailOS/Resend when the provider cutover flag is enabled and
+ * retains the bounded Nodemailer/SMTP bridge during migration and rollback.
  * 
  * Prerequisites:
  * - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in Firebase Functions secrets
  * - For Gmail: use App Password (not regular password)
  *   → Google Account → Security → 2FA → App Passwords → generate one
  * 
- * Firebase cost: ₹0 (SMTP is free, no Firestore operations for sending).
- * 
+ * @see __docs__/email-os/email-os_impl.md
  * @see __docs__/lifecycle-messaging/lifecycle-messaging_impl.md
  */
 
@@ -18,6 +17,10 @@ import * as nodemailer from 'nodemailer';
 import * as functions from 'firebase-functions';
 import { ProviderSendResult } from '../types';
 import { getBoundedFunctionsErrorName } from '../../utils/boundedErrorContext';
+import { FUNCTION_FLAGS } from '../../constants/features';
+import { renderEmailOsLegacyContent } from '../../emailOs/render';
+import { sendMenuListEmailOs } from '../../emailOs/provider';
+import { createHash } from 'node:crypto';
 
 const DEFAULT_FROM = 'MenuList <system@menulist.ai>';
 const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
@@ -108,7 +111,36 @@ export async function sendEmailViaSMTP(params: {
   subject: string;
   html: string;
   from?: string;
+  eventType?: string;
+  referenceId?: string;
 }): Promise<ProviderSendResult> {
+  if (FUNCTION_FLAGS.ENABLE_EMAIL_OS && FUNCTION_FLAGS.ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND) {
+    if (!params.eventType || !params.referenceId) {
+      return { success: false, error: 'EMAIL_OS_DELIVERY_IDENTITY_MISSING' };
+    }
+    const content = renderEmailOsLegacyContent(params.html, params.subject);
+    const localDeliveryReference = createHash('sha256')
+      .update(`${params.eventType}\0${params.referenceId}\0${params.to.toLowerCase()}`)
+      .digest('hex');
+    const result = await sendMenuListEmailOs({
+      productCode: 'ML',
+      classification: 'operational',
+      eventType: params.eventType.toLowerCase().replace(/[^a-z0-9._-]+/g, '_'),
+      localDeliveryReference,
+      from: params.from || process.env.MENULIST_EMAIL_OS_FROM || DEFAULT_FROM,
+      to: params.to,
+      replyTo: process.env.MENULIST_EMAIL_OS_REPLY_TO,
+      subject: params.subject,
+      html: content.html,
+      text: content.text,
+    });
+    return {
+      success: result.accepted,
+      providerMessageId: result.providerMessageId,
+      error: result.errorCode,
+    };
+  }
+
   const transporter = getTransporter();
   if (!transporter) {
     return { success: false, error: SMTP_NOT_CONFIGURED_ERROR };

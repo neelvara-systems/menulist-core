@@ -257,10 +257,11 @@ export const POST = withAuth(async (request, session) => {
                 data: getRazorpaySubscriptionMutationLogContext(transitionedSubscription),
             });
 
-            if (!isAnswerlatticeBillingProduct(productId) && targetStatus === 'cancelled' && statusApplication.applied) {
+            if (targetStatus === 'cancelled' && statusApplication.applied) {
                 try {
                     const { sendLifecycleMessage } = await import('@lib/messaging');
-                    sendLifecycleMessage({
+                    await sendLifecycleMessage({
+                        productId,
                         storeId: String(internalSub.storeId),
                         tenantId: String(internalSub.tenantId),
                         eventType: 'SUBSCRIPTION_CANCELLED',

@@ -9,6 +9,7 @@
  */
 
 import * as nodemailer from 'nodemailer';
+import { createHash } from 'node:crypto';
 import * as logger from 'firebase-functions/logger';
 import {
     IIntegrationAdapter,
@@ -26,6 +27,9 @@ import {
     safePayloadStringArray,
     safeText,
 } from '../safety';
+import { FUNCTION_FLAGS } from '../../constants/features';
+import { renderEmailOsLegacyContent } from '../../emailOs/render';
+import { sendAnswerlatticeEmailOs } from '../../emailOs/provider';
 
 const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.DRIFT_DETECTED]: 'Drift Detected',
@@ -181,20 +185,53 @@ export class EmailAdapter implements IIntegrationAdapter {
     async send(event: IntegrationEvent, config: EmailConfig): Promise<DeliveryResult> {
         const startMs = Date.now();
 
-        const smtp = getTransporter();
-        if (!smtp) {
-            return {
-                success: false,
-                error: 'SMTP not configured',
-                durationMs: Date.now() - startMs,
-            };
-        }
-
         const recipients = Array.from(new Set((config.recipients || []).slice(0, INTEGRATION_LIMITS.MAX_EMAIL_RECIPIENTS)));
         if (recipients.length === 0) {
             return {
                 success: false,
                 error: 'No recipients configured',
+                durationMs: Date.now() - startMs,
+            };
+        }
+
+        if (FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND) {
+            const { subject, html } = this.formatPayload(event);
+            const content = renderEmailOsLegacyContent(html, subject);
+            const eventReference = event.eventId
+                || createHash('sha256').update(`${event.tId}\0${event.sId}\0${event.eventType}\0${event.createdAt.toMillis()}`).digest('hex');
+            for (const recipient of recipients) {
+                const localDeliveryReference = createHash('sha256')
+                    .update(`${eventReference}\0${recipient.toLowerCase()}`)
+                    .digest('hex');
+                const result = await sendAnswerlatticeEmailOs({
+                    productCode: 'AL',
+                    classification: 'operational',
+                    eventType: event.eventType,
+                    localDeliveryReference,
+                    from: process.env.ANSWERLATTICE_EMAIL_OS_FROM || 'Answerlattice <system@answerlattice.com>',
+                    to: recipient,
+                    replyTo: process.env.ANSWERLATTICE_EMAIL_OS_REPLY_TO,
+                    subject,
+                    html: content.html,
+                    text: content.text,
+                });
+                if (!result.accepted) {
+                    return {
+                        success: false,
+                        retryable: result.retryable,
+                        error: result.errorCode || 'EmailOS delivery failed',
+                        durationMs: Date.now() - startMs,
+                    };
+                }
+            }
+            return { success: true, durationMs: Date.now() - startMs };
+        }
+
+        const smtp = getTransporter();
+        if (!smtp) {
+            return {
+                success: false,
+                error: 'SMTP not configured',
                 durationMs: Date.now() - startMs,
             };
         }

@@ -6,6 +6,12 @@
  */
 
 export const FUNCTION_FLAGS = {
+    /** Shared EmailOS contract; Resend transmission stays off until onboarding. */
+    ENABLE_EMAIL_OS: true,
+    ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND: false,
+    ENABLE_NOTIFICATION_OS: true,
+    ENABLE_WHATSAPP_OS: true,
+
     /**
      * Enable Sentry error tracking for Firebase Functions
      * 

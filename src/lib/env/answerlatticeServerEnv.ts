@@ -24,6 +24,9 @@ export const answerlatticeServerEnv = {
     get firebaseClientEmail() {
         return readConfiguredValue('ANSWERLATTICE_FIREBASE_CLIENT_EMAIL');
     },
+    get firebaseAdminAuthMode() {
+        return readConfiguredValue('ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE');
+    },
     get firebasePrivateKey() {
         return readConfiguredValue('ANSWERLATTICE_FIREBASE_PRIVATE_KEY');
     },
@@ -38,6 +41,18 @@ export const answerlatticeServerEnv = {
             'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET',
             'ANSWERLATTICE_FIREBASE_STORAGE_BUCKET',
         );
+    },
+    get gcpProjectNumber() {
+        return readConfiguredValue('ANSWERLATTICE_GCP_PROJECT_NUMBER');
+    },
+    get gcpServiceAccountEmail() {
+        return readConfiguredValue('ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL');
+    },
+    get gcpWorkloadIdentityPoolId() {
+        return readConfiguredValue('ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID');
+    },
+    get gcpWorkloadIdentityProviderId() {
+        return readConfiguredValue('ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID');
     },
     get githubAppClientId() {
         return readConfiguredValue('ANSWERLATTICE_GITHUB_APP_CLIENT_ID');

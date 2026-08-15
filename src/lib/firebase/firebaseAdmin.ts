@@ -2,6 +2,11 @@ import { admin } from './firebaseAdminCompat';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
+import {
+    getMenulistFirebaseWorkloadIdentityCredential,
+    readMenulistWorkloadIdentityConfig,
+    resolveMenulistGoogleCredentialMode,
+} from '@lib/google/menulistWorkloadIdentity';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -11,10 +16,24 @@ const firebaseAdminApp = existingDefaultApp || (() => {
     const projectId = menulistServerEnv.firebaseProjectId;
     const privateKey = menulistServerEnv.firebasePrivateKey;
     const clientEmail = menulistServerEnv.firebaseClientEmail;
+    const credentialMode = resolveMenulistGoogleCredentialMode();
 
-    // For Vercel deployment: Use explicit environment variables
-    // For local development: Uses GOOGLE_APPLICATION_CREDENTIALS automatically
-    if (projectId && privateKey && clientEmail) {
+    if (credentialMode === 'vercel_oidc') {
+        const workloadIdentity = readMenulistWorkloadIdentityConfig();
+        const app = admin.initializeApp({
+            credential: getMenulistFirebaseWorkloadIdentityCredential(),
+            projectId: workloadIdentity.projectId,
+            serviceAccountId: workloadIdentity.serviceAccountEmail,
+            ...(storageBucket ? { storageBucket } : {}),
+        });
+        logFirebaseAdminDiagnostic('firebase_admin_initialized', {
+            credentialSource: 'vercel_oidc',
+            hasStorageBucket: Boolean(storageBucket),
+        });
+        return app;
+    }
+
+    if (credentialMode === 'service_account_key' && projectId && privateKey && clientEmail) {
         const app = admin.initializeApp({
             credential: admin.credential.cert({
                 projectId,
@@ -24,14 +43,19 @@ const firebaseAdminApp = existingDefaultApp || (() => {
             ...(storageBucket ? { storageBucket } : {}),
         });
         logFirebaseAdminDiagnostic('firebase_admin_initialized', {
-            credentialSource: 'explicit_env',
+            credentialSource: 'service_account_key',
             hasStorageBucket: Boolean(storageBucket),
         });
         return app;
     }
 
-    // Fallback to ADC for local development with GOOGLE_APPLICATION_CREDENTIALS
+    if (credentialMode === 'service_account_key') {
+        throw new Error('MenuList Firebase service-account key configuration is incomplete.');
+    }
+
+    // Local development and Google-hosted runtimes use Application Default Credentials.
     const app = admin.initializeApp({
+        ...(projectId ? { projectId } : {}),
         ...(storageBucket ? { storageBucket } : {}),
     });
     logFirebaseAdminDiagnostic('firebase_admin_initialized', {

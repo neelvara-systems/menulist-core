@@ -350,7 +350,7 @@ firebase deploy --project menulist-qa --config firebase.json --only storage --no
 Production Storage rules deploy requires QA evidence and explicit production approval in the active session:
 
 ```bash
-firebase deploy --project menulist --config firebase.json --only storage --non-interactive
+firebase deploy --project menulist-prod --config firebase.json --only storage --non-interactive
 ```
 
 **Pass Evidence**
@@ -534,7 +534,7 @@ npm run verify:menulist-api-tenant-safety
 
 Passing preflight proves local env/secret naming, docs, public WhatsApp Action Link Check non-provider boundaries, platform-only messaging onboarding monitor coverage, preview/fix/publish source gates, messaging extraction destination routing, public cache-tag writes, ops guards, and bounded WhatsApp diagnostics only. It does not prove Meta webhook delivery, provider media download, outbound WhatsApp delivery, provider asset configuration, or provider-mode correctness.
 
-Current blocker refreshed July 9, 2026: checked-in root and MenuList Functions dotenv files keep `ENABLE_MESSAGING_ONBOARDING` absent or `false`, and local presence checks found no WhatsApp provider secret values in `.env`, `functions/.env.menulist-qa`, `functions/.env.menulist`, or `functions/.env.menulist.example`. No Firebase Secret Manager read, Meta app registration, test phone number, approved recipient, deployed webhook, or provider call was performed. Gate 5 remains blocked until the owner provisions real non-production Meta assets, sets matching Firebase secrets on the smoke target, deploys the webhook function, registers the webhook URL, and enables only that target.
+Current blocker refreshed July 9, 2026: checked-in root and MenuList Functions dotenv files keep `ENABLE_MESSAGING_ONBOARDING` absent or `false`, and local presence checks found no WhatsApp provider secret values in `.env`, `functions/.env.menulist-qa`, `functions/.env.menulist-prod`, or `functions/.env.menulist-prod.example`. No Firebase Secret Manager read, Meta app registration, test phone number, approved recipient, deployed webhook, or provider call was performed. Gate 5 remains blocked until the owner provisions real non-production Meta assets, sets matching Firebase secrets on the smoke target, deploys the webhook function, registers the webhook URL, and enables only that target.
 
 **Prerequisites**
 

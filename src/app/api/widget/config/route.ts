@@ -368,6 +368,32 @@ export async function GET(request: NextRequest) {
                     .collection(DB_COLLECTIONS.STORES)
                     .doc(String(sId))
                     .set(buildWidgetRuntimeStatusWrite(nextRuntimeStatus), { merge: true });
+                if (!runtimeStatus?.lastSeenAt) {
+                    try {
+                        const { enqueueOwnerNotification } = await import('@lib/owner-notifications');
+                        await enqueueOwnerNotification({
+                            productId: PRODUCT_IDS.ANSWERLATTICE,
+                            triggerType: 'WIDGET_CONNECTION_VERIFIED',
+                            tenantId: String(tId),
+                            storeId: String(sId),
+                            workspaceId: String(sId),
+                            referenceId: `widget-runtime-${tId}-${sId}`,
+                            metadata: {
+                                productName: storeData.productName,
+                                workspaceName: storeData.companyName || storeData.businessName,
+                            },
+                            source: {
+                                runtime: 'next',
+                                path: 'src/app/api/widget/config/route.ts:first-runtime-observation',
+                            },
+                        }, { processImmediately: true, processExisting: false });
+                    } catch (notificationError) {
+                        logRuntimeFailure('answerlattice_widget_connection_notification_failed', notificationError, {
+                            ...getBoundedRuntimeStringContext('tenantId', tId),
+                            ...getBoundedRuntimeStringContext('storeId', sId),
+                        });
+                    }
+                }
             } catch (telemetryError) {
                 logRuntimeFailure('answerlattice_widget_config_runtime_status_write_failed', telemetryError, {
                     ...getBoundedRuntimeStringContext('tenantId', tId),

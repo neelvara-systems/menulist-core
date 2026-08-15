@@ -121,8 +121,11 @@ checked sources and dates.
 | Asset | Canonical path | Use |
 | --- | --- | --- |
 | Avatar | `assets/proof-and-state-avatar.png` | X, Reddit, and later admitted channels |
+| Reddit upload avatar | `assets/proof-and-state-avatar-reddit.png` | 512 x 512 PNG derivative of the canonical avatar; under Reddit's 500 KB upload limit |
 | X banner | `assets/proof-and-state-x-banner.png` | X launch profile |
+| X upload banner | `assets/proof-and-state-x-banner-upload.png` | 1080 x 360 PNG derivative of the canonical X banner; under 500 KB |
 
 The mark is four measured corners around one cobalt evidence point: proof inside
 bounded state. Do not add a face, mascot, verification badge, crypto styling,
-or unrelated logo variant.
+or unrelated logo variant. Platform upload derivatives must preserve this mark
+and must not replace the canonical source asset.

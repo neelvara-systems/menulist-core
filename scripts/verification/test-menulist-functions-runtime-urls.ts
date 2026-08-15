@@ -23,7 +23,7 @@ assert.equal(
 assert.equal(
   resolveMenuListTenantBaseDomain({
     configuredDomain: 'menulist.online',
-    projectId: 'menulist',
+    projectId: 'menulist-prod',
   }),
   'menulist.online',
 );
@@ -46,7 +46,7 @@ assert.equal(
 assert.equal(
   resolveMenuListOwnerSignInUrl({
     configuredUrl: 'https://app.menulist.ai',
-    projectId: 'menulist',
+    projectId: 'menulist-prod',
   }),
   'https://app.menulist.ai/signin',
 );
@@ -55,7 +55,7 @@ assert.equal(
   'https://app.menulist.digital',
 );
 assert.equal(
-  resolveMenuListOwnerAppUrl({ projectId: 'menulist' }),
+  resolveMenuListOwnerAppUrl({ projectId: 'menulist-prod' }),
   'https://app.menulist.ai',
 );
 
@@ -86,7 +86,7 @@ assert.equal(
 assert.equal(
   resolveMenuListOwnerAppUrl({
     configuredUrl: 'https://app.menulist.digital',
-    projectId: 'menulist',
+    projectId: 'menulist-prod',
   }),
   null,
   'Production must reject the QA owner-app origin',

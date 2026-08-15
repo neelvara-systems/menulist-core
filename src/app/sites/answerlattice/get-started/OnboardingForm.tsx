@@ -8,6 +8,11 @@ import {
     normalizeAnswerlatticeOnboardResult,
     type AnswerlatticeOnboardResult,
 } from '@lib/answerlattice/onboardingResponse';
+import {
+    ANSWERLATTICE_ONBOARDING_SURFACE_OPTIONS,
+    buildAnswerlatticeOnboardingProof,
+    type AnswerlatticeOnboardingSurfaceKey,
+} from '@lib/answerlattice/onboardingProof';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -16,7 +21,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
+type OnboardingStep = 'auth' | 'details' | 'proof' | 'creating' | 'done';
 type BillingModel = 'subscription' | 'usage' | 'one_time' | 'not_sure';
 type BillingCurrency = 'INR' | 'USD';
 
@@ -25,14 +30,6 @@ interface OnboardErrorResult {
     error?: string;
 }
 
-const SURFACE_OPTIONS = [
-    { key: 'billing', label: 'Billing' },
-    { key: 'onboarding', label: 'Onboarding' },
-    { key: 'settings', label: 'Settings' },
-    { key: 'team', label: 'Team' },
-    { key: 'integrations', label: 'Connected apps' },
-    { key: 'release_notes', label: 'Release notes' },
-];
 const DISCOVERY_SOURCE_OPTIONS: Array<{ label: string; value: SelfReportedDiscoveryChannel }> = [
     { label: 'ChatGPT', value: 'chatgpt' },
     { label: 'Claude', value: 'claude' },
@@ -134,7 +131,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
     );
     const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
     const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
-    const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
+    const [primarySurfaces, setPrimarySurfaces] = useState<AnswerlatticeOnboardingSurfaceKey[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AnswerlatticeOnboardResult | null>(null);
     const submissionInFlightRef = useRef(false);
@@ -145,6 +142,11 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
     const selectedPlanPrice = currency === 'USD'
         ? `US$${Math.round(selectedPlan.priceUSD.price / 100).toLocaleString('en-US')}`
         : `₹${Math.round(selectedPlan.priceINR.price / 100).toLocaleString('en-IN')}`;
+    const onboardingProof = useMemo(() => buildAnswerlatticeOnboardingProof({
+        companyName,
+        productName,
+        primarySurfaces,
+    }), [companyName, primarySurfaces, productName]);
     const existingAnswerlatticeScope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
     const mainDashboardHref = useMemo(() => {
         const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
@@ -191,9 +193,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
         signOut({ callbackUrl: window.location.href });
     };
 
-    const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (submissionInFlightRef.current) return;
+    const validateProductDetails = () => {
         const trimmedCompanyName = companyName.trim();
         const trimmedProductName = productName.trim();
         const trimmedProductUrl = productUrl.trim();
@@ -201,7 +201,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
 
         if (!trimmedCompanyName || trimmedCompanyName.length < 2) {
             setError('Company name must be at least 2 characters.');
-            return;
+            return null;
         }
         if (trimmedProductUrl) {
             try {
@@ -213,13 +213,41 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                 ) throw new Error('Invalid URL');
             } catch {
                 setError('Enter a valid product URL, for example https://app.example.com.');
-                return;
+                return null;
             }
         }
         if (primarySurfaces.length === 0) {
             setError('Choose at least one main product page.');
+            return null;
+        }
+
+        return { trimmedCompanyName, trimmedProductName, trimmedProductUrl, trimmedSupportEmail };
+    };
+
+    const handlePreviewProof = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const validatedDetails = validateProductDetails();
+        if (!validatedDetails) return;
+
+        setError(null);
+        setStep('proof');
+        const eventLabel = `${primarySurfaces.length}_surfaces`;
+        trackPlausibleEvent('onboarding_proof_viewed');
+        trackGoogleMarketingEvent('onboarding_proof_viewed', {
+            event_category: 'answerlattice_website',
+            event_label: eventLabel,
+        });
+    };
+
+    const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (submissionInFlightRef.current) return;
+        const validatedDetails = validateProductDetails();
+        if (!validatedDetails) {
+            setStep('details');
             return;
         }
+        const { trimmedCompanyName, trimmedProductName, trimmedProductUrl, trimmedSupportEmail } = validatedDetails;
 
         submissionInFlightRef.current = true;
         setStep('creating');
@@ -266,27 +294,27 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                 if (isOnboardErrorResult(data)) {
                     if (data.code === 'ANSWERLATTICE_SETUP_IN_PROGRESS') {
                         setError('Workspace setup is already running. Wait a moment, then try again.');
-                        setStep('details');
+                        setStep('proof');
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_SETUP_REQUEST_CHANGED') {
                         setError('A setup attempt is already running with different details. Wait a moment, then refresh.');
-                        setStep('details');
+                        setStep('proof');
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING') {
                         setError('Payment setup is still being verified. Wait a few minutes, then retry with the same details.');
-                        setStep('details');
+                        setStep('proof');
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED') {
                         setError('The previous payment checkout is no longer usable. Submit the same details again to create a new checkout.');
-                        setStep('details');
+                        setStep('proof');
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED') {
                         setError('Too many setup attempts. Wait until the retry window ends, then try again.');
-                        setStep('details');
+                        setStep('proof');
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_ACCOUNT_EXISTS') {
@@ -336,13 +364,13 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
             setStep('done');
         } catch {
             setError(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
-            setStep('details');
+            setStep('proof');
         } finally {
             submissionInFlightRef.current = false;
         }
     };
 
-    const toggleSurface = (surfaceKey: string) => {
+    const toggleSurface = (surfaceKey: AnswerlatticeOnboardingSurfaceKey) => {
         setPrimarySurfaces(prev => prev.includes(surfaceKey)
             ? prev.filter(item => item !== surfaceKey)
             : [...prev, surfaceKey]);
@@ -434,10 +462,10 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
 
             {/* Step 2: Company Details */}
             {step === 'details' && (!existingAnswerlatticeScope || status !== 'authenticated') && (
-                <form style={styles.card} onSubmit={handleCreateAccount}>
-                    <h2 style={styles.cardTitle}>Set up your account</h2>
+                <form style={styles.card} onSubmit={handlePreviewProof}>
+                    <h2 style={styles.cardTitle}>Tell us about your product</h2>
                     <p style={styles.cardSubtext}>
-                        Welcome{session?.user?.name ? `, ${session.user.name}` : ''}! Tell us about your product.
+                        Welcome{session?.user?.name ? `, ${session.user.name}` : ''}! Choose the areas where customers are most likely to need help.
                     </p>
 
                     {session?.user?.email && (
@@ -548,8 +576,72 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                         </div>
                     )}
 
+                    <fieldset style={styles.fieldset}>
+                        <legend style={styles.label}>Main product pages</legend>
+                        <div style={styles.checkboxGrid}>
+                            {ANSWERLATTICE_ONBOARDING_SURFACE_OPTIONS.map((surface) => (
+                                <label key={surface.key} style={styles.checkboxOption}>
+                                    <input
+                                        type="checkbox"
+                                        name="answerlattice-primary-surfaces"
+                                        value={surface.key}
+                                        checked={primarySurfaces.includes(surface.key)}
+                                        onChange={() => toggleSurface(surface.key)}
+                                        style={styles.checkboxInput}
+                                    />
+                                    {surface.label}
+                                </label>
+                            ))}
+                        </div>
+                    </fieldset>
+
+                    {error && <p style={styles.error} role="alert" aria-live="polite">{error}</p>}
+
+                    <button
+                        type="submit"
+                        style={styles.primaryBtn}
+                        data-answerlattice-event="onboarding_preview_clicked"
+                        data-answerlattice-label={`${primarySurfaces.length}_surfaces`}
+                    >
+                        Preview my launch path
+                    </button>
+                </form>
+            )}
+
+            {/* Step 3: Personalized proof and paid plan choice */}
+            {step === 'proof' && (!existingAnswerlatticeScope || status !== 'authenticated') && (
+                <form style={styles.card} onSubmit={handleCreateAccount}>
+                    <p style={styles.eyebrow}>Your launch preview</p>
+                    <h2 style={styles.cardTitle}>Start with the questions {onboardingProof.subjectLabel} needs to answer.</h2>
+                    <p style={styles.cardSubtext}>
+                        Based on {onboardingProof.selectedSurfaces.map(surface => surface.label).join(', ')}, these are the first checks to prepare and verify.
+                    </p>
+
+                    <div style={styles.proofList}>
+                        {onboardingProof.priorityQuestions.map((question, index) => (
+                            <div key={question.id} style={styles.proofItem}>
+                                <span style={styles.proofNumber}>{index + 1}</span>
+                                <div style={styles.proofText}>
+                                    <span style={styles.proofTitle}>{question.title}</span>
+                                    <span style={styles.proofQuery}>{question.query}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <p style={styles.proofBoundary}>
+                        This is a client-only starter preview—not imported knowledge, generated answers, or approved guidance. After setup, teach AnswerLattice from your sources, review the drafts, run all {onboardingProof.totalStarterQuestionCount} First Trusted Answer checks, and verify the widget before going live.
+                    </p>
+
+                    <div style={styles.launchSequence}>
+                        <span>1. Add sources</span>
+                        <span>2. Review answers</span>
+                        <span>3. Run First 10</span>
+                        <span>4. Verify and go live</span>
+                    </div>
+
                     <div style={styles.fieldGroup}>
-                        <label htmlFor="answerlattice-plan" style={styles.label}>Plan</label>
+                        <label htmlFor="answerlattice-plan" style={styles.label}>Choose a paid plan</label>
                         <select
                             id="answerlattice-plan"
                             value={planId}
@@ -581,25 +673,6 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                         </div>
                     </fieldset>
 
-                    <fieldset style={styles.fieldset}>
-                        <legend style={styles.label}>Main product pages</legend>
-                        <div style={styles.checkboxGrid}>
-                            {SURFACE_OPTIONS.map((surface) => (
-                                <label key={surface.key} style={styles.checkboxOption}>
-                                    <input
-                                        type="checkbox"
-                                        name="answerlattice-primary-surfaces"
-                                        value={surface.key}
-                                        checked={primarySurfaces.includes(surface.key)}
-                                        onChange={() => toggleSurface(surface.key)}
-                                        style={styles.checkboxInput}
-                                    />
-                                    {surface.label}
-                                </label>
-                            ))}
-                        </div>
-                    </fieldset>
-
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>{selectedPlan.name} plan</span>
                         <span style={styles.planPrice}>{selectedPlanPrice} / month</span>
@@ -609,17 +682,27 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     {error && <p style={styles.error} role="alert" aria-live="polite">{error}</p>}
 
                     <button
+                        type="button"
+                        style={styles.secondaryBtn}
+                        onClick={() => {
+                            setError(null);
+                            setStep('details');
+                        }}
+                    >
+                        Back to product details
+                    </button>
+                    <button
                         type="submit"
                         style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_create_clicked"
                         data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}
                     >
-                        Create workspace
+                        Choose {selectedPlan.name} and create workspace
                     </button>
                 </form>
             )}
 
-            {/* Step 3: Creating */}
+            {/* Step 4: Creating */}
             {step === 'creating' && (
                 <div style={styles.card}>
                     <div style={styles.spinner} />
@@ -628,7 +711,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                 </div>
             )}
 
-            {/* Step 4: Done */}
+            {/* Step 5: Done */}
             {step === 'done' && result && (
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
@@ -772,6 +855,33 @@ const styles: Record<string, CSSProperties> = {
     planLabel: { fontSize: 13, fontWeight: 600, color: colors.primaryLight },
     planPrice: { fontSize: 13, fontWeight: 700, color: colors.textPrimary },
     planDesc: { fontSize: 11, color: colors.textMuted, width: '100%' },
+    eyebrow: {
+        margin: '0 0 8px 0', color: colors.primaryLight, fontSize: 11, fontWeight: 700,
+        letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center',
+    },
+    proofList: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 },
+    proofItem: {
+        width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px',
+        borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.surfaceRaised,
+        boxSizing: 'border-box',
+    },
+    proofNumber: {
+        width: 24, height: 24, flex: '0 0 24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: '50%', background: 'rgb(var(--al-primary-rgb) / 0.14)', color: colors.primaryLight,
+        fontSize: 12, fontWeight: 700,
+    },
+    proofText: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 },
+    proofTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: 700 },
+    proofQuery: { color: colors.textSecondary, fontSize: 12, lineHeight: 1.5, overflowWrap: 'break-word' },
+    proofBoundary: {
+        width: '100%', margin: '0 0 16px 0', padding: '12px', borderRadius: 8,
+        border: `1px solid ${colors.border}`, color: colors.textMuted, fontSize: 11, lineHeight: 1.55,
+        boxSizing: 'border-box',
+    },
+    launchSequence: {
+        width: '100%', marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gap: 8, color: colors.textBody, fontSize: 11, fontWeight: 600,
+    },
     error: { fontSize: 13, color: colors.danger, margin: '0 0 12px 0', textAlign: 'center' },
     existingActions: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
     primaryBtn: {

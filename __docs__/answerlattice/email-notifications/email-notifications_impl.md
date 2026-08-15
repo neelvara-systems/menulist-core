@@ -83,7 +83,7 @@ The DAL decides reply eligibility inside the ticket transaction and still relies
 
 `/api/answerlattice/notifications/test` resolves the current Answerlattice workspace, limits to three attempts per hour, checks `VIEW_READINESS`, verifies Firebase and SMTP readiness, rereads the exact store, and uses its `supportEmail`.
 
-`ANSWERLATTICE_NOTIFICATION_TEST` is currently registered in the owner-notification registry. With both owner-notification flags enabled, `sendNotification()` hands that event to the owner-notification pipeline for immediate processing. Ticket-created, reply, and status events are not registered there and continue through `answerlattice_notificationLogs`.
+`ANSWERLATTICE_NOTIFICATION_TEST`, exact Answerlattice billing lifecycle events, support-credit low/exhausted state, and first widget-runtime verification are registered in the owner-notification registry. Shared Razorpay callers pass the resolved `productId`, and `sendLifecycleMessage()` enqueues `AL` events into Answerlattice Firestore without consulting or falling through to the MenuList legacy sender. Ticket-created, reply, and status events are not registered there and continue through `answerlattice_notificationLogs`.
 
 ## Failure semantics
 

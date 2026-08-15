@@ -1,7 +1,7 @@
 # Proof & State Platform Playbook
 
 **Status:** Active
-**Last Updated:** August 12, 2026
+**Last Updated:** August 14, 2026
 
 ## Channel Architecture
 
@@ -27,6 +27,43 @@ context. Copy-paste distribution is not the strategy.
 
 Use 8:00 PM Asia/Kolkata for the first twelve posts as a controlled baseline,
 not an algorithm claim. Change only after the account's own evidence.
+
+### How to use X's open For You code
+
+X's August 13, 2026 release is useful for understanding the system, but it is
+not a posting formula. Review it at an exact commit and keep these layers
+separate:
+
+1. candidate retrieval decides which posts can enter consideration;
+2. the model predicts how a particular viewer may respond;
+3. published parameter defaults combine those predictions into a score;
+4. diversity, network, low-impression-author, and reranking logic can adjust
+   the order;
+5. visibility labels and viewer controls can filter a post after ranking;
+6. `Under the Hood` eligibility decides who may inspect a monthly label report.
+
+A large published coefficient does not mean X awards that many points after an
+actual reply, share, or follow. It weights the model's predicted probability
+for that viewer. Because the action probabilities have different base rates
+and calibration, coefficient ratios such as “one copy-link equals forty likes”
+are not valid exchange rates. X also says production defaults can change
+through experiments. Some anti-gaming rules and deployment details are
+intentionally absent.
+
+The immediate Proof & State implications are narrow:
+
+- keep publishing useful, specific work that the intended audience may choose
+  to discuss, save, share, or follow for;
+- do not bait replies, manufacture engagement, repeat near-identical posts, or
+  increase volume to chase a coefficient;
+- treat link safety, authenticity, and non-spam behavior as reach hygiene as
+  well as platform compliance;
+- keep the three-post weekly baseline. It already produces roughly twelve
+  posts in a full month without turning the ten-post transparency threshold
+  into a content target;
+- a new Proof & State account will not pass the one-year report gate. If the
+  account later enters the pilot, review and download its own label report
+  before diagnosing a visibility problem from general advice.
 
 ### What to watch
 

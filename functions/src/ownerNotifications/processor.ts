@@ -33,29 +33,26 @@ import {
     projectOwnerNotificationRateLimitCount,
   normalizeOwnerNotificationReferenceId,
 } from '../sharedData/ownerNotificationDeliveryBoundary';
+import { isInternalNotificationEmail, planNotificationOsChannels } from '../sharedData/notificationOs';
+import { getWhatsAppOsTemplateDefinition, type WhatsAppOsMessageClass } from '../sharedData/whatsappOs';
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
 import { resolveTemplate } from '../messaging/templates';
 import { SendMessagePayload } from '../messaging/types';
-import { readJsonResponseWithLimit } from '../utils/boundedResponseBody';
 import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
 import { sanitizeForFirestore as sanitizeFirestoreValue } from '../lib/sanitizeForFirestore';
 import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
+import { sendFunctionsWhatsAppOs } from '../whatsappOs/provider';
 
 const logger = functions.logger;
 const MAX_PER_RECIPIENT_PER_DAY = 20;
 const MAX_PER_STORE_PER_DAY = 10;
 const FLAG_CACHE_TTL = 60_000;
-const GRAPH_API_VERSION = 'v21.0';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED = 'whatsapp_send_failed';
-const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED = 'whatsapp_response_parse_failed';
 const OWNER_NOTIFICATION_PROCESSING_FAILED = 'owner_notification_processing_failed';
 const OWNER_NOTIFICATION_ALERT_CREATE_FAILED = 'owner_notification_alert_create_failed';
 const OWNER_NOTIFICATION_LIFECYCLE_FLAG_CHECK_FAILED = 'owner_notification_lifecycle_flag_check_failed';
 const OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER = 'owner_notification_unknown_menulist_trigger';
-const MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
-const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
-const OWNER_NOTIFICATION_PROVIDER_TIMEOUT_MS = 15_000;
 const OWNER_NOTIFICATION_EVENT_TOO_LARGE = 'owner_notification_event_too_large';
 const OWNER_NOTIFICATION_PROCESSING_OUTCOME_AMBIGUOUS = 'owner_notification_processing_outcome_ambiguous';
 const OWNER_NOTIFICATION_PROCESSING_LEASE_MS = 15 * 60 * 1000;
@@ -95,6 +92,11 @@ type StoreInfo = {
   storeName: string;
   whatsappNumber?: string;
   whatsappConsent: boolean;
+  emailVerified: boolean;
+  emailInternalIdentity: boolean;
+  phoneVerified: boolean;
+  preferredChannels: OwnerNotificationChannel[];
+  channelMode: 'email_only' | 'whatsapp_only' | 'email_and_whatsapp' | 'preferred_available';
   formattingSource: Record<string, any>;
 };
 
@@ -155,27 +157,6 @@ function getOwnerNotificationTriggerLogContext(triggerType: unknown): Record<str
 
 function getOwnerNotificationErrorContext(error: unknown): Record<string, string | number | undefined> {
   return getBoundedFunctionsErrorContext(error);
-}
-
-function getOwnerNotificationWhatsAppProviderMessageId(value: unknown): string | undefined {
-  const providerMessageId = (value as { messages?: Array<{ id?: unknown }> })?.messages?.[0]?.id;
-  if (typeof providerMessageId !== 'string') return undefined;
-  const normalized = providerMessageId.trim();
-  if (!normalized) return undefined;
-  return normalized.slice(0, MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH);
-}
-
-async function readOwnerNotificationWhatsAppResponseJson(response: Response): Promise<unknown | null> {
-  try {
-    return await readJsonResponseWithLimit(response, OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES);
-  } catch (error) {
-    logger.warn('[OwnerNotifications] WhatsApp response parse failed', {
-      failureCode: OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED,
-      responseStatus: response.status,
-      ...getOwnerNotificationErrorContext(error),
-    });
-    return null;
-  }
 }
 
 function todayKey(): string {
@@ -290,19 +271,46 @@ async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo
     phoneNumber: data.phoneNumber,
   };
 
+  const email = isValidEmail(primaryEmail) ? primaryEmail.trim() : undefined;
+  const whatsappNumber = resolveFirstPhone(
+    phoneContext,
+    settings.whatsappNumber,
+    data.ownerWhatsappNumber,
+    data.whatsappNumber,
+    data.phone,
+    data.phoneNumber,
+  );
+  const whatsappConsent = hasOwnerNotificationWhatsAppConsent(settings);
+  const emailInternalIdentity = isInternalNotificationEmail(email, ['msg.menulist.ai', 'msg.menulist.digital']);
+  const preferredChannels: OwnerNotificationChannel[] = Array.isArray(settings.preferredChannels)
+    ? (Array.from(
+        new Set(
+          settings.preferredChannels.filter(
+            (value: unknown): value is OwnerNotificationChannel => value === 'email' || value === 'whatsapp',
+          ),
+        ),
+      ) as OwnerNotificationChannel[])
+    : [];
+  const channelMode =
+    settings.channelMode === 'email_only' ||
+    settings.channelMode === 'whatsapp_only' ||
+    settings.channelMode === 'email_and_whatsapp' ||
+    settings.channelMode === 'preferred_available'
+      ? settings.channelMode
+      : 'preferred_available';
+
   return {
-    email: isValidEmail(primaryEmail) ? primaryEmail.trim() : undefined,
+    email,
     billingEmail: isValidEmail(settings.billingEmail) ? settings.billingEmail.trim() : undefined,
     storeName: event.recipientHints?.name || data.name || data.businessName || 'Your Business',
-    whatsappNumber: resolveFirstPhone(
-      phoneContext,
-      settings.whatsappNumber,
-      data.ownerWhatsappNumber,
-      data.whatsappNumber,
-      data.phone,
-      data.phoneNumber,
-    ),
-    whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
+    whatsappNumber,
+    whatsappConsent,
+    emailVerified: Boolean(email) && !emailInternalIdentity && settings.emailVerified !== false,
+    emailInternalIdentity,
+    phoneVerified:
+      Boolean(whatsappNumber) && (settings.whatsappVerified === true || data.phoneVerifiedAt != null || data.whatsappVerifiedAt != null),
+    preferredChannels,
+    channelMode,
     formattingSource: data,
   };
 }
@@ -380,21 +388,6 @@ function buildFormattedMetadata(
   metadata.currencySymbol = metadata.currencySymbol || storeInfo.formattingSource.currencySymbol || '₹';
   metadata.currencyCode = metadata.currency || storeInfo.formattingSource.currencyCode || 'INR';
   return metadata;
-}
-
-function resolveChannels(
-  registryChannels: OwnerNotificationChannel[],
-  requested?: OwnerNotificationChannel[],
-): OwnerNotificationChannel[] {
-  const channels = requested?.length
-    ? registryChannels.filter((channel) => requested.includes(channel))
-    : registryChannels;
-
-  return channels.filter((channel) => {
-    if (channel === 'email') return FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL;
-    if (channel === 'whatsapp') return FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP;
-    return false;
-  });
 }
 
 async function incrementRateLimit(
@@ -582,88 +575,41 @@ async function finalizeDelivery(params: {
 }
 
 async function sendWhatsApp(params: {
+  eventId: string;
+  deliveryId: string;
+  consentGranted: boolean;
   to: string;
   text: string;
+  messageClass: WhatsAppOsMessageClass;
+  templateKey: string;
   metadata: Record<string, any>;
-}): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  if (!phoneNumberId || !accessToken) return { success: false, error: 'whatsapp_not_configured' };
-  const encodedPhoneNumberId = encodeURIComponent(phoneNumberId);
-
+}): Promise<{ success: boolean; providerMessageId?: string; error?: string; ambiguous?: boolean }> {
   const to = buildWhatsAppPhoneParam({ phoneNumber: params.to });
   if (to.length < 10 || to.length > 15) return { success: false, error: 'whatsapp_recipient_missing' };
 
-  const templateName = typeof params.metadata.whatsappTemplateName === 'string'
-    ? params.metadata.whatsappTemplateName
-    : undefined;
-  const templateLanguage = typeof params.metadata.whatsappTemplateLanguage === 'string'
-    ? params.metadata.whatsappTemplateLanguage
-    : 'en';
-  const templateParameters = Array.isArray(params.metadata.whatsappTemplateParameters)
-    ? params.metadata.whatsappTemplateParameters.map(String)
-    : undefined;
   const sessionActive = params.metadata.whatsappSessionActive === true;
-
-  const body = templateName
-    ? {
-      messaging_product: 'whatsapp',
-      to,
-      type: 'template',
-      template: {
-        name: templateName,
-        language: { code: templateLanguage },
-        ...(templateParameters?.length
-          ? {
-            components: [{
-              type: 'body',
-              parameters: templateParameters.map((text) => ({ type: 'text', text })),
-            }],
-          }
-          : {}),
-      },
-    }
-    : sessionActive
+  const templateDefinition = getWhatsAppOsTemplateDefinition(params.templateKey);
+  const result = await sendFunctionsWhatsAppOs({
+    productCode: 'ML',
+    messageClass: params.messageClass,
+    localDeliveryReference: `${params.eventId}:whatsapp`,
+    ownerReference: { workflow: 'owner_notification', documentId: params.deliveryId },
+    to,
+    consentGranted: params.consentGranted,
+    ...(!sessionActive && templateDefinition
       ? {
-        messaging_product: 'whatsapp',
-        to,
-        type: 'text',
-        text: { body: params.text },
+        template: {
+          registryKey: params.templateKey,
+          name: templateDefinition.metaName,
+          language: templateDefinition.language,
+          parameters: [params.text],
+        },
       }
-      : null;
-
-  if (!body) return { success: false, error: 'whatsapp_template_or_session_required' };
-
-  try {
-    const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedPhoneNumberId}/messages`, {
-      method: 'POST',
-      redirect: 'manual',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(OWNER_NOTIFICATION_PROVIDER_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      logger.warn('[OwnerNotifications] WhatsApp delivery failed', {
-        failureCode: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED,
-        responseStatus: response.status,
-        providerResponseBodySkipped: true,
-      });
-      return { success: false, error: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED };
-    }
-
-    const parsed = await readOwnerNotificationWhatsAppResponseJson(response);
-    const providerMessageId = getOwnerNotificationWhatsAppProviderMessageId(parsed);
-    return { success: true, providerMessageId };
-  } catch (error) {
-    logger.warn('[OwnerNotifications] WhatsApp delivery threw', {
-      failureCode: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED,
-      ...getOwnerNotificationErrorContext(error),
-    });
-    return { success: false, error: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED };
-  }
+      : { session: { active: sessionActive, text: params.text } }),
+  });
+  return result.accepted
+    ? { success: true, providerMessageId: result.providerMessageId, ambiguous: result.ambiguous }
+    : { success: false, error: result.errorCode || OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED, ambiguous: result.ambiguous };
 }
 
 function getDedupeKey(payload: SendMessagePayload): string {
@@ -724,22 +670,36 @@ export async function sendOwnerLifecycleNotification(payload: SendMessagePayload
   const referenceId = normalizeOwnerNotificationReferenceId(payload.referenceId);
   if (!tenantScope || !storeScope || !referenceId) return false;
 
+  const requestedRegistryEntry = getOwnerNotificationRegistryEntry('ML', payload.eventType);
+  if (!requestedRegistryEntry || requestedRegistryEntry.producerStatus === 'reserved') {
+    logger.warn('[OwnerNotifications] Non-active MenuList trigger skipped', {
+      failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
+      fallbackPolicy: 'skip_owner_notification_without_active_registry_entry',
+      ...getOwnerNotificationTriggerLogContext(payload.eventType),
+    });
+    return false;
+  }
+  const eventType = requestedRegistryEntry.producerStatus === 'alias'
+    ? requestedRegistryEntry.canonicalTriggerType
+    : payload.eventType;
+  if (!eventType) return false;
+  const registryEntry = getOwnerNotificationRegistryEntry('ML', eventType);
+  if (!registryEntry || registryEntry.producerStatus !== 'active') {
+    logger.warn('[OwnerNotifications] MenuList alias target skipped', {
+      failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
+      fallbackPolicy: 'skip_owner_notification_without_active_alias_target',
+      ...getOwnerNotificationTriggerLogContext(eventType),
+    });
+    return false;
+  }
+
   const normalizedPayload: SendMessagePayload = {
     ...payload,
+    eventType: eventType as SendMessagePayload['eventType'],
     tenantId: tenantScope.documentId,
     storeId: storeScope.documentId,
     referenceId,
   };
-
-  const registryEntry = getOwnerNotificationRegistryEntry('ML', normalizedPayload.eventType);
-  if (!registryEntry) {
-    logger.warn('[OwnerNotifications] Unknown MenuList trigger skipped', {
-      failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
-      fallbackPolicy: 'skip_owner_notification_without_registry_entry',
-      ...getOwnerNotificationTriggerLogContext(normalizedPayload.eventType),
-    });
-    return false;
-  }
 
   const dedupeKey = getDedupeKey(normalizedPayload);
   const eventId = safeId(dedupeKey);
@@ -804,7 +764,14 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
       ...getOwnerNotificationEventLogContext(eventId),
       ...getOwnerNotificationTriggerLogContext(event.triggerType),
     });
-    await eventRef.set({ status: 'skipped', error: 'unknown_trigger', updatedAt: Timestamp.now() }, { merge: true });
+    await eventRef.set(
+      {
+        status: 'skipped',
+        error: 'unknown_trigger',
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true },
+    );
     return false;
   }
 
@@ -819,15 +786,31 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
       return false;
     }
 
-    const channels = resolveChannels(registryEntry.defaultChannels, event.requestedChannels);
+    const selectedEmail = event.recipientRole === 'billing_owner' ? storeInfo.billingEmail || storeInfo.email : storeInfo.email;
+    const channelPlan = planNotificationOsChannels({
+      allowedChannels: registryEntry.defaultChannels,
+      requestedChannels: event.requestedChannels,
+      mode: event.priority === 'critical' ? 'all_eligible_critical' : storeInfo.channelMode,
+      preferredChannels: storeInfo.preferredChannels,
+      email: selectedEmail,
+      emailVerified: storeInfo.emailVerified,
+      emailInternalIdentity: storeInfo.emailInternalIdentity,
+      whatsappNumber: storeInfo.whatsappNumber,
+      phoneVerified: storeInfo.phoneVerified,
+      whatsappConsentGranted: storeInfo.whatsappConsent,
+      requiresWhatsAppConsent: registryEntry.requiresWhatsAppConsent,
+      enabledChannels: {
+        email: FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL,
+        whatsapp: FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP,
+      },
+    }).filter((item) => item.reason !== 'not_requested' && item.reason !== 'channel_disabled');
     let sent = 0;
     let failed = 0;
     let skipped = 0;
 
-    for (const channel of channels) {
-      const recipientValue = channel === 'email'
-        ? (event.recipientRole === 'billing_owner' ? storeInfo.billingEmail || storeInfo.email : storeInfo.email)
-        : storeInfo.whatsappNumber;
+    for (const planItem of channelPlan) {
+      const channel = planItem.channel;
+      const recipientValue = channel === 'email' ? selectedEmail : storeInfo.whatsappNumber;
       const persistedRecipientValue = recipientValue
         || (channel === 'email' ? 'missing@email' : 'missing-phone');
       const deliveryClaim = await claimDelivery({
@@ -852,7 +835,7 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
         continue;
       }
 
-      if (!recipientValue) {
+      if (!planItem.eligible) {
         skipped++;
         await finalizeDelivery({
           event,
@@ -860,23 +843,12 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
           channel,
           recipientValue: persistedRecipientValue,
           status: 'skipped',
-          error: 'recipient_missing',
+          error: planItem.reason,
         });
         continue;
       }
 
-      if (channel === 'whatsapp' && registryEntry.requiresWhatsAppConsent && !storeInfo.whatsappConsent) {
-        skipped++;
-        await finalizeDelivery({
-          event,
-          eventId,
-          channel,
-          recipientValue,
-          status: 'skipped',
-          error: 'whatsapp_consent_missing',
-        });
-        continue;
-      }
+      if (!recipientValue) throw new Error('owner_notification_planned_recipient_missing');
 
       const recipientHash = sha256(recipientValue.toLowerCase());
       const allowed = event.priority === 'critical'
@@ -897,15 +869,32 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
       }
 
       const result = channel === 'email'
-        ? await sendEmailViaSMTP({ to: recipientValue, subject: template.subject, html: template.html })
+          ? await sendEmailViaSMTP({
+              to: recipientValue,
+              subject: template.subject,
+              html: template.html,
+              eventType: String(event.triggerType),
+              referenceId: eventId,
+            })
         : await sendWhatsApp({
+              eventId,
+              deliveryId: safeId(`${eventId}|${channel}|${sha256(recipientValue.toLowerCase())}`),
+              consentGranted: storeInfo.whatsappConsent,
           to: recipientValue,
           text: htmlToPlainText(template.html, template.subject),
+              messageClass: event.priority === 'critical' ? 'transactional' : 'operational',
+              templateKey: registryEntry.templateKey,
           metadata: event.metadata,
         });
 
       if (result.success) sent++;
       else failed++;
+
+      if ('ambiguous' in result && result.ambiguous === true) {
+        // Preserve `sending` so retry logic classifies the provider outcome as
+        // ambiguous and never sends the same message twice.
+        continue;
+      }
 
       await finalizeDelivery({
         event,
@@ -1107,7 +1096,11 @@ export async function retryFailedOwnerNotifications(): Promise<{
   return { retried, succeeded, ambiguous };
 }
 
-export async function getOwnerNotificationDigest(): Promise<{ sent: number; failed: number; total: number }> {
+export async function getOwnerNotificationDigest(): Promise<{
+  sent: number;
+  failed: number;
+  total: number;
+}> {
   const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
   const sentSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
     .where('productId', '==', 'ML')

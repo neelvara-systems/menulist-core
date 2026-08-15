@@ -11,7 +11,7 @@ import { secureError } from '@lib/security/secureLogger';
 import type { IngestionJobCategoriesMap } from '@type/knowledgeBase';
 import { firebaseApp } from './firebaseClient';
 
-// MenuList Cloud Functions (menulist-qa locally/preview; menulist in production)
+// MenuList Cloud Functions (menulist-qa locally/preview; menulist-prod in production)
 if (!firebaseApp) {
     throw new Error('MenuList Firebase client is unavailable.');
 }

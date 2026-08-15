@@ -10,7 +10,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Choose a monthly plan and INR or USD checkout, create your AnswerLattice workspace safely, add your app, pick support pages, and get a one-time widget key.',
+    description: 'Preview the first support checks for your product, then choose a monthly plan, create your AnswerLattice workspace safely, and continue governed setup.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -71,10 +71,10 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
                         <div className="text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
                             <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                                Create your AnswerLattice workspace.
+                                See your launch path before you choose a plan.
                             </h1>
                             <p className="mb-8 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                                Sign in with Google to create the workspace. You can add product details, knowledge, support pages, and the widget after signup.
+                                Sign in with Google, select the product areas customers ask about, and preview your first support checks. Then choose a paid plan and create the workspace.
                             </p>
                         </div>
 
@@ -92,7 +92,7 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
                         <PageProofStrip
                             className="mb-10"
                             items={[
-                                { label: 'First session', value: 'Workspace, team, product pages, widget key' },
+                                { label: 'Before payment', value: 'Product-specific starter questions and launch path' },
                                 { label: 'Best input', value: 'Scattered docs, FAQs, owner notes, screenshots, recordings, recurring questions' },
                                 { label: 'Go-live rule', value: 'Review answers and verify widget context before relying on live support' },
                             ]}

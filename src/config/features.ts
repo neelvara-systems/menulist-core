@@ -7,6 +7,20 @@ import { MENU_INTELLIGENCE_POLICY } from "@data/shared/menuIntelligencePolicy";
 
 export const FEATURE_FLAGS = {
     /**
+     * Shared email rendering, validation, delivery-ledger, and webhook contract.
+     * Provider transmission remains separately gated per product until Resend
+     * domains, credentials, and signed webhooks are certified.
+     */
+    ENABLE_EMAIL_OS: true,
+    ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND: false,
+    ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND: false,
+    ENABLE_CAMPAIGNCUE_EMAIL_OS_PROVIDER_SEND: false,
+    ENABLE_NOTIFICATION_OS: true,
+    ENABLE_WHATSAPP_OS: true,
+    ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS: false,
+    ENABLE_ANSWERLATTICE_WHATSAPP_OS_OWNER_NOTIFICATIONS: false,
+
+    /**
      * Enable the MyCodex documentation reader.
      *
      * This is a private developer surface mounted through /__mycodex locally.
@@ -1953,7 +1967,7 @@ export const FEATURE_FLAGS = {
      * - Zero Firebase cost
      *
      * Prerequisites:
-     * - RESEND_API_KEY in Firebase Functions secrets
+     * - MENULIST_RESEND_API_KEY in Firebase Functions secrets
      * - Sender domain verified in Resend dashboard
      * - ops_config/system.ENABLE_LIFECYCLE_MESSAGING = true
      *

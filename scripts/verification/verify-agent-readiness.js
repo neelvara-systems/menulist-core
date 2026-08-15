@@ -390,6 +390,13 @@ function verifyEnvironmentTargets() {
   const productDomains = read('src/constants/productDomains.ts');
   const urls = read('src/constants/urls.ts');
   const envValidation = read('src/lib/env/validateEnv.ts');
+  const firebaseAdminSource = read('src/lib/firebase/firebaseAdmin.ts');
+  const answerlatticeFirebaseAdminSource = read('src/lib/firebase/answerlatticeFirebaseAdmin.ts');
+  const menulistWorkloadIdentity = read('src/lib/google/menulistWorkloadIdentity.ts');
+  const answerlatticeWorkloadIdentity = read('src/lib/google/answerlatticeWorkloadIdentity.ts');
+  const sharedWorkloadIdentity = read('src/lib/google/vercelWorkloadIdentity.ts');
+  const menulistCloudTasks = read('src/lib/google/cloudTask/index.ts');
+  const workloadIdentityTest = read('scripts/verification/test-vercel-workload-identity.ts');
   const middleware = read('src/proxy.ts');
   const deploymentTargets = read('src/constants/deploymentTargets.ts');
   const productIds = read('src/constants/product.ts');
@@ -412,11 +419,12 @@ function verifyEnvironmentTargets() {
   const envStagingExample = read('.env.staging.example');
   const envProductionExample = read('.env.production.example');
   const functionsQaEnv = read('functions/.env.menulist-qa');
-  const functionsProductionEnv = read('functions/.env.menulist');
+  const functionsProductionEnv = read('functions/.env.menulist-prod');
   const functionsQaEnvExample = read('functions/.env.menulist-qa.example');
-  const functionsProductionEnvExample = read('functions/.env.menulist.example');
+  const functionsProductionEnvExample = read('functions/.env.menulist-prod.example');
   const productSetupDoc = read('__docs__/deployment/three-product-environment-setup.md');
   const menulistStagingQaSetup = read('__docs__/deployment/menulist-staging-qa-setup.md');
+  const menulistProductionProviderSetup = read('__docs__/deployment/menulist-production-provider-setup.md');
   const initialAccountSetupGuide = read('__docs__/deployment/initial-account-domain-firebase-setup-guide.md');
   const deploymentReadme = read('__docs__/deployment/README.md');
   const menulistRulesPredeployRunner = read('scripts/verification/run-menulist-firebase-rules-predeploy.mjs');
@@ -712,7 +720,7 @@ function verifyEnvironmentTargets() {
   assert(DEPLOYMENT_TARGETS.production.campaigncue.domains.includes('campaigncue.ai'), 'Production CampaignCue domain must include campaigncue.ai');
   assert(DEPLOYMENT_TARGETS.production.signaldesk.domains.includes('signaldesk.menulist.online'), 'Production SignalDesk domain must use signaldesk.menulist.online');
   assert(DEPLOYMENT_TARGETS.production.mycodex.domains.length === 0, 'Production MyCodex must not require a public domain');
-  assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
+  assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist-prod', 'Production MenuList Firebase project must be menulist-prod');
   assert(getExpectedFirebaseProjectId('neelvara', 'production') === '', 'Production Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
   assert(getExpectedFirebaseProjectId('campaigncue', 'production') === 'campaigncue', 'Production CampaignCue Firebase project must be campaigncue');
@@ -764,7 +772,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(setClaimsRoute, 'hasDefaultPlatformAccess', 'Answerlattice platform auth sync boundary');
   assert(firebaserc.projects.default === 'menulist-qa', '.firebaserc MenuList QA default project');
   assert(firebaserc.projects['menulist-qa'] === undefined, '.firebaserc must not duplicate the MenuList QA project id as an alias');
-  assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
+  assert(firebaserc.projects['menulist-prod'] === undefined, '.firebaserc must not define a self-alias for the literal MenuList production project ID');
   assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
   assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
   assert(firebaserc.projects['campaigncue-qa'] === 'campaigncue-qa', '.firebaserc CampaignCue QA alias');
@@ -820,6 +828,60 @@ function verifyEnvironmentTargets() {
     assertNotIncludes(content, 'NEXT_PUBLIC_MC_', `${label} must not use shorthand MyCodex env keys`);
     assertNotIncludes(content, 'MC_FIREBASE_PROJECT_ID', `${label} must not use shorthand MyCodex env keys`);
   }
+  assertIncludes(envStagingExample, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist-qa', 'Staging env template exact MenuList Firebase project');
+  assertIncludes(envProductionExample, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist-prod', 'Production env template exact MenuList Firebase project');
+  assertIncludes(envStagingExample, 'MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', 'Staging env template keyless MenuList Admin mode');
+  assertIncludes(envStagingExample, 'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', 'Staging env template keyless Answerlattice Admin mode');
+  assertIncludes(envProductionExample, 'MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', 'Production env template keyless MenuList Admin mode');
+  assertIncludes(envProductionExample, 'ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc', 'Production env template keyless Answerlattice Admin mode');
+  assertIncludes(envProductionExample, 'MENULIST_GCP_PROJECT_NUMBER=233910481388', 'Production env template exact Google Cloud project number');
+  assertIncludes(envProductionExample, 'MENULIST_GCP_SERVICE_ACCOUNT_EMAIL=menulist-vercel-prod@menulist-prod.iam.gserviceaccount.com', 'Production env template dedicated Vercel service account');
+  for (const [label, content] of [['Staging', envStagingExample], ['Production', envProductionExample]]) {
+    assertNotIncludes(content, 'MENULIST_FIREBASE_CLIENT_EMAIL=', `${label} env template must not retain a static MenuList Admin client email`);
+    assertNotIncludes(content, 'MENULIST_FIREBASE_PRIVATE_KEY=', `${label} env template must not retain a static MenuList Admin private key`);
+    assertNotIncludes(content, 'ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=', `${label} env template must not retain a static Answerlattice Admin client email`);
+    assertNotIncludes(content, 'ANSWERLATTICE_FIREBASE_PRIVATE_KEY=', `${label} env template must not retain a static Answerlattice Admin private key`);
+    assertNotIncludes(content, 'ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=', `${label} env template must not retain an Answerlattice credential file`);
+  }
+  assertIncludes(envValidation, 'managed Vercel QA and production must not retain static service-account credentials', 'Managed Vercel static Admin credential rejection');
+  assertIncludes(firebaseAdminSource, "credentialSource: 'vercel_oidc'", 'Firebase Admin Vercel OIDC credential selection');
+  assertIncludes(firebaseAdminSource, 'serviceAccountId: workloadIdentity.serviceAccountEmail', 'Firebase custom-token remote signing service-account identity');
+  assertIncludes(answerlatticeFirebaseAdminSource, 'getAnswerlatticeFirebaseWorkloadIdentityCredential()', 'Answerlattice Firebase Admin Vercel OIDC credential selection');
+  assertIncludes(answerlatticeFirebaseAdminSource, 'serviceAccountId: workloadIdentity.serviceAccountEmail', 'Answerlattice custom-token remote signing service-account identity');
+  assertIncludes(menulistWorkloadIdentity, 'getVercelOidcToken', 'Vercel request/build OIDC token supplier');
+  assertIncludes(answerlatticeWorkloadIdentity, 'getVercelOidcToken', 'Answerlattice Vercel OIDC token supplier');
+  assertIncludes(sharedWorkloadIdentity, 'https://sts.googleapis.com/v1/token', 'Google Security Token Service exchange endpoint');
+  assertIncludes(sharedWorkloadIdentity, ':generateAccessToken', 'Google service-account impersonation endpoint');
+  assertIncludes(sharedWorkloadIdentity, "targetEnv !== 'qa'", 'Vercel custom QA environment fail-closed boundary');
+  assertIncludes(menulistCloudTasks, 'authClient: getCloudTasksWorkloadIdentityAuthClient()', 'Cloud Tasks typed Workload Identity auth client');
+  assertIncludes(menulistCloudTasks, 'getMenulistWorkloadIdentityAuthClient() as unknown as CloudTasksAuthClient', 'Cloud Tasks shared Workload Identity auth client compatibility boundary');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-qa'", 'MenuList QA OIDC regression');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-prod'", 'MenuList production OIDC regression');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice-qa'", 'Answerlattice QA OIDC regression');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice'", 'Answerlattice production OIDC regression');
+  assert(rootPackageJson.dependencies['@vercel/oidc'] === '3.8.4', 'Root package must pin @vercel/oidc 3.8.4 exactly');
+  assert(rootPackageJson.dependencies['google-auth-library'] === '10.9.1', 'Root package must pin google-auth-library 10.9.1 exactly');
+  assert(rootPackageJson.scripts['test:vercel-workload-identity'] === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-vercel-workload-identity.ts', 'Root package must expose the four-project Workload Identity regression');
+  assertIncludes(functionsProductionEnv, 'NEXT_PUBLIC_APP_URL=https://app.menulist.ai', 'Production Functions env owner app');
+  assertIncludes(functionsProductionEnvExample, 'production project menulist-prod', 'Production Functions env template exact project identity');
+  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 18 of 61 checks complete', 'MenuList production provider ledger PROD-B10 progress');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B09`', 'MenuList production provider ledger Auth domain admission');
+  assertIncludes(menulistProductionProviderSetup, '`app.menulist.ai` as the sole', 'MenuList production provider ledger exact custom Auth domain');
+  assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production provider ledger exact Web app identity');
+  assertIncludes(menulistProductionProviderSetup, '`menulist-prod.firebasestorage.app`', 'MenuList production provider ledger exact Storage bucket');
+  assertIncludes(menulistProductionProviderSetup, '`233910481388`', 'MenuList production provider ledger Firebase project evidence');
+  assertIncludes(menulistProductionProviderSetup, 'exact project ID `menulist-prod`', 'MenuList production provider ledger exact project identity');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B10`', 'MenuList production provider ledger required API activation');
+  assertIncludes(menulistProductionProviderSetup, '`firebase-adminsdk-fbsvc@menulist-prod.iam.gserviceaccount.com`', 'MenuList production provider ledger exact Firebase Admin service account');
+  assertIncludes(menulistProductionProviderSetup, 'shows\n  **No keys**', 'MenuList production provider ledger empty Firebase Admin key inventory');
+  assertIncludes(menulistProductionProviderSetup, 'effective status is\n  **Enforced**', 'MenuList production provider ledger inherited service-account key-creation enforcement');
+  assertIncludes(menulistProductionProviderSetup, '`roles/orgpolicy.policyAdmin` on `neelvara.com`', 'MenuList production provider ledger denied organization-policy mutation path');
+  assertIncludes(menulistProductionProviderSetup, '**Approve PROD-B11 keyless migration**', 'MenuList production provider ledger keyless architecture approval gate');
+  assertIncludes(menulistProductionProviderSetup, '## `PROD-B11` Keyless Runtime Decision', 'MenuList production provider ledger keyless runtime decision');
+  assertIncludes(menulistProductionProviderSetup, 'Firebase Functions execute inside Google Cloud.', 'MenuList production provider ledger Functions ADC boundary');
+  assertIncludes(menulistProductionProviderSetup, '`roles/iam.workloadIdentityUser`', 'MenuList production provider ledger exact federated impersonation role');
+  assertIncludes(menulistProductionProviderSetup, '`roles/iam.serviceAccountTokenCreator`', 'MenuList production provider ledger Firebase custom-token signing role');
+  assertIncludes(menulistProductionProviderSetup, '### Exact next action for `PROD-B11`', 'MenuList production provider ledger next step');
   assertIncludes(productSetupDoc, 'Use full product names in environment variable keys', 'Product setup doc env-key naming contract');
   assert(rootPackageJson.scripts['verify:menulist-firebase-rules-predeploy'] === 'node scripts/verification/run-menulist-firebase-rules-predeploy.mjs', 'Root package must expose the MenuList Firebase rules predeploy gate');
   assertIncludes(menulistRulesPredeployRunner, "name.includes('rules')", 'MenuList Firebase rules predeploy direct rule-script discovery');
@@ -852,7 +914,7 @@ function verifyEnvironmentTargets() {
     productSetupDoc.indexOf('| Optional webhooks |') < productSetupDoc.indexOf('Firebase Admin credential and local ADC diagnostics'),
     'Product setup doc environment variable table must stay contiguous before diagnostic notes',
   );
-  assertIncludes(productSetupDoc, '| Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |', 'Product setup doc Cloud Tasks readiness variables');
+  assertIncludes(productSetupDoc, '| Cloud Tasks | Root/Vercel: reuse `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`, plus `MENULIST_FIREBASE_PROJECT_LOCATION`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL`, `MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |', 'Product setup doc canonical Cloud Tasks readiness variables');
   assertIncludes(productSetupDoc, 'Do not substitute a retired legacy MenuList project', 'Product setup doc active Firebase target guard');
   assertIncludes(productSetupDoc, 'Do not reuse the older command shape from that attempt; the current scoped retry command is listed in the owner action register below.', 'Product setup doc historical MenuList QA deploy boundary');
   assertIncludes(productSetupDoc, 'npm --prefix functions run deploy:menulist-qa', 'Product setup doc latest MenuList QA function deploy command');
@@ -1899,13 +1961,13 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_CHAT_ID\n', 'Launch prerequisites unscoped Telegram chat secret command');
   assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set SMTP_HOST\n', 'Launch prerequisites unscoped SMTP host secret command');
   assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set SMTP_PASS\n', 'Launch prerequisites unscoped SMTP password secret command');
-  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist\nfirebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist\nfirebase functions:secrets:set SMTP_HOST --project menulist\nfirebase functions:secrets:set SMTP_PORT --project menulist\nfirebase functions:secrets:set SMTP_USER --project menulist\nfirebase functions:secrets:set SMTP_PASS --project menulist', 'Launch prerequisites direct production platform alert secret block');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-prod\nfirebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-prod\nfirebase functions:secrets:set SMTP_HOST --project menulist-prod\nfirebase functions:secrets:set SMTP_PORT --project menulist-prod\nfirebase functions:secrets:set SMTP_USER --project menulist-prod\nfirebase functions:secrets:set SMTP_PASS --project menulist-prod', 'Launch prerequisites direct production platform alert secret block');
   assertIncludes(launchPrerequisites, 'Redeploy the affected Firebase Functions to QA first, then production only after QA evidence and explicit production deploy approval', 'Launch prerequisites platform alert QA-first deploy wording');
   assertIncludes(launchPrerequisites, 'npm run verify:functions-deploy-preflight', 'Launch prerequisites platform alert Functions preflight');
   assertIncludes(launchPrerequisites, 'firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive', 'Launch prerequisites platform alert QA deploy command');
   assertIncludes(launchPrerequisites, 'After QA evidence and explicit production deploy approval', 'Launch prerequisites platform alert production approval gate');
   assertIncludes(launchPrerequisites, 'Record the exact widened target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` if this Step 7B list differs from Gate 1', 'Launch prerequisites platform alert widened target audit requirement');
-  assertNotIncludes(launchPrerequisites, 'firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist\n', 'Launch prerequisites direct production platform alert deploy command');
+  assertNotIncludes(launchPrerequisites, 'firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist-prod\n', 'Launch prerequisites direct production platform alert deploy command');
   for (const [label, content] of [
     ['Ops infrastructure guide', opsInfrastructureGuide],
     ['Ops alerting delivery implementation', opsAlertingDeliveryImpl],
@@ -2572,10 +2634,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(devProdEnvironmentGuide, 'This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.', 'Dev/prod guide feature-flag launch boundary');
   assertIncludes(devProdEnvironmentGuide, 'Do not flip every operational flag as a launch ritual.', 'Dev/prod guide blanket operational flag guard');
   assertIncludes(devProdEnvironmentGuide, 'Every External Certification Runbook gate relevant to the release has audit evidence', 'Dev/prod guide launch verdict external evidence requirement');
-  assertIncludes(devProdEnvironmentGuide, 'Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` only after QA evidence and explicit production approval.', 'Dev/prod guide production infrastructure approval gate');
+  assertIncludes(devProdEnvironmentGuide, 'Deploy MenuList production rules/indexes/functions explicitly with `--project menulist-prod` only after QA evidence and explicit production approval.', 'Dev/prod guide production infrastructure approval gate');
   assertIncludes(devProdEnvironmentGuide, 'Do not copy `.env.local` or `.env.prod` wholesale into Vercel.', 'Dev/prod guide legacy env file Vercel guard');
   assertIncludes(devProdEnvironmentGuide, 'Configure MenuList QA secrets first with commands that include `--project menulist-qa`.', 'Dev/prod guide QA-first Functions secret setup');
-  assertIncludes(devProdEnvironmentGuide, 'Repeat for `--project menulist` only after QA evidence and explicit production secret approval.', 'Dev/prod guide production secret approval gate');
+  assertIncludes(devProdEnvironmentGuide, 'Repeat for `--project menulist-prod` only after QA evidence and explicit production secret approval.', 'Dev/prod guide production secret approval gate');
   assertIncludes(devProdEnvironmentGuide, 'Shared `MENULIST_GEMINI_AI_KEY` plus `_2`, `_3`', 'Dev/prod guide current MenuList shared Gemini pool');
   assertIncludes(devProdEnvironmentGuide, 'extraction-only `MENULIST_GEMINI_TEXT_AI_KEY`', 'Dev/prod guide extraction-only Gemini credential');
   assertNotIncludes(devProdEnvironmentGuide, 'plus `_2`, `_3`, `_4`', 'Dev/prod guide retired MenuList shared slot 4');
@@ -2665,10 +2727,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(productSetupDoc, 'firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'Product setup doc MenuList QA rules/indexes/storage deploy command');
   assertIncludes(productSetupDoc, 'MenuList production Firebase infrastructure deploys require staging evidence and explicit production approval in the active session.', 'Product setup doc MenuList production infrastructure approval gate');
   assertIncludes(productSetupDoc, 'For the current Storage rules cutover, record Gate 2A QA evidence in `__docs__/production-readiness/external-certification-runbook.md` before production Storage rules deploy approval.', 'Product setup doc MenuList Storage Gate 2A production approval gate');
-  assertIncludes(productSetupDoc, 'firebase deploy --project menulist --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'Product setup doc MenuList production rules/indexes/storage deploy command');
+  assertIncludes(productSetupDoc, 'firebase deploy --project menulist-prod --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'Product setup doc MenuList production rules/indexes/storage deploy command');
   assertIncludes(productSetupDoc, 'Do not replace the scoped target list with a broad `--only functions` deploy', 'Product setup doc broad MenuList Functions deploy guard');
   assertNotIncludes(productSetupDoc, 'firebase deploy --project menulist-qa --config firebase.json --only functions\n', 'Product setup doc broad MenuList QA Functions deploy command');
-  assertNotIncludes(productSetupDoc, 'firebase deploy --project menulist --config firebase.json --only functions\n', 'Product setup doc broad MenuList production Functions deploy command');
+  assertNotIncludes(productSetupDoc, 'firebase deploy --project menulist-prod --config firebase.json --only functions\n', 'Product setup doc broad MenuList production Functions deploy command');
   assertIncludes(fiveYearVision, 'Use production Functions deploys only through `__docs__/production-readiness/external-certification-runbook.md` Gate 1 after QA evidence and explicit production deploy approval.', 'Five-year vision MenuList Functions Gate 1 deploy boundary');
   assertIncludes(fiveYearVision, 'Do not replace the scoped target list with a broad `--only functions` deploy.', 'Five-year vision broad Functions deploy guard');
   assertIncludes(answerlatticeActionItems, 'Use External Certification Gate 1; do not run a broad --only functions deploy.', 'Answerlattice action items MenuList deploy boundary');
@@ -2717,7 +2779,7 @@ function verifyEnvironmentTargets() {
     ['Codex Answerlattice rules', codexAnswerlatticeRules],
     ['Cascade Answerlattice rules', cascadeAnswerlatticeRules],
   ]) {
-    assertIncludes(content, "separate from MenuList's current `menulist-qa` local/preview target and `menulist` production target", `${label} current MenuList target wording`);
+    assertIncludes(content, "separate from MenuList's current `menulist-qa` local/preview target and `menulist-prod` production target", `${label} current MenuList target wording`);
     assertNotIncludes(content, "MenuList's `ecomsai`", `${label} stale MenuList project wording`);
   }
   for (const [label, content] of [
@@ -2727,7 +2789,7 @@ function verifyEnvironmentTargets() {
     ['Answerlattice product separation playbook', answerlatticeProductSeparation],
   ]) {
     assertNotIncludes(content, 'firebase deploy --only functions --project menulist-qa', `${label} broad MenuList QA Functions deploy command`);
-    assertNotIncludes(content, 'firebase deploy --only functions --project menulist', `${label} broad MenuList production Functions deploy command`);
+    assertNotIncludes(content, 'firebase deploy --only functions --project menulist-prod', `${label} broad MenuList production Functions deploy command`);
   }
   assertIncludes(productSetupDoc, '`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE`', 'Product setup doc mobile QA verification-only env boundary');
   assertIncludes(envStagingExample, 'NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay public test key prefix');
@@ -3019,7 +3081,7 @@ function verifyMenuListDiscovery() {
   if (exists('.env.prod')) {
     const productionEnv = read('.env.prod');
     assertIncludes(productionEnv, 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Production platform domain config');
-    assertIncludes(productionEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist', 'Production public MenuList Firebase project');
+    assertIncludes(productionEnv, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID=menulist-prod', 'Production public MenuList Firebase project');
     assertNotIncludes(productionEnv, '\nMENULIST_FIREBASE_PROJECT_ID=', 'Production must not duplicate public MenuList Firebase project');
     assertNotIncludes(productionEnv.toLowerCase(), 'ecomsai', 'Production ignored env retired project');
   }

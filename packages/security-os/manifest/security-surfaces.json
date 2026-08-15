@@ -215,6 +215,32 @@
       "notes": "Focused local tests are mapped; the bundle does not execute them or claim that all application ingress paths are covered."
     },
     {
+      "id": "menulist.notification-delivery-boundaries",
+      "product": "menulist",
+      "title": "Notification, email, and WhatsApp delivery boundaries",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/api/notification-os",
+        "src/lib/notification-os",
+        "src/lib/email-os",
+        "src/lib/whatsapp-os",
+        "functions/src/emailOs",
+        "functions/src/whatsappOs",
+        "firestore.rules"
+      ],
+      "evidenceIds": [
+        "portfolio.notification-os-boundary",
+        "portfolio.email-os-boundary",
+        "portfolio.whatsapp-os-boundary"
+      ],
+      "bundleIds": [
+        "menulist.data-and-trust-boundaries"
+      ],
+      "notes": "Focused source, contract, dry-run, and emulator checks are mapped; live provider delivery is not claimed."
+    },
+    {
       "id": "menulist.security-event-and-secret-boundaries",
       "product": "menulist",
       "title": "Authentication security events and POS secret isolation",
@@ -322,6 +348,28 @@
         "answerlattice.authority-and-ingress"
       ],
       "notes": "Focused rule, provider-ingress, and policy checks are mapped; SecurityOS does not execute them or claim full ingress coverage."
+    },
+    {
+      "id": "answerlattice.notification-provider-ingress",
+      "product": "answerlattice",
+      "title": "Answerlattice notification provider ingress and delivery isolation",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "functions-answerlattice/src/emailOs",
+        "functions-answerlattice/src/whatsappOs",
+        "firestore-answerlattice.rules"
+      ],
+      "evidenceIds": [
+        "portfolio.notification-os-boundary",
+        "portfolio.email-os-boundary",
+        "portfolio.whatsapp-os-boundary"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "Focused source, contract, dry-run, and emulator checks are mapped; live provider delivery is not claimed."
     },
     {
       "id": "answerlattice.release-ontology-and-session-rules",

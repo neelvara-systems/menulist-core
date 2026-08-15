@@ -8,6 +8,12 @@
  */
 
 export const FUNCTION_FLAGS = {
+    /** Shared EmailOS contract; Resend transmission stays off until onboarding. */
+    ENABLE_ANSWERLATTICE_EMAIL_OS: true,
+    ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND: false,
+    ENABLE_ANSWERLATTICE_WHATSAPP_OS: true,
+    ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND: false,
+
     /**
      * Builds bounded daily conversation summaries used by the owner analytics UI.
      * Runs inside the existing Answerlattice nightly scheduler. No separate

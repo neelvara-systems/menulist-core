@@ -116,6 +116,17 @@ const TEMPLATES: Record<string, TemplateFn> = {
     };
   },
 
+  PAYMENT_RECOVERED: (m) => {
+    const storeName = normalizeText(m.storeName, 'MenuList');
+    const formattedAmount = normalizeText(m.amountLabel, `${normalizeText(m.currency, 'INR')} ${normalizeText(m.amount, '0')}`);
+    return {
+      subject: `Payment recovered — ${storeName}`,
+      html: wrap(
+        `<h2 style="${S.h2}">Payment recovered</h2><p style="${S.p}">The overdue subscription payment for <strong>${htmlValue(m.storeName, 'your business')}</strong> has now been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${escapeHtml(formattedAmount)}<br><strong>Plan:</strong> ${htmlValue(m.planName, 'Subscription')}</div><p style="${S.p}">No action is needed. Your subscription is active.</p>`,
+      ),
+    };
+  },
+
   PAYMENT_FAILED: (m) => {
     const storeName = normalizeText(m.storeName, 'MenuList');
     const formattedAmount = normalizeText(m.amountLabel, `${normalizeText(m.currency, 'INR')} ${normalizeText(m.amount, '0')}`);
@@ -160,11 +171,45 @@ const TEMPLATES: Record<string, TemplateFn> = {
     };
   },
 
+  CREDITS_LOW: (m) => {
+    const storeName = normalizeText(m.storeName, 'MenuList');
+    return {
+      subject: `Credit balance is low — ${storeName}`,
+      html: wrap(
+        `<h2 style="${S.h2}">Credit balance is low</h2><p style="${S.p}">The credit balance for <strong>${htmlValue(m.storeName, 'your business')}</strong> is running low.</p><div style="${S.warn}"><strong>Remaining credits:</strong> ${htmlValue(m.remainingCredits, 'See dashboard')}</div><p style="${S.p}">Your public menu remains available.</p>`,
+      ),
+    };
+  },
+
   CREDITS_EXHAUSTED: (m) => {
     const storeName = normalizeText(m.storeName, 'MenuList');
     return {
       subject: `Credit balance depleted — ${storeName}`,
       html: wrap(`<h2 style="${S.h2}">Your credit balance has been used up</h2><p style="${S.p}">The credit balance for <strong>${htmlValue(m.storeName, 'your business')}</strong> has reached zero.</p><div style="${S.warn}"><strong>What this means:</strong><br>AI features such as image generation, descriptions, and translations will pause until credits are replenished. Your menu remains fully accessible to customers.</div><p style="${S.p}">You can purchase additional credits from your dashboard at any time.</p>`),
+    };
+  },
+
+  SUBSCRIPTION_ACTIVATED: (m) => ({
+    subject: `Subscription activated — ${normalizeText(m.storeName, 'MenuList')}`,
+    html: wrap(
+      `<h2 style="${S.h2}">Subscription activated</h2><p style="${S.p}">The subscription for <strong>${htmlValue(m.storeName, 'your business')}</strong> is active.</p><p style="${S.p}">No action is needed.</p>`,
+    ),
+  }),
+
+  SUBSCRIPTION_COMPLETED: (m) => ({
+    subject: `Subscription completed — ${normalizeText(m.storeName, 'MenuList')}`,
+    html: wrap(
+      `<h2 style="${S.h2}">Subscription completed</h2><p style="${S.p}">The fixed subscription term for <strong>${htmlValue(m.storeName, 'your business')}</strong> has completed.</p><p style="${S.p}">Open billing if you want to review the account status.</p>`,
+    ),
+  }),
+
+  REFUND_PROCESSED: (m) => {
+    const formattedAmount = normalizeText(m.amountLabel, `${normalizeText(m.currency, 'INR')} ${normalizeText(m.amount, '0')}`);
+    return {
+      subject: `Refund processed — ${normalizeText(m.storeName, 'MenuList')}`,
+      html: wrap(
+        `<h2 style="${S.h2}">Refund processed</h2><p style="${S.p}">A refund for <strong>${htmlValue(m.storeName, 'your business')}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${escapeHtml(formattedAmount)}<br><strong>Reference:</strong> ${htmlValue(m.refundReference, 'See billing history')}</div><p style="${S.p}">Your bank may take additional time to show the credit.</p>`,
+      ),
     };
   },
 };

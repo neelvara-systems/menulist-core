@@ -1,7 +1,6 @@
 {
   "projects": {
     "default": "menulist-qa",
-    "menulist-prod": "menulist",
     "answerlattice-qa": "answerlattice-qa",
     "answerlattice-prod": "answerlattice",
     "campaigncue-qa": "campaigncue-qa",

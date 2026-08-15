@@ -73,6 +73,10 @@ const {
 const {
   getAnswerlatticeResourceArticle,
 } = require('../../src/content/answerlatticePublic/articles');
+const {
+  ANSWERLATTICE_ONBOARDING_SURFACE_OPTIONS,
+  buildAnswerlatticeOnboardingProof,
+} = require('../../src/lib/answerlattice/onboardingProof');
 
 const monthlyPlans = getAnswerlatticePlans()
   .filter((plan) => plan.billingInterval === 'MONTH')
@@ -122,6 +126,8 @@ const pricing = read(`${WEBSITE_ROOT}/pricing/page.tsx`);
 const faq = read(`${WEBSITE_ROOT}/faq/page.tsx`);
 const pricingArticle = read('src/content/answerlatticePublic/articles.ts');
 const onboarding = read(`${WEBSITE_ROOT}/get-started/OnboardingForm.tsx`);
+const onboardingProofSource = read('src/lib/answerlattice/onboardingProof.ts');
+const starterQuestionsSource = read('src/lib/answerlattice/firstTrustedAnswerStarterQuestions.ts');
 const onboardingResponse = read('src/lib/answerlattice/onboardingResponse.ts');
 const onboardingPage = read(`${WEBSITE_ROOT}/get-started/page.tsx`);
 const billingPlans = read('src/lib/billing/productBillingPlans.ts');
@@ -224,7 +230,8 @@ assert(
   onboardingPage.indexOf('<OnboardingForm') < onboardingPage.indexOf('CRITERIA.map'),
   'workspace signup must appear before fit criteria',
 );
-assertIncludes(onboarding, '<form style={styles.card} onSubmit={handleCreateAccount}>', 'onboarding semantic details form');
+assertIncludes(onboarding, '<form style={styles.card} onSubmit={handlePreviewProof}>', 'onboarding semantic product-details form');
+assertIncludes(onboarding, '<form style={styles.card} onSubmit={handleCreateAccount}>', 'onboarding semantic paid workspace form');
 assertIncludes(onboarding, 'event.preventDefault()', 'onboarding form submission boundary');
 assertIncludes(onboarding, 'type="submit"', 'onboarding native submit button');
 assertIncludes(onboarding, 'id="answerlattice-company-name"', 'onboarding company field label binding');
@@ -232,10 +239,48 @@ assertIncludes(onboarding, 'maxLength={120}', 'onboarding bounded company/produc
 assertIncludes(onboarding, 'maxLength={300}', 'onboarding bounded product URL');
 assertIncludes(onboarding, 'maxLength={160}', 'onboarding bounded support email');
 assertIncludes(onboarding, 'Choose at least one main product page.', 'onboarding product-surface admission');
+assertIncludes(onboarding, "type OnboardingStep = 'auth' | 'details' | 'proof' | 'creating' | 'done';", 'onboarding proof-before-creation state');
+assertIncludes(onboarding, "trackPlausibleEvent('onboarding_proof_viewed')", 'onboarding privacy-bounded proof analytics');
+assertIncludes(onboarding, 'client-only starter preview—not imported knowledge, generated answers, or approved guidance', 'onboarding proof truth boundary');
+assertIncludes(onboarding, 'Preview my launch path', 'onboarding preview call to action');
+assertIncludes(onboarding, 'Choose {selectedPlan.name} and create workspace', 'onboarding paid creation call to action');
+assert(
+  onboarding.indexOf('Preview my launch path') < onboarding.indexOf('id="answerlattice-plan"'),
+  'onboarding must present the personalized proof before paid plan selection',
+);
+assertNotIncludes(onboardingProofSource, 'fetch(', 'onboarding proof helper network access');
+assertNotIncludes(onboardingProofSource, 'generateContent', 'onboarding proof helper provider call');
+assertNotIncludes(onboardingProofSource, 'firebase', 'onboarding proof helper Firebase access');
+assertIncludes(starterQuestionsSource, "id: 'starter_getting_started'", 'onboarding proof shared First Trusted Answer source');
 assertIncludes(onboarding, '${basePath}/terms-of-service', 'onboarding terms link');
 assertIncludes(onboarding, '${basePath}/privacy-policy', 'onboarding privacy link');
 assertIncludes(onboarding, 'ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES', 'onboarding bounded response');
 assertIncludes(onboardingResponse, 'normalizeRazorpaySubscriptionCheckoutUrl', 'onboarding checkout URL admission');
+
+const onboardingProof = buildAnswerlatticeOnboardingProof({
+  companyName: 'Example Company',
+  productName: 'Example Product',
+  primarySurfaces: ['integrations', 'billing', 'integrations', 'unknown'],
+});
+assert(onboardingProof.subjectLabel === 'Example Product', 'onboarding proof must prefer the bounded product label');
+assert(
+  JSON.stringify(onboardingProof.selectedSurfaces) === JSON.stringify([
+    { key: 'integrations', label: 'Connected apps' },
+    { key: 'billing', label: 'Billing' },
+  ]),
+  'onboarding proof must preserve admitted surface order while dropping duplicates and unknown values',
+);
+assert(
+  JSON.stringify(onboardingProof.priorityQuestions.map((question) => question.id)) === JSON.stringify([
+    'starter_integration_setup',
+    'starter_common_error',
+    'starter_billing_charge',
+    'starter_plan_limits',
+  ]),
+  'onboarding proof must deterministically prioritize First Trusted Answer checks for selected surfaces',
+);
+assert(onboardingProof.totalStarterQuestionCount === 10, 'onboarding proof must preserve the First 10 launch contract');
+assert(ANSWERLATTICE_ONBOARDING_SURFACE_OPTIONS.length === 6, 'onboarding proof must preserve the six admitted product surfaces');
 
 const registeredPaths = ANSWERLATTICE_PUBLIC_PAGES.map((page) => page.path);
 const publicRouteAliases = new Map([

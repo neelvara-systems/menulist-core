@@ -81,7 +81,7 @@ Current verified setup:
 
 | Item | Current value |
 | --- | --- |
-| Active GCP project | `menulist` |
+| Active GCP project | `menulist-prod` |
 | Billing account | `011AD1-8DC063-7B9851` (`Firebase Payment`) |
 | Billing status | Enabled for `menulist` |
 | BigQuery API | Enabled |
@@ -351,7 +351,7 @@ firebase functions:secrets:set SMTP_PASS --project menulist-qa
 ```
 
 After QA alert delivery evidence and explicit production secret approval, repeat
-with `--project menulist` using production channel values. Do not copy staging
+with `--project menulist-prod` using production channel values. Do not copy staging
 or personal test secrets into production.
 
 2. Add platform alert recipients:
@@ -389,7 +389,7 @@ firebase deploy --project menulist-qa --config firebase.json --only functions:me
 After QA evidence and explicit production deploy approval:
 
 ```bash
-firebase deploy --project menulist --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive
+firebase deploy --project menulist-prod --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive
 ```
 
 Record the exact widened target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` if this Step 7B list differs from Gate 1 in the [External Certification Runbook](./external-certification-runbook.md). Stop if QA deploy hits Cloud Resource Manager, IAM, billing, Secret Manager, lint, or build errors.
@@ -679,7 +679,7 @@ firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
 firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 ```
 
-Repeat with `--project menulist` for production values after QA passes.
+Repeat with `--project menulist-prod` for production values after QA passes.
 
 **How it works:** The shared KeyManager auto-discovers primary plus slots 2 and
 3 at startup and remains on its current healthy key. On a transient `429`, the

@@ -25,6 +25,8 @@ enable spend-cap enforcement.
   `__docs__/deployment/three-product-environment-setup.md`
 - Current MenuList QA checklist:
   `__docs__/deployment/menulist-staging-qa-setup.md`
+- Current MenuList production provider ledger:
+  `__docs__/deployment/menulist-production-provider-setup.md`
 
 MenuList currently uses one runtime location: `us-central1`. Select it when
 Firestore asks for a location and keep Storage, Functions, and Cloud Tasks in
@@ -33,10 +35,15 @@ environment. Local destructive and rule testing is emulator-first.
 
 ## MenuList Function Secrets
 
-Set these in both MenuList Firebase projects:
+Set these in each MenuList Firebase project only when that environment's live
+ledger reaches its Secret Manager step:
 
 - staging/local Firebase project: `menulist-qa`
-- production Firebase project: `menulist`
+- production Firebase project: `menulist-prod`
+
+Production secret creation requires the exact production project identity to
+be approved first. Creating secret versions does not authorize a production
+Functions deploy, provider activation, DNS cutover, or production data write.
 
 Declared MenuList secret registry. A secret becomes deploy-required when a
 selected Function binds it through its `secrets` option:
@@ -52,10 +59,16 @@ WHATSAPP_PHONE_NUMBER_ID
 WHATSAPP_ACCESS_TOKEN
 WHATSAPP_APP_SECRET
 WHATSAPP_VERIFY_TOKEN
+MENULIST_WHATSAPP_PHONE_NUMBER_ID
+MENULIST_WHATSAPP_ACCESS_TOKEN
+MENULIST_WHATSAPP_APP_SECRET
+MENULIST_WHATSAPP_VERIFY_TOKEN
 SMTP_HOST
 SMTP_PORT
 SMTP_USER
 SMTP_PASS
+MENULIST_RESEND_API_KEY
+MENULIST_RESEND_WEBHOOK_SECRET
 RAZORPAY_KEY_ID
 RAZORPAY_KEY_SECRET
 SENTRY_DSN
@@ -85,6 +98,14 @@ firebase functions:secrets:set SENTRY_DSN --project menulist-qa
 firebase functions:secrets:set REVALIDATION_SECRET --project menulist-qa
 ```
 
+The unscoped `WHATSAPP_*` names remain the active deploy bindings during the
+existing Meta integration migration. Before provider activation, create the
+four `MENULIST_WHATSAPP_*` secrets with the same values, bind them in
+`SECRET_GROUPS.WHATSAPP`, deploy the webhook, verify both GET verification and a
+signed status callback, and only then remove the legacy bindings. Do not bind a
+new secret name before its Secret Manager value exists because Firebase treats
+every bound name as deploy-required.
+
 Set these only when the corresponding separately selected Function/provider is
 being deployed:
 
@@ -93,6 +114,10 @@ firebase functions:secrets:set SMTP_HOST --project menulist-qa
 firebase functions:secrets:set SMTP_PORT --project menulist-qa
 firebase functions:secrets:set SMTP_USER --project menulist-qa
 firebase functions:secrets:set SMTP_PASS --project menulist-qa
+
+# EmailOS: run only during the approved Resend onboarding session.
+firebase functions:secrets:set MENULIST_RESEND_API_KEY --project menulist-qa
+firebase functions:secrets:set MENULIST_RESEND_WEBHOOK_SECRET --project menulist-qa
 firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
 firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
 firebase functions:secrets:set GCP_BUDGET_WEBHOOK_SECRET --project menulist-qa
@@ -116,11 +141,11 @@ For a later production setup, repeat only the commands required by the reviewed
 production target list with:
 
 ```bash
---project menulist
+--project menulist-prod
 ```
 
 Use production values for production. Do not copy staging/test provider values
-into `menulist`.
+into `menulist-prod`.
 
 Record each created secret's owner and creation date in the company vault.
 Quarterly, review whether old versions or replaced credentials can be revoked.
@@ -132,9 +157,9 @@ path.
 Non-secret runtime env lives in the Firebase Functions dotenv files:
 
 - `functions/.env.menulist-qa`
-- `functions/.env.menulist`
+- `functions/.env.menulist-prod`
 - `functions/.env.menulist-qa.example`
-- `functions/.env.menulist.example`
+- `functions/.env.menulist-prod.example`
 
 Messaging onboarding processing is disabled by default in those files. Enable it only on a target with real Meta secrets and webhook registration:
 
@@ -196,6 +221,8 @@ ANSWERLATTICE_SMTP_HOST
 ANSWERLATTICE_SMTP_PORT
 ANSWERLATTICE_SMTP_USER
 ANSWERLATTICE_SMTP_PASS
+ANSWERLATTICE_RESEND_API_KEY
+ANSWERLATTICE_RESEND_WEBHOOK_SECRET
 ```
 
 Set staging:
@@ -211,6 +238,10 @@ firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-q
 firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa --config firebase-answerlattice.json
+
+# EmailOS: run only during the approved Resend onboarding session.
+firebase functions:secrets:set ANSWERLATTICE_RESEND_API_KEY --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_RESEND_WEBHOOK_SECRET --project answerlattice-qa --config firebase-answerlattice.json
 ```
 
 Set production by repeating every Answerlattice command above with:
@@ -290,7 +321,7 @@ secret names without values, use Google Secret Manager metadata:
 
 ```bash
 gcloud secrets list --project menulist-qa --format='value(name)'
-gcloud secrets list --project menulist --format='value(name)'
+gcloud secrets list --project menulist-prod --format='value(name)'
 gcloud secrets list --project answerlattice-qa --format='value(name)'
 gcloud secrets list --project answerlattice --format='value(name)'
 gcloud secrets list --project menulist-signaldesk-qa --format='value(name)'

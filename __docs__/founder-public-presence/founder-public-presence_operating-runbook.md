@@ -1,7 +1,7 @@
 # Founder Public Presence Operating Runbook
 
 **Status:** Active
-**Last Updated:** August 12, 2026
+**Last Updated:** August 14, 2026
 
 ## Operating Principle
 
@@ -58,6 +58,10 @@ Before moving a candidate to the post bank:
 4. Verify unstable platform or market claims through current primary sources.
 5. State limitations and whether the result is local, deployed, measured,
    inferred, or still blocked.
+6. For X recommendation claims, pin the reviewed source commit and separate
+   retrieval, predicted-action scoring, ranking adjustments, visibility
+   filtering, and transparency-report eligibility. Reject any tactic that
+   collapses these layers into a guaranteed reach formula.
 
 ### 3. Shape
 
@@ -133,6 +137,12 @@ Use 8:00 PM Asia/Kolkata as a convenient initial publishing time for the first
 twelve original posts. It is a controlled baseline, not an algorithm claim.
 Review the founder's own response data before changing it.
 
+The three-post cadence also clears the ten-post monthly activity threshold
+during a normal full month without adding quota-driven content. That threshold
+only affects `Under the Hood` report eligibility. The report additionally
+requires an account older than one year and initial pilot selection, so it must
+not influence launch volume.
+
 ### Reddit
 
 - Weeks 1-2: three to five useful comments per week across no more than two
@@ -160,6 +170,10 @@ Once per week:
 5. Prepare channel-native drafts and any public-safe asset.
 6. Review the previous week's metrics and audience quality.
 7. Record one keep, one change, and one stop/no-change decision.
+8. Check for negative-quality evidence: repeated low-fit replies, “Not
+   interested” feedback when visible, mutes/blocks/reports when available,
+   suspicious-link warnings, repetitive formats, or platform labels. Do not
+   infer a hidden restriction from low impressions alone.
 
 ## Monthly Review
 
@@ -174,6 +188,8 @@ Every four weeks:
   MenuList referral paths without naming products before the privacy gate;
 - retire formats that require artificial volume or personality;
 - revalidate important platform/community rules;
+- review `Under the Hood` manually when the account is eligible and use its
+  exported account/post label evidence before a visibility diagnosis;
 - update the strategy only when evidence changes it.
 
 ## Status Vocabulary

@@ -15,6 +15,7 @@ assert.equal(isAllowedSignalDeskFunctionsProjectId("menulist-signaldesk"), true)
 assert.equal(isAllowedSignalDeskFunctionsProjectId("demo-signaldesk"), true);
 assert.equal(isAllowedSignalDeskFunctionsProjectId("demo-signaldesk-project-boundary"), true);
 assert.equal(isAllowedSignalDeskFunctionsProjectId("menulist"), false);
+assert.equal(isAllowedSignalDeskFunctionsProjectId("menulist-prod"), false);
 assert.equal(isAllowedSignalDeskFunctionsProjectId("answerlattice"), false);
 assert.equal(isAllowedSignalDeskFunctionsProjectId("demo-menulist"), false);
 assert.equal(isAllowedSignalDeskFunctionsProjectId("demo-signaldesk-"), false);
@@ -49,7 +50,7 @@ expectCode("SIGNALDESK_FUNCTIONS_PROJECT_ID_CONFLICT", () => (
     gcloudProject: "menulist-signaldesk",
   })
 ));
-for (const projectId of ["menulist", "menulist-qa", "answerlattice", "campaigncue", "demo-menulist"]) {
+for (const projectId of ["menulist", "menulist-prod", "menulist-qa", "answerlattice", "campaigncue", "demo-menulist"]) {
   expectCode("SIGNALDESK_FUNCTIONS_PROJECT_ID_NOT_ALLOWED", () => (
     resolveSignalDeskFunctionsProjectId({ gcloudProject: projectId })
   ));

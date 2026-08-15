@@ -16,6 +16,12 @@ import { isAnswerlatticeEmulatorProjectId } from '@data/shared/answerlatticeFire
 import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from './firebaseAdminDiagnostics';
 import { answerlatticeServerEnv } from '@lib/env/answerlatticeServerEnv';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
+import {
+    getAnswerlatticeFirebaseWorkloadIdentityCredential,
+    readAnswerlatticeWorkloadIdentityConfig,
+    resolveAnswerlatticeGoogleCredentialMode,
+} from '@lib/google/answerlatticeWorkloadIdentity';
+import { isManagedVercelQaOrProduction } from '@lib/google/vercelWorkloadIdentity';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -177,6 +183,9 @@ function getDefaultAdminAppForAnswerlattice(): admin.app.App | null {
 function getAnswerlatticeAdminApp(): admin.app.App | null {
     if (!answerlatticeFirebaseBoundary.valid) return null;
     if (shouldUseSharedAnswerlatticeFirebase) {
+        if (isManagedVercelQaOrProduction()) {
+            throw new Error('Answerlattice managed Vercel QA and production must use its dedicated Firebase project and identity.');
+        }
         return getDefaultAdminAppForAnswerlattice();
     }
 
@@ -187,12 +196,30 @@ function getAnswerlatticeAdminApp(): admin.app.App | null {
             : null;
     }
 
-    const answerlatticeCredential = getAdminCredential('ANSWERLATTICE_FIREBASE');
-    const answerlatticeFileCredential = getAnswerlatticeServiceAccountFileCredential();
-    const credential = answerlatticeCredential || answerlatticeFileCredential;
-    if (credential) {
+    const credentialMode = resolveAnswerlatticeGoogleCredentialMode();
+    if (credentialMode === 'vercel_oidc') {
+        const workloadIdentity = readAnswerlatticeWorkloadIdentityConfig();
+        if (!isAllowedAnswerlatticeProjectId(workloadIdentity.projectId)) {
+            throw new Error('Answerlattice Workload Identity project does not match the active deployment stage.');
+        }
+        return admin.initializeApp({
+            credential: getAnswerlatticeFirebaseWorkloadIdentityCredential(),
+            projectId: workloadIdentity.projectId,
+            serviceAccountId: workloadIdentity.serviceAccountEmail,
+            ...(getAnswerlatticeStorageBucket() ? { storageBucket: getAnswerlatticeStorageBucket() } : {}),
+        }, ANSWERLATTICE_APP_NAME);
+    }
+
+    if (credentialMode === 'service_account_key') {
+        const answerlatticeCredential = getAdminCredential('ANSWERLATTICE_FIREBASE');
+        const answerlatticeFileCredential = getAnswerlatticeServiceAccountFileCredential();
+        const credential = answerlatticeCredential || answerlatticeFileCredential;
+        if (!credential) {
+            throw new Error('Answerlattice Firebase service-account key configuration is invalid.');
+        }
         return admin.initializeApp({
             credential,
+            projectId: getAnswerlatticeProjectId(),
             ...(getAnswerlatticeStorageBucket() ? { storageBucket: getAnswerlatticeStorageBucket() } : {}),
         }, ANSWERLATTICE_APP_NAME);
     }

@@ -48,6 +48,10 @@ assert(
   firebaserc.projects['menulist-qa'] === undefined,
   '.firebaserc must not define a self-alias for menulist-qa because Firebase CLI treats .env.menulist-qa as both project-id and alias dotenv files',
 );
+assert(
+  firebaserc.projects['menulist-prod'] === undefined,
+  '.firebaserc must not define a self-alias for menulist-prod because production commands use the exact project ID and Firebase CLI loads .env.menulist-prod by project ID',
+);
 
 assertIncludes(
   runbook,

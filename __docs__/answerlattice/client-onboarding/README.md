@@ -2,7 +2,7 @@
 
 > **Feature:** Self-service onboarding for external SaaS founders
 > **Status:** ✅ IMPLEMENTED
-> **Last Audited:** 2026-08-13
+> **Last Audited:** 2026-08-14
 > **Auth:** Google OAuth through shared NextAuth login plus Answerlattice product-account bridge
 > **Billing:** Paid INR and USD Starter/Growth/Studio packaging. Payment capture runs through the existing product-scoped Razorpay subscription model.
 
@@ -34,9 +34,10 @@ A self-service signup flow where external SaaS founders create an Answerlattice 
 
 1. Visit `answerlattice.com/get-started`
 2. Sign in with Google OAuth
-3. Enter company, product, product URL, support email, billing model, plan, checkout currency, and main product pages
-4. The selected paid plan is provisioned through Razorpay with a resumable attempt, then the Answerlattice subscription summary and one-time widget key are committed to the provisional workspace
-5. See the one-time widget key, payment link, and explicit dashboard/activation next steps
+3. Enter company, product, product URL, support email, billing model, and main product pages
+4. See a deterministic, product-specific preview of the first support checks and launch sequence before choosing a paid plan
+5. Choose a paid plan and checkout currency; the plan is provisioned through Razorpay with a resumable attempt, then the Answerlattice subscription summary and one-time widget key are committed to the provisional workspace
+6. See the one-time widget key, payment link, and explicit dashboard/activation next steps
 
 ## Onboarding Flow
 
@@ -46,9 +47,15 @@ answerlattice.com/get-started
   ├── Step 1: Google OAuth sign-in (existing NextAuth)
   │   → Creates/uses the default auth user record
   │
-  ├── Step 2: Enter company, product profile, plan, INR/USD checkout currency, and first product surfaces
+  ├── Step 2: Enter company, product profile, and first product surfaces
   │
-  ├── Step 3: POST /api/answerlattice/onboard
+  ├── Step 3: Preview the launch path in the browser
+  │   → Reuse the maintained First Trusted Answer starter-question source
+  │   → Prioritize four questions from selected product surfaces
+  │   → Perform no API, AI/provider, Firebase, billing, or workspace operation
+  │   → State that the preview is not imported knowledge, generated answers, or approved guidance
+  │
+  ├── Step 4: Choose a paid plan and INR/USD checkout currency, then POST /api/answerlattice/onboard
   │   → Optionally include one closed-list first-discovery source
   │   → Create a fingerprinted provisional tenant/store/user scope
   │   → Create or recover the exact Razorpay subscription for that attempt
@@ -60,7 +67,7 @@ answerlattice.com/get-started
   │   → Seed selected product surfaces and compact summaries
   │   → Write productAccounts.AL bridge to the default auth user
   │
-  └── Step 4: Project exact plan/amount/provider/key acknowledgement
+  └── Step 5: Project exact plan/amount/provider/key acknowledgement
       → Bounded non-authoritative session refresh
       → Show widget key + next steps
       → Go to dashboard
@@ -119,6 +126,7 @@ A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or p
 
 | Date | Change |
 |------|--------|
+| 2026-08-14 | Added the deterministic First Trusted Answer launch preview before paid plan selection; the preview is client-only and does not create product, billing, provider, or entitlement state |
 | 2026-08-01 | Revalidated current default-auth authority, made the product-account bridge transactional, required exact checkout truth, and made payment-pending bootstrap recovery non-destructive and fingerprint-bound |
 | 2026-08-13 | Added optional closed-list self-reported discovery to the existing tenant write, outside provisioning idempotency; no extra Firestore operation or free text |
 | 2026-07-22 | Required exact dual-product identity for onboarding resume, pending-subscription persistence, provider recovery, and compensation; conflicting subscriptions now remain unchanged |

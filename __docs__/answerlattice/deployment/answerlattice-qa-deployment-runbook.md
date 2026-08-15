@@ -36,7 +36,7 @@ QA Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, 
 | --- | --- | --- | --- | --- |
 | Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
 | Vercel Preview / QA | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
-| Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
+| Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
 
 The code-level contract lives in `src/constants/deploymentTargets.ts`; `npm run verify:env-targets` checks the matrix, Firebase aliases, and Answerlattice deploy scripts.
 
@@ -430,7 +430,7 @@ Local Answerlattice admin code supports two safe paths:
 2. `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=./answerlattice-service-account.json` for local QA testing.
 3. Local Application Default Credentials in non-production only.
 
-If `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app ignores that invalid local credential and tries the Answerlattice service-account JSON path before ADC. Production does not use the local ADC fallback; production must have valid explicit Answerlattice credentials.
+If `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app rejects that invalid local credential and may use the explicitly configured local service-account JSON path. With neither local key path configured, local development uses ADC. Managed Vercel QA and production do not use either local path; both require `vercel_oidc` and complete project-local WIF values.
 
 `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS` should point to an ignored local service account JSON file only when needed. Do not commit service account JSON files.
 
@@ -528,10 +528,13 @@ Before production launch on `answerlattice.com`:
    - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID`
    - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID`
    - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID`
-5. Add production server env to Vercel production env:
-   - `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`
-   - `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`
-   Server code reuses the canonical public mode, project ID, bucket, and optional database ID from step 4.
+5. Add production server identity values to Vercel Production:
+   - `ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc`
+   - `ANSWERLATTICE_GCP_PROJECT_NUMBER`
+   - `ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL`
+   - `ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID`
+   - `ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID`
+   Server code reuses the canonical public mode, project ID, bucket, and optional database ID from step 4. Do not add a client email/private key or credential file.
 6. Create production `ANSWERLATTICE_CRON_SECRET`, `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`, and declared `ANSWERLATTICE_GEMINI_AI_KEY*` secrets in Secret Manager.
 7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-answerlattice.json` against project `answerlattice`.
 8. Run the manual scheduler smoke test and verify the `answerlattice_schedulerRunLogs/{runLogId}` document.
@@ -542,6 +545,8 @@ Before production launch on `answerlattice.com`:
 
 - Do not reuse QA service account credentials in production.
 - Do not store service account JSON or secret values in docs or Git.
+- Keep Answerlattice QA in the shared Vercel custom `qa` environment and
+  production in Vercel Production, with separate project-local WIF identities.
 - Do not point production Answerlattice at the MenuList Firebase project.
 - Do not add Answerlattice scheduled functions to MenuList functions; Answerlattice scheduled work stays in `functions-answerlattice/` and should route through the centralized Answerlattice scheduler before adding a new scheduled export.
 - Do not send production customer traffic until manual trigger logs, tenant summary discovery, and cost expectations are verified in production.

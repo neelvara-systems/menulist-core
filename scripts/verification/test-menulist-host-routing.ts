@@ -81,7 +81,7 @@ function verifyOperationalHostEnv() {
     'utf8',
   );
   const productionFunctionsEnv = fs.readFileSync(
-    path.join(ROOT, 'functions', '.env.menulist.example'),
+    path.join(ROOT, 'functions', '.env.menulist-prod.example'),
     'utf8',
   );
 

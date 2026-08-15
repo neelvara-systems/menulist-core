@@ -7,7 +7,7 @@ This repository contains two major systems:
 
 Both systems now run in a single Next.js codebase but use **separate Firebase projects**.
 
-MenuList → Firebase projects: menulist-qa for local/preview, menulist for production
+MenuList → Firebase projects: menulist-qa for local/preview, menulist-prod for production
 Answerlattice → Firebase project: answerlattice
 
 The platform architecture includes:
@@ -181,7 +181,7 @@ Validate:
 
 Ensure:
 
-MenuList DAL → active MenuList Firestore (`menulist-qa` local/preview, `menulist` production)
+MenuList DAL → active MenuList Firestore (`menulist-qa` local/preview, `menulist-prod` production)
 Answerlattice DAL → answerlattice Firestore
 
 Fix any violations.

@@ -74,7 +74,7 @@ Each separated product gets prefixed env vars:
 | --- | --- | --- |
 | Local development | `menulist-qa` | `answerlattice-qa` |
 | Vercel Preview / QA | `menulist-qa` | `answerlattice-qa` |
-| Vercel Production | `menulist` | `answerlattice` |
+| Vercel Production | `menulist-prod` | `answerlattice` |
 
 Answerlattice env vars stay prefixed with `ANSWERLATTICE_` / `NEXT_PUBLIC_ANSWERLATTICE_`, and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate` is the active local, preview, and production path. The server reuses non-secret public Firebase identifiers; only Admin credentials remain private. Prefer env-based Admin credentials over a local service-account JSON file.
 

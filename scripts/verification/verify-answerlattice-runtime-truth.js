@@ -3289,6 +3289,14 @@ function verifyAnswerlatticePaidPlanPackaging() {
   assertIncludes(onboardingForm, "logRuntimeFailure('answerlattice_onboard_response_invalid'", 'Answerlattice public onboarding client invalid response diagnostics');
   assertIncludes(onboardingForm, 'companyNameLength: trimmedCompanyName.length', 'Answerlattice public onboarding client bounded company metadata');
   assertIncludes(onboardingForm, 'primarySurfaceCount: primarySurfaces.length', 'Answerlattice public onboarding client bounded surface metadata');
+  assertIncludes(onboardingForm, "type OnboardingStep = 'auth' | 'details' | 'proof' | 'creating' | 'done';", 'Answerlattice public onboarding proof-before-paid-creation state');
+  assertIncludes(onboardingForm, "trackPlausibleEvent('onboarding_proof_viewed')", 'Answerlattice public onboarding proof-view analytics');
+  assertIncludes(onboardingForm, 'client-only starter preview—not imported knowledge, generated answers, or approved guidance', 'Answerlattice public onboarding proof truth boundary');
+  assertIncludes(onboardingForm, 'Preview my launch path', 'Answerlattice public onboarding proof CTA');
+  assert(
+    onboardingForm.indexOf('Preview my launch path') < onboardingForm.indexOf('id="answerlattice-plan"'),
+    'Answerlattice public onboarding must show product proof before paid plan choice',
+  );
   assertNotIncludes(onboardingForm, 'value="free"', 'Answerlattice public onboarding free billing option');
   assertNotIncludes(onboardingForm, 'No paid plan yet', 'Answerlattice public onboarding no paid plan copy');
   assertNotIncludes(onboardingForm, 'res.json().catch(() => null)', 'Answerlattice public onboarding direct JSON fallback');
@@ -3636,7 +3644,8 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboardingResponse, 'normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl)', 'Answerlattice onboarding client checkout response guard');
   assertIncludes(onboardingResponse, 'value.billing.amount !== expectedAmount', 'Answerlattice onboarding exact current-plan billing acknowledgement');
   assertIncludes(onboardingResponse, 'ANSWERLATTICE_WIDGET_KEY_PATTERN.test(apiKey)', 'Answerlattice onboarding exact one-time widget key acknowledgement');
-  assertIncludes(onboardingForm, 'data-answerlattice-label={`${result.plan.id}_${result.billing.currency.toLowerCase()}`}', 'Answerlattice checkout analytics uses selected plan and currency');
+  assertIncludes(onboardingForm, 'data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}', 'Answerlattice paid workspace creation analytics uses selected plan and currency');
+  assertIncludes(onboardingForm, "data-answerlattice-label={result.subscription ? 'open_billing' : 'open_dashboard'}", 'Answerlattice completion analytics distinguishes Billing handoff from dashboard handoff');
   assertIncludes(onboardingForm, "if (result.apiKey) trackPlausibleEvent('widget_key_generated');", 'Answerlattice onboarding widget-key analytics requires a returned key');
   assertIncludes(onboardingForm, "data.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING'", 'Answerlattice onboarding client provider recovery guidance');
   assertIncludes(onboardingForm, "data.code === 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED'", 'Answerlattice onboarding client terminal checkout recovery guidance');

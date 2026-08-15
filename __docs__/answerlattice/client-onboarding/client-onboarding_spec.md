@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Spec
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-08-13
+> **Version:** 1.8.0
+> **Last Updated:** 2026-08-14
 > **Audience:** CEO / PM
 
 ---
@@ -18,9 +18,11 @@ Allow external SaaS founders to create an Answerlattice account via self-service
 2. **Evaluate** → Read product page, pricing, about
 3. **Sign Up** → Click "Get Early Access" → answerlattice.com/get-started
 4. **Authenticate** → Google OAuth (one click)
-5. **Configure** → Enter company/product details, optionally select one closed-list first-discovery source, select Starter/Growth/Studio, choose INR or USD, and select initial product surfaces
-6. **Provisioned** → A resumable attempt creates the tenant/store, pending paid subscription, and one-time widget key without treating a lost browser response as permission to duplicate provider state
-7. **Onboard** → Go to dashboard → Upload KB → Extract entities → Create canonical answers → Embed widget
+5. **Configure** → Enter company/product details, optionally select one closed-list first-discovery source, and select initial product surfaces
+6. **Preview** → Before commercial commitment, see four deterministic starter questions prioritized from the selected surfaces plus the governed setup sequence
+7. **Choose** → Select Starter/Growth/Studio and INR or USD checkout only after the preview
+8. **Provisioned** → A resumable attempt creates the tenant/store, pending paid subscription, and one-time widget key without treating a lost browser response as permission to duplicate provider state
+9. **Onboard** → Add sources → Review answers → Run the First 10 checks → Verify the widget → Go live
 
 ---
 
@@ -74,6 +76,8 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 ## Success Criteria
 
+- A founder sees a relevant launch preview before paid plan selection without creating a workspace or making a provider call.
+- The preview uses the same maintained starter-question source as First Trusted Answers, is deterministic from admitted product surfaces, and is never represented as imported, generated, cited, or approved product truth.
 - One authenticated founder can create one Answerlattice workspace and one provider subscription for one exact request.
 - Response loss, provider timeout, or bridge failure can be retried without silently duplicating provider state.
 - Changed request details cannot take over an active or recovery-pending attempt.
@@ -83,7 +87,8 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 ## Non-Goals
 
-- No free workspace, arbitrary plan interval, account-changing support agent, provider-agnostic billing abstraction, or automatic subscription cancellation.
+- No free workspace, unauthenticated AI generation, website crawling, source import, arbitrary plan interval, account-changing support agent, provider-agnostic billing abstraction, or automatic subscription cancellation.
+- No claim that the client-only preview is an answer-quality result or production usage.
 - No claim that provider checkout equals successful payment or product activation.
 - No requirement to connect every knowledge source before the founder sees the created workspace.
 
@@ -93,6 +98,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-14 | 1.8.0 | Added a deterministic product-surface launch preview before paid plan selection without changing entitlement or provisioning |
 | 2026-08-13 | 1.7.0 | Added optional closed-list self-reported discovery to the existing tenant write, outside provisioning idempotency |
 | 2026-08-01 | 1.6.0 | Added current-auth/transactional bridge authority, exact hosted-checkout finalization, fingerprint-bound payment-pending recovery, and non-destructive bootstrap repair |
 | 2026-07-19 | 1.5.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email admission, HTTP(S)-only product URLs, and route-wide private responses |

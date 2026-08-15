@@ -16,9 +16,9 @@ This is the current source-of-truth contract for the shared Vercel app. Code mir
 | --- | --- | --- | --- | --- | --- |
 | Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
 | Staging / QA | Preview | website `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
-| Production | Production | website `https://menulist.ai`; app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist` | `https://answerlattice.com` | `answerlattice` |
+| Production | Production | website `https://menulist.ai`; app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
 
-Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
+Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist-prod`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
 
 Keep the infrastructure model simple: select `us-central1` when Firestore asks for
 a location and use `us-central1` for MenuList Storage, Functions, and Cloud Tasks.
@@ -40,7 +40,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | ChatGPT Claim                                    | Verdict            | Codebase Evidence                                                                                                              |
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
+| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist-prod`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `menulist-qa.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | MenuList uses environment-specific values: a shared 1-3 key pool plus one dedicated paid extraction credential. Keys in one project still share quota. |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
@@ -327,7 +327,7 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 **Step 3: Configure Vercel Production**
 
 1. In Vercel Dashboard → Settings → Environment Variables
-2. Set MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_*` Web config and the server-only Admin credentials to the production Firebase project `menulist`.
+2. Set MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_*` Web config and the server-only Admin credentials to the production Firebase project `menulist-prod`.
 3. Set Answerlattice's canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` identifiers to the production Firebase project `answerlattice`, with only Admin credentials under `ANSWERLATTICE_FIREBASE_*`.
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online` in Production.
 5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital`,
@@ -482,7 +482,7 @@ These are mandatory before launch. Without them, core features break.
 - **Steps:**
   1. Keep local/Preview env vars pointed at `menulist-qa`.
   2. Set Production `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` to `menulist`; server code reuses it.
-  3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` only after QA evidence and explicit production approval.
+  3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist-prod` only after QA evidence and explicit production approval.
 - **Env vars provided:** `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*`
 - **Cost:** No new local/preview project; production costs move to `menulist`.
 
@@ -775,7 +775,7 @@ required production monitors before launch; do not defer them to post-launch.
 | `.env.local`              | Local runtime values rebuilt from staging template | Yes       |
 | `.env.prod`               | Legacy local file only; do not copy blindly to Vercel | Yes       |
 | `functions/.env.menulist-qa.example` | MenuList QA Functions non-secret template | No, placeholder template |
-| `functions/.env.menulist.example` | MenuList production Functions non-secret template | No, placeholder template |
+| `functions/.env.menulist-prod.example` | MenuList production Functions non-secret template | No, placeholder template |
 
 ### All Environment Variables Covered
 
@@ -826,7 +826,7 @@ shared portfolio reference. This environment guide is a companion overview.
 
 - Configure MenuList QA secrets first with commands that include `--project menulist-qa`.
 - Use `__docs__/deployment/three-product-environment-setup.md` for the current full secret list.
-- Repeat for `--project menulist` only after QA evidence and explicit production secret approval.
+- Repeat for `--project menulist-prod` only after QA evidence and explicit production secret approval.
 - Secret setup alone does not certify deployed Functions; Gate 1 in the External Certification Runbook still requires local preflight and scoped deploy evidence.
 
 ---

@@ -1,7 +1,7 @@
 # Owner Notifications - Spec
 
 **Status:** Implemented source evidence; not current launch certification
-**Date:** 2026-07-16
+**Date:** 2026-08-15
 **Audience:** Product, engineering, support, platform owner
 
 > **Current release boundary (July 16, 2026):** This specification records owner-notification architecture and local source evidence only. It is not current production-launch approval. Current owner-notification release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, scoped provider smoke for SMTP/WhatsApp where enabled, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -19,6 +19,8 @@ MenuList and Answerlattice both need a long-term notification system for importa
 - Internal ops alerts use separate alerting and Telegram paths.
 
 Owner Notifications will centralize only owner/account-critical communication. It will use email and WhatsApp as the main owner channels while keeping ops alerts, workflow integrations, and manual share tools separate.
+
+The approved long-term evolution is documented in [NotificationOS](../notification-os/notification-os_spec.md). Owner Notifications remains its existing owner/account implementation substrate. Email delivery delegates to EmailOS and Meta delivery delegates to WhatsAppOS; one resolved store/workspace context is reused across email-only, WhatsApp-only and combined delivery.
 
 ## Product Principle
 
@@ -105,6 +107,7 @@ Current source passes raw amount/date inputs into the owner-notification formatt
 | `MENU_PUBLISHED` | Required | Public menu verification succeeds | Primary owner | Email, WhatsApp only when onboarding/session context exists |
 | `MENU_PUBLISH_FAILED` | Critical | Publish or verification fails after owner action | Primary owner | Email + WhatsApp when consented/session context exists |
 | `PAYMENT_SUCCESS` | Required | Subscription activation or charge confirmed | Billing owner | Email |
+| `PAYMENT_RECOVERED` | Required | A captured charge restores a previously past-due subscription | Billing owner | Email + WhatsApp when consented |
 | `PAYMENT_FAILED` | Critical | Razorpay `payment.failed` or `subscription.halted` | Billing owner | Email + WhatsApp when consented |
 | `GRACE_PERIOD_STARTED` | Critical | Razorpay `subscription.pending` | Billing owner | Email + WhatsApp when consented |
 | `RENEWAL_REMINDER` | Required | Active subscription renews in configured reminder window | Billing owner | Email; WhatsApp optional only for high-risk accounts |
@@ -113,10 +116,15 @@ Current source passes raw amount/date inputs into the owner-notification formatt
 | `CREDITS_LOW` | Advisory | Credits fall below configured threshold | Primary owner | Email or dashboard; WhatsApp no by default |
 | `CREDITS_EXHAUSTED` | Critical | Monthly and top-up credits both hit zero | Primary owner | Email + WhatsApp when consented |
 | `SUBSCRIPTION_CANCELLED` | Required | Subscription cancellation confirmed | Billing owner | Email |
+| `SUBSCRIPTION_ACTIVATED` | Required | Provider mandate enters active billing state | Billing owner | Email |
+| `SUBSCRIPTION_COMPLETED` | Required | Fixed provider subscription term completes | Billing owner | Email |
 | `SUBSCRIPTION_PAUSED` | Required | Support/policy-enabled pause confirmed | Billing owner | Email |
 | `SUBSCRIPTION_RESUMED` | Required | Support/policy-enabled resume confirmed | Billing owner | Email |
 | `SUBSCRIPTION_UPGRADED` | Required | Old subscription closed and replacement is active | Billing owner | Email |
 | `MENU_STALE` | Advisory | Store truth confidence marks menu stale and cooldown allows notice | Primary owner | Email only |
+| `REFUND_PROCESSED` | Required | Provider confirms a refund | Billing owner | Email |
+
+Every entry above is `active` except `MENU_PUBLISHED`, which is an alias normalized to `STORE_PUBLISHED`. The separate long-term workflow/access/digest catalogue is `reserved` and cannot create an event until promoted with producer evidence.
 
 ### Conversational WhatsApp onboarding
 
@@ -136,13 +144,27 @@ The existing WhatsApp onboarding state machine intentionally keeps its own sessi
 
 ## Answerlattice Trigger Registry
 
-Answerlattice owner notifications must stay knowledge-infrastructure aligned. They must not become a helpdesk workflow feed.
+Answerlattice owner notifications must stay knowledge-infrastructure aligned. They must not become a helpdesk workflow feed. Billing, support-credit state, first verified widget runtime, and the protected delivery test are active because each has an exact authoritative transition. The remaining workflow entries stay reserved until an owner-action transition and noise contract exist.
 
 | Trigger | Class | When | Who | Channels |
 | --- | --- | --- | --- | --- |
 | `ANSWERLATTICE_NOTIFICATION_TEST` | Required | Owner sends test email | Support owner | Email |
+| `PAYMENT_SUCCESS` | Required | Captured Answerlattice subscription payment settles | Billing owner | Email |
+| `PAYMENT_RECOVERED` | Required | Captured payment restores a past-due Answerlattice subscription | Billing owner | Email + consented WhatsApp |
+| `PAYMENT_FAILED` | Critical | Answerlattice subscription payment fails | Billing owner | Email + consented WhatsApp |
+| `GRACE_PERIOD_STARTED` | Critical | Answerlattice subscription enters provider retry/grace state | Billing owner | Email + consented WhatsApp |
+| `CREDIT_PURCHASE_SUCCESS` | Required | Answerlattice support-credit top-up settles | Billing owner | Email |
+| `CREDITS_LOW` | Advisory | Already-loaded post-consumption balance reaches the frozen low threshold | Primary owner | Email |
+| `CREDITS_EXHAUSTED` | Critical | Already-loaded post-consumption support-credit balance reaches zero | Primary owner | Email + consented WhatsApp |
+| `SUBSCRIPTION_ACTIVATED` | Required | Provider billing mandate activates | Billing owner | Email |
+| `SUBSCRIPTION_COMPLETED` | Required | Fixed provider subscription term completes | Billing owner | Email |
+| `SUBSCRIPTION_CANCELLED` | Required | Cancellation is applied | Billing owner | Email |
+| `SUBSCRIPTION_PAUSED` | Required | Pause is applied | Billing owner | Email |
+| `SUBSCRIPTION_RESUMED` | Required | Resume is applied | Billing owner | Email |
+| `SUBSCRIPTION_UPGRADED` | Required | Replacement subscription upgrade is applied | Billing owner | Email |
+| `REFUND_PROCESSED` | Required | Provider confirms an Answerlattice refund | Billing owner | Email |
 | `SUPPORT_EMAIL_MISSING` | Critical | Workspace cannot receive customer/support notices because support email is absent/invalid | Support owner fallback | Email; WhatsApp when consented |
-| `WIDGET_CONNECTION_VERIFIED` | Required | Owner verifies widget/runtime connection | Support owner | Email optional; dashboard by default |
+| `WIDGET_CONNECTION_VERIFIED` | Required | First authenticated allowed-origin widget config request persists runtime proof | Support owner | Email |
 | `WIDGET_CONNECTION_FAILED` | Critical | Owner-triggered widget verification fails | Support owner | Email + WhatsApp when consented |
 | `SOURCE_SYNC_FAILED` | Critical | Required support source sync fails and owner action is needed | Support owner | Email + WhatsApp when consented |
 | `CANONICAL_APPROVAL_REQUIRED` | Advisory | Knowledge mutation needs owner review | Support owner | Email only if configured; not WhatsApp by default |
@@ -151,6 +173,8 @@ Answerlattice owner notifications must stay knowledge-infrastructure aligned. Th
 Existing Answerlattice ticket submitter emails can migrate to the shared delivery engine, but they are not owner-notification triggers unless the recipient is the workspace owner/contact.
 
 Existing Answerlattice workflow integrations remain separate. They are governed integration events, not owner notification core.
+
+`SUPPORT_EMAIL_MISSING`, `WIDGET_CONNECTION_FAILED`, `SOURCE_SYNC_FAILED`, `CANONICAL_APPROVAL_REQUIRED`, and `HIGH_PRIORITY_ESCALATION` remain reserved. Missing support email cannot safely select email as its own recovery channel; public widget request failures are not an owner-run verification result; nightly proposal summaries already cover governed review volume; and current widget escalation creates a normal-priority support signal rather than a high-priority owner transition.
 
 ## Settings And Consent
 

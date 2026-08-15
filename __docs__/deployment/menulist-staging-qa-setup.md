@@ -2,7 +2,7 @@
 
 > Status: first execution guide
 > Scope: MenuList local plus staging only
-> Last updated: August 14, 2026
+> Last updated: August 16, 2026
 > Launch boundary: this guide does not approve production deployment. Finish this MenuList QA setup, verify it end to end, then create a separate MenuList production guide.
 
 This is the dedicated setup file for **MenuList staging/QA**. Follow only this
@@ -12,11 +12,52 @@ MyCodex until MenuList QA is live and verified.
 Application flow certification after infrastructure setup is tracked separately
 in [menulist-staging-feature-certification.md](./menulist-staging-feature-certification.md).
 
+## August 15 Production-Boundary Correction
+
+- The owner confirmed that MenuList production Firebase has not been created or
+  initialized; only `menulist-qa` has been set up. Fresh authenticated Firebase
+  CLI readback independently lists only active project `menulist-qa`.
+- The checked-in `.firebaserc` entry `menulist-prod: menulist` is a reserved
+  future deployment alias, not evidence that a production Firebase project,
+  Firestore database, Storage bucket, Authentication tenant, or deployed
+  Function exists.
+- Every executed QA deploy, hosted runtime readback, Admin credential, Firestore
+  write, Storage write, and Firebase Function target is bound to
+  `menulist-qa`. No production Firebase credential or initialized Firebase
+  resource was available to receive the synthetic QA artifacts.
+- This completes `QA-K13` through structural non-reachability evidence. The
+  earlier HTTP 403 result proved only that an inaccessible Google Cloud project
+  identifier could not be inspected; it did not prove that MenuList production
+  Firebase had been set up. Production will not be created, queried, or changed
+  merely to manufacture an absence check.
+
+## August 15 Overall QA Readiness Reconciliation
+
+- The canonical infrastructure/setup tables contain 147 unique checks. Exactly
+  146 are verified complete. The only unchecked row is `QA-A05`, deliberately
+  deferred under the owner-confirmed one-maintainer model; all phases B through
+  K are complete, including all 23 Phase K smoke checks.
+- The separate application feature-certification ledger contains 43 unique
+  flows: 7 `PASS`, 24 `FIXED`, 8 `IN PROGRESS`, 2 `BLOCKED`, and 2
+  `NOT STARTED`. Therefore 31 of 43 certification flows have closure evidence
+  and 12 remain unfinished.
+- MenuList QA infrastructure is operationally ready under the explicit
+  one-maintainer governance exception, but MenuList is not approved for
+  production. Full Menu lifecycle and Billing lifecycle are still not started;
+  mobile authentication and entitled Project CRUD remain blocked; and eight
+  parent flows still require completion evidence.
+- Production Firebase remains uninitialized, no Vercel Production deployment
+  is authorized, and the current production-readiness aggregate has not been
+  replayed against a final clean release candidate. Production planning may be
+  prepared, but production resources, secrets, provider assets, deploys, and
+  host smoke must wait for feature-certification closure and the separate
+  production runbook.
+
 ## August 14 Razorpay Hosted Certification Checkpoint
 
 - Vercel Preview build `de18a865a1c08603ba3f740c958b827246d99a65` proved the authenticated pending-checkout recovery UI end to end. Closing the reopened Razorpay Standard Checkout immediately restored the exact `Payment Pending` state and `Continue Checkout` action without creating payment, entitlement, history, MRR, notification, or credit evidence.
 - Cancelling disposable Test Mode subscription `sub_TPLMUb5xz8kme6` produced a signed `subscription.cancelled` delivery. The initial HTTP 503 exposed an unconditional Answerlattice lookup in MenuList-only QA. Build `1234895fdd013fa03d59400dcd8253f6d9fd6d0b` restricted lookup to the event's intended configured product stores; Razorpay's automatic retry returned HTTP 200 and owner Billing converged to `No Active Subscription`.
-- Exact cleanup removed only the disposable local subscription. Retained baseline `sub_TPGo1XmddplChB` remains provider `created`, unpaid, and unchanged. Its synthetic owner/store/tenant fixture remains available for the unfinished authorization smoke. Production Firebase, Razorpay Live Mode, and Vercel Production were not queried or changed; owner-controlled production-absence check `QA-K13` remains open.
+- Exact cleanup removed only the disposable local subscription. Retained baseline `sub_TPGo1XmddplChB` remains provider `created`, unpaid, and unchanged. Its synthetic owner/store/tenant fixture remains available for the unfinished authorization smoke. Production Firebase, Razorpay Live Mode, and Vercel Production were not queried or changed. At this August 14 checkpoint `QA-K13` remained open; the August 15 production-boundary correction above supersedes that interpretation.
 - A real zero-value Razorpay `payment.failed` payload exposed a second route defect: failed-payment audit projection required a positive amount and inferred top-up from order presence. Build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` accepts provider zero for audit, uses only a bounded exact-subscription fallback when amount is absent, and requires explicit pack identity for top-up classification. Focused source/emulator gates pass. The original event's provider-controlled automatic retry is still pending observation under Razorpay's documented retry policy.
 - The Test webhook is enabled with all 13 selected events, including `subscription.authenticated`. Full immediate-start card authorization, `subscription.activated`, and captured `subscription.charged` evidence remain blocked at the Razorpay Test Checkout/mock-bank boundary; these transitions were not synthesized and no money or entitlement was fabricated.
 
@@ -26,11 +67,28 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
 - The remaining deterministic first-project rules boundary was corrected and released separately. A fresh exact-scope `2/2` owner then completed hosted first-project create, reload persistence, edit, duplicate, duplicate-cancel, and normal delete. Firestore REST readback verified the canonical project, duplicate, two soft-delete tombstones, literal compact-summary projection, exact `ML`/tenant/store/user identity, one-language configuration, and no files.
 - A later hard reload exposed a narrower client-session boundary: NextAuth intentionally removes `expires` from the React Server Component form of `getServerSession()`, so passing that projection into the strict client-session validator left the DAL cache and client `SessionProvider` without a complete session. Commit `2bdeeb076e789c379c0d43f3382fd88030b6bd0e` now refreshes the complete `/api/auth/session` payload, validates its stable identity and MenuList tenant/store/product scope against the trusted server projection, and only then exposes owner screens. Invalid input and scope mismatches fail closed; logout and in-flight request invalidation remain unchanged. Vercel deployment `dpl_FWspseXxHrDmC4QxKkkNbvorJJ5Y` reached `READY`, `app.menulist.digital/api/version` reported that exact commit, and two authenticated hosted reloads rendered the full owner shell and expected no-subscription gate without another `session_provider_session_prime_failed` or store-bootstrap failure. `QA-K09` is complete.
 - Guarded cleanup asserted every disposable identity and update time before atomically deleting the exact three project documents, compact summary, manual QA entitlement, and disposable user document, then removed the matching Firebase Auth user. Readback proves all six Firestore documents and the Auth user absent. Retained baseline `sub_TPGo1XmddplChB` remains unchanged at scope `1/1`, local `pending`, provider `created`, with the same update time.
-- Read-only production checks did not establish absence. Google Cloud confirms project `menulist` exists, but `admin@neelvara.com` and the founder account both lack `resourcemanager.projects.get`; direct Firebase Console access reports that the project is unavailable or unauthorized, and the reauthenticated Firebase CLI lists only `menulist-qa`. Failed unauthenticated Cloud Shell probes returned HTTP 403 and are not counted as absence. `QA-K13` remains open until the controlled production owner grants read-only access or performs the exact two-document and one-object checks.
-- The provider security audit confirmed the existing secured evidence for GoDaddy, Google, GitHub, Vercel, and Sentry. Current live readback still finds Upstash Multi-Factor Authentication off. Razorpay reports `No verification method is active`, no phone number, and an owner-only phone/OTP setup gate. Meta reaches an authenticity-verification code sent to a masked personal recovery email before revealing or changing the selected Facebook profile's 2FA state. No authenticator seed, OTP, password, phone number, recovery code, or recovery mailbox content was requested, viewed, or stored. `QA-A11` remains open until the owner completes these private verification steps and independently records recovery evidence.
+- Read-only production checks did not establish absence. Google Cloud exposed an inaccessible project identifier `menulist`, but `admin@neelvara.com` and the founder account both lacked `resourcemanager.projects.get`; direct Firebase Console access reported that the project was unavailable or unauthorized, and the reauthenticated Firebase CLI listed only `menulist-qa`. Failed unauthenticated Cloud Shell probes returned HTTP 403 and were not counted as absence. This was the August 14 interpretation; the owner-confirmed August 15 correction above establishes that production Firebase was never initialized and closes `QA-K13` without production access.
+- `QA-A11` is complete. GoDaddy, Google, GitHub, Vercel, Sentry, Upstash,
+  Razorpay, and the authentic personal Meta administrator have verified
+  MFA/recovery evidence, and the Meta QA business portfolio requires 2FA for
+  everyone. The Meta profile remains a temporary personal QA administrator,
+  not a company-owned or permanent production identity. No authenticator seed,
+  OTP, password, phone number, recovery code, or recovery mailbox content was
+  requested, viewed, or stored.
 - `QA-A12` is complete: secrets remain vaulted and only names, versions, redacted identifiers, and non-secret completion evidence are recorded. `QA-A16` is also complete. The company `admin@neelvara.com` Calendar now contains a quarterly `Neelvara quarterly IAM and secret review` series starting September 1, 2026 and an annual `Neelvara annual domain, payment, and recovery review` series starting August 1, 2027. Search readback confirmed both recurrences under the `Neelvara Systems Admin` calendar. Two mistakenly targeted draft series were detected under the retired personal Calendar connector and deleted immediately before any company evidence was claimed.
-- The current `menulist-qa` Firebase Admin service account has one user-managed key created August 9, 2026. The configured local MenuList credential path is absent, so it is not evidence of a retained local file and the active QA key was not revoked blindly. Ignored local credentials for `answerlattice-qa` and `releases-center` are separate-product/out-of-scope evidence and were not read beyond non-secret identity metadata or changed. `QA-A15` remains open until retired-project ownership can identify and revoke only retired keys.
-- Vercel CLI readback is correctly authenticated as `neelvara-admin`, lists only team `neelvara-systems`, and lists only project `menulist-core` in that team. This does not prove the old account's phone unlink, project/team/subscription removal, credential rotation, or deletion, so `QA-A20` remains owner-controlled and open.
+- `QA-A15` is complete as a no-target MenuList inventory. Firebase CLI exposes
+  only active `menulist-qa`, and the owner confirmed no retired MenuList project
+  is visible in Resource Manager. Its current August 9 Firebase Admin key was
+  preserved; reserved production and separate-product credentials were not
+  opened or changed.
+- `QA-A20` is complete with explicit historical limitations. The owner confirms
+  the old Vercel account remains permanently deleted, no old environment value
+  was copied, and the fresh provider credentials are authoritative. Current CLI
+  readback is authenticated as `neelvara-admin` and shows only team
+  `neelvara-systems` and project `menulist-core`. The missing pre-deletion
+  environment/provider inventory and unused phone-reuse proof are accepted as
+  unrecoverable history; the retired account will not be recreated to manufacture
+  evidence.
 
 ## August 14 Deterministic First-Project Rule Checkpoint
 
@@ -2736,6 +2794,68 @@ Operator progress:
   current user-managed Firebase Admin key while its configured local key path
   is absent. Separate-product ignored credential files were not changed.
   `QA-A11`, `QA-A15`, and `QA-A20` remain open on exact owner-controlled proof.
+- `2026-08-14` - The owner reaffirmed the one-person operating model and
+  deliberately deferred `QA-A05`. `admin@neelvara.com` remains the secured
+  sole maintainer/operator for QA; no second paid Workspace identity is being
+  created merely to represent the same person. This does not mark the control
+  complete: create a least-privilege named operator before routine access is
+  delegated to another person, or when production operations justify
+  separating daily work from Super Admin authority. Until then, use the admin
+  account only from the controlled company profile and retain its existing MFA,
+  recovery, and vault controls.
+- `2026-08-14` - The owner enabled Upstash MFA and confirmed its recovery
+  material is stored in the controlled company vault. No QR code, seed, OTP,
+  recovery code, or credential value was shared. This closes the Upstash
+  portion of `QA-A11`; Razorpay and Meta account-security evidence remain open.
+- `2026-08-14` - The owner enabled Razorpay team-level 2-Step Verification and
+  confirmed the recovery owner/reset information is stored in the controlled
+  company vault. No phone number, OTP, password, or recovery detail was shared.
+  This closes the Razorpay portion of `QA-A11`; Meta account and business-level
+  two-factor evidence remains open.
+- `2026-08-14` - The founder enabled two-factor authentication on the authentic
+  personal Facebook profile temporarily administering the unpublished Meta QA
+  assets and confirmed its recovery codes are vaulted. The profile remains a
+  personal identity, not a company-owned or shared account, and this evidence
+  does not approve it as the permanent production ownership model. No masked
+  recovery address, QR code, seed, OTP, password, or recovery code was shared.
+  The individual Meta-login portion of `QA-A11` is complete; business-portfolio
+  2FA enforcement remains open.
+- `2026-08-14` - The owner enabled the Meta QA business portfolio requirement
+  for every human member to use 2FA and confirmed the temporary personal
+  administrator is compliant. Together with the previously acknowledged
+  provider controls and vaulted recovery material, this completes `QA-A11`.
+  The temporary personal Meta identity and the separately documented fresh
+  production ownership requirement remain explicit; this completion does not
+  convert or approve that personal profile as company-owned production access.
+- `2026-08-14` - The sole maintainer confirmed the founder recovery identity,
+  offline recovery material, and ownership record are stored in the controlled
+  company vault. A fake or duplicate administrator will not be created merely
+  to represent the same person. `QA-A13` is complete for the one-maintainer QA
+  model by explicit deferral: add a second trusted Super Admin only when
+  another real trusted maintainer exists, before shared production operations.
+- `2026-08-14` - `QA-A15` completed as a no-target MenuList inventory. Pinned
+  Firebase CLI readback under the authenticated company owner exposes only
+  active project `menulist-qa`; the owner separately confirmed Google Cloud
+  Resource Manager shows no retired MenuList project. The current August 9 QA
+  Firebase Admin key was deliberately preserved, reserved production project
+  `menulist` was not opened or changed, and no unrelated Answerlattice or
+  releases-center credential was treated as MenuList evidence. No key value or
+  key identifier was accessed, displayed, downloaded, or revoked.
+- `2026-08-14` - The owner confirmed the old Vercel account remains permanently
+  deleted, no old environment value was copied, and the fresh provider
+  credentials are authoritative. Current CLI readback shows only the intended
+  company identity, team, and project. `QA-A20` is complete with two explicitly
+  accepted historical limitations: the pre-deletion environment/provider-name
+  inventory was not preserved, and phone-number reuse was never independently
+  exercised because fresh signup did not require it. The retired account will
+  not be recreated, and no unverifiable historical detail is claimed.
+- `2026-08-15` - The owner corrected the production boundary: MenuList
+  production Firebase has not been set up. A fresh authenticated Firebase CLI
+  inventory lists only active `menulist-qa`; `.firebaserc` contains only a
+  reserved future production alias, not a live-resource assertion; and all
+  executed deploy/runtime evidence is bound to QA. `QA-K13` is complete by
+  structural non-reachability. No production project was created, queried, or
+  changed to obtain this evidence.
 
 Status rules:
 
@@ -2755,23 +2875,23 @@ Status rules:
 | [x] | QA-A02 | Registrar account secured and required domains confirmed | Registrar account | Operator confirmed ownership, auto-renew, payment readiness, Domain Lock, tested two-step verification, and independently recoverable secured account records |
 | [x] | QA-A03 | Workspace tenant created and primary domain verified | Google Workspace/Admin Console and registrar DNS | Google accepted the manually published TXT record and displayed **Your domain is verified** for the `Neelvara Systems` Workspace tenant using `neelvara.com` |
 | [x] | QA-A04 | Break-glass Workspace Super Admin secured | Google Account and Google Workspace Admin Console | `admin@neelvara.com` has active Authenticator-backed 2-Step Verification, independently stored backup codes, and verified recovery phone/email; it may perform the one-user QA bootstrap but returns to break-glass-only use before production operations |
-| [ ] | QA-A05 | Named daily operator created | Google Workspace and Google Cloud IAM | Deferred during the one-user MenuList QA bootstrap; create `danny@neelvara.com` or the founder's equivalent before production operations, grant only required access, and return the Super Admin to break-glass-only use |
+| [ ] | QA-A05 | Named daily operator created | Google Workspace and Google Cloud IAM | Deliberately deferred under the owner-confirmed one-person model: `admin@neelvara.com` remains the secured sole QA operator. Reopen before another person receives routine access or when production operations justify separating daily work from Super Admin authority; then create a named account and grant only required access |
 | [x] | QA-A06 | Gmail delivery activated and tested | Google Admin Console, DNS, and every currently licensed mailbox | Google accepted the published MX; post-DKIM mail from `admin@neelvara.com` reached an external Gmail Inbox with SPF, DKIM, and DMARC all passing, and the external reply reached the admin Inbox |
 | [x] | QA-A07 | SPF, DKIM, and monitor-only DMARC configured | Google Admin Console and DNS | Authoritative DNS and a fresh Inbox message prove Google-only SPF, active 2048-bit Google DKIM, and monitor-only DMARC reporting to the tested `dmarc@neelvara.com` alias; obsolete GoDaddy mail CNAMEs are removed |
 | [x] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` are aliases on the one licensed admin mailbox, and separate external delivery tests reached its Inbox |
 | [x] | QA-A09 | GitHub repository transferred to company organization | GitHub source `menulist-ai/menulist-core`, controlled intermediary `neelvara-admin/menulist-core`, and target `neelvara-systems/menulist-core` | Company-admin account `neelvara-admin` uses verified `admin@neelvara.com`, passkey, authenticator MFA, and independent recovery; two native transfers preserve `main`, `staging`, and repository metadata without granting the retiring account organization membership; final access readback shows no `menulist-ai` collaborator and no copy/recreated repository was used |
 | [x] | QA-A21 | Local Git authentication and author identity migrated | This workstation, `~/.ssh`, GitHub SSH settings, and the local `menulist-core` repository | The dedicated Neelvara key is the only active GitHub key on this workstation and authenticates as `neelvara-admin`; `origin`, authenticated fetch, preserved branch refs, repo-local `Neelvara Systems` noreply identity, old-account key revocation, and deletion of the retired local keypair are all verified |
 | [x] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project is linked to `neelvara-systems/menulist-core`; readback confirms the intended framework/root/build/runtime settings, exact-branch Preview env support, and zero inherited or new deployments |
-| [ ] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | GoDaddy, Google, GitHub, Vercel, and Sentry have verified MFA/recovery evidence. Upstash MFA is off; Razorpay has no active method or phone and requires private phone/OTP setup; Meta requires a code sent to a masked recovery email before 2FA state can be verified. No seed, OTP, password, phone, recovery code, or mailbox content was viewed |
+| [x] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | GoDaddy, Google, GitHub, Vercel, Sentry, Upstash, Razorpay, and the temporary authentic personal Meta administrator have verified MFA/recovery evidence; the Meta QA business portfolio requires 2FA for everyone. Recovery material is vaulted, and the personal Meta profile remains explicitly temporary and unapproved as company-owned production access |
 | [x] | QA-A12 | Secret sharing rule accepted | This guide and password vault | Secrets remain vaulted; maintained evidence records only names, versions, redacted identifiers, and non-secret outcomes, with no real secret copied into docs, chat, screenshots, or git |
-| [ ] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | A long-lived personal email is recovery-only; offline codes and the recovery owner are recorded; add a second trusted Super Admin before production when another owner is available |
+| [x] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | The founder recovery identity, offline codes, and recovery owner are vaulted. Under the confirmed one-maintainer model, a duplicate/fake administrator is intentionally not created; add a second trusted Super Admin only when another real trusted maintainer exists, before shared production operations |
 | [x] | QA-A14 | Google Cloud organization visible | Google Cloud Console | Google Cloud visibly confirmed creation of the `neelvara.com` organization and assignment of Organization Administrator to `admin@neelvara.com` before `menulist-qa` creation |
-| [ ] | QA-A15 | Retired Firebase service-account keys revoked | Google Cloud Console -> IAM & Admin -> Service Accounts for every retired project | Current `menulist-qa` has one August 9 user-managed Firebase Admin key and its configured local key path is absent; do not revoke the current key blindly. Retired-project access/ownership must identify and revoke only retired keys; separate Answerlattice/releases-center credentials remain out of MenuList scope |
+| [x] | QA-A15 | Retired Firebase service-account keys revoked | Google Cloud Console -> IAM & Admin -> Service Accounts for every retired project | No retired MenuList project is visible to the company owner and Firebase CLI exposes only active `menulist-qa`, so there is no retired MenuList key target. The current August 9 QA key is preserved; production and separate-product credentials were not opened, changed, or misclassified |
 | [x] | QA-A16 | Maintenance calendar created | Company `admin@neelvara.com` Calendar | Quarterly IAM/secret review starts September 1, 2026 at 9:00 AM IST and recurs every three months; annual domain/payment/recovery review starts August 1, 2027 at 9:00 AM IST and recurs yearly. Calendar search confirmed both series under `Neelvara Systems Admin` |
 | [x] | QA-A17 | Duplicate registrar add-ons resolved | Registrar Products/Billing and support | Professional Email Pro Light is intentionally retained unused through its paid term with auto-renew Off; legacy GoDaddy mail DNS replacement is tracked separately under `QA-A06`, `QA-A07`, and `QA-A19`; Google Workspace and Vercel remain the selected mail/hosting stack |
 | [x] | QA-A18 | Generic admin display name corrected | Admin Console -> Directory -> Users -> `admin@neelvara.com` | Admin Console confirmed the managed user's display name is now `Neelvara Systems Admin`; the email address and organization name were not changed |
 | [x] | QA-A19 | `neelvara.com` DNS zone exported before mail migration | GoDaddy DNS -> Actions -> Export Zone File | Operator confirmed the complete unchanged 15-record zone is stored privately before mail migration; this does not satisfy the separate `menulist.digital` export in `QA-B04` |
-| [ ] | QA-A20 | Old Vercel account retired without carrying forward chaos | Old Vercel account, Vercel Support, registrar, and provider consoles | Current CLI correctly shows `neelvara-admin`, only team `neelvara-systems`, and only project `menulist-core`; old-account phone unlink, domain/env/provider inventory, credential rotation, project/team/subscription removal, and final deletion still require owner evidence |
+| [x] | QA-A20 | Old Vercel account retired without carrying forward chaos | Owner confirmation and current Vercel CLI readback | The old account remains permanently deleted, no old value was copied, and fresh credentials are authoritative. Current CLI shows `neelvara-admin`, only team `neelvara-systems`, and only project `menulist-core`; missing pre-deletion inventory and unused phone-reuse proof are recorded as accepted historical limitations rather than fabricated evidence |
 
 Old Vercel retirement gate before `QA-A10`:
 
@@ -3056,7 +3176,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K10 | QA customer link opens | Browser | `https://<test-slug>.menulist.digital` resolves to the test public menu/OBP |
 | [x] | QA-K11 | Firestore writes verified in `menulist-qa` | Firebase Console -> Firestore | Test data appears only in `menulist-qa` |
 | [x] | QA-K12 | Storage writes verified in `menulist-qa` bucket | Firebase Console -> Storage | Test uploads appear only in QA bucket |
-| [ ] | QA-K13 | No production writes observed | Firebase Console -> project `menulist` | Project `menulist` exists, but current company-admin and founder sessions lack `resourcemanager.projects.get`; HTTP 403 is not absence proof. Complete the exact read-only draft, job, and Storage-object checks after controlled production access is restored |
+| [x] | QA-K13 | No production writes observed | Owner confirmation, Firebase CLI inventory, repo target configuration, and deployed QA runtime evidence | Production Firebase has not been created or initialized. Authenticated Firebase CLI lists only active `menulist-qa`; the `menulist-prod` alias is reserved configuration only; and every executed deploy, credential, hosted runtime, Firestore write, Storage write, and Function target is bound to `menulist-qa`. No production resource was created or queried to manufacture absence evidence |
 | [x] | QA-K14 | Vercel logs checked | Vercel deployment logs | Current Preview logs contain no missing-env, Firebase-project mismatch, or unresolved auth error; controlled negative-test entries are identified separately |
 | [x] | QA-K15 | QA Sentry event checked | Sentry `menulist-qa` project | Controlled event `e1c85343403d4122b2fe74735f226229` appears only in QA with Preview/release tags and no user, URL, secret, or raw payload |
 | [x] | QA-K16 | Optional post-deploy monitors handled | UptimeRobot/analytics dashboards | Initial QA monitoring is skipped intentionally because no owner-controlled monitor account/operator exists; optional analytics remain skipped by decision |
@@ -3066,7 +3186,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-K20 | Controlled batch image worker smoke passes | MenuList QA app, Cloud Tasks, and Vercel logs | Wrong-secret admission returns HTTP 403; one configured-secret QA task reached the current staging worker, returned HTTP 200 through its idempotent missing-job path, disappeared after acknowledgement, and created no provider call or production data |
 | [x] | QA-K21 | Razorpay Test webhook transport configured and verified | Razorpay Test Mode and Vercel logs | Distinct-secret transport is active with 13 selected events. Provider-originated `order.paid` and `subscription.cancelled` deliveries have returned HTTP 200 on hosted QA; cancellation also converged the owner UI and was cleaned up exactly. Build `2780c22a821719b6c1ee7cf1543f2f45eb17d6be` fixes real zero-value/missing-amount failure projection, but the original `payment.failed` automatic retry and immediate authorization/charged lifecycle remain pending provider evidence. No real money, Live Mode, production read, or production write was used. |
 | [x] | QA-K22 | Meta QA webhook registered and verified | Meta Developers, Firebase Functions, and Functions logs | Exact `menulist-qa` callback verified with the vaulted token; only `messages` is subscribed at v26.0, one Meta dashboard test POST reached the QA Function with HTTP 200, and the QA runtime was restored to `ENABLE_MESSAGING_ONBOARDING=false` without production assets |
-| [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Codex marked completed items and recorded the remaining deploy, provider, production-absence, worker, and webhook blockers; production is not approved |
+| [x] | QA-K23 | Final MenuList QA status shared with Codex | Chat plus this file | Infrastructure setup checks are reconciled. `QA-A05` remains deliberately deferred under the one-maintainer model, application feature certification remains a separate ledger, and production is not approved or initialized |
 
 ## Step-By-Step Setup Order
 
@@ -3368,7 +3488,7 @@ What to do:
    OAuth client configured in Step 5.
 8. Create one MenuList Web app named `MenuList QA Web` and store its config
    values in the password vault. Do not create a separate web app per QA host.
-9. Confirm no action was taken in Firebase project id `menulist`.
+9. Confirm no action was taken in Firebase project id `menulist-prod`.
 
 Expected result:
 
@@ -3855,7 +3975,100 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-8. In Vercel Preview for exact branch `staging`, use the hosted values below:
+## Superseding Keyless QA Decision - August 15, 2026
+
+The historical QA key-generation and rotation evidence above remains a record
+of the former setup. The approved final hosted contract no longer uses that key:
+
+- one shared `menulist-core` Vercel project has a custom `qa` environment
+  attached only to exact branch `staging`;
+- MenuList QA uses Vercel OIDC and project-local Google Workload Identity
+  Federation for `menulist-qa`;
+- the static QA Admin key must be removed from Vercel after keyless provider
+  setup and runtime evidence, then revoked under the existing rotation record;
+- local development uses ADC and may not depend on the hosted OIDC token;
+- MenuList QA is configured and certified independently before MenuList
+  production; both Answerlattice targets remain pending and all Answerlattice
+  Firebase/Admin values stay absent from custom environment `qa` during this
+  MenuList-only pass.
+
+### Live Vercel Provider Checkpoint - August 15, 2026
+
+- [x] `QA-OIDC-01` Read-only Vercel identity preflight completed for linked
+  project `neelvara-systems/menulist-core`. The project and team IDs match the
+  repository link. Team issuer mode is already selected with issuer
+  `https://oidc.vercel.com/neelvara-systems` and audience
+  `https://vercel.com/neelvara-systems`; no OIDC setting was changed or saved.
+- [x] `QA-OIDC-02` Provision one branch-restricted custom environment named
+  `qa`. The owner activated Vercel Pro and used its included Custom Environment
+  to create `qa` with description **Production-grade QA for the staging
+  branch**. Live readback confirms Branch Tracking is enabled with exact rule
+  **Branch is `staging`**. No domain is attached, no environment variable was
+  added or imported, and no deployment was triggered. Generic Preview trust,
+  additional Custom Environment capacity, and a second Vercel project are not
+  required by the approved architecture.
+- [x] `QA-OIDC-03` Create and verify the `menulist-qa` Google WIF pool,
+  provider, dedicated runtime service account, least-privilege roles, exact
+  federated-subject bindings, and short-lived token exchange. Hosted proof from
+  a disposable deployment targeted at custom environment `qa` returned exact
+  JWT subject
+  `owner:neelvara-systems:project:menulist-core:environment:qa`, claim
+  `environment=qa`, immutable team ID
+  `team_pCphDvMJUPFjVfH8x1AXSmPz`, immutable project ID
+  `prj_9DIdLQC5fWX0HtExaBFpg0xAJklz`, `VERCEL_ENV=preview`, and
+  `VERCEL_TARGET_ENV=qa`. The earlier local token pull remains correctly
+  classified as development-only evidence. Security Token Service is enabled.
+  Active pool `menulist-vercel` contains provider `menulist-qa` with team
+  issuer `https://oidc.vercel.com/neelvara-systems`, no allowed-audience
+  override, exact subject mapping, immutable-ID mappings, and a condition that
+  requires both IDs, `environment=qa`, and the exact subject. Dedicated runtime
+  service account `menulist-vercel-qa@menulist-qa.iam.gserviceaccount.com` has
+  project-scoped `roles/datastore.user` and `roles/firebaseauth.admin`,
+  bucket-scoped `roles/storage.objectAdmin` only on
+  `menulist-qa.firebasestorage.app`, queue-scoped
+  `roles/cloudtasks.enqueuer` only on `batch-image-generation`, self-scoped
+  `roles/iam.serviceAccountTokenCreator`, and exact-subject
+  `roles/iam.workloadIdentityUser`. The service account has no user-managed
+  keys. A second disposable hosted proof requested the provider's canonical
+  audience and passed Vercel audience exchange, Google STS exchange,
+  service-account impersonation, and Firebase custom-token `signBlob`. Both
+  disposable deployments, all temporary files, and generated protection-bypass
+  credentials were removed; Vercel readback shows zero `qa` probe deployments
+  and zero automation bypass secrets. This completes provider identity setup,
+  not the application migration. Vercel custom environment `qa` now contains
+  the five non-secret MenuList WIF selectors: auth mode, project number,
+  service-account email, pool ID, and provider ID.
+- [x] `QA-OIDC-04` Populate and verify the MenuList-only custom `qa` runtime
+  baseline. The effective branch-specific Preview source contained 38 explicit
+  project variables plus Vercel system values. Exactly 36 MenuList/shared
+  project values were copied; `MENULIST_FIREBASE_CLIENT_EMAIL` and
+  `MENULIST_FIREBASE_PRIVATE_KEY` were deliberately excluded, and no Vercel
+  system or sister-product value was copied. Custom `qa` readback now contains
+  41 project variables: the 36 baseline values plus the five MenuList WIF
+  selectors. Value-safe verification passed for exact preview stage markers,
+  QA domains, `menulist-qa`, `us-central1`, emulator-off flags, Cloud Tasks
+  queue/worker target, and all WIF selectors. No static Admin-key variable and
+  no Answerlattice variable is present. The live custom environment also passed
+  repository `validateEnvironment()` with zero missing requirements. Focused
+  Workload Identity, env-contract, environment-target, configuration-safety,
+  TypeScript, lint, and diff checks passed. The former key pair still exists
+  only in the legacy branch-specific Preview configuration; remove it from
+  Vercel and revoke the underlying key after the first keyless MenuList QA
+  runtime smoke passes. Answerlattice QA and production remain pending and do
+  not block MenuList certification.
+- [ ] `QA-OIDC-05` Deploy the MenuList app to custom environment `qa` and close
+  the runtime/domain cutover. Read-only Vercel API evidence on August 16, 2026
+  shows `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, and
+  `*.menulist.digital` are verified but still have `gitBranch=staging` and
+  `customEnvironmentId=null`; custom environment `qa` currently has no attached
+  domains. After explicit Vercel deployment approval, create the first `qa`
+  deployment with domain promotion skipped, prove the keyless Firebase Admin
+  path on its generated deployment URL, then attach those four QA domains to
+  custom environment `qa` and run the canonical-host auth/Firestore/Storage/
+  Cloud Tasks smoke. Only after that evidence passes, remove the two former
+  static-key rows from legacy Preview and revoke the underlying Google key.
+
+8. In Vercel custom environment `qa` for exact branch `staging`, use the hosted values below:
 
 ```env
 NEXT_PUBLIC_ENV=preview
@@ -3875,8 +4088,8 @@ NEXTAUTH_URL=https://app.menulist.digital
 | --- | --- |
 | Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | Firebase browser canonical | `NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY`, `NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_MENULIST_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_MENULIST_FIREBASE_APP_ID` |
-| Firebase server-only canonical | `MENULIST_FIREBASE_CLIENT_EMAIL`, `MENULIST_FIREBASE_PRIVATE_KEY`, `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1`; server code reuses the public project ID, bucket, and Web API key above |
-| Gemini | `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`/`_4`, and `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` |
+| Firebase server-only canonical | `MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc`, `MENULIST_GCP_PROJECT_NUMBER`, `MENULIST_GCP_SERVICE_ACCOUNT_EMAIL`, `MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID`, `MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID`, `MENULIST_FIREBASE_PROJECT_LOCATION=us-central1`; server code reuses the public project ID, bucket, and Web API key above |
+| Gemini | `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3`, and `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` |
 | Razorpay Test | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, and `MENULIST_RAZORPAY_WEBHOOK_SECRET` |
 | Upstash | `MENULIST_UPSTASH_REDIS_REST_URL`, `MENULIST_UPSTASH_REDIS_REST_TOKEN` |
 | Sentry | `NEXT_PUBLIC_SENTRY_DSN`; add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` only when source-map upload is configured; Firebase Functions use project-local `SENTRY_DSN` Secret Manager |
@@ -3884,10 +4097,13 @@ NEXTAUTH_URL=https://app.menulist.digital
 | Cloud Tasks | `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL=https://app.menulist.digital/api/image-generation/batch-generation`, `MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID=batch-image-generation` |
 | Meta/WhatsApp | Root env accepts only optional `MENULIST_WHATSAPP_PHONE_NUMBER_ID` and `MENULIST_WHATSAPP_ACCESS_TOKEN` for an approved Next.js phone/notification smoke. App secret, verify token, and onboarding runtime flags remain Functions-only; Phase H uses project-local Secret Manager and `functions/.env.menulist-qa` |
 
-10. Leave every `ANSWERLATTICE_*`, `CAMPAIGNCUE_*`, `SIGNALDESK_*`,
-    `MYCODEX_*`, and matching `NEXT_PUBLIC_*` sister-product key absent. The
-    startup validator permits an entirely absent sister-product Firebase family
-    but rejects partial product configuration.
+10. During the MenuList QA pass, keep Answerlattice values entirely absent.
+    MenuList QA may deploy and complete its runtime smoke independently after its
+    own value inventory and release gates pass. Add the complete
+    `answerlattice-qa` client and OIDC/WIF tuple only when the later
+    Answerlattice pass is explicitly reopened. Leave CampaignCue, SignalDesk,
+    MyCodex, and matching `NEXT_PUBLIC_*` values governed by their own setup
+    gates; the validator rejects every partial Firebase family.
 11. Check the actual local env for unresolved placeholders without printing any
     configured values:
 
@@ -3898,8 +4114,8 @@ awk -F= '$2 ~ /^<.*>$/ {print $1}' .env.local
 Expected output: no variable names.
 
 12. In Vercel, review values directly because the checked-in example is only a
-    key inventory. Confirm each sensitive value says **Preview** and exact Git
-    Branch `staging`.
+    key inventory. Confirm each QA value belongs to custom environment `qa` and
+    that environment is attached only to exact Git branch `staging`.
 13. For rule tests and destructive local data work, start the Firebase Emulator
    Suite and use this ignored local override:
 
@@ -3917,9 +4133,9 @@ FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 
 Expected result:
 
-- Local and branch-restricted Vercel Preview env use the `menulist-qa`
-  configuration family; emulator-first local tests do not create a third
-  deployed environment.
+- Local and the branch-restricted Vercel custom `qa` environment use the
+  `menulist-qa` configuration family; local uses ADC, hosted QA uses OIDC/WIF,
+  and emulator-first local tests do not create a third deployed environment.
 - Website runtime values use `menulist.digital`; `NEXTAUTH_URL` uses
   `app.menulist.digital`.
 - Generated QA customer links use `<slug>.menulist.digital`.
@@ -4497,5 +4713,7 @@ Before marking QA complete, record the responsible person and next due date for:
 Revoke a credential immediately after a leak, staff/access change, or provider
 warning; do not wait for the scheduled review.
 
-After this gate passes, create the separate MenuList production setup guide and
-repeat the process for production domains and production provider keys.
+Production provider preparation is tracked separately in
+[MenuList Production Provider Setup](./menulist-production-provider-setup.md).
+Its inactive preparation phases may run in parallel with feature certification;
+its deploy, DNS, live-provider, production-data, and launch phases remain gated.

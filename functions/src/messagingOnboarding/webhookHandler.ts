@@ -11,6 +11,7 @@ import type { Response } from "express";
 import * as functions from "firebase-functions";
 import type { MessagingProvider, NormalizedMessage } from "../types/messagingOnboarding.types";
 import { FEATURE_FLAGS } from "./constants";
+import { FUNCTION_FLAGS } from '../constants/features';
 import { logOnboardingEvent } from "./eventLogger";
 import {
   getProviderAdapter,
@@ -21,6 +22,7 @@ import {
   enqueueInboundMessages,
   getInboundMessageId,
 } from "./inboundQueue";
+import { persistWhatsAppOsProviderStatuses } from '../whatsappOs/webhook';
 import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
@@ -101,8 +103,9 @@ export async function messagingOnboardingWebhook(
   req: functions.https.Request,
   res: Response,
 ): Promise<void> {
-  // Step 1: Feature flag check — FIRST line (impl.md §15)
-  if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
+  const messagingOnboardingEnabled = FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING;
+  const whatsappOsEnabled = FUNCTION_FLAGS.ENABLE_WHATSAPP_OS;
+  if (!messagingOnboardingEnabled && !whatsappOsEnabled) {
     res.status(200).send("OK");
     return;
   }
@@ -111,10 +114,16 @@ export async function messagingOnboardingWebhook(
   const provider = getProviderFromWebhookPath(req.path);
 
   // Step 2: Provider enabled check
-  if (
-    !provider ||
-    !FEATURE_FLAGS.MESSAGING_ONBOARDING_PROVIDERS.includes(provider)
-  ) {
+  if (!provider) {
+    logger.info('[Webhook] Unknown provider', getWebhookRequestLogContext(req));
+    res.status(200).send('OK');
+    return;
+  }
+  const providerEnabled = (
+    (provider === 'whatsapp' && whatsappOsEnabled)
+    || (messagingOnboardingEnabled && FEATURE_FLAGS.MESSAGING_ONBOARDING_PROVIDERS.includes(provider))
+  );
+  if (!providerEnabled) {
     logger.info(
       "[Webhook] Unknown or disabled provider",
       getWebhookRequestLogContext(req),
@@ -160,6 +169,29 @@ export async function messagingOnboardingWebhook(
 
       // Return 200 to prevent Meta from retrying invalid requests
       res.status(200).send("OK");
+      return;
+    }
+
+    if (provider === 'whatsapp') {
+      try {
+        await persistWhatsAppOsProviderStatuses(req.body);
+      } catch (statusError) {
+        logger.error('[Webhook] Failed to persist WhatsApp provider statuses', {
+          failureCode: 'WHATSAPP_OS_STATUS_PERSIST_FAILED',
+          provider,
+          ...getWebhookRequestLogContext(req),
+          ...getWebhookErrorContext(statusError),
+        });
+        res.status(500).send('Status queue unavailable');
+        return;
+      }
+    }
+
+    // WhatsAppOS status reconciliation remains available independently of the
+    // conversational onboarding feature. When onboarding is off, acknowledge
+    // signed inbound messages without parsing or queueing them.
+    if (!messagingOnboardingEnabled) {
+      res.status(200).send('OK');
       return;
     }
 

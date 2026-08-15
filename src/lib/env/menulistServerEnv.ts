@@ -33,6 +33,9 @@ export const menulistServerEnv = {
     get firebaseClientEmail() {
         return readConfiguredValue('MENULIST_FIREBASE_CLIENT_EMAIL', 'FIREBASE_CLIENT_EMAIL');
     },
+    get firebaseAdminAuthMode() {
+        return readConfiguredValue('MENULIST_FIREBASE_ADMIN_AUTH_MODE');
+    },
     get firebasePrivateKey() {
         return readConfiguredValue('MENULIST_FIREBASE_PRIVATE_KEY', 'FIREBASE_PRIVATE_KEY');
     },
@@ -54,6 +57,18 @@ export const menulistServerEnv = {
             'FIREBASE_STORAGE_BUCKET',
             'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
         );
+    },
+    get gcpProjectNumber() {
+        return readConfiguredValue('MENULIST_GCP_PROJECT_NUMBER');
+    },
+    get gcpServiceAccountEmail() {
+        return readConfiguredValue('MENULIST_GCP_SERVICE_ACCOUNT_EMAIL');
+    },
+    get gcpWorkloadIdentityPoolId() {
+        return readConfiguredValue('MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID');
+    },
+    get gcpWorkloadIdentityProviderId() {
+        return readConfiguredValue('MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID');
     },
     get razorpayKeyId() {
         return readConfiguredValue(

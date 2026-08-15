@@ -56,6 +56,8 @@ import { publishApprovedJobLogic } from './logic/publishApprovedJob';
 import { regenerateEmbeddingLogic } from './logic/regenerateEmbedding';
 import { EmbedArticleType, INGESTION_JOB_STATUS, IngestionJob, IngestionJobCategoriesMap } from './types';
 import { getBoundedFunctionsErrorName } from './utils/boundedErrorContext';
+export { answerlatticeEmailOsWebhook } from './emailOs/http';
+export { answerlatticeWhatsAppOsWebhook } from './whatsappOs/http';
 
 const ANSWERLATTICE_AI_OPTIONS = {
     region: 'us-central1' as const,

@@ -1,7 +1,7 @@
 # Founder Public Presence Decision Log
 
 **Status:** Active; append decisions, do not rewrite history
-**Last Updated:** August 12, 2026
+**Last Updated:** August 15, 2026
 
 ## Decision Format
 
@@ -119,9 +119,10 @@ Instagram requires four proven native visuals and acceptance of Meta's private
 registration boundary. Facebook and LinkedIn are not launch channels. YouTube
 requires repeated demand for faceless long-form material.
 
-**Reason:** Channel fit and identity risk differ. Facebook Page management
-requires an authentic private profile and may expose manager-country or owner
-information through Page Transparency.
+**Reason:** Channel fit and identity risk differ. LinkedIn's User Agreement
+requires a member's personal account to use their real name. Facebook Page
+management requires an authentic private profile and may expose
+manager-country or owner information through Page Transparency.
 
 ## FPP-D007 — Create PresenceOS and a daily research heartbeat
 
@@ -170,3 +171,37 @@ Kahl-style topic-advancing questions.
 **Reject:** Revenue-dashboard identity, many-product showroom bios, extreme
 volume, personal lifestyle exposure, controversy, generic motivation, and
 audience-growth advice without first-party evidence.
+
+## FPP-D010 — Use X's open algorithm as an evidence boundary, not a growth formula
+
+**Date:** August 14, 2026
+**Trigger:** X published expanded For You ranking, filtering, label, and
+`Under the Hood` transparency code on August 13, 2026. The founder asked that
+the resulting strategy change become durable and govern future work.
+
+**Decision:** Proof & State will optimize for close audience relevance,
+substantive continuation, original proof-backed posts, safe links, account
+security, and avoidance of spam-like or negative-feedback behavior. It will
+not optimize around raw published weights or increase volume to satisfy a
+transparency-report threshold.
+
+Candidate retrieval, predicted-action ranking, parameter defaults, author and
+network adjustments, reranking, visibility filtering, and report eligibility
+remain distinct. Algorithm-derived conclusions require an exact source commit,
+and the account's own results and eventual label report outrank generalized
+creator advice.
+
+**Cadence consequence:** Keep three original X posts and roughly ten to fifteen
+useful replies per week. The ten-post prior-month requirement is an
+`Under the Hood` access condition, not a ranking lever. A new account also
+cannot qualify until it is at least one year old and selected into the pilot.
+
+**Rejected alternatives:** Daily quota expansion, reply bait, copying the
+largest action coefficients, converting coefficient ratios into
+likes-equivalent engagement targets, treating freshness or cold-start code as
+a reach guarantee, and diagnosing a shadow restriction from low impressions
+alone.
+
+**Evidence:** [Official X announcement](https://x.com/XOpenSource/status/2087951962004230428),
+[`x-algorithm` commit `a389166`](https://github.com/xai-org/x-algorithm/tree/a389166f6cf5da70a286b568c87695d4dcdce3a1),
+and research-ledger entry `FPP-R028`.

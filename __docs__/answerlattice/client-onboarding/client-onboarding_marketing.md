@@ -1,14 +1,15 @@
 # Answerlattice Client Onboarding — Marketing
 
-> **Last Audited:** 2026-08-13
+> **Last Audited:** 2026-08-14
 
 ## Safe Positioning
 
-Answerlattice offers authenticated self-service setup for founder-led SaaS teams. A founder can select a paid monthly plan, create a product workspace, receive a one-time widget key, and continue to knowledge activation without a mandatory sales call.
+Answerlattice offers authenticated self-service setup for founder-led SaaS teams. A founder can select the product areas customers ask about, preview relevant starter support checks, then select a paid monthly plan, create a product workspace, receive a one-time widget key, and continue to knowledge activation without a mandatory sales call.
 
 ## Verified Claims
 
 - Google-authenticated self-service workspace creation is implemented.
+- A deterministic client-only preview prioritizes up to four maintained First Trusted Answer starter questions from the selected product surfaces before plan selection.
 - Starter, Growth, and Studio monthly plans can be selected in INR or USD.
 - The flow is resumable across response loss and indeterminate provider outcomes.
 - An exact known cancelled, completed, or expired checkout is separated from unknown provider state and can be retried after scoped recovery. This is not a claim that every provider failure self-recovers.
@@ -31,6 +32,7 @@ Answerlattice offers authenticated self-service setup for founder-led SaaS teams
 - “Exactly once” provider execution.
 - “Automatic cancellation” after any onboarding failure.
 - “Your data is fully imported during signup.”
+- “AnswerLattice analyzed your website,” “generated your answers,” or “your answers are ready” based on the pre-plan preview.
 - “The one-time widget key can be recovered later.”
 
 ## Conversion Event

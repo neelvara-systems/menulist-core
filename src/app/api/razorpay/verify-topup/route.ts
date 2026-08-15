@@ -714,11 +714,13 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const newBalance = transactionResult.newBalance;
-        if (!isAnswerlatticeProduct) {
-            // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
+        {
+            // Lifecycle delivery is best-effort for the response outcome, but
+            // awaited so the server runtime cannot terminate before enqueue.
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
-                sendLifecycleMessage({
+                await sendLifecycleMessage({
+                    productId,
                     storeId: String(storeId),
                     tenantId: String(tenantId),
                     eventType: 'CREDIT_PURCHASE_SUCCESS',

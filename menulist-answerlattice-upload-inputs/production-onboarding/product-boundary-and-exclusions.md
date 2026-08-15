@@ -25,7 +25,7 @@ Canonical public identity:
 - website: `https://menulist.ai`;
 - app/owner surface: `https://menulist.ai`;
 - preview, staging, or alias host when explicitly relevant: `menulist.online`;
-- production Firebase project: `menulist`;
+- production Firebase project: `menulist-prod`;
 - staging/local Firebase project: `menulist-qa`.
 
 ## Shared Infrastructure Included Only When Support-Relevant

@@ -2062,6 +2062,36 @@
       "indexes": []
     },
     {
+      "collectionGroup": "answerlattice_emailOsDeliveries",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "answerlattice_emailOsWebhookReceipts",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "answerlattice_emailOsSuppressions",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "answerlattice_whatsappOsMessageRefs",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "answerlattice_whatsappOsWebhookReceipts",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "supportTickets",
       "fieldPath": "messages",
       "indexes": []

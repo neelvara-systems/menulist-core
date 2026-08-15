@@ -59,11 +59,7 @@ function urlValue(value: unknown): string {
     if (!text) return '';
     try {
         const url = new URL(text);
-        return (
-            (url.protocol === 'http:' || url.protocol === 'https:')
-            && !url.username
-            && !url.password
-        ) ? text : '';
+        return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password ? text : '';
     } catch {
         return '';
     }
@@ -93,10 +89,7 @@ function template(templateKey: string, subject: string, html: string, text: stri
     };
 }
 
-export function renderMenuListOwnerNotification(
-    templateKey: string,
-    metadata: Record<string, unknown>,
-): OwnerNotificationTemplate | null {
+export function renderMenuListOwnerNotification(templateKey: string, metadata: Record<string, unknown>): OwnerNotificationTemplate | null {
     const storeName = escapeHtml(textValue(metadata.storeName, 'your business'));
     const storeNameText = textValue(metadata.storeName, 'your business');
     const amount = escapeHtml(textValue(metadata.amountLabel, `${metadata.currencyCode || 'INR'} ${metadata.amount || '0'}`));
@@ -129,6 +122,13 @@ export function renderMenuListOwnerNotification(
                 `Payment received — ${storeNameText}`,
                 `<h2 style="${S.h2}">Payment received</h2><p style="${S.p}">Your subscription payment for <strong>${storeName}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${amount}<br><strong>Plan:</strong> ${planName}<br><strong>Next billing date:</strong> ${nextBillingDate}</div><p style="${S.p}">No action required. Your service continues uninterrupted.</p>`,
                 `Payment received for ${storeNameText}. Amount: ${textValue(metadata.amountLabel, String(metadata.amount || '0'))}. Next billing date: ${textValue(metadata.nextBillingDate, 'See dashboard')}.`,
+            );
+        case 'menulist.payment_recovered':
+            return template(
+                templateKey,
+                `Payment recovered — ${storeNameText}`,
+                `<h2 style="${S.h2}">Payment recovered</h2><p style="${S.p}">The overdue subscription payment for <strong>${storeName}</strong> has now been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${amount}<br><strong>Plan:</strong> ${planName}</div><p style="${S.p}">No action is needed. Your subscription is active.</p>`,
+                `Payment recovered for ${storeNameText}. No action is needed.`,
             );
         case 'menulist.payment_failed':
             return template(
@@ -179,6 +179,8 @@ export function renderMenuListOwnerNotification(
                 `<h2 style="${S.h2}">Your credit balance has been used up</h2><p style="${S.p}">The credit balance for <strong>${storeName}</strong> has reached zero.</p><div style="${S.warn}"><strong>What this means:</strong><br>AI features such as image generation, descriptions, and translations will pause until credits are replenished. Your menu remains accessible to customers.</div><p style="${S.p}">You can purchase additional credits from your dashboard at any time.</p>`,
                 `Credit balance depleted for ${storeNameText}. AI features will pause until credits are replenished.`,
             );
+        case 'menulist.subscription_activated':
+        case 'menulist.subscription_completed':
         case 'menulist.subscription_cancelled':
         case 'menulist.subscription_paused':
         case 'menulist.subscription_resumed':
@@ -191,6 +193,13 @@ export function renderMenuListOwnerNotification(
                 `Subscription ${action} for ${storeNameText}.`,
             );
         }
+        case 'menulist.refund_processed':
+            return template(
+                templateKey,
+                `Refund processed — ${storeNameText}`,
+                `<h2 style="${S.h2}">Refund processed</h2><p style="${S.p}">A refund for <strong>${storeName}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${amount}<br><strong>Reference:</strong> ${escapeHtml(textValue(metadata.refundReference, 'See billing history'))}</div><p style="${S.p}">Your bank may take additional time to show the credit.</p>`,
+                `Refund processed for ${storeNameText}. Amount: ${textValue(metadata.amountLabel, String(metadata.amount || '0'))}.`,
+            );
         case 'menulist.menu_stale':
             return template(
                 templateKey,

@@ -182,7 +182,7 @@ async function run(): Promise<void> {
     /pass --confirm-project menulist-qa/,
   );
   await assert.rejects(
-    main(['--project-id', 'menulist-qa', '--project-id', 'menulist']),
+    main(['--project-id', 'menulist-qa', '--project-id', 'menulist-prod']),
     /Duplicate option: --project-id/,
   );
 

@@ -1,8 +1,8 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Last Reviewed:** July 28, 2026
-**Date:** 2026-07-28
+**Last Reviewed:** August 15, 2026
+**Date:** 2026-08-15
 **Audience:** Developers
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated owner-notification runtime evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -70,7 +70,9 @@ July 6 recipient-scope document-ID follow-up: `src/lib/owner-notifications/recip
 
 June 29 follow-up: the disabled legacy facade at `src/lib/notifications/notificationService.ts` still throws `LegacyNotificationServiceDisabledError` for `createNotification`, `sendEmailNotification`, and `sendSlackNotification`, but blocked-call breadcrumbs now use bounded notification diagnostics instead of the generic logger. This preserves the migration guard and adds no delivery path.
 
-June 28 follow-up: the MenuList Functions publish verification trigger (`functions/src/triggers/operations.ts`) keeps lifecycle success/failure messages fire-and-forget, but failed message imports/sends now log stable `OPERATIONS_VERIFY_MENU_PUBLISH_*_MESSAGE_*` codes with bounded store/tenant/requester/public URL metadata instead of silent catches.
+June 28 follow-up: the MenuList Functions publish verification trigger (`functions/src/triggers/operations.ts`) keeps lifecycle success/failure delivery best-effort for the callable result, but awaits the bounded delivery attempt so the Functions runtime cannot terminate first. Failed message imports/sends log stable `OPERATIONS_VERIFY_MENU_PUBLISH_*_MESSAGE_*` codes with bounded store/tenant/requester/public URL metadata instead of silent catches.
+
+August 15 final firing audit: every Next.js billing/capacity producer now awaits the lifecycle call for the same durable-runtime reason. The Razorpay payment-failure/grace-period producer no longer requires a legacy subscription email before enqueue; an authoritative subscription scope reaches NotificationOS and the shared recipient planner decides whether verified email, verified WhatsApp, both, or neither can deliver. Answerlattice notification-test readiness now admits either configured EmailOS/Resend or the migration SMTP bridge.
 
 June 29 follow-up: the MenuList app-side WhatsApp channel and Functions owner-notification processor still treat malformed or oversized successful WhatsApp Graph API response JSON as a non-blocking provider-message-ID miss, but they now log `whatsapp_response_parse_failed` with response status and bounded source error metadata before continuing. They do not persist raw provider response bodies or change delivery status semantics.
 
@@ -373,9 +375,10 @@ Resolution order:
 Resolution order:
 
 1. Load Answerlattice workspace/store from Answerlattice Firebase.
-2. Prefer `supportEmail` for support-readiness triggers.
-3. Prefer workspace owner email for account/billing triggers.
-4. For WhatsApp, require explicit workspace WhatsApp consent.
+2. For support-readiness triggers, prefer the workspace `supportEmail` configured on the responsive Answerlattice Settings screen.
+3. For billing triggers, prefer `notificationSettings.billingEmail`, then `notificationSettings.primaryEmail`, workspace owner email, and finally `supportEmail`.
+4. For other owner events, prefer `notificationSettings.primaryEmail`, workspace owner email, and then `supportEmail`.
+5. For WhatsApp, require both a verified workspace number and explicit workspace WhatsApp consent; without both, the planner continues with the eligible email channel only.
 
 ## Preference Resolver
 
@@ -473,21 +476,30 @@ All capabilities should exist in the architecture from the first implementation 
 
 | Current trigger | Current source | New trigger |
 | --- | --- | --- |
-| `STORE_PUBLISHED` | `functions/src/triggers/operations.ts:125` | `MENU_PUBLISHED` |
+| `STORE_PUBLISHED` | `functions/src/triggers/operations.ts` | `STORE_PUBLISHED` (`MENU_PUBLISHED` remains an alias) |
 | `PAYMENT_SUCCESS` | `src/app/api/razorpay/webhook/route.ts:501`, `src/app/api/razorpay/verify-subscription/route.ts:295` | `PAYMENT_SUCCESS` |
+| Recovered captured charge | `src/app/api/razorpay/webhook/route.ts` | `PAYMENT_RECOVERED` instead of a duplicate ordinary receipt |
+| Subscription activation/completion | `src/app/api/razorpay/webhook/route.ts` | `SUBSCRIPTION_ACTIVATED`, `SUBSCRIPTION_COMPLETED` |
+| Refund processed | `src/app/api/razorpay/webhook/route.ts` | `REFUND_PROCESSED` |
 | `PAYMENT_FAILED` | `src/app/api/razorpay/webhook/route.ts:342` | `PAYMENT_FAILED` |
 | `GRACE_PERIOD_STARTED` | `src/app/api/razorpay/webhook/route.ts:342` | `GRACE_PERIOD_STARTED` |
 | `RENEWAL_REMINDER` | `functions/src/messaging/messagingEngine.ts:246` | `RENEWAL_REMINDER` |
 | `SUSPENSION_WARNING` | `functions/src/messaging/messagingEngine.ts:292` | `SUSPENSION_WARNING` |
 | `CREDIT_PURCHASE_SUCCESS` | `src/app/api/razorpay/verify-topup/route.ts:363` | `CREDIT_PURCHASE_SUCCESS` |
 | `CREDITS_EXHAUSTED` | `src/lib/ai/capacityCheck.ts:214` | `CREDITS_EXHAUSTED` |
+| Low post-consumption balance | `src/lib/ai/capacityCheck.ts` | `CREDITS_LOW` once per billing period |
 | WhatsApp preview ready | `functions/src/messagingOnboarding/extractionWatcher.ts:271` | `WHATSAPP_PREVIEW_READY` |
 | WhatsApp publish confirmation | `functions/src/messagingOnboarding/intakeProcessor.ts:171` | `WHATSAPP_PUBLISHED` |
 | Answerlattice notification test | `src/app/api/answerlattice/notifications/test/route.ts:86` | `ANSWERLATTICE_NOTIFICATION_TEST` |
+| Answerlattice billing lifecycle | Shared authenticated Razorpay routes and signed webhook, with resolved `productId: AL` | Payment, refund, top-up, and subscription lifecycle triggers |
+| Answerlattice support-credit state | `src/lib/answerlattice/aiAccounting.ts` after the existing consumption transaction returns | `CREDITS_LOW`, `CREDITS_EXHAUSTED` |
+| Answerlattice first widget runtime | `src/app/api/widget/config/route.ts` after the first successful telemetry write | `WIDGET_CONNECTION_VERIFIED` |
+
+The shared lifecycle sender accepts an explicit product identity. Answerlattice events enqueue into Answerlattice Firestore and may never fall through to the MenuList legacy SMTP/message-log path. The Answerlattice recipient resolver prefers `notificationSettings.billingEmail` for billing-owner events, then the verified primary/support fallback. One resolved workspace document supplies recipient, consent, channel mode, name, locale/formatting context, and both channel plans; email and WhatsApp do not re-read it independently.
 
 ## Closed Trigger Additions
 
-`SUBSCRIPTION_CANCELLED`, `SUBSCRIPTION_PAUSED`, `SUBSCRIPTION_RESUMED`, `SUBSCRIPTION_UPGRADED`, and `MENU_STALE` are wired in the current Razorpay and analytics source paths. `CREDITS_LOW` remains a registry-reserved advisory trigger with no automatic source because MenuList does not introduce low-balance owner nudges; `CREDITS_EXHAUSTED` is the active capacity-stop notice.
+`SUBSCRIPTION_ACTIVATED`, `SUBSCRIPTION_CANCELLED`, `SUBSCRIPTION_PAUSED`, `SUBSCRIPTION_RESUMED`, `SUBSCRIPTION_UPGRADED`, `SUBSCRIPTION_COMPLETED`, `PAYMENT_RECOVERED`, `REFUND_PROCESSED`, and `MENU_STALE` are wired in the current Razorpay and analytics source paths. `CREDITS_LOW` now fires at most once per billing period when the already-loaded post-consumption balance is positive and at or below the frozen threshold; zero emits only `CREDITS_EXHAUSTED`. Registry entries marked `reserved` are rejected before event creation.
 
 ## Security Plan
 

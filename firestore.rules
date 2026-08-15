@@ -218,6 +218,7 @@ service cloud.firestore {
       allow update: if isAuthenticated()
         && preservesPosSyncWebhookSecret(resource.data, request.resource.data)
         && preservesServerManagedStoreApiCredentials(resource.data, request.resource.data)
+        && preservesNotificationOsSettings(resource.data, request.resource.data)
         && (
           isPlatformAdmin()
           || (
@@ -1381,6 +1382,10 @@ service cloud.firestore {
         'widgetConfigVersion',
         'widgetRuntimeStatus'
       ]);
+    }
+
+    function preservesNotificationOsSettings(before, after) {
+      return !after.diff(before).affectedKeys().hasAny(['notificationSettings']);
     }
 
     function isValidImageBatchJobCreate(tId, sId, docId) {
@@ -4496,6 +4501,33 @@ service cloud.firestore {
     // fixed product document; no browser role may observe or mutate provider
     // budget state.
     match /geminiSpendWindows/{product} {
+      allow read, write: if false;
+    }
+
+    // NotificationOS delivery identity, provider receipts, and consent audit
+    // are server-only. Owners mutate the current settings projection through
+    // the authenticated API so consent evidence cannot be bypassed.
+    match /emailOsDeliveries/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /emailOsWebhookReceipts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /emailOsSuppressions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /whatsappOsMessageRefs/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /whatsappOsWebhookReceipts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /whatsappOsConsentEvents/{documentId} {
       allow read, write: if false;
     }
   }

@@ -13,6 +13,7 @@ import {
     projectOwnerNotificationPersistedEvent,
     projectOwnerNotificationRateLimitCount,
 } from '@data/shared/ownerNotificationDeliveryBoundary';
+import { planNotificationOsChannels } from '@data/shared/notificationOs';
 import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -134,21 +135,6 @@ function getDedupeKey(input: EnqueueOwnerNotificationInput): string {
         scopeId,
         input.referenceId,
     ].join('|');
-}
-
-function resolveRequestedChannels(
-    registryChannels: OwnerNotificationChannel[],
-    requested?: OwnerNotificationChannel[],
-): OwnerNotificationChannel[] {
-    const allowed = requested?.length
-        ? registryChannels.filter((channel) => requested.includes(channel))
-        : registryChannels;
-
-    return allowed.filter((channel) => {
-        if (channel === 'email') return FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL;
-        if (channel === 'whatsapp') return FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP;
-        return false;
-    });
 }
 
 async function incrementRateLimit(
@@ -367,7 +353,7 @@ export function getOwnerNotificationReadiness(productId: OwnerNotificationProduc
         enabled: FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS,
         emailEnabled: FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL,
         whatsappEnabled: FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP,
-        emailConfigured: isOwnerNotificationEmailConfigured(),
+        emailConfigured: isOwnerNotificationEmailConfigured(productId),
         whatsappConfigured: isOwnerNotificationWhatsAppConfigured(),
         productId,
     };
@@ -375,7 +361,9 @@ export function getOwnerNotificationReadiness(productId: OwnerNotificationProduc
 
 export async function enqueueOwnerNotification(
     input: EnqueueOwnerNotificationInput,
-    options: { processImmediately?: boolean; processExisting?: boolean } = { processImmediately: true },
+    options: { processImmediately?: boolean; processExisting?: boolean } = {
+        processImmediately: true,
+    },
 ): Promise<OwnerNotificationProcessResult | {
     eventId: string;
     status: OwnerNotificationEventStatus;
@@ -391,14 +379,19 @@ export async function enqueueOwnerNotification(
         return { eventId: '', status: 'skipped' };
     }
 
-    const registryEntry = getOwnerNotificationRegistryEntry(input.productId, input.triggerType);
-    if (!registryEntry) {
+    const requestedRegistryEntry = getOwnerNotificationRegistryEntry(input.productId, input.triggerType);
+    if (!requestedRegistryEntry || requestedRegistryEntry.producerStatus === 'reserved') {
         logNotificationFailure('owner_notification_unknown_trigger', undefined, {
             ...getBoundedNotificationStringContext('productId', input.productId),
             ...getBoundedNotificationStringContext('triggerType', input.triggerType),
         });
         return { eventId: '', status: 'skipped' };
     }
+    const triggerType = requestedRegistryEntry.producerStatus === 'alias' ? requestedRegistryEntry.canonicalTriggerType : input.triggerType;
+    if (!triggerType) return { eventId: '', status: 'skipped' };
+    const registryEntry = getOwnerNotificationRegistryEntry(input.productId, triggerType);
+    if (!registryEntry || registryEntry.producerStatus !== 'active') return { eventId: '', status: 'skipped' };
+    const normalizedInput = triggerType === input.triggerType ? input : { ...input, triggerType };
 
     const db = getDbForProduct(input.productId);
     if (!db) {
@@ -409,14 +402,14 @@ export async function enqueueOwnerNotification(
         return { eventId: '', status: 'skipped' };
     }
 
-    const dedupeKey = getDedupeKey(input);
+    const dedupeKey = getDedupeKey(normalizedInput);
     const eventId = safeId(dedupeKey);
     const ref = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
     const now = Timestamp.now();
 
     const doc: OwnerNotificationEventDoc = {
         productId: input.productId,
-        triggerType: input.triggerType,
+        triggerType,
         tenantId: String(input.tenantId),
         ...(input.storeId ? { storeId: String(input.storeId) } : {}),
         ...(input.workspaceId ? { workspaceId: String(input.workspaceId) } : {}),
@@ -479,7 +472,11 @@ export async function enqueueOwnerNotification(
     });
 
     if (!options.processImmediately) {
-        return { eventId, status: enqueueResult.status, created: enqueueResult.created };
+        return {
+            eventId,
+            status: enqueueResult.status,
+            created: enqueueResult.created,
+        };
     }
     if (
         !enqueueResult.created
@@ -564,7 +561,14 @@ export async function processOwnerNotificationEvent(
 
     const registryEntry = getOwnerNotificationRegistryEntry(event.productId, event.triggerType);
     if (!registryEntry) {
-        await eventRef.set({ status: 'skipped', error: 'unknown_trigger', updatedAt: Timestamp.now() }, { merge: true });
+        await eventRef.set(
+            {
+                status: 'skipped',
+                error: 'unknown_trigger',
+                updatedAt: Timestamp.now(),
+            },
+            { merge: true },
+        );
         return { eventId, status: 'skipped', sent: 0, failed: 0, skipped: 1 };
     }
 
@@ -601,13 +605,47 @@ export async function processOwnerNotificationEvent(
         const template = renderOwnerNotificationTemplate(event.productId, registryEntry.templateKey, metadata);
 
         if (!template) {
-            await eventRef.set({ status: 'failed', error: 'template_not_found', updatedAt: Timestamp.now() }, { merge: true });
+            await eventRef.set(
+                {
+                    status: 'failed',
+                    error: 'template_not_found',
+                    updatedAt: Timestamp.now(),
+                },
+                { merge: true },
+            );
             return { eventId, status: 'failed', sent: 0, failed: 1, skipped: 0 };
         }
 
-        const channels = resolveRequestedChannels(registryEntry.defaultChannels, event.requestedChannels);
-        if (!channels.length) {
-            await eventRef.set({ status: 'skipped', error: 'no_enabled_channels', updatedAt: Timestamp.now() }, { merge: true });
+        const channelPlan = planNotificationOsChannels({
+            allowedChannels: registryEntry.defaultChannels,
+            requestedChannels: event.requestedChannels,
+            mode: event.priority === 'critical' ? 'all_eligible_critical' : recipient.channelMode,
+            preferredChannels: recipient.preferredChannels,
+            email: recipient.email,
+            emailVerified: recipient.emailVerified,
+            emailInternalIdentity: recipient.emailInternalIdentity,
+            whatsappNumber: recipient.whatsappNumber,
+            phoneVerified: recipient.phoneVerified,
+            whatsappConsentGranted: recipient.whatsappConsent,
+            requiresWhatsAppConsent: registryEntry.requiresWhatsAppConsent,
+            enabledChannels: {
+                email: FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL,
+                whatsapp:
+                    FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP &&
+                    (event.productId === 'ML'
+                        ? FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS
+                        : FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WHATSAPP_OS_OWNER_NOTIFICATIONS),
+            },
+        }).filter((item) => item.reason !== 'not_requested' && item.reason !== 'channel_disabled');
+        if (!channelPlan.length) {
+            await eventRef.set(
+                {
+                    status: 'skipped',
+                    error: 'no_enabled_channels',
+                    updatedAt: Timestamp.now(),
+                },
+                { merge: true },
+            );
             return { eventId, status: 'skipped', sent: 0, failed: 0, skipped: 1 };
         }
 
@@ -615,7 +653,8 @@ export async function processOwnerNotificationEvent(
         let failed = 0;
         let skipped = 0;
 
-        for (const channel of channels) {
+        for (const planItem of channelPlan) {
+            const channel = planItem.channel;
             const recipientValue = channel === 'email' ? recipient.email : recipient.whatsappNumber;
             const persistedRecipientValue = recipientValue
                 || (channel === 'email' ? 'missing@email' : 'missing-phone');
@@ -642,7 +681,7 @@ export async function processOwnerNotificationEvent(
                 continue;
             }
 
-            if (!recipientValue) {
+            if (!planItem.eligible) {
                 skipped++;
                 await finalizeDelivery({
                     db,
@@ -651,24 +690,12 @@ export async function processOwnerNotificationEvent(
                     channel,
                     recipientValue: persistedRecipientValue,
                     status: 'skipped',
-                    result: { ok: false, skippedReason: 'recipient_missing' },
+                    result: { ok: false, skippedReason: planItem.reason },
                 });
                 continue;
             }
 
-            if (channel === 'whatsapp' && registryEntry.requiresWhatsAppConsent && !recipient.whatsappConsent) {
-                skipped++;
-                await finalizeDelivery({
-                    db,
-                    event,
-                    eventId,
-                    channel,
-                    recipientValue,
-                    status: 'skipped',
-                    result: { ok: false, skippedReason: 'whatsapp_consent_missing' },
-                });
-                continue;
-            }
+            if (!recipientValue) throw new Error('owner_notification_planned_recipient_missing');
 
             const recipientHash = sha256(recipientValue.toLowerCase());
             const allowed = event.priority === 'critical'
@@ -696,16 +723,25 @@ export async function processOwnerNotificationEvent(
             }
 
             const result = channel === 'email'
-                ? await sendOwnerNotificationEmail({ to: recipientValue, subject: template.subject, html: template.html })
+                ? await sendOwnerNotificationEmail({
+                    productCode: event.productId,
+                    to: recipientValue,
+                    subject: template.subject,
+                    html: template.html,
+                    eventType: event.triggerType,
+                    referenceId: eventId,
+                })
                 : await sendOwnerNotificationWhatsApp({
+                    productCode: event.productId,
+                    messageClass: event.priority === 'critical' ? 'transactional' : 'operational',
+                    workflow: 'owner_notification',
+                    localDeliveryReference: `${eventId}:${channel}`,
+                    ownerDocumentId: safeId(`${eventId}|${channel}|${sha256(recipientValue.toLowerCase())}`),
+                    consentGranted: recipient.whatsappConsent,
                     to: recipientValue,
                     text: template.text,
                     sessionActive: event.metadata.whatsappSessionActive === true,
-                    templateName: typeof event.metadata.whatsappTemplateName === 'string' ? event.metadata.whatsappTemplateName : undefined,
-                    templateLanguage: typeof event.metadata.whatsappTemplateLanguage === 'string' ? event.metadata.whatsappTemplateLanguage : undefined,
-                    templateParameters: Array.isArray(event.metadata.whatsappTemplateParameters)
-                        ? event.metadata.whatsappTemplateParameters.map(String)
-                        : undefined,
+                    templateKey: registryEntry.templateKey,
                 });
 
             if (result.ok) {
@@ -714,6 +750,12 @@ export async function processOwnerNotificationEvent(
                 skipped++;
             } else {
                 failed++;
+            }
+
+            if (result.ambiguous) {
+                // Keep the claimed row in `sending`. A later event retry must not
+                // duplicate a provider request whose outcome is unknown.
+                continue;
             }
 
             await finalizeDelivery({

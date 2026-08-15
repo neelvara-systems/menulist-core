@@ -59,7 +59,11 @@ function discoverRuleScripts() {
     if (!command.includes('--project demo-') && !command.includes('GCLOUD_PROJECT=demo-')) {
       fail(`${name} is not pinned to a demo-* project and cannot enter this local-only gate.`);
     }
-    if (command.includes('--project menulist-qa') || command.includes('--project menulist ')) {
+    if (
+      command.includes('--project menulist-qa')
+      || command.includes('--project menulist-prod')
+      || /--project menulist(?:\s|$)/.test(command)
+    ) {
       fail(`${name} references a real MenuList cloud project.`);
     }
   }

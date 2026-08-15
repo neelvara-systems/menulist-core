@@ -46,7 +46,7 @@ Direct Answerlattice notification logs receive the central Answerlattice retenti
 
 ## Activation test storage
 
-The current `ANSWERLATTICE_NOTIFICATION_TEST` event is registered in the owner-notification pipeline when the migration flags are enabled. Its event, delivery, and rate-limit documents therefore follow the owner-notification collections and retention contracts rather than the direct ticket `answerlattice_notificationLogs` path.
+The protected notification test, exact Answerlattice billing lifecycle events, support-credit low/exhausted state, and first widget-runtime verification are registered in the owner-notification pipeline when the migration flags are enabled. Their event, delivery, and rate-limit documents therefore follow the owner-notification collections and retention contracts rather than the direct ticket `answerlattice_notificationLogs` path. Each processing attempt reads the Answerlattice workspace once and reuses that context for every selected channel.
 
 ## Security
 

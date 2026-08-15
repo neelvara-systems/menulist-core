@@ -14,17 +14,18 @@ function assert(condition, message) {
 }
 
 function assertIncludes(source, token, label) {
-  assert(source.includes(token), `${label} must include ${token}`);
+  assert(source.replace(/\s+/g, '').includes(token.replace(/\s+/g, '')), `${label} must include ${token}`);
 }
 
 function assertNotIncludes(source, token, label) {
-  assert(!source.includes(token), `${label} must not include ${token}`);
+  assert(!source.replace(/\s+/g, '').includes(token.replace(/\s+/g, '')), `${label} must not include ${token}`);
 }
 
 function assertOrder(source, tokens, label) {
+  const searchable = source.replace(/\s+/g, '');
   let lastIndex = -1;
   for (const token of tokens) {
-    const index = source.indexOf(token);
+    const index = searchable.indexOf(token.replace(/\s+/g, ''), lastIndex + 1);
     assert(index >= 0, `${label} must include ${token}`);
     assert(index > lastIndex, `${label} must keep ${token} after the previous checkpoint`);
     lastIndex = index;
@@ -337,13 +338,15 @@ function verifyManualActionBoundary(boundary) {
   ].forEach((token) => assertIncludes(boundary, token, 'Owner notification manual action boundary'));
 }
 
-function verifyCore(core, recipientResolver, types, emailChannel, whatsappChannel, appLifecycle, ownerHeader) {
+function verifyCore(core, recipientResolver, types, emailChannel, whatsappChannel, appWhatsAppProvider, appLifecycle, ownerHeader) {
   [
     'if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS)',
     'ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION',
     'ENABLE_OWNER_NOTIFICATION_ANSWERLATTICE_MIGRATION',
     'getOwnerNotificationRegistryEntry(input.productId, input.triggerType)',
-    'const dedupeKey = getDedupeKey(input);',
+    "requestedRegistryEntry.producerStatus === 'reserved'",
+    "requestedRegistryEntry.producerStatus === 'alias'",
+    'const dedupeKey = getDedupeKey(normalizedInput);',
     'const eventId = safeId(dedupeKey);',
     'const existing = await transaction.get(ref);',
     'if (existing.exists) {',
@@ -396,7 +399,7 @@ function verifyCore(core, recipientResolver, types, emailChannel, whatsappChanne
     "const result = channel === 'email'",
   ], 'Owner notification app durable channel claim ordering');
   assert(
-    core.lastIndexOf('await finalizeDelivery({') > core.indexOf("const result = channel === 'email'"),
+    core.lastIndexOf('await finalizeDelivery({') > core.indexOf('const result ='),
     'Owner notification app must finalize the provider result after the provider call',
   );
 
@@ -474,14 +477,22 @@ function verifyCore(core, recipientResolver, types, emailChannel, whatsappChanne
   ].forEach((token) => assertNotIncludes(appLifecycle, token, 'App lifecycle legacy delivery boundary'));
 
   [
+    'sendServerWhatsAppOs',
+    'messageClass: params.messageClass',
+    'localDeliveryReference: params.localDeliveryReference',
+    'ownerReference:',
+    'consentGranted: params.consentGranted',
+    'ambiguous: result.ambiguous',
+  ].forEach((token) => assertIncludes(whatsappChannel, token, 'Owner notification app WhatsAppOS adapter'));
+
+  [
     'encodeURIComponent(phoneNumberId)',
     "redirect: 'manual'",
-    'readJsonResponseWithLimit(response, OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES)',
-    'OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024',
-    'MAX_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200',
-    'AbortSignal.timeout(OWNER_NOTIFICATION_WHATSAPP_TIMEOUT_MS)',
-    "error: 'whatsapp_send_failed'",
-  ].forEach((token) => assertIncludes(whatsappChannel, token, 'Owner notification app WhatsApp channel'));
+    'readJsonResponseWithLimit(response, WHATSAPP_OS_LIMITS.MAX_PROVIDER_BODY_BYTES)',
+    'WHATSAPP_OS_LIMITS.MAX_PROVIDER_MESSAGE_ID_LENGTH',
+    'AbortSignal.timeout(PROVIDER_TIMEOUT_MS)',
+    'WHATSAPP_OS_PROVIDER_OUTCOME_UNKNOWN',
+  ].forEach((token) => assertIncludes(appWhatsAppProvider, token, 'Owner notification app WhatsAppOS provider'));
 
   [
     'OWNER_NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS = 10_000',
@@ -509,7 +520,7 @@ function verifyCore(core, recipientResolver, types, emailChannel, whatsappChanne
   ].forEach((token) => assertNotIncludes(ownerHeader, token, 'Owner header notification truth boundary'));
 }
 
-function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpProvider, stalenessCheck, operationsTrigger) {
+function verifyFunctionsProcessor(processor, functionsWhatsAppProvider, scheduler, messagingEngine, smtpProvider, stalenessCheck, operationsTrigger) {
   [
     'FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS',
     'FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION',
@@ -518,8 +529,8 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER',
     "logger.error('[OwnerNotifications] Lifecycle flag check failed, skipping owner notification'",
     "fallbackPolicy: 'skip_owner_notification_until_lifecycle_flag_known'",
-    "logger.warn('[OwnerNotifications] Unknown MenuList trigger skipped'",
-    "fallbackPolicy: 'skip_owner_notification_without_registry_entry'",
+    "logger.warn('[OwnerNotifications] Non-active MenuList trigger skipped'",
+    "fallbackPolicy: 'skip_owner_notification_without_active_registry_entry'",
     "logger.warn('[OwnerNotifications] Unknown stored MenuList trigger skipped'",
     "fallbackPolicy: 'mark_owner_notification_skipped_without_registry_entry'",
     'getOwnerNotificationTriggerLogContext(normalizedPayload.eventType)',
@@ -547,12 +558,9 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)',
     "['ML', 'store', event.tenantId, event.storeId, dateKey]",
     'DB_COLLECTIONS.TENANTS',
-    'encodeURIComponent(phoneNumberId)',
-    'OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024',
-    'readJsonResponseWithLimit(response, OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES)',
-    "redirect: 'manual'",
-    'AbortSignal.timeout(OWNER_NOTIFICATION_PROVIDER_TIMEOUT_MS)',
-    'providerResponseBodySkipped: true',
+    'sendFunctionsWhatsAppOs({',
+    "workflow: 'owner_notification'",
+    'ambiguous: result.ambiguous',
     'FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS',
     'FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS',
     'createAlert({',
@@ -582,6 +590,14 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'const sent = sentSnap.data().count;',
     'const failed = failedSnap.data().count;',
   ].forEach((token) => assertIncludes(processor, token, 'Functions owner notification processor'));
+
+  [
+    'encodeURIComponent(config.phoneNumberId)',
+    "redirect: 'manual'",
+    'readJsonResponseWithLimit(response, WHATSAPP_OS_LIMITS.MAX_PROVIDER_BODY_BYTES)',
+    'AbortSignal.timeout(PROVIDER_TIMEOUT_MS)',
+    'WHATSAPP_OS_PROVIDER_OUTCOME_UNKNOWN',
+  ].forEach((token) => assertIncludes(functionsWhatsAppProvider, token, 'Functions WhatsAppOS provider'));
 
   [
     'Number(recipientSnap.data()?.count || 0)',
@@ -1094,8 +1110,10 @@ function verifyOwnerNotificationsBoundary() {
     recipientResolver: read('src/lib/owner-notifications/recipientResolver.ts'),
     types: read('src/lib/owner-notifications/types.ts'),
     whatsappChannel: read('src/lib/owner-notifications/channels/whatsapp.ts'),
+    appWhatsAppProvider: read('src/lib/whatsapp-os/provider.ts'),
     emailChannel: read('src/lib/owner-notifications/channels/email.ts'),
     processor: read('functions/src/ownerNotifications/processor.ts'),
+    functionsWhatsAppProvider: read('functions/src/whatsappOs/provider.ts'),
     messagingEngine: read('functions/src/messaging/messagingEngine.ts'),
     smtpProvider: read('functions/src/messaging/providers/resend.ts'),
     stalenessCheck: read('functions/src/analytics/stalenessCheck.ts'),
@@ -1132,12 +1150,14 @@ function verifyOwnerNotificationsBoundary() {
     files.types,
     files.emailChannel,
     files.whatsappChannel,
+    files.appWhatsAppProvider,
     files.appLifecycle,
     files.ownerHeader,
   );
   verifyOwnerNotificationFormatters(files.formatters);
   verifyFunctionsProcessor(
     files.processor,
+    files.functionsWhatsAppProvider,
     files.scheduler,
     files.messagingEngine,
     files.smtpProvider,

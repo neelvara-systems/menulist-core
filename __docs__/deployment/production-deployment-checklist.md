@@ -1,8 +1,9 @@
 # Production Deployment Checklist
 
 **Status:** Active handoff checklist
-**Last updated:** August 2, 2026
+**Last updated:** August 15, 2026
 **Primary runbook:** [External Certification Runbook](../production-readiness/external-certification-runbook.md)
+**Provider setup ledger:** [MenuList Production Provider Setup](./menulist-production-provider-setup.md)
 
 **Launch boundary:** Not current launch certification or deploy approval. This checklist is a handoff map for the External Certification Runbook; production deployment approval still requires current production-readiness audit evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, required provider/browser/device QA, and production-host smoke.
 
@@ -42,14 +43,14 @@ Before production setup or deploy approval, confirm:
   offline recovery codes and provider recovery ownership are recorded.
 - MenuList remains on the single current `us-central1` Firebase/Google Cloud
   contract. No regional copies or third deployed environment are introduced.
-- Production secrets exist only in Vercel Production. QA Preview secrets remain
-  restricted to exact Git branch `staging`.
+- Production secrets exist only in Vercel Production. QA values live in the
+  custom Vercel `qa` environment attached only to exact Git branch `staging`.
 - Every `menulist.digital` QA host remains noindex, serves `Disallow: /`, and
   returns `404` for `/sitemap.xml` after the production deployment.
 - Domain auto-renew, backup payment, current DNS export, and account ownership
   have been checked.
-- The production service-account decision is recorded: validated Vercel
-  OIDC/Workload Identity, or a static-key owner/date/rotation/revocation record.
+- MenuList and Answerlattice QA/production use validated, project-local Vercel
+  OIDC/Workload Identity and managed Vercel contains no static Admin key.
 - The approved Firestore backup/PITR policy exists and a restore procedure has
   been documented before accepting customer data.
 - App Check has valid QA monitoring evidence before enforcement.

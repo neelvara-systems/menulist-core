@@ -10,6 +10,9 @@ Email notifications close the durable ticket fallback loop. After a ticket, supp
 | `TICKET_REPLY` | Persisted ticket requester | Exact non-system message; requester self-replies are suppressed |
 | `TICKET_STATUS_CHANGED` | Persisted ticket requester | Latest persisted status transition |
 | `ANSWERLATTICE_NOTIFICATION_TEST` | Workspace support inbox | Dedicated Activation test route |
+| Owner billing lifecycle | Workspace billing/primary inbox | Product-aware shared Razorpay transition plus Answerlattice owner-notification recipient resolver |
+| `CREDITS_LOW` / `CREDITS_EXHAUSTED` | Workspace primary inbox | Post-consumption Answerlattice AI accounting balance |
+| `WIDGET_CONNECTION_VERIFIED` | Workspace support inbox | First authenticated allowed-origin widget runtime observation |
 
 ## Trust boundary
 
@@ -35,6 +38,7 @@ Email notifications close the durable ticket fallback loop. After a ticket, supp
 - There is no inbound email-to-ticket or email-reply threading.
 - Delivery success means SMTP accepted the message; it does not prove inbox placement or that the customer read it.
 - Notifications must not be treated as the authoritative ticket record.
+- Owner billing/readiness events use the separate NotificationOS event/delivery ledger. They do not become ticket emails or support workflow events.
 
 ## Documentation
 

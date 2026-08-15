@@ -46,7 +46,7 @@ All three `npm ls --all` trees have zero invalid, missing, or extraneous package
 - Safe non-breaking audit updates moved YAML, WebSocket, minimatch, brace expansion, fast-uri, immutable, and diff to patched resolved versions.
 - MenuList Functions overrides its legacy ESLint/Minimatch chain to compatible `brace-expansion@1.1.18`, so development and production audits are both zero without changing the deployed Functions runtime graph.
 - Root resolver pins for `@swc/helpers@0.5.23`, `picomatch@4.0.5`, `webpack@5.109.0`, and `ajv@8.20.0` keep the installed peer tree valid without `--force` or `--legacy-peer-deps`.
-- Root transitive security overrides keep `js-yaml@4.3.1`, `nanoid@3.3.17`, and `dompurify@3.4.13` exact. The dependency-freeze verifier checks both the declarations and resolved lockfile nodes; MenuList Functions applies the same `js-yaml@4.3.1` control to its separate lint tree.
+- Root transitive security overrides keep `js-yaml@4.3.1`, `nanoid@3.3.18`, and `dompurify@3.4.13` exact. The dependency-freeze verifier checks both the declarations and resolved lockfile nodes; MenuList Functions applies the same `js-yaml@4.3.1` control to its separate lint tree.
 - Node 22 is the root runtime (`engines.node = 22`, `.nvmrc = 22.23.1`) because Firebase Admin 14 and the root/Functions toolchain share that long-term baseline.
 
 The exact lockfile must reproduce zero root vulnerabilities after `npm ci`, and `npm ls --all` must exit successfully with no invalid or missing peers. On macOS, Sharp's optional cross-platform WebAssembly artifacts can appear as platform-specific installed-tree entries; confirm them against the clean lockfile rather than treating them as declaration drift.

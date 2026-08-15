@@ -44,7 +44,7 @@ pId / tId / sId
 
 Two Firestore databases:
 
-MenuList → menulist-qa local/preview, menulist production
+MenuList → menulist-qa local/preview, menulist-prod production
 Answerlattice → answerlattice
 
 Cloud Functions split:

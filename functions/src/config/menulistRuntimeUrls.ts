@@ -1,10 +1,10 @@
 const MENULIST_OWNER_APP_ORIGINS_BY_PROJECT: Readonly<Record<string, string>> = {
-  menulist: "https://app.menulist.ai",
+  "menulist-prod": "https://app.menulist.ai",
   "menulist-qa": "https://app.menulist.digital",
 };
 
 const MENULIST_TENANT_BASE_DOMAINS_BY_PROJECT: Readonly<Record<string, string>> = {
-  menulist: "menulist.online",
+  "menulist-prod": "menulist.online",
   "menulist-qa": "menulist.digital",
 };
 

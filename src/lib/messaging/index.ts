@@ -17,6 +17,7 @@
  */
 
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { FEATURE_FLAGS } from '@config/features';
 import {
   normalizeOwnerNotificationNumericScopeAliases,
@@ -33,6 +34,8 @@ import {
 import { getSmtpConfigFromEnv } from '@lib/notifications/smtpConfig';
 import { Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'crypto';
+import { renderEmailOsLegacyContent } from '@lib/email-os/render';
+import { sendServerEmailOs } from '@lib/email-os/provider';
 
 const db = admin.firestore();
 const MESSAGE_LOGS = 'messageLogs';
@@ -43,7 +46,7 @@ const MAX_PER_DAY = 10;
 const getLifecycleMessageLogContext = (payload: Partial<LifecycleMessagePayload> = {}) => ({
   ...getNotificationPayloadLogContext({
     eventType: payload.eventType,
-    productId: 'ML',
+    productId: payload.productId || PRODUCT_IDS.MENULIST,
     referenceId: payload.referenceId,
     recipientEmail: payload.recipientEmail,
     recipientName: payload.storeName,
@@ -58,6 +61,7 @@ const getLifecycleMessageLogContext = (payload: Partial<LifecycleMessagePayload>
 // ================================================================
 
 export interface LifecycleMessagePayload {
+  productId?: ProductId;
   storeId: string;
   tenantId: string;
   eventType: string;
@@ -274,7 +278,34 @@ function getLifecycleDeliveryError(result: { ok: boolean; error?: string }): str
 let smtpHealthy: boolean | null = null;
 let smtpAlertedToday = '';
 
-async function sendViaSMTP(to: string, subject: string, html: string): Promise<{ ok: boolean; id?: string; error?: string }> {
+async function sendViaSMTP(
+  to: string,
+  subject: string,
+  html: string,
+  eventType: string,
+  referenceId: string,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (FEATURE_FLAGS.ENABLE_EMAIL_OS && FEATURE_FLAGS.ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND) {
+    const content = renderEmailOsLegacyContent(html, subject);
+    const result = await sendServerEmailOs({
+      productCode: 'ML',
+      classification: 'operational',
+      eventType: eventType.toLowerCase().replace(/[^a-z0-9._-]+/g, '_'),
+      localDeliveryReference: createHash('sha256')
+        .update(`${eventType}\0${referenceId}\0${to.toLowerCase()}`)
+        .digest('hex'),
+      from: process.env.MENULIST_EMAIL_OS_FROM || DEFAULT_FROM,
+      to,
+      replyTo: process.env.MENULIST_EMAIL_OS_REPLY_TO,
+      subject,
+      html: content.html,
+      text: content.text,
+    });
+    return result.accepted
+      ? { ok: true, id: result.providerMessageId }
+      : { ok: false, error: result.errorCode || 'email_os_send_failed' };
+  }
+
   const transporter = getTransporter();
   if (!transporter) return { ok: false, error: 'smtp_not_configured' };
 
@@ -346,10 +377,13 @@ async function getTemplate(eventType: string, meta: Record<string, any>): Promis
 
 /**
  * Send a lifecycle message from a Next.js API route.
- * Fire-and-forget safe — always wrap in try/catch.
+ * Best-effort for the source operation. Server request producers must await the
+ * returned promise so the runtime cannot terminate before durable enqueue.
  */
 export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Promise<boolean> {
   const { eventType, metadata = {} } = payload;
+  const productId = payload.productId || PRODUCT_IDS.MENULIST;
+  if (productId !== PRODUCT_IDS.MENULIST && productId !== PRODUCT_IDS.ANSWERLATTICE) return false;
   const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId);
   const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId);
   const referenceId = normalizeOwnerNotificationReferenceId(payload.referenceId);
@@ -359,21 +393,28 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
   const tenantId = tenantScope.documentId;
   const normalizedPayload: LifecycleMessagePayload = {
     ...payload,
+    productId,
     storeId,
     tenantId,
     referenceId,
   };
 
-  if (!(await isEnabled())) return false;
+  if (productId === PRODUCT_IDS.MENULIST && !(await isEnabled())) return false;
 
-  if (FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+  const ownerNotificationMigrationEnabled = FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS && (
+    productId === PRODUCT_IDS.ANSWERLATTICE
+      ? FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_ANSWERLATTICE_MIGRATION
+      : FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION
+  );
+  if (ownerNotificationMigrationEnabled) {
     try {
       const { enqueueOwnerNotification } = await import('@lib/owner-notifications');
       const result = await enqueueOwnerNotification({
-        productId: 'ML',
+        productId,
         triggerType: eventType,
         tenantId,
         storeId,
+        ...(productId === PRODUCT_IDS.ANSWERLATTICE ? { workspaceId: storeId } : {}),
         referenceId,
         recipientHints: {
           email: normalizedPayload.recipientEmail,
@@ -394,10 +435,15 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
         : result.status === 'pending';
     } catch (error) {
       logNotificationFailure('lifecycle_message_owner_notification_enqueue_failed', error, getLifecycleMessageLogContext(normalizedPayload));
-      // Fall through to the legacy sender so billing/publish operations keep their
-      // current fire-and-forget behavior if the new queue is unavailable.
+      if (productId === PRODUCT_IDS.ANSWERLATTICE) return false;
+      // Fall through to the legacy sender so billing/publish operations keep a
+      // bounded delivery attempt if the migrated queue is unavailable.
     }
   }
+
+  // The legacy lifecycle sender is MenuList-only and reads MenuList Firestore.
+  // Answerlattice must never fall through across the product boundary.
+  if (productId === PRODUCT_IDS.ANSWERLATTICE) return false;
 
   // 1. Feature flag
   if (!(await isEnabled())) return false;
@@ -423,7 +469,7 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
   if (!await claimLifecycleDelivery({ documentId, eventType, referenceId, storeId, tenantId })) return false;
 
   // 6. Send via SMTP only after the deterministic transaction claim.
-  const result = await sendViaSMTP(recipient.email, template.subject, template.html);
+  const result = await sendViaSMTP(recipient.email, template.subject, template.html, eventType, referenceId);
 
   // 7. Finalize the claimed delivery row.
   try {
@@ -476,7 +522,16 @@ export async function sendInternalNotification(params: {
     const { INTERNAL_RECIPIENTS } = await import('@constant/internalRecipients');
     const template = await getTemplate(eventType, metadata);
     if (template) {
-      await sendViaSMTP(INTERNAL_RECIPIENTS.FOUNDER_EMAIL, template.subject, template.html);
+      const internalReference = createHash('sha256')
+        .update(`${eventType}\0${storeId}\0${tenantId}\0${JSON.stringify(metadata)}`)
+        .digest('hex');
+      await sendViaSMTP(
+        INTERNAL_RECIPIENTS.FOUNDER_EMAIL,
+        template.subject,
+        template.html,
+        eventType,
+        internalReference,
+      );
     }
   } catch (error) {
     logNotificationFailure('internal_lifecycle_notification_email_failed', error, {

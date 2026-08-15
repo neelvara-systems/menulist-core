@@ -196,10 +196,11 @@ export const POST = withAuth(async (request, session) => {
             'api:resume-subscription',
         );
 
-        if (!isAnswerlatticeBillingProduct(productId) && statusApplication.applied) {
+        if (statusApplication.applied) {
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
-                sendLifecycleMessage({
+                await sendLifecycleMessage({
+                    productId,
                     storeId: String(internalSub.storeId),
                     tenantId: String(internalSub.tenantId),
                     eventType: 'SUBSCRIPTION_RESUMED',

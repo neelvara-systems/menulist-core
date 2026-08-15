@@ -1,7 +1,7 @@
 # Owner Notifications - Website Content Guidance
 
 **Status:** Public-content guidance only
-**Date:** 2026-07-16
+**Date:** 2026-08-15
 
 July 16 verification: internal recovery/provider hardening and removal of the fake desktop notification badge do not add a public capability. No owner notification center or notification settings surface is currently shipped.
 

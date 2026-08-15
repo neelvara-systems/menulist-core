@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Mobile Support
 
-> **Last Audited:** 2026-08-13
+> **Last Audited:** 2026-08-14
 
 ## Scope
 
@@ -8,7 +8,9 @@ Client onboarding is a responsive public Answerlattice website flow, not a MenuL
 
 ## Required Behavior
 
-- Authentication, form controls, plan/currency selection, consent rows, submit, checkout, and next-step actions retain at least 44px touch targets.
+- Authentication, form controls, surface selection, preview, back, plan/currency selection, consent rows, submit, checkout, and next-step actions retain at least 44px touch targets.
+- The proof cards and two-column launch-sequence grid must shrink inside the existing 390px card without horizontal scrolling; long product names and questions wrap.
+- Back returns to the preserved product details without a network request. Re-entering the preview recomputes it deterministically from the edited surfaces.
 - The optional first-discovery select uses the same controlled options and privacy boundary as desktop, remains skippable, and does not block form submission.
 - Content must fit a 390px viewport without horizontal scrolling.
 - Browser response parsing, recovery codes, one-time key handling, and checkout-host validation are identical on mobile and desktop.

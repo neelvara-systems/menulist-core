@@ -107,6 +107,12 @@ export function renderAnswerlatticeOwnerNotification(
     const workspaceName = textValue(metadata.workspaceName, 'Answerlattice workspace');
     const supportEmail = textValue(metadata.supportEmail, 'support email');
     const sentAt = textValue(metadata.sentAtLabel || metadata.sentAt, 'Now');
+    const amount = textValue(
+        metadata.amountLabel,
+        `${textValue(metadata.currencyCode, 'INR')} ${textValue(metadata.amount, '0')}`,
+    );
+    const planName = textValue(metadata.planName, 'Answerlattice subscription');
+    const nextBillingDate = textValue(metadata.nextBillingDate, 'See Billing');
     const actionUrl = urlValue(metadata.actionUrl);
     const widgetFailureReason = ownerFailureReasonText(
         metadata.failureReason,
@@ -131,6 +137,85 @@ export function renderAnswerlatticeOwnerNotification(
                 `Answerlattice notification test for ${productName}`,
                 `<h2 style="${S.h2}">Notification delivery is connected</h2><p style="${S.p}">Hi ${escapeHtml(textValue(metadata.recipientName, 'there'))},</p><p style="${S.p}">This test confirms Answerlattice can send owner and support notifications for <strong>${escapeHtml(productName)}</strong>.</p><div style="${S.info}"><strong>Workspace:</strong> ${escapeHtml(workspaceName)}<br><strong>Sent at:</strong> ${escapeHtml(sentAt)}</div><p style="${S.p}">No action is needed if this arrived in the expected inbox.</p>`,
                 `Notification delivery is connected for ${productName}. Workspace: ${workspaceName}. Sent at: ${sentAt}.`,
+                productName,
+            );
+        case 'answerlattice.payment_success':
+            return template(
+                templateKey,
+                `Payment received — ${productName}`,
+                `<h2 style="${S.h2}">Payment received</h2><p style="${S.p}">The subscription payment for <strong>${escapeHtml(productName)}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${escapeHtml(amount)}<br><strong>Plan:</strong> ${escapeHtml(planName)}<br><strong>Next billing date:</strong> ${escapeHtml(nextBillingDate)}</div><p style="${S.p}">No action is needed. Your governed support workspace remains available.</p>`,
+                `Payment received for ${productName}. Amount: ${amount}. Next billing date: ${nextBillingDate}.`,
+                productName,
+            );
+        case 'answerlattice.payment_recovered':
+            return template(
+                templateKey,
+                `Payment recovered — ${productName}`,
+                `<h2 style="${S.h2}">Payment recovered</h2><p style="${S.p}">The overdue subscription payment for <strong>${escapeHtml(productName)}</strong> has now been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${escapeHtml(amount)}<br><strong>Plan:</strong> ${escapeHtml(planName)}</div><p style="${S.p}">No action is needed. The subscription is active.</p>`,
+                `Payment recovered for ${productName}. No action is needed.`,
+                productName,
+            );
+        case 'answerlattice.payment_failed':
+            return template(
+                templateKey,
+                `Payment needs attention — ${productName}`,
+                `<h2 style="${S.h2}">Payment could not be processed</h2><p style="${S.p}">The payment of <strong>${escapeHtml(amount)}</strong> for <strong>${escapeHtml(productName)}</strong> was not completed.</p><div style="${S.crit}">Check the payment method and available funds. Razorpay may retry the payment according to the subscription schedule.</div>${actionUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(actionUrl)}" style="${S.btn}">Open Billing</a></p>` : ''}`,
+                `Payment needs attention for ${productName}. Amount: ${amount}.`,
+                productName,
+            );
+        case 'answerlattice.grace_period_started':
+            return template(
+                templateKey,
+                `Billing attention needed — ${productName}`,
+                `<h2 style="${S.h2}">Subscription payment is overdue</h2><p style="${S.p}">The payment for <strong>${escapeHtml(productName)}</strong> could not be collected. Access continues temporarily during the billing grace period.</p><div style="${S.crit}">Review the payment method so governed answers, intake, and support delivery are not interrupted.</div>${actionUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(actionUrl)}" style="${S.btn}">Open Billing</a></p>` : ''}`,
+                `Billing attention is needed for ${productName}. The payment could not be collected and may be retried.`,
+                productName,
+            );
+        case 'answerlattice.credit_purchase_success':
+            return template(
+                templateKey,
+                `Support credits added — ${productName}`,
+                `<h2 style="${S.h2}">Support credits added</h2><p style="${S.p}">A support-credit pack has been added to <strong>${escapeHtml(productName)}</strong>.</p><div style="${S.info}"><strong>Credits added:</strong> ${escapeHtml(textValue(metadata.creditsAdded, '0'))}<br><strong>New balance:</strong> ${escapeHtml(textValue(metadata.newBalance, 'See Billing'))}${metadata.amount ? `<br><strong>Amount paid:</strong> ${escapeHtml(amount)}` : ''}</div><p style="${S.p}">The credits are available immediately.</p>`,
+                `Support credits added to ${productName}. New balance: ${textValue(metadata.newBalance, 'See Billing')}.`,
+                productName,
+            );
+        case 'answerlattice.credits_low':
+            return template(
+                templateKey,
+                `Support credit balance is low — ${productName}`,
+                `<h2 style="${S.h2}">Support credit balance is low</h2><p style="${S.p}">The support-credit balance for <strong>${escapeHtml(productName)}</strong> is running low.</p><div style="${S.info}"><strong>Current balance:</strong> ${escapeHtml(textValue(metadata.newBalance, 'See Billing'))}</div><p style="${S.p}">Existing approved answers remain available. Credit-consuming intake and assisted support work may need more credits soon.</p>`,
+                `Support credit balance is low for ${productName}. Current balance: ${textValue(metadata.newBalance, 'See Billing')}.`,
+                productName,
+            );
+        case 'answerlattice.credits_exhausted':
+            return template(
+                templateKey,
+                `Support credits depleted — ${productName}`,
+                `<h2 style="${S.h2}">Support credits have been used up</h2><p style="${S.p}">The support-credit balance for <strong>${escapeHtml(productName)}</strong> has reached zero.</p><div style="${S.crit}">Credit-consuming intake and assisted support work pause until credits reset or are replenished. Existing approved canonical answers remain available.</div>${actionUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(actionUrl)}" style="${S.btn}">Open Billing</a></p>` : ''}`,
+                `Support credits depleted for ${productName}. Credit-consuming work pauses until credits reset or are replenished.`,
+                productName,
+            );
+        case 'answerlattice.subscription_activated':
+        case 'answerlattice.subscription_completed':
+        case 'answerlattice.subscription_cancelled':
+        case 'answerlattice.subscription_paused':
+        case 'answerlattice.subscription_resumed':
+        case 'answerlattice.subscription_upgraded': {
+            const action = templateKey.split('.').pop()?.replace('subscription_', '').replace(/_/g, ' ') || 'updated';
+            return template(
+                templateKey,
+                `Subscription ${action} — ${productName}`,
+                `<h2 style="${S.h2}">Subscription ${escapeHtml(action)}</h2><p style="${S.p}">The subscription for <strong>${escapeHtml(productName)}</strong> has been ${escapeHtml(action)}.</p><div style="${S.info}"><strong>Plan:</strong> ${escapeHtml(planName)}${metadata.amount ? `<br><strong>Amount:</strong> ${escapeHtml(amount)}` : ''}<br><strong>Date:</strong> ${escapeHtml(sentAt)}</div><p style="${S.p}">No action is needed if this matches your request.</p>`,
+                `Subscription ${action} for ${productName}.`,
+                productName,
+            );
+        }
+        case 'answerlattice.refund_processed':
+            return template(
+                templateKey,
+                `Refund processed — ${productName}`,
+                `<h2 style="${S.h2}">Refund processed</h2><p style="${S.p}">A refund for <strong>${escapeHtml(productName)}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${escapeHtml(amount)}<br><strong>Reference:</strong> ${escapeHtml(textValue(metadata.refundReference, 'See Billing'))}</div><p style="${S.p}">The bank may take additional time to show the credit.</p>`,
+                `Refund processed for ${productName}. Amount: ${amount}.`,
                 productName,
             );
         case 'answerlattice.support_email_missing':

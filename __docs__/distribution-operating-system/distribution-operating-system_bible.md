@@ -99,12 +99,30 @@ or a product-specific decision trail.
 - Use customer language learned from permissioned conversations, support,
   sales, onboarding, and first-party behavior.
 - Explain the transformation early and visibly.
+- Lead with the buyer's desired outcome or completed job, then show the
+  product's truthful mechanism. Do not confuse outcome-led positioning with a
+  guaranteed result: the message must still name what the product does, what
+  the customer must do, and what the available proof actually establishes.
 - State important limitations and coexistence boundaries; narrow truthful
   positioning is stronger than implying replacement of a broader system.
 - Keep one coherent promise across website, product, sales, support, video, and
   partner material.
 - Never use guaranteed growth, ranking, revenue, conversion, or time-to-result
   claims without direct approved evidence.
+
+### Authority And Proof
+
+- Choose proof that is relevant to the buyer's decision: a verified workflow,
+  approved customer outcome, current product behavior, or a metric tied to the
+  promised job. Founder revenue, audience size, or traffic may establish that
+  narrow fact; it does not make every unrelated claim credible.
+- Give material context for a proof point, including the period, denominator,
+  cohort, source, limitations, and whether it is observed, self-reported, or
+  independently verified. A public dashboard or payment profile is evidence of
+  what it actually exposes, not proof of channel causality, retention, margin,
+  or repeatability.
+- Protect customer, employee, account, and financial privacy. Publication and
+  reuse of product or customer proof remain founder- and permission-gated.
 
 ### Current product lenses
 
@@ -163,6 +181,13 @@ resolve cannibalization, approve claims, or publish autonomously.
 - Use factual comparisons when they genuinely help a buyer decide. Never
   manipulate competitor descriptions or create citation bait detached from
   user value.
+- Participate on forums, repositories, articles, and professional communities
+  only where the contribution answers a real human question first. Disclose a
+  material affiliation, respect community rules, and reject content planting,
+  list stuffing, repetitive promotion, or manufactured third-party consensus.
+- Prefer a narrow discovery position only when it reflects a real buyer,
+  problem, workflow, or product advantage. Do not invent a niche phrase merely
+  because it appears easier to capture in AI answers.
 - Treat platform-source preferences, citation percentages, indexing delays,
   authority behavior, memory effects, and citation lifetimes as unstable claims
   requiring current evidence.
@@ -192,6 +217,22 @@ A verified walkthrough may become a long video, short clips, founder lesson,
 resource page, partner brief, or sales asset. Adapt structure and opening to the
 channel rather than copying identical content everywhere.
 
+Repeat a proven underlying problem, promise, proof pattern, or creative concept
+when qualified outcomes support it. Do not repeatedly publish the same or
+near-identical asset, manufacture engagement, or operate duplicate accounts to
+simulate independent demand.
+
+### Lead Magnets And Permissioned Delivery
+
+- A lead magnet must provide real standalone value and may point to one
+  maintained canonical guide, demo, checklist, or proof asset.
+- Use a truthful CTA and obtain the recipient's clear request before a direct
+  message or follow-up. Keep identity, delivery expectations, consent,
+  suppression, privacy, and platform rules explicit.
+- Reject engagement bait, artificial account warming, unsolicited comment-to-DM
+  automation, follower manipulation, and any plan that treats bans or new
+  replacement accounts as an acceptable operating cost.
+
 ### Treat platform rules as experiments
 
 No universal posting cadence, hook formula, share/like weight, CTR threshold,
@@ -199,11 +240,39 @@ retention threshold, video length, posting time, or algorithm hack becomes
 portfolio doctrine. Use current official guidance, small tests, qualified
 outcomes, and stop conditions.
 
+Open-source recommender code is primary evidence only at a pinned commit. Keep
+candidate eligibility, predicted-action ranking, parameter defaults,
+reranking, visibility labels, and transparency-tool eligibility separate. A
+coefficient on a predicted action is not a guaranteed reward for producing
+that action. Do not divide coefficients to claim that one action is worth a
+fixed number of likes: the model predicts each action separately, and the
+published source notes that weights reflect both platform value and typical
+network propensity. A reporting threshold is not a reach lever. Production
+experiments, unpublished anti-gaming rules, and omitted deployment details
+limit deterministic conclusions. When a platform supplies an account-level
+label report, the account's own report and observed outcomes outrank generalized
+diagnosis.
+
+### Channel Portfolio Decisions
+
+Do not classify a channel as dead, new, easy, or universally superior from one
+operator's results. Choose, continue, or stop a channel using the product's
+buyer behavior, message-channel fit, access and consent, qualified outcomes,
+attribution confidence, retention and margin economics, operating capacity,
+platform risk, and bounded first-party tests. Founder experience may create a
+hypothesis; it does not establish portfolio causality.
+
 ### Integrity
 
 No fake region/device identity, bought or aged account, engagement group,
 undisclosed affiliate amplification, artificial comments, impersonation,
-fabricated founder/customer proof, or enforcement circumvention.
+fabricated founder/customer proof, duplicate-account amplification, synthetic
+account warming, or enforcement circumvention.
+
+Synthetic presenters or generated media may be used only when rights, product
+truth, disclosure, and channel policy are satisfied. They must never imply a
+real customer, testimonial, personal experience, endorsement, or independently
+observed result that does not exist.
 
 ## Video And Demonstration
 
@@ -248,6 +317,10 @@ applicable.
 Evaluate acquisition through qualified activation, realized gross-margin value,
 churn, refunds, CAC, LTV, and payback—not clicks, leads, or a simple spend ratio
 alone.
+
+Upfront annual cash can improve cash timing, but it does not repair weak
+retention, poor activation, refunds, low realized margin, or an acquisition cost
+that exceeds durable customer value.
 
 No autonomous marketing agent receives provider-send, campaign-launch, budget,
 or optimization authority without a separate proven control contract.

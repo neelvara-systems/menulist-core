@@ -1,7 +1,7 @@
 # Domain Environment Setup
 
 > **Category:** Infrastructure  
-> **Last Updated:** August 2, 2026
+> **Last Updated:** August 15, 2026
 > **Launch boundary:** Environment configuration is source setup only. DNS, Vercel deployment, Firebase deployment, provider smoke, and production-host verification need separate evidence.
 
 ## Purpose
@@ -178,9 +178,11 @@ For direct Cloud Function writes, configure:
 
 - `NEXT_PUBLIC_APP_URL` in the Firebase Functions environment so Functions can
   reach the correct Next.js app origin.
-- `REVALIDATION_SECRET` in both Vercel and Firebase Secret Manager with the
-  same value. Vercel uses it to authorize `/api/revalidate/menu`; Firebase
-  Functions sends it in the `x-revalidate-secret` header.
+- `MENULIST_REVALIDATION_SECRET` in Vercel and `REVALIDATION_SECRET` in
+  Firebase Secret Manager with the same value. The Next.js route uses the
+  product-scoped Vercel name to authorize `/api/revalidate/menu`; Firebase
+  Functions reads its declared secret and sends it in the
+  `x-revalidate-secret` header.
 
 No other app URL variables are required for this path.
 

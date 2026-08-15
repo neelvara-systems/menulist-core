@@ -300,6 +300,39 @@
       "description": "Checks webhook target and payload admission boundaries through focused local tests."
     },
     {
+      "id": "portfolio.notification-os-boundary",
+      "kind": "verifier",
+      "products": ["menulist", "answerlattice"],
+      "path": "scripts/verification/verify-notification-os.js",
+      "command": "npm run verify:notification-os",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Checks shared recipient resolution, channel policy, preference normalization, and browser-denied notification storage for MenuList and Answerlattice."
+    },
+    {
+      "id": "portfolio.email-os-boundary",
+      "kind": "verifier",
+      "products": ["menulist", "answerlattice"],
+      "path": "scripts/verification/verify-email-os.js",
+      "command": "npm run verify:email-os",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks EmailOS contract parity, idempotency, suppression, webhook admission, and provider-disabled behavior without sending email."
+    },
+    {
+      "id": "portfolio.whatsapp-os-boundary",
+      "kind": "verifier",
+      "products": ["menulist", "answerlattice"],
+      "path": "scripts/verification/verify-whatsapp-os.js",
+      "command": "npm run verify:whatsapp-os",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks WhatsAppOS contract parity, consent, template governance, webhook admission, status ordering, and provider-disabled behavior without sending messages."
+    },
+    {
       "id": "menulist.auth-security-events-emulator",
       "kind": "emulator-test",
       "products": ["menulist"],
@@ -519,6 +552,9 @@
         "menulist.file-validation-boundary",
         "menulist.server-network-target-boundary",
         "menulist.webhook-validation-boundary",
+        "portfolio.notification-os-boundary",
+        "portfolio.email-os-boundary",
+        "portfolio.whatsapp-os-boundary",
         "menulist.pos-sync-secret-rules"
       ],
       "selectionMode": "manual-selective",
@@ -542,7 +578,10 @@
         "answerlattice.chat-sessions-rules",
         "answerlattice.release-rules",
         "answerlattice.ontology-rules",
-        "answerlattice.dashboard-read-rate-limit-policy"
+        "answerlattice.dashboard-read-rate-limit-policy",
+        "portfolio.notification-os-boundary",
+        "portfolio.email-os-boundary",
+        "portfolio.whatsapp-os-boundary"
       ],
       "selectionMode": "manual-selective",
       "description": "Groups Answerlattice authority, ingress, isolation, release, and rate-limit evidence for manual selection."

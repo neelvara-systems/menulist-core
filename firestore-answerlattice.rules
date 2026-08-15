@@ -2488,5 +2488,32 @@ service cloud.firestore {
     match /geminiSpendWindows/{product} {
       allow read, write: if false;
     }
+
+    // NotificationOS provider identity, signed-webhook receipts, suppression
+    // state, and consent evidence are server-only. Product users cannot bypass
+    // the governed API/provider boundaries through the client SDK.
+    match /answerlattice_emailOsDeliveries/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /answerlattice_emailOsWebhookReceipts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /answerlattice_emailOsSuppressions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /answerlattice_whatsappOsMessageRefs/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /answerlattice_whatsappOsWebhookReceipts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /answerlattice_whatsappOsConsentEvents/{documentId} {
+      allow read, write: if false;
+    }
   }
 }

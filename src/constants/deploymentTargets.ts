@@ -156,7 +156,7 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             tenantDomains: ['menulist.online'],
             redirectDomains: ['menulist.online', 'www.menulist.online'],
             devPathPrefix: '',
-            firebaseProjectId: 'menulist',
+            firebaseProjectId: 'menulist-prod',
         },
         neelvara: {
             productId: 'neelvara',

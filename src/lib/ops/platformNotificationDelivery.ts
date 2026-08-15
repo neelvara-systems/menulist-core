@@ -15,6 +15,7 @@ import type { OwnerNotificationChannelResult } from '@lib/owner-notifications/ty
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { getBoundedOpsStringContext, logOpsFailure } from './opsDiagnostics';
 import { classifyPlatformAlert } from './platformNotificationClassifier';
+import { createHash } from 'node:crypto';
 
 type PlatformAlertPayload = {
   id?: string;
@@ -170,9 +171,12 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
     if (to) {
       try {
         const result = await sendOwnerNotificationEmail({
+          productCode: entry.productId === 'AL' ? 'AL' : 'ML',
           to,
           subject,
           html: buildHtml(alert, entry),
+          eventType: entry.triggerType,
+          referenceId: alert.id || `${alert.severity}:${alert.title}:${alert.message}`,
         });
 
         if (!result.ok) {
@@ -190,7 +194,16 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
       const templateName = process.env.PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME;
       const sessionActive = process.env.PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE === 'true';
       try {
+        const deliveryReference = createHash('sha256')
+          .update(alert.id || `${alert.severity}\0${entry.triggerType}\0${alert.title}`)
+          .digest('hex');
         const result = await sendOwnerNotificationWhatsApp({
+          productCode: entry.productId === 'AL' ? 'AL' : 'ML',
+          messageClass: 'operational',
+          workflow: 'platform_notification',
+          localDeliveryReference: deliveryReference,
+          ownerDocumentId: deliveryReference,
+          consentGranted: true,
           to,
           text,
           sessionActive,

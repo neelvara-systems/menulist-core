@@ -1,10 +1,18 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.11
-> **Last Updated:** 2026-08-11
+> **Version:** 1.3.12
+> **Last Updated:** 2026-08-14
 > **Audience:** Developers
 
 ---
+
+## August 14, 2026 Proof-Before-Plan Onboarding
+
+- `/get-started` now collects product context and surfaces before showing commercial controls, then renders four deterministic starter questions from the same maintained source used by First Trusted Answers.
+- The proof step states its exact boundary: it is not imported knowledge, generated answers, or approved guidance. The founder sees the real add-sources, review, First 10, and widget-verification sequence before choosing a paid plan.
+- `src/lib/answerlattice/onboardingProof.ts` is a pure client-safe projector. It admits known surfaces, removes duplicates, preserves selection order, and makes no network, Firebase, AI/provider, workspace, or billing operation.
+- `onboarding_proof_viewed` remains behind the shared consent gate. Plausible receives no properties; the Google label contains only a bounded surface count, never company, product, URL, email, or surface names.
+- Paid-only entitlement, Razorpay provisioning, onboarding API input, and completion truth remain unchanged.
 
 ## August 11, 2026 Whole-Site Content And Route Audit
 
@@ -498,7 +506,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 ### Client Components (`'use client'`)
 - `demo/AnswerlatticePublicDemo.tsx` — No sign-in required demo state
 - `contact/ContactForm.tsx` — Contact form state, submission handling, success/error states, and privacy/terms links
-- `get-started/OnboardingForm.tsx` — Self-service onboarding form state, signed-in account switching, and existing-workspace dashboard handoff
+- `get-started/OnboardingForm.tsx` — Self-service product-details, proof-before-plan, paid creation, signed-in account switching, and existing-workspace dashboard handoff
 - `components/AnswerlatticeAnalytics.tsx` — Shared public cookie banner plus optional GA script and delegated click tracking for `data-answerlattice-event` elements after accepted analytics consent
 - `components/AnswerlatticeScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
@@ -529,7 +537,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 
 **$0.00/month for normal browsing** — The website pages are static. No database reads, no Cloud Functions, and no API calls unless a visitor explicitly submits a form.
 
-The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The self-service onboarding form and contact form are the only public website surfaces that call AnswerLattice APIs, and both run only after explicit user submission.
+The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The onboarding proof step is also static client state and makes no request. The self-service onboarding form calls the onboarding API only after the founder reviews the proof, chooses a paid plan, and explicitly submits workspace creation; the contact form calls its API only after explicit submission.
 
 The contact form adds one AnswerLattice Firestore write per accepted submission to `answerlattice_contactEnquiries`. It performs IP-based public rate limiting and honeypot handling before the Firestore write path.
 
@@ -569,6 +577,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-14 | 1.3.12 | Added deterministic product proof before paid plan selection, shared First Trusted Answer question definitions, privacy-bounded proof analytics, and source verification without backend or entitlement changes. |
 | 2026-08-11 | 1.3.11 | Audited every public page file, translated shared and route-specific buyer copy, declared the two intentional aliases, and extended the source verifier to enforce complete public-route coverage without changing runtime behavior. |
 | 2026-08-11 | 1.3.10 | Broadened the compressed homepage front door from answer-only framing to scattered-inputs-through-support-surfaces, shortened non-blurred hero motion, translated owner-review labels, and aligned metadata and verification without adding runtime cost. |
 | 2026-07-29 | 1.3.8 | Added and wired four AssetOS-governed 6:5 WebP proof assets for owner decisions, Knowledge Map, release assurance, and public article topic maps without changing runtime data or Firebase behavior |

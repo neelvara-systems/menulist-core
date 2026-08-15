@@ -328,9 +328,9 @@ src/lib/firebase/answerlatticeFirebaseAdmin.ts       → Answerlattice admin (ne
 # MenuList
 NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist-qa   # local/preview
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist  # production
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist-prod  # production
 FIREBASE_PROJECT_ID=menulist-qa               # local/preview
-FIREBASE_PROJECT_ID=menulist              # production
+FIREBASE_PROJECT_ID=menulist-prod         # production
 FIREBASE_PRIVATE_KEY=...
 FIREBASE_CLIENT_EMAIL=...
 

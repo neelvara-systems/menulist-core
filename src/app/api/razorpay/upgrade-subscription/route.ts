@@ -264,10 +264,11 @@ export const POST = withAuth(async (request, session) => {
             remainingCredits,
         });
 
-        if (!isAnswerlatticeBillingProduct(productId)) {
+        {
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
-                sendLifecycleMessage({
+                await sendLifecycleMessage({
+                    productId,
                     storeId: String(internalSub.storeId),
                     tenantId: String(internalSub.tenantId),
                     eventType: 'SUBSCRIPTION_UPGRADED',

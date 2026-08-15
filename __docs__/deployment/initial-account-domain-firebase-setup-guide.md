@@ -2,7 +2,7 @@
 
 > Status: owner-facing one-time setup guide
 > Scope: Neelvara Systems, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex
-> Last updated: August 2, 2026
+> Last updated: August 15, 2026
 > Launch boundary: this guide prepares accounts, projects, env values, and DNS. It is not production launch approval. Production release still needs the current production-readiness audit, deploy approval, provider QA, browser/device QA, and production-host smoke checks.
 
 This is the step-by-step setup guide to follow from scratch. It is written for
@@ -45,8 +45,8 @@ Rules for this setup:
 - For MenuList, use the existing `us-central1` region contract. Firestore asks
   for an explicit location; select `us-central1`. Do not create regional copies
   or a third deployed environment during this setup.
-- Restrict sensitive Vercel Preview values to the exact staging Git branch for
-  that product. Do not expose them to every Preview branch.
+- Use a custom Vercel environment named `qa`, attach it only to exact Git branch
+  `staging`, and do not expose QA values to generic Preview deployments.
 - Create separate Firebase projects per database-backed product and environment.
 - Do not create Firebase for Neelvara or MyCodex.
 - Use full product names in env variables. MenuList product values use
@@ -86,7 +86,7 @@ Stop immediately if:
 
 | Surface | Type | Staging/local | Production | Firebase |
 | --- | --- | --- | --- | --- |
-| MenuList | primary product | website `https://menulist.digital`/`www`; owner app `https://app.menulist.digital`; customer links `*.menulist.digital` | website `https://menulist.ai`/`www`; owner app `https://app.menulist.ai`; customer links `*.menulist.online` | `menulist-qa` / `menulist` |
+| MenuList | primary product | website `https://menulist.digital`/`www`; owner app `https://app.menulist.digital`; customer links `*.menulist.digital` | website `https://menulist.ai`/`www`; owner app `https://app.menulist.ai`; customer links `*.menulist.online` | `menulist-qa` / `menulist-prod` |
 | Neelvara | static parent site | `https://neelvara.menulist.online` | `https://neelvara.com` | none |
 | Answerlattice | product | `https://answerlattice.menulist.online` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
 | CampaignCue | product | `https://campaigncue.menulist.online` | `https://campaigncue.ai` | `campaigncue-qa` / `campaigncue` |
@@ -354,7 +354,7 @@ provisioning, so check the ID before pressing the final create button.
 | Product | Environment | Firebase project id | Console link after creation |
 | --- | --- | --- | --- |
 | MenuList | staging/local | `menulist-qa` | https://console.firebase.google.com/project/menulist-qa/overview |
-| MenuList | production | `menulist` | https://console.firebase.google.com/project/menulist/overview |
+| MenuList | production | `menulist-prod` | https://console.firebase.google.com/project/menulist-prod/overview |
 | Answerlattice | staging/local | `answerlattice-qa` | https://console.firebase.google.com/project/answerlattice-qa/overview |
 | Answerlattice | production | `answerlattice` | https://console.firebase.google.com/project/answerlattice/overview |
 | CampaignCue | staging/local | `campaigncue-qa` | https://console.firebase.google.com/project/campaigncue-qa/overview |
@@ -418,7 +418,7 @@ Authorized domain checklist:
 | Firebase project | Add authorized domains |
 | --- | --- |
 | `menulist-qa` | `localhost`, `app.menulist.digital` |
-| `menulist` | `app.menulist.ai` |
+| `menulist-prod` | `app.menulist.ai` |
 | `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
@@ -431,7 +431,7 @@ Expected result:
 - Auth works on staging without touching production projects.
 - Production auth domains are ready but not used until production launch.
 
-## Step 8: Create Firebase Service Accounts For Server/Admin SDK
+## Step 8: Configure Server/Admin SDK Identities
 
 Where:
 
@@ -440,32 +440,37 @@ Where:
 
 What to do:
 
-1. For each Firebase project, create or use a service account dedicated to app
-   server/Admin SDK access.
-2. Download the JSON key only if Vercel/server runtime needs explicit service
-   account env values.
-3. Store the JSON file in the password vault.
-4. Convert JSON fields into env variables using the env templates.
-5. Escape private keys correctly for Vercel env values.
-6. Delete any temporary local JSON file after values are stored securely.
-7. Record the key creation date and responsible owner. Revoke it immediately on
-   leak, access removal, or replacement, and review unused keys quarterly.
-8. Before production, evaluate Vercel OIDC/Google Workload Identity. This is not
-   required to complete QA; when static keys remain, keep the rotation and
-   revocation record active.
+1. Keep one shared Vercel project and create a custom `qa` environment attached
+   only to Git branch `staging`.
+2. For `menulist-qa`, `menulist-prod`, `answerlattice-qa`, and `answerlattice`,
+   do not generate or download a Vercel runtime private key. Follow the approved
+   Vercel OIDC -> Google Workload Identity Federation -> dedicated short-lived
+   service-account impersonation contract.
+3. Keep the inherited organization policy that disables service-account key
+   creation enforced. Do not request organization-policy administration solely
+   to create a Vercel credential.
+4. Firebase Functions do not use the Vercel federation. They run inside Google
+   Cloud and use their attached runtime service account through Application
+   Default Credentials; configure least-privilege IAM, not a JSON key.
+5. For other products outside this four-project contract that still require an explicit off-Google server key,
+   store the JSON outside git, copy only documented fields into the exact
+   environment scope, delete the temporary file, and retain owner/rotation/
+   revocation evidence.
 
 Vercel env mapping:
 
 | Product | Staging/local env keys | Production env keys |
 | --- | --- | --- |
-| MenuList | canonical public Web config under `NEXT_PUBLIC_MENULIST_FIREBASE_*`, plus server-only `MENULIST_FIREBASE_CLIENT_EMAIL` and `MENULIST_FIREBASE_PRIVATE_KEY`, using `menulist-qa` | same names with separate credentials and Web config from `menulist`; no duplicate generic aliases |
-| Answerlattice | canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa` plus `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL` and `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` | canonical project ID `answerlattice` plus separate production Admin credentials |
+| MenuList | canonical Web config using `menulist-qa`; `MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc` plus project-local `MENULIST_GCP_*` WIF values; no static Admin key | canonical Web config using `menulist-prod`; the same variable names with separate production WIF values; no static Admin key |
+| Answerlattice | canonical Web config using `answerlattice-qa`; `ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc` plus project-local `ANSWERLATTICE_GCP_*` WIF values; no static Admin key | canonical Web config using `answerlattice`; the same variable names with separate production WIF values; no static Admin key |
 | CampaignCue | canonical `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue-qa` plus `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL` and `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY` | canonical project ID `campaigncue` plus separate production Admin credentials |
 | SignalDesk | `SIGNALDESK_FIREBASE_PROJECT_ID`, `SIGNALDESK_FIREBASE_CLIENT_EMAIL`, `SIGNALDESK_FIREBASE_PRIVATE_KEY` using `menulist-signaldesk-qa` | same variable names with separate credentials from `menulist-signaldesk` |
 
 Expected result:
 
-- Server/Admin SDK env values exist for all database-backed products.
+- Server/Admin SDK identity configuration exists for all database-backed
+  products; all four MenuList/Answerlattice managed Vercel targets have no
+  persistent Google private key.
 - No service account exists for Neelvara or MyCodex.
 
 ## Step 9: Create Google OAuth Credentials For NextAuth
@@ -476,40 +481,53 @@ Where:
 
 What to do:
 
-1. Open the Google Cloud project that will own the OAuth client.
+1. Open the company-controlled Google Cloud project that will own the OAuth
+   consent/branding and clients.
 2. Configure OAuth consent screen under the company identity.
-3. Create a Web application OAuth client.
-4. Add authorized JavaScript origins.
-5. Add authorized redirect URIs.
-6. Store client id and client secret in Vercel env.
+3. Create a dedicated QA Web application OAuth client. Do not place production
+   origins or callbacks on it.
+4. Create a separate production Web application OAuth client only when the
+   production provider ledger reaches `PROD-C02`. Do not reuse QA credentials.
+5. Add only the authorized JavaScript origins for that client's environment.
+6. Add only the authorized redirect URIs for that client's environment.
+7. Store each client id and client secret only in its matching Vercel scope.
 
-Authorized JavaScript origins:
+QA/local authorized JavaScript origins:
 
 - `http://localhost:3000`
 - `https://app.menulist.digital`
 - `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
+
+Production authorized JavaScript origins, in the separate production client:
+
 - `https://app.menulist.ai`
 - `https://answerlattice.com`
 - `https://campaigncue.ai`
 
-Authorized redirect URIs:
+QA/local authorized redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `https://app.menulist.digital/api/auth/callback/google`
 - `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
+
+Production authorized redirect URIs, in the separate production client:
+
 - `https://app.menulist.ai/api/auth/callback/google`
 - `https://answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
 
 Expected result:
 
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are available for staging and
-  production env setup.
-- Redirects match the deployed domains exactly.
+- QA `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` exist only in local and the
+  branch-restricted custom Vercel `qa` environment.
+- Production `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are distinct and
+  exist only in Vercel Production after the production provider gate permits
+  their creation.
+- Each client contains only exact origins and callbacks for its environment.
 
 ## Step 10: Create One Vercel Project
 
@@ -520,6 +538,7 @@ Where:
 - Vercel branch-domain assignment docs:
   https://vercel.com/docs/domains/working-with-domains/assign-domain-to-a-git-branch
 - Vercel env docs: https://vercel.com/docs/environment-variables
+- Vercel custom environments docs: https://vercel.com/docs/deployments/environments
 
 What to do:
 
@@ -536,16 +555,20 @@ What to do:
 4. Use one Vercel project for the shared app.
 5. Do not create separate Vercel projects for MenuList, Answerlattice,
    CampaignCue, Neelvara, SignalDesk, or MyCodex.
-6. Keep production branch and preview branch settings aligned with the current
-   deployment workflow.
-7. Add every required domain to this single Vercel project.
+6. Keep Production on the production branch. Create custom environment `qa`,
+   attach it only to branch `staging`, and retain `preview` deployment-stage
+   markers for current routing.
+7. Add the required staging domains to this single Vercel project.
 8. Assign `menulist.digital`, `www.menulist.digital`,
    `app.menulist.digital`, and `*.menulist.digital` to Preview/Staging, not
    Production.
-9. Restrict every MenuList QA Preview environment variable to exact Git branch
-   `staging`, especially private keys and provider secrets.
+9. Put MenuList and Answerlattice hosted QA values in custom environment `qa`.
+   Do not store either product's Firebase Admin private key there.
 10. Create values from `.env.staging.example`, newly generated secrets, and
     newly created QA provider credentials only. Never copy old Vercel values.
+11. Record the intended production domain inventory below, but do not attach
+    or assign those domains until the production provider ledger reaches the
+    certification-gated activation phase.
 
 Add these staging domains:
 
@@ -558,7 +581,7 @@ Add these staging domains:
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
 
-Add these production domains:
+Record these production domains for later gated activation:
 
 - `menulist.ai`
 - `www.menulist.ai`
@@ -577,9 +600,10 @@ Add these production domains:
 
 Expected result:
 
-- One Vercel project contains all domains.
+- One Vercel project contains the active staging domains.
 - The QA website, owner app, and customer wildcard serve the staging deployment.
-- Production domains stay attached only to Production.
+- Production domains remain unassigned until the guarded production activation
+  step, then attach only to Production.
 - Vercel shows the DNS records required for each domain.
 - No product-specific Vercel project exists.
 
@@ -592,7 +616,8 @@ Where:
 
 What to do:
 
-1. For each domain added in Vercel, open the Vercel domain details screen.
+1. For each domain authorized for the current environment, open the Vercel
+   domain details screen after adding that domain in Vercel.
 2. Inventory and export the existing DNS zone before changing records or
    nameservers.
 3. Copy the DNS records Vercel shows.
@@ -600,10 +625,11 @@ What to do:
 5. For apex domains, use Vercel's current A/ALIAS/ANAME guidance exactly as
    shown in the dashboard.
 6. For subdomains, use the CNAME record Vercel shows.
-7. For apex wildcard contracts such as `*.menulist.digital` and
-   `*.menulist.online`, use the Vercel nameserver workflow. Recreate every
-   required existing record in Vercel DNS before switching the registrar's
-   nameservers, then use only the exact nameservers Vercel displays.
+7. For the QA apex wildcard `*.menulist.digital`, use the Vercel nameserver
+   workflow. Recreate every required existing record in Vercel DNS before
+   switching the registrar's nameservers, then use only the exact nameservers
+   Vercel displays. Apply the same process to `*.menulist.online` only during
+   the later production DNS activation gate.
 8. Assign QA domains to exact Git branch `staging`, create a new deployment
    after assignment, and verify they did not default to Production.
 9. Wait until Vercel marks the domain and HTTPS certificate as valid.
@@ -612,8 +638,8 @@ Expected result:
 
 - Vercel shows every domain as configured.
 - Staging domains work before production cutover.
-- `neelvara.com` and `campaigncue.ai` resolve before
-  production smoke testing.
+- Production domains remain unchanged until the guarded production cutover;
+  after that gate, they resolve before production smoke testing.
 
 Stop if:
 
@@ -626,7 +652,7 @@ Stop if:
 Where:
 
 - Local file copied from `.env.staging.example`.
-- Vercel project -> Settings -> Environment Variables -> Preview.
+- Vercel project -> Settings -> Environments -> custom `qa`.
 - Vercel project -> Settings -> Environment Variables -> Development if you use
   Vercel CLI local env pull.
 
@@ -641,8 +667,9 @@ What to do:
    - CampaignCue -> `campaigncue-qa`
    - SignalDesk -> `menulist-signaldesk-qa`
 4. Fill staging provider values only when the provider setup exists.
-5. In Vercel, add the same staging values to Preview and restrict each value to
-   the exact product staging branch. MenuList uses branch `staging`.
+5. In Vercel, add the hosted QA values to the custom `qa` environment and attach
+   that environment only to branch `staging`. Do not use generic Preview for the
+   QA Firebase Admin identity.
 6. Do not put staging values in the Production environment.
 7. Leave optional provider keys blank until their account and activation gate
    are approved.
@@ -664,7 +691,8 @@ Important Gemini naming:
 
 Expected result:
 
-- Local app and Vercel Preview use QA/staging project ids.
+- Local app and Vercel custom `qa` use QA/staging project ids; local Admin auth
+  uses ADC while hosted QA uses OIDC/WIF.
 - Real secrets are stored only in ignored local env, Vercel, Firebase Secret
   Manager, or the password vault.
 
@@ -679,7 +707,7 @@ What to do:
 
 1. Open `.env.production.example`.
 2. Use dedicated production Firebase values:
-   - MenuList -> `menulist`
+   - MenuList -> `menulist-prod`
    - Answerlattice -> `answerlattice`
    - CampaignCue -> `campaigncue`
    - SignalDesk -> `menulist-signaldesk`
@@ -687,7 +715,10 @@ What to do:
 4. Use production `NEXTAUTH_SECRET`, session secrets, webhook secrets, and
    revalidation secrets.
 5. Do not reuse staging secrets in production.
-6. Do not commit a filled `.env.production` file.
+6. For MenuList and Answerlattice, use the approved project-local Workload
+   Identity values and do not add client-email, private-key, or credential-file
+   Admin variables to Vercel Production.
+7. Do not commit a filled `.env.production` file.
 
 Expected result:
 
@@ -1188,10 +1219,16 @@ What to do:
    recovery are current.
 8. Confirm production env values are filled and distinct from staging.
 9. Confirm production Firebase secrets exist.
-10. Confirm production domains resolve in Vercel.
+10. Confirm the staging feature-certification ledger and current production
+    release gate permit activation; preparing providers or env values is not
+    sufficient approval.
 11. Deploy production Firebase infrastructure only after explicit approval.
 12. Trigger production Vercel deployment only after explicit approval.
-13. Run production smoke checks.
+13. Assign production domains and perform DNS cutover only after the deployed
+    artifact, TLS plan, DNS export, rollback plan, and exact Vercel records are
+    ready.
+14. Confirm production domains resolve in Vercel and run production smoke
+    checks.
 
 Production smoke checks:
 
@@ -1238,7 +1275,7 @@ result is true.
 | One Vercel project | [ ] | [ ] | all domains on one project |
 | Vercel DNS verified | [ ] | [ ] | copy Vercel records exactly |
 | Vercel env values | [ ] | [ ] | from env templates |
-| Vercel staging branch restriction | [ ] | n/a | Preview secrets limited to exact staging branch |
+| Vercel custom QA branch restriction | [ ] | n/a | custom `qa` attached only to exact branch `staging` |
 | Firebase Function secrets | [ ] | [ ] | declared secrets only |
 | Gemini keys | [ ] | [ ] | separate staging and production |
 | Upstash Redis | [ ] | [ ] | separate databases |

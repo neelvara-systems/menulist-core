@@ -1,13 +1,18 @@
 # Owner Notifications - Test Cases
 
 **Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
-**Date:** 2026-07-28
+**Date:** 2026-08-15
 
 ## Test Matrix
 
 | Area | Case | Expected result |
 | --- | --- | --- |
 | Registry | Unknown trigger type is enqueued | Request fails or event is skipped before delivery. |
+| Registry | Reserved trigger type is enqueued | Skipped before event claim, recipient read, or provider call. |
+| Registry | Compatibility alias is enqueued | Normalized to its canonical active trigger before deterministic identity. |
+| Firing | Phone-only payment-failure owner has no legacy subscription email | Event still enqueues; shared channel planning determines WhatsApp eligibility. |
+| Firing | A Next.js lifecycle producer returns before its promise settles | Verifier fails because the lifecycle call is not awaited. |
+| Firing | Every registry policy is dry-planned with verified contacts | Eligible channels exactly match the registry-approved channels. |
 | Registry | Known trigger missing required metadata | Event is rejected or marked failed with sanitized reason. |
 | Product boundary | MenuList trigger uses Answerlattice product ID | Rejected by registry/scope validation. |
 | Product boundary | Answerlattice owner trigger reads MenuList Firebase | Rejected by product resolver design. |

@@ -59,7 +59,7 @@ const INDIA_OFFSET_MS = 330 * 60 * 1000;
 const SUMMARY_DOC_ID = 'founderMonitorRevenue';
 const DAILY_DOC_PREFIX = 'founderMonitorRevenueDaily_';
 const SOURCE = 'scripts/backfill-founder-revenue-read-model';
-const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist']);
+const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist-prod']);
 
 function hasFlag(args: readonly string[], flag: string): boolean {
   return args.includes(flag);

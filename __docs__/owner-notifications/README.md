@@ -1,11 +1,13 @@
 # Owner Notifications
 
 **Status:** Local source complete for strict-order item 6; provider, target deploy, authenticated browser/device, and production-host evidence remain pending
-**Date:** 2026-07-16
+**Date:** 2026-08-15
 **Products:** MenuList primary, Answerlattice reusable architecture
 **Owner:** Platform / product engineering
 
 Owner Notifications is the shared system for account-critical messages sent to business owners and approved account contacts through email and WhatsApp.
+
+> **Long-term architecture:** [NotificationOS](../notification-os/README.md) is now the canonical orchestration plan, and [WhatsAppOS](../whatsapp-os/README.md) is the canonical Meta delivery plan. This existing Owner Notifications package remains the implemented substrate and migration evidence. Implementation must evolve its registry, events, deliveries, rate limits and recovery tooling in place; it must not create a parallel notification queue or duplicate business ledger.
 
 It replaces scattered direct sends in lifecycle messaging, billing routes, scheduler tasks, and the Answerlattice owner notification test with one product-scoped event, recipient, preference, formatting, delivery, and logging architecture.
 
@@ -18,7 +20,8 @@ Implemented on June 2, 2026:
 - MenuList Cloud Functions owner notification processor in `functions/src/ownerNotifications/processor.ts`.
 - MenuList lifecycle wrappers now enqueue/process owner notification events before falling back to legacy senders.
 - Answerlattice `ANSWERLATTICE_NOTIFICATION_TEST` now routes through the owner notification core while ticket/customer emails remain on the existing generic notification service.
-- MenuList billing, credit, publish success/failure, suspension warning, renewal reminder, subscription cancellation/pause/resume/upgrade, credits exhausted, and menu stale owner triggers are wired.
+- MenuList billing, payment recovery/refund, credit threshold/exhaustion, publish success/failure, suspension/renewal, subscription activation/cancellation/pause/resume/upgrade/completion, and menu-stale owner triggers are wired. The long-term catalogue is explicitly reserved until each owning workflow has authoritative producer evidence.
+- August 15 firing audit removed the last legacy email precondition from payment-failure/grace-period enqueueing, made every Next.js lifecycle producer await durable processing, and added active-producer plus all-registry dry-firing gates.
 - Internal platform dashboard added at `/ops/owner-notifications` with bounded tracking, detail inspection, retry, prefilled Email/WhatsApp Web recovery, manual system send support, and manual handoff recording.
 - July 13 platform-ops hardening requires current persisted platform authority after a fail-closed limiter, derives rows/counts from one product-scoped recent window, reports exact scope reads, filters delivery detail by product, and commits manual-handoff audit writes atomically.
 - The independent clean-room follow-up rejects non-claimable retries, preserves malformed persisted enum fields as explicit `invalid` operational state, orders delivery detail newest-first through the declared composite index, and requires stable manual-action IDs so response retries do not duplicate sends or handoff rows.
@@ -102,10 +105,11 @@ Any owner-notification change must recheck:
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.3 | August 15, 2026 | Closed phone-only and serverless early-return firing gaps; added producer and registry dry-firing evidence |
 | 1.2 | July 16, 2026 | Removed fake owner-header notification data; bounded event/provider behavior; reconciled the messaging-onboarding boundary; added item 6 verification evidence |
 | 1.1 | July 13, 2026 | Hardened the internal recovery surface with current persisted platform authorization, bounded recent counts, product-filtered detail, exact cost reporting, and atomic manual handoff |
 | 1.0 | June 2, 2026 | Implemented the shared owner-notification architecture and platform recovery monitor |
 
 ## Changelog
 
-This documentation package is tracked in [../changelog.md](../changelog.md). The July 16 verification reconciles owner lifecycle delivery with the separate provider-disabled messaging-onboarding tunnel; it does not introduce an owner activity feed or notification settings surface.
+This documentation package is tracked in [../changelog.md](../changelog.md). NotificationOS now adds owner-only desktop and mobile delivery settings over this substrate. It still does not introduce an owner activity feed, and the provider-disabled messaging-onboarding tunnel remains a separate owner-started workflow.

@@ -392,7 +392,7 @@ export function buildAnswerlatticeActivationSummary(params: {
     const workspaceSupportEmail = normalizeBoundedString(storeData.supportEmail, 320);
     const hasProductProfile = Boolean(workspaceProductUrl && workspaceSupportEmail);
     const notificationReadiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
-    const notificationsReady = notificationReadiness.enabled && notificationReadiness.smtpConfigured && hasProductProfile;
+    const notificationsReady = notificationReadiness.enabled && notificationReadiness.emailConfigured && hasProductProfile;
     const surfaceReadiness = buildSurfaceReadiness(content);
     const canonicalCoverageRate = Number.isFinite(Number(params.coverage?.coverage?.rate)) ? Number(params.coverage?.coverage?.rate) : null;
     const canonicalCoverageTotal = Number.isFinite(Number(params.coverage?.coverage?.total)) ? Number(params.coverage?.coverage?.total) : null;

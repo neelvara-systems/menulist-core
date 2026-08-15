@@ -87,7 +87,7 @@ curl -X POST /api/ops/safe-mode \
    firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
    firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
    ```
-5. Confirm `ENABLE_OPS_ALERTS` in `src/config/features.ts`, then record target secret and deploy evidence before production use. Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
+5. Confirm `ENABLE_OPS_ALERTS` in `src/config/features.ts`, then record target secret and deploy evidence before production use. Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist-prod`.
 
 ### When Alerts Fire
 Alerts fire automatically when `createAlert()` is called anywhere in the system:

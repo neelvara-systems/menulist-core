@@ -4,6 +4,7 @@ import type {
     OwnerNotificationProductId,
     OwnerNotificationRecipientRole,
 } from '@data/shared/ownerNotificationRegistry';
+import type { NotificationOsChannelMode } from '@data/shared/notificationOs';
 import type { Timestamp } from 'firebase-admin/firestore';
 
 export type OwnerNotificationRuntime = 'next' | 'functions' | 'functions-answerlattice';
@@ -73,6 +74,11 @@ export type OwnerNotificationRecipient = {
     name?: string;
     whatsappNumber?: string;
     whatsappConsent: boolean;
+    emailVerified: boolean;
+    emailInternalIdentity: boolean;
+    phoneVerified: boolean;
+    preferredChannels: OwnerNotificationChannel[];
+    channelMode: NotificationOsChannelMode;
 };
 
 export type OwnerNotificationFormattingContext = {
@@ -100,6 +106,7 @@ export type OwnerNotificationTemplate = {
 
 export type OwnerNotificationChannelResult = {
     ok: boolean;
+    ambiguous?: boolean;
     providerMessageId?: string;
     error?: string;
     skippedReason?: string;

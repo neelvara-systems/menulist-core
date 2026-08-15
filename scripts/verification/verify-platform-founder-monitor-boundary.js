@@ -522,7 +522,7 @@ function verifyBackfillScript(backfillScript) {
     "const SOURCE = 'scripts/backfill-founder-revenue-read-model';",
     "const projectId = getArg(argv, '--project-id') || process.env.NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID || process.env.MENULIST_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;",
     "throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running Founder Monitor revenue backfill.');",
-    "const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist']);",
+    "const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist-prod']);",
     'if (!ALLOWED_PROJECT_IDS.has(projectId))',
     'Refusing Founder Monitor revenue backfill for non-MenuList project',
     "const write = hasFlag(argv, '--write');",

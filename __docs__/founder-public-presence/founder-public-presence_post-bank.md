@@ -1,7 +1,7 @@
 # Proof & State Post Bank
 
 **Status:** Draft bank; nothing here is approved for automatic publication
-**Last Updated:** August 12, 2026
+**Last Updated:** August 15, 2026
 
 ## Use
 
@@ -38,6 +38,14 @@ No growth theatre. Evidence over performance.
 ## First Twelve X Drafts
 
 ### FPP-C001 — Entitlement truth
+
+**Status:** Founder-review for the first X post on August 16, 2026
+
+**Publication packet:** Text only; 276 characters; no link, media, hashtag,
+product name, or invitation. The lesson is generalized from a current verified
+interface/server/data-access implementation. Do not add endpoint, collection,
+tenant, customer, or bypass details. Publish manually from the dedicated Proof
+Chrome profile after one final preview.
 
 ```text
 A paywall is not a disabled button.

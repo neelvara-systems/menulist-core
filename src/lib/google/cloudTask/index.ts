@@ -4,8 +4,21 @@ import { getImageBatchCloudTaskId } from '@lib/ai/imageBatchServerBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { GenerateImageViaApiPayloadBatchType } from '@template/main-app/projects/types';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
+import {
+    getMenulistWorkloadIdentityAuthClient,
+    resolveMenulistGoogleCredentialMode,
+} from '@lib/google/menulistWorkloadIdentity';
 
 let client: CloudTasksClient | null = null;
+
+type CloudTasksClientOptions = NonNullable<ConstructorParameters<typeof CloudTasksClient>[0]>;
+type CloudTasksAuthClient = NonNullable<CloudTasksClientOptions['authClient']>;
+
+const getCloudTasksWorkloadIdentityAuthClient = (): CloudTasksAuthClient => (
+    // google-gax pins a different google-auth-library minor, so private fields make
+    // the otherwise compatible external-account client types nominally distinct.
+    getMenulistWorkloadIdentityAuthClient() as unknown as CloudTasksAuthClient
+);
 
 const PROJECT_ID = menulistServerEnv.firebaseProjectId;
 const QUEUE_LOCATION = menulistServerEnv.firebaseProjectLocation;
@@ -50,7 +63,13 @@ const getCloudTasksClient = (): CloudTasksClient => {
     if (client) return client;
 
     try {
-        client = new CloudTasksClient();
+        const credentialMode = resolveMenulistGoogleCredentialMode();
+        client = new CloudTasksClient({
+            ...(PROJECT_ID ? { projectId: PROJECT_ID } : {}),
+            ...(credentialMode === 'vercel_oidc'
+                ? { authClient: getCloudTasksWorkloadIdentityAuthClient() }
+                : {}),
+        });
         return client;
     } catch (error) {
         logRuntimeFailure('cloud_tasks_client_initialization_failed', error, getImageGenerationTaskConfigStatus());

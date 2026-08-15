@@ -32,6 +32,7 @@ import {
     LuActivity,
     LuAlertTriangle,
     LuBarChart3,
+    LuBell,
     LuBookOpen,
     LuBuilding2,
     LuChevronRight,
@@ -92,6 +93,7 @@ type MoreListSection = {
 
 const MobileBillingScreen = dynamic(() => import('./MobileBillingScreen'), { ssr: false });
 const MobileBasicSettingsScreen = dynamic(() => import('./MobileBasicSettingsScreen'), { ssr: false });
+const MobileNotificationSettingsScreen = dynamic(() => import('./MobileNotificationSettingsScreen'), { ssr: false });
 const MobileLocaleSettingsScreen = dynamic(() => import('./MobileLocaleSettingsScreen'), { ssr: false });
 const MobileWorkingHoursEditScreen = dynamic(() => import('./MobileWorkingHoursEditScreen'), { ssr: false });
 const MobileRolesScreen = dynamic(() => import('./MobileRolesScreen'), { ssr: false });
@@ -193,6 +195,7 @@ export type MoreSubScreen =
     | 'searchDiscoveryHub'
     | 'billing'
     | 'basicSettings'
+    | 'notificationSettings'
     | 'locale'
     | 'hoursEdit'
     | 'roles'
@@ -316,6 +319,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const { isLoading: projectsLoading, selectedProject, selectedProjectId } = useMobileProjects();
 
     const sessionUser = (session?.user || {}) as any;
+    const isOwnerAccount = sessionUser.role === 'owner';
     const userName = profileOverrides.name || sessionUser.name || 'User';
     const userEmail = sessionUser.email || '';
     const userImage = sessionUser.image || '';
@@ -599,6 +603,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(canManageBusinessProfile ? [{ key: 'businessProfileHub', icon: <LuBuilding2 color={token.colorWarning} size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business details', description: 'Name, logo, contact details, public identity, and app branding.', onClick: () => openSubScreen('businessProfileHub') }] : []),
         ...(canManageSearchDiscovery ? [{ key: 'searchDiscoveryHub', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing', 'instagram', 'whatsapp'], label: 'Place customer link', description: 'Google, Instagram, WhatsApp, domain, and discovery setup.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') }] : []),
         ...(canManageStore ? [
+            ...(FEATURE_FLAGS.ENABLE_NOTIFICATION_OS && isOwnerAccount ? [{ key: 'notificationSettings', icon: <LuBell color={token.colorPrimary} size={20} />, keywords: ['notifications', 'email', 'whatsapp', 'quiet hours'], label: 'Notifications', description: 'Choose email, WhatsApp, or both for account and business updates.', onClick: () => openSubScreen('notificationSettings') }] : []),
             { key: 'locale', icon: <LuGlobe color={token.colorSuccess} size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
             { key: 'hoursEdit', icon: <LuClock color={token.colorPrimary} size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
             { key: 'timeSlots', icon: <LuClock color={token.colorSuccess} size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
@@ -709,6 +714,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['billing', 'transactions'].includes(screen)) return canAccessBilling;
         if (screen === 'businessProfileHub') return canManageBusinessProfile;
         if (screen === 'searchDiscoveryHub') return canManageSearchDiscovery;
+        if (screen === 'notificationSettings') return canManageStore && isOwnerAccount;
         if (['basicSettings', 'locale', 'hoursEdit', 'timeSlots', 'tempStatus', 'businessAttributes', 'contactSettings', 'advancedSettings'].includes(screen)) return canManageStore;
         if (['officialPage', 'businessCopySetup', 'seoSettings', 'socialSettings', 'customerApp', 'presenceMonitor', 'domainSettings'].includes(screen)) return canManagePublicPresence;
         if (['integrations', 'posSync'].includes(screen)) return canManageIntegrations;
@@ -884,6 +890,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'answerlatticeHub') subScreenContent = <MobileMoreHubScreen description="Answerlattice support, knowledge base, widget, changelog, chat analytics, and backfill tools." items={answerlatticeHubItems} onBack={() => setSubScreen('main')} sections={answerlatticeHubSections} title="Answerlattice" />;
     else if (subScreen === 'resellerHub') subScreenContent = <MobileMoreHubScreen description="Partner onboarding, client activation, offline prepaid licenses, and reseller profile management." items={resellerHubItems} onBack={() => setSubScreen('main')} title="Reseller" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
+    else if (subScreen === 'notificationSettings') subScreenContent = <MobileNotificationSettingsScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
     else if (subScreen === 'hoursEdit') subScreenContent = <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'roles') subScreenContent = <MobileRolesScreen onBack={() => setSubScreen('main')} />;

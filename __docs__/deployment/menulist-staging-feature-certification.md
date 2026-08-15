@@ -805,11 +805,6 @@ a hosted flow into `PASS`.
 These remain open and must never be marked complete without direct evidence:
 
 - `QA-A05`: named daily operator.
-- `QA-A11`: provider MFA and recovery.
-- `QA-A13`: second trusted Super Admin.
-- `QA-A15`: retired Firebase key ownership and revocation.
-- `QA-A20`: old Vercel account retirement.
-- `QA-K13`: production read-only absence proof.
 - Razorpay Test Mode final checkout authorization and first successful charge
   require owner-assisted browser interaction; no transition will be fabricated.
 

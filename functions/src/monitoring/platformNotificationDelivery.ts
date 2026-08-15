@@ -260,6 +260,8 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
           to,
           subject,
           html: buildHtml(alert, entry),
+          eventType: entry.triggerType,
+          referenceId: alert.id || `${alert.severity}:${alert.title}:${alert.message}`,
         });
 
         if (!result.success) {

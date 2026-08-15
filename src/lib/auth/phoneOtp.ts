@@ -325,6 +325,7 @@ const generateOtpCode = () => {
 const generateLoginToken = () => crypto.randomBytes(32).toString('base64url');
 
 const sendPhoneOtpMessage = async (params: {
+    challengeId: string;
     code: string;
     phone: NormalizedPhoneOtpNumber;
 }) => {
@@ -343,6 +344,10 @@ const sendPhoneOtpMessage = async (params: {
 
     const text = `MenuList verification code: ${params.code}. This code expires in 5 minutes.`;
     return sendOwnerNotificationWhatsApp({
+        messageClass: 'authentication',
+        workflow: 'phone_otp',
+        localDeliveryReference: params.challengeId,
+        ownerDocumentId: params.challengeId,
         to: params.phone.digits,
         text,
         sessionActive: allowTextFallback,
@@ -403,7 +408,7 @@ export async function createPhoneOtpChallenge(params: {
         },
     });
 
-    const delivery = await sendPhoneOtpMessage({ code, phone });
+    const delivery = await sendPhoneOtpMessage({ challengeId, code, phone });
     if (!delivery.ok) {
         await challengeRef.set({
             status: 'delivery_failed',

@@ -16,16 +16,21 @@ function assert(condition, message) {
 }
 
 function assertIncludes(content, needle, label) {
-  assert(content.includes(needle), `${label} must include ${needle}`);
+  assert(normalizeContract(content).includes(normalizeContract(needle)), `${label} must include ${needle}`);
+}
+
+function normalizeContract(value) {
+  return value.replace(/\s+/g, '').replace(/"/g, "'");
 }
 
 function assertNotIncludes(content, needle, label) {
-  assert(!content.includes(needle), `${label} must not include ${needle}`);
+  assert(!normalizeContract(content).includes(normalizeContract(needle)), `${label} must not include ${needle}`);
 }
 
 function assertOrder(content, before, after, label) {
-  const beforeIndex = content.indexOf(before);
-  const afterIndex = content.indexOf(after);
+  const searchable = normalizeContract(content);
+  const beforeIndex = searchable.indexOf(normalizeContract(before));
+  const afterIndex = searchable.indexOf(normalizeContract(after));
   assert(beforeIndex !== -1, `${label} missing before token ${before}`);
   assert(afterIndex !== -1, `${label} missing after token ${after}`);
   assert(beforeIndex < afterIndex, `${label} must keep ${before} before ${after}`);
@@ -476,7 +481,7 @@ function verifyBillingEntitlementBoundary() {
     "productId: PRODUCT_IDS.MENULIST",
   ].forEach((token) => assertIncludes(billingRecordProductIdentity, token, 'Billing record identity compatibility classifier'));
   [
-    "new Set(['menulist', 'menulist-qa'])",
+    "new Set(['menulist-prod', 'menulist-qa'])",
     'DB_COLLECTIONS.SUBSCRIPTIONS',
     'DB_COLLECTIONS.PAYMENT_TRANSACTIONS',
     "getArg('--collection')",

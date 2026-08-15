@@ -178,6 +178,12 @@ export const DB_COLLECTIONS = {
     OWNER_NOTIFICATION_EVENTS: "ownerNotificationEvents",
     OWNER_NOTIFICATION_DELIVERIES: "ownerNotificationDeliveries",
     OWNER_NOTIFICATION_RATE_LIMITS: "ownerNotificationRateLimits",
+    EMAIL_OS_DELIVERIES: "emailOsDeliveries",
+    EMAIL_OS_WEBHOOK_RECEIPTS: "emailOsWebhookReceipts",
+    EMAIL_OS_SUPPRESSIONS: "emailOsSuppressions",
+    WHATSAPP_OS_MESSAGE_REFS: "whatsappOsMessageRefs",
+    WHATSAPP_OS_WEBHOOK_RECEIPTS: "whatsappOsWebhookReceipts",
+    WHATSAPP_OS_CONSENT_EVENTS: "whatsappOsConsentEvents",
 
     // Phone OTP Auth (WhatsApp-first owner authentication)
     // Server-only collections used by /api/auth/phone-otp/* and NextAuth.

@@ -26,6 +26,7 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
 }
 
 import { isDeployed } from './config/secrets';
+export { menulistEmailOsWebhook } from './emailOs/http';
 
 // ═══════════════════════════════════════════════════════════════
 // 1. PRODUCTION TRIGGERS (Firestore document triggers)

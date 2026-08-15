@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Test Cases
 
-> **Last Audited:** 2026-08-13
+> **Last Audited:** 2026-08-14
 
 | ID | Case | Expected result | Proof |
 |---|---|---|---|
@@ -29,6 +29,12 @@
 | ONB-22 | Recovery timestamp has coercible members, invalid Date, hostile getter or throwing `toMillis` | Treat timestamp as unavailable without throwing or changing recovery timing | Contract |
 | ONB-23 | Optional discovery source is omitted or uses any supported value | Setup proceeds; supported value is projected on the initial tenant write only and does not change the provisioning fingerprint | Contract + source gate |
 | ONB-24 | Discovery source is unknown, wrong-cased, free text, or non-string | Strict request validation rejects it before account/provider work | Contract + runtime source gate |
+| ONB-25 | Valid product details and selected surfaces are previewed | Up to four deterministic First Trusted Answer starter questions appear in selected-surface priority order before plan controls | Public website verifier |
+| ONB-26 | Preview is opened, revisited, or edited | No fetch, AI/provider call, Firebase operation, workspace, subscription, or entitlement change; edits recompute locally | Public website verifier + browser |
+| ONB-27 | Preview wording is inspected | It explicitly denies imported knowledge, generated answers, and approved guidance | Public website + runtime source gates |
+| ONB-28 | Duplicate or unknown surface keys reach the pure projector | Known surfaces preserve first-seen order; duplicates/unknowns are dropped; fallback questions remain deterministic | Public website verifier |
+| ONB-29 | Proof analytics is emitted | Consent gate applies; no company, product, URL, email, or surface names are sent | Source gate + browser analytics inspection |
+| ONB-30 | Mobile 390px proof and plan flow | Questions wrap, controls remain at least 44px, back preserves details, and no horizontal scroll appears | Browser/physical-device QA |
 
 ## Required Local Gates
 

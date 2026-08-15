@@ -436,6 +436,8 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
     to: recipientEmail,
     subject: template.subject,
     html: template.html,
+    eventType,
+    referenceId,
   });
 
   // 8. Log result

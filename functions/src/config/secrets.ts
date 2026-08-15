@@ -46,12 +46,22 @@ export const SECRETS = {
     WHATSAPP_ACCESS_TOKEN: 'WHATSAPP_ACCESS_TOKEN',
     WHATSAPP_APP_SECRET: 'WHATSAPP_APP_SECRET',
     WHATSAPP_VERIFY_TOKEN: 'WHATSAPP_VERIFY_TOKEN',
+    // Canonical product-scoped names. The active legacy bindings above stay
+    // until the owner completes the no-downtime Secret Manager cutover.
+    MENULIST_WHATSAPP_PHONE_NUMBER_ID: 'MENULIST_WHATSAPP_PHONE_NUMBER_ID',
+    MENULIST_WHATSAPP_ACCESS_TOKEN: 'MENULIST_WHATSAPP_ACCESS_TOKEN',
+    MENULIST_WHATSAPP_APP_SECRET: 'MENULIST_WHATSAPP_APP_SECRET',
+    MENULIST_WHATSAPP_VERIFY_TOKEN: 'MENULIST_WHATSAPP_VERIFY_TOKEN',
 
-    // Email (SMTP via Resend/Nodemailer)
+    // Legacy SMTP migration bridge (removed after EmailOS cutover certification)
     SMTP_HOST: 'SMTP_HOST',
     SMTP_PORT: 'SMTP_PORT',
     SMTP_USER: 'SMTP_USER',
     SMTP_PASS: 'SMTP_PASS',
+
+    // EmailOS (Resend API + signed provider events)
+    MENULIST_RESEND_API_KEY: 'MENULIST_RESEND_API_KEY',
+    MENULIST_RESEND_WEBHOOK_SECRET: 'MENULIST_RESEND_WEBHOOK_SECRET',
 
     // Payments (Razorpay)
     RAZORPAY_KEY_ID: 'RAZORPAY_KEY_ID',
@@ -116,6 +126,12 @@ export const SECRET_GROUPS = {
         SECRETS.SMTP_PORT,
         SECRETS.SMTP_USER,
         SECRETS.SMTP_PASS,
+    ] as string[],
+
+    /** EmailOS provider transmission and signed webhook verification. */
+    EMAIL_OS: [
+        SECRETS.MENULIST_RESEND_API_KEY,
+        SECRETS.MENULIST_RESEND_WEBHOOK_SECRET,
     ] as string[],
 
     /** Payment processing */

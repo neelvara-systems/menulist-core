@@ -17,9 +17,10 @@ import { validateNetworkTargetUrl } from "../../../utils/networkTarget";
 import { RETENTION, UPLOAD_LIMITS } from "../../constants";
 import { IMessagingProvider } from "../IMessagingProvider";
 import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../../../utils/boundedErrorContext';
+import { WHATSAPP_OS_GRAPH_API_VERSION } from '../../../sharedData/whatsappOs';
+import { postWhatsAppOsProviderBody } from '../../../whatsappOs/provider';
 
 const logger = functions.logger;
-const GRAPH_API_VERSION = "v21.0";
 const WHATSAPP_SEND_TEXT_FAILED_CODE = "WHATSAPP_SEND_TEXT_FAILED";
 const WHATSAPP_INTERACTIVE_SEND_FAILED_CODE = "WHATSAPP_INTERACTIVE_SEND_FAILED";
 const WHATSAPP_MEDIA_URL_REJECTED_CODE = "WHATSAPP_MEDIA_URL_REJECTED";
@@ -163,23 +164,19 @@ export class WhatsAppAdapter implements IMessagingProvider {
   readonly providerId = "whatsapp" as const;
 
   private get phoneNumberId(): string {
-    return process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-  }
-
-  private get encodedPhoneNumberId(): string {
-    return encodeURIComponent(this.phoneNumberId);
+    return process.env.MENULIST_WHATSAPP_PHONE_NUMBER_ID || process.env.WHATSAPP_PHONE_NUMBER_ID || "";
   }
 
   private get accessToken(): string {
-    return process.env.WHATSAPP_ACCESS_TOKEN || "";
+    return process.env.MENULIST_WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
   }
 
   private get appSecret(): string {
-    return process.env.WHATSAPP_APP_SECRET || "";
+    return process.env.MENULIST_WHATSAPP_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "";
   }
 
   private get verifyToken(): string {
-    return process.env.WHATSAPP_VERIFY_TOKEN || "";
+    return process.env.MENULIST_WHATSAPP_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "";
   }
 
   private assertApiConfigured(): void {
@@ -365,7 +362,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
     // Step 1: Get media URL
     const encodedMediaId = encodeURIComponent(providerMediaId);
     const mediaLookupUrl = new URL(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedMediaId}`,
+      `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodedMediaId}`,
     );
     mediaLookupUrl.searchParams.set("phone_number_id", this.phoneNumberId);
     const metaResponse = await fetch(
@@ -451,24 +448,14 @@ export class WhatsAppAdapter implements IMessagingProvider {
    */
   async sendTextMessage(userId: string, text: string): Promise<void> {
     this.assertApiConfigured();
-    const response = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
-      {
-        method: "POST",
-        redirect: "manual",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: userId,
-          type: "text",
-          text: { body: text },
-        }),
-        signal: AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS),
+    const response = await postWhatsAppOsProviderBody({
+      body: {
+        messaging_product: "whatsapp",
+        to: userId,
+        type: "text",
+        text: { body: text },
       },
-    );
+    });
 
     if (!response.ok) {
       logger.error("[WhatsApp] Failed to send text message", {
@@ -477,7 +464,11 @@ export class WhatsAppAdapter implements IMessagingProvider {
         ...getWhatsAppStringLogContext("providerUserId", userId),
         providerResponseBodySkipped: true,
       });
-      throw createWhatsAppProviderError(WHATSAPP_SEND_TEXT_FAILED_CODE, response.status);
+      throw createWhatsAppProviderError(
+        WHATSAPP_SEND_TEXT_FAILED_CODE,
+        response.status,
+        response.ambiguous || isTransientWhatsAppStatus(response.status),
+      );
     }
   }
 
@@ -491,34 +482,24 @@ export class WhatsAppAdapter implements IMessagingProvider {
     buttonLabel: string,
   ): Promise<void> {
     this.assertApiConfigured();
-    const response = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
-      {
-        method: "POST",
-        redirect: "manual",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: userId,
-          type: "interactive",
-          interactive: {
-            type: "cta_url",
-            body: { text },
-            action: {
-              name: "cta_url",
-              parameters: {
-                display_text: buttonLabel,
-                url,
-              },
+    const response = await postWhatsAppOsProviderBody({
+      body: {
+        messaging_product: "whatsapp",
+        to: userId,
+        type: "interactive",
+        interactive: {
+          type: "cta_url",
+          body: { text },
+          action: {
+            name: "cta_url",
+            parameters: {
+              display_text: buttonLabel,
+              url,
             },
           },
-        }),
-        signal: AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS),
+        },
       },
-    );
+    });
 
     if (!response.ok) {
       if (response.status !== 400 && response.status !== 422) {

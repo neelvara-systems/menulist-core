@@ -46,6 +46,9 @@ import {
     logNotificationFailure,
 } from './notificationDiagnostics';
 import { resolveNotificationTemplate } from './templates';
+import { renderEmailOsLegacyContent } from '@lib/email-os/render';
+import { sendServerEmailOs } from '@lib/email-os/provider';
+import { isOwnerNotificationEmailConfigured } from '@lib/owner-notifications/channels/email';
 
 const NOTIFICATION_LOGS = 'notificationLogs';
 // @firestore-collection-evidence NOTIFICATION_LOGS operations=read/query|write|transaction/batch
@@ -93,10 +96,19 @@ export function isNotificationSmtpConfigured(): boolean {
 export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.ANSWERLATTICE) {
     const isAnswerlattice = productId === PRODUCT_IDS.ANSWERLATTICE;
     const answerlatticeDbAvailable = Boolean(answerlatticeFirestoreAdmin);
+    const supportedOwnerNotificationProduct = productId === PRODUCT_IDS.MENULIST
+        || productId === PRODUCT_IDS.ANSWERLATTICE;
+    const emailConfigured = supportedOwnerNotificationProduct
+        ? isOwnerNotificationEmailConfigured(productId)
+        : isNotificationSmtpConfigured();
 
     return {
         enabled: FEATURE_FLAGS.ENABLE_ANSWERLATTICE_NOTIFICATIONS,
-        smtpConfigured: isNotificationSmtpConfigured(),
+        emailConfigured,
+        // Compatibility field for existing readiness consumers. This now means
+        // an effective email sender is configured: EmailOS/Resend after cutover,
+        // or the bounded SMTP bridge while migration remains active.
+        smtpConfigured: emailConfigured,
         fromAddress: DEFAULT_FROM,
         logTarget: isAnswerlattice ? DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS : NOTIFICATION_LOGS,
         productId,
@@ -116,11 +128,14 @@ function getNotificationLogTarget(productId?: ProductId | string): NotificationL
         return null;
     }
 
-    return {
-        db: admin.firestore(),
-        collectionName: NOTIFICATION_LOGS,
-        productId: productId || PRODUCT_IDS.MENULIST,
-    };
+    if (productId === PRODUCT_IDS.MENULIST) {
+        return {
+            db: admin.firestore(),
+            collectionName: NOTIFICATION_LOGS,
+            productId: PRODUCT_IDS.MENULIST,
+        };
+    }
+    return null;
 }
 
 function getSafeLogId(eventType: string, referenceId: string): string {
@@ -153,8 +168,48 @@ async function sendViaSMTP(
     subject: string,
     html: string,
     messageId: string,
+    productId: ProductId | string,
+    eventType: string,
+    referenceId: string,
     from?: string,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+    if (productId !== PRODUCT_IDS.MENULIST && productId !== PRODUCT_IDS.ANSWERLATTICE) {
+        return { ok: false, error: 'email_os_product_not_supported' };
+    }
+    const emailOsProductCode = productId;
+    const emailOsEnabled = FEATURE_FLAGS.ENABLE_EMAIL_OS && (
+        emailOsProductCode === 'AL'
+            ? FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND
+            : FEATURE_FLAGS.ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND
+    );
+    if (emailOsEnabled) {
+        const content = renderEmailOsLegacyContent(html, subject);
+        const localDeliveryReference = createHash('sha256')
+            .update(`${eventType}\0${referenceId}\0${to.toLowerCase()}`)
+            .digest('hex');
+        const configuredFrom = emailOsProductCode === 'AL'
+            ? process.env.ANSWERLATTICE_EMAIL_OS_FROM
+            : process.env.MENULIST_EMAIL_OS_FROM;
+        const configuredReplyTo = emailOsProductCode === 'AL'
+            ? process.env.ANSWERLATTICE_EMAIL_OS_REPLY_TO
+            : process.env.MENULIST_EMAIL_OS_REPLY_TO;
+        const result = await sendServerEmailOs({
+            productCode: emailOsProductCode,
+            classification: 'operational',
+            eventType: eventType.toLowerCase().replace(/[^a-z0-9._-]+/g, '_'),
+            localDeliveryReference,
+            from: from || configuredFrom || DEFAULT_FROM,
+            to,
+            replyTo: configuredReplyTo,
+            subject,
+            html: content.html,
+            text: content.text,
+        });
+        return result.accepted
+            ? { ok: true, messageId: result.providerMessageId }
+            : { ok: false, error: result.errorCode || 'email_os_send_failed' };
+    }
+
     const transporter = getTransporter();
     if (!transporter) {
         return { ok: false, error: 'smtp_not_configured' };
@@ -279,6 +334,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
 
         // 2. Basic validation
         if (!recipientEmail || !eventType || !referenceId) return false;
+        if (productId !== PRODUCT_IDS.MENULIST && productId !== PRODUCT_IDS.ANSWERLATTICE) return false;
 
         if (
             FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS
@@ -364,6 +420,9 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             template.subject,
             template.html,
             `<${getSafeLogId(eventType, referenceId)}@menulist.ai>`,
+            productId,
+            eventType,
+            referenceId,
             from,
         );
 
