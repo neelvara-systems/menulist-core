@@ -341,10 +341,10 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Button disabled={!isSeoDirty} onClick={handleResetSeo}>
+                    <Button aria-label="Reset SEO and AEO" disabled={!isSeoDirty} onClick={handleResetSeo}>
                         Reset
                     </Button>
-                    <Button disabled={!isSeoDirty} onClick={() => form.submit()} type="primary">
+                    <Button aria-label="Save SEO and AEO" disabled={!isSeoDirty} onClick={() => form.submit()} type="primary">
                         Save
                     </Button>
                 </div>

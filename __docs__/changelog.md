@@ -1,5 +1,10 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Accessible SEO And AEO Actions
+
+- Named the desktop SEO and AEO Reset and Save actions so they remain distinguishable from the other repeated Business Settings controls.
+- Extended the Public Business Truth source gate. This changes no visible field copy, store-write shape, public projection, Firebase operation, provider, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Accessible Billing Plan Chooser
 
 - Named the plan-interval switch and gave every plan action a plan-specific accessible name across new, upgrade, downgrade, and custom-plan states.

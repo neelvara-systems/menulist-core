@@ -5678,6 +5678,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   const storesDal = read('src/database/stores/index.tsx');
   const projectsDal = read('src/database/projects/index.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const seoTab = read('src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx');
   const timeSlotCascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const timeSlotPresets = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
   const tempStatusCard = read('src/components/templates/main-app/businessSettings/TempStatusCard.tsx');
@@ -5746,6 +5747,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(businessSettings, 'const settingsSaveInFlightRef = useRef(false);', 'Desktop Business Settings duplicate save guard');
   assertIncludes(businessSettings, 'activeBusinessSettingsScopeRef.current !== requestScopeKey', 'Desktop Business Settings save admission scope guard');
   assertIncludes(businessSettings, 'activeBusinessSettingsScopeRef.current === requestScopeKey', 'Desktop Business Settings settlement scope guard');
+  assertIncludes(seoTab, 'aria-label="Reset SEO and AEO"', 'Desktop SEO and AEO reset action accessible name');
+  assertIncludes(seoTab, 'aria-label="Save SEO and AEO"', 'Desktop SEO and AEO save action accessible name');
   assertIncludes(mobileTimeSlots, 'assertTimeSlotPresetUpdateSucceeded(writeResult);', 'Mobile time-slot writes must require explicit success acknowledgement');
   assertIncludes(mobileTimeSlots, 'await reconcileTimeSlotPresetCascade(', 'Mobile time-slot cascade writes must use durable reconciliation');
   assertIncludes(mobileTimeSlots, 'mobile_time_slot_preset_recovery_failed', 'Mobile time-slot pending cascade recovery diagnostics');
