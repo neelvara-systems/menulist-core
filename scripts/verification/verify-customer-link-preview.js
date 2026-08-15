@@ -152,6 +152,8 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'One Customer Link Prev
 assertIncludes(report, 'aiOrSearchChecked: false', 'One Customer Link Preview report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'One Customer Link Preview report ranking boundary');
 assertIncludes(report, 'getCustomerLinkPreviewEvidenceText', 'One Customer Link Preview explicit evidence text');
+assertIncludes(report, 'getNextActionType(status, validCurrentCustomerLink)', 'One Customer Link Preview existing-link next action');
+assertIncludes(report, "if (validCurrentCustomerLink) return 'complete_customer_facts';", 'One Customer Link Preview fact-completion routing');
 assertIncludes(report, 'The customer link was not opened or fetched.', 'One Customer Link Preview link evidence boundary');
 assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'One Customer Link Preview public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'External links, websites, profiles, search results, and AI answers were not inspected.', 'One Customer Link Preview external inspection evidence boundary');

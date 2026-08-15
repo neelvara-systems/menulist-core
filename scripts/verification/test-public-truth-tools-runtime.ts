@@ -511,6 +511,11 @@ assert.equal(
   'unclear',
   'a city plus a visibility checkbox must not prove a missing business name',
 );
+assert.equal(
+  incompleteCustomerLinkIdentity.nextAction.type,
+  'complete_customer_facts',
+  'an existing valid customer link with a required fact gap must route to completing facts, not creating another link',
+);
 
 const whatsAppReply = buildWhatsAppReplyPackReport({
   mode: 'self_report',

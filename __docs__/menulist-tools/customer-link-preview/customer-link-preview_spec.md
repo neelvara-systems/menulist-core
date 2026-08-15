@@ -35,6 +35,8 @@ The report returns:
 
 Every row includes `evidenceText` that says what was actually checked.
 
+The next action follows the owner-entered link state: a ready valid link routes to review, a valid link with fact gaps routes to completing those facts, and an absent or malformed link routes to creating one current customer link.
+
 ## Checks
 
 | Check | Required | Source |

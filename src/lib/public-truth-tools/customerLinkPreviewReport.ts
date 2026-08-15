@@ -90,9 +90,12 @@ function getStatus(checks: CustomerLinkPreviewItem[]): CustomerLinkPreviewReport
   return 'ready';
 }
 
-function getNextActionType(status: CustomerLinkPreviewReport['status']): CustomerLinkPreviewReport['nextAction']['type'] {
+function getNextActionType(
+  status: CustomerLinkPreviewReport['status'],
+  validCurrentCustomerLink: boolean,
+): CustomerLinkPreviewReport['nextAction']['type'] {
   if (status === 'ready') return 'review_customer_link';
-  if (status === 'manual_review_needed') return 'complete_customer_facts';
+  if (validCurrentCustomerLink) return 'complete_customer_facts';
   return 'create_customer_link';
 }
 
@@ -190,7 +193,7 @@ export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput):
     },
     nextAction: {
       href: '/create-menu',
-      type: getNextActionType(status),
+      type: getNextActionType(status, validCurrentCustomerLink),
     },
     boundaries: {
       customerLinkFetched: false,
