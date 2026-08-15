@@ -87,3 +87,27 @@ export function applyLocalizedKeywordDraftMap(
 
     return toLocalizedStringList(nextValue, CANONICAL_SOURCE_LANGUAGE);
 }
+
+export type LocalizedSeoDraft = {
+    keywords: string[];
+    metaDescription: string;
+    metaTitle: string;
+    tagline: string;
+};
+
+export function mergeCurrentLocalizedSeoDraft(
+    draftsByLanguage: Record<string, LocalizedSeoDraft>,
+    languageCode: string,
+    currentDraft: LocalizedSeoDraft,
+): Record<string, LocalizedSeoDraft> {
+    return {
+        ...draftsByLanguage,
+        [languageCode]: {
+            ...(draftsByLanguage[languageCode] || {}),
+            keywords: Array.isArray(currentDraft.keywords) ? currentDraft.keywords : [],
+            metaDescription: currentDraft.metaDescription || '',
+            metaTitle: currentDraft.metaTitle || '',
+            tagline: currentDraft.tagline || '',
+        },
+    };
+}

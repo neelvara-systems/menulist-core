@@ -5715,6 +5715,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(publicMetadata, 'export function normalizePublicCanonicalUrl(value: unknown): string | null', 'Shared public canonical URL normalizer');
   assertIncludes(publicMetadata, "parsed.protocol !== 'https:' || parsed.username || parsed.password", 'Public canonical URL HTTPS and credential boundary');
   assertIncludes(businessSettings, 'normalizePublicCanonicalUrl(changesToUpload.canonicalUrl)', 'Desktop business settings canonical URL write admission');
+  assertIncludes(businessSettings, 'mergeCurrentLocalizedSeoDraft(', 'Desktop SEO submit synchronously captures the visible localized draft');
   assertIncludes(seoTab, 'normalizePublicCanonicalUrl(value)', 'Desktop SEO canonical URL field admission');
   assertIncludes(mobileSeoAnalytics, 'const normalizedCanonicalUrl = normalizePublicCanonicalUrl(canonicalUrl);', 'Mobile SEO canonical URL write admission');
   assertIncludes(mobileSeoAnalytics, 'canonicalUrl: normalizedCanonicalUrl,', 'Mobile SEO persists only normalized canonical URL truth');

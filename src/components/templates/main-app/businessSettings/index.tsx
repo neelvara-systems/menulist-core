@@ -32,7 +32,7 @@ import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordF
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
 import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncMissingBusinessCopyTranslations";
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
-import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage } from "@lib/localization/storeContent";
+import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage, mergeCurrentLocalizedSeoDraft } from "@lib/localization/storeContent";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { getStoreDeepDifference, mergeStoreNestedUpdateWithCurrent } from "@lib/store/storeNestedUpdateProjection";
 import { normalizeGuestFeedbackReviewUrl } from "@lib/feedback/guestFeedbackSubmitResponse";
@@ -1402,10 +1402,27 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             changesToUpload.canonicalUrl = normalizedCanonicalUrl;
         }
 
-        changesToUpload.tagline = changesToUpload.__localizedSeoDrafts
+        const submittedSeoLanguage = typeof changesToUpload.__storeContentLanguage === 'string'
+            && changesToUpload.__storeContentLanguage.trim()
+            ? changesToUpload.__storeContentLanguage
+            : contentLanguage;
+        const submittedLocalizedSeoDrafts = changesToUpload.__localizedSeoDrafts
+            ? mergeCurrentLocalizedSeoDraft(
+                changesToUpload.__localizedSeoDrafts,
+                submittedSeoLanguage,
+                {
+                    keywords: Array.isArray(changesToUpload.keywords) ? changesToUpload.keywords : [],
+                    metaDescription: changesToUpload.metaDescription || '',
+                    metaTitle: changesToUpload.metaTitle || '',
+                    tagline: changesToUpload.tagline || '',
+                },
+            )
+            : undefined;
+
+        changesToUpload.tagline = submittedLocalizedSeoDrafts
             ? applyLocalizedDraftMap(
                 storeDetails?.tagline,
-                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.tagline || ''])),
+                Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.tagline || ''])),
             )
             : updateLocalizedText(
                 storeDetails?.tagline,
@@ -1413,10 +1430,10 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 contentLanguage,
                 'en',
             );
-        changesToUpload.metaTitle = changesToUpload.__localizedSeoDrafts
+        changesToUpload.metaTitle = submittedLocalizedSeoDrafts
             ? applyLocalizedDraftMap(
                 storeDetails?.metaTitle,
-                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaTitle || ''])),
+                Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaTitle || ''])),
             )
             : updateLocalizedText(
                 storeDetails?.metaTitle,
@@ -1424,10 +1441,10 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 contentLanguage,
                 'en',
             );
-        changesToUpload.metaDescription = changesToUpload.__localizedSeoDrafts
+        changesToUpload.metaDescription = submittedLocalizedSeoDrafts
             ? applyLocalizedDraftMap(
                 storeDetails?.metaDescription,
-                Object.fromEntries(Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaDescription || ''])),
+                Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]: any) => [languageCode, draft?.metaDescription || ''])),
             )
             : updateLocalizedText(
                 storeDetails?.metaDescription,
@@ -1435,11 +1452,11 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 contentLanguage,
                 'en',
             );
-        changesToUpload.keywords = changesToUpload.__localizedSeoDrafts
+        changesToUpload.keywords = submittedLocalizedSeoDrafts
             ? applyLocalizedKeywordDraftMap(
                 storeDetails?.keywords,
                 Object.fromEntries(
-                    Object.entries(changesToUpload.__localizedSeoDrafts).map(([languageCode, draft]: any) => [
+                    Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]: any) => [
                         languageCode,
                         Array.isArray(draft?.keywords)
                             ? draft.keywords

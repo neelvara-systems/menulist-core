@@ -30,6 +30,7 @@ import {
 } from '../../src/lib/localization/text';
 import { localizePublicHoursText } from '../../src/lib/localization/publicHoursText';
 import type { PublicCustomerTranslator } from '../../src/lib/localization/publicCustomerMessages';
+import { mergeCurrentLocalizedSeoDraft } from '../../src/lib/localization/storeContent';
 import {
     hasAnyNonEmptyDescription,
     hasMeaningfulDescriptionsForLanguages,
@@ -170,6 +171,23 @@ assert.equal(normalizePublicCanonicalUrl('https://menu list.digital'), null);
 assert.equal(normalizePublicCanonicalUrl('qa-invalid-canonical'), null);
 assert.equal(normalizePublicCanonicalUrl('x'.repeat(2049)), null);
 assert.equal(normalizePublicCanonicalUrl(null), null);
+assert.deepEqual(mergeCurrentLocalizedSeoDraft({
+    en: { keywords: [], metaDescription: 'Old description', metaTitle: 'Old title', tagline: 'Old tagline' },
+    hi: { keywords: ['पुराना'], metaDescription: '', metaTitle: '', tagline: '' },
+}, 'en', {
+    keywords: ['rapid save'],
+    metaDescription: 'Current description',
+    metaTitle: 'Current title',
+    tagline: 'Current tagline',
+}), {
+    en: {
+        keywords: ['rapid save'],
+        metaDescription: 'Current description',
+        metaTitle: 'Current title',
+        tagline: 'Current tagline',
+    },
+    hi: { keywords: ['पुराना'], metaDescription: '', metaTitle: '', tagline: '' },
+});
 assert.deepEqual(normalizeSeoKeywords([' menu ', 42 as unknown as string, 'owner']), ['menu', 'owner']);
 assert.deepEqual(normalizeSeoKeywords(new Proxy([], {
     get() {
