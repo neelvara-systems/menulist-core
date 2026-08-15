@@ -1345,6 +1345,8 @@ function verifyMultiLocationBoundary() {
     publicMenu: read('src/app/client/[[...slug]]/page.tsx'),
   };
 
+  assertIncludes(files.outletPolicyEditor, 'aria-label={item.label}', 'Desktop outlet policy switch accessible name');
+
   [
     'parseMasterOperationalState',
     "keys.length !== 2",

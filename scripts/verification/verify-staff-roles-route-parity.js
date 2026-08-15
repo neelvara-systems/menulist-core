@@ -273,6 +273,22 @@ function verifyStaffRolesRouteParity() {
     assertIncludes(desktopUsersScreen, token, 'Desktop owner-target UI boundary');
   });
   assertIncludes(desktopUsersTable, 'disabled={!targetCanBeManaged || mutationPending}', 'Desktop owner-target table actions');
+  [
+    'aria-label={`Edit ${staffName}`}',
+    'aria-label={`View ${staffName} details`}',
+    'aria-label={`Create temporary passcode for ${staffName}`}',
+    'aria-label={`Sign out ${staffName}`}',
+    'aria-label={`Remove ${staffName}`}',
+  ].forEach((token) => assertIncludes(desktopUsersTable, token, 'Desktop staff action accessible names'));
+  [
+    'aria-label={`Select ${role.name} role`}',
+    'aria-pressed={activeRole?.id === role.id}',
+    'role="button"',
+    "event.key !== 'Enter' && event.key !== ' '",
+    'tabIndex={0}',
+    'aria-label="Add Custom Role"',
+    'tabIndex={canAssignRoles ? 0 : -1}',
+  ].forEach((token) => assertIncludes(desktopRolesScreen, token, 'Desktop role-card keyboard contract'));
   assertIncludes(desktopUserDetails, 'disabled={!canEdit || !modalData.data}', 'Desktop owner-target detail edit action');
   [
     'mergeLoadedStaffStoreForCurrentTenant',

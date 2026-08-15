@@ -119,6 +119,7 @@ export default function OutletPolicyEditor({
                                     </Text>
                                 </div>
                                 <Switch
+                                    aria-label={item.label}
                                     checked={policy[item.key]}
                                     loading={saving === item.key}
                                     onChange={(checked) => handleToggle(item.key, checked)}

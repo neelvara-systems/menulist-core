@@ -100,13 +100,14 @@ function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUse
             render: (_, record) => {
                 const targetCanBeManaged = canManageUsers && canManageTarget(record);
                 const mutationPending = pendingStaffUserId === record.id;
+                const staffName = record.name || getLoginLabel(record);
                 return (
                     <Space>
-                    <Button disabled={!targetCanBeManaged || mutationPending} onClick={(event) => {
+                    <Button aria-label={`Edit ${staffName}`} disabled={!targetCanBeManaged || mutationPending} onClick={(event) => {
                         event.stopPropagation();
                         onEditUser(record);
                     }} shape="circle" icon={<LuPen />} />
-                    <Button onClick={(event) => {
+                    <Button aria-label={`View ${staffName} details`} onClick={(event) => {
                         event.stopPropagation();
                         onClickUserDetails(record);
                     }} shape="circle" icon={<LuEye />} />
@@ -120,6 +121,7 @@ function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUse
                         title="Create a new temporary passcode for this staff member?"
                     >
                         <Button
+                            aria-label={`Create temporary passcode for ${staffName}`}
                             disabled={!targetCanBeManaged || mutationPending}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
@@ -137,6 +139,7 @@ function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUse
                     >
                         <Tooltip title="Sign out staff">
                             <Button
+                                aria-label={`Sign out ${staffName}`}
                                 disabled={!targetCanBeManaged || mutationPending || record.active === false}
                                 onClick={(event) => event.stopPropagation()}
                                 shape="circle"
@@ -155,6 +158,7 @@ function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUse
                         title="Remove this staff member from this store?"
                     >
                         <Button
+                            aria-label={`Remove ${staffName}`}
                             danger
                             disabled={!targetCanBeManaged || mutationPending}
                             onClick={(event) => event.stopPropagation()}

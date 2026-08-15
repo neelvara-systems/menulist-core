@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Accessible Team And Location Controls
+
+- Named every desktop staff-row action with its target staff member so repeated edit, details, passcode, sign-out, and removal controls remain distinguishable.
+- Made desktop role-selection cards keyboard-operable with button, pressed, and disabled semantics, and named all 15 outlet-policy switches from their visible rule labels.
+- Extended the Staff/Roles and multi-location source gates. This changes no staff, role, outlet, policy, Firebase, provider, billing, dependency, direct deployment, or production operation.
+
 ## August 15, 2026 - Accessible Transactions Controls
 
 - Named the desktop Transactions action-filter combobox with its existing localized label instead of relying on a visual placeholder.

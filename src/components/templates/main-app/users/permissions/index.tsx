@@ -124,14 +124,23 @@ function UserPermissionsPage() {
                                 <Flex wrap="wrap" gap={12}>
                                     {storeDetails?.roles?.map((role, index) => (
                                         <Card
+                                            aria-label={`Select ${role.name} role`}
+                                            aria-pressed={activeRole?.id === role.id}
                                             key={index}
                                             hoverable
+                                            role="button"
                                             style={{
                                                 background: activeRole?.id == role?.id ? token.colorPrimaryBg : token.colorBgContainer,
                                                 borderColor: activeRole?.id == role?.id ? token.colorPrimaryBorder : token.colorBorderSecondary,
                                                 width: 280,
                                             }}
                                             onClick={() => setActiveRole(role)}
+                                            onKeyDown={(event) => {
+                                                if (event.key !== 'Enter' && event.key !== ' ') return;
+                                                event.preventDefault();
+                                                setActiveRole(role);
+                                            }}
+                                            tabIndex={0}
                                         >
                                             <Meta
                                                 title={<Flex align="center" gap={6} wrap="wrap">{role.name} {!role.active && <Tag color="warning">Inactive</Tag>}</Flex>}
@@ -141,8 +150,10 @@ function UserPermissionsPage() {
                                     ))}
 
                                     <Card
+                                        aria-label="Add Custom Role"
                                         hoverable
                                         aria-disabled={!canAssignRoles}
+                                        role="button"
                                         style={{
                                             background: token.colorFillQuaternary,
                                             borderColor: token.colorBorderSecondary,
@@ -158,6 +169,13 @@ function UserPermissionsPage() {
                                             setActiveRole(null);
                                             setShowDetailsModal({ active: true, data: null })
                                         }}
+                                        onKeyDown={(event) => {
+                                            if (!canAssignRoles || (event.key !== 'Enter' && event.key !== ' ')) return;
+                                            event.preventDefault();
+                                            setActiveRole(null);
+                                            setShowDetailsModal({ active: true, data: null });
+                                        }}
+                                        tabIndex={canAssignRoles ? 0 : -1}
                                     >
                                         <Meta title="Add Custom Role" avatar={<LuPlus />} />
                                     </Card>
