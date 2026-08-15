@@ -260,6 +260,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         // /client/robots.txt and /client/sitemap.xml with per-store discovery
         // metadata; platform domains still fall through without rewrite.
         '/manifest.json',
+        '/manifest.webmanifest',
         '/sw.js',
         '/serwist/',
         '/sw-customer.js',

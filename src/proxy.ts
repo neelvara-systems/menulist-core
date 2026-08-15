@@ -1063,6 +1063,14 @@ export async function proxy(request: NextRequest) {
 // Apply middleware to all routes except static files and images
 export const config = {
     matcher: [
+        // PWA transport resources still need the host-aware security policy.
+        // Keep these explicit entries ahead of the broad static-file exclusion
+        // so QA hosts remain noindex without applying QA headers in production.
+        '/manifest.json',
+        '/manifest.webmanifest',
+        '/serwist/:path*',
+        '/sw.js',
+        '/sw-customer.js',
         /*
          * Match all request paths except:
          * - _next/static (static files)

@@ -25,6 +25,8 @@ function stripJsComments(content) {
 
 const nextConfig = read('next.config.js');
 const executableNextConfig = stripJsComments(nextConfig);
+const proxy = read('src/proxy.ts');
+const domainResolver = read('src/lib/multiTenant/domainResolver.ts');
 const worker = read('src/app/sw.ts');
 const serwistRoute = read('src/app/serwist/[path]/route.ts');
 assertIncludes(nextConfig, "withSerwist(nextConfig)", 'owner PWA build boundary');
@@ -33,6 +35,16 @@ assertIncludes(worker, 'clientsClaim: true', 'owner PWA client claim');
 assertIncludes(serwistRoute, "additionalPrecacheEntries: [{ url: '/offline', revision }]", 'owner PWA offline fallback');
 assertIncludes(serwistRoute, "`${distDir}/static/**/*.css`", 'owner PWA bounded style precache');
 assert(!serwistRoute.includes('**/*.js'), 'owner PWA must not precache every product JavaScript chunk');
+for (const route of [
+  "'/manifest.json'",
+  "'/manifest.webmanifest'",
+  "'/serwist/:path*'",
+  "'/sw.js'",
+  "'/sw-customer.js'",
+]) {
+  assertIncludes(proxy, route, 'PWA transport Proxy matcher');
+}
+assertIncludes(domainResolver, "'/manifest.webmanifest'", 'customer manifest domain-routing bypass');
 for (const cacheName of ['owner-dashboard-pages', 'auth-pages', 'screen-pages']) {
   assert(!executableNextConfig.includes(`cacheName: '${cacheName}'`), `owner PWA must not cache ${cacheName}`);
 }

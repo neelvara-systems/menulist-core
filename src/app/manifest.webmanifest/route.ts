@@ -3,9 +3,9 @@
  *
  * Route: {tenant-origin}/manifest.webmanifest
  *
- * Served directly (middleware matcher excludes .webmanifest), so this handler
- * reads the Host header itself and resolves the tenant via the same
- * resolveDomain() function the middleware uses.
+ * Passed through Proxy only for host-aware security headers. Domain routing
+ * explicitly bypasses this path, so this handler still reads the original Host
+ * header and resolves the tenant via the same resolveDomain() function.
  *
  * Caching:
  *   - Reuses `getStoreBySubdomain` / `getStoreByCustomDomain` (60s unstable_cache)
@@ -145,8 +145,8 @@ export async function GET() {
 
         const h = await headers();
         // Tenant identity must come from the request Host authority. This route
-        // is intentionally excluded from middleware, so do not accept
-        // forwarded Host headers as a tenant selector or public manifest cache key.
+        // intentionally bypasses Proxy domain routing, so do not accept forwarded
+        // Host headers as a tenant selector or public manifest cache key.
         requestHostname = h.get('host') || '';
         const domain = resolveDomain(requestHostname);
         resolvedDomain = domain;
