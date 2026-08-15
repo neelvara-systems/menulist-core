@@ -51,6 +51,7 @@ function verifyProtectedPaymentRoute(content, routeLabel, endpoint) {
 function verifyBillingEntitlementBoundary() {
   const packageJson = JSON.parse(read('package.json'));
   const billingAccess = read('src/lib/billing/billingAccess.ts');
+  const pricingPlansModal = read('src/components/templates/main-app/billing/PricingPlansModal.tsx');
   const createSubscription = read('src/app/api/razorpay/create-subscription/route.ts');
   assertIncludes(createSubscription, '.catch((): null => null);', 'create-subscription exact persistence recovery miss');
   const verifySubscription = read('src/app/api/razorpay/verify-subscription/route.ts');
@@ -221,6 +222,16 @@ function verifyBillingEntitlementBoundary() {
       && packageJson.scripts['verify:billing-entitlement-boundary'].includes('npm run test:answerlattice-subscription-read-boundary'),
     'package.json must expose verify:billing-entitlement-boundary',
   );
+  [
+    'aria-label="Billing interval"',
+    'const planDisplayName =',
+    'const purchaseActionLabel =',
+    '`Get started with ${planDisplayName}`',
+    '`Upgrade to ${planDisplayName}`',
+    '`Change to ${planDisplayName}`',
+    '`Contact us about ${planDisplayName}`',
+    'aria-label={purchaseActionLabel}',
+  ].forEach((token) => assertIncludes(pricingPlansModal, token, 'Billing plan chooser accessible names'));
   [
     ".where('status', 'in', ['pending', 'active'])",
     "pending.status === 'active' && hasVerifiedSubscriptionPaymentEvidence(pending)",

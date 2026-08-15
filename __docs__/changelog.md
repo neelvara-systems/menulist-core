@@ -1,5 +1,10 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Accessible Billing Plan Chooser
+
+- Named the plan-interval switch and gave every plan action a plan-specific accessible name across new, upgrade, downgrade, and custom-plan states.
+- Extended the billing-entitlement source gate. This changes no visible pricing, checkout callback, Razorpay/provider operation, subscription, entitlement, Firebase data, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Accessible Team And Location Controls
 
 - Named every desktop staff-row action with its target staff member so repeated edit, details, passcode, sign-out, and removal controls remain distinguishable.

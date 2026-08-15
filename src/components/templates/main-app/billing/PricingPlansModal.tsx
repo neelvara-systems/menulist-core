@@ -57,6 +57,14 @@ const PlanCardComponent = ({
     renderFeatureItems?: (plan: Plan, currency: Currency) => any,
 }) => {
     const { token } = theme.useToken();
+    const planDisplayName = plan.name.replace(' (Yearly)', '').replace(' (Monthly)', '');
+    const purchaseActionLabel = plan.planId === 'custom'
+        ? `Contact us about ${planDisplayName}`
+        : action === 'upgrade'
+            ? (currentPlanId && (planTierOrder[plan.planId] || 0) < (planTierOrder[currentPlanId] || 0)
+                ? `Change to ${planDisplayName}`
+                : `Upgrade to ${planDisplayName}`)
+            : `Get started with ${planDisplayName}`;
     const style = plan.planId === 'starter'
         ? {
             color: token.colorSuccess,
@@ -122,7 +130,7 @@ const PlanCardComponent = ({
                 <Row justify="center" align="middle" gutter={16}>
                     <Col>{style.icon}</Col>
                     <Col>
-                        <Title level={4} style={{ marginBottom: 0 }}>{plan.name.replace(` (Yearly)`, '').replace(` (Monthly)`, '')}</Title>
+                        <Title level={4} style={{ marginBottom: 0 }}>{planDisplayName}</Title>
                     </Col>
                 </Row>
 
@@ -191,6 +199,7 @@ const PlanCardComponent = ({
 
             <div style={{ marginTop: '24px' }}>
                 <Button
+                    aria-label={purchaseActionLabel}
                     shape='round'
                     size="large"
                     type={plan.isRecommended ? 'primary' : 'default'}
@@ -295,6 +304,7 @@ function PricingPlansModal({
                     <Col>
                         <Flex justify='center' align='center' gap={8}>
                             <Switch
+                                aria-label="Billing interval"
                                 className='pricing-switch'
                                 style={{ margin: '0 8px' }}
                                 checked={billingInterval === 'YEAR'}
