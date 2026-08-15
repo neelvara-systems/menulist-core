@@ -93,7 +93,7 @@ function getBusinessFactsCopyPackEvidenceText(evidence: BusinessFactsCopyPackEvi
     case 'local_format_invalid':
       return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'deterministic_copy':
-      return 'Copy was generated from owner-entered facts only. No AI rewrite was generated.';
+      return 'Copy uses owner-entered facts and explicit missing-fact placeholders only. No AI rewrite was generated.';
     case 'external_boundary':
       return 'External profiles and platforms were not opened, inspected, or updated.';
     case 'not_provided':
@@ -182,7 +182,7 @@ function getActionSentence(action: BusinessFactsCopyPackAction, actionLink: stri
 
   if (link) return `${label}: ${link}`;
   if (phoneOrWhatsapp) return `${label}: ${phoneOrWhatsapp}`;
-  return `${label}: add the best customer action.`;
+  return `${label}: add the best customer action`;
 }
 
 function buildCopyBlocks(input: {
@@ -256,7 +256,7 @@ function buildCopyBlocks(input: {
         `Offer: ${offer}`,
         `Hours: ${hours}`,
         `Area: ${location}`,
-        `Best action: ${actionSentence}`,
+        `Best action: ${actionSentence}.`,
         `Link to send: ${customerLink}`,
         `If unsure: use the current customer link before answering from memory.`,
       ].join('\n'),

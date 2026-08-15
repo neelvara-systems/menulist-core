@@ -91,7 +91,8 @@ assertIncludes(aggregateVerifier, 'verify-business-facts-copy-pack.js', 'Public 
 
 assertIncludes(readmeDoc, '## Version Ladder', 'Business Facts Copy Pack README');
 assertIncludes(readmeDoc, 'npm run verify:business-facts-copy-pack', 'Business Facts Copy Pack README source gate');
-assertIncludes(specDoc, 'All copy is deterministic string assembly from owner-entered facts. No AI rewrite is generated.', 'Business Facts Copy Pack deterministic copy boundary');
+assertIncludes(specDoc, 'All copy is deterministic string assembly from owner-entered facts plus explicit missing-fact placeholders. No AI rewrite is generated.', 'Business Facts Copy Pack deterministic copy boundary');
+assertIncludes(validationDoc, 'copy blocks are generated from owner-entered facts plus explicit missing-fact placeholders', 'Business Facts Copy Pack validation placeholder boundary');
 assertIncludes(specDoc, 'V0 must not:', 'Business Facts Copy Pack V0 forbidden scope');
 assertIncludes(implDoc, 'evidenceText: string', 'Business Facts Copy Pack implementation evidence contract');
 assertIncludes(implDoc, 'Boundary flags are all false', 'Business Facts Copy Pack implementation boundary flags');
@@ -155,7 +156,10 @@ assertIncludes(report, 'aiOrSearchChecked: false', 'Business Facts Copy Pack rep
 assertIncludes(report, 'rankingPromise: false', 'Business Facts Copy Pack report ranking boundary');
 assertIncludes(report, 'getBusinessFactsCopyPackEvidenceText', 'Business Facts Copy Pack explicit evidence text');
 assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Business Facts Copy Pack URL evidence boundary');
-assertIncludes(report, 'Copy was generated from owner-entered facts only. No AI rewrite was generated.', 'Business Facts Copy Pack deterministic copy evidence boundary');
+assertIncludes(report, 'Copy uses owner-entered facts and explicit missing-fact placeholders only. No AI rewrite was generated.', 'Business Facts Copy Pack deterministic copy evidence boundary');
+assertNotIncludes(report, 'Copy was generated from owner-entered facts only.', 'Business Facts Copy Pack stale deterministic copy evidence');
+assertIncludes(report, 'return `${label}: add the best customer action`;', 'Business Facts Copy Pack fallback action punctuation');
+assertIncludes(report, '`Best action: ${actionSentence}.`', 'Business Facts Copy Pack staff action punctuation');
 assertIncludes(report, 'External profiles and platforms were not opened, inspected, or updated.', 'Business Facts Copy Pack external platform evidence boundary');
 
 for (const content of [route, report, types]) {

@@ -23,7 +23,7 @@ npm run verify:public-truth-tools
 - feature flag exists and points to this doc set
 - full doc set lives under `__docs__/menulist-tools/business-facts-copy-pack/`
 - report builder is browser-local and deterministic
-- copy blocks are generated from owner-entered facts only
+- copy blocks are generated from owner-entered facts plus explicit missing-fact placeholders
 - evidence text is rendered for report rows and copy blocks
 - shareable report link uses the existing hash-based report viewer
 - optional handoff posts only to `/api/public/contact`

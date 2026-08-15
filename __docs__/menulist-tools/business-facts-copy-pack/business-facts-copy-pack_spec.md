@@ -63,7 +63,7 @@ Copy blocks:
 - Staff answer card
 - Customer link share text
 
-All copy is deterministic string assembly from owner-entered facts. No AI rewrite is generated.
+All copy is deterministic string assembly from owner-entered facts plus explicit missing-fact placeholders. No AI rewrite is generated.
 
 ## 5. Report Rows
 
