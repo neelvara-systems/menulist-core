@@ -145,6 +145,8 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Photo Gap Check report
 assertIncludes(report, 'aiOrSearchChecked: false', 'Photo Gap Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Photo Gap Check report ranking boundary');
 assertIncludes(report, 'getPhotoGapEvidenceText', 'Photo Gap Check explicit evidence text');
+assertIncludes(report, "if (status === 'ready') return 'review_current_link'", 'Photo Gap Check ready-link next action');
+assertIncludes(report, "return 'create_customer_link'", 'Photo Gap Check link-gap next action');
 assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Photo Gap Check URL evidence boundary');
 assertIncludes(report, 'Images were not uploaded, analyzed, fetched, or inspected on external platforms.', 'Photo Gap Check image inspection evidence boundary');
 
@@ -203,8 +205,10 @@ assert(hiIN.Website?.PhotoGapCheckPage, 'hi-IN PhotoGapCheckPage locale keys mus
 assert(enUS.Website.PhotoGapCheckPage.checks.external_photo_verification, 'en-US external photo boundary copy must exist');
 assert(hiIN.Website.PhotoGapCheckPage.checks.external_photo_verification, 'hi-IN external photo boundary copy must exist');
 assert(enUS.Website.PhotoGapCheckPage.reportActions?.copy, 'en-US report copy key must exist');
+assert(enUS.Website.PhotoGapCheckPage.nextActions?.review_current_link, 'en-US ready-link next action must exist');
 assert(enUS.Website.PhotoGapCheckPage.handoff?.submit, 'en-US handoff submit key must exist');
 assert(hiIN.Website.PhotoGapCheckPage.reportActions?.copy, 'hi-IN report copy key must exist');
+assert(hiIN.Website.PhotoGapCheckPage.nextActions?.review_current_link, 'hi-IN ready-link next action must exist');
 assert(hiIN.Website.PhotoGapCheckPage.handoff?.submit, 'hi-IN handoff submit key must exist');
 
 console.log('Photo Gap Check verification passed');

@@ -11,8 +11,8 @@
 | --- | --- | --- |
 | Empty form | No selected visual facts, no link | `missing_basics` |
 | One visual fact | Logo selected only | `unclear` |
-| Ready visual profile | Logo, cover, location/team, product/service, current photos, public page images, valid link | `ready` |
-| Invalid link | Ready-ish visual facts with malformed link | `unclear` with current customer link row unclear |
+| Ready visual profile | Logo, cover, location/team, product/service, current photos, public page images, valid link | `ready`; next action reviews the existing current link |
+| Invalid link | Complete visual facts with malformed link | `unclear` with current customer link row unclear; next action creates the customer link rather than claiming visual basics are missing |
 | External verification | Any input | `external_photo_verification` is always `not_checked` |
 
 ---

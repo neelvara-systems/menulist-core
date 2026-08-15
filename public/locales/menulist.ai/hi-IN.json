@@ -9611,7 +9611,7 @@
       },
       "nextActions": {
         "create_customer_link": {
-          "title": "Visuals को एक customer link में जोड़ें",
+          "title": "Visuals को one customer link पर रखें",
           "description": "Logo, photos, current offer list, और contact actions साथ रखें ताकि customers one current source देखें.",
           "cta": "Create customer link"
         },
@@ -9619,6 +9619,11 @@
           "title": "पहले visual profile complete करें",
           "description": "इस business source को widely share करने से पहले missing visual basics जोड़ें.",
           "cta": "Create customer link"
+        },
+        "review_current_link": {
+          "title": "इस customer link को current रखें",
+          "description": "Visual basics ready हैं. Photos या business details बदलने पर existing customer link review करें.",
+          "cta": "Review customer link"
         },
         "manual_review": {
           "title": "Setup help request करें",

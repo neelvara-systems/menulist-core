@@ -107,10 +107,29 @@ function getStatus(checks: PhotoGapCheckItem[]): PhotoGapCheckReport['status'] {
   return hasBlockingGap ? 'unclear' : 'ready';
 }
 
-function getNextActionType(status: PhotoGapCheckReport['status']): PhotoGapCheckReport['nextAction']['type'] {
-  if (status === 'ready') return 'create_customer_link';
+function getNextActionType(
+  checks: PhotoGapCheckItem[],
+  status: PhotoGapCheckReport['status'],
+): PhotoGapCheckReport['nextAction']['type'] {
   if (status === 'manual_review_needed') return 'manual_review';
-  return 'complete_visual_profile';
+
+  const visualCheckIds: PhotoGapCheckId[] = [
+    'logo',
+    'cover_image',
+    'location_or_team_photo',
+    'product_or_service_photos',
+    'photo_context',
+    'public_page_images',
+  ];
+  const hasVisualGap = checks.some((check) =>
+    visualCheckIds.includes(check.id)
+    && check.result !== 'present'
+    && check.result !== 'not_applicable'
+  );
+
+  if (hasVisualGap) return 'complete_visual_profile';
+  if (status === 'ready') return 'review_current_link';
+  return 'create_customer_link';
 }
 
 export function buildPhotoGapCheckReport(input: PhotoGapCheckInput): PhotoGapCheckReport {
@@ -171,7 +190,7 @@ export function buildPhotoGapCheckReport(input: PhotoGapCheckInput): PhotoGapChe
     summary: countSummary(checks),
     nextAction: {
       href: '/create-menu',
-      type: getNextActionType(status),
+      type: getNextActionType(checks, status),
     },
     boundaries: {
       imageUploaded: false,

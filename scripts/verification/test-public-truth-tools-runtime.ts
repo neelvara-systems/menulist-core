@@ -22,6 +22,7 @@ import {
 } from '../../src/lib/public-truth-tools/phoneValidation';
 import { buildGoogleProfileBasicsReport } from '../../src/lib/public-truth-tools/googleProfileBasicsReport';
 import { buildMenuReadabilityReport } from '../../src/lib/public-truth-tools/menuReadabilityReport';
+import { buildPhotoGapCheckReport } from '../../src/lib/public-truth-tools/photoGapCheckReport';
 import { buildPublicTruthCheckReport } from '../../src/lib/public-truth-tools/publicTruthCheckReport';
 import { buildSocialBioLinkCheckReport } from '../../src/lib/public-truth-tools/socialBioLinkCheckReport';
 import {
@@ -781,6 +782,37 @@ const printShareReport = buildPrintShareToolReport('qr-poster-maker', {
 });
 assert.equal(getCheckResult(printShareReport.checks, 'customer_link'), 'missing');
 assert.equal(printShareReport.customerLink, '');
+
+const completePhotoGapInput = {
+  mode: 'self_report' as const,
+  businessName: 'QA Photo Clinic',
+  cityOrArea: 'Pune',
+  businessType: 'clinic' as const,
+  currentCustomerLink: 'https://example.com/clinic',
+  logoPresent: true,
+  coverImagePresent: true,
+  locationOrTeamPhotoPresent: true,
+  productOrServicePhotosPresent: true,
+  photosLookCurrent: true,
+  publicPageHasImages: true,
+};
+const readyPhotoGapReport = buildPhotoGapCheckReport(completePhotoGapInput);
+assert.equal(readyPhotoGapReport.status, 'ready');
+assert.equal(readyPhotoGapReport.nextAction.type, 'review_current_link');
+
+const malformedLinkPhotoGapReport = buildPhotoGapCheckReport({
+  ...completePhotoGapInput,
+  currentCustomerLink: 'not-a-url',
+});
+assert.equal(malformedLinkPhotoGapReport.status, 'unclear');
+assert.equal(malformedLinkPhotoGapReport.nextAction.type, 'create_customer_link');
+
+const visualGapPhotoGapReport = buildPhotoGapCheckReport({
+  ...completePhotoGapInput,
+  currentCustomerLink: '',
+  coverImagePresent: false,
+});
+assert.equal(visualGapPhotoGapReport.nextAction.type, 'complete_visual_profile');
 
 const payload: ShareableToolReportPayload = {
   schemaVersion: SHAREABLE_TOOL_REPORT_SCHEMA_VERSION,

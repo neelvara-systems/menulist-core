@@ -76,7 +76,7 @@ export interface PhotoGapCheckReport {
     notChecked: number;
   };
   nextAction: {
-    type: 'create_customer_link' | 'complete_visual_profile' | 'manual_review';
+    type: 'create_customer_link' | 'complete_visual_profile' | 'review_current_link' | 'manual_review';
     href: string;
   };
   boundaries: {
@@ -92,6 +92,8 @@ export interface PhotoGapCheckReport {
   };
 }
 ```
+
+Next-action routing is gap-specific: missing visual rows route to visual completion, a link-only gap routes to customer-link creation, and a ready report with an existing valid link routes to reviewing that current link rather than creating a duplicate.
 
 Every `PhotoGapCheckItem` includes `evidenceText: string`.
 

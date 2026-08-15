@@ -80,7 +80,7 @@ export interface PhotoGapCheckReport {
   };
   nextAction: {
     href: string;
-    type: 'create_customer_link' | 'complete_visual_profile' | 'manual_review';
+    type: 'create_customer_link' | 'complete_visual_profile' | 'review_current_link' | 'manual_review';
   };
   boundaries: {
     imageUploaded: false;

@@ -9836,7 +9836,7 @@
       },
       "nextActions": {
         "create_customer_link": {
-          "title": "Add visuals to one customer link",
+          "title": "Put the visuals on one customer link",
           "description": "Keep the logo, photos, current offer list, and contact actions together so customers see one current page.",
           "cta": "Create customer link"
         },
@@ -9844,6 +9844,11 @@
           "title": "Complete the visual profile first",
           "description": "Add the missing visual basics before sharing this business page widely.",
           "cta": "Create customer link"
+        },
+        "review_current_link": {
+          "title": "Keep this customer link current",
+          "description": "The visual basics are ready. Review the existing customer link when the photos or business details change.",
+          "cta": "Review customer link"
         },
         "manual_review": {
           "title": "Request setup help",
