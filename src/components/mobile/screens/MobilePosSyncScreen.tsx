@@ -716,7 +716,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                             <Text strong>{t('enablePosSync')}</Text>
                             <Text type="secondary">{t('enablePosSyncDesc')}</Text>
                         </Flex>
-                        <Switch checked={enabled} disabled={secretLoading} onChange={(checked) => void handleToggle(checked)} />
+                        <Switch aria-label={t('enablePosSync')} checked={enabled} disabled={secretLoading} onChange={(checked) => void handleToggle(checked)} />
                     </Flex>
                 </Card>
 

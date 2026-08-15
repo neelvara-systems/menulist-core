@@ -720,6 +720,10 @@ function verifyPosSyncBoundary() {
   verifyProtectedPosRoute(testRoute, 'POS test route boundary', 'pos-test:${storeRateLimitHash}');
   verifyTestRoute(testRoute);
   verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse, secretResponse);
+  [
+    [desktopPosSync, 'Desktop POS sync enable control'],
+    [mobilePosSync, 'Mobile POS sync enable control'],
+  ].forEach(([source, label]) => assertIncludes(source, "aria-label={t('enablePosSync')}", label));
   verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
