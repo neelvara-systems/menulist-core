@@ -161,6 +161,10 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Social Bio Link Consis
 assertIncludes(report, 'aiOrSearchChecked: false', 'Social Bio Link Consistency Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Social Bio Link Consistency Check report ranking boundary');
 assertIncludes(report, 'getSocialBioLinkCheckEvidenceText', 'Social Bio Link Consistency Check explicit evidence text');
+assertIncludes(report, "if (placementCount < 2) return 'place_customer_link';", 'Social Bio Link Consistency Check limited-placement next action');
+assertIncludes(report, "case 'owner_cleanup_selected':", 'Social Bio Link Consistency Check cleanup evidence source');
+assertIncludes(report, "case 'owner_action_selected':", 'Social Bio Link Consistency Check action evidence source');
+assertIncludes(report, 'This fact was not confirmed by the owner.', 'Social Bio Link Consistency Check generic missing-fact evidence');
 assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'Social Bio Link Consistency Check public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'No social profile was opened, fetched, inspected, or changed.', 'Social Bio Link Consistency Check profile evidence boundary');
 assertIncludes(report, 'Instagram, Facebook, WhatsApp, Google, websites, QR codes, print materials, search results, and AI answers were not inspected.', 'Social Bio Link Consistency Check external inspection evidence boundary');
@@ -225,6 +229,8 @@ assert(enUS.Website.SocialBioLinkCheckPage.checks.external_social_inspection, 'e
 assert(hiIN.Website.SocialBioLinkCheckPage.checks.external_social_inspection, 'hi-IN external inspection copy must exist');
 assert(enUS.Website.SocialBioLinkCheckPage.placementPreview?.placementCount, 'en-US placement preview copy must exist');
 assert(hiIN.Website.SocialBioLinkCheckPage.placementPreview?.placementCount, 'hi-IN placement preview copy must exist');
+assert(enUS.Website.SocialBioLinkCheckPage.placementPreview.placementCount.includes('{count, plural,'), 'en-US placement count must support singular grammar');
+assert(hiIN.Website.SocialBioLinkCheckPage.placementPreview.placementCount.includes('{count, plural,'), 'hi-IN placement count must support singular grammar');
 assert(enUS.Website.SocialBioLinkCheckPage.reportActions?.copy, 'en-US report copy key must exist');
 assert(enUS.Website.SocialBioLinkCheckPage.reportActions?.shareLink, 'en-US report share link key must exist');
 assert(enUS.Website.SocialBioLinkCheckPage.handoff?.submit, 'en-US handoff submit key must exist');

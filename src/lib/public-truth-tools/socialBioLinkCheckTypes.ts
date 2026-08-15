@@ -31,6 +31,8 @@ export type SocialBioLinkCheckStatus =
 export type SocialBioLinkCheckEvidence =
   | 'owner_entered'
   | 'owner_selected'
+  | 'owner_cleanup_selected'
+  | 'owner_action_selected'
   | 'valid_customer_url'
   | 'invalid_customer_url'
   | 'not_provided'

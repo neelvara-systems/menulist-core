@@ -21,6 +21,9 @@ npm run verify:social-bio-link-check
 | SBLC-007 | Download report | Text download is created locally and no report storage is created |
 | SBLC-008 | Optional handoff without consent | Form blocks submit |
 | SBLC-009 | Optional handoff with consent | Existing `/api/public/contact` path is used |
+| SBLC-010 | One placement, clear action, and old links removed | Status is `unclear` and next action is to place the current link elsewhere, not review it as consistent |
+| SBLC-011 | Cleanup and customer-action confirmations render evidence | Each row cites its own owner confirmation rather than a social/profile link selection |
+| SBLC-012 | Exactly one placement is confirmed | Preview says `1 placement confirmed` |
 
 ## Boundary Tests
 

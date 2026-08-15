@@ -23,6 +23,7 @@ import {
 import { buildGoogleProfileBasicsReport } from '../../src/lib/public-truth-tools/googleProfileBasicsReport';
 import { buildMenuReadabilityReport } from '../../src/lib/public-truth-tools/menuReadabilityReport';
 import { buildPublicTruthCheckReport } from '../../src/lib/public-truth-tools/publicTruthCheckReport';
+import { buildSocialBioLinkCheckReport } from '../../src/lib/public-truth-tools/socialBioLinkCheckReport';
 import {
   boundPublicTruthToolInput,
   PUBLIC_TRUTH_TOOL_INPUT_LIMITS,
@@ -540,6 +541,35 @@ assert.match(
   clinicPriceCheck?.evidenceText || '',
   /owner-selected clinic business type/,
   'the clinic price exception must cite the selected business type rather than a price visibility checkbox',
+);
+
+const limitedSocialPlacements = buildSocialBioLinkCheckReport({
+  mode: 'self_report',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  currentCustomerLink: 'https://example.com/menu',
+  instagramBioUsesCustomerLink: true,
+  facebookPageUsesCustomerLink: false,
+  whatsappProfileUsesCustomerLink: false,
+  googleProfileUsesCustomerLink: false,
+  websiteUsesCustomerLink: false,
+  qrOrPrintUsesCustomerLink: false,
+  oldLinksRemoved: true,
+  actionClear: true,
+});
+assert.equal(limitedSocialPlacements.status, 'unclear');
+assert.equal(
+  limitedSocialPlacements.nextAction.type,
+  'place_customer_link',
+  'one confirmed placement must route to another placement rather than claim the placements are ready to review',
+);
+assert.equal(
+  limitedSocialPlacements.checks.find((check) => check.id === 'old_link_cleanup')?.evidence,
+  'owner_cleanup_selected',
+);
+assert.equal(
+  limitedSocialPlacements.checks.find((check) => check.id === 'customer_action')?.evidence,
+  'owner_action_selected',
 );
 
 const whatsAppReply = buildWhatsAppReplyPackReport({

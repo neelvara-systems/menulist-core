@@ -11347,7 +11347,7 @@
         "label": "Local placement preview",
         "defaultBusiness": "Your business",
         "defaultArea": "Public customer paths",
-        "placementCount": "{count} placements confirmed"
+        "placementCount": "{count, plural, one {# placement confirmed} other {# placements confirmed}}"
       },
       "placements": {
         "instagram": "Instagram bio",

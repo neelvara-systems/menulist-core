@@ -35,6 +35,8 @@ The report returns:
 
 Every row includes `evidenceText` that says what was actually checked.
 
+A valid link with only one confirmed placement remains a placement job even when old links are already removed. Cleanup and customer-action rows cite their own owner confirmations rather than describing those confirmations as social/profile link selections. Placement counts use singular and plural grammar.
+
 ## Checks
 
 | Check | Required | Source |

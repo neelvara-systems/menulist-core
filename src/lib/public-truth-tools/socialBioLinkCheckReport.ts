@@ -31,12 +31,16 @@ function getSocialBioLinkCheckEvidenceText(evidence: SocialBioLinkCheckEvidence)
       return 'Checked owner-entered business details only. No social profile, website, QR code, or public profile was opened or fetched.';
     case 'owner_selected':
       return 'Checked owner-selected social/profile link facts only. No social profile was opened, fetched, inspected, or changed.';
+    case 'owner_cleanup_selected':
+      return "Checked the owner's old-link cleanup confirmation only. No external source was inspected or changed.";
+    case 'owner_action_selected':
+      return "Checked the owner's customer-action confirmation only. No external source was inspected or changed.";
     case 'valid_customer_url':
       return 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.';
     case 'invalid_customer_url':
       return 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.';
     case 'not_provided':
-      return 'This placement was not confirmed by the owner.';
+      return 'This fact was not confirmed by the owner.';
     case 'not_checked':
       return 'This fact was not checked in V0. Instagram, Facebook, WhatsApp, Google, websites, QR codes, print materials, search results, and AI answers were not inspected.';
     default:
@@ -124,6 +128,7 @@ function getNextActionType(
   if (!validCurrentCustomerLink) return 'create_customer_link';
   if (placementCount === 0 || status === 'missing_basics') return 'place_customer_link';
   if (!oldLinksRemoved) return 'clean_up_old_links';
+  if (placementCount < 2) return 'place_customer_link';
   return 'review_customer_link';
 }
 
@@ -175,12 +180,12 @@ export function buildSocialBioLinkCheckReport(input: SocialBioLinkCheckInput): S
     makeCheck(
       'old_link_cleanup',
       input.oldLinksRemoved ? 'present' : 'unclear',
-      input.oldLinksRemoved ? 'owner_selected' : 'not_provided',
+      input.oldLinksRemoved ? 'owner_cleanup_selected' : 'not_provided',
     ),
     makeCheck(
       'customer_action',
       input.actionClear ? 'present' : 'missing',
-      input.actionClear ? 'owner_selected' : 'not_provided',
+      input.actionClear ? 'owner_action_selected' : 'not_provided',
     ),
     makeCheck('external_social_inspection', 'not_checked', 'not_checked'),
   ];
