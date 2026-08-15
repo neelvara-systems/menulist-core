@@ -95,6 +95,7 @@ const desktopPage = read('src/components/templates/main-app/ownerBusinessAssista
 const desktopPanel = read('src/components/templates/main-app/ownerBusinessAssistant/PublicTruthMonitorPanel.tsx');
 const mobileScreen = read('src/components/mobile/screens/MobileBusinessHealthScreen.tsx');
 const mobileCard = read('src/components/mobile/components/MobilePublicTruthMonitorCard.tsx');
+const websiteLocale = read('public/locales/menulist.ai/en-US.json');
 const implDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_impl.md');
 const firebaseDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_firebase.md');
 const testsDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_test-cases.md');
@@ -263,13 +264,19 @@ assertIncludes(clientContracts, 'parsed.summary.sId !== expectedScope.storeId', 
 
 assertIncludes(desktopPage, 'PublicTruthMonitorPanel', 'Business Health desktop panel mount');
 assertIncludes(desktopPage, 'tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}', 'desktop tenant scope propagation');
-assertIncludes(desktopPanel, 'Public truth history', 'desktop owner copy');
-assertIncludes(desktopPanel, 'Download report', 'desktop export action');
-assertIncludes(desktopPanel, 'Run check', 'desktop refresh action');
+assertIncludes(desktopPanel, "t('businessHealth.publicTruth.historyTitle')", 'desktop localized owner copy');
+assertIncludes(desktopPanel, "t('businessHealth.publicTruth.downloadEnglishReport')", 'desktop localized export action');
+assertIncludes(desktopPanel, "t('businessHealth.publicTruth.runCheck')", 'desktop localized refresh action');
 assertIncludes(mobileScreen, 'MobilePublicTruthMonitorCard', 'Business Health mobile card mount');
 assertIncludes(mobileScreen, 'tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}', 'mobile tenant scope propagation');
-assertIncludes(mobileCard, 'Public truth history', 'mobile owner copy');
+assertIncludes(mobileCard, "t('businessHealth.publicTruth.historyTitle')", 'mobile localized owner copy');
+assertIncludes(mobileCard, "t('businessHealth.publicTruth.downloadEnglishShort')", 'mobile localized export action');
+assertIncludes(mobileCard, "t('businessHealth.publicTruth.runCheck')", 'mobile localized refresh action');
 assertIncludes(mobileCard, 'minHeight: 44', 'mobile touch target');
+assertIncludes(websiteLocale, '"historyTitle": "Public information history"', 'English localized owner copy');
+assertIncludes(websiteLocale, '"downloadEnglishReport": "Download English report"', 'English localized desktop export action');
+assertIncludes(websiteLocale, '"downloadEnglishShort": "English report"', 'English localized mobile export action');
+assertIncludes(websiteLocale, '"runCheck": "Run check"', 'English localized refresh action');
 
 assertIncludes(implDoc, 'Status:** Runtime implemented', 'implementation doc status');
 assertIncludes(implDoc, 'Public Truth Monitor project and scope ID boundary', 'implementation doc project and scope ID boundary');

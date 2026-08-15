@@ -312,6 +312,7 @@ function assertPublicToolInventoryBoundary() {
   const expectedToolModules = [
     'externalLocationIdentity.ts',
     'mapsPlaceCheckClient.ts',
+    'ownerPublicTruthPresentation.ts',
     'ownerPublicTruthReadiness.ts',
     'phoneValidation.ts',
     'publicTruthMonitorApiResponse.ts',

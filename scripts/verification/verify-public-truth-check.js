@@ -30,6 +30,7 @@ const COMPONENT_PATH = 'src/components/website/publicTruthCheck/PublicTruthCheck
 const REPORT_PATH = 'src/lib/public-truth-tools/publicTruthCheckReport.ts';
 const TYPES_PATH = 'src/lib/public-truth-tools/publicTruthCheckTypes.ts';
 const OWNER_REPORT_PATH = 'src/lib/public-truth-tools/ownerPublicTruthReadiness.ts';
+const OWNER_PRESENTATION_PATH = 'src/lib/public-truth-tools/ownerPublicTruthPresentation.ts';
 const OWNER_HOOK_PATH = 'src/hooks/publicTruthTools/useOwnerPublicTruthReadiness.ts';
 const OWNER_DESKTOP_CARD_PATH = 'src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx';
 const OWNER_MOBILE_CARD_PATH = 'src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx';
@@ -80,6 +81,7 @@ for (const file of [
   REPORT_PATH,
   TYPES_PATH,
   OWNER_REPORT_PATH,
+  OWNER_PRESENTATION_PATH,
   OWNER_HOOK_PATH,
   OWNER_DESKTOP_CARD_PATH,
   OWNER_MOBILE_CARD_PATH,
@@ -109,9 +111,11 @@ const component = read(COMPONENT_PATH);
 const report = read(REPORT_PATH);
 const types = read(TYPES_PATH);
 const ownerReport = read(OWNER_REPORT_PATH);
+const ownerPresentation = read(OWNER_PRESENTATION_PATH);
 const ownerHook = read(OWNER_HOOK_PATH);
 const ownerDesktopCard = read(OWNER_DESKTOP_CARD_PATH);
 const ownerMobileCard = read(OWNER_MOBILE_CARD_PATH);
+const websiteLocale = read('public/locales/menulist.ai/en-US.json');
 const businessHealthPage = read(BUSINESS_HEALTH_PAGE_PATH);
 const mobileBusinessHealthScreen = read(MOBILE_BUSINESS_HEALTH_SCREEN_PATH);
 const businessSettings = read(BUSINESS_SETTINGS_PATH);
@@ -230,30 +234,34 @@ assertIncludes(ownerHook, 'getExistingProjectsListWithoutLoader(true)', 'Public 
 assertIncludes(ownerHook, 'getProjectDataWithoutLoader', 'Public Truth Check owner selected project DAL read');
 assertIncludes(ownerHook, "['businessHealthProjectScope', tenantId, storeId]", 'Public Truth Check owner summary read cache sharing');
 assertIncludes(ownerHook, 'FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK', 'Public Truth Check owner feature flag gate');
-assertIncludes(ownerDesktopCard, 'External platforms stay owner-confirmed', 'Public Truth Check desktop boundary copy');
-assertIncludes(ownerDesktopCard, 'check.evidenceText', 'Public Truth Check desktop explicit evidence text');
+assertIncludes(ownerDesktopCard, "t('businessHealth.publicTruth.boundary')", 'Public Truth Check desktop localized boundary copy');
+assertIncludes(ownerDesktopCard, 'getOwnerPublicTruthFactPresentation', 'Public Truth Check desktop localized fact presentation');
+assertIncludes(ownerDesktopCard, 'presentation.evidence', 'Public Truth Check desktop explicit evidence text');
 assertIncludes(ownerDesktopCard, 'report.modules.map', 'Public Truth Check desktop module summary');
 assertIncludes(ownerDesktopCard, 'report.setupJobList', 'Public Truth Check desktop setup job list');
-assertIncludes(ownerDesktopCard, 'Next public fixes', 'Public Truth Check desktop setup job copy');
+assertIncludes(ownerDesktopCard, "t('businessHealth.publicTruth.nextFixes')", 'Public Truth Check desktop localized setup job copy');
 assertIncludes(ownerDesktopCard, 'job.fixHref', 'Public Truth Check desktop setup job fix path');
-assertIncludes(ownerDesktopCard, 'job.actionLabel', 'Public Truth Check desktop setup job action label');
+assertIncludes(ownerDesktopCard, 'presentation.actionLabel', 'Public Truth Check desktop setup job action label');
 assertIncludes(ownerDesktopCard, 'module.fixHref', 'Public Truth Check desktop module fix path');
-assertIncludes(ownerDesktopCard, 'module.actionLabel', 'Public Truth Check desktop module action label');
-assertIncludes(ownerDesktopCard, 'moduleAction = report.modules.find', 'Public Truth Check desktop primary action uses module fix path');
-assertIncludes(ownerDesktopCard, 'section=business-profile&focus=identity', 'Public Truth Check desktop business identity deep link');
-assertIncludes(ownerDesktopCard, 'section=search-discovery&focus=customer-link', 'Public Truth Check desktop customer link deep link');
-assertIncludes(ownerDesktopCard, 'view=editor&focus=menu-readiness&qualityAction=prices', 'Public Truth Check desktop project quality deep link');
-assertIncludes(ownerDesktopCard, 'Official customer source', 'Public Truth Check desktop owner title');
-assertIncludes(ownerMobileCard, 'External platforms stay owner-confirmed', 'Public Truth Check mobile boundary copy');
-assertIncludes(ownerMobileCard, 'check.evidenceText', 'Public Truth Check mobile explicit evidence text');
+assertIncludes(ownerDesktopCard, 'getOwnerPublicTruthPrimaryAction', 'Public Truth Check desktop localized primary action');
+assertIncludes(ownerPresentation, 'moduleAction = report.modules.find', 'Public Truth Check desktop primary action uses module fix path');
+assertIncludes(ownerPresentation, 'section=business-profile&focus=identity', 'Public Truth Check desktop business identity deep link');
+assertIncludes(ownerPresentation, 'section=search-discovery&focus=customer-link', 'Public Truth Check desktop customer link deep link');
+assertIncludes(ownerPresentation, 'view=editor&focus=menu-readiness&qualityAction=prices', 'Public Truth Check desktop project quality deep link');
+assertIncludes(ownerDesktopCard, "t('businessHealth.publicTruth.title')", 'Public Truth Check desktop localized owner title');
+assertIncludes(ownerMobileCard, "t('businessHealth.publicTruth.boundaryShort')", 'Public Truth Check mobile localized boundary copy');
+assertIncludes(ownerMobileCard, 'getOwnerPublicTruthFactPresentation', 'Public Truth Check mobile localized fact presentation');
+assertIncludes(ownerMobileCard, 'presentation.evidence', 'Public Truth Check mobile explicit evidence text');
 assertIncludes(ownerMobileCard, 'report.modules.map', 'Public Truth Check mobile module summary');
 assertIncludes(ownerMobileCard, 'report?.setupJobList', 'Public Truth Check mobile setup job list');
-assertIncludes(ownerMobileCard, 'Next public fixes', 'Public Truth Check mobile setup job copy');
+assertIncludes(ownerMobileCard, "t('businessHealth.publicTruth.nextFixes')", 'Public Truth Check mobile localized setup job copy');
 assertIncludes(ownerMobileCard, 'job.mobileFixTarget', 'Public Truth Check mobile setup job target');
-assertIncludes(ownerMobileCard, 'job.actionLabel', 'Public Truth Check mobile setup job action label');
+assertIncludes(ownerMobileCard, 'presentation.actionLabel', 'Public Truth Check mobile setup job action label');
 assertIncludes(ownerMobileCard, 'onFixTarget', 'Public Truth Check mobile module action callback');
 assertIncludes(ownerMobileCard, 'module.mobileFixTarget', 'Public Truth Check mobile module target use');
-assertIncludes(ownerMobileCard, 'module.actionLabel', 'Public Truth Check mobile module action label');
+assertIncludes(websiteLocale, '"title": "Official customer source"', 'Public Truth Check English owner title');
+assertIncludes(websiteLocale, '"boundaryShort": "External platforms stay owner-confirmed."', 'Public Truth Check English mobile boundary copy');
+assertIncludes(websiteLocale, '"nextFixes": "Next public fixes"', 'Public Truth Check English setup job copy');
 assertIncludes(businessHealthPage, 'useOwnerPublicTruthReadiness', 'Business Health desktop owner check hook');
 assertIncludes(businessHealthPage, 'PublicTruthOwnerCheckCard', 'Business Health desktop owner check card');
 assertIncludes(mobileBusinessHealthScreen, 'useOwnerPublicTruthReadiness', 'Business Health mobile owner check hook');

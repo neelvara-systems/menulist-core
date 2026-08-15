@@ -464,7 +464,7 @@ The current verifier asserts:
 - every tool has a registry entry
 - every registry entry has a docs file
 - every public tool has a Firebase cost section
-- every report/type module in `src/lib/public-truth-tools/` is either a manifest-backed public tool module or an explicitly shared helper (`shareableToolReport.ts`, `ownerPublicTruthReadiness.ts`, `publicUrlValidation.ts`)
+- every report/type module in `src/lib/public-truth-tools/` is either a manifest-backed public tool module or an explicitly shared helper, including the owner readiness and localized presentation boundaries (`ownerPublicTruthReadiness.ts` and `ownerPublicTruthPresentation.ts`)
 - no tool copy includes ranking/citation guarantees
 - public routes are rate-limited and body-bounded
 - external fetch adapters are absent unless explicitly approved
