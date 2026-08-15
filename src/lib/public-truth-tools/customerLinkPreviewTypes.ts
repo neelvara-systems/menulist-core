@@ -41,6 +41,7 @@ export type CustomerLinkPreviewBusinessKind =
 export type CustomerLinkPreviewEvidence =
   | 'owner_entered'
   | 'owner_selected'
+  | 'owner_business_kind'
   | 'valid_customer_url'
   | 'invalid_customer_url'
   | 'not_provided'

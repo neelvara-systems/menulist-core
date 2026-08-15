@@ -19,6 +19,7 @@
 | CLP-010 | Tool claims it fetched links, scanned websites/profiles, stored reports, checked rankings, or called AI/search providers | Verification fails |
 | CLP-011 | City is entered and business-name-visible is selected, but business name is blank | Business identity remains unclear |
 | CLP-012 | A valid current link has one or more required fact gaps | Next action is complete customer facts, not create another customer link |
+| CLP-013 | Clinic type is selected without the price-visibility checkbox | Price row is not needed and evidence cites the selected clinic type, not an unselected visible fact |
 
 ## Source Gate
 

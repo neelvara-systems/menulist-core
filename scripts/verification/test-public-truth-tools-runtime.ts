@@ -517,6 +517,31 @@ assert.equal(
   'an existing valid customer link with a required fact gap must route to completing facts, not creating another link',
 );
 
+const clinicCustomerLink = buildCustomerLinkPreviewReport({
+  mode: 'self_report',
+  businessName: 'Example Clinic',
+  cityOrArea: 'Pune',
+  businessKind: 'clinic',
+  currentCustomerLink: 'https://example.com/clinic',
+  businessNameVisible: true,
+  menuOrServiceVisible: true,
+  pricesOrRatesVisible: false,
+  hoursVisible: true,
+  locationVisible: true,
+  contactVisible: true,
+  customerActionVisible: true,
+  photosOrIdentityVisible: true,
+  mobileFriendly: true,
+});
+const clinicPriceCheck = clinicCustomerLink.checks.find((check) => check.id === 'prices_or_rates');
+assert.equal(clinicPriceCheck?.result, 'not_applicable');
+assert.equal(clinicPriceCheck?.evidence, 'owner_business_kind');
+assert.match(
+  clinicPriceCheck?.evidenceText || '',
+  /owner-selected clinic business type/,
+  'the clinic price exception must cite the selected business type rather than a price visibility checkbox',
+);
+
 const whatsAppReply = buildWhatsAppReplyPackReport({
   mode: 'self_report',
   actionLink: 'https://example.com/book',

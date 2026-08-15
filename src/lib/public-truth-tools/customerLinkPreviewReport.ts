@@ -34,6 +34,8 @@ function getCustomerLinkPreviewEvidenceText(evidence: CustomerLinkPreviewEvidenc
       return 'Checked owner-entered business details only. The customer link was not opened or fetched.';
     case 'owner_selected':
       return 'Checked owner-selected visible facts only. No external page was inspected.';
+    case 'owner_business_kind':
+      return 'Price or rate visibility was not required for the owner-selected clinic business type.';
     case 'valid_customer_url':
       return 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.';
     case 'invalid_customer_url':
@@ -140,7 +142,11 @@ export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput):
     makeCheck(
       'prices_or_rates',
       input.pricesOrRatesVisible ? 'present' : input.businessKind === 'clinic' ? 'not_applicable' : 'unclear',
-      input.pricesOrRatesVisible ? 'owner_selected' : input.businessKind === 'clinic' ? 'owner_selected' : 'not_provided',
+      input.pricesOrRatesVisible
+        ? 'owner_selected'
+        : input.businessKind === 'clinic'
+          ? 'owner_business_kind'
+          : 'not_provided',
     ),
     makeCheck(
       'hours',

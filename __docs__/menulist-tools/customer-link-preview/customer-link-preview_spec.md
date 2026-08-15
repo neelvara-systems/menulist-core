@@ -37,6 +37,8 @@ Every row includes `evidenceText` that says what was actually checked.
 
 The next action follows the owner-entered link state: a ready valid link routes to review, a valid link with fact gaps routes to completing those facts, and an absent or malformed link routes to creating one current customer link.
 
+When prices or rates are treated as not needed for the clinic business type, the evidence cites that owner-selected business type. It must not claim the owner selected the separate price-visibility fact.
+
 ## Checks
 
 | Check | Required | Source |

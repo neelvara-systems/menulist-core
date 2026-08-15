@@ -154,6 +154,8 @@ assertIncludes(report, 'rankingPromise: false', 'One Customer Link Preview repor
 assertIncludes(report, 'getCustomerLinkPreviewEvidenceText', 'One Customer Link Preview explicit evidence text');
 assertIncludes(report, 'getNextActionType(status, validCurrentCustomerLink)', 'One Customer Link Preview existing-link next action');
 assertIncludes(report, "if (validCurrentCustomerLink) return 'complete_customer_facts';", 'One Customer Link Preview fact-completion routing');
+assertIncludes(report, "case 'owner_business_kind':", 'One Customer Link Preview clinic exception evidence source');
+assertIncludes(report, 'Price or rate visibility was not required for the owner-selected clinic business type.', 'One Customer Link Preview clinic exception evidence text');
 assertIncludes(report, 'The customer link was not opened or fetched.', 'One Customer Link Preview link evidence boundary');
 assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'One Customer Link Preview public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'External links, websites, profiles, search results, and AI answers were not inspected.', 'One Customer Link Preview external inspection evidence boundary');
