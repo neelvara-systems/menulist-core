@@ -807,6 +807,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                             <>
                                 <Input
                                     addonAfter={`.${MENULIST_TENANT_BASE_DOMAIN}`}
+                                    aria-label={t('subdomain')}
                                     placeholder={t('subdomainPlaceholder')}
                                     value={subdomainValue}
                                     onBlur={(event) => void checkAvailability(event.target.value)}
@@ -825,6 +826,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
                                 <Space wrap>
                                     <Button
+                                        aria-label={`${t('checkAvailability')}: ${t('subdomain')}`}
                                         disabled={!canCheckSubdomain}
                                         icon={<LuSearch />}
                                         loading={checkingSubdomain}
@@ -943,6 +945,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 ) : (
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
                         <Input
+                            aria-label={t('customDomain')}
                             placeholder={t('domainPlaceholder')}
                             prefix={<LuGlobe />}
                             value={domainInput}
@@ -958,6 +961,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                         ) : null}
                         <Space wrap>
                             <Button
+                                aria-label={`${t('checkAvailability')}: ${t('customDomain')}`}
                                 disabled={!canCheckDomain}
                                 icon={<LuSearch />}
                                 loading={checkingDomain}

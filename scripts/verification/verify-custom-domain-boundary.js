@@ -202,6 +202,10 @@ forbids(storesDal, [
   'providerCleanupPending',
   'claimReleasePending',
   'refreshPending',
+  "aria-label={t('subdomain')}",
+  "aria-label={t('customDomain')}",
+  "aria-label={`${t('checkAvailability')}: ${t('subdomain')}`}",
+  "aria-label={`${t('checkAvailability')}: ${t('customDomain')}`}",
 ], index === 0 ? 'desktop custom-domain status parity' : 'mobile custom-domain status parity'));
 requires(mobileDomainSettings, [
   'data?.success !== true || !isNonEmptyString(data.domain)',

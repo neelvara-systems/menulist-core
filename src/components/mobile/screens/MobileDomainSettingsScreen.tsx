@@ -778,6 +778,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                 ) : null}
                                 <AntInput
                                     addonAfter={`.${MENULIST_TENANT_BASE_DOMAIN}`}
+                                    aria-label={t('subdomain')}
                                     onChange={(event) => {
                                         setSubdomainValue(event.target.value.toLowerCase().trim());
                                         setAvailability(null);
@@ -802,7 +803,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                     />
                                 ) : null}
                                 <Flex gap={8}>
-                                    <Button block disabled={!canCheckSubdomain} fill="outline" loading={checkingSubdomain} onClick={() => void checkAvailability(subdomainValue)} size="large">
+                                    <Button aria-label={`${t('checkAvailability')}: ${t('subdomain')}`} block disabled={!canCheckSubdomain} fill="outline" loading={checkingSubdomain} onClick={() => void checkAvailability(subdomainValue)} size="large">
                                         <Flex align="center" gap={6}>
                                             <LuSearch size={16} />
                                             <Text>{t('checkAvailability')}</Text>
@@ -882,6 +883,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                         ) : (
                             <>
                                 <Input
+                                    aria-label={t('customDomain')}
                                     onChange={(value) => {
                                         setDomainInput(value);
                                         setDomainAvailability(null);
@@ -897,7 +899,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                     </Flex>
                                 ) : null}
                                 <Flex gap={8}>
-                                    <Button block disabled={!canCheckDomain} fill="outline" loading={checkingDomain} onClick={() => void checkDomainAvailability()} size="large">
+                                    <Button aria-label={`${t('checkAvailability')}: ${t('customDomain')}`} block disabled={!canCheckDomain} fill="outline" loading={checkingDomain} onClick={() => void checkDomainAvailability()} size="large">
                                         <Flex align="center" gap={6}>
                                             <LuSearch size={16} />
                                             <Text>{t('checkAvailability')}</Text>
