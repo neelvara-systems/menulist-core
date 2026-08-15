@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 15, 2026 - Accessible Transactions Controls
+
+- Named the desktop Transactions action-filter combobox with its existing localized label instead of relying on a visual placeholder.
+- Named every icon-only transaction Details action with the localized operation name so repeated row controls remain distinguishable.
+- Extended the AI accounting source gate. This changes no history read, filter, cursor, Firebase operation, provider call, credit balance, checkout, payment, dependency, direct deployment, or production environment.
+
 ## August 15, 2026 - Help Feedback Recovery States
 
 - Kept a failed latest-feedback read visibly unavailable with a retry action instead of silently presenting absent history.

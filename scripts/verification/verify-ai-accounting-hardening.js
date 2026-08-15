@@ -3881,6 +3881,8 @@ assert(!ownerTransactionsPage.includes('Object.values(AI_ACTIONS_TYPES)'), 'desk
 assert(ownerTransactionsPage.includes("t('noCreditActions')"), 'desktop owner transaction page distinguishes free setup actions from charged actions');
 assert(ownerTransactionsPage.includes('getExistingProjectsListWithoutLoader'), 'desktop owner transaction page uses read-only project summary lookup');
 assert(!ownerTransactionsPage.includes('getMetadataProjectsList'), 'desktop owner transaction page does not use project lookup that can create defaults');
+assert(ownerTransactionsPage.includes("aria-label={t('filterByAction')}"), 'desktop owner transaction action filter has a localized accessible name');
+assert(ownerTransactionsPage.includes("aria-label={`${t('details')}: ${formatAiOperationActionLabel(record.action, t)}`}"), 'desktop owner transaction detail actions have localized row-specific accessible names');
 [
   'ai_transactions_page_load_failed',
   'ai_transactions_projects_load_failed',

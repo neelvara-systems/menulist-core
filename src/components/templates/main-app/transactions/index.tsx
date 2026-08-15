@@ -280,6 +280,7 @@ function TransactionPage() {
             key: 'details',
             render: (_: unknown, record: TransactionData) => (
                 <Button
+                    aria-label={`${t('details')}: ${formatAiOperationActionLabel(record.action, t)}`}
                     type="text"
                     icon={<LuArrowRight />}
                     onClick={(event) => {
@@ -327,6 +328,7 @@ function TransactionPage() {
                         allowClear
                     />
                     <Select
+                        aria-label={t('filterByAction')}
                         placeholder={t('filterByAction')}
                         allowClear
                         style={{ width: '200px' }}

@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed mobile assessment — not current device or release certification
-**Last Updated:** July 26, 2026
+**Last Updated:** August 15, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -36,6 +36,7 @@ Mobile users benefit indirectly because:
 - Processing reliability improves for mobile uploads
 - The existing Mobile Transactions screen now consumes the same runtime-validated AI-operation DTO as desktop and Answerlattice history. Malformed response rows/cursors do not enter mobile state, and nested response detail is read through safe JSON-object helpers. No new screen, tab, route, data load, or mobile-specific persistence path was added.
 - Mobile Transactions uses the MenuList-only owner action allowlist and keeps a translated, explicit 44px Next action when an empty capped filtered scan requires manual continuation.
+- The desktop Transactions accessibility correction names its action-filter combobox and icon-only row detail actions. Mobile Transactions already exposes localized names on its filter and refresh icon actions and keeps touch-native transaction rows, so this correction adds no mobile route, DAL, persistence path, or control.
 - Successful/partial authenticated menu extraction appears as a no-credit activity row in the selected outlet history; detailed provider cost/token telemetry remains platform-only.
 - Balance updates carry the effective `billingStoreId` and are applied only to the matching active subscription, so a late response from another store cannot overwrite mobile Billing state.
 - Mobile Billing shows the exact purchased Pack balance and generic plan-enhancement availability. It does not show monthly allowance, monthly remaining, used-this-cycle counts, provider cost, or margin.
