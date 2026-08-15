@@ -145,6 +145,17 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
         );
     };
 
+    const handleKeywordInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Backspace' && !event.currentTarget.value) {
+            latestKeywordsRef.current = latestKeywordsRef.current.slice(0, -1);
+            return;
+        }
+        if (event.key !== 'Enter' && event.key !== ',') return;
+        const normalizedKeyword = event.currentTarget.value.trim().replace(/,$/, '').trim();
+        if (!normalizedKeyword || latestKeywordsRef.current.includes(normalizedKeyword)) return;
+        latestKeywordsRef.current = [...latestKeywordsRef.current, normalizedKeyword];
+    };
+
     const handleSaveSeo = () => {
         onBeforeSaveKeywords?.([...latestKeywordsRef.current]);
         form.submit();
@@ -315,6 +326,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
                     mode="tags"
                     onChange={handleKeywordsChange}
                     onDeselect={handleKeywordDeselect}
+                    onInputKeyDown={handleKeywordInputKeyDown}
                     onSelect={handleKeywordSelect}
                     style={{ width: '100%' }}
                     placeholder={t('keywordsPlaceholder')}

@@ -5722,6 +5722,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(seoTab, 'onBeforeSaveKeywords?.(', 'Desktop SEO save snapshots the current tag control value outside Ant form collection');
   assertIncludes(seoTab, 'onSelect={handleKeywordSelect}', 'Desktop SEO tag additions use the Select event that Ant Form does not replace');
   assertIncludes(seoTab, 'onDeselect={handleKeywordDeselect}', 'Desktop SEO tag removals update the submit snapshot');
+  assertIncludes(seoTab, 'onInputKeyDown={handleKeywordInputKeyDown}', 'Desktop SEO free-form tags are captured from the raw input commit event');
   assertIncludes(mobileSeoAnalytics, 'const normalizedCanonicalUrl = normalizePublicCanonicalUrl(canonicalUrl);', 'Mobile SEO canonical URL write admission');
   assertIncludes(mobileSeoAnalytics, 'canonicalUrl: normalizedCanonicalUrl,', 'Mobile SEO persists only normalized canonical URL truth');
   assertIncludes(diagnostics, 'secureError', 'Business settings diagnostics secure logging');
