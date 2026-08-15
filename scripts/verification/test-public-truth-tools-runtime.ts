@@ -658,6 +658,46 @@ assert.notEqual(
   'an invalid WhatsApp link must not prove that a WhatsApp number is present',
 );
 
+const untouchedWhatsAppAction = buildWhatsAppActionLinkReport({
+  mode: 'self_report',
+  businessName: '',
+  cityOrArea: '',
+  whatsappNumber: '',
+  existingWhatsappLink: '',
+  currentCustomerLink: '',
+  messageIntent: 'other',
+  suggestedMessage: '',
+  menuOrServiceLinkAttached: false,
+  hoursExpectationSet: false,
+  fallbackActionShown: false,
+});
+assert.equal(
+  getCheckResult(untouchedWhatsAppAction.checks, 'message_intent'),
+  'missing',
+  'the untouched intent default must not prove an owner selection',
+);
+
+const alphanumericWhatsAppNumber = buildWhatsAppActionLinkReport({
+  mode: 'self_report',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  whatsappNumber: '+91hello9876543210',
+  existingWhatsappLink: '',
+  currentCustomerLink: 'https://example.com/menu',
+  messageIntent: 'order',
+  suggestedMessage: 'I would like to order from the current menu.',
+  menuOrServiceLinkAttached: true,
+  hoursExpectationSet: true,
+  fallbackActionShown: true,
+});
+const alphanumericNumberCheck = alphanumericWhatsAppNumber.checks.find((check) => check.id === 'whatsapp_number');
+const alphanumericFormatCheck = alphanumericWhatsAppNumber.checks.find((check) => check.id === 'click_to_chat_format');
+assert.equal(alphanumericWhatsAppNumber.previewLink, null);
+assert.equal(alphanumericNumberCheck?.evidence, 'unclear_phone_format');
+assert.equal(alphanumericFormatCheck?.evidence, 'unclear_phone_format');
+assert.match(alphanumericNumberCheck?.evidenceText || '', /Use digits only and include the country code/);
+assert.doesNotMatch(alphanumericFormatCheck?.evidenceText || '', /WhatsApp link format was checked/);
+
 const whatsAppActionWithoutHoursExpectation = buildWhatsAppActionLinkReport({
   mode: 'self_report',
   businessName: 'Example Cafe',

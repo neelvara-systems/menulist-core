@@ -175,7 +175,7 @@ function getWhatsAppActionLinkEvidenceText(evidence: WhatsAppActionLinkEvidence)
     case 'valid_phone_format':
       return 'Phone number shape was checked locally. The number was not verified with WhatsApp.';
     case 'unclear_phone_format':
-      return 'Phone number shape was checked locally. Add country code if this is the customer WhatsApp number.';
+      return 'Phone number shape was checked locally. Use digits only and include the country code for the customer WhatsApp number.';
     case 'valid_whatsapp_link_format':
       return 'WhatsApp link format was checked locally. The link was not opened and no message was sent.';
     case 'invalid_whatsapp_link_format':
@@ -267,8 +267,10 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
   const enteredDigits = normalizePhoneDigits(whatsappNumber);
   const validLinkPhone = getValidLinkPhone(existingWhatsappLink);
   const validPhone = isLikelyWhatsAppPhone(whatsappNumber);
+  const hasWhatsappNumber = Boolean(whatsappNumber);
+  const hasExistingWhatsappLink = Boolean(existingWhatsappLink);
   const hasValidPhoneSource = Boolean(validLinkPhone) || validPhone;
-  const hasAnyPhoneSource = Boolean(whatsappNumber || existingWhatsappLink);
+  const hasAnyPhoneSource = hasWhatsappNumber || hasExistingWhatsappLink;
   const hasRecognizedLink = isRecognizedWhatsAppUrl(parseWhatsAppUrl(existingWhatsappLink));
   const validClickToChat = Boolean(validLinkPhone) || validPhone;
   const hasUnclearPhone = Boolean(enteredDigits) && !validPhone;
@@ -290,9 +292,11 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
         ? 'valid_whatsapp_link_format'
         : validPhone
           ? 'valid_phone_format'
-          : hasAnyPhoneSource
+          : hasWhatsappNumber
             ? 'unclear_phone_format'
-            : 'not_provided',
+            : hasExistingWhatsappLink
+              ? 'invalid_whatsapp_link_format'
+              : 'not_provided',
     ),
     makeCheck(
       'click_to_chat_format',
@@ -309,9 +313,9 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
           ? 'generated_click_to_chat_format'
           : hasUnclearPhone
             ? 'unclear_phone_format'
-            : hasUnclearLink || hasRecognizedLink
-              ? 'invalid_whatsapp_link_format'
-              : hasAnyPhoneSource
+            : hasWhatsappNumber
+              ? 'unclear_phone_format'
+              : hasUnclearLink || hasRecognizedLink || hasExistingWhatsappLink
                 ? 'invalid_whatsapp_link_format'
                 : 'not_checked',
     ),

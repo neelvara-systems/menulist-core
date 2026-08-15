@@ -110,6 +110,7 @@ assertIncludes(route, 'FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_WHATSAPP_ACTION_LINK_CH
 
 assertIncludes(component, "useTranslations('Website.WhatsAppActionLinkCheckPage')", 'WhatsApp Action Link Check localized copy');
 assertIncludes(component, 'buildWhatsAppActionLinkReport(form)', 'WhatsApp Action Link Check browser-local report builder');
+assertIncludes(component, "messageIntent: 'other'", 'WhatsApp Action Link Check honest untouched intent default');
 assertIncludes(component, 'check.evidenceText', 'WhatsApp Action Link Check explicit evidence text rendering');
 assertIncludes(component, 'href={report.nextAction.href}', 'WhatsApp Action Link Check MenuList next action');
 assertIncludes(component, "fetch('/api/public/contact'", 'WhatsApp Action Link Check consented contact handoff');
@@ -144,6 +145,9 @@ assertIncludes(report, 'aiOrSearchChecked: false', 'WhatsApp Action Link Check r
 assertIncludes(report, 'rankingPromise: false', 'WhatsApp Action Link Check report ranking boundary');
 assertIncludes(report, 'getWhatsAppActionLinkEvidenceText', 'WhatsApp Action Link Check explicit evidence text');
 assertIncludes(report, 'The number was not verified with WhatsApp', 'WhatsApp Action Link Check number verification evidence boundary');
+assertIncludes(report, 'Use digits only and include the country code for the customer WhatsApp number.', 'WhatsApp Action Link Check invalid phone guidance');
+assertIncludes(report, 'const hasWhatsappNumber = Boolean(whatsappNumber);', 'WhatsApp Action Link Check phone evidence provenance');
+assertIncludes(report, 'const hasExistingWhatsappLink = Boolean(existingWhatsappLink);', 'WhatsApp Action Link Check link evidence provenance');
 assertIncludes(report, 'no message was sent', 'WhatsApp Action Link Check message send evidence boundary');
 assertIncludes(report, 'Public HTTPS customer link format was checked locally. The link was not opened or fetched.', 'WhatsApp Action Link Check public HTTPS URL evidence boundary');
 assertIncludes(report, "logRuntimeFailure('whatsapp_action_link_url_parse_failed'", 'WhatsApp Action Link Check parse diagnostic');

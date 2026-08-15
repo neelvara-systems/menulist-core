@@ -98,7 +98,7 @@ const INITIAL_FORM: WhatsAppActionLinkInput = {
   whatsappNumber: '',
   existingWhatsappLink: '',
   currentCustomerLink: '',
-  messageIntent: 'ask_question',
+  messageIntent: 'other',
   suggestedMessage: '',
   menuOrServiceLinkAttached: false,
   hoursExpectationSet: false,

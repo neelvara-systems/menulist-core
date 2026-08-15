@@ -63,6 +63,8 @@ V0 does not fetch, inspect, verify, store, or send through these sources.
 
 Every row includes `evidenceText` explaining what was actually checked.
 
+The untouched form starts with `Other` so it cannot fabricate a message-intent selection. Invalid phone-only input cites phone-shape evidence and gives digits-plus-country-code guidance; it must not claim that a WhatsApp link was checked when no link was entered.
+
 ---
 
 ## 5. Status Rules
