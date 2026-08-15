@@ -563,6 +563,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         <Form.Item hidden name={['publicPresence', 'businessCover']}>
                             <Input />
                         </Form.Item>
+                        <Form.Item hidden name={['publicPresence', 'photos']}>
+                            <Input />
+                        </Form.Item>
                         {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
                             <Card
                                 size="small"
