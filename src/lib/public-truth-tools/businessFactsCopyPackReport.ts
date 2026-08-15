@@ -63,6 +63,11 @@ function truncateText(value: string, maxLength: number): string {
   return `${cleaned.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
+function withTerminalPunctuation(value: string): string {
+  const cleaned = value.trim();
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
+}
+
 function hasUsefulText(value: string, minimum = 3): boolean {
   return trimToSingleLine(value).length >= minimum;
 }
@@ -214,13 +219,13 @@ function buildCopyBlocks(input: {
     {
       id: 'google_profile_description',
       title: 'Google/Profile description',
-      body: truncateText(`${businessName} is a ${businessType} in ${area}. ${description}. Customers can find current details here: ${customerLink}. ${actionSentence}.`, 740),
+      body: truncateText(`${businessName} is a ${businessType} in ${area}. ${withTerminalPunctuation(description)} Customers can find current details here: ${customerLink}. ${withTerminalPunctuation(actionSentence)}`, 740),
       evidenceText,
     },
     {
       id: 'whatsapp_business_about',
       title: 'WhatsApp Business about',
-      body: truncateText(`${businessName} - ${offer}. ${hours}. ${actionSentence}.`, 220),
+      body: truncateText(`${businessName} - ${withTerminalPunctuation(offer)} ${withTerminalPunctuation(hours)} ${withTerminalPunctuation(actionSentence)}`, 220),
       evidenceText,
     },
     {
@@ -256,7 +261,7 @@ function buildCopyBlocks(input: {
         `Offer: ${offer}`,
         `Hours: ${hours}`,
         `Area: ${location}`,
-        `Best action: ${actionSentence}.`,
+        `Best action: ${withTerminalPunctuation(actionSentence)}`,
         `Link to send: ${customerLink}`,
         `If unsure: use the current customer link before answering from memory.`,
       ].join('\n'),
@@ -265,7 +270,7 @@ function buildCopyBlocks(input: {
     {
       id: 'customer_link_share_text',
       title: 'Customer link share text',
-      body: `Here is the current ${businessName} customer link: ${customerLink}. It has the latest details for ${truncateText(offer, 120)}.`,
+      body: `Here is the current ${businessName} customer link: ${customerLink}. ${withTerminalPunctuation(`It has the latest details for ${truncateText(offer, 120)}`)}`,
       evidenceText,
     },
   ];

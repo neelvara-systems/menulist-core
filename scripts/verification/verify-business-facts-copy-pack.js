@@ -159,7 +159,10 @@ assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was
 assertIncludes(report, 'Copy uses owner-entered facts and explicit missing-fact placeholders only. No AI rewrite was generated.', 'Business Facts Copy Pack deterministic copy evidence boundary');
 assertNotIncludes(report, 'Copy was generated from owner-entered facts only.', 'Business Facts Copy Pack stale deterministic copy evidence');
 assertIncludes(report, 'return `${label}: add the best customer action`;', 'Business Facts Copy Pack fallback action punctuation');
-assertIncludes(report, '`Best action: ${actionSentence}.`', 'Business Facts Copy Pack staff action punctuation');
+assertIncludes(report, 'function withTerminalPunctuation(value: string): string', 'Business Facts Copy Pack terminal punctuation helper');
+assertIncludes(report, '${withTerminalPunctuation(description)} Customers can find current details here', 'Business Facts Copy Pack description punctuation');
+assertIncludes(report, '${withTerminalPunctuation(offer)} ${withTerminalPunctuation(hours)} ${withTerminalPunctuation(actionSentence)}', 'Business Facts Copy Pack short-copy punctuation');
+assertIncludes(report, '`Best action: ${withTerminalPunctuation(actionSentence)}`', 'Business Facts Copy Pack staff action punctuation');
 assertIncludes(report, 'External profiles and platforms were not opened, inspected, or updated.', 'Business Facts Copy Pack external platform evidence boundary');
 
 for (const content of [route, report, types]) {
