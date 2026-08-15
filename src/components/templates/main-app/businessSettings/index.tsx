@@ -459,6 +459,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         type: "",
         url: undefined,
     });
+    const [isLogoRemovalRequested, setIsLogoRemovalRequested] = useState(false);
     const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [activeSection, setActiveSection] = useState(0);
     const businessSettingsScopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
@@ -493,6 +494,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     const handleLogoSelect = async (file: File) => {
         try {
             const prepared = await prepareMediaImage(file, 'businessLogo');
+            setIsLogoRemovalRequested(false);
             setSelectedFile({
                 blob: prepared.blob,
                 crop: prepared.crop,
@@ -1286,7 +1288,9 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             changesToUpload.name = changesToUpload.name.trim();
         }
 
-        if (isDataUrl(selectedFile.url)) {
+        if (isLogoRemovalRequested) {
+            changesToUpload.logo = '';
+        } else if (isDataUrl(selectedFile.url)) {
             changesToUpload.imageToUpdate = selectedFile.url;
             changesToUpload.imageType = selectedFile.type;
             changesToUpload.preparedMedia = selectedFile.preparedMedia;
@@ -1562,17 +1566,23 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                         failedPhotoDeletes,
                     );
                 }
-                if (
-                    savedDetails?.logo
-                    && componentActiveRef.current
-                    && activeBusinessSettingsScopeRef.current === requestScopeKey
-                ) {
-                    setSelectedFile({
-                        name: savedDetails.logo,
-                        size: 0,
-                        type: "",
-                        url: savedDetails.logo,
-                    });
+                if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                    if (Object.prototype.hasOwnProperty.call(savedDetails || {}, 'logo')) {
+                        setSelectedFile(savedDetails.logo
+                            ? {
+                                name: savedDetails.logo,
+                                size: 0,
+                                type: "",
+                                url: savedDetails.logo,
+                            }
+                            : {
+                                name: "",
+                                size: 0,
+                                type: "",
+                                url: undefined,
+                            });
+                    }
+                    setIsLogoRemovalRequested(false);
                 }
 
                 //created new store
@@ -1710,14 +1720,26 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                 helperText={t('uploadLogoDesc' as any)}
                                 imageType="businessLogo"
                                 imageFit="contain"
-                                imageUrl={selectedFile.url || storeDetails?.logo}
+                                imageUrl={isLogoRemovalRequested ? undefined : selectedFile.url || storeDetails?.logo}
                                 onAdjust={() => setIsLogoAdjustOpen(true)}
-                                onReset={selectedFile.sourceDataUrl ? () => setSelectedFile({
-                                    name: "",
-                                    size: 0,
-                                    type: "",
-                                    url: storeDetails?.logo || undefined,
-                                }) : undefined}
+                                onRemove={selectedFile.url || storeDetails?.logo ? () => {
+                                    setIsLogoRemovalRequested(true);
+                                    setSelectedFile({
+                                        name: "",
+                                        size: 0,
+                                        type: "",
+                                        url: undefined,
+                                    });
+                                } : undefined}
+                                onReset={selectedFile.sourceDataUrl ? () => {
+                                    setIsLogoRemovalRequested(false);
+                                    setSelectedFile({
+                                        name: "",
+                                        size: 0,
+                                        type: "",
+                                        url: storeDetails?.logo || undefined,
+                                    });
+                                } : undefined}
                                 onSelectFile={handleLogoSelect}
                                 placeholderDescription="Drop, paste, or choose a square logo."
                                 placeholderTitle={t('uploadLogo' as any)}
@@ -1810,6 +1832,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                                 setWorkingHours(workingHoursDraft);
                                                 setWorkingHoursDirty(false);
                                                 setWorkingHoursDirtyDays([]);
+                                                setIsLogoRemovalRequested(false);
                                                 if (storeDetails?.logo) {
                                                     setSelectedFile({
                                                         name: storeDetails?.logo,

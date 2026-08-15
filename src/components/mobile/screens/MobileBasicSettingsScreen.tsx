@@ -55,6 +55,7 @@ const MOBILE_BASIC_STORE_UPDATE_KEYS = [
     'email',
     'geo',
     'gstn',
+    'logo',
     'name',
     'phone',
     'phoneNumber',
@@ -127,6 +128,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
             }
             : null
     );
+    const [isLogoRemovalRequested, setIsLogoRemovalRequested] = useState(false);
     const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [formData, setFormData] = useState(getInitialFormData(storeDetails, tenantDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails, tenantDetails));
@@ -135,7 +137,9 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
     const basicSettingsSaveInFlightRef = useRef(false);
     const currentStoreDetailsRef = useRef(storeDetails);
     currentStoreDetailsRef.current = storeDetails;
-    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData) || (selectedLogo?.url || '') !== originalLogoUrl;
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData)
+        || isLogoRemovalRequested
+        || (selectedLogo?.url || '') !== originalLogoUrl;
 
     useEffect(() => {
         componentActiveRef.current = true;
@@ -204,7 +208,9 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
             tenantId: expectedTenantId, // Required for the atomic canonical-store/summary scope check
         };
         if (normalizedGeo.geo || storeDetails.geo) updates.geo = normalizedGeo.geo;
-        if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
+        if (isLogoRemovalRequested) {
+            updates.logo = '';
+        } else if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
             updates.imageToUpdate = selectedLogo.url;
             updates.imageType = selectedLogo.type || 'image/png';
             updates.preparedMedia = selectedLogo.preparedMedia;
@@ -246,7 +252,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                 ...getBoundedMobileOwnerStringContext('tenantName', formData.tenantName),
                 ...getBoundedMobileOwnerStringContext('businessType', formData.businessType),
                 hasGeoUpdate: Boolean(updates.geo),
-                hasLogoUpdate: Boolean(updates.imageToUpdate),
+                hasLogoUpdate: Object.prototype.hasOwnProperty.call(updates, 'logo') || Boolean(updates.imageToUpdate),
                 hasPhoneUpdate: Boolean(normalizedPhone.phone),
                 tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name,
             });
@@ -303,24 +309,31 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                 ? {
                     ...previous,
                     businessCategory: savedStore?.businessCategory ?? optimisticUpdates.businessCategory ?? previous.businessCategory,
-                    logo: savedStore?.logo || previous.logo,
+                    logo: Object.prototype.hasOwnProperty.call(savedStore || {}, 'logo')
+                        ? savedStore.logo || ''
+                        : previous.logo,
                 }
                 : previous
         ));
         if (componentActiveRef.current) {
-            if (currentStoreOwnsAttempt && savedStore?.logo) {
-                setSelectedLogo({
-                    name: logoAltName,
-                    size: 0,
-                    type: selectedLogo?.type || 'image/png',
-                    url: savedStore.logo,
-                });
+            if (currentStoreOwnsAttempt && Object.prototype.hasOwnProperty.call(savedStore || {}, 'logo')) {
+                setSelectedLogo(savedStore.logo
+                    ? {
+                        name: logoAltName,
+                        size: 0,
+                        type: selectedLogo?.type || 'image/png',
+                        url: savedStore.logo,
+                    }
+                    : null);
+                setIsLogoRemovalRequested(false);
             }
             if (currentStoreOwnsAttempt) {
                 setOriginalFormData(tenantNameSynced
                     ? formData
                     : { ...formData, tenantName: tenantDetails?.name || '' });
-                setOriginalLogoUrl(savedStore?.logo || selectedLogo?.url || storeDetails.logo || '');
+                setOriginalLogoUrl(Object.prototype.hasOwnProperty.call(savedStore || {}, 'logo')
+                    ? savedStore.logo || ''
+                    : selectedLogo?.url || storeDetails.logo || '');
             } else {
                 const currentStore = currentStoreDetailsRef.current;
                 const currentForm = getInitialFormData(currentStore, tenantDetails);
@@ -345,12 +358,13 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
         }
         basicSettingsSaveInFlightRef.current = false;
         if (componentActiveRef.current) setIsSaving(false);
-    }, [formData, logoAltName, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
+    }, [formData, isLogoRemovalRequested, logoAltName, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
 
     const handleLogoSelect = useCallback(async (file: File) => {
         try {
             const prepared = await prepareMediaImage(file, 'businessLogo');
             if (!componentActiveRef.current) return;
+            setIsLogoRemovalRequested(false);
             setSelectedLogo({
                 blob: prepared.blob,
                 crop: prepared.crop,
@@ -380,6 +394,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
+        setIsLogoRemovalRequested(false);
         setSelectedLogo(
             originalLogoUrl
                 ? {
@@ -424,18 +439,25 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                         helperText="Best results: square PNG or JPG, at least 512 x 512 px. Keep the logo clear with some spacing around the edges."
                         imageType="businessLogo"
                         imageFit="contain"
-                        imageUrl={selectedLogo?.url || storeDetails.logo}
+                        imageUrl={isLogoRemovalRequested ? undefined : selectedLogo?.url || storeDetails.logo}
                         onAdjust={() => setIsLogoAdjustOpen(true)}
-                        onReset={selectedLogo?.sourceDataUrl ? () => setSelectedLogo(
-                            storeDetails?.logo
-                                ? {
-                                    name: logoAltName,
-                                    size: 0,
-                                    type: '',
-                                    url: storeDetails.logo,
-                                }
-                                : null
-                        ) : undefined}
+                        onRemove={selectedLogo?.url || storeDetails.logo ? () => {
+                            setIsLogoRemovalRequested(true);
+                            setSelectedLogo(null);
+                        } : undefined}
+                        onReset={selectedLogo?.sourceDataUrl ? () => {
+                            setIsLogoRemovalRequested(false);
+                            setSelectedLogo(
+                                storeDetails?.logo
+                                    ? {
+                                        name: logoAltName,
+                                        size: 0,
+                                        type: '',
+                                        url: storeDetails.logo,
+                                    }
+                                    : null
+                            );
+                        } : undefined}
                         onSelectFile={handleLogoSelect}
                         placeholderDescription="Drop, paste, or choose a square logo."
                         placeholderTitle="Upload logo"

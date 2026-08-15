@@ -4125,9 +4125,16 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   );
   assertIncludes(
     mobileBasicSettings,
-    'hasLogoUpdate: Boolean(updates.imageToUpdate)',
+    "hasLogoUpdate: Object.prototype.hasOwnProperty.call(updates, 'logo') || Boolean(updates.imageToUpdate)",
     'Mobile Basic Settings bounded logo update context',
   );
+  assertIncludes(desktopBusinessSettings, "if (isLogoRemovalRequested) {\n            changesToUpload.logo = '';", 'Desktop Business Settings persists logo removal');
+  assertIncludes(desktopBusinessSettings, 'imageUrl={isLogoRemovalRequested ? undefined : selectedFile.url || storeDetails?.logo}', 'Desktop Business Settings removal draft does not fall back to persisted logo');
+  assertIncludes(desktopBusinessSettings, 'onRemove={selectedFile.url || storeDetails?.logo ? () => {', 'Desktop Business Settings exposes persisted logo removal');
+  assertIncludes(mobileBasicSettings, "if (isLogoRemovalRequested) {\n            updates.logo = '';", 'Mobile Basic Settings persists logo removal');
+  assertIncludes(mobileBasicSettings, 'imageUrl={isLogoRemovalRequested ? undefined : selectedLogo?.url || storeDetails.logo}', 'Mobile Basic Settings removal draft does not fall back to persisted logo');
+  assertIncludes(mobileBasicSettings, 'onRemove={selectedLogo?.url || storeDetails.logo ? () => {', 'Mobile Basic Settings exposes persisted logo removal');
+  assertIncludes(mobileBasicSettings, "Object.prototype.hasOwnProperty.call(savedStore || {}, 'logo')", 'Mobile Basic Settings acknowledges an intentionally empty saved logo');
   assertIncludes(
     mobileBasicSettings,
     'tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name',
