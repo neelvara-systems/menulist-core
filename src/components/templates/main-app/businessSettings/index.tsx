@@ -465,6 +465,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     const activeBusinessSettingsScopeRef = useRef(businessSettingsScopeKey);
     const componentActiveRef = useRef(true);
     const settingsSaveInFlightRef = useRef(false);
+    const submittedSeoKeywordsRef = useRef<string[] | null>(null);
     const [isSettingsSaving, setIsSettingsSaving] = useState(false);
     const obpPhotoDeleteQueueRef = useRef<string[]>([]);
     const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
@@ -923,7 +924,12 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                             storeDetails={storeDetails}
                         />
                     ) : null}
-                    <SeoTab storeDetails={storeDetails} />
+                    <SeoTab
+                        onBeforeSaveKeywords={(keywords) => {
+                            submittedSeoKeywordsRef.current = keywords;
+                        }}
+                        storeDetails={storeDetails}
+                    />
                     {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? (
                         <div ref={publicTruthFocusRefs.current.presenceMonitor}>
                             <BusinessSettingsPresenceMonitorCard
@@ -1252,6 +1258,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         ) {
             return;
         }
+        const submittedSeoKeywordsSnapshot = submittedSeoKeywordsRef.current;
+        submittedSeoKeywordsRef.current = null;
         settingsSaveInFlightRef.current = true;
         setIsSettingsSaving(true);
         try {
@@ -1406,8 +1414,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             && changesToUpload.__storeContentLanguage.trim()
             ? changesToUpload.__storeContentLanguage
             : contentLanguage;
-        const submittedSeoKeywords = Array.isArray(changesToUpload.__submittedSeoKeywords)
-            ? changesToUpload.__submittedSeoKeywords
+        const submittedSeoKeywords = Array.isArray(submittedSeoKeywordsSnapshot)
+            ? submittedSeoKeywordsSnapshot
             : Array.isArray(changesToUpload.keywords)
                 ? changesToUpload.keywords
                 : [];
@@ -1483,7 +1491,6 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         delete changesToUpload.__localizedPublicPresenceDrafts;
         delete changesToUpload.__localizedSeoDrafts;
         delete changesToUpload.__localizedPwaShortNameDrafts;
-        delete changesToUpload.__submittedSeoKeywords;
         delete changesToUpload.__storeContentLanguage;
 
         // Feedback settings (managed as React state, not Form fields)

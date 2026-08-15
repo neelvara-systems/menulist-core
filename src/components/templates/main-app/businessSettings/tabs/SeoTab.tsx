@@ -18,6 +18,7 @@ const { TextArea } = Input;
 const { Text, Title } = Typography;
 
 interface SeoTabProps {
+    onBeforeSaveKeywords?: (keywords: string[]) => void;
     scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
 }
@@ -38,7 +39,7 @@ function getDefaultCanonicalUrl(storeDetails?: any): string {
         || '';
 }
 
-function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
+function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) {
     const t = useTranslations('SEO');
     const { token } = theme.useToken();
     const form = Form.useFormInstance();
@@ -132,8 +133,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
 
     const handleSaveSeo = () => {
         const submittedKeywords = form.getFieldValue('keywords');
-        form.setFieldValue(
-            '__submittedSeoKeywords',
+        onBeforeSaveKeywords?.(
             Array.isArray(submittedKeywords) ? [...submittedKeywords] : [],
         );
         form.submit();
