@@ -139,6 +139,8 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Menu Readability Check
 assertIncludes(report, 'rankingPromise: false', 'Menu Readability Check report ranking boundary');
 assertIncludes(report, 'getMenuReadabilityEvidenceText', 'Menu Readability Check explicit evidence text');
 assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Menu Readability Check URL evidence boundary');
+assertIncludes(report, 'Checked action words in the pasted text only.', 'Menu Readability Check action evidence boundary');
+assertNotIncludes(report, 'Checked action words in the pasted text and entered link only.', 'Menu Readability Check stale action evidence boundary');
 assertIncludes(report, 'Files are not uploaded, links are not opened, and AI rewrite is not generated.', 'Menu Readability Check upload/AI evidence boundary');
 
 for (const content of [route, report, types]) {

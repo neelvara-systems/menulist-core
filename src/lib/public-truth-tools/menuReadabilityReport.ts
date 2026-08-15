@@ -109,7 +109,7 @@ function getMenuReadabilityEvidenceText(evidence: MenuReadabilityEvidence): stri
     case 'description_hint':
       return 'Checked description length and detail in the pasted text only.';
     case 'action_hint':
-      return 'Checked action words in the pasted text and entered link only.';
+      return 'Checked action words in the pasted text only.';
     case 'valid_public_url':
       return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'invalid_public_url':
