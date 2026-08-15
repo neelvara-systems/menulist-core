@@ -57,6 +57,7 @@ export type PriceAvailabilityGapEvidence =
   | 'price_text_hint'
   | 'currency_or_unit_hint'
   | 'variant_price_hint'
+  | 'no_variant_hint'
   | 'availability_text_hint'
   | 'unavailable_text_hint'
   | 'quote_path_hint'

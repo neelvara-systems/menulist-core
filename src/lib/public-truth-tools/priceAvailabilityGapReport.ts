@@ -79,6 +79,8 @@ function getPriceAvailabilityEvidenceText(evidence: PriceAvailabilityGapEvidence
       return 'Checked currency, unit, serving, and per-unit wording in the pasted text only.';
     case 'variant_price_hint':
       return 'Checked size, package, option, combo, and variant price wording in the pasted text only.';
+    case 'no_variant_hint':
+      return 'No size, package, option, combo, or variant wording was found in the pasted text.';
     case 'availability_text_hint':
       return 'Checked visible availability wording in the pasted text only. Live stock was not checked.';
     case 'unavailable_text_hint':
@@ -251,7 +253,9 @@ export function buildPriceAvailabilityGapReport(input: PriceAvailabilityGapInput
           ? 'variant_price_hint'
           : variantHint
             ? 'owner_entered'
-            : 'not_applicable_self_report',
+            : sourceExists
+              ? 'no_variant_hint'
+              : 'not_provided',
     ),
     makeCheck(
       'availability_clarity',

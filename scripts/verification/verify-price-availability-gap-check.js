@@ -134,6 +134,7 @@ assertIncludes(component, "trackWebsiteMarketingEvent('price_availability_gap_ch
 assertIncludes(component, "mode: 'self_report'", 'Price Availability Gap Check input contract');
 
 assertIncludes(types, 'evidenceText: string', 'Price Availability Gap Check evidence text type');
+assertIncludes(types, "| 'no_variant_hint'", 'Price Availability Gap Check honest no-variant evidence type');
 assertIncludes(types, 'externalUrlFetched: false', 'Price Availability Gap Check target fetch boundary type');
 assertIncludes(types, 'pricesVerifiedExternally: false', 'Price Availability Gap Check price verification boundary type');
 assertIncludes(types, 'liveInventoryChecked: false', 'Price Availability Gap Check live inventory boundary type');
@@ -154,6 +155,8 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Price Availability Gap
 assertIncludes(report, 'aiOrSearchChecked: false', 'Price Availability Gap Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Price Availability Gap Check report ranking boundary');
 assertIncludes(report, 'getPriceAvailabilityEvidenceText', 'Price Availability Gap Check explicit evidence text');
+assertIncludes(report, 'No size, package, option, combo, or variant wording was found in the pasted text.', 'Price Availability Gap Check honest no-variant evidence');
+assertIncludes(report, "sourceExists\n              ? 'no_variant_hint'\n              : 'not_provided'", 'Price Availability Gap Check no-variant evidence selection');
 assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Price Availability Gap Check URL evidence boundary');
 assertIncludes(report, 'External URLs, POS systems, ordering providers, live inventory, and AI/search answers were not inspected.', 'Price Availability Gap Check external provider evidence boundary');
 assertIncludes(ownerReport, "'price_availability_gap'", 'Price Availability Gap Check owner module id');
