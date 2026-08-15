@@ -70,6 +70,7 @@ import {
 } from '../../src/lib/security/sanitizeObject';
 import {
     normalizeMetaText,
+    normalizePublicCanonicalUrl,
     normalizeSeoKeywords,
 } from '../../src/lib/seo/publicMetadata';
 import {
@@ -162,6 +163,13 @@ assert.equal(normalizeMetaText(new Proxy({}, {
         throw new Error('metadata enumeration must remain contained');
     },
 }), 'Fallback title'), 'Fallback title');
+assert.equal(normalizePublicCanonicalUrl(' https://menulist.digital/menu?lang=en '), 'https://menulist.digital/menu?lang=en');
+assert.equal(normalizePublicCanonicalUrl('http://menulist.digital'), null);
+assert.equal(normalizePublicCanonicalUrl('https://owner:secret@menulist.digital'), null);
+assert.equal(normalizePublicCanonicalUrl('https://menu list.digital'), null);
+assert.equal(normalizePublicCanonicalUrl('qa-invalid-canonical'), null);
+assert.equal(normalizePublicCanonicalUrl('x'.repeat(2049)), null);
+assert.equal(normalizePublicCanonicalUrl(null), null);
 assert.deepEqual(normalizeSeoKeywords([' menu ', 42 as unknown as string, 'owner']), ['menu', 'owner']);
 assert.deepEqual(normalizeSeoKeywords(new Proxy([], {
     get() {

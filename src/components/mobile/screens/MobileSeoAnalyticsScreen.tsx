@@ -7,6 +7,7 @@ import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSUR
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { normalizePublicCanonicalUrl } from '@lib/seo/publicMetadata';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
@@ -95,7 +96,9 @@ function buildLocalizedSeoDrafts(storeDetails: any, languages: string[]): Record
 }
 
 function getDefaultCanonicalUrl(storeDetails: any): string {
-    return storeDetails?.canonicalUrl || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain) || '';
+    return normalizePublicCanonicalUrl(storeDetails?.canonicalUrl)
+        || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain)
+        || '';
 }
 
 function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
@@ -524,10 +527,15 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
 
     const saveSeoSettings = async () => {
         if (!storeDetails?.storeId || !isSeoDirty || saveInFlightRef.current) return;
+        const normalizedCanonicalUrl = normalizePublicCanonicalUrl(canonicalUrl);
+        if (!normalizedCanonicalUrl) {
+            Toast.show({ content: 'Enter a valid HTTPS canonical URL.', duration: 1500 });
+            return;
+        }
         const sourceStoreDetails = storeDetails;
         const expectedStoreId = sourceStoreDetails.storeId;
         const expectedTenantId = sourceStoreDetails.tenantId;
-        const submittedSeoDraft = seoDraft;
+        const submittedSeoDraft = { ...seoDraft, canonicalUrl: normalizedCanonicalUrl };
         const submittedLocalizedSeoDrafts = localizedSeoDrafts;
         saveInFlightRef.current = true;
         try {
@@ -537,7 +545,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                     existingMeta: sourceStoreDetails.businessCopyMeta,
                     fieldKeys: ['metaTitle', 'metaDescription', 'tagline', 'keywords'],
                 }),
-                canonicalUrl,
+                canonicalUrl: normalizedCanonicalUrl,
                 keywords: applyLocalizedKeywordDraftMap(
                     sourceStoreDetails.keywords,
                     Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]) => [
@@ -585,6 +593,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                     : currentDetails
             ));
             if (ownsCurrentSeo) {
+                setCanonicalUrl(normalizedCanonicalUrl);
                 setOriginalSeoState(submittedSeoDraft);
                 setOriginalLocalizedSeoDrafts(submittedLocalizedSeoDrafts);
             }

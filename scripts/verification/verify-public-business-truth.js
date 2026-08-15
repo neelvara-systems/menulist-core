@@ -5692,6 +5692,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   const projectsDal = read('src/database/projects/index.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const seoTab = read('src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx');
+  const mobileSeoAnalytics = read('src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx');
+  const publicMetadata = read('src/lib/seo/publicMetadata.ts');
   const timeSlotCascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const timeSlotPresets = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
   const tempStatusCard = read('src/components/templates/main-app/businessSettings/TempStatusCard.tsx');
@@ -5710,6 +5712,12 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   const authBrowserRequestPolicy = read('src/lib/auth/browserRequestPolicy.ts');
   const diagnostics = read('src/components/templates/main-app/businessSettings/utils/businessSettingsDiagnostics.ts');
 
+  assertIncludes(publicMetadata, 'export function normalizePublicCanonicalUrl(value: unknown): string | null', 'Shared public canonical URL normalizer');
+  assertIncludes(publicMetadata, "parsed.protocol !== 'https:' || parsed.username || parsed.password", 'Public canonical URL HTTPS and credential boundary');
+  assertIncludes(businessSettings, 'normalizePublicCanonicalUrl(changesToUpload.canonicalUrl)', 'Desktop business settings canonical URL write admission');
+  assertIncludes(seoTab, 'normalizePublicCanonicalUrl(value)', 'Desktop SEO canonical URL field admission');
+  assertIncludes(mobileSeoAnalytics, 'const normalizedCanonicalUrl = normalizePublicCanonicalUrl(canonicalUrl);', 'Mobile SEO canonical URL write admission');
+  assertIncludes(mobileSeoAnalytics, 'canonicalUrl: normalizedCanonicalUrl,', 'Mobile SEO persists only normalized canonical URL truth');
   assertIncludes(diagnostics, 'secureError', 'Business settings diagnostics secure logging');
   assertIncludes(diagnostics, 'getBoundedBusinessSettingsStringContext', 'Business settings diagnostics bounded string context');
   assertIncludes(diagnostics, 'logBusinessSettingsFailure', 'Business settings diagnostics normalized failure logger');

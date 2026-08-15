@@ -7,6 +7,7 @@ import {
     getLocalizedStoreValue,
 } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { normalizePublicCanonicalUrl } from '@lib/seo/publicMetadata';
 import { Button, Card, Divider, Form, Input, Select, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useEffect } from 'react';
@@ -32,7 +33,9 @@ function getLocalizedSeoValues(storeDetails?: any) {
 }
 
 function getDefaultCanonicalUrl(storeDetails?: any): string {
-    return storeDetails?.canonicalUrl || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain) || '';
+    return normalizePublicCanonicalUrl(storeDetails?.canonicalUrl)
+        || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain)
+        || '';
 }
 
 function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
@@ -308,6 +311,11 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             <Form.Item
                 label={<FieldLabel label={t('canonicalUrl')} tooltip={t('canonicalUrlHelp')} />}
                 name="canonicalUrl"
+                rules={[{
+                    validator: (_, value) => normalizePublicCanonicalUrl(value)
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('Enter a valid HTTPS canonical URL.')),
+                }]}
             >
                 <TextArea
                     autoSize={{ minRows: 2, maxRows: 4 }}

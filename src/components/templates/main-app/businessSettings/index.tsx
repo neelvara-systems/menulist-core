@@ -22,6 +22,7 @@ import { normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "
 import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
 import { normalizeOwnerSocialMediaLinks } from "@lib/obp/ownerSocialMediaBoundary";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { normalizePublicCanonicalUrl } from "@lib/seo/publicMetadata";
 import {
     hasFeedbackPresenceReadiness,
     hasPublishedStoreMenu,
@@ -1390,6 +1391,15 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             changesToUpload.dialCode = normalizedPhone.phone ? normalizedPhone.dialCode : changesToUpload.dialCode;
             changesToUpload.phone = normalizedPhone.phone;
             changesToUpload.phoneNumber = normalizedPhone.phoneNumber;
+        }
+
+        if (changesToUpload.canonicalUrl !== undefined) {
+            const normalizedCanonicalUrl = normalizePublicCanonicalUrl(changesToUpload.canonicalUrl);
+            if (!normalizedCanonicalUrl) {
+                message.error('Enter a valid HTTPS canonical URL.');
+                return;
+            }
+            changesToUpload.canonicalUrl = normalizedCanonicalUrl;
         }
 
         changesToUpload.tagline = changesToUpload.__localizedSeoDrafts

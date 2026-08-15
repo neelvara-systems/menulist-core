@@ -1,5 +1,7 @@
 export const DEFAULT_PUBLIC_PREVIEW_IMAGE = '/images/default-menu-preview.png';
 
+const PUBLIC_CANONICAL_URL_MAX_LENGTH = 2048;
+
 export interface PublicSharePreviewInput {
     businessName?: unknown;
     canonicalUrl?: string;
@@ -71,6 +73,24 @@ export function normalizeSeoKeywords(keywords?: string[] | string): string[] {
         .filter(Boolean);
 }
 
+export function normalizePublicCanonicalUrl(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > PUBLIC_CANONICAL_URL_MAX_LENGTH || /\s/.test(trimmed)) {
+        return null;
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+            return null;
+        }
+        return trimmed;
+    } catch {
+        return null;
+    }
+}
+
 export function buildPublicSharePreviewMeta({
     businessName,
     canonicalUrl,
@@ -93,6 +113,6 @@ export function buildPublicSharePreviewMeta({
         keywords: normalizeSeoKeywords(keywords),
         siteName,
         title,
-        url: canonicalUrl || menuUrl,
+        url: normalizePublicCanonicalUrl(canonicalUrl) || menuUrl,
     };
 }
