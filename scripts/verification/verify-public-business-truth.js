@@ -5717,6 +5717,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(businessSettings, 'normalizePublicCanonicalUrl(changesToUpload.canonicalUrl)', 'Desktop business settings canonical URL write admission');
   assertIncludes(businessSettings, 'mergeCurrentLocalizedSeoDraft(', 'Desktop SEO submit synchronously captures the visible localized draft');
   assertIncludes(businessSettings, 'Array.isArray(submittedSeoKeywordsSnapshot)', 'Desktop SEO save consumes the explicit visible keyword snapshot');
+  assertIncludes(businessSettings, 'updateLocalizedStringList(\n                draftedSeoKeywords,', 'Desktop SEO applies the submitted language keyword snapshot last');
   assertIncludes(seoTab, 'normalizePublicCanonicalUrl(value)', 'Desktop SEO canonical URL field admission');
   assertIncludes(seoTab, 'onChange={handleKeywordsChange}', 'Desktop SEO keyword changes synchronously update the submitted localized draft');
   assertIncludes(seoTab, 'onBeforeSaveKeywords?.(', 'Desktop SEO save snapshots the current tag control value outside Ant form collection');

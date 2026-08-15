@@ -16,7 +16,7 @@ import { parseWorkingHoursRanges, WORKING_HOURS_DAY_KEYS } from "@lib/hours/hour
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizeGeoCoordinateDraft } from "@lib/businessIdentity/geoCoordinates";
-import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
+import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
@@ -1465,7 +1465,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 contentLanguage,
                 'en',
             );
-        changesToUpload.keywords = submittedLocalizedSeoDrafts
+        const draftedSeoKeywords = submittedLocalizedSeoDrafts
             ? applyLocalizedKeywordDraftMap(
                 storeDetails?.keywords,
                 Object.fromEntries(
@@ -1478,6 +1478,14 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 ),
             )
             : getLocalizedStringList(storeDetails?.keywords, contentLanguage, getPrimaryLocalizedLanguage(storeDetails?.keywords, contentLanguage), []);
+        changesToUpload.keywords = Array.isArray(submittedSeoKeywordsSnapshot)
+            ? updateLocalizedStringList(
+                draftedSeoKeywords,
+                submittedSeoKeywords,
+                submittedSeoLanguage,
+                'en',
+            )
+            : draftedSeoKeywords;
         if (changesToUpload.__localizedPwaShortNameDrafts) {
             changesToUpload.pwaSettings = {
                 ...(storeDetails?.pwaSettings || {}),
