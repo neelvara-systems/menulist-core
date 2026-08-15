@@ -10,7 +10,7 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { normalizePublicCanonicalUrl } from '@lib/seo/publicMetadata';
 import { Button, Card, Divider, Form, Input, Select, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { LuInfo } from 'react-icons/lu';
 import SeoPreviewCard from './SeoPreviewCard';
 
@@ -43,6 +43,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
     const t = useTranslations('SEO');
     const { token } = theme.useToken();
     const form = Form.useFormInstance();
+    const latestKeywordsRef = useRef<string[]>([]);
     const businessName = Form.useWatch('name');
     const canonicalUrl = Form.useWatch('canonicalUrl');
     const customDomain = Form.useWatch('customDomain');
@@ -99,6 +100,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
             metaTitle: nextDrafts[currentLanguage]?.metaTitle || '',
             tagline: nextDrafts[currentLanguage]?.tagline || '',
         });
+        latestKeywordsRef.current = nextDrafts[currentLanguage]?.keywords || [];
     }, [storeDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -117,6 +119,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
     }, [currentLanguage, keywords, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleKeywordsChange = (nextKeywords: string[]) => {
+        latestKeywordsRef.current = [...nextKeywords];
         form.setFieldsValue({
             keywords: nextKeywords,
             __localizedSeoDrafts: {
@@ -132,10 +135,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
     };
 
     const handleSaveSeo = () => {
-        const submittedKeywords = form.getFieldValue('keywords');
-        onBeforeSaveKeywords?.(
-            Array.isArray(submittedKeywords) ? [...submittedKeywords] : [],
-        );
+        onBeforeSaveKeywords?.([...latestKeywordsRef.current]);
         form.submit();
     };
 
@@ -160,6 +160,7 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
             metaTitle: resetDrafts[currentLanguage]?.metaTitle || '',
             tagline: resetDrafts[currentLanguage]?.tagline || '',
         });
+        latestKeywordsRef.current = resetDrafts[currentLanguage]?.keywords || [];
     };
 
     return (
