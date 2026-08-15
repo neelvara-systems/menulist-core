@@ -562,7 +562,11 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             <Text strong>Only custom slides</Text>
                             <Text type="secondary">Highlights will show uploaded slides only. Menu Board is unchanged.</Text>
                         </Flex>
-                        <Switch checked={ownerOverride} onChange={(value) => void handleOverrideToggle(value)} />
+                        <Switch
+                            aria-label="Only custom slides"
+                            checked={ownerOverride}
+                            onChange={(value) => void handleOverrideToggle(value)}
+                        />
                     </Flex>
                 </Card>
 

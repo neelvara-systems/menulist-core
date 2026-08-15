@@ -309,8 +309,10 @@ function verifyOwnerExperience() {
   assertIncludes(desktopLink, '.screen-link-section .screen-mode-qr {\n                        display: none;', 'Digital Screens desktop narrow-viewport QR overflow guard');
   assertIncludes(mobile, 'Refresh TV status', 'Digital Screens mobile status refresh');
   assertIncludes(desktop, 'contentVersion: screenState.contentVersion', 'Digital Screens desktop current-version owner state');
+  assertIncludes(desktop, 'aria-label="Only custom slides"', 'Digital Screens desktop owner-only switch accessible name');
   assertIncludes(desktop, 'Try again', 'Digital Screens desktop retryable load failure');
   assertIncludes(mobile, 'setContentVersion(state.contentVersion)', 'Digital Screens mobile current-version owner state');
+  assertIncludes(mobile, 'aria-label="Only custom slides"', 'Digital Screens mobile owner-only switch accessible name');
   assertIncludes(mobile, 'if (loadError || !screenUrl)', 'Digital Screens mobile failure-before-controls boundary');
   assertIncludes(mobile, 'Try again', 'Digital Screens mobile retryable load failure');
   assertNotIncludes(desktop, 'Running', 'Digital Screens desktop overclaim');

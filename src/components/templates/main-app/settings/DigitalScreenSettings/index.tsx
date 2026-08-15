@@ -250,6 +250,7 @@ export default function DigitalScreenSettings() {
                         </Text>
                     </div>
                     <Switch
+                        aria-label="Only custom slides"
                         checked={settings.ownerOverrideEnabled}
                         onChange={handleOverrideToggle}
                     />
