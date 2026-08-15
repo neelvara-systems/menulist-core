@@ -59,6 +59,10 @@ function hasUsefulText(value: string, minimum = 3): boolean {
   return trimToSingleLine(value).length >= minimum;
 }
 
+function stripTerminalPunctuation(value: string): string {
+  return value.replace(/[.!?]+$/g, '').trim();
+}
+
 function isLikelyWhatsAppPhone(rawValue: string): boolean {
   return isLikelyPhoneNumber(rawValue, { requireCountryCode: true });
 }
@@ -72,13 +76,13 @@ function getWhatsAppReplyPackEvidenceText(evidence: WhatsAppReplyPackEvidence): 
     case 'local_phone_format_valid':
       return 'Phone number shape was checked locally. The number was not verified with WhatsApp.';
     case 'local_phone_format_unclear':
-      return 'Phone number shape was checked locally. Add country code if this is the customer WhatsApp number.';
+      return 'Phone number shape was checked locally. Use digits only and include the country code for the customer WhatsApp number.';
     case 'local_url_format_valid':
       return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'local_url_format_invalid':
       return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'deterministic_copy':
-      return 'Replies were generated from owner-entered facts only. No AI rewrite was generated.';
+      return 'Replies use owner-entered facts and explicit missing-fact placeholders only. No AI rewrite was generated.';
     case 'external_boundary':
       return 'WhatsApp was not opened, no API was called, and no message was sent.';
     case 'not_provided':
@@ -164,7 +168,7 @@ function getActionSentence(action: WhatsAppReplyPackAction, actionLink: string, 
   const label = ACTION_LABELS[action];
   const link = actionLink || currentCustomerLink;
   if (link) return `${label}: ${link}`;
-  return `${label}: add the best customer action.`;
+  return `${label}: add the best customer action`;
 }
 
 function makePreviewLink(phoneDigits: string, message: string): string | null {
@@ -186,15 +190,15 @@ function buildReplyBlocks(input: {
   preferredAction: WhatsAppReplyPackAction;
   responseTime: string;
 }): WhatsAppReplyBlock[] {
-  const businessName = getFactOrPlaceholder(input.businessName, 'Business name not provided');
-  const area = getFactOrPlaceholder(input.cityOrArea || input.locationOrServiceArea, 'area not provided');
-  const offer = getFactOrPlaceholder(input.offerSummary, 'menu, services, or offers not provided');
-  const hours = getFactOrPlaceholder(input.hours, 'hours not provided');
-  const location = getFactOrPlaceholder(input.locationOrServiceArea || input.cityOrArea, 'location or service area not provided');
+  const businessName = stripTerminalPunctuation(getFactOrPlaceholder(input.businessName, 'Business name not provided'));
+  const area = stripTerminalPunctuation(getFactOrPlaceholder(input.cityOrArea || input.locationOrServiceArea, 'area not provided'));
+  const offer = stripTerminalPunctuation(getFactOrPlaceholder(input.offerSummary, 'menu, services, or offers not provided'));
+  const hours = stripTerminalPunctuation(getFactOrPlaceholder(input.hours, 'hours not provided'));
+  const location = stripTerminalPunctuation(getFactOrPlaceholder(input.locationOrServiceArea || input.cityOrArea, 'location or service area not provided'));
   const customerLink = getFactOrPlaceholder(input.currentCustomerLink, 'current customer link not provided');
-  const payment = getFactOrPlaceholder(input.paymentInfo, 'payment details not provided');
-  const delivery = getFactOrPlaceholder(input.deliveryOrPickup, 'delivery or pickup details not provided');
-  const responseTime = getFactOrPlaceholder(input.responseTime, 'reply time not provided');
+  const payment = stripTerminalPunctuation(getFactOrPlaceholder(input.paymentInfo, 'payment details not provided'));
+  const delivery = stripTerminalPunctuation(getFactOrPlaceholder(input.deliveryOrPickup, 'delivery or pickup details not provided'));
+  const responseTime = stripTerminalPunctuation(getFactOrPlaceholder(input.responseTime, 'reply time not provided'));
   const actionSentence = getActionSentence(input.preferredAction, input.actionLink, input.currentCustomerLink);
   const evidenceText = getWhatsAppReplyPackEvidenceText('deterministic_copy');
 
@@ -264,6 +268,7 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
   const whatsappNumber = trimToSingleLine(input.whatsappNumber, PUBLIC_TRUTH_TOOL_INPUT_LIMITS.phone);
   const phoneDigits = normalizePhoneDigits(whatsappNumber);
   const validPhone = isLikelyWhatsAppPhone(whatsappNumber);
+  const hasWhatsappNumber = whatsappNumber.length > 0;
   const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'whatsapp_reply_pack_current_customer_link');
   const hasCustomerLink = currentCustomerLink.length > 0;
   const validActionLink = isValidHttpUrl(actionLink, 'whatsapp_reply_pack_action_link');
@@ -297,8 +302,8 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
     ),
     makeCheck(
       'whatsapp_number',
-      validPhone ? 'present' : phoneDigits ? 'unclear' : 'missing',
-      validPhone ? 'local_phone_format_valid' : phoneDigits ? 'local_phone_format_unclear' : 'not_provided',
+      validPhone ? 'present' : hasWhatsappNumber ? 'unclear' : 'missing',
+      validPhone ? 'local_phone_format_valid' : hasWhatsappNumber ? 'local_phone_format_unclear' : 'not_provided',
     ),
     makeCheck(
       'current_customer_link',
@@ -324,7 +329,7 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
           ? 'local_url_format_valid'
           : hasActionLink
             ? 'local_url_format_invalid'
-            : input.preferredAction
+            : input.preferredAction === 'visit'
               ? 'owner_selected'
               : 'not_provided',
     ),
@@ -345,8 +350,8 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
     ),
     makeCheck(
       'wa_me_preview',
-      previewLink ? 'present' : phoneDigits ? 'unclear' : 'not_checked',
-      previewLink ? 'local_phone_format_valid' : phoneDigits ? 'local_phone_format_unclear' : 'not_checked',
+      previewLink ? 'present' : hasWhatsappNumber ? 'unclear' : 'not_checked',
+      previewLink ? 'local_phone_format_valid' : hasWhatsappNumber ? 'local_phone_format_unclear' : 'not_checked',
     ),
     makeCheck('message_delivery', 'not_checked', 'external_boundary'),
   ];

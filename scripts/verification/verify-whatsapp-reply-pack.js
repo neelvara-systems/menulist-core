@@ -175,8 +175,12 @@ for (const needle of [
 
 assertIncludes(report, 'getWhatsAppReplyPackEvidenceText', 'WhatsApp Reply Pack explicit evidence text');
 assertIncludes(report, 'Phone number shape was checked locally. The number was not verified with WhatsApp.', 'WhatsApp Reply Pack phone evidence boundary');
+assertIncludes(report, 'Use digits only and include the country code for the customer WhatsApp number.', 'WhatsApp Reply Pack invalid phone guidance');
 assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'WhatsApp Reply Pack URL evidence boundary');
-assertIncludes(report, 'Replies were generated from owner-entered facts only. No AI rewrite was generated.', 'WhatsApp Reply Pack deterministic reply evidence boundary');
+assertIncludes(report, 'Replies use owner-entered facts and explicit missing-fact placeholders only. No AI rewrite was generated.', 'WhatsApp Reply Pack deterministic reply evidence boundary');
+assertIncludes(report, 'stripTerminalPunctuation', 'WhatsApp Reply Pack sentence punctuation normalization');
+assertIncludes(report, "input.preferredAction === 'visit'", 'WhatsApp Reply Pack actionable-path evidence boundary');
+assertIncludes(report, 'const hasWhatsappNumber = whatsappNumber.length > 0;', 'WhatsApp Reply Pack phone evidence provenance');
 assertIncludes(report, 'WhatsApp was not opened, no API was called, and no message was sent.', 'WhatsApp Reply Pack message evidence boundary');
 
 for (const content of [route, report, types]) {

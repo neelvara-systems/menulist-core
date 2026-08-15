@@ -35,6 +35,8 @@ It returns:
 Every row includes `evidenceText`.
 No AI rewrite is generated.
 
+Placeholder-based blocks say they use owner facts plus explicit missing-fact placeholders. A preferred action without a usable action path does not prove an owner-confirmed path, invalid phone input retains phone-shape evidence, and owner text with terminal punctuation must not create doubled sentence punctuation.
+
 ## V0 must not:
 
 - send a WhatsApp message

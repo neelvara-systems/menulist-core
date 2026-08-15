@@ -587,8 +587,55 @@ const whatsAppReply = buildWhatsAppReplyPackReport({
   responseTime: 'Within one hour',
   whatsappNumber: '+91hello9876543210',
 });
-assert.equal(getCheckResult(whatsAppReply.checks, 'whatsapp_number'), 'missing');
+assert.equal(getCheckResult(whatsAppReply.checks, 'whatsapp_number'), 'unclear');
+assert.equal(
+  whatsAppReply.checks.find((check) => check.id === 'whatsapp_number')?.evidence,
+  'local_phone_format_unclear',
+);
+assert.equal(
+  whatsAppReply.checks.find((check) => check.id === 'wa_me_preview')?.evidence,
+  'local_phone_format_unclear',
+);
 assert.equal(whatsAppReply.previewLink, null);
+
+const emptyWhatsAppReply = buildWhatsAppReplyPackReport({
+  mode: 'self_report',
+  actionLink: '',
+  businessName: '',
+  cityOrArea: '',
+  currentCustomerLink: '',
+  deliveryOrPickup: '',
+  hours: '',
+  locationOrServiceArea: '',
+  offerSummary: '',
+  paymentInfo: '',
+  preferredAction: 'ask_question',
+  responseTime: '',
+  whatsappNumber: '',
+});
+assert.equal(emptyWhatsAppReply.checks.find((check) => check.id === 'action_path')?.evidence, 'not_provided');
+assert.equal(
+  emptyWhatsAppReply.copyBlocks.every((block) => block.evidenceText.includes('explicit missing-fact placeholders')),
+  true,
+);
+assert.equal(emptyWhatsAppReply.copyBlocks.some((block) => block.body.includes('..')), false);
+
+const punctuatedWhatsAppReply = buildWhatsAppReplyPackReport({
+  mode: 'self_report',
+  actionLink: '',
+  businessName: 'Example Cafe.',
+  cityOrArea: 'Pune.',
+  currentCustomerLink: 'https://example.com/menu',
+  deliveryOrPickup: 'Pickup available.',
+  hours: 'Open 9am to 6pm.',
+  locationOrServiceArea: 'Pune.',
+  offerSummary: 'Current food menu and pickup options.',
+  paymentInfo: 'Pay at pickup.',
+  preferredAction: 'order',
+  responseTime: 'Within one hour.',
+  whatsappNumber: '+91 98765 43210',
+});
+assert.equal(punctuatedWhatsAppReply.copyBlocks.some((block) => block.body.includes('..')), false);
 
 const oversizedWhatsAppReply = buildWhatsAppReplyPackReport({
   mode: 'self_report',

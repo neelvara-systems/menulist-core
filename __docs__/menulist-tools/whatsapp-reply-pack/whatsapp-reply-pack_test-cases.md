@@ -20,5 +20,9 @@
 | WRP-010 | Message is not sent | No WhatsApp API call, no WhatsApp link open, and no click-to-send behavior exists |
 | WRP-011 | Tool claims it verified WhatsApp, opened links, sent messages, generated AI replies, stored reports, updated platforms, checked rankings, or called AI/search providers | Verification fails |
 | WRP-012 | Runtime boundary suite is run | Strict phone rejection and preview gating pass in `test:public-truth-tools-runtime` |
+| WRP-013 | Empty pack renders explicit placeholders | Reply evidence cites owner facts plus explicit missing-fact placeholders; it does not claim owner facts only |
+| WRP-014 | No action link/customer link and the untouched Ask-a-question preference | Action path is missing with no fabricated owner-selected-path evidence |
+| WRP-015 | Owner text already ends in punctuation | Generated blocks contain no doubled sentence punctuation |
+| WRP-016 | Invalid alphanumeric phone is entered | Phone and preview rows stay unclear with phone-shape evidence; no preview is generated |
 
 Forbidden claim phrase: sent a WhatsApp message, verified the number, opened WhatsApp, fetched links, stored reports, checked rankings, or called AI/search providers.
