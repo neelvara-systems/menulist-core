@@ -130,6 +130,15 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         });
     };
 
+    const handleSaveSeo = () => {
+        const submittedKeywords = form.getFieldValue('keywords');
+        form.setFieldValue(
+            '__submittedSeoKeywords',
+            Array.isArray(submittedKeywords) ? [...submittedKeywords] : [],
+        );
+        form.submit();
+    };
+
     const handleResetSeo = () => {
         const resetDrafts = Object.fromEntries(
             managedLanguages.map((languageCode) => [
@@ -368,7 +377,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
                     <Button aria-label="Reset SEO and AEO" disabled={!isSeoDirty} onClick={handleResetSeo}>
                         Reset
                     </Button>
-                    <Button aria-label="Save SEO and AEO" disabled={!isSeoDirty} onClick={() => form.submit()} type="primary">
+                    <Button aria-label="Save SEO and AEO" disabled={!isSeoDirty} onClick={handleSaveSeo} type="primary">
                         Save
                     </Button>
                 </div>

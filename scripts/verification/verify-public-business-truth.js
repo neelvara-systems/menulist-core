@@ -5716,8 +5716,10 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(publicMetadata, "parsed.protocol !== 'https:' || parsed.username || parsed.password", 'Public canonical URL HTTPS and credential boundary');
   assertIncludes(businessSettings, 'normalizePublicCanonicalUrl(changesToUpload.canonicalUrl)', 'Desktop business settings canonical URL write admission');
   assertIncludes(businessSettings, 'mergeCurrentLocalizedSeoDraft(', 'Desktop SEO submit synchronously captures the visible localized draft');
+  assertIncludes(businessSettings, 'Array.isArray(changesToUpload.__submittedSeoKeywords)', 'Desktop SEO save consumes the explicit visible keyword snapshot');
   assertIncludes(seoTab, 'normalizePublicCanonicalUrl(value)', 'Desktop SEO canonical URL field admission');
   assertIncludes(seoTab, 'onChange={handleKeywordsChange}', 'Desktop SEO keyword changes synchronously update the submitted localized draft');
+  assertIncludes(seoTab, "form.setFieldValue(\n            '__submittedSeoKeywords'", 'Desktop SEO save snapshots the current tag control value before form submission');
   assertIncludes(mobileSeoAnalytics, 'const normalizedCanonicalUrl = normalizePublicCanonicalUrl(canonicalUrl);', 'Mobile SEO canonical URL write admission');
   assertIncludes(mobileSeoAnalytics, 'canonicalUrl: normalizedCanonicalUrl,', 'Mobile SEO persists only normalized canonical URL truth');
   assertIncludes(diagnostics, 'secureError', 'Business settings diagnostics secure logging');

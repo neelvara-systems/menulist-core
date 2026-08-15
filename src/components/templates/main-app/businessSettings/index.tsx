@@ -1406,12 +1406,17 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             && changesToUpload.__storeContentLanguage.trim()
             ? changesToUpload.__storeContentLanguage
             : contentLanguage;
+        const submittedSeoKeywords = Array.isArray(changesToUpload.__submittedSeoKeywords)
+            ? changesToUpload.__submittedSeoKeywords
+            : Array.isArray(changesToUpload.keywords)
+                ? changesToUpload.keywords
+                : [];
         const submittedLocalizedSeoDrafts = changesToUpload.__localizedSeoDrafts
             ? mergeCurrentLocalizedSeoDraft(
                 changesToUpload.__localizedSeoDrafts,
                 submittedSeoLanguage,
                 {
-                    keywords: Array.isArray(changesToUpload.keywords) ? changesToUpload.keywords : [],
+                    keywords: submittedSeoKeywords,
                     metaDescription: changesToUpload.metaDescription || '',
                     metaTitle: changesToUpload.metaTitle || '',
                     tagline: changesToUpload.tagline || '',
@@ -1478,6 +1483,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         delete changesToUpload.__localizedPublicPresenceDrafts;
         delete changesToUpload.__localizedSeoDrafts;
         delete changesToUpload.__localizedPwaShortNameDrafts;
+        delete changesToUpload.__submittedSeoKeywords;
         delete changesToUpload.__storeContentLanguage;
 
         // Feedback settings (managed as React state, not Form fields)
