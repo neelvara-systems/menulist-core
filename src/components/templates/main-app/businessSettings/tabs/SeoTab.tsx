@@ -119,7 +119,6 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
     }, [currentLanguage, keywords, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleKeywordsChange = (nextKeywords: string[]) => {
-        latestKeywordsRef.current = [...nextKeywords];
         form.setFieldsValue({
             keywords: nextKeywords,
             __localizedSeoDrafts: {
@@ -132,6 +131,18 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
                 },
             },
         });
+    };
+
+    const handleKeywordSelect = (selectedKeyword: string) => {
+        const normalizedKeyword = selectedKeyword.trim();
+        if (!normalizedKeyword || latestKeywordsRef.current.includes(normalizedKeyword)) return;
+        latestKeywordsRef.current = [...latestKeywordsRef.current, normalizedKeyword];
+    };
+
+    const handleKeywordDeselect = (deselectedKeyword: string) => {
+        latestKeywordsRef.current = latestKeywordsRef.current.filter(
+            (keyword) => keyword !== deselectedKeyword,
+        );
     };
 
     const handleSaveSeo = () => {
@@ -303,6 +314,8 @@ function SeoTab({ onBeforeSaveKeywords, scrollRef, storeDetails }: SeoTabProps) 
                 <Select
                     mode="tags"
                     onChange={handleKeywordsChange}
+                    onDeselect={handleKeywordDeselect}
+                    onSelect={handleKeywordSelect}
                     style={{ width: '100%' }}
                     placeholder={t('keywordsPlaceholder')}
                     tokenSeparators={[',']}
