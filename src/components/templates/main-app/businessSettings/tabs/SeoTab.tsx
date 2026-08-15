@@ -115,6 +115,21 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         });
     }, [currentLanguage, keywords, metaDescription, metaTitle, tagline]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const handleKeywordsChange = (nextKeywords: string[]) => {
+        form.setFieldsValue({
+            keywords: nextKeywords,
+            __localizedSeoDrafts: {
+                ...localizedSeoDrafts,
+                [currentLanguage]: {
+                    keywords: nextKeywords,
+                    metaDescription: metaDescription || '',
+                    metaTitle: metaTitle || '',
+                    tagline: tagline || '',
+                },
+            },
+        });
+    };
+
     const handleResetSeo = () => {
         const resetDrafts = Object.fromEntries(
             managedLanguages.map((languageCode) => [
@@ -277,6 +292,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             >
                 <Select
                     mode="tags"
+                    onChange={handleKeywordsChange}
                     style={{ width: '100%' }}
                     placeholder={t('keywordsPlaceholder')}
                     tokenSeparators={[',']}
