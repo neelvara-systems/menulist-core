@@ -115,7 +115,7 @@ account:
 
 ```text
 menulist-qa
-menulist
+menulist-prod
 answerlattice-qa
 answerlattice
 campaigncue-qa
@@ -161,7 +161,7 @@ Complete these in order. Do not skip to production until QA passes.
 2. [ ] Enable billing, Secret Manager API, required Firebase services, and Vertex AI where applicable for every Firebase-backed project listed above.
 3. [ ] Create dedicated Gemini staging and production keys. Restrict each key to the Gemini API. Do not reuse local/staging keys in production.
 4. [ ] Store staging Gemini values in Vercel staging and Firebase Secret Manager for `menulist-qa`.
-5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist`.
+5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist-prod`.
 6. [ ] Store Answerlattice Gemini values in `ANSWERLATTICE_GEMINI_AI_KEY` and SignalDesk Gemini values in `SIGNALDESK_GEMINI_AI_KEY` for the matching Vercel environment.
 7. [ ] Create every Firebase-declared AI secret before deploying the matching
    Functions target. MenuList uses shared `GEMINI_AI_KEY`, `_2`, and `_3` plus
@@ -635,7 +635,7 @@ gcloud projects list --format='value(projectId)'
 Expected result:
 
 - [ ] `menulist-qa` is visible.
-- [ ] `menulist` is visible.
+- [ ] `menulist-prod` is visible.
 - [ ] `answerlattice-qa` is visible.
 - [ ] `answerlattice` is visible.
 - [ ] `campaigncue-qa` is visible.
@@ -687,7 +687,7 @@ For each Firebase-backed project:
 Projects:
 
 - [ ] `menulist-qa`
-- [ ] `menulist`
+- [ ] `menulist-prod`
 - [ ] `answerlattice-qa`
 - [ ] `answerlattice`
 - [ ] `campaigncue-qa`
@@ -1425,7 +1425,7 @@ Checklist:
 - [ ] Create source-map upload token.
 - [ ] Set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 - [ ] Set MenuList Functions `SENTRY_DSN` secret for `menulist-qa` and
-      `menulist`.
+      `menulist-prod`.
 
 ### 6. Google Analytics 4
 

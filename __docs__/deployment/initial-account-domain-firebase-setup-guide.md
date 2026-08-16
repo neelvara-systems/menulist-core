@@ -744,7 +744,7 @@ What to do:
    ```
 3. Set MenuList secrets in:
    - `menulist-qa`
-   - `menulist`
+   - `menulist-prod`
 4. Set Answerlattice secrets in:
    - `answerlattice-qa`
    - `answerlattice`

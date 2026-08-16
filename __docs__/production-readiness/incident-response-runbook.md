@@ -14,7 +14,7 @@ This is an internal response target, not a customer SLA or legal notification pr
 
 ## Product Boundary
 
-- MenuList local/Preview uses `menulist-qa`; MenuList Production uses `menulist`.
+- MenuList local/custom `qa` uses `menulist-qa`; MenuList Production uses `menulist-prod`.
 - Answerlattice incidents use its separate Firebase configuration, doctrine, credentials, and deployment evidence. Do not change MenuList data or deploy MenuList targets to contain an Answerlattice-only incident.
 - CampaignCue, MyCodex, Neelvara, GrowthOS, and KitStamp remain separate product or site boundaries. Confirm the affected host and target before any mutation or rollback.
 - A shared Vercel app incident may affect more than one product host. Record each affected host separately and do not infer shared Firebase impact from a shared deployment alone.

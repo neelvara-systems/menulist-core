@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; the full `menulist-qa` pass is complete, the dedicated `menulist-prod` provider/IAM/Vercel-selector preparation is complete with hosted production proof still release-gated, and both Answerlattice targets are explicitly pending
+> **Current progress:** 20 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -76,7 +76,9 @@ Blocked until staging feature certification and production release gates pass:
 ## Current Evidence
 
 - `admin@neelvara.com` is the authenticated company administrator.
-- Firebase Console lists only `menulist-qa`.
+- Historical baseline before production-project creation: Firebase Console
+  listed only `menulist-qa`. Current evidence below supersedes that baseline and
+  confirms active Firebase project `menulist-prod`.
 - Firebase's project-creation wizard reports exact project ID `menulist` as
   `taken or unavailable`.
 - Firebase's eligible existing Google Cloud project list shows
@@ -609,10 +611,58 @@ Start only after Phase A establishes the approved production project ID.
 - [ ] `PROD-B11` Record the Vercel-to-Google server identity decision: validated
   OIDC/Workload Identity, or a static Admin key with owner, creation date,
   rotation, and revocation procedure.
-- [ ] `PROD-B12` Enable the approved Firestore backup/PITR policy and document a
-  restore drill before accepting production data.
-- [ ] `PROD-B13` Register production App Check resources in monitoring mode
-  only; enforcement remains release-gated.
+- [x] `PROD-B12` Enable the approved Firestore backup/PITR policy and document a
+  restore drill before accepting production data. Result: authenticated Admin
+  API readback on August 16 confirms `POINT_IN_TIME_RECOVERY_ENABLED`, seven-day
+  version retention, Native mode, and exact location `us-central1`. The restore
+  drill below is frozen before any production data is admitted.
+- [x] `PROD-B13` Register production App Check resources in monitoring mode
+  only; enforcement remains release-gated. Result: the exposed reCAPTCHA v3
+  credential was deleted and replaced under company-owned project
+  `menulist-prod`; the replacement private secret is registered only with
+  Firebase App Check for **MenuList Production Web**; the matching public site
+  key exists exactly once as `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, scoped only to
+  Vercel Production. Firebase shows the app as **Registered** and the APIs view
+  remains **Unenforced**. No Vercel or Firebase deployment was triggered.
+
+### `PROD-B13` Monitoring And Enforcement Boundary
+
+- Registration evidence date: August 16, 2026.
+- Provider: reCAPTCHA v3, matching the current `ReCaptchaV3Provider` source
+  contract. Moving to reCAPTCHA Enterprise is a separate architecture change,
+  not part of this setup checkpoint.
+- Allowed production domain families are `menulist.ai` and `menulist.online`;
+  QA domains and Vercel preview wildcards are not part of this production key.
+- The private reCAPTCHA secret must remain only in Firebase App Check. The
+  client-visible site key must remain only in the matching Vercel Production
+  variable or other approved public configuration stores.
+- Environment-variable changes apply only to a future deployment. Do not
+  deploy merely to close this setup item.
+- Keep Firestore, Storage, Authentication, and every other displayed API
+  unenforced until a release-approved production deployment emits verified
+  traffic and the metrics window proves legitimate requests are accepted.
+- Authentication enforcement remains excluded because the current auth stack
+  requires a separate compatibility review.
+
+### `PROD-B12` Restore Drill
+
+Use this drill only with explicit incident/recovery approval. PITR restores to a
+new database; it does not overwrite `(default)` in place.
+
+1. Record the incident owner, source database
+   `projects/menulist-prod/databases/(default)`, selected recovery timestamp,
+   and the exact earliest-version readback.
+2. Create a temporary recovery database in `us-central1` from that timestamp.
+   Never select another region and never point production runtime variables at
+   the recovery database during validation.
+3. Compare bounded document counts and sampled tenant/store identities against
+   the incident record. Do not export secrets or customer payloads into chat or
+   documentation.
+4. Record pass/fail evidence, then delete the temporary recovery database only
+   after the incident owner approves cleanup. A failed restore blocks production
+   data admission or continuation.
+5. Re-read `(default)` and confirm its PITR state remains enabled. Repeat the
+   drill after material Firestore topology or retention changes.
 
 ## Phase C - Authentication And Google-Owned Provider Setup
 

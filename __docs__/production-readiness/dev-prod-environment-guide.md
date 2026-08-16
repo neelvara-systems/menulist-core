@@ -132,7 +132,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
-| 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v14.2.0; MenuList Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Core database, auth, storage | `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*` | Auto from project | Local/Preview: `menulist-qa` | Production: `menulist` |
+| 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v14.2.0; MenuList Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Core database, auth, storage | `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*` | Auto from project | Local/custom `qa`: `menulist-qa` | Production: `menulist-prod` |
 | 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, optional application credentials | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 2A  | **Firebase (SignalDesk)** | Root app: modular `firebase-admin` v14.2.0; SignalDesk Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Private SignalDesk growth-control data | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `SIGNALDESK_FIREBASE_*` | Auto from the dedicated Functions project | Local/Preview: `menulist-signaldesk-qa` | Production: `menulist-signaldesk` |
 | 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET` | project-local `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys** | Live mode keys |
@@ -151,7 +151,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | Service                 | Why Separate                                                       | How                                    |
 | ----------------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `menulist-qa`; set Vercel Production vars to `menulist` |
+| **Firebase (MenuList)** | Production data must not mix with local/QA data | Keep local/custom `qa` on `menulist-qa`; set Vercel Production vars to `menulist-prod` |
 | **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Configured through env; no DSNs in code |
@@ -477,14 +477,14 @@ These are mandatory before launch. Without them, core features break.
 #### 1. Firebase (MenuList) — Already Exists
 
 - **What you have:** `menulist-qa` project for local/preview QA
-- **What production needs:** `menulist` project credentials in Vercel Production
-- **Where:** Firebase Console → project settings → web app + service account for `menulist`
+- **What production needs:** `menulist-prod` public Web config and keyless Workload Identity selectors in Vercel Production
+- **Where:** Firebase Console and Google Cloud IAM for `menulist-prod`; Vercel Production environment for the selectors
 - **Steps:**
   1. Keep local/Preview env vars pointed at `menulist-qa`.
-  2. Set Production `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` to `menulist`; server code reuses it.
+  2. Set Production `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` and `MENULIST_FIREBASE_PROJECT_ID` to `menulist-prod`; keep server identity keyless through the approved Workload Identity provider.
   3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist-prod` only after QA evidence and explicit production approval.
 - **Env vars provided:** `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*`
-- **Cost:** No new local/preview project; production costs move to `menulist`.
+- **Cost:** Local/QA costs remain in `menulist-qa`; production costs belong to `menulist-prod`.
 
 #### 2. Razorpay — Test Keys (Already Have), Live Keys Needed
 
@@ -735,7 +735,7 @@ required production monitors before launch; do not defer them to post-launch.
 
 **Before Launch (P0):**
 
-- [ ] Configure MenuList production Firebase env vars for `menulist`
+- [ ] Configure MenuList production Firebase env vars for `menulist-prod`
 - [ ] Configure Answerlattice production Firebase env vars for `answerlattice`
 - [ ] Confirm local/preview Firebase env vars for `menulist-qa` and `answerlattice-qa`
 - [ ] Get Razorpay live API keys

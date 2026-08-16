@@ -3,7 +3,7 @@
 > Status: first execution guide
 > Scope: MenuList local plus staging only
 > Last updated: August 16, 2026
-> Launch boundary: this guide does not approve production deployment. Finish this MenuList QA setup, verify it end to end, then create a separate MenuList production guide.
+> Launch boundary: this guide does not approve production deployment. MenuList production preparation and release gates are maintained separately in `menulist-production-provider-setup.md`.
 
 This is the dedicated setup file for **MenuList staging/QA**. Follow only this
 file first. Do not set up Answerlattice, CampaignCue, SignalDesk, Neelvara, or
@@ -12,7 +12,20 @@ MyCodex until MenuList QA is live and verified.
 Application flow certification after infrastructure setup is tracked separately
 in [menulist-staging-feature-certification.md](./menulist-staging-feature-certification.md).
 
-## August 15 Production-Boundary Correction
+## August 16 Current Production Boundary
+
+- The August 15 production-absence entries below are retained as dated QA
+  evidence. They are superseded for current operations: production project
+  `menulist-prod` now exists and its inactive Firebase/Google foundation is
+  tracked only in
+  [menulist-production-provider-setup.md](./menulist-production-provider-setup.md).
+- QA remains isolated on `menulist-qa`. No QA application data, secret, deploy,
+  or provider credential was copied into `menulist-prod`.
+- MenuList QA's Vercel OIDC migration is complete. Production Workload Identity
+  Federation is prepared, but production hosted proof and any Production
+  deployment remain release-gated in the production ledger.
+
+## August 15 Production-Boundary Correction (Historical QA Evidence)
 
 - The owner confirmed that MenuList production Firebase has not been created or
   initialized; only `menulist-qa` has been set up. Fresh authenticated Firebase
@@ -46,12 +59,10 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   production. Full Menu lifecycle and Billing lifecycle are still not started;
   mobile authentication and entitled Project CRUD remain blocked; and eight
   parent flows still require completion evidence.
-- Production Firebase remains uninitialized, no Vercel Production deployment
-  is authorized, and the current production-readiness aggregate has not been
-  replayed against a final clean release candidate. Production planning may be
-  prepared, but production resources, secrets, provider assets, deploys, and
-  host smoke must wait for feature-certification closure and the separate
-  production runbook.
+- At this August 15 reconciliation point, production Firebase was still
+  uninitialized and no Vercel Production deployment was authorized. The August
+  16 current boundary above supersedes the resource-state portion of this dated
+  evidence; deploy, activation, and host-smoke approval remain gated.
 - The later `QA-OIDC-01` through `QA-OIDC-05` keyless-runtime migration is a
   superseding infrastructure change and is not included in the historical
   147-check count above. The migration is complete: application/runtime proof
@@ -4736,7 +4747,7 @@ Check:
   rejects an invalid signature; no Live Mode operation occurs.
 - One controlled Sentry event reaches only the `menulist-qa` project, and every
   optional monitor/analytics decision is recorded.
-- Production project `menulist` remains unchanged.
+- Production project `menulist-prod` remains unchanged by QA certification.
 
 ## Final QA Completion Gate
 

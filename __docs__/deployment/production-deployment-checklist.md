@@ -101,7 +101,7 @@ replaces rate limits, provider quotas, SAFE_MODE, or recovery drills.
 Use the External Certification Runbook before any live Firestore or Storage mutation.
 
 - Tenant-block backfill: run `npm run verify:tenant-block-backfill-safety`, `npm run verify:public-business-truth`, and `npm run verify:menulist-api-tenant-safety` before any target dry-run or write-mode backfill.
-- Storage lifecycle config: run `npm run verify:storage-lifecycle` before applying the bucket lifecycle config to `menulist-qa`, then repeat for `menulist` only when production apply is approved.
+- Storage lifecycle config: run `npm run verify:storage-lifecycle` before applying the bucket lifecycle config to `menulist-qa`, then repeat for `menulist-prod` only when production apply is approved.
 - Storage rules cutover: run `npm run verify:storage-paths`, then retry `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`; production Storage rules deploy requires QA evidence and explicit production approval.
 - Firestore rules or indexes: use the scoped `menulist-qa` target first and record exact command output in the production readiness audit.
 

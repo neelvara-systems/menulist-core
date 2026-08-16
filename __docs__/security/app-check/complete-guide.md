@@ -1,6 +1,6 @@
 # 🤖 Firebase App Check - Complete Guide
 
-**Last Updated**: November 5, 2025  
+**Last Updated**: August 16, 2026
 **Status**: Code/setup guide; not current launch certification
 
 ---
@@ -8,6 +8,21 @@
 ## Current Launch Boundary
 
 Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current App Check environment setup verification, provider token smoke, Firebase deploy evidence where enforcement changes, and browser/device QA for the release target. This guide records code/setup requirements; it is not production-launch approval.
+
+### Current Production Provider State
+
+As of August 16, 2026, **MenuList Production Web** in `menulist-prod` is
+registered with a company-owned reCAPTCHA v3 credential. The replacement
+private secret is stored only by Firebase App Check. Its matching public site
+key exists exactly once in Vercel and is scoped only to Production as
+`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`. Firebase's APIs view remains **Unenforced**;
+the variable will affect only a future deployment, and no deployment was run
+for this setup checkpoint.
+
+The current client source uses `ReCaptchaV3Provider`. Firebase now recommends
+reCAPTCHA Enterprise for new integrations, but changing provider type requires
+an explicit source, configuration, and release migration; it must not be
+silently mixed into this v3 setup.
 
 ---
 
@@ -131,9 +146,9 @@ export function initializeFirebaseAppCheck(firebaseApp: FirebaseApp) {
 #### Finding Your Firebase Project in Dropdown
 
 The dropdown might show:
-- ✅ `menulist-qa` (MenuList QA/staging Firebase project)
-- ✅ `menulist` (MenuList production Firebase project)
-- ✅ `MenuList AI` (GCP project name)
+- `menulist-qa` (MenuList QA/staging Firebase project)
+- `menulist-prod` (MenuList production Firebase project)
+- `MenuList Production` (production project display name)
 
 **Verify**: Hover over project → Should show Project ID
 
@@ -159,12 +174,19 @@ NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Lxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 2. Navigate to **Project Settings** (⚙️) → **App Check** tab
 3. Click **"Register app"** for your web app
 4. **Provider**: Select **reCAPTCHA v3**
-5. **Site Key**: Paste key from Step 1
+5. **Secret Key**: paste the private secret from the matching reCAPTCHA v3
+   registration. Never put this value in Vercel, source control, chat, or a
+   client-visible environment variable.
 6. Click **Save**
 
 ---
 
-### Step 4: Enable Enforcement (2 min)
+### Step 4: Enable Enforcement (release-gated)
+
+Do not enable enforcement during initial provider registration. First deploy
+through the approved release path, confirm verified production traffic in the
+App Check metrics window, and capture rollback evidence. Only then evaluate
+the service-specific enforcement changes below.
 
 In Firebase Console → App Check → Enable enforcement for:
 
@@ -185,12 +207,14 @@ Add environment variable in Vercel:
 
 1. Go to Vercel Dashboard → Your Project
 2. **Settings** → **Environment Variables**
-3. Add:
+3. Add the target-specific public site key:
    - **Name**: `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
-   - **Value**: Your site key
-   - **Environments**: ✅ Production, ✅ Preview, ✅ Development
+   - **Value**: The matching QA or production site key
+   - **Environment**: custom `qa` for the QA key, or Production for the
+     production key. Do not share one value across QA and production.
 4. **Save**
-5. **Redeploy** your app
+5. Redeploy only through the approved release path. Saving the variable alone
+   does not update an existing deployment.
 
 ---
 
@@ -481,6 +505,11 @@ export const secureFunction = onCall(
 ---
 
 ## ✅ Deployment Checklist
+
+This is a release checklist, not a statement that every target is currently
+deployed or enforced. The current production provider-registration evidence is
+recorded in
+[MenuList Production Provider Setup](../../deployment/menulist-production-provider-setup.md#prod-b13-monitoring-and-enforcement-boundary).
 
 - [ ] reCAPTCHA site key obtained
 - [ ] `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` added to `.env.local`

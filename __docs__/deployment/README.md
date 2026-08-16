@@ -1,7 +1,7 @@
 # Deployment — Documentation Hub
 
 > **Category:** Infrastructure  
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This hub links deployment runbooks; current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
@@ -22,6 +22,27 @@
 ## Summary
 
 Deployment guides and checklists for shipping MenuList.ai to production (Vercel + Firebase). Vercel deploys remain opt-in per active session; use the production deployment checklist and External Certification Runbook as handoff/evidence guides, not as automatic deploy permission.
+
+## Current MenuList Setup Status
+
+| Area | Current state | Resume point |
+| --- | --- | --- |
+| QA infrastructure and keyless runtime | Complete under the recorded one-maintainer exception. The custom Vercel `qa` environment tracks only branch `staging`; hosted Auth, Firestore, Storage, Cloud Tasks, OIDC exchange, static-key removal, and zero-user-managed-key readback passed. | Continue only the open hosted feature-certification rows in `menulist-staging-feature-certification.md`. |
+| Production Google/Firebase foundation | Project `menulist-prod`, billing, budget, Blaze, `us-central1` Firestore and Storage, empty Authentication, Web app, required APIs, Workload Identity Federation, zero-key service account, and Vercel Production selectors are prepared. Firestore PITR is enabled. | Prepare `PROD-B13` App Check in monitoring mode, then continue Phase C provider setup. |
+| Production hosted OIDC proof | Provider and IAM preparation are complete, but no Production deployment was created merely to probe identity. | Close `PROD-B11` during the first release-approved Production deployment, after the production Cloud Tasks queue and queue-scoped IAM binding exist. |
+| Answerlattice | Deliberately pending. | Start only after MenuList production setup closes. |
+
+### Document consolidation decision
+
+`__docs__/deployment/` is already the single canonical setup folder. It contains
+10 deployment documents with distinct responsibilities. During the recent
+MenuList QA/production setup work, two new ledgers were added:
+`menulist-staging-feature-certification.md` and
+`menulist-production-provider-setup.md`; only the production provider ledger was
+created specifically for the keyless migration. Do not combine or move these
+files: the QA infrastructure ledger, hosted feature-certification ledger, and
+production provider/release ledger carry different evidence and approval
+boundaries. This README is the status hub that links them.
 
 ---
 

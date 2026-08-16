@@ -3,8 +3,9 @@
 > Status: active certification in progress  
 > Scope: MenuList staging/QA only  
 > Started: August 14, 2026  
-> Environment: `menulist-qa` and Vercel Preview restricted to `staging`  
-> Production boundary: production Firebase, Razorpay Live Mode, and Vercel Production are out of scope and must not be queried, mutated, built, or deployed
+> Environment: `menulist-qa` and Vercel custom environment `qa`, which tracks only branch `staging` (`VERCEL_ENV=preview`, `VERCEL_TARGET_ENV=qa`)
+>
+> Production boundary: this certification ledger does not operate on production Firebase, Razorpay Live Mode, or Vercel Production. Inactive production setup is tracked separately in `menulist-production-provider-setup.md`; production app deploys, runtime data, payments, and traffic remain out of scope here.
 
 This ledger records hosted MenuList QA certification feature by feature. The
 completed infrastructure setup and its retained operator evidence remain in

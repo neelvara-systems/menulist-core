@@ -52,7 +52,7 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 | SSL auto-renewal | ☐ | Vercel-managed certificates are expected only after the production custom domain is active; Gate 8 must verify the certificate chain and renewal state. |
 | Firebase project on Blaze plan | ☐ | Required for Cloud Functions |
 | GCP budget alerts configured | ☐ | Set at ₹500, ₹1000, ₹2000 thresholds |
-| Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `menulist.cloud_billing_export` or a dedicated FinOps project. |
+| Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Neelvara Cloud Billing - Temporary` (`0135AA-B5D4AD-C72CAB`) into `menulist-prod.cloud_billing_export` or a dedicated FinOps project. |
 | Gemini staging/production keys isolated | ☐ | Dedicated restricted keys per environment; do not share local/staging/prod |
 | Gemini quota/budget monitoring configured | ☐ | Check model/project quota and budget alerts before launch |
 | Gemini 3 request/model migration source gate | ✅ | `npm run verify:gemini-runtime-migration` guards SDK 2.13.0, explicit stable model IDs, the byte-identical request compiler, gateway use, and SignalDesk persisted-route safety. QA provider smoke remains external. |

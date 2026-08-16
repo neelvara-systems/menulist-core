@@ -82,20 +82,20 @@ Current verified setup:
 | Item | Current value |
 | --- | --- |
 | Active GCP project | `menulist-prod` |
-| Billing account | `011AD1-8DC063-7B9851` (`Firebase Payment`) |
-| Billing status | Enabled for `menulist` |
+| Billing account | `0135AA-B5D4AD-C72CAB` (`Neelvara Cloud Billing - Temporary`) |
+| Billing status | Enabled for `menulist-prod` |
 | BigQuery API | Enabled |
 | BigQuery dataset | Not created yet |
 
 Before production, create the billing export dataset and enable export:
 
-1. Open **Google Cloud Console** → **Billing** → select **Firebase Payment**.
+1. Open **Google Cloud Console** → **Billing** → select **Neelvara Cloud Billing - Temporary**.
 2. Go to **Billing export** → **BigQuery export**.
 3. Create or select a dataset:
 
 | Option | Dataset | When to use |
 | --- | --- | --- |
-| Simple launch setup | `menulist.cloud_billing_export` | Recommended unless a separate FinOps project is created |
+| Simple launch setup | `menulist-prod.cloud_billing_export` | Recommended unless a separate FinOps project is created |
 | Cleaner finance separation | `<finops-project>.cloud_billing_export` | Use only if a dedicated billing/admin project is created before launch |
 
 4. Dataset location is a separate, irreversible BigQuery choice. Make it during
@@ -162,8 +162,8 @@ Current code status:
 Apply to QA first:
 
 ```bash
-gcloud storage buckets update gs://menulist-qa.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
-gcloud storage buckets describe gs://menulist-qa.appspot.com --format=json
+gcloud storage buckets update gs://menulist-qa.firebasestorage.app --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
+gcloud storage buckets describe gs://menulist-qa.firebasestorage.app --format=json
 ```
 
 Expected result: bucket lifecycle JSON includes one `SetStorageClass` rule to `COLDLINE`, `condition.age` is `365`, and `condition.matchesPrefix` includes `MenuListAi/project/files/`.
@@ -171,8 +171,8 @@ Expected result: bucket lifecycle JSON includes one `SetStorageClass` rule to `C
 After QA verification and explicit production approval, apply to production:
 
 ```bash
-gcloud storage buckets update gs://menulist.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
-gcloud storage buckets describe gs://menulist.appspot.com --format=json
+gcloud storage buckets update gs://menulist-prod.firebasestorage.app --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
+gcloud storage buckets describe gs://menulist-prod.firebasestorage.app --format=json
 ```
 
 Stop rules:
@@ -334,7 +334,7 @@ In Firestore Console, create/update document `ops_config/system`:
 Historical deployment state recorded June 2, 2026. Reconfirm in Firebase Secret Manager and the deployed Functions list before launch:
 
 - Production Functions have WhatsApp outbound secrets available.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `menulist`.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `menulist-prod`.
 - SMTP and Telegram are intentionally deploy-optional until those secrets exist, so Firebase deploy validation does not fail.
 
 Before going live, complete this checklist:
@@ -492,8 +492,8 @@ firebase deploy --project menulist-qa --config firebase.json --only firestore:ru
 
 Stop the rollout on any Vercel, IAM, Functions, migration, rule, or device failure.
 Do not continue to production until QA is clean. Repeat the same order with project
-`menulist`, using explicit production deploy approval and
-`--confirm-project menulist` for the write step.
+`menulist-prod`, using explicit production deploy approval and
+`--confirm-project menulist-prod` for the write step.
 
 ---
 
@@ -635,7 +635,7 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
    canonical MenuList names, using production-only values.
 7. Store `GEMINI_AI_KEY`, `_2`, and `_3` for shared MenuList Functions and
    `MENULIST_GEMINI_TEXT_AI_KEY` for menu extraction in Firebase Secret Manager
-   for `menulist-qa` and `menulist`.
+   for `menulist-qa` and `menulist-prod`.
 8. Configure budget alerts, spend monitoring, and model/project quota checks for the key's Google Cloud project.
 9. Create a separate Preview **Spend cap enforcement** budget scoped to the
    QA project and **Gemini API** service. Keep its monthly amount below the

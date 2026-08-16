@@ -876,7 +876,7 @@ function verifyEnvironmentTargets() {
   assert(rootPackageJson.scripts['test:vercel-workload-identity'] === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-vercel-workload-identity.ts', 'Root package must expose the four-project Workload Identity regression');
   assertIncludes(functionsProductionEnv, 'NEXT_PUBLIC_APP_URL=https://app.menulist.ai', 'Production Functions env owner app');
   assertIncludes(functionsProductionEnvExample, 'production project menulist-prod', 'Production Functions env template exact project identity');
-  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 18 of 61 checks complete', 'MenuList production provider ledger PROD-B10 progress');
+  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 20 of 61 checks complete', 'MenuList production provider ledger PROD-B13 progress');
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B09`', 'MenuList production provider ledger Auth domain admission');
   assertIncludes(menulistProductionProviderSetup, '`app.menulist.ai` as the sole', 'MenuList production provider ledger exact custom Auth domain');
   assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production provider ledger exact Web app identity');
@@ -884,6 +884,11 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, '`233910481388`', 'MenuList production provider ledger Firebase project evidence');
   assertIncludes(menulistProductionProviderSetup, 'exact project ID `menulist-prod`', 'MenuList production provider ledger exact project identity');
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B10`', 'MenuList production provider ledger required API activation');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B12`', 'MenuList production provider ledger PITR activation');
+  assertIncludes(menulistProductionProviderSetup, 'POINT_IN_TIME_RECOVERY_ENABLED', 'MenuList production provider ledger PITR readback');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B13`', 'MenuList production provider ledger App Check registration');
+  assertIncludes(menulistProductionProviderSetup, 'remains **Unenforced**', 'MenuList production provider ledger App Check monitoring boundary');
+  assertIncludes(menulistProductionProviderSetup, 'No Vercel or Firebase deployment was triggered.', 'MenuList production provider ledger no-deploy evidence');
   assertIncludes(menulistProductionProviderSetup, '`firebase-adminsdk-fbsvc@menulist-prod.iam.gserviceaccount.com`', 'MenuList production provider ledger exact Firebase Admin service account');
   assertIncludes(menulistProductionProviderSetup, 'shows\n  **No keys**', 'MenuList production provider ledger empty Firebase Admin key inventory');
   assertIncludes(menulistProductionProviderSetup, 'effective status is\n  **Enforced**', 'MenuList production provider ledger inherited service-account key-creation enforcement');
@@ -2419,9 +2424,12 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(securityEmailValidationGuide, '✅ **Production ready** (tested and deployed)', 'Security email validation guide stale production-ready deployment claim');
   assertNotIncludes(securityEmailValidationGuide, 'vercel --prod', 'Security email validation guide direct Vercel production deploy command');
   assertIncludes(securityAppCheckGuide, '`menulist-qa` (MenuList QA/staging Firebase project)', 'Security App Check guide current QA project example');
-  assertIncludes(securityAppCheckGuide, '`menulist` (MenuList production Firebase project)', 'Security App Check guide current production project example');
+  assertIncludes(securityAppCheckGuide, '`menulist-prod` (MenuList production Firebase project)', 'Security App Check guide current production project example');
   assertIncludes(securityAppCheckGuide, 'Code/setup guide; not current launch certification', 'Security App Check guide launch boundary status');
   assertIncludes(securityAppCheckGuide, 'provider token smoke', 'Security App Check guide provider-token launch gate');
+  assertIncludes(securityAppCheckGuide, 'stored only by Firebase App Check.', 'Security App Check guide secret destination boundary');
+  assertIncludes(securityAppCheckGuide, 'remains **Unenforced**', 'Security App Check guide production monitoring boundary');
+  assertIncludes(securityAppCheckGuide, '**Secret Key**:', 'Security App Check guide reCAPTCHA v3 registration field');
   assertNotIncludes(securityAppCheckGuide, 'Code Ready → Needs 15min Setup → Production Ready', 'Security App Check guide stale production-ready progression');
   assertNotIncludes(securityAppCheckGuide, 'Don\'t launch without this!', 'Security App Check guide stale direct launch instruction');
   assertNotIncludes(securityAppCheckGuide, '`ecomsai` (Firebase project name)', 'Security App Check guide stale Firebase project example');
