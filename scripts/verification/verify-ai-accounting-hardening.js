@@ -383,7 +383,7 @@ for (const route of billableRoutes) {
     'billingStoreId: subscriptionStoreId',
     'accountingBillingStoreId: Number(expected.billingStoreId)',
     'getPersistedBillingStoreId',
-    'remainingBalance: { billingStoreId: Number(expected.billingStoreId)',
+    'remainingBalance: {\n                billingStoreId: Number(expected.billingStoreId),',
   ].forEach((token) => assert(capacityCore.includes(token), `AI capacity core preserves effective inherited billing scope token ${token}`));
   assert(accountingCore.includes('paid provider work requires a pre-provider credit reservation'), 'shared accounting rejects unreserved paid provider output');
   assert(accountingCore.includes('finalizeAiCapacityReservation'), 'shared accounting settles reserved capacity atomically');

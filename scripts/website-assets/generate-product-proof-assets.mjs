@@ -355,10 +355,10 @@ function drawHealthChecks(ctx, x, y, w) {
 function drawBusinessHealthAsset() {
   const { canvas, ctx } = makeCanvas(1280, 900, C.page);
   text(ctx, 'Business Health stable state', 72, 58, { size: 42, weight: 800 });
-  text(ctx, 'A calm owner view for freshness, public status, locations and safe handoff when action is needed.', 74, 116, {
+  text(ctx, 'Weekly menu activity beside a separate location-level current check, with a calm handoff when action is needed.', 74, 116, {
     size: 20,
     color: C.muted,
-    maxWidth: 800,
+    maxWidth: 900,
     lineHeight: 29,
   });
 
@@ -366,7 +366,7 @@ function drawBusinessHealthAsset() {
   drawNav(ctx, app.x, app.y, app.h, 3);
 
   const panelX = app.x + 220;
-  text(ctx, 'Latest MenuList check', panelX, app.y + 8, { size: 15, color: C.muted, weight: 800 });
+  text(ctx, 'Location current check', panelX, app.y + 8, { size: 15, color: C.muted, weight: 800 });
   text(ctx, 'Menu state is stable', panelX, app.y + 36, { size: 30, weight: 800 });
   rounded(ctx, panelX + 390, app.y + 22, 174, 36, 18, C.greenSoft, '#bbf7d0');
   text(ctx, 'No action needed', panelX + 477, app.y + 32, { size: 13, weight: 800, color: C.greenDark, align: 'center' });
@@ -380,23 +380,31 @@ function drawBusinessHealthAsset() {
   }
 
   rounded(ctx, panelX, app.y + 246, 326, 284, 22, '#f8fafc', C.border);
-  text(ctx, 'Priority checks', panelX + 24, app.y + 272, { size: 22, weight: 800 });
+  text(ctx, 'Location checks', panelX + 24, app.y + 272, { size: 22, weight: 800 });
   drawHealthChecks(ctx, panelX + 24, app.y + 318, 278);
 
   rounded(ctx, panelX + 352, app.y + 246, 316, 284, 22, C.blueSoft, '#bfdbfe');
-  text(ctx, 'Owner question', panelX + 380, app.y + 276, { size: 13, weight: 800, color: C.blueDark });
-  text(ctx, 'What should I check today?', panelX + 380, app.y + 308, { size: 22, weight: 800, maxWidth: 250, lineHeight: 27 });
-  text(ctx, 'Business Health uses the latest MenuList check. Everything important is stable right now.', panelX + 380, app.y + 378, {
-    size: 16,
+  text(ctx, 'WEEKLY MENU REVIEW', panelX + 376, app.y + 272, { size: 12, weight: 800, color: C.blueDark });
+  text(ctx, demo.menu, panelX + 376, app.y + 302, { size: 22, weight: 800, color: C.ink });
+
+  rounded(ctx, panelX + 376, app.y + 344, 268, 54, 14, C.white, '#bfdbfe');
+  text(ctx, 'This week', panelX + 394, app.y + 362, { size: 13, weight: 800, color: C.ink });
+  pill(ctx, 'Activity available', panelX + 504, app.y + 354, { fill: C.greenSoft, stroke: '#bbf7d0', color: C.greenDark, size: 11, padX: 9, padY: 6 });
+
+  rounded(ctx, panelX + 376, app.y + 410, 268, 54, 14, C.white, '#bfdbfe');
+  text(ctx, 'Last week', panelX + 394, app.y + 428, { size: 13, weight: 800, color: C.ink });
+  pill(ctx, 'Comparison ready', panelX + 503, app.y + 420, { fill: C.blueSoft, stroke: '#bfdbfe', color: C.blueDark, size: 11, padX: 9, padY: 6 });
+
+  text(ctx, 'Selected-menu activity is reviewed side by side. The current check stays location-level.', panelX + 376, app.y + 482, {
+    size: 12,
     color: C.blueDark,
-    maxWidth: 250,
-    lineHeight: 24,
+    maxWidth: 268,
+    lineHeight: 17,
   });
-  pill(ctx, 'Fixes hand off safely', panelX + 380, app.y + 470, { fill: C.white, stroke: '#bfdbfe', color: C.blueDark, size: 12 });
 
   drawCustomerPhone(ctx, 982, 238, 238, 492);
   pill(ctx, 'Owner phone view', 940, 762, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
-  pill(ctx, 'Latest check first', 940, 810, { fill: C.greenSoft, stroke: '#bbf7d0', color: C.greenDark, size: 14 });
+  pill(ctx, 'Weekly review + current check', 940, 810, { fill: C.greenSoft, stroke: '#bbf7d0', color: C.greenDark, size: 14 });
   return canvas;
 }
 
@@ -584,7 +592,7 @@ async function main() {
     '## Alignment Notes',
     '',
     '- AI Menu Manager visual mirrors the owner message -> prepared card -> approval -> receipt contract.',
-    '- Business Health visual mirrors the stable latest-check state, No action needed language, public-status availability, and safe handoff posture.',
+    '- Business Health visual keeps Weekly Menu Review separate from the location-level current check, preserves No action needed language, and avoids invented activity or performance metrics.',
     '- Owner phone dashboard visual mirrors the mobile owner output pattern: health state, share link, public-link readiness, and tab navigation.',
     '- Print-ready editor visual is deterministic fictional proof of the current menu-link, layout, and safe export controls.',
     '- Business details, menu items, prices, and URLs are fictional demo values. No invented activity counts or performance percentages are shown.',

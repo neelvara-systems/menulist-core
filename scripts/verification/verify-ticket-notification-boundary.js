@@ -69,13 +69,15 @@ for (const token of [
   'if (!claim.claimed) return false;',
   'finalizeNotificationDelivery({',
   'productId: PRODUCT_IDS.ANSWERLATTICE',
-  'productId: productId || PRODUCT_IDS.MENULIST',
+  'if (productId === PRODUCT_IDS.MENULIST) {',
+  'productId: PRODUCT_IDS.MENULIST',
   ".where('productId', '==', target.productId)",
   'connectionTimeout: 10_000',
   'greetingTimeout: 10_000',
   'socketTimeout: 15_000',
   '`<${getSafeLogId(eventType, referenceId)}@menulist.ai>`',
 ]) requireText(sender, token, 'notification sender');
+forbidText(sender, 'productId: productId || PRODUCT_IDS.MENULIST', 'notification sender product isolation');
 const hasIndex = (manifest, collectionGroup, fields) => manifest.indexes.some((index) => (
   index.collectionGroup === collectionGroup
   && fields.every((field, position) => index.fields[position]?.fieldPath === field)

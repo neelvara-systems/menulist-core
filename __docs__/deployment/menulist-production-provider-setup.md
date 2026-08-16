@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 39 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, and external uptime monitoring remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
+> **Current progress:** 39 of 61 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, and external uptime monitoring remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -440,9 +440,7 @@ Blocked until staging feature certification and production release gates pass:
   bucket-scoped `roles/storage.objectAdmin`, self-scoped
   `roles/iam.serviceAccountTokenCreator`, and exact-subject
   `roles/iam.workloadIdentityUser` are applied. IAM readback reports zero
-  user-managed keys. The production Cloud Tasks queue does not exist yet, so
-  `roles/cloudtasks.enqueuer` remains intentionally pending at queue scope
-  until the approved production resource/deploy path creates it. Vercel
+  user-managed keys. Vercel
   Production contains the five exact encrypted WIF selectors with deterministic
   readback and contains neither legacy MenuList Admin credential variable.
   `PROD-B11` remains open until a release-approved hosted Production deployment
@@ -450,6 +448,54 @@ Blocked until staging feature certification and production release gates pass:
   token signing, Firestore, Storage, and the eventual queue-scoped Cloud Tasks
   operation. No production alias, DNS, application secret, runtime traffic, or
   business data was changed.
+- `2026-08-16` - The production Cloud Tasks prerequisite for `PROD-B11` was
+  completed without creating or running a task. Queue
+  `projects/menulist-prod/locations/us-central1/queues/batch-image-generation`
+  is `RUNNING` with the proven QA-parity limits: 4 maximum dispatches per
+  second, 8 concurrent dispatches, 5 maximum attempts, 5-second minimum
+  backoff, and 300-second maximum backoff. It contains zero tasks. Exact queue
+  IAM readback contains only `roles/cloudtasks.enqueuer` for
+  `serviceAccount:menulist-vercel-prod@menulist-prod.iam.gserviceaccount.com`.
+  A separate project-policy query returned no project-level
+  `roles/cloudtasks.enqueuer` match for that principal. This closes the queue
+  resource and least-privilege IAM prerequisite only; `PROD-B11` remains open
+  until the first release-approved Production deployment proves the hosted
+  OIDC exchange and the complete Firebase/Storage/Cloud Tasks runtime path.
+- `2026-08-16` - The latest `staging` push was verified on the exact Vercel
+  custom-`qa` deployment `dpl_395c2D5ZJfybiDgLrPrjVv5GBkZK`. Deployment URL,
+  `app.menulist.digital`, and `menulist.digital` all return build commit
+  `0ad6bc7ba0950f0d69375c9eef2df5ef8fbdfb0f`; the deployment is `Ready`, and
+  its runtime-log inventory reports zero warnings, errors, or fatals. This is
+  QA deployment evidence only: `/api/version` truthfully reports build
+  environment `preview`. Vercel has no current Production deployment. Its sole
+  Production record is the failed August 11 build from obsolete commit
+  `159005a3a0032cc24ba2d789b6f5cf8a18a7736e`. Repository default branch `main`
+  is currently `2efe5cf8200c39d7d3d1b7b5f2658c9a3b434151`, while `staging` and local
+  `HEAD` are the verified `0ad6bc7` commit. Do not promote the QA artifact or
+  treat it as Production OIDC evidence. A true Production rebuild remains
+  gated by completed staging certification and explicit `PROD-F05` Vercel
+  deploy approval.
+- `2026-08-16` - The current source/configuration recheck passed the Vercel
+  workload-identity contract, Functions deploy preflight (including Functions
+  lint and TypeScript compilation), configuration safety, all 42 MenuList
+  Firestore-rules emulator scripts, root TypeScript, root ESLint, verifier
+  syntax, and diff whitespace checks. Vercel metadata-only readback confirms
+  both custom `qa` and Production contain the scoped
+  `MENULIST_UPSTASH_REDIS_REST_URL` and
+  `MENULIST_UPSTASH_REDIS_REST_TOKEN` variables; values were not exported.
+  The local Upstash runtime probe remains intentionally unavailable because
+  managed provider secrets are not copied into the operator shell. The six
+  stale MenuList AssetOS records were reviewed on August 16: five visuals still
+  matched their changed source boundaries, and the Business Health proof was
+  refreshed and founder-approved with Weekly Menu Review kept separate from
+  the location-level current check. All MenuList asset fingerprints are now
+  current. Eight Answerlattice AssetOS records remain deliberately pending
+  under the product rollout sequence. The wider production-readiness aggregate
+  is still not green because those deferred Answerlattice records and the
+  data-flow collection inventory require explicit review. Do not rewrite either
+  evidence set or infer approval merely to make the aggregate pass. These are
+  release-certification gates, not missing production OIDC, Cloud Tasks, or
+  managed-secret configuration.
 
 ## `PROD-B11` Keyless Runtime Decision
 
@@ -558,14 +604,13 @@ but no Functions package, secret, env key, or deployment changes under
    `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`; IAM readback
    confirms zero user-managed keys remain. MenuList QA is closed.
 6. The dedicated `menulist-prod` pool, provider, service account, current
-   least-privilege IAM, zero-key readback, and five Vercel Production selectors
-   are prepared. Do not run a Production deployment merely to probe OIDC. First
-   finish the independent production runtime-variable/provider gates and create
-   the production Cloud Tasks queue through the approved release path. At the
-   first release-approved hosted Production deployment, add only the
-   queue-scoped enqueuer binding and run the full OIDC/runtime proof before
-   checking `PROD-B11`. Answerlattice QA and production remain explicitly
-   pending until the MenuList production pass closes.
+   least-privilege IAM, zero-key readback, five Vercel Production selectors,
+   production Cloud Tasks queue, and queue-scoped enqueuer binding are
+   prepared. Do not create a separate probe deployment. At the first
+   release-approved hosted Production deployment, run the full OIDC/runtime
+   proof, including a bounded queue operation, before checking `PROD-B11`.
+   Answerlattice QA and production remain explicitly pending until the MenuList
+   production pass closes.
 
 ## Phase B - Firebase And Google Cloud Foundation
 

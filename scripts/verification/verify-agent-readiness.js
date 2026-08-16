@@ -985,6 +985,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, 'Firebase Functions execute inside Google Cloud.', 'MenuList production provider ledger Functions ADC boundary');
   assertIncludes(menulistProductionProviderSetup, '`roles/iam.workloadIdentityUser`', 'MenuList production provider ledger exact federated impersonation role');
   assertIncludes(menulistProductionProviderSetup, '`roles/iam.serviceAccountTokenCreator`', 'MenuList production provider ledger Firebase custom-token signing role');
+  assertIncludes(menulistProductionProviderSetup, 'projects/menulist-prod/locations/us-central1/queues/batch-image-generation', 'MenuList production Cloud Tasks queue evidence');
+  assertIncludes(menulistProductionProviderSetup, 'A separate project-policy query returned no project-level', 'MenuList production queue-only IAM evidence');
+  assertIncludes(menulistProductionProviderSetup, '4 maximum dispatches per\n  second, 8 concurrent dispatches, 5 maximum attempts', 'MenuList production Cloud Tasks bounded rate and retry evidence');
   assertIncludes(menulistProductionProviderSetup, '### Exact next action for `PROD-B11`', 'MenuList production provider ledger next step');
   assertIncludes(productSetupDoc, 'Use full product names in environment variable keys', 'Product setup doc env-key naming contract');
   assert(rootPackageJson.scripts['verify:menulist-firebase-rules-predeploy'] === 'node scripts/verification/run-menulist-firebase-rules-predeploy.mjs', 'Root package must expose the MenuList Firebase rules predeploy gate');
