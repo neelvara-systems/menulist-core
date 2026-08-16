@@ -1601,8 +1601,6 @@ export const computeDecisionBlocksScores = onSchedule({
     maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
-        SECRETS.GEMINI_AI_KEY_2,
-        SECRETS.GEMINI_AI_KEY_3,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
         ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
@@ -2765,8 +2763,6 @@ export const triggerStoreNightlyScheduler = onCall({
     maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
-        SECRETS.GEMINI_AI_KEY_2,
-        SECRETS.GEMINI_AI_KEY_3,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
         ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
@@ -3141,8 +3137,6 @@ export const triggerDecisionBlocksScoring = onCall({
     maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
-        SECRETS.GEMINI_AI_KEY_2,
-        SECRETS.GEMINI_AI_KEY_3,
         SECRETS.SENTRY_DSN,
         ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
         ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,

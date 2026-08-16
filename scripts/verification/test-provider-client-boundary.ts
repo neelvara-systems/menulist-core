@@ -35,7 +35,7 @@ async function main() {
         /Invalid image data URL format/,
     );
 
-    process.env.GEMINI_AI_KEY = 'menu-key-one';
+    process.env.MENULIST_GEMINI_AI_KEY = 'menu-key-one';
     process.env.GEMINI_AI_KEY_2 = 'menu-key-two';
     process.env.GEMINI_AI_KEY_4 = 'menu-extraction-provider-key';
     process.env.MENULIST_GEMINI_AI_KEY_4 = 'menu-extraction-provider-key';
@@ -53,17 +53,17 @@ async function main() {
     };
 
     const manager = new KeyManager();
-    assert.equal(manager.totalKeys, 2, 'The app-side shared pool ignores extraction slot 4');
+    assert.equal(manager.totalKeys, 1, 'The app-side MenuList client discovers only its primary credential');
     const firstRequestClient = manager.getClient();
     const concurrentRequestClient = manager.getClient();
     manager.markKeyRateLimited(firstRequestClient);
-    assert.equal(manager.getStats().currentKeyIndex, 1);
-    assert.notEqual(manager.getClient(), firstRequestClient);
+    assert.equal(manager.getStats().currentKeyIndex, 0);
+    assert.equal(manager.getClient(), firstRequestClient);
     manager.markKeySuccess(concurrentRequestClient);
     manager.markKeyRateLimited(concurrentRequestClient);
     assert.deepEqual(
         manager.getStats().keys.map((key) => key.totalRateLimits),
-        [2, 0],
+        [2],
     );
 
     console.log('Provider client boundary verification passed.');

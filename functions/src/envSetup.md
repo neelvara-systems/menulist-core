@@ -50,8 +50,6 @@ selected Function binds it through its `secrets` option:
 
 ```text
 GEMINI_AI_KEY
-GEMINI_AI_KEY_2
-GEMINI_AI_KEY_3
 MENULIST_GEMINI_TEXT_AI_KEY
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
@@ -83,8 +81,6 @@ target list:
 
 ```bash
 firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
 firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa
@@ -213,9 +209,6 @@ Declared Answerlattice secrets:
 ```text
 ANSWERLATTICE_CRON_SECRET
 ANSWERLATTICE_GEMINI_AI_KEY
-ANSWERLATTICE_GEMINI_AI_KEY_2
-ANSWERLATTICE_GEMINI_AI_KEY_3
-ANSWERLATTICE_GEMINI_AI_KEY_4
 ANSWERLATTICE_PUBLIC_BUNDLE_SALT
 ANSWERLATTICE_SMTP_HOST
 ANSWERLATTICE_SMTP_PORT
@@ -230,9 +223,6 @@ Set staging:
 ```bash
 firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_2 --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_3 --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_4 --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa --config firebase-answerlattice.json
 firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa --config firebase-answerlattice.json
@@ -340,8 +330,8 @@ validating Functions secrets.
 ## Current AI Secret Name
 
 Use `GEMINI_AI_KEY` as the primary MenuList Firebase Functions AI secret.
-Shared-pool rotation keys are `GEMINI_AI_KEY_2` and `GEMINI_AI_KEY_3`.
-The former `GEMINI_AI_KEY_4` runtime alias is retired and must not be restored.
+Rotate it by replacing its Secret Manager version in place. Numbered MenuList
+rotation aliases are retired and must not be restored.
 
 Use `MENULIST_GEMINI_TEXT_AI_KEY` only for the menu extraction worker. Every
 deployed environment must set it to a paid key from that environment's single
@@ -352,9 +342,8 @@ production Gemini project. Never fall back from this extraction pool to
 `GEMINI_AI_KEY*`, and do not create provider projects or keys to multiply
 project-level quota.
 
-Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY` plus
-`ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
-`ANSWERLATTICE_GEMINI_AI_KEY_4`.
+Answerlattice uses only `ANSWERLATTICE_GEMINI_AI_KEY`. Rotate it by replacing
+the managed value in place.
 
 SignalDesk app/runtime uses `SIGNALDESK_GEMINI_AI_KEY` plus
 `SIGNALDESK_GEMINI_AI_KEY_2`,
@@ -369,10 +358,10 @@ Production Gemini keys must be created per environment and restricted to the
 Gemini API. Do not reuse the local or staging key in production. Do not expose
 Gemini keys in browser code, mobile apps, widgets, Firestore, or logs.
 
-The shared rotation keys and dedicated extraction key are for credential
-rotation, leak response, and workload isolation. They do not create additional
-capacity when they belong to the same Google project because Gemini quotas are
-enforced at the project/model tier.
+The dedicated extraction key provides workload isolation. It does not create
+additional capacity because Gemini quotas are enforced at the project/model
+tier. See `__docs__/deployment/gemini-credential-billing-strategy.md` for the
+canonical four-project billing, credential, and rotation contract.
 For production scaling, use billing, quota monitoring, alert-only budgets, the
 Gemini API spend-cap budget, the app-local rolling ceiling, and quota increase
 requests.

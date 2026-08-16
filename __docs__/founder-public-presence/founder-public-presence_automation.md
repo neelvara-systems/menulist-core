@@ -49,6 +49,8 @@ Material change
 Best content candidate
 - One evidence-backed lesson from current work or the ledger.
 - Why it helps the target audience.
+- Why this topic is selected now, why the format fits, and why the strongest
+  obvious alternatives are not today's choice.
 - Privacy/product boundary.
 
 Best engagement opportunity
@@ -57,6 +59,10 @@ Best engagement opportunity
 
 Today’s action
 - Exactly one small founder action: account setup, one post, two replies, one Reddit comment, prepare proof, resolve a blocker, or intentionally do nothing.
+- For a publication action, include the exact date, Asia/Kolkata timezone,
+  bounded publication window, why the window was selected, and the one result
+  line to send if the window is missed. Never imply that the time guarantees
+  reach or add catch-up volume.
 
 Do not do
 - One current risk, duplication, weak claim, or privacy issue to avoid.
@@ -65,6 +71,12 @@ Do not do
 The brief must not create a second action merely because yesterday was missed.
 It carries forward the most important unfinished action and explicitly states
 what Codex has already prepared.
+
+The brief remains a one-primary-action instrument. After the founder reports
+that action `DONE`, a live session may admit additional same-day work one action
+at a time only when it is distinct, evidence-backed, useful now, and not quota
+or catch-up volume. The founder's available time removes a capacity blocker; it
+does not itself create another action.
 
 ## Evening Accountability Output
 

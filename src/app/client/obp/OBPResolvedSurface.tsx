@@ -1205,7 +1205,7 @@ export default function OBPResolvedSurface({
                                         <iframe
                                             allowFullScreen
                                             loading="lazy"
-                                            referrerPolicy="no-referrer-when-downgrade"
+                                            referrerPolicy="strict-origin-when-cross-origin"
                                             src={googleMapsEmbedUrl}
                                             title={`${storeLocationName} ${t('publicLocation')}`}
                                         />

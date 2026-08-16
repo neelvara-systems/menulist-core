@@ -112,7 +112,7 @@ For each project:
 - Enable Firestore and Storage.
 - Create a service account for server-side Admin access.
 - Set Secret Manager value `ANSWERLATTICE_CRON_SECRET`.
-- Set Secret Manager values for declared Answerlattice Gemini key slots: `ANSWERLATTICE_GEMINI_AI_KEY`, `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and `ANSWERLATTICE_GEMINI_AI_KEY_4`.
+- Set the single declared Answerlattice Gemini secret: `ANSWERLATTICE_GEMINI_AI_KEY`. Rotate its managed value in place under the canonical deployment strategy.
 - Confirm `firebase-answerlattice.json` points to the right functions source and rule files.
 - Deploy only after validation:
 

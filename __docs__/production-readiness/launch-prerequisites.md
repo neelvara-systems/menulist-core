@@ -608,10 +608,10 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
-| AI key failover               | ✅ Auto    | Sticky key selection; transient 429 cools that key and permits the next shared key |
+| AI provider retry             | ✅ Auto    | Bounded retry/backoff; additional same-project keys are not a quota strategy |
 | SMTP setup for messaging      | ❌ Manual  | QA sender first; approved production sender before launch |
 | Gemini key isolation          | ❌ Manual  | Required — separate staging/prod values plus a dedicated extraction credential |
-| Optional shared failover keys | ❌ Manual  | Slots 2 and 3 only — leak response/failover, not quota scaling |
+| Credential rotation          | ❌ Manual  | Replace the managed primary value in place, verify the new revision, then revoke the old credential |
 | AI provider health records    | ☐ Pre-prod verify | `_health/aiProvider_gemini` and `platformSummary/answerlatticeAiProviderHealth` |
 
 ---
@@ -624,16 +624,15 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 ### Required Owner Steps
 
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey).
-2. Create a dedicated credential set for each environment: shared primary,
-   shared failover slots 2 and 3, and one extraction credential.
+2. For MenuList, create one primary and one isolated extraction credential per
+   environment. For Answerlattice, create one primary per environment.
 3. Restrict every credential to the Gemini API.
 4. Confirm the production key is not used by local development or staging.
-5. Store the QA shared keys in Vercel Preview `MENULIST_GEMINI_AI_KEY`, `_2`,
-   and `_3`, restricted to the exact
+5. Store the QA primary in Vercel `qa` as `MENULIST_GEMINI_AI_KEY`, restricted to the exact
    `staging` Git branch.
-6. Store the production shared keys in Vercel Production under the same
-   canonical MenuList names, using production-only values.
-7. Store `GEMINI_AI_KEY`, `_2`, and `_3` for shared MenuList Functions and
+6. Store the production primary in Vercel Production under the same canonical
+   MenuList name, using a production-only value.
+7. Store `GEMINI_AI_KEY` for primary MenuList Functions and
    `MENULIST_GEMINI_TEXT_AI_KEY` for menu extraction in Firebase Secret Manager
    for `menulist-qa` and `menulist-prod`.
 8. Configure budget alerts, spend monitoring, and model/project quota checks for the key's Google Cloud project.
@@ -666,31 +665,27 @@ passed predeploy lint/build and then failed with Cloud Resource Manager
 `menulist-qa` and `answerlattice-qa` deploy attempts failed at the same Cloud
 Resource Manager permission gate after predeploy build.
 
-### Shared Failover And Extraction Keys
+### Primary And Extraction Credentials
 
-The shared slots are useful for credential rotation, leak response, and
-transient failover. The extraction key is a separate failure-containment and
-credential-lifecycle boundary. None creates extra capacity when the keys belong
-to the same Google project.
+Rotate the primary by replacing its managed value in place. The extraction key
+is a separate failure-containment and credential-lifecycle boundary. Neither
+creates extra capacity because both belong to the same Google project.
 
 ```bash
-firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
 firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 ```
 
 Repeat with `--project menulist-prod` for production values after QA passes.
 
-**How it works:** The shared KeyManager auto-discovers primary plus slots 2 and
-3 at startup and remains on its current healthy key. On a transient `429`, the
-exact affected key enters cooldown and the gateway can advance while honoring
-structured provider retry timing with bounded full-jitter backoff. It does not
-immediately hop keys to bypass a project-level limit. Hard quota failures and
-retry windows beyond the inline budget fail fast. Rate and spend limits still
-belong to the Google project/model tier, so production scaling requires billing,
-quota monitoring, alert-only budgets, a Gemini API spend-cap budget, and quota
-increase requests. Menu extraction does not use this pool; it fails closed on
-its dedicated `MENULIST_GEMINI_TEXT_AI_KEY`.
+**How it works:** The gateway uses one environment-scoped primary and bounded
+full-jitter retry. Hard quota failures and retry windows beyond the inline
+budget fail fast. Rate and spend limits belong to the Google project/model
+tier, so production scaling requires billing, quota monitoring, alert-only
+budgets, a Gemini API spend-cap budget, backpressure, and quota increase
+requests. Menu extraction fails closed on its dedicated
+`MENULIST_GEMINI_TEXT_AI_KEY`. See the canonical
+[Gemini strategy](../deployment/gemini-credential-billing-strategy.md).
 
 ---
 

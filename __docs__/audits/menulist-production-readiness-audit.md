@@ -6907,3 +6907,26 @@ message was used.
 ## Razorpay Checkout Concurrency And Scale Checkpoint - July 14, 2026
 
 Razorpay long-term hardening is implemented in source without changing desktop/mobile request or response contracts. Existing-user subscription and top-up creation use actor/request-bound central server leases with a versioned pre-provider state, a transactional provider-start fence, exact provider attempt recovery, an immutable provider-ID checkpoint, an attempt-derived unique top-up receipt, and a short completed-attempt replay checkpoint. An expired provider-ambiguous subscription can recover or wait but cannot create again; top-up recovery retains the same receipt/attempt. Ordinary cleanup cannot delete provider state, and unversioned rolling-release leases fail into recovery. Provider-plan creation uses a separate versioned durable registry plus complete bounded provider scanning: only expired pre-provider work can change owner, while provider-started or unversioned ambiguity remains recovery-only until the canonical plan appears. Signed webhook coordination now separates processed replay from active work: active work returns retryable `503`, failed/expired work can be re-owned, and exact attempt-fenced terminal replacement prevents stale workers from downgrading success. Deterministic failure alerts/messages and immutable payment-audit creation time keep replay side effects stable; the Admin serializer preserves real FieldValue timestamps. Inherited-outlet top-up audits use the shared HQ billing store so paid packs remain visible in the effective desktop/mobile billing history. New status writes retain the latest 100 diagnostic entries while payment-id idempotency history remains intact. The consolidated Functions reconciler processes five provider calls at a time, checkpoints every complete 100-row page, resumes within a six-minute work budget, and caps detailed result samples. The same scheduler writes one daily server-only `systemHealth/billing` summary that separately observes expired pre-provider, provider-ambiguous, provider-created and webhook state. `billingCheckoutLeases`, `billingProviderPlans`, and `razorpayWebhookEvents` are explicitly client-denied; exact checkout-status/expiry and webhook-status/processing-expiry composite indexes prevent terminal/completed rows from masking live recovery risk. Root TypeScript, scoped lint, Functions build, billing/API source gates, checkout/provider-plan/webhook Admin emulators and coordination-rules emulator pass locally. Owner-pending work remains: restore Firebase CLI authentication and run the maintained combined QA deploy, deploy the app through the separately approved Vercel path, then run disposable Razorpay test-mode concurrent/lost-response subscription, top-up, plan-creation and webhook mutation smoke. No live charge, production deploy, or launch certification is claimed.
+
+## MenuList Production Environment Source Gate - August 16, 2026
+
+Expected: verify the current production environment contract, provider-client
+boundaries, single-key Gemini attribution, Maps Embed source boundary, root type
+integrity, changed-file lint, documentation links, and diff formatting without a
+build, deployment, live write, or paid provider request.
+
+Actual: `npm run verify:agent-readiness`,
+`npm run verify:menulist-env-contract`,
+`npm run test:provider-client-boundary`,
+`npm run test:functions-ai-key-attribution`, and
+`npm run verify:official-business-page-boundary` passed. `npx tsc --noEmit`,
+focused ESLint for `src/app/client/obp/OBPResolvedSurface.tsx` and
+`scripts/verification/verify-agent-readiness.js`, and `git diff --check` passed.
+`npm run docs:check-links` scanned 2,994 documentation files and 5,248 internal
+links with zero broken links; its 62 warnings are existing uppercase filenames
+inside tracked video artifacts and are unrelated to this setup pass.
+
+Result: `PROD-E09` passed as local source/configuration evidence only. It does
+not certify a Next.js production build, Vercel deployment, Firebase deployment,
+Secret Manager runtime binding, provider smoke, production data path, App Check
+enforcement, OAuth publishing, live payment, or production traffic.

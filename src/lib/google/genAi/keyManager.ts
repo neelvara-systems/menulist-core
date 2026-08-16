@@ -1,18 +1,13 @@
 /**
  * AI Key Manager — Multi-key rotation for Gemini API
  * 
- * Manages a pool of API keys with automatic failover on rate limiting.
- * Google applies Gemini rate limits per project, not per API key, so this is
- * for rotation/leak response/failover only. It is not a quota scaling strategy
- * unless the key/project design is intentionally separated.
+ * MenuList uses one primary credential. Rotation replaces the managed
+ * environment value in place; numbered permanent keys are intentionally
+ * unsupported for MenuList and Answerlattice.
  * 
  * Key Discovery:
  * - MENULIST_GEMINI_AI_KEY (required, primary)
- * - MENULIST_GEMINI_AI_KEY_2 (optional)
- * - MENULIST_GEMINI_AI_KEY_3 (optional)
- *
- * The fourth paid provider credential is dedicated to menu extraction through
- * MENULIST_GEMINI_TEXT_AI_KEY and must not enter this shared pool.
+ * Menu extraction remains a separate Firebase Functions-only credential.
  * 
  * @see __docs__/ai-system-layer/README.md
  */
@@ -69,8 +64,6 @@ export type GeminiKeyEnvVarCandidates = readonly (readonly string[])[];
 
 const KEY_ENV_VAR_CANDIDATES: GeminiKeyEnvVarCandidates = [
     ['MENULIST_GEMINI_AI_KEY', 'GEMINI_AI_KEY', 'GEMINI_API_KEY'],
-    ['MENULIST_GEMINI_AI_KEY_2', 'GEMINI_AI_KEY_2'],
-    ['MENULIST_GEMINI_AI_KEY_3', 'GEMINI_AI_KEY_3'],
 ] as const;
 
 const getKeyManagerSlotContext = (slotIndex: number, candidateEnvVarCount = 1) => ({

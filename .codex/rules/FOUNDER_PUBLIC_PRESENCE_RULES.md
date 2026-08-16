@@ -127,6 +127,15 @@ advice merely to satisfy cadence.
 ## Draft And Engagement Rule
 
 - Use the calm, direct, proof-first Proof & State voice.
+- Before asking the founder to publish any post, explain the selection rationale:
+  why this topic now, which audience problem it serves, why the chosen format
+  fits, what evidence supports it, which privacy/product boundary applies, and
+  why the strongest obvious alternatives were deferred. Never provide only the
+  final copy and expect blind execution.
+- Every publication handoff must state the exact date, timezone, bounded
+  publication window, why that window was chosen, and the one instruction to
+  follow if the window is missed. Treat timing as a controlled operating
+  baseline, never as an algorithm guarantee, and never create catch-up volume.
 - Target serious AI-assisted founders and small teams productionizing SaaS.
 - Native X, Reddit, and Instagram material is written separately. No mechanical
   cross-posting.
@@ -136,6 +145,10 @@ advice merely to satisfy cadence.
   plug in the first month.
 - Builder utility remains the majority; product proof is evidence-led; direct
   promotion stays rare and gated.
+- There is no hard one-original-post-per-day prohibition. The initial weekly
+  cadence remains the learning baseline, and every additional same-day post
+  must independently pass the topic, evidence, privacy, format, timing, and
+  non-duplication gates. Founder availability alone is not a publication reason.
 - Preserve captured, validated, drafting, founder-review, approved, published,
   measuring, reusable, deferred, rejected, retired, and blocked history.
 
@@ -163,8 +176,10 @@ content queue.
 - Ask the founder to reply with `DONE <URL or result>`, `BLOCKED <reason>`, or
   `SKIP <reason>`; never request or store credentials, codes, or private
   verification material.
-- Give exactly one primary action per day. Carry forward at most one unfinished
-  action and never double the next day's volume.
+- The automated daily brief gives exactly one primary action. After a completed
+  action, additional same-day work may be admitted one action at a time only
+  when it is distinct, evidence-backed, useful now, and not quota or catch-up
+  volume. Carry forward at most one unfinished action.
 - The evening reminder acknowledges recorded completion; otherwise it names
   one smallest pending action in a neutral, non-shaming tone.
 - When blocked, guide the founder through the smallest safe unblock step and
@@ -186,6 +201,7 @@ covering that action.
 When related work changes PresenceOS, report:
 
 - what changed or was captured;
+- the reasoning behind any post selected for founder review or publication;
 - the evidence and privacy/product boundary;
 - the current status and one next action;
 - whether any step requires founder review or explicit external authority.

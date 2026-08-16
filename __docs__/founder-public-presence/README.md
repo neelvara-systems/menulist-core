@@ -93,6 +93,19 @@ not a public product, dashboard, database, scraping system, engagement bot, or
 auto-posting runtime. Do not build those merely because the process is now
 recurring.
 
+## Working Roles
+
+- The founder owns the account, identity, credentials, final disclosure choice,
+  and every external action.
+- Codex is the editorial operating lead: it researches, monitors, plans,
+  validates, drafts, explains recommendations, maintains the ledgers, and names
+  the next action.
+- Codex is not the legal or platform owner and does not receive autonomous
+  publishing, reply, follow, message, verification, or spend authority.
+- The founder has confirmed that available time is not the limiting constraint.
+  PresenceOS may recommend additional work when it earns its place, but
+  availability by itself never creates a post quota.
+
 ## Proactive Maintenance Rule
 
 Codex must update this folder when related work reveals a material public-useful

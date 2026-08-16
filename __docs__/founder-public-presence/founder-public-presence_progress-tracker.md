@@ -43,17 +43,20 @@ codes, recovery details, private email, phone, or identity documents.
 
 ## Habit Rules
 
-1. Give the founder exactly one primary action per day.
-2. Keep the action small enough to finish in the scheduled session.
-3. Do not mark an external action done without founder-provided evidence.
-4. If an action is missed, carry forward only the most important unfinished
+1. The automated daily brief gives exactly one primary action.
+2. After that action is completed, additional same-day work may be admitted one
+   action at a time only when it is distinct, evidence-backed, useful now, and
+   not quota or catch-up volume. Founder availability alone is not sufficient.
+3. Keep each action small enough to finish in its scheduled session.
+4. Do not mark an external action done without founder-provided evidence.
+5. If an action is missed, carry forward only the most important unfinished
    action. Do not double the next day's volume.
-5. If blocked, guide the founder through the smallest safe unblock step.
-6. If skipped intentionally, record the reason and decide whether to retire,
+6. If blocked, guide the founder through the smallest safe unblock step.
+7. If skipped intentionally, record the reason and decide whether to retire,
    reschedule, or replace the action.
-7. Do not use shame, streak anxiety, or artificial urgency. The system builds a
+8. Do not use shame, streak anxiety, or artificial urgency. The system builds a
    habit through clarity, repetition, and visible evidence.
-8. External account creation, publication, replies, profile changes, follows,
+9. External account creation, publication, replies, profile changes, follows,
    purchases, and verification remain manual founder actions.
 
 ## Open Founder Queue
@@ -65,7 +68,7 @@ codes, recovery details, private email, phone, or identity documents.
 | PS-P002 | 2026-08-12 | Completed 2026-08-15 | Send the X profile URL for a logged-out privacy and correlation review before publishing | done | Logged-out visible-surface review passed. Founder confirmed email/phone discoverability off, contact syncing off with uploaded contacts removed, birth date removed, 2FA enabled, and no personally or product-correlated accounts among the current follows; private values were not recorded. | - | Complete |
 | PS-P004 | 2026-08-15 | Completed 2026-08-15 | Create a separate local Chrome profile for Proof & State, leave Google sync off, and use it only for the pseudonymous accounts | done | Founder reported the dedicated Chrome profile ready; screenshots showed the separate `Proof` profile with only the dedicated pseudonymous Google identity, the Proof & State X session, and no unrelated work tabs. The address shown in one screenshot was intentionally not recorded. | - | Complete |
 | PS-P003 | 2026-08-12 | Completed 2026-08-15 | Manually create the matching Reddit account and complete its privacy check | done | Founder supplied the logged-in `u/proofandstate` account in the dedicated Chrome profile. A read-only logged-out check confirmed the public profile at `https://www.reddit.com/user/proofandstate/` with no posts or comments. The approved 512 x 512 Reddit avatar derivative was prepared at `assets/proof-and-state-avatar-reddit.png` and verified at 231,828 bytes. Founder then explicitly reported `DONE Reddit privacy settings checked`; private setting values were not requested or stored. | - | Complete |
-| PS-P005 | 2026-08-15 | 2026-08-16 morning, after the Presence Brief | Manually publish the reviewed FPP-C001 text-only X post from the post bank | pending | Draft is evidence-validated, privacy-reviewed, and 276 characters. No link, media, hashtag, product name, customer claim, or invitation is included. | Founder publication is required | Open X only in the dedicated Proof Chrome profile, paste the exact reviewed text, preview once, publish, then reply `DONE <URL>` |
+| PS-P005 | 2026-08-15 | Completed 2026-08-16 at 9:41 AM Asia/Kolkata | Manually publish the reviewed FPP-C001 text-only X post from the post bank | done | Founder reported completion with the published URL: `https://x.com/proofandstate/status/2088841036009533550`. The post used the exact approved 276-character text-only draft and remained within the 9:00-10:00 AM launch window. | - | Complete; observe the post without assigning another same-day action |
 
 ## Daily Log
 
@@ -75,6 +78,7 @@ codes, recovery details, private email, phone, or identity documents.
 | 2026-08-13 | PS-P000 - create the dedicated recovery email | PS-P001 narrowed to its privacy prerequisite | no result recorded | No completion evidence recorded | unconfirmed | PS-P000 to 2026-08-14; no extra action added |
 | 2026-08-14 | PS-P000 - create the dedicated recovery email | carried-forward from 2026-08-13 | no result recorded | No completion evidence recorded | unconfirmed | PS-P000 to 2026-08-15; no extra action added |
 | 2026-08-15 | PS-P000 - create the dedicated recovery email | carried-forward from 2026-08-14 | done; founder also created and privacy-checked the X profile, prepared its dedicated Chrome profile, and completed the matching Reddit profile/privacy setup | Dedicated email creation recorded without its address; configured X profile, logged-out X review, private-setting confirmation, browser separation, public `u/proofandstate` profile verification, upload-safe Reddit avatar preparation, and founder-confirmed Reddit privacy completion were recorded without private values | done | Nothing else publicly today; PS-P005 was prepared locally as tomorrow morning's single founder action |
+| 2026-08-16 | PS-P005 - publish the reviewed first X post | in progress; same-day source, evidence, privacy, length, duplicate, and live-composer formatting checks passed | done at 9:41 AM Asia/Kolkata; founder also confirmed that available time does not constrain future PresenceOS work | Founder supplied `https://x.com/proofandstate/status/2088841036009533550`; the exact approved 276-character text-only post was published within its launch window. Availability is recorded as capacity, not evidence that another post is needed. | done | No second original is justified today; observe the first result and admit future additional actions only through the full gate |
 
 ## Maintenance Contract
 

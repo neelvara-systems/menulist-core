@@ -88,6 +88,22 @@ Founder review checks:
 - Is the audience and channel correct?
 - Is there a real reason to publish this now?
 
+Before presenting a post for founder review or publication, Codex must explain:
+
+1. why this topic is being selected now;
+2. which target-audience problem it addresses;
+3. why this format is appropriate;
+4. what current evidence supports the lesson;
+5. what privacy and product boundaries shape the public wording;
+6. why the strongest alternative topics or formats were deferred;
+7. the exact date, timezone, bounded publication window, and why that window was
+   selected; and
+8. what the founder should report if the window is missed, without adding a
+   catch-up post or moving the post impulsively.
+
+The founder should learn the strategy behind the action, not receive unexplained
+copy to execute blindly.
+
 ### 5. Publish or hold
 
 Codex may prepare and maintain drafts without separate permission during
@@ -136,6 +152,24 @@ The executable calendar and first twelve-post order live in the
 Use 8:00 PM Asia/Kolkata as a convenient initial publishing time for the first
 twelve original posts. It is a controlled baseline, not an algorithm claim.
 Review the founder's own response data before changing it.
+
+Every post handoff must turn that baseline into an exact local-time window. A
+window is an execution commitment and measurement boundary, not a claim that X
+rewards that hour. If it is missed, record the reason and carry forward at most
+one action; do not compensate with extra posts.
+
+The three-post weekly cadence is a starting measurement baseline, not a hard
+one-post-per-day ceiling. The founder has confirmed that time is available when
+more work is genuinely useful. Additional same-day actions are admitted one at
+a time after the current action is complete. A second or third original post
+must solve a distinct audience problem, use separate current evidence, avoid
+topic/format duplication, have a reason it is more useful today than later, and
+receive its own publication window and rationale. Availability alone does not
+pass that gate.
+
+When extra capacity exists, prefer this order unless current evidence points
+elsewhere: thoughtful replies to visible posts, a native Reddit comment,
+preparing a privacy-safe proof artifact, then an additional original X post.
 
 The three-post cadence also clears the ten-post monthly activity threshold
 during a normal full month without adding quota-driven content. That threshold

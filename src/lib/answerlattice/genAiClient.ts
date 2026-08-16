@@ -9,9 +9,6 @@ import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeF
 
 const answerlatticeKeyManager = new KeyManager([
     [ANSWERLATTICE_AI_ENV.GEMINI_AI_KEY],
-    [ANSWERLATTICE_AI_ENV.GEMINI_AI_KEY_2],
-    [ANSWERLATTICE_AI_ENV.GEMINI_AI_KEY_3],
-    [ANSWERLATTICE_AI_ENV.GEMINI_AI_KEY_4],
 ]);
 
 const answerlatticeGeminiSpendAdmission = createFirestoreGeminiSpendAdmission({

@@ -59,16 +59,16 @@ Protected owner AI routes now run `requireAnyStorePermission()` before expensive
 ```
 src/lib/google/genAi/
 ├── index.ts                # Entry point — exports genAIClient (gateway)
-├── aiGateway.ts            # AI Gateway — retry + key rotation proxy
-└── keyManager.ts           # Key Manager — pool + health tracking
+├── aiGateway.ts            # AI Gateway — bounded retry proxy
+└── keyManager.ts           # Key Manager — primary credential health tracking
 
 functions/src/
 ├── genAiClient.ts          # Entry point — exports genAIClient (gateway)
 ├── ai/
-│   ├── aiGateway.ts          # AI Gateway — retry + key rotation proxy
-│   └── keyManager.ts         # Key Manager — pool + health tracking
+│   ├── aiGateway.ts          # AI Gateway — bounded retry proxy
+│   └── keyManager.ts         # Key Manager — primary credential health tracking
 ├── config/
-│   └── secrets.ts            # (MODIFIED) Added GEMINI_AI_KEY_2/_3/_4
+│   └── secrets.ts            # Primary plus isolated extraction bindings
 ├── lib/
 │   └── circuitBreaker.ts     # (EXISTING) Reused as-is by extraction
 ```
@@ -108,24 +108,22 @@ The gateway is a transparent proxy with the same interface as `GoogleGenAI`.
 
 ### 1. Key Manager (`keyManager.ts`)
 
-Manages the shared MenuList pool of 1-3 API keys with health tracking. Menu
-extraction is deliberately outside this pool and uses one paid
+Manages the single primary MenuList API credential with health tracking. Menu
+extraction is deliberately outside this credential path and uses one paid
 `MENULIST_GEMINI_TEXT_AI_KEY` through `menuExtractionGenAiClient.ts`, with no
-fallback into the shared credentials.
+fallback into the primary credential.
 
 ```typescript
 // Key discovery from environment variables
 const KEY_ENV_VARS = [
   "GEMINI_AI_KEY", // Required (primary)
-  "GEMINI_AI_KEY_2", // Optional
-  "GEMINI_AI_KEY_3", // Optional
 ];
 
 class KeyManager {
   getClient(): GoogleGenAI; // Returns current healthy client
   markCurrentKeyRateLimited(): void; // Triggers rotation + cooldown
   markCurrentKeySuccess(): void; // Resets consecutive failure counter
-  hasAlternativeKeys(): boolean; // Are there other non-cooled-down keys?
+  hasAlternativeKeys(): boolean; // False for the MenuList primary-only contract
   hasConfiguredKeys(): boolean; // Is at least one real key configured?
   getStats(): KeyManagerStats; // For monitoring
 }
@@ -133,6 +131,9 @@ class KeyManager {
 
 **Cooldown strategy:** Exponential — 60s → 120s → 240s → capped at 5min per key.
 On success, the consecutive failure counter resets to 0.
+
+Provider billing, credential count, and in-place rotation are governed by
+[Gemini Credential And Billing Strategy](../deployment/gemini-credential-billing-strategy.md).
 
 **Missing-key behavior:** the key manager does not create an empty-key client. If no Gemini key exists, `getClient()` throws `AI_PROVIDER_CONFIG_MISSING`, and the AI gateway fails before provider I/O with bounded diagnostics.
 

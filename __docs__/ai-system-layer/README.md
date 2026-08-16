@@ -212,8 +212,8 @@ menuExtractionGenAiClient.ts
 | `functions-answerlattice/src/genAiClient.ts` | Entry point — exports `answerlatticeGenAIClient` (gateway) |
 | `functions-answerlattice/src/ai/aiGateway.ts` | Answerlattice AI Gateway — rolling-spend admission, bounded retry, key health, and diagnostics |
 | `functions-answerlattice/src/sharedData/geminiSpendPolicy.ts` | Byte-identical spend/pricing policy mirror |
-| `functions-answerlattice/src/ai/keyManager.ts` | Answerlattice Key Manager — product-scoped key pool + health tracking |
-| `functions-answerlattice/src/config/secrets.ts` | Answerlattice secret names + groups (cron + 4 AI key slots) |
+| `functions-answerlattice/src/ai/keyManager.ts` | Answerlattice Key Manager — product-scoped primary credential + health tracking |
+| `functions-answerlattice/src/config/secrets.ts` | Answerlattice secret names + groups (cron + primary AI credential) |
 | `functions-answerlattice/src/constants/ai.ts` | Answerlattice Functions AI model constants |
 | `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` | Daily Answerlattice Gemini health check |
 
@@ -229,19 +229,17 @@ menuExtractionGenAiClient.ts
 | Variable          | Required | Where                     |
 | ----------------- | -------- | ------------------------- |
 | `GEMINI_AI_KEY`   | ✅ Yes   | Vercel + Firebase Secrets |
-| `GEMINI_AI_KEY_2` | Optional | Vercel + Firebase Secrets |
-| `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
 | `MENULIST_GEMINI_TEXT_AI_KEY` | Required for `processMenuImagesJob` | MenuList Firebase Secrets |
 | `ANSWERLATTICE_GEMINI_AI_KEY` | ✅ Yes for Answerlattice Functions AI | Answerlattice Firebase Secrets |
-| `ANSWERLATTICE_GEMINI_AI_KEY_2` | Optional | Answerlattice Firebase Secrets |
-| `ANSWERLATTICE_GEMINI_AI_KEY_3` | Optional | Answerlattice Firebase Secrets |
-| `ANSWERLATTICE_GEMINI_AI_KEY_4` | Optional | Answerlattice Firebase Secrets |
 
 Each environment must use its own key values. Do not share the production key with local or staging. Restrict keys to the Gemini API and keep browser code behind server routes or Firebase Functions.
 
 Missing-key behavior is fail-closed. If no Gemini key is configured, the app-route and Cloud Functions AI gateways throw the stable `AI_PROVIDER_CONFIG_MISSING` error before any provider call instead of constructing an empty-key client. This keeps startup safe while making secret misconfiguration explicit and local to the gateway.
 
-Answerlattice Cloud Functions do not use MenuList's `GEMINI_AI_KEY` pool. They use the same `@google/genai` API-key gateway shape with Answerlattice-owned `ANSWERLATTICE_GEMINI_AI_KEY*` secrets declared on AI scheduler, task, and callable functions. API-key mode has no provider-region override.
+Answerlattice Cloud Functions do not use MenuList's `GEMINI_AI_KEY`. They use the same `@google/genai` API-key gateway shape with the Answerlattice-owned `ANSWERLATTICE_GEMINI_AI_KEY` secret declared on AI scheduler, task, and callable functions. API-key mode has no provider-region override.
+
+Credential count, billing ownership, project isolation, and in-place rotation are
+governed by [Gemini Credential And Billing Strategy](../deployment/gemini-credential-billing-strategy.md).
 
 ### Accounting Guardrails
 

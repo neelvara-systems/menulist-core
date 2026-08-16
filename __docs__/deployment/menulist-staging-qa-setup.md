@@ -21,6 +21,19 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   [menulist-production-provider-setup.md](./menulist-production-provider-setup.md).
 - QA remains isolated on `menulist-qa`. No QA application data, secret, deploy,
   or provider credential was copied into `menulist-prod`.
+- **MenuList QA Web** is now registered with a QA-only reCAPTCHA v3 credential
+  for the `menulist.digital` domain family. The private secret exists only in
+  Firebase App Check; the matching public site key exists only in Vercel's
+  custom `qa` environment as `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`. All displayed
+  App Check APIs remain unenforced, and no deployment was triggered.
+- Maps Embed parity is prepared without sharing the production credential.
+  Exact project `menulist-qa` has only Maps Embed API enabled for this use and
+  dedicated key **MenuList QA Maps Embed** is restricted to that API plus
+  `https://menulist.digital/*`, `https://www.menulist.digital/*`,
+  `https://app.menulist.digital/*`, and `https://*.menulist.digital/*`. Its
+  browser-visible value exists only as custom-environment `qa`
+  `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY`. Places API was not enabled, and no
+  Vercel deployment or map request was triggered.
 - MenuList QA's Vercel OIDC migration is complete. Production Workload Identity
   Federation is prepared, but production hosted proof and any Production
   deployment remain release-gated in the production ledger.
@@ -2134,12 +2147,12 @@ Operator progress:
   canonical MenuList owner sign-in with both Google and email entry paths.
   The sign-in page emitted the bounded diagnostic `[Firebase Bootstrap]
   Operation failed` because this first QA boot intentionally skipped
-  App Check/reCAPTCHA and the branch-scoped Preview environment therefore has
-  no `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`; `initAppCheck` returns without creating
-  App Check in that case, so the diagnostic does not block Firebase Auth.
-  This completes `QA-K01`, `QA-K02`, and `QA-K03`. App Check remains skipped
-  until normal Auth, Firestore, and Storage smoke has passed, as recorded in
-  `QA-F01`.
+  App Check/reCAPTCHA and the branch-scoped Preview environment had no
+  `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`; `initAppCheck` returned without creating
+  App Check in that historical build, so the diagnostic did not block Firebase
+  Auth. This completed `QA-K01`, `QA-K02`, and `QA-K03`. The August 16 provider
+  registration below supersedes that configuration state for the next QA
+  deployment while preserving this exact-build evidence.
 - `2026-08-13 01:14 IST` - Live email/password smoke used only synthetic
   `QA owner A`; its temporary password was rotated for this test and was not
   printed, logged, documented, or placed in shell history. Firebase Auth
@@ -3030,7 +3043,7 @@ until every Phase C2 billing/spend item is complete.
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [x] | QA-E01 | MenuList staging shared and extraction Gemini keys created | Google AI Studio | Three shared QA keys exist for canonical Vercel/local `MENULIST_GEMINI_AI_KEY`/`_2`/`_3`; the fourth paid credential is dedicated to Firebase menu extraction as `MENULIST_GEMINI_TEXT_AI_KEY`, not shared slot 4 |
+| [x] | QA-E01 | MenuList staging primary and extraction Gemini keys available | Google AI Studio | Historical certification used three shared credentials plus extraction. The August 16 canonical migration retains only `MENULIST_GEMINI_AI_KEY` and the dedicated Firebase `MENULIST_GEMINI_TEXT_AI_KEY`; numbered credentials remain temporarily active only until replacement revisions remove their references. |
 | [x] | QA-E02 | Upstash staging Redis created | Upstash Console | REST URL/token exist and are stored for QA only |
 | [x] | QA-E03 | Razorpay Test Mode keys and webhook secret available | Razorpay Dashboard -> Test Mode | `rzp_test_` key id/key secret and a distinct QA webhook secret are stored; the endpoint is added only after `app.menulist.digital` is live |
 | [x] | QA-E04 | Sentry QA project created | Sentry dashboard | Isolated Next.js project `menulist-qa` exists; its single QA DSN is securely mapped for server/browser use, account Authenticator MFA and a company-controlled passkey are active, and recovery codes are vaulted; source-map auth token remains deferred unless later required |
@@ -3056,14 +3069,12 @@ Provider console links for this phase:
 - Sentry: https://sentry.io/
 - Meta Developers: https://developers.facebook.com/apps/
 
-Gemini credential note: the shared MenuList Functions pool uses
-`GEMINI_AI_KEY`, `GEMINI_AI_KEY_2`, and `GEMINI_AI_KEY_3`. The fourth paid
-provider credential is dedicated to menu extraction and its value is stored under
-`MENULIST_GEMINI_TEXT_AI_KEY`; shared source discovery and new shared Function
-revisions must not bind the retired `GEMINI_AI_KEY_4` alias. The Next.js shared
-pool likewise uses only `MENULIST_GEMINI_AI_KEY` plus slots 2 and 3. Keys
-provide rotation and workload isolation,
-not extra project quota.
+Gemini credential note: current MenuList QA uses only primary
+`MENULIST_GEMINI_AI_KEY` in Vercel, primary `GEMINI_AI_KEY` in Firebase
+Functions, and extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` in Firebase
+Functions. All numbered Vercel/Firebase aliases are retired. The provider-side
+rotation 2 and rotation 3 authorization keys and their orphan service accounts
+were deleted on August 16, 2026; primary and extraction remain active.
 
 Paid extraction policy: QA and production both use paid keys from their own
 single governed Gemini project. The former `menulist-gemini-qa-free` exception
@@ -3082,7 +3093,7 @@ is skipped, do not create fake values.
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [x] | QA-F01 | reCAPTCHA/App Check staging registration created if needed | reCAPTCHA Admin and Firebase App Check | Skipped intentionally for first boot; no enforcement is enabled before normal Auth, Firestore, and Storage smoke |
+| [x] | QA-F01 | reCAPTCHA/App Check staging registration created | reCAPTCHA Admin, Firebase App Check, and Vercel custom `qa` environment | QA-only score-based reCAPTCHA v3 credential is attached to `menulist-qa` and the `menulist.digital` domain family; its private secret exists only in Firebase App Check, its public site key is non-sensitive `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` scoped only to `qa`, every displayed API remains Unenforced, and no deployment was triggered |
 | [x] | QA-F02 | Telegram staging alert bot/chat created if needed | BotFather and Telegram | Skipped intentionally; no bot/chat or placeholder credential was created |
 | [x] | QA-F03 | SMTP staging sender configured if needed | Workspace or SMTP provider | Skipped intentionally; lifecycle-email delivery is outside the first QA boot |
 | [x] | QA-F04 | UptimeRobot decision recorded | Setup note | Enabled after Phase J; monitors are created only after the staging deployment is live |
@@ -3107,7 +3118,7 @@ Optional provider console links:
 | [x] | QA-G05 | Generic Firebase public aliases absent | Local env and Vercel Preview env | No `NEXT_PUBLIC_FIREBASE_*` duplicate rows are stored; runtime uses the canonical MenuList family |
 | [x] | QA-G06 | Firebase admin canonical keys set | Local env and Vercel Preview env | `MENULIST_FIREBASE_*` values point to `menulist-qa` |
 | [x] | QA-G07 | Generic Firebase admin aliases absent | Local env and Vercel Preview env | No generic `FIREBASE_*` duplicate rows are stored; emulator host variables remain local-only infrastructure controls |
-| [x] | QA-G08 | Gemini shared keys and rolling ceiling set | Local env and Vercel Preview env | Only `MENULIST_GEMINI_AI_KEY` plus `_2`/`_3` are stored; the Functions-only extraction key and retired `_4` alias are absent; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
+| [x] | QA-G08 | Gemini primary key and rolling ceiling set | Local env and Vercel custom `qa` environment | Only `MENULIST_GEMINI_AI_KEY` is stored for the root runtime; all numbered aliases and the Functions-only extraction key are absent; `MENULIST_GEMINI_SPEND_LIMIT_USD_10M` uses the approved QA value below the provider ceiling |
 | [x] | QA-G09 | Razorpay Test Mode keys set | Local env and Vercel Preview env | The public key ID starts with `rzp_test_`; the private key secret belongs to the same QA pair and remains server-only |
 | [x] | QA-G10 | Upstash and revalidation values set | Local env and Vercel Preview env | QA Redis and revalidation secrets are present |
 | [x] | QA-G11 | Provider values handled according to Phase E/F | Local env and Vercel Preview env | Required root-runtime QA providers use real QA values; Functions-only Meta values remain vaulted for Phase H rather than duplicated in Vercel |
@@ -3147,7 +3158,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | --- | --- | --- | --- | --- |
 | [x] | QA-H01 | Firebase CLI login confirmed | Local terminal | `firebase projects:list` succeeded as `admin@neelvara.com` and returned the single active project `menulist-qa` |
 | [x] | QA-H02 | Secret Manager API enabled only in `menulist-qa` | Google Cloud API Library | `secretmanager.googleapis.com` is visibly Enabled in exact project `menulist-qa`; no production project was selected or modified |
-| [x] | QA-H03 | Required AI secrets set | Firebase Secret Manager for `menulist-qa` | Shared `GEMINI_AI_KEY`, `_2`, and `_3` version 1 plus extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` version 2 report Enabled; the retired `GEMINI_AI_KEY_4` secret is absent |
+| [x] | QA-H03 | Required AI secrets use the canonical minimum | Firebase Secret Manager and Google Cloud credentials for `menulist-qa` | `GEMINI_AI_KEY` and extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` remain required. The six affected QA Functions updated successfully, Firebase removed both numbered secret resources, Vercel removed both numbered `qa` variables, and Google deleted rotation 2/3 keys plus their orphan identities. Hosted proof of the next Vercel source release remains a release task, not secret-cleanup work. |
 | [x] | QA-H04 | Required Upstash secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` exists and metadata readback reports Enabled |
 | [x] | QA-H05 | Required Razorpay Test Mode Function secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` exists and metadata readback reports Enabled; the key ID was guarded as test mode, while `RAZORPAY_WEBHOOK_SECRET` remains local/Vercel-only for the Next.js route |
 | [x] | QA-H06 | Required WhatsApp, monitoring, and revalidation secrets set for the maintained target list | Firebase Secret Manager for `menulist-qa` | Version 1 of `SENTRY_DSN`, `REVALIDATION_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, and `WHATSAPP_VERIFY_TOKEN` exists even while provider processing is disabled |
@@ -3680,6 +3691,14 @@ Expected result:
 
 ### Step 5.1: Create MenuList QA Gemini Keys
 
+> **Current-contract supersession (August 16, 2026):** The historical four-key
+> setup evidence below explains the state that was certified at the time. New
+> operations must follow
+> [gemini-credential-billing-strategy.md](./gemini-credential-billing-strategy.md):
+> retain only the QA primary and isolated menu-extraction credentials, rotate
+> their managed values in place, and retire numbered shared slots 2 and 3 after
+> the replacement Vercel/Firebase revisions no longer reference them.
+
 Where:
 
 - Google AI Studio API keys: https://aistudio.google.com/apikey
@@ -3691,19 +3710,16 @@ What to do:
 
 1. In AI Studio, select the existing Google Cloud project `menulist-qa`. Do not
    let AI Studio silently create another project.
-2. Create three shared QA authorization keys named `MenuList QA primary`,
-   `MenuList QA rotation 2`, and `MenuList QA rotation 3`, plus one dedicated
-   paid credential named `MenuList QA menu extraction`. Current AI Studio keys
-   use the `AQ.` authorization key format rather than the legacy `AIza`
-   standard-key format.
+2. Create or retain one shared QA authorization key named `MenuList QA
+   primary` plus one dedicated paid credential named `MenuList QA menu
+   extraction`. Do not create numbered permanent rotation keys.
 3. Confirm each key is an authorization key bound to the intended
    `menulist-qa` service account. AI Studio restricts authorization keys to the
    Gemini/Generative Language API by default. Do not convert them to shared
    standard keys or add browser-referrer restrictions; these values are used
    only by server runtimes in Vercel and Firebase Functions.
 4. Vault each key and record its Google project, creation date, purpose, and
-   revocation owner. Keys in the same project share that project's Gemini quota;
-   four credentials do not create four quotas.
+   revocation owner. Rotate by replacing the managed value in place.
 5. Record the env mapping without placing values in this document. Vercel and
    local use only the canonical MenuList name. Firebase Functions use the
    project-local Secret Manager name in the separate `menulist-qa` runtime:
@@ -3711,16 +3727,14 @@ What to do:
 | Vault entry | Vercel/local env | Firebase Functions Secret Manager |
 | --- | --- | --- |
 | Primary | `MENULIST_GEMINI_AI_KEY` | `GEMINI_AI_KEY` |
-| Rotation 2 | `MENULIST_GEMINI_AI_KEY_2` | `GEMINI_AI_KEY_2` |
-| Rotation 3 | `MENULIST_GEMINI_AI_KEY_3` | `GEMINI_AI_KEY_3` |
 | Menu extraction | Not stored in root/Vercel env | `MENULIST_GEMINI_TEXT_AI_KEY` |
 
 Expected result:
 
-- Four real QA authorization keys belong to `menulist-qa`, retain their default
-  Gemini API restriction and intended service-account binding, and are
-  recoverable from the vault. Only three participate in the shared pool; menu
-  extraction has one isolated credential and no shared fallback.
+- Two real QA authorization keys belong to `menulist-qa`, retain their Gemini
+  API restriction and intended service-account binding, and are recoverable
+  from the vault. Menu extraction has one isolated credential and no shared
+  fallback.
 - No Answerlattice, CampaignCue, SignalDesk, or production key is created.
 
 ### Step 5.2: Create The QA Upstash Database
@@ -3942,9 +3956,10 @@ Expected result:
 Do not create optional accounts merely to fill env rows. For the first
 MenuList QA boot, use these defaults unless a named test requires otherwise:
 
-1. **Firebase App Check/reCAPTCHA:** skip enforcement. If App Check is being
-   evaluated, register only the QA website/app/test hosts and leave it in
-   monitoring mode until the normal Auth, Firestore, and Storage smoke passes.
+1. **Firebase App Check/reCAPTCHA:** registration is complete for the QA-only
+   `menulist.digital` domain family. Keep every displayed API unenforced until
+   a future QA deployment emits valid token traffic and the normal Auth,
+   Firestore, and Storage smoke passes with App Check initialized.
 2. **Telegram alerts:** skip unless QA operations alerts are part of this test.
    If enabled, create a QA-only bot/chat through BotFather and vault both
    values; do not reuse a production bot.
@@ -4258,8 +4273,6 @@ target list separately; never create fake secret values.
 Required secret names for this QA pass:
 
 - `GEMINI_AI_KEY`
-- `GEMINI_AI_KEY_2`
-- `GEMINI_AI_KEY_3`
 - `MENULIST_GEMINI_TEXT_AI_KEY`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
@@ -4291,8 +4304,6 @@ for it:
 
 ```bash
 firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
-firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
 firebase functions:secrets:set MENULIST_GEMINI_TEXT_AI_KEY --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
 firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa

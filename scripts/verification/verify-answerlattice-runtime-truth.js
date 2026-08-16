@@ -3941,15 +3941,19 @@ function verifyAnswerlatticeAiCredentialIsolation() {
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
 
+  ['ANSWERLATTICE_GEMINI_AI_KEY'].forEach((token) => {
+    assertIncludes(aiConstants, token, `Answerlattice app AI env constant ${token}`);
+    assertIncludes(stagingEnv, `${token}=`, `Answerlattice staging AI env ${token}`);
+    assertIncludes(productionEnv, `${token}=`, `Answerlattice production AI env ${token}`);
+  });
   [
-    'ANSWERLATTICE_GEMINI_AI_KEY',
     'ANSWERLATTICE_GEMINI_AI_KEY_2',
     'ANSWERLATTICE_GEMINI_AI_KEY_3',
     'ANSWERLATTICE_GEMINI_AI_KEY_4',
   ].forEach((token) => {
-    assertIncludes(aiConstants, token, `Answerlattice app AI env constant ${token}`);
-    assertIncludes(stagingEnv, `${token}=`, `Answerlattice staging AI env ${token}`);
-    assertIncludes(productionEnv, `${token}=`, `Answerlattice production AI env ${token}`);
+    assertNotIncludes(aiConstants, token, `Answerlattice app retired AI env constant ${token}`);
+    assertNotIncludes(stagingEnv, `${token}=`, `Answerlattice staging retired AI env ${token}`);
+    assertNotIncludes(productionEnv, `${token}=`, `Answerlattice production retired AI env ${token}`);
   });
 
   assertIncludes(keyManager, 'constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES)', 'Shared app Gemini key manager scoped candidate support');
@@ -3958,7 +3962,7 @@ function verifyAnswerlatticeAiCredentialIsolation() {
   assertIncludes(appAiClient, 'answerlatticeGeminiSpendAdmission', 'Answerlattice app AI rolling-spend admission');
   assertIncludes(appAiClient, 'createAIGateway(', 'Answerlattice app AI shared gateway');
   assertNotIncludes(appAiClient, "from '@lib/google/genAi';", 'Answerlattice app AI must not import default MenuList client');
-  assertIncludes(defaultAiClient, 'createAIGateway(new KeyManager(), menulistGeminiSpendAdmission)', 'MenuList default AI client retains default key pool and spend admission');
+  assertIncludes(defaultAiClient, 'createAIGateway(new KeyManager(), menulistGeminiSpendAdmission)', 'MenuList default AI client retains primary credential and spend admission');
 
   assertIncludes(vectorEmbeddings, "import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';", 'Answerlattice vector provider scoped client import');
   assert(

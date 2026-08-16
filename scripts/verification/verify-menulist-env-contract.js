@@ -98,8 +98,6 @@ const REQUIRED_CANONICAL_NAMES = [
   'ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID',
   'MENULIST_FIREBASE_PROJECT_LOCATION',
   'MENULIST_GEMINI_AI_KEY',
-  'MENULIST_GEMINI_AI_KEY_2',
-  'MENULIST_GEMINI_AI_KEY_3',
   'MENULIST_RAZORPAY_KEY_SECRET',
   'MENULIST_RAZORPAY_WEBHOOK_SECRET',
   'MENULIST_REVALIDATION_SECRET',
@@ -150,6 +148,16 @@ for (const relativePath of ['.env.staging.example', '.env.production.example']) 
   ].filter((name) => names.has(name));
   if (forbiddenStaticKeyNames.length > 0) {
     fail(`${relativePath} must not contain managed Vercel static Firebase Admin credentials: ${forbiddenStaticKeyNames.join(', ')}`);
+  }
+  for (const retiredName of [
+    'MENULIST_GEMINI_AI_KEY_2',
+    'MENULIST_GEMINI_AI_KEY_3',
+    'MENULIST_GEMINI_AI_KEY_4',
+    'ANSWERLATTICE_GEMINI_AI_KEY_2',
+    'ANSWERLATTICE_GEMINI_AI_KEY_3',
+    'ANSWERLATTICE_GEMINI_AI_KEY_4',
+  ]) {
+    if (names.has(retiredName)) fail(`${relativePath} contains retired permanent Gemini credential ${retiredName}`);
   }
 }
 

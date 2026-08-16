@@ -4,7 +4,7 @@
  * MenuList/default app API routes import `genAIClient` from this file.
  * Separate products create scoped gateways with their own credential pools.
  * The gateway transparently handles:
- * - Multi-key rotation on 429 (rate limit) errors
+ * - Bounded retry and provider health handling
  * - Exponential backoff retry for server errors
  * - Key health tracking with cooldown periods
  * 
@@ -16,8 +16,6 @@
  * 
  * Configure multiple keys via environment variables:
  *   MENULIST_GEMINI_AI_KEY    (required, primary)
- *   MENULIST_GEMINI_AI_KEY_2  (optional)
- *   MENULIST_GEMINI_AI_KEY_3  (optional)
  *
  * Menu extraction uses MENULIST_GEMINI_TEXT_AI_KEY in Firebase Functions and
  * is intentionally outside this app-side shared pool.

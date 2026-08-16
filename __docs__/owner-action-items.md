@@ -261,8 +261,6 @@ No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in th
 # 1. Prepay for the existing menulist-qa Gemini project is funded.
 # 2. Confirm secret-version metadata only; do not access or print values.
 gcloud secrets versions list GEMINI_AI_KEY --project=menulist-qa
-gcloud secrets versions list GEMINI_AI_KEY_2 --project=menulist-qa
-gcloud secrets versions list GEMINI_AI_KEY_3 --project=menulist-qa
 gcloud secrets versions list MENULIST_GEMINI_TEXT_AI_KEY --project=menulist-qa
 
 # 3. The maintained preflight and hosted synthetic extraction from External
@@ -271,10 +269,11 @@ gcloud secrets versions list MENULIST_GEMINI_TEXT_AI_KEY --project=menulist-qa
 npm run verify:functions-deploy-preflight
 ```
 
-The shared pool is `GEMINI_AI_KEY`, `_2`, and `_3`. Menu extraction uses only
-`MENULIST_GEMINI_TEXT_AI_KEY`. Do not restore `GEMINI_AI_KEY_4` or
-`MENULIST_GEMINI_AI_KEY_4`; four credentials in one Google project do not create
-four project quotas.
+MenuList uses one primary `GEMINI_AI_KEY`. Menu extraction uses only
+`MENULIST_GEMINI_TEXT_AI_KEY`. Numbered permanent credentials are retired and
+must not be restored; additional credentials in one Google project do not
+create additional project quota. Follow the canonical
+[Gemini credential and billing strategy](deployment/gemini-credential-billing-strategy.md).
 
 ### AI Data Extraction — Security Fixes
 

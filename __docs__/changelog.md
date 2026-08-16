@@ -1,5 +1,54 @@
 # MenuList — Changelog
 
+## August 16, 2026 - MenuList Production Sentry Project Prepared
+
+- Created an isolated Next.js Sentry project named `menulist-prod` beside the
+  existing `menulist-qa` project in the MFA-protected company organization.
+- Transferred its DSN without displaying it to Vercel Production
+  `NEXT_PUBLIC_SENTRY_DSN` and Firebase `menulist-prod` Secret Manager
+  `SENTRY_DSN@1`; metadata confirms Production-only and Enabled state.
+- Kept source-map auth tokens deferred and sent no sample error, deployment,
+  production event, or paid-plan action.
+
+## August 16, 2026 - MenuList Production Upstash Financial Gate
+
+- Verified the company Upstash workspace is MFA-protected and currently owns
+  only the QA Free Tier Redis database in GCP `US-CENTRAL1`.
+- Confirmed Upstash requires a payment method before a second, isolated
+  production Pay-as-you-go database can be created.
+- Preserved the environment boundary: no QA credential reuse, second account,
+  fixed plan, Prod Pack, card submission, purchase, database, or token was
+  created. `PROD-D01` remains owner-financially blocked.
+
+## August 16, 2026 - Gemini Project Billing And Credential Contract
+
+- Fixed the long-term Gemini boundary at four isolated Google/Firebase projects
+  funded through one company Prepay billing account; API keys do not carry
+  independent billing or quota.
+- Reduced steady-state credentials to one primary per product environment plus
+  one isolated menu-extraction credential in each MenuList environment: six
+  credentials across the four projects.
+- Retired permanent numbered MenuList and Answerlattice key pools from current
+  runtime bindings, env templates, deployment runbooks, and executable
+  verifiers. Rotation now replaces the existing managed value in place and
+  revokes the superseded provider credential after revision drain.
+- Added `__docs__/deployment/gemini-credential-billing-strategy.md` as the
+  canonical decision, migration checklist, spend-control contract, and change
+  control boundary. Answerlattice provider actions remain pending until both
+  MenuList environments close end to end.
+- Closed the MenuList provider account-action batch: QA and production use INR
+  250/750 monthly project caps, production is imported into the existing shared
+  Prepay account, and production has exactly two Gemini-only authorization keys
+  bound to dedicated no-private-key service accounts.
+- Stored production primary only in Vercel Production and Firebase
+  `GEMINI_AI_KEY`; stored extraction only in Firebase
+  `MENULIST_GEMINI_TEXT_AI_KEY`. Deleted QA rotation 2/3 keys and their orphan
+  identities while retaining the service-account-bound QA primary/extraction.
+- Recorded Google's September 2026 standard-key rejection boundary. All active
+  MenuList Gemini credentials already use the required service-account-bound
+  authorization-key model; no deployment, provider call, or new Prepay purchase
+  was made.
+
 ## August 16, 2026 - Vercel OIDC Firestore And Storage Compatibility
 
 - Kept Firebase Auth on the short-lived Admin credential adapter while routing

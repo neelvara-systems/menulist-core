@@ -1,18 +1,13 @@
 /**
- * AI Key Manager — Multi-key rotation for Gemini API (Cloud Functions)
+ * AI Key Manager — Gemini credential lifecycle for Cloud Functions
  * 
- * Manages a pool of API keys with automatic failover on rate limiting.
- * Google applies Gemini rate limits per project, not per API key, so this is
- * for rotation/leak response/failover only. It is not a quota scaling strategy
- * unless the key/project design is intentionally separated.
+ * MenuList uses one primary credential. Rotation replaces the Secret Manager
+ * version in place; numbered permanent keys are intentionally unsupported.
  * 
  * Default Key Discovery:
  * - GEMINI_AI_KEY (required, primary)
- * - GEMINI_AI_KEY_2 (optional)
- * - GEMINI_AI_KEY_3 (optional)
- *
- * GEMINI_AI_KEY_4 is reserved as the provider-side credential source for the
- * dedicated menu-extraction secret. It must not re-enter this shared pool.
+ * Menu extraction uses a separate KeyManager configured only with
+ * MENULIST_GEMINI_TEXT_AI_KEY.
  * 
  * Note: Cloud Functions can have warm instances, so in-memory state
  * (cooldown tracking) persists across requests within the same instance.
@@ -72,8 +67,6 @@ export type GeminiKeyEnvVarCandidates = readonly (readonly string[])[];
 
 const KEY_ENV_VAR_CANDIDATES: GeminiKeyEnvVarCandidates = [
     ['GEMINI_AI_KEY'],
-    ['GEMINI_AI_KEY_2'],
-    ['GEMINI_AI_KEY_3'],
 ] as const;
 
 export class AIProviderConfigMissingError extends Error {

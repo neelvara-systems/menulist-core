@@ -1,11 +1,10 @@
 /**
- * Centralized Gemini AI Client with Multi-Key Rotation (Cloud Functions)
+ * Centralized Gemini AI Client (Cloud Functions)
  * 
  * All Cloud Function AI operations import `genAIClient` from this file.
  * The gateway transparently handles:
- * - Multi-key rotation on 429 (rate limit) errors
  * - Exponential backoff retry for server errors
- * - Key health tracking with cooldown periods
+ * - Primary-key health tracking with cooldown periods
  * 
  * Usage remains identical — no call-site changes needed:
  *   genAIClient.models.generateContent({ model, contents, config })
@@ -13,13 +12,9 @@
  *   genAIClient.models.generateImages({ model, prompt, config })
  *   genAIClient.files.upload({ file, config })
  * 
- * Configure multiple keys via Firebase secrets:
+ * Configure the primary key via Firebase Secret Manager:
  *   GEMINI_AI_KEY    (required, primary)
- *   GEMINI_AI_KEY_2  (optional)
- *   GEMINI_AI_KEY_3  (optional)
- *
- * GEMINI_AI_KEY_4 is reserved for the separately bound menu-extraction
- * credential and is intentionally absent from this shared client.
+ * Menu extraction uses the separately bound MENULIST_GEMINI_TEXT_AI_KEY.
  * 
  * @see __docs__/ai-system-layer/README.md
  */

@@ -789,8 +789,8 @@ function verifyEnvironmentTargets() {
     assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', `${label} canonical public MenuList Firebase env naming`);
     assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_API_KEY=', `${label} canonical MenuList Firebase API key`);
     assertIncludes(content, 'MENULIST_GEMINI_AI_KEY', `${label} canonical MenuList Gemini env naming`);
-    assertIncludes(content, 'MENULIST_GEMINI_AI_KEY_2=', `${label} MenuList shared Gemini slot 2`);
-    assertIncludes(content, 'MENULIST_GEMINI_AI_KEY_3=', `${label} MenuList shared Gemini slot 3`);
+    assertNotIncludes(content, 'MENULIST_GEMINI_AI_KEY_2=', `${label} retired MenuList Gemini slot 2`);
+    assertNotIncludes(content, 'MENULIST_GEMINI_AI_KEY_3=', `${label} retired MenuList Gemini slot 3`);
     assertIncludes(content, 'NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID', `${label} canonical MenuList Razorpay env naming`);
     assertIncludes(content, 'MENULIST_UPSTASH_REDIS_REST_URL', `${label} canonical MenuList Upstash env naming`);
     assertIncludes(content, 'ANSWERLATTICE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
@@ -876,7 +876,7 @@ function verifyEnvironmentTargets() {
   assert(rootPackageJson.scripts['test:vercel-workload-identity'] === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-vercel-workload-identity.ts', 'Root package must expose the four-project Workload Identity regression');
   assertIncludes(functionsProductionEnv, 'NEXT_PUBLIC_APP_URL=https://app.menulist.ai', 'Production Functions env owner app');
   assertIncludes(functionsProductionEnvExample, 'production project menulist-prod', 'Production Functions env template exact project identity');
-  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 20 of 61 checks complete', 'MenuList production provider ledger PROD-B13 progress');
+  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 35 of 61 checks complete', 'MenuList production provider ledger current progress');
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B09`', 'MenuList production provider ledger Auth domain admission');
   assertIncludes(menulistProductionProviderSetup, '`app.menulist.ai` as the sole', 'MenuList production provider ledger exact custom Auth domain');
   assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production provider ledger exact Web app identity');
@@ -889,6 +889,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B13`', 'MenuList production provider ledger App Check registration');
   assertIncludes(menulistProductionProviderSetup, 'remains **Unenforced**', 'MenuList production provider ledger App Check monitoring boundary');
   assertIncludes(menulistProductionProviderSetup, 'No Vercel or Firebase deployment was triggered.', 'MenuList production provider ledger no-deploy evidence');
+  assertIncludes(menulistStagingQaSetup, '**MenuList QA Web** is now registered', 'MenuList QA App Check registration');
+  assertIncludes(menulistStagingQaSetup, 'All displayed\n  App Check APIs remain unenforced', 'MenuList QA App Check monitoring boundary');
+  assertIncludes(menulistStagingQaSetup, 'public site key is non-sensitive `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` scoped only to `qa`', 'MenuList QA App Check Vercel scope');
   assertIncludes(menulistProductionProviderSetup, 'homepage `https://menulist.ai`', 'MenuList production provider ledger OAuth homepage contract');
   assertIncludes(menulistProductionProviderSetup, '`https://menulist.ai/privacy-policy`', 'MenuList production provider ledger OAuth privacy policy contract');
   assertIncludes(menulistProductionProviderSetup, '`https://menulist.ai/terms-of-service`', 'MenuList production provider ledger OAuth terms contract');
@@ -900,7 +903,60 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production dedicated OAuth client evidence');
   assertIncludes(menulistProductionProviderSetup, 'No\n    deployment was triggered by this configuration work.', 'MenuList production OAuth no-deploy boundary');
   assertIncludes(menulistProductionProviderSetup, '`PROD-F09` Move the MenuList OAuth audience', 'MenuList production OAuth publishing release gate');
-  assertIncludes(deploymentReadme, 'Continue at `PROD-C07`', 'Deployment hub current production resume point');
+  assertIncludes(deploymentReadme, 'its revalidation-secret rotation is complete', 'Deployment hub current production resume point');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D03`', 'MenuList production provider ledger Sentry completion');
+  assertIncludes(menulistProductionProviderSetup, 'Deliberately parked by the owner', 'MenuList production EmailOS onboarding parked boundary');
+  assertIncludes(menulistProductionProviderSetup, 'Do not\n    substitute a personal Gmail password or placeholder secret', 'MenuList production email credential prohibition');
+  assertIncludes(menulistProductionProviderSetup, 'sensitive Vercel Production `NEXT_PUBLIC_SENTRY_DSN`', 'MenuList production provider ledger Sentry Vercel scope');
+  assertIncludes(menulistProductionProviderSetup, '`menulist-prod` Secret Manager `SENTRY_DSN@1`', 'MenuList production provider ledger Sentry Functions secret');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D08`', 'MenuList production provider ledger Razorpay event freeze');
+  assertIncludes(menulistProductionProviderSetup, '13 route-handled events', 'MenuList production provider ledger exact Razorpay event count');
+  assertIncludes(menulistProductionProviderSetup, 'must not subscribe to it in addition to', 'MenuList production provider ledger duplicate refund-event prohibition');
+  assertIncludes(menulistProductionProviderSetup, 'KYC verification is needed to collect live payments', 'MenuList production provider ledger Razorpay KYC blocker');
+  assertIncludes(read('src/app/client/obp/OBPResolvedSurface.tsx'), 'referrerPolicy="strict-origin-when-cross-origin"', 'MenuList Maps Embed referrer policy');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D11`', 'MenuList production Maps setup completion');
+  assertIncludes(menulistProductionProviderSetup, '**MenuList Production Maps\n    Embed**', 'MenuList production dedicated Maps key identity');
+  assertIncludes(menulistProductionProviderSetup, '`https://*.menulist.online/*`', 'MenuList production Maps tenant-host restriction');
+  assertIncludes(menulistProductionProviderSetup, 'Places API was not enabled', 'MenuList production Maps API minimization');
+  assertIncludes(menulistStagingQaSetup, '**MenuList QA Maps Embed**', 'MenuList QA dedicated Maps key identity');
+  assertIncludes(menulistStagingQaSetup, '`https://*.menulist.digital/*`', 'MenuList QA Maps host restriction');
+  assertIncludes(menulistStagingQaSetup, 'custom-environment `qa`\n  `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY`', 'MenuList QA Maps Vercel scope');
+  assertIncludes(menulistProductionProviderSetup, 'only attached app is\n    **MenuList QA Messaging**', 'MenuList production Meta QA-asset blocker');
+  assertIncludes(menulistProductionProviderSetup, 'Blocked behind `PROD-D09`', 'MenuList production WhatsApp blocker');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D12`', 'MenuList production analytics decision completion');
+  assertIncludes(menulistProductionProviderSetup, 'Intentionally omitted for initial production', 'MenuList production GA4 omission decision');
+  assertIncludes(menulistProductionProviderSetup, 'Do not\n    populate `NEXT_PUBLIC_GA_MEASUREMENT_ID` or `GA_*` placeholders', 'MenuList production analytics placeholder prohibition');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D13`', 'MenuList production alerting decision completion');
+  assertIncludes(menulistProductionProviderSetup, 'Sentry project is the active\n    error-monitoring destination', 'MenuList production owned monitoring destination');
+  assertIncludes(menulistProductionProviderSetup, 'no UptimeRobot account, contact, or monitor was\n    created', 'MenuList production external monitor omission');
+  assertIncludes(menulistProductionProviderSetup, 'PROD-D14` Confirm every production provider account', 'MenuList production provider ownership review gate');
+  assertIncludes(menulistProductionProviderSetup, 'Meta\n    lacks a production-owned verified asset set', 'MenuList production ownership audit blocker');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E01`', 'MenuList production environment inventory completion');
+  assertIncludes(menulistProductionProviderSetup, 'do not delete a valid sibling-product Production row', 'Shared Vercel environment preservation');
+  assertIncludes(envProductionExample, 'NEXT_PUBLIC_GA_MEASUREMENT_ID=\n', 'Production GA4 omission');
+  assertIncludes(envProductionExample, 'MENULIST_SMTP_HOST=\n', 'Production parked SMTP omission');
+  assertIncludes(envProductionExample, 'MENULIST_TELEGRAM_BOT_TOKEN=\n', 'Production Telegram omission');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E02`', 'MenuList production domain environment completion');
+  assertIncludes(menulistProductionProviderSetup, '`NEXT_PUBLIC_VERCEL_ENV=production`', 'MenuList production Vercel environment identity');
+  assertIncludes(menulistProductionProviderSetup, 'all seven rows are Production-only', 'MenuList production exact domain env scope');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E03`', 'MenuList production Firebase Web environment completion');
+  assertIncludes(menulistProductionProviderSetup, '**MenuList\n    Production Web** supplied the six browser configuration fields', 'MenuList production exact Firebase Web app');
+  assertIncludes(menulistProductionProviderSetup, 'no Admin\n    client email/private key or `menulist-qa` Firebase value was introduced', 'MenuList production keyless Firebase environment boundary');
+  assertIncludes(menulistProductionProviderSetup, 'Partial preparation only. Production OAuth and NextAuth were', 'MenuList production application-secret partial boundary');
+  assertIncludes(menulistProductionProviderSetup, '`REVALIDATION_SECRET` version 2', 'MenuList production completed revalidation rotation');
+  assertIncludes(menulistProductionProviderSetup, 'version 2 is enabled and version 1 is disabled', 'MenuList production revalidation version status');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E05`', 'MenuList production admitted-provider environment completion');
+  assertIncludes(menulistProductionProviderSetup, 'Closed as an admission-controlled inventory, not as blanket', 'MenuList production optional-provider admission boundary');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E06`', 'MenuList production optional-provider fail-closed completion');
+  assertIncludes(menulistProductionProviderSetup, 'Functions production env keeps\n    messaging onboarding disabled', 'MenuList production Functions messaging fail-closed boundary');
+  assertIncludes(menulistProductionProviderSetup, 'Do not create dummy versions merely to make a deployment manifest', 'MenuList production Functions secret placeholder prohibition');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E08`', 'MenuList production Functions non-secret env completion');
+  assertIncludes(menulistProductionProviderSetup, '`functions/.env.menulist-prod` for exact project `menulist-prod`', 'MenuList production Functions project env identity');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E09`', 'MenuList production non-deploy source gate completion');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-E10`', 'MenuList production metadata-only environment separation completion');
+  assertIncludes(menulistProductionProviderSetup, 'Vercel metadata review under the Production filter found 29', 'MenuList production exact managed environment row count');
+  assertIncludes(productionReadinessAudit, 'MenuList Production Environment Source Gate - August 16, 2026', 'MenuList production environment source-gate audit evidence');
+  assertIncludes(productionReadinessAudit, '`PROD-E09` passed as local source/configuration evidence only', 'MenuList production environment source-gate boundary');
   assertIncludes(menulistProductionProviderSetup, '`firebase-adminsdk-fbsvc@menulist-prod.iam.gserviceaccount.com`', 'MenuList production provider ledger exact Firebase Admin service account');
   assertIncludes(menulistProductionProviderSetup, 'shows\n  **No keys**', 'MenuList production provider ledger empty Firebase Admin key inventory');
   assertIncludes(menulistProductionProviderSetup, 'effective status is\n  **Enforced**', 'MenuList production provider ledger inherited service-account key-creation enforcement');
@@ -2268,7 +2324,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(productSetupDoc, '`MENULIST_GEMINI_TEXT_AI_KEY` for menu extraction', 'Three-product setup extraction credential boundary');
   assertNotIncludes(productSetupDoc, 'firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa', 'Three-product setup retired MenuList slot 4 command');
   assertIncludes(menulistStagingQaSetup, '| Menu extraction | Not stored in root/Vercel env | `MENULIST_GEMINI_TEXT_AI_KEY` |', 'MenuList QA setup current extraction mapping');
-  assertIncludes(menulistStagingQaSetup, 'the retired `GEMINI_AI_KEY_4` secret is absent', 'MenuList QA setup current retired slot evidence');
+  assertIncludes(menulistStagingQaSetup, 'Google deleted rotation 2/3 keys plus their orphan identities', 'MenuList QA setup current minimal credential evidence');
   assertIncludes(menulistStagingQaSetup, 'A repository-wide Gemini credential documentation audit', 'MenuList QA setup Gemini documentation audit progress record');
   assertIncludes(productionReadinessAudit, 'August 13 Gemini credential documentation-parity checkpoint', 'Production readiness audit Gemini documentation parity checkpoint');
   assertIncludes(changelog, 'MenuList Gemini Credential Documentation Parity', 'Changelog Gemini credential documentation parity entry');
@@ -2728,9 +2784,6 @@ function verifyEnvironmentTargets() {
   [
     'ANSWERLATTICE_CRON_SECRET',
     'ANSWERLATTICE_GEMINI_AI_KEY',
-    'ANSWERLATTICE_GEMINI_AI_KEY_2',
-    'ANSWERLATTICE_GEMINI_AI_KEY_3',
-    'ANSWERLATTICE_GEMINI_AI_KEY_4',
     'ANSWERLATTICE_PUBLIC_BUNDLE_SALT',
     'ANSWERLATTICE_SMTP_HOST',
     'ANSWERLATTICE_SMTP_PORT',
@@ -2738,6 +2791,13 @@ function verifyEnvironmentTargets() {
     'ANSWERLATTICE_SMTP_PASS',
   ].forEach((secretName) => {
     assertIncludes(functionsEnvSetup, secretName, `Functions env setup Answerlattice secret ${secretName}`);
+  });
+  [
+    'ANSWERLATTICE_GEMINI_AI_KEY_2',
+    'ANSWERLATTICE_GEMINI_AI_KEY_3',
+    'ANSWERLATTICE_GEMINI_AI_KEY_4',
+  ].forEach((secretName) => {
+    assertNotIncludes(functionsEnvSetup, secretName, `Functions env setup retired Answerlattice secret ${secretName}`);
   });
   assertIncludes(productSetupDoc, 'Keep `ENABLE_MESSAGING_ONBOARDING=false` until real WhatsApp secrets', 'Product setup doc messaging onboarding fail-closed setup');
   assertIncludes(productSetupDoc, 'Set `ENABLE_MESSAGING_ONBOARDING=true` only for the target being smoked', 'Product setup doc messaging onboarding targeted enable step');

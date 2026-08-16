@@ -304,7 +304,7 @@ Operational configuration:
 
 - Artifact Registry cleanup policy is set for `gcf-artifacts` in `us-central1`, deleting function images older than 7 days.
 - Secret Manager secret `ANSWERLATTICE_CRON_SECRET` exists in `answerlattice-qa`.
-- Required or declared Gemini secrets exist in `answerlattice-qa`: `ANSWERLATTICE_GEMINI_AI_KEY`, `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and `ANSWERLATTICE_GEMINI_AI_KEY_4`.
+- The required Gemini secret exists in `answerlattice-qa`: `ANSWERLATTICE_GEMINI_AI_KEY`.
 - The `triggerAnswerlatticeNightly` function has access to `ANSWERLATTICE_CRON_SECRET` and the declared Answerlattice Gemini secrets.
 - The scheduled, task, and callable AI functions have access to the declared Answerlattice Gemini secrets.
 - Manual scheduler auth uses `Authorization: Bearer $ANSWERLATTICE_CRON_SECRET`.
@@ -337,9 +337,6 @@ gcloud secrets create ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --rep
 gcloud secrets versions add ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --data-file=<local-secret-file>
 firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice-qa
 firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_2 --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_3 --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_4 --project answerlattice-qa
 ```
 
 Functions:

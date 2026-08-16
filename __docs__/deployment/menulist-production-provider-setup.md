@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 20 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
+> **Current progress:** 35 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, and the exact-host Maps Embed credential are prepared; the Razorpay production webhook event contract is frozen while Live Mode remains owner-blocked; GA4, Telegram, external uptime monitoring, and EmailOS are intentionally omitted or parked for the initial production setup; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -713,11 +713,36 @@ new database; it does not overwrite `(default)` in place.
     Google Auth Platform, replace the two Vercel OAuth variables, and create a
     fresh deployment only through the release-approved Vercel path. No
     deployment was triggered by this configuration work.
-- [ ] `PROD-C07` Create or approve the paid production Gemini project/key
-  ownership model and its billing/spend-alert controls.
-- [ ] `PROD-C08` Create only the Gemini keys admitted by current code, restrict
-  them to the Gemini API, vault them, and document rotation slots as failover,
-  not quota multiplication.
+- [x] `PROD-C07` Import existing project `menulist-prod` into Google AI Studio
+  under company billing account `0135AA-B5D4AD-C72CAB`, confirm it inherits the
+  shared positive Prepay balance without another purchase, and configure its
+  project-specific Gemini monthly spend cap.
+  - `2026-08-16` - The owner approved
+    `gemini-credential-billing-strategy.md` as the canonical long-term
+    four-project contract. Read-only AI Studio verification shows the company
+    billing account at Paid Tier 1 with INR 998.59 remaining from the single
+    INR 1,000 August 13 Prepay purchase, INR 1.19 recorded usage, auto-reload
+    Off. `menulist-prod` was imported into that same account and its Gemini API
+    monthly spend cap is INR 750; QA remains capped at INR 250. API keys have no
+    separate payment requirement and no new credit purchase was made.
+- [x] `PROD-C08` Create exactly two `menulist-prod` credentials restricted to
+  the Gemini API: **MenuList Production primary** and **MenuList Production
+  menu extraction**. Store the primary as Vercel Production
+  `MENULIST_GEMINI_AI_KEY` and Firebase `GEMINI_AI_KEY`; store extraction only
+  as Firebase `MENULIST_GEMINI_TEXT_AI_KEY`. Rotate both in place; do not create
+  permanent numbered fallback slots.
+  - `2026-08-16` - Google Cloud now requires new Gemini credentials to be
+    service-account-bound authorization keys. Created no-private-key identities
+    `menulist-gemini-primary@menulist-prod.iam.gserviceaccount.com` and
+    `menulist-gemini-extract@menulist-prod.iam.gserviceaccount.com`, with no
+    unrelated project roles, and bound one Gemini-only key to each. A first
+    primary credential rendered into operator automation output and was
+    deleted before storage or use; only its replacement is active. The
+    replacement primary is stored as sensitive Vercel Production
+    `MENULIST_GEMINI_AI_KEY` plus Firebase `GEMINI_AI_KEY@1`; extraction is
+    stored only as Firebase `MENULIST_GEMINI_TEXT_AI_KEY@1`. Metadata confirms
+    both Firebase versions are enabled and the Vercel row is Production-only.
+    No key value was read back, and no deployment or provider call occurred.
 
 ## Phase D - External Production Providers
 
@@ -726,60 +751,266 @@ traffic.
 
 - [ ] `PROD-D01` Create a dedicated production Upstash Redis database and
   confirm it does not share the QA REST URL or token.
+  - `2026-08-16` - Read-only Upstash verification confirmed the company-owned
+    Personal workspace is secured with MFA and currently contains exactly one
+    Free Tier database, `menulist-qa-rate-limit`, on GCP `US-CENTRAL1`. Upstash
+    permits only one Free Tier database in this workspace. Creating the required
+    isolated production database is blocked until the owner adds a payment card
+    through Upstash's Stripe-hosted billing flow. No card was added and no
+    database, token, purchase, subscription, or upgrade was created. After
+    financial approval, create `menulist-prod-rate-limit` on GCP `US-CENTRAL1`
+    using Pay as You Go with an explicit low monthly budget cap; do not reuse the
+    QA database, select a fixed plan, or add the optional USD 200/month Prod Pack
+    during pre-launch setup.
 - [ ] `PROD-D02` Vault the production Upstash REST URL/token and record region,
   owner, and rotation/revocation procedure.
-- [ ] `PROD-D03` Configure MenuList's Sentry production environment/project and
+- [x] `PROD-D03` Configure MenuList's Sentry production environment/project and
   vault the production DSN without sending a production test event yet.
+  - `2026-08-16` - Created a separate Next.js project named `menulist-prod` in
+    the existing company-owned, MFA-protected `Neelvara Systems` Sentry
+    organization. The existing `menulist-qa` project remains separate. The
+    default production DSN was copied without displaying it and stored only as
+    sensitive Vercel Production `NEXT_PUBLIC_SENTRY_DSN` plus Firebase
+    `menulist-prod` Secret Manager `SENTRY_DSN@1`; metadata readback reports the
+    Firebase version Enabled and the Vercel row Production-only. High-priority
+    issue email alerting remains selected. No sample error, source-map auth
+    token, paid upgrade, Firebase deployment, Vercel deployment, or production
+    event was created.
 - [ ] `PROD-D04` Configure an approved production transactional sender or
   controlled Workspace relay; never use a personal inbox password.
+  - `2026-08-16` - Deliberately parked by the owner. The approved long-term
+    direction remains product-scoped Resend onboarding under EmailOS, with
+    `system@menulist.ai` as sender and `support@neelvara.com` as reply-to.
+    No Resend account, sender-domain DNS, API key, webhook secret, SMTP
+    credential, provider send, deployment, or test email was created. Do not
+    substitute a personal Gmail password or placeholder secret while this item
+    is parked.
 - [ ] `PROD-D05` Complete truthful Razorpay merchant Live Mode activation/KYC
   when available; staging remains Test Mode.
+  - `2026-08-16` - Read-only dashboard verification under the company account
+    shows Test Mode selected and **Complete your onboarding to accept
+    payments** / **KYC verification is needed to collect live payments**.
+    This remains an owner-controlled legal and financial submission. No KYC
+    field was entered, no document was uploaded, and Live Mode was not
+    activated.
 - [ ] `PROD-D06` Generate and vault dedicated Razorpay Live API credentials;
   do not place them in Preview or Firebase QA.
+  - Blocked behind `PROD-D05`; no Live credential was created or stored.
 - [ ] `PROD-D07` Generate a distinct production Razorpay webhook secret and
   record the intended endpoint `https://app.menulist.ai/api/razorpay/webhook`;
   do not activate the Live webhook yet.
-- [ ] `PROD-D08` Freeze the production Razorpay event list to events handled by
-  the deployed route before webhook activation.
+  - Blocked behind `PROD-D05`; no Live webhook, signing secret, callback, or
+    delivery was created.
+- [x] `PROD-D08` Freeze the production Razorpay webhook subscription to these
+  13 route-handled events before activation: `order.paid`, `payment.failed`,
+  `refund.processed`, `subscription.paused`, `subscription.resumed`,
+  `subscription.authenticated`, `subscription.activated`,
+  `subscription.pending`, `subscription.halted`, `subscription.charged`,
+  `subscription.cancelled`, `subscription.completed`, and
+  `subscription.updated`.
+  - `2026-08-16` - This matches the verified QA provider contract and the
+    current subscription lifecycle source. Razorpay documents
+    `refund.processed` as the definitive final refund status event. The route
+    also accepts `payment.refunded` defensively for historical payload
+    compatibility, but Production must not subscribe to it in addition to
+    `refund.processed`, which would create duplicate refund-event risk. No Live
+    webhook was created or activated.
 - [ ] `PROD-D09` Confirm Meta Business, app, and WhatsApp production ownership,
   recovery, and truthful verification status.
+  - `2026-08-16` - Read-only Meta Business verification found no production
+    asset set to certify. Business portfolio `MenuList Dev` is Unverified, has
+    no primary Page, legal name, address, phone, or website, and does not
+    require portfolio-level 2FA. Its sole full-control human is the founder
+    under legacy address `admin@menulist.online`. The only attached app is
+    **MenuList QA Messaging** and the only WhatsApp asset is Meta's **Test
+    WhatsApp Business Account**; the QA runtime system user also has app
+    access. These QA/test assets must not be relabelled as production evidence.
+    No portfolio setting, person, app, WhatsApp account, or verification field
+    was changed.
 - [ ] `PROD-D10` Prepare dedicated production WhatsApp credentials and verify
   token ownership without registering the production callback or sending.
-- [ ] `PROD-D11` Confirm production Google Maps/Places key restrictions match
+  - Blocked behind `PROD-D09`; no production Meta app, WhatsApp Business
+    Account, system user, token, verify token, callback, or message was created.
+- [x] `PROD-D11` Confirm production Google Maps/Places key restrictions match
   the exact production hosts and required APIs.
-- [ ] `PROD-D12` Record the production analytics decision and create a distinct
+  - `2026-08-16` - Enabled only **Maps Embed API** in exact project
+    `menulist-prod` and created dedicated key **MenuList Production Maps
+    Embed**. Metadata readback confirms one API restriction, Maps Embed API,
+    plus HTTP-referrer restrictions for exactly `https://menulist.ai/*`,
+    `https://www.menulist.ai/*`, `https://app.menulist.ai/*`, and
+    `https://*.menulist.online/*`. The key is stored only as Vercel Production
+    `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY`; it is intentionally browser-visible
+    and protected by provider restrictions. Source now uses
+    `strict-origin-when-cross-origin` so Google receives the admitted origin.
+    Places API was not enabled because current source does not call it. QA has
+    a separate Maps Embed-only key and QA-only host restrictions. No map
+    request or Vercel deployment was triggered.
+- [x] `PROD-D12` Record the production analytics decision and create a distinct
   GA4 property/stream only if analytics is approved.
-- [ ] `PROD-D13` Record whether Telegram and uptime monitoring are enabled or
+  - `2026-08-16` - Intentionally omitted for initial production. MenuList-owned
+    product analytics remains on the existing first-party aggregate/read-model
+    path. Public website analytics remains consent-gated, with Plausible as the
+    preferred future website vendor; GA4 is reserved for a separately approved
+    paid-ad or conversion-continuity need. No GA4 property, web stream,
+    measurement ID, Data API service account, credential, Firebase Analytics
+    link, Vercel variable, tracking request, or deployment was created. Do not
+    populate `NEXT_PUBLIC_GA_MEASUREMENT_ID` or `GA_*` placeholders merely to
+    satisfy the environment inventory.
+- [x] `PROD-D13` Record whether Telegram and uptime monitoring are enabled or
   intentionally omitted; do not create unowned alert channels.
+  - `2026-08-16` - Intentionally omitted from initial production provider
+    preparation. The company-owned `menulist-prod` Sentry project is the active
+    error-monitoring destination. Telegram delivery remains fail-closed with no
+    bot token/chat ID, and no UptimeRobot account, contact, or monitor was
+    created before a real production deployment exists. Reconsider an external
+    uptime monitor only after release approval, using exact production URLs and
+    a named company-owned notification recipient. Do not create placeholder
+    Telegram secrets or point a monitor at QA/staging aliases.
 - [ ] `PROD-D14` Confirm every production provider account has company-owned
   recovery, MFA, and a named monthly/quarterly review owner.
+  - Blocked. Google Workspace/Cloud, Vercel, GitHub, GoDaddy, Sentry, and the
+    current company vault have recorded ownership/recovery evidence, but the
+    production provider inventory is not yet complete: Upstash remains behind
+    owner billing, Razorpay Live remains behind KYC, Resend is parked, and Meta
+    lacks a production-owned verified asset set and portfolio-level 2FA. Do not
+    mark this control complete until those providers exist and their recovery,
+    MFA, and review-owner evidence is recorded without exposing recovery data.
 
 ## Phase E - Inactive Secrets And Environment Wiring
 
 No deploy is authorized by this phase.
 
-- [ ] `PROD-E01` Use `.env.production.example` as the key inventory and remove
-  unrelated product rows before entering MenuList Production values.
-- [ ] `PROD-E02` Set exact production URL/domain values for `menulist.ai`,
+- [x] `PROD-E01` Use `.env.production.example` as the portfolio key inventory
+  and select only MenuList/generic rows for this MenuList Production pass.
+  - `2026-08-16` - Corrected the former destructive wording for the approved
+    shared Vercel project: do not delete a valid sibling-product Production row
+    merely because MenuList is being configured. Instead, add no Answerlattice,
+    CampaignCue, or SignalDesk placeholder during this pass and leave those
+    product setups pending. Metadata-only Vercel review showed the currently
+    configured Production rows used by this pass are MenuList-prefixed or
+    approved shared keys. No value was revealed. The canonical template now
+    keeps parked SMTP, intentionally omitted GA4/Clarity, and intentionally
+    omitted Telegram entries blank rather than advertising Gmail or literal
+    provider placeholders. Actual managed environments must never receive a
+    literal `<...>` value.
+- [x] `PROD-E02` Set exact production URL/domain values for `menulist.ai`,
   `app.menulist.ai`, and `menulist.online` in Vercel Production only.
-- [ ] `PROD-E03` Set the approved production Firebase Web config and server
+  - `2026-08-16` - Added `NEXT_PUBLIC_ENV=production`,
+    `NEXT_PUBLIC_VERCEL_ENV=production`, `NEXT_PUBLIC_APP_URL` and
+    `NEXT_PUBLIC_DEPLOYMENT_URL` as `https://menulist.ai`, exact platform domain
+    plus apex/`www`/`app` aliases, and tenant base `menulist.online` to Vercel
+    Production. Metadata readback confirms all seven rows are Production-only,
+    with no Preview or custom `qa` scope. Existing production
+    `NEXTAUTH_URL=https://app.menulist.ai` remains separately scoped to
+    Production. No domain assignment, DNS change, deployment, or request was
+    triggered.
+- [x] `PROD-E03` Set the approved production Firebase Web config and server
   identity in Vercel Production; verify no `menulist-qa` value remains.
+  - `2026-08-16` - Firebase Console readback from exact app **MenuList
+    Production Web** supplied the six browser configuration fields for project
+    `menulist-prod`, project number `233910481388`, Storage bucket
+    `menulist-prod.firebasestorage.app`, and app ID ending `109910c9`. They were
+    transferred without printing the API key into the six canonical
+    `NEXT_PUBLIC_MENULIST_FIREBASE_*` rows in Vercel Production. Metadata
+    confirms every row is Production-only, not Preview or custom `qa`. The
+    separately completed WIF selectors remain the server identity; no Admin
+    client email/private key or `menulist-qa` Firebase value was introduced.
+    Firebase Analytics remains intentionally unconfigured. No deployment or
+    Firebase request was triggered.
 - [ ] `PROD-E04` Set distinct production OAuth, NextAuth, revalidation, referral,
   worker, and webhook secrets; verify none equals its QA counterpart.
-- [ ] `PROD-E05` Set production Gemini, Upstash, SMTP, Razorpay, Sentry, Maps,
+- `2026-08-16` - Partial preparation only. Production OAuth and NextAuth were
+  already isolated under Phase C. Fresh production-only referral-token, batch
+  worker, and revalidation values were generated and the three canonical
+  `MENULIST_*` rows were created in Vercel Production without revealing their
+  values. The initial revalidation value was then replaced with one fresh value
+  in Vercel Production and the same value was stored as
+  `REVALIDATION_SECRET` version 2 in `menulist-prod` Secret Manager. Metadata
+  readback confirms version 2 is enabled and version 1 is disabled. Secret
+  values remained hidden in all evidence, and no deployment was triggered, so
+  the Vercel change remains pending live effect until a separately approved
+  release. This row remains open only because provider-owned webhook secrets
+  are unavailable while Razorpay Live Mode, EmailOS, and production
+  Meta/WhatsApp are blocked or parked. Do not invent placeholders or reuse QA
+  webhook values.
+- [x] `PROD-E05` Set production Gemini, Upstash, SMTP, Razorpay, Sentry, Maps,
   analytics, and messaging values only for features intentionally admitted.
-- [ ] `PROD-E06` Keep every optional production feature fail-closed until its
+  - `2026-08-16` - Closed as an admission-controlled inventory, not as blanket
+    provider activation. The production Gemini primary credential, Sentry DSN,
+    and Maps Embed key are stored only in their approved Production scopes.
+    Upstash remains absent behind `PROD-D01` billing; SMTP/Resend is parked under
+    `PROD-D04`; Razorpay Live values remain absent behind `PROD-D05`-`PROD-D07`;
+    GA4/Clarity and Telegram/external uptime are intentionally omitted under
+    `PROD-D12`-`PROD-D13`; and production WhatsApp remains absent behind
+    `PROD-D09`-`PROD-D10`. No literal placeholder was added to a managed
+    environment, no optional provider was enabled merely to complete this row,
+    and no deployment or provider call occurred.
+- [x] `PROD-E06` Keep every optional production feature fail-closed until its
   provider smoke and release gate are ready.
+  - `2026-08-16` - Source and production configuration review confirms the
+    parked provider paths remain closed without fake credentials. MenuList
+    EmailOS provider transmission and owner WhatsApp notifications are disabled
+    by their product-specific source gates; the Functions production env keeps
+    messaging onboarding disabled; and the WhatsApp provider rejects operation
+    when phone/access credentials are absent. Razorpay Live, Upstash, Resend,
+    production WhatsApp, GA4/Clarity, Telegram, and external uptime values remain
+    absent for the blockers recorded above. App Check remains deliberately in
+    monitoring mode rather than being misreported as enforced. No flag was
+    enabled, no placeholder was stored, and no deployment or provider smoke was
+    run to close this source/configuration gate.
 - [ ] `PROD-E07` Create only Firebase Functions secret names declared by the
   current MenuList Functions source, with production values in the approved
   production Firebase project.
-- [ ] `PROD-E08` Configure non-secret Functions environment values, including
+  - `2026-08-16` - Metadata-only Firebase CLI readback, with no secret access,
+    confirms enabled production versions exist for `GEMINI_AI_KEY`,
+    `MENULIST_GEMINI_TEXT_AI_KEY`, `SENTRY_DSN`, and
+    `REVALIDATION_SECRET`. Upstash, legacy and product-scoped WhatsApp,
+    SMTP/Resend, Razorpay, Telegram, and budget-webhook names are absent. This
+    is correct provider truth, but current function option groups still bind
+    some unavailable Upstash, legacy WhatsApp, Razorpay, and alert-delivery
+    names. Do not create dummy versions merely to make a deployment manifest
+    pass. Keep this row open until real admitted provider values exist or a
+    separately validated source change conditionally removes those bindings
+    from the production manifest. Canonical `MENULIST_WHATSAPP_*` constants are
+    not yet part of an active secret group and were not created speculatively.
+- [x] `PROD-E08` Configure non-secret Functions environment values, including
   `NEXT_PUBLIC_APP_URL=https://app.menulist.ai` and
   `MENULIST_TENANT_BASE_DOMAIN=menulist.online`.
-- [ ] `PROD-E09` Run configuration/source verifiers that do not deploy or make
+  - `2026-08-16` - Prepared the private non-secret runtime file
+    `functions/.env.menulist-prod` for exact project `menulist-prod`. It uses
+    owner/message-preview origin `https://app.menulist.ai`, tenant base
+    `menulist.online`, the approved Gemini local admission ceiling, and keeps
+    messaging onboarding disabled while retaining the `whatsapp` provider name
+    only as dormant configuration with tracking enabled. No credential is in
+    the file, it remains uncommitted by contract, and no Functions deployment
+    or provider request occurred.
+- [x] `PROD-E09` Run configuration/source verifiers that do not deploy or make
   paid provider calls; record exact results in the production-readiness audit.
-- [ ] `PROD-E10` Perform a secret-name and environment-separation review without
+  - `2026-08-16` - Passed `verify:agent-readiness`,
+    `verify:menulist-env-contract`, `test:provider-client-boundary`,
+    `test:functions-ai-key-attribution`, and
+    `verify:official-business-page-boundary`; root `npx tsc --noEmit`, focused
+    ESLint for the changed map/runtime verifier files, and `git diff --check`
+    also passed. `docs:check-links` scanned 2,994 files and 5,248 internal
+    links with zero broken links and 62 pre-existing video-artifact naming
+    warnings. The production-readiness audit records the same evidence and its
+    local-only boundary. No build, deploy, live write, or paid provider call ran.
+- [x] `PROD-E10` Perform a secret-name and environment-separation review without
   printing secret values; confirm no literal placeholders remain.
+  - `2026-08-16` - Vercel metadata review under the Production filter found 29
+    expected MenuList rows: production routing/domain, Firebase Web, WIF,
+    OAuth/NextAuth, App Check site key, Gemini, Sentry, Maps, and the three
+    application secrets. Every displayed row is Production-scoped; no QA
+    Firebase value, static Admin private key/client email, sibling-product
+    placeholder, SMTP/Resend, Upstash, Razorpay Live, GA4/Clarity, Telegram, or
+    production WhatsApp row is present. Values remained hidden. Firebase CLI
+    metadata confirmed the four current `menulist-prod` Secret Manager names
+    and did not access values. `npm run verify:env-targets` passed. The rows
+    created in this pass came from exact provider metadata or fresh generated
+    values, not literal `<...>` template text. The subsequent
+    `REVALIDATION_SECRET` version-2 rotation is recorded under `PROD-E04`; this
+    review does not supersede the missing provider bindings recorded under
+    `PROD-E07`.
 
 ## Phase F - Certification-Gated Activation And Launch Handoff
 

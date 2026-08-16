@@ -13,6 +13,13 @@ completed infrastructure setup and its retained operator evidence remain in
 not duplicate that setup guide and does not convert setup evidence into feature
 certification without exercising the corresponding hosted application flow.
 
+Provider-state note: QA App Check was registered in monitoring mode on August
+16 after the exact hosted builds recorded below. Their references to the known
+missing-site-key diagnostic remain valid historical evidence. The next QA
+deployment must prove valid App Check token traffic before any enforcement is
+considered; this provider registration alone does not rewrite prior runtime
+results.
+
 ## Certification Contract
 
 - Use the actual hosted QA surfaces: `https://menulist.digital`,

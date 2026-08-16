@@ -199,6 +199,10 @@ optimizes for the following durable behaviors:
   impersonation, or authenticity enforcement does not become a reach risk;
 - keep the three-post weekly starting cadence. X's ten-post monthly threshold
   governs access to a transparency report, not distribution;
+- treat that cadence as a learning baseline, not a one-post-per-day rule. An
+  additional same-day original must independently earn publication through a
+  distinct audience problem, current evidence, non-duplicative format, privacy
+  clearance, and a reason the lesson is more useful now than later;
 - use the account's observed audience quality, post results, and eventual
   `Under the Hood` label report before diagnosing visibility or changing the
   strategy.

@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 
 process.env.GEMINI_AI_KEY = "menu-key-one";
-process.env.GEMINI_AI_KEY_2 = "menu-key-two";
 process.env.GEMINI_AI_KEY_4 = "menu-extraction-provider-key";
 process.env.MENULIST_GEMINI_TEXT_AI_KEY = "menu-extraction-key";
 process.env.ANSWERLATTICE_GEMINI_AI_KEY = "answer-key-one";
-process.env.ANSWERLATTICE_GEMINI_AI_KEY_2 = "answer-key-two";
 
 type KeyManagerConstructor = new () => {
     readonly totalKeys: number;
@@ -38,17 +36,15 @@ for (const [label, Manager] of [
     const concurrentRequestClient = manager.getClient();
 
     manager.markKeyRateLimited(firstRequestClient);
-    assert.equal(manager.getStats().currentKeyIndex, 1, `${label} rotates after the first key is limited`);
-
-    const secondKeyClient = manager.getClient();
-    assert.notEqual(secondKeyClient, firstRequestClient, `${label} selects the second key`);
+    assert.equal(manager.getStats().currentKeyIndex, 0, `${label} retains its single primary slot`);
+    assert.equal(manager.getClient(), firstRequestClient, `${label} retries through the same credential after bounded backoff`);
 
     manager.markKeySuccess(concurrentRequestClient);
     manager.markKeyRateLimited(concurrentRequestClient);
 
     assert.deepEqual(
         manager.getStats().keys.map((key) => key.totalRateLimits),
-        [2, 0],
+        [2],
         `${label} attributes delayed feedback to the client that served the request`,
     );
 }
@@ -59,9 +55,17 @@ const extractionManager = new MenuListKeyManager([
 assert.equal(extractionManager.totalKeys, 1, 'Menu extraction discovers only its dedicated text key');
 assert.equal(
     new MenuListKeyManager().totalKeys,
-    2,
-    'The shared MenuList pool ignores provider slot 4 reserved for menu extraction',
+    1,
+    'The shared MenuList client discovers only its primary credential',
 );
+
+process.env.TEST_GEMINI_KEY_ONE = 'test-key-one';
+process.env.TEST_GEMINI_KEY_TWO = 'test-key-two';
+const configurableManager = new MenuListKeyManager([
+    ['TEST_GEMINI_KEY_ONE'],
+    ['TEST_GEMINI_KEY_TWO'],
+]);
+assert.equal(configurableManager.totalKeys, 2, 'The generic manager remains configurable for separately governed products');
 
 delete process.env.MENULIST_GEMINI_TEXT_AI_KEY;
 const missingExtractionManager = new MenuListKeyManager([

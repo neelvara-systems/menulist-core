@@ -764,8 +764,6 @@ What to do:
 MenuList shared AI and provider secrets:
 
 - `GEMINI_AI_KEY`
-- `GEMINI_AI_KEY_2`
-- `GEMINI_AI_KEY_3`
 - `MENULIST_GEMINI_TEXT_AI_KEY`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
@@ -785,18 +783,14 @@ MenuList shared AI and provider secrets:
 - `GCP_BUDGET_WEBHOOK_SECRET`
 - `REVALIDATION_SECRET`
 
-The shared MenuList AI pool uses only `GEMINI_AI_KEY`, `_2`, and `_3`.
-`MENULIST_GEMINI_TEXT_AI_KEY` is bound only to menu extraction and must not
-fallback into the shared pool. Do not restore the retired `GEMINI_AI_KEY_4`
-alias; all keys in one Google project share project/model quota.
+MenuList uses `GEMINI_AI_KEY` for primary AI. The
+`MENULIST_GEMINI_TEXT_AI_KEY` is bound only to menu extraction. Rotate each
+managed value in place. Do not restore numbered MenuList aliases.
 
 Answerlattice declared secrets:
 
 - `ANSWERLATTICE_CRON_SECRET`
 - `ANSWERLATTICE_GEMINI_AI_KEY`
-- `ANSWERLATTICE_GEMINI_AI_KEY_2`
-- `ANSWERLATTICE_GEMINI_AI_KEY_3`
-- `ANSWERLATTICE_GEMINI_AI_KEY_4`
 - `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`
 - `ANSWERLATTICE_SMTP_HOST`
 - `ANSWERLATTICE_SMTP_PORT`
@@ -818,6 +812,9 @@ Stop if:
 
 Create staging first, then production. Keep production disabled until staging
 smoke checks pass.
+
+The canonical billing, project-isolation, minimal-key, and in-place rotation
+contract is [Gemini Credential And Billing Strategy](./gemini-credential-billing-strategy.md).
 
 ### Gemini / Google AI Studio
 

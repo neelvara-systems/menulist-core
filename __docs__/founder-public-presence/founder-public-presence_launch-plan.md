@@ -33,10 +33,12 @@ Account creation, verification, and publishing remain manual external actions.
 ### First-post launch exception
 
 The founder selected Sunday morning, August 16, 2026, for the first original X
-post. Publish FPP-C001 after the 8:30 AM Presence Brief, then return to the
-controlled 8:00 PM baseline for later original posts. Record the actual time,
-but do not compare this launch post's timing with the later baseline or infer an
-algorithm effect from one result.
+post. Publish FPP-C001 between 9:00 and 10:00 AM Asia/Kolkata after the morning
+Presence Brief, then return to the controlled 8:00 PM baseline for later
+original posts. If the window is missed, report the timing blocker and carry
+forward only this action; do not publish impulsively or create catch-up volume.
+Record the actual time, but do not compare this launch post's timing with the
+later baseline or infer an algorithm effect from one result.
 
 ## Daily Operating Rhythm
 

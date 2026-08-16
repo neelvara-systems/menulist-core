@@ -24,6 +24,17 @@ reCAPTCHA Enterprise for new integrations, but changing provider type requires
 an explicit source, configuration, and release migration; it must not be
 silently mixed into this v3 setup.
 
+### Current QA Provider State
+
+As of August 16, 2026, **MenuList QA Web** in `menulist-qa` is registered with
+a separate company-owned reCAPTCHA v3 credential restricted to the
+`menulist.digital` QA domain family. Its private secret is stored only by
+Firebase App Check. The matching public site key exists exactly once in
+Vercel's custom `qa` environment as non-sensitive
+`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`. Firebase's APIs view remains **Unenforced**;
+the variable will affect only a future QA deployment, and no deployment was
+run for this setup checkpoint.
+
 ---
 
 ## 📖 What is Firebase App Check?

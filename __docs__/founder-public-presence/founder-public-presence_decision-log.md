@@ -1,7 +1,7 @@
 # Founder Public Presence Decision Log
 
 **Status:** Active; append decisions, do not rewrite history
-**Last Updated:** August 15, 2026
+**Last Updated:** August 16, 2026
 
 ## Decision Format
 
@@ -205,3 +205,73 @@ alone.
 **Evidence:** [Official X announcement](https://x.com/XOpenSource/status/2087951962004230428),
 [`x-algorithm` commit `a389166`](https://github.com/xai-org/x-algorithm/tree/a389166f6cf5da70a286b568c87695d4dcdce3a1),
 and research-ledger entry `FPP-R028`.
+
+## FPP-D011 — Explain the reasoning behind every selected post
+
+**Date:** August 16, 2026
+**Trigger:** The founder asked why the entitlement lesson was selected as the
+first post and requested that every future post include its reasoning.
+
+**Decision:** Every post handoff must explain why the topic is selected now,
+which audience problem it addresses, why the native format fits, what evidence
+supports it, what privacy/product boundary shapes it, and why the strongest
+obvious alternatives were deferred.
+
+**Reason:** PresenceOS is both an execution system and a learning system for a
+founder who is new to public publishing. Unexplained copy encourages blind
+execution and prevents the founder from developing independent channel and
+content judgment.
+
+**Consequence:** The daily brief, operating review, post-bank publication
+packets, and mirrored PresenceOS rules now require a selection rationale before
+the founder is asked to publish.
+
+## FPP-D012 — Every publication action has a bounded local-time window
+
+**Date:** August 16, 2026
+**Trigger:** The founder requested that each recommended post include when it
+should be published, not only what to publish and why.
+
+**Decision:** Every publication handoff must include the exact date,
+Asia/Kolkata timezone, a bounded time window, why that window was selected, and
+the one result to report if it is missed. A missed window carries forward at
+most the same single action; it never creates catch-up volume.
+
+**Reason:** A clear window turns a vague content intention into a repeatable
+habit and creates a usable measurement baseline. No hour is treated as a
+universal X ranking advantage; the founder's own outcomes may later justify a
+controlled change.
+
+**Consequence:** PresenceOS rules, the operating runbook, daily automation,
+launch plan, first-post publication packet, and progress tracker now carry the
+timing and missed-window instruction together.
+
+## FPP-D013 — Available capacity does not create a post quota
+
+**Date:** August 16, 2026
+**Trigger:** After publishing the first post, the founder clarified that time is
+available for two or three posts or other actions when PresenceOS judges them
+useful, and asked Codex to lead planning, authorship, control, and monitoring.
+
+**Decision:** The one-action morning brief remains the accountability anchor,
+but it is not a hard one-post-per-day restriction. After a completed action,
+PresenceOS may admit additional same-day work one action at a time. Every extra
+original post must independently pass the audience-problem, evidence, privacy,
+product, native-format, non-duplication, timing, and why-now gates. Founder
+availability is capacity, not publication evidence.
+
+Codex acts as the editorial operating lead and monitoring guide. The founder
+remains the account owner and retains final authority over identity,
+disclosure, credentials, publishing, replies, follows, messages, verification,
+and spend.
+
+**Reason:** This uses the founder's available time without turning the account
+into a volume system or transferring public identity authority to an agent.
+Proof and audience fit continue to determine output.
+
+**Consequence:** PresenceOS can recommend multiple actions when they genuinely
+earn their place, while the daily automation stays clear, missed work never
+creates catch-up volume, and external actions remain founder-controlled. No
+second original post was admitted on August 16 because the first post had just
+entered its observation window and no distinct time-sensitive lesson required
+same-day publication.

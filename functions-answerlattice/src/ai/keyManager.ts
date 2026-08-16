@@ -1,8 +1,8 @@
 /**
  * Answerlattice Gemini key manager.
  *
- * Mirrors the MenuList Functions GenAI gateway pattern while keeping
- * Answerlattice credential ownership product-scoped.
+ * Keeps Answerlattice credential ownership product-scoped. One primary
+ * credential is rotated by replacing its Secret Manager version in place.
  */
 
 import { GoogleGenAI } from '@google/genai';
@@ -39,9 +39,6 @@ const MAX_COOLDOWN_MS = 5 * 60_000;
 
 const KEY_ENV_VARS = [
     'ANSWERLATTICE_GEMINI_AI_KEY',
-    'ANSWERLATTICE_GEMINI_AI_KEY_2',
-    'ANSWERLATTICE_GEMINI_AI_KEY_3',
-    'ANSWERLATTICE_GEMINI_AI_KEY_4',
 ] as const;
 
 export class AIProviderConfigMissingError extends Error {

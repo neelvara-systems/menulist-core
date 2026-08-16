@@ -39,13 +39,41 @@ No growth theatre. Evidence over performance.
 
 ### FPP-C001 — Entitlement truth
 
-**Status:** Founder-review for the first X post on August 16, 2026
+**Status:** Published August 16, 2026 at 9:41 AM Asia/Kolkata —
+`https://x.com/proofandstate/status/2088841036009533550`
 
 **Publication packet:** Text only; 276 characters; no link, media, hashtag,
 product name, or invitation. The lesson is generalized from a current verified
 interface/server/data-access implementation. Do not add endpoint, collection,
 tenant, customer, or bypass details. Publish manually from the dedicated Proof
 Chrome profile after one final preview.
+
+**Publication window:** August 16, 2026, 9:00-10:00 AM Asia/Kolkata. This
+bounded launch window follows the morning evidence/privacy check and converts
+"post this morning" into a clear habit action. It is not an algorithm claim. If
+the window is missed, do not publish impulsively later or add another post;
+report `BLOCKED timing window missed` so one action can be carried forward.
+
+**Why this is the first post:**
+
+- It establishes the central Proof & State territory immediately: the gap
+  between software that looks complete and a system that is actually dependable.
+- Entitlement mistakes are common and consequential for AI-assisted SaaS
+  builders, so the lesson filters toward the intended technical-founder
+  audience rather than a generic creator audience.
+- The mechanism is verified in current work across interface visibility,
+  independent server authorization, and direct data-access denial. It is not a
+  borrowed tip or unsupported opinion.
+- A text-only mechanism is the lowest-risk first artifact: it requires no
+  screenshot metadata, product disclosure, external link, or visual proof that
+  could correlate the pseudonym.
+- An introductory pinned post was deferred because it explains the account but
+  gives the reader less standalone value. The full audit-flow lesson needs more
+  space or a diagram. The RAG-authority lesson is stronger as a later proof card.
+  The X-algorithm topic would attract creator-growth interest before the account
+  has established its production-systems identity.
+- This is a positioning choice, not an algorithm claim or prediction that the
+  topic will receive high reach.
 
 ```text
 A paywall is not a disabled button.
