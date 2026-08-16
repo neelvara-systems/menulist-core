@@ -920,6 +920,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistRulesPredeployRunner, "'firestore.indexes.json': config.firestore?.indexes", 'MenuList Firebase rules predeploy index source wiring');
   assertIncludes(menulistRulesPredeployRunner, "'storage.rules': config.storage?.rules", 'MenuList Firebase rules predeploy Storage source wiring');
   assertIncludes(menulistStagingQaSetup, 'npm run verify:menulist-firebase-rules-predeploy', 'MenuList QA setup local rules predeploy gate');
+  assertIncludes(menulistStagingQaSetup, 'company-managed `support@neelvara.com` Google Group', 'MenuList QA OAuth support group parity');
   assertIncludes(menulistStagingQaSetup, 'firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'MenuList QA setup fresh rules/indexes/Storage deploy');
   assertIncludes(menulistStagingQaSetup, "firebase firestore:indexes --project menulist-qa --database '(default)'", 'MenuList QA setup deployed index readback');
   assertIncludes(menulistStagingQaSetup, 'Do not use Admin SDK,', 'MenuList QA setup Admin SDK rule-proof rejection');

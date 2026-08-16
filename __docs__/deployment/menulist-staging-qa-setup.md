@@ -1329,6 +1329,12 @@ Operator progress:
   type, **Testing** publishing status, and named test user
   `admin@neelvara.com`. The app was not published and no production audience
   was changed. `QA-D07` is complete, closing the Phase D Google OAuth setup.
+- `2026-08-16` - Google Auth Platform Branding for exact project
+  `menulist-qa` changed the user support contact from the administrator
+  fallback to the company-managed `support@neelvara.com` Google Group. Live
+  readback confirms that Group as the support email while
+  `admin@neelvara.com` remains the developer contact. No OAuth client,
+  credential, audience, scope, domain, Vercel variable, or deployment changed.
 - `2026-08-09` - Google AI Studio **API Keys** is filtered to exact existing
   project `menulist-qa` and shows no current keys in that project. No new Google
   Cloud project was created. `QA-E01` remains pending creation, restriction,
@@ -3011,7 +3017,7 @@ until every Phase C2 billing/spend item is complete.
 
 | Status | ID | Check | Where | Expected result |
 | --- | --- | --- | --- | --- |
-| [x] | QA-D01 | Google Auth branding and contacts configured | Google Cloud Console -> Google Auth Platform -> Branding | MenuList QA name, support email, developer contact, homepage/privacy/terms links, and verified `menulist.digital` domain are accurate |
+| [x] | QA-D01 | Google Auth branding and contacts configured | Google Cloud Console -> Google Auth Platform -> Branding | MenuList QA name, company-managed `support@neelvara.com` Group, `admin@neelvara.com` developer contact, homepage/privacy/terms links, and verified `menulist.digital` domain are accurate |
 | [x] | QA-D02 | OAuth audience set to External/Testing | Google Auth Platform -> Audience | QA remains in Testing and only named QA test users are admitted; no production publishing is requested |
 | [x] | QA-D03 | Identity-only scopes confirmed | Google Auth Platform -> Data Access | Only `openid`, `email`, and `profile` are requested for sign-in |
 | [x] | QA-D04 | Web OAuth client created for MenuList QA | Google Auth Platform -> Clients | One Web application client id and secret exist for QA usage |
@@ -3629,8 +3635,10 @@ What to do:
 2. Verify domain ownership for `menulist.digital` in Search Console using the
    company operator/project owner. DNS verification does not make the QA site
    indexable; the app still enforces its noindex/robots/no-sitemap policy.
-3. In Google Auth Platform -> Branding, set the app name to `MenuList QA`, use a
-   monitored company support/developer contact, and enter these exact QA pages:
+3. In Google Auth Platform -> Branding, set the app name to `MenuList QA`, use
+   the company-managed `support@neelvara.com` Google Group as the user support
+   contact and `admin@neelvara.com` as the monitored developer contact, and
+   enter these exact QA pages:
    - Home: `https://menulist.digital`
    - Privacy: `https://menulist.digital/privacy-policy`
    - Terms: `https://menulist.digital/terms-of-service`
