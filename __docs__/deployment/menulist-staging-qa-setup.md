@@ -25,7 +25,13 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   for the `menulist.digital` domain family. The private secret exists only in
   Firebase App Check; the matching public site key exists only in Vercel's
   custom `qa` environment as `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`. All displayed
-  App Check APIs remain unenforced, and no deployment was triggered.
+  App Check APIs remain unenforced. Commit
+  `5161d998e0ff4dcc0358cda02ec0e942856a4550` has now been released to that
+  custom environment and its authenticated keyless runtime passed. Firebase
+  product metrics now show verified Authentication and Cloud Firestore
+  traffic. The retained fixture's no-subscription `/assets` flow made no
+  Storage request, so do not enable enforcement until a bounded Storage smoke
+  also produces verified traffic.
 - Maps Embed parity is prepared without sharing the production credential.
   Exact project `menulist-qa` has only Maps Embed API enabled for this use and
   dedicated key **MenuList QA Maps Embed** is restricted to that API plus
@@ -33,7 +39,36 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   `https://app.menulist.digital/*`, and `https://*.menulist.digital/*`. Its
   browser-visible value exists only as custom-environment `qa`
   `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY`. Places API was not enabled, and no
-  Vercel deployment or map request was triggered.
+  production credential is shared. The August 16 QA release is live, and the
+  public wildcard fixture passed transport/crawler checks, but that fixture
+  has no public location and therefore emitted no Maps Embed request. Hosted
+  provider proof remains pending an authorized location-enabled QA fixture.
+
+## August 16 App Check And Maps Release Evidence
+
+- Vercel custom environment `qa` deployment
+  `dpl_CtZcYkw7odQgKokMBBHViY5Uu2Qh` reached `Ready` from exact `staging`
+  commit `5161d998e0ff4dcc0358cda02ec0e942856a4550`.
+- `https://app.menulist.digital/api/version` returned that exact build with
+  environment `preview` and deployment
+  `menulist-core-io9arzio4-neelvara-systems.vercel.app`.
+- `https://menulist.digital` and `https://app.menulist.digital/signin` returned
+  HTTP 200 with the required noindex header, while `robots.txt` remained
+  disallow-all.
+- The retained authenticated QA owner session loaded the complete `/billing`
+  shell. Exact-deployment Vercel logs showed successful auth/session requests
+  and zero Warning, Error, or Fatal entries. This is hosted keyless runtime
+  proof; no credential, cookie, token, or browser-storage value was inspected.
+- Firebase App Check Apps confirms `MenuList QA Web` is registered with
+  reCAPTCHA, and APIs remain Unenforced. Product metrics now show 33% verified
+  Authentication requests and 42% verified Cloud Firestore requests. A
+  read-only `/assets` smoke rendered the authenticated owner shell with no
+  browser warning/error, but the no-subscription guard produced no Storage
+  request. Monitoring continues and enforcement remains prohibited until
+  verified Storage traffic is proved.
+- `https://qa-qr-health.menulist.digital/menu` returned HTTP 200 with the QA
+  wildcard noindex boundary. It has no public location, so it cannot certify a
+  Maps Embed request. Do not alter retained data merely to manufacture traffic.
 - MenuList QA's Vercel OIDC migration is complete. Production Workload Identity
   Federation is prepared, but production hosted proof and any Production
   deployment remain release-gated in the production ledger.
@@ -1407,6 +1442,12 @@ Operator progress:
   `MENULIST_UPSTASH_REDIS_REST_TOKEN` plus current aliases
   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. No credential value
   was written to chat or this repository. `QA-E02` is complete.
+- `2026-08-16` - After company-team billing was added, the existing QA database
+  was placed in the `Neelvara Systems` team and Upstash displayed it as Pay as
+  You Go. The owner enabled Upstash's minimum USD 20 hard budget cap; the
+  provider confirmed `Database budget updated successfully` and read back
+  `Budget: $20`. Prod Pack remains inactive, credentials were not rotated, and
+  no deployment or runtime test occurred.
 - `2026-08-09` - The owner-controlled Razorpay dashboard opened with **Test
   Mode** active. Live-payment onboarding/KYC is incomplete and will not be
   started for this QA pass. No Live Mode key, payment, settlement, or webhook
@@ -1570,6 +1611,21 @@ Operator progress:
   reuse another application or provider secret, and no value entered docs or
   chat. This completes `QA-E12` and closes the required Phase E provider-value
   setup.
+- `2026-08-16` - Post-boot EmailOS provider preparation created the
+  MFA-protected `MenuList` Resend team boundary and verified `menulist.ai` in
+  the Tokyo sending region. Outbound DKIM plus the isolated
+  `send.menulist.ai` SPF/MX Return-Path were added without changing Google
+  Workspace apex MX or enabling Resend inbound mail. QA has its own
+  sending-only API key restricted to `menulist.ai` and its own signed webhook
+  at
+  `https://us-central1-menulist-qa.cloudfunctions.net/menulistEmailOsWebhook`,
+  subscribed only to the nine code-admitted delivery and suppression events.
+  Enabled version-1 `MENULIST_RESEND_API_KEY` and
+  `MENULIST_RESEND_WEBHOOK_SECRET` values exist only in `menulist-qa`; the
+  production project holds separate values. The private non-secret QA runtime
+  file now defines `MenuList <system@menulist.ai>` with
+  `support@neelvara.com` reply-to. Provider sending remains false in source;
+  no Firebase deployment, webhook event, provider send, or test email occurred.
 - `2026-08-09` - The operator confirmed the first-boot optional-provider
   defaults: App Check/reCAPTCHA enforcement, Telegram alerts, SMTP delivery,
   and staging analytics are skipped intentionally; UptimeRobot is approved for
@@ -1782,6 +1838,16 @@ Operator progress:
   Sentry, revalidation, optional-secret handling, final metadata inventory, and
   production non-touch evidence remain pending under `QA-H06` through
   `QA-H09`.
+- `2026-08-16` - During the approved temporary production-candidate Test Mode
+  reuse, a read-only Razorpay authentication check established the enabled
+  `menulist-qa` Secret Manager pair as a working source (HTTP 200). The
+  corresponding sensitive Vercel value was re-applied to custom `qa` and the
+  legacy `Preview (staging)` scope without displaying it. Vercel's opaque
+  managed-secret exports were not used as plaintext readback evidence; hosted
+  runtime equality remains a later deployment certification item. The Test Mode API
+  pair may be shared temporarily with the pre-live production candidate, but
+  QA keeps its distinct webhook secret and callback; no QA payment, provider
+  object, deployment, or webhook configuration changed.
 - `2026-08-12` - Secret Manager version 1 was created in `menulist-qa` for
   `SENTRY_DSN` and `REVALIDATION_SECRET`, streamed from the ignored local env
   without printing either value. These complete the monitoring and
@@ -2842,6 +2908,11 @@ Operator progress:
   material is stored in the controlled company vault. No QR code, seed, OTP,
   recovery code, or credential value was shared. This closes the Upstash
   portion of `QA-A11`; Razorpay and Meta account-security evidence remain open.
+- `2026-08-16` - Current provider readback reconfirmed MFA on the personal
+  `admin@neelvara.com` Upstash account and enabled the `Neelvara Systems` team
+  requirement that every member use MFA. Transactional usage-limit and team
+  invitation emails are enabled. This is account-control evidence only; it
+  does not configure or replace MenuList application transactional email.
 - `2026-08-14` - The owner enabled Razorpay team-level 2-Step Verification and
   confirmed the recovery owner/reset information is stored in the controlled
   company vault. No phone number, OTP, password, or recovery detail was shared.
@@ -3083,6 +3154,15 @@ independent rotation and prevents fallback into the shared image/general pool;
 it does not authorize a second runtime environment or provider-project quota
 sharding.
 
+Post-boot EmailOS note: MenuList QA provider prerequisites are prepared after
+the original first-boot optional SMTP decision. The verified shared MenuList
+sending domain does not imply shared runtime credentials: QA and production use
+separate Resend keys, webhook signing secrets, Firebase projects, and webhook
+URLs. The next EmailOS action is the smallest scoped QA Firebase deployment and
+controlled provider certification under explicit deployment approval. Until
+then, `ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND` remains `false` and no delivery
+traffic is authorized.
+
 ### Phase F - Optional QA Provider Decisions
 
 These can be skipped for the first MenuList QA boot if the matching feature is
@@ -3160,7 +3240,7 @@ MENULIST_GEMINI_SPEND_LIMIT_USD_10M=8
 | [x] | QA-H02 | Secret Manager API enabled only in `menulist-qa` | Google Cloud API Library | `secretmanager.googleapis.com` is visibly Enabled in exact project `menulist-qa`; no production project was selected or modified |
 | [x] | QA-H03 | Required AI secrets use the canonical minimum | Firebase Secret Manager and Google Cloud credentials for `menulist-qa` | `GEMINI_AI_KEY` and extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` remain required. The six affected QA Functions updated successfully, Firebase removed both numbered secret resources, Vercel removed both numbered `qa` variables, and Google deleted rotation 2/3 keys plus their orphan identities. Hosted proof of the next Vercel source release remains a release task, not secret-cleanup work. |
 | [x] | QA-H04 | Required Upstash secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` exists and metadata readback reports Enabled |
-| [x] | QA-H05 | Required Razorpay Test Mode Function secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` exists and metadata readback reports Enabled; the key ID was guarded as test mode, while `RAZORPAY_WEBHOOK_SECRET` remains local/Vercel-only for the Next.js route |
+| [x] | QA-H05 | Required Razorpay Test Mode Function secrets set | Firebase Secret Manager for `menulist-qa` | Version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` exists and metadata readback reports Enabled; the key ID is guarded as test mode and the pair passed a read-only provider-auth check on August 16, while `RAZORPAY_WEBHOOK_SECRET` remains local/Vercel-only and environment-specific for the Next.js route |
 | [x] | QA-H06 | Required WhatsApp, monitoring, and revalidation secrets set for the maintained target list | Firebase Secret Manager for `menulist-qa` | Version 1 of `SENTRY_DSN`, `REVALIDATION_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, and `WHATSAPP_VERIFY_TOKEN` exists even while provider processing is disabled |
 | [x] | QA-H07 | Optional Function secrets handled | Firebase Secret Manager for `menulist-qa` | Skipped intentionally: no exported MenuList Function currently binds `SECRET_GROUPS.SMTP` or `SECRET_GROUPS.MONITORING`; runtime delivery fails closed, so no placeholder secret was created |
 | [x] | QA-H08 | Secret metadata checked without printing values | Google Secret Manager metadata command | Metadata-only readback confirms all 14 required names have version 1 `ENABLED`; no value was accessed or displayed |
@@ -3763,8 +3843,13 @@ What to do:
 
 Expected result:
 
-- One isolated QA Redis database exists and both REST values are vaulted.
-- No production Upstash database or browser-visible token exists.
+- One isolated QA Redis database exists in the company `Neelvara Systems` team
+  and both REST values are vaulted. After team billing was added on August 16,
+  2026, Upstash displayed this database as Pay as You Go. Its minimum USD 20
+  hard budget cap is enabled and provider-confirmed; reaching that cap stops
+  the QA database and may interrupt QA. Prod Pack remains inactive.
+- The production database is separately isolated as `menulist-prod-rate-limit`;
+  QA and production must never share their hidden REST URL/token pairs.
 
 ### Step 5.3: Prepare Razorpay Test Mode
 

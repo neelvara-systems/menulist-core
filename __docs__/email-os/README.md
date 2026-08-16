@@ -1,9 +1,9 @@
 # EmailOS — Documentation Hub
 
 > **Feature:** Cross-product production email infrastructure
-> **Status:** Approved for implementation; provider activation remains disabled
-> **Last Updated:** August 15, 2026
-> **Version:** 1.0.0
+> **Status:** MenuList provider prepared; deployment, certification and activation remain disabled
+> **Last Updated:** August 16, 2026
+> **Version:** 1.0.1
 
 ## Quick Navigation
 
@@ -28,7 +28,8 @@ EmailOS is the email delivery plane beneath [NotificationOS](../notification-os/
 ## Current Implementation State
 
 - Shared contracts, React Email rendering, Resend adapters, signed webhook processors, suppression state, TTL declarations, migration branches and focused verification are implemented.
-- Every provider-send flag remains off, no Resend account or credential has been created, and no live email has been sent.
+- The MFA-protected `MenuList` Resend boundary, verified `menulist.ai` sending domain, distinct QA/production sending-only keys, and distinct QA/production signed webhooks are prepared. Both Firebase projects hold enabled version-1 product-scoped secrets; no value is stored in this repository.
+- Every provider-send flag remains off, neither webhook Function has been deployed as part of provider preparation, and no live email has been sent.
 - Existing SMTP delivery remains only as the controlled pre-onboarding migration path. It is removed after product-by-product QA cutover certification.
 - QA TTL deployment is pending: MenuList’s Firebase deploy preflight returned two Rules API `503` responses; the current operator lacks Answerlattice QA index permission; and the direct `gcloud` TTL command is unavailable on this machine.
 
@@ -64,10 +65,11 @@ For owner/account lifecycle events, the product queue is the existing Owner Noti
 
 ## Feature Flags
 
-All provider-send flags default to `false`. Rendering and contract verification are safe to test without a provider account. No live send is admitted until the product-specific key, webhook secret, verified domain, DNS evidence and QA certification exist.
+All provider-send flags default to `false`. Rendering and contract verification are safe without provider transmission. MenuList now has its key, webhook secret, verified domain and DNS evidence, but no live send is admitted until scoped QA deployment and certification are complete. Answerlattice remains independently pending.
 
 ## Version History
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.0.1 | 2026-08-16 | Recorded MenuList Resend account security, verified sender DNS, isolated QA/production credentials and webhooks while preserving the no-send/no-deploy gate |
 | 1.0.0 | 2026-08-15 | Frozen cross-product contract, product boundaries and Resend onboarding gate |

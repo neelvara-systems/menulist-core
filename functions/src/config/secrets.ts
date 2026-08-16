@@ -26,6 +26,8 @@
  * @see functions/src/envSetup.md for detailed setup guide
  */
 
+import { isFunctionFeatureEnabled, isWhatsAppProviderRuntimeEnabled } from '../constants/features';
+
 // ═══════════════════════════════════════════════════════════════
 // SECRET NAMES — All secret names in one place
 // ═══════════════════════════════════════════════════════════════
@@ -79,6 +81,27 @@ export const SECRETS = {
 // SECRET GROUPS — Pre-built arrays for function `secrets:` option
 // ═══════════════════════════════════════════════════════════════
 
+const whatsAppProviderSecrets = isWhatsAppProviderRuntimeEnabled()
+    ? [
+        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
+        SECRETS.WHATSAPP_ACCESS_TOKEN,
+        SECRETS.WHATSAPP_APP_SECRET,
+        SECRETS.WHATSAPP_VERIFY_TOKEN,
+    ]
+    : [];
+
+const whatsAppOutboundSecrets = isWhatsAppProviderRuntimeEnabled()
+    ? [
+        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
+        SECRETS.WHATSAPP_ACCESS_TOKEN,
+        SECRETS.WHATSAPP_APP_SECRET,
+    ]
+    : [];
+
+const platformAlertDeliverySecrets = isFunctionFeatureEnabled('ENABLE_PLATFORM_ALERT_WHATSAPP')
+    ? whatsAppOutboundSecrets
+    : [];
+
 export const SECRET_GROUPS = {
     /** Primary AI credential. The extraction credential has its own secret group. */
     AI: [
@@ -100,19 +123,10 @@ export const SECRET_GROUPS = {
     ] as string[],
 
     /** WhatsApp webhook + messaging */
-    WHATSAPP: [
-        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
-        SECRETS.WHATSAPP_ACCESS_TOKEN,
-        SECRETS.WHATSAPP_APP_SECRET,
-        SECRETS.WHATSAPP_VERIFY_TOKEN,
-    ] as string[],
+    WHATSAPP: whatsAppProviderSecrets,
 
     /** WhatsApp without verify token (for outbound messages only) */
-    WHATSAPP_OUTBOUND: [
-        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
-        SECRETS.WHATSAPP_ACCESS_TOKEN,
-        SECRETS.WHATSAPP_APP_SECRET,
-    ] as string[],
+    WHATSAPP_OUTBOUND: whatsAppOutboundSecrets,
 
     /** Email sending (lifecycle messaging) */
     SMTP: [
@@ -146,11 +160,7 @@ export const SECRET_GROUPS = {
      * Keep this group limited to configured deploy-safe secrets. SMTP and
      * Telegram stay runtime-gated until their Secret Manager values exist.
      */
-    PLATFORM_ALERT_DELIVERY: [
-        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
-        SECRETS.WHATSAPP_ACCESS_TOKEN,
-        SECRETS.WHATSAPP_APP_SECRET,
-    ] as string[],
+    PLATFORM_ALERT_DELIVERY: platformAlertDeliverySecrets,
 
     /** Inbound Google Cloud budget alert webhook authentication */
     BUDGET_ALERT: [

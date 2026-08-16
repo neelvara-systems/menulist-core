@@ -1,12 +1,12 @@
 # EmailOS — Post-Implementation Validation
 
-> **Validation date:** August 15, 2026
+> **Validation date:** August 16, 2026
 > **Scope:** Source, documentation, product routing, provider boundary, webhook boundary, Firestore declarations and local verification
 > **Activation state:** Provider transmission disabled; no live email sent
 
 ## Result
 
-The source implementation is locally complete and keeps provider activation closed. This review found and corrected reliability and product-isolation defects before Resend onboarding. Live provider behavior, DNS, secrets, QA deployment and mailbox certification remain external evidence gates and are not claimed here.
+The source implementation is locally complete and keeps provider activation closed. This review found and corrected reliability and product-isolation defects before Resend onboarding. MenuList provider account security, outbound DNS, isolated QA/production keys, isolated webhooks and Secret Manager bindings are now prepared. Live provider behavior, QA deployment and mailbox certification remain external evidence gates and are not claimed here.
 
 ## Expected-to-Actual Workflow Map
 
@@ -89,12 +89,11 @@ No Next.js production build, Vercel build or deploy is part of this validation.
 
 ## External Certification Still Required
 
-1. Create separate approved Resend account/team boundaries and product sending domains.
-2. Publish and verify SPF, DKIM and DMARC evidence.
-3. Create product-scoped API keys and webhook secrets.
-4. Deploy the smallest QA targets and TTL policies.
-5. Run delivered, delayed, bounce, complaint, suppression, replay and mailbox rendering tests.
-6. Obtain owner approval before changing either provider-send flag.
+1. Complete the independent Answerlattice Resend boundary when that product's setup resumes.
+2. Deploy the smallest MenuList QA targets and TTL policies under a separate deployment approval.
+3. Run delivered, delayed, bounce, complaint, suppression, replay and mailbox rendering tests.
+4. Obtain owner approval before changing the MenuList provider-send flag.
+5. Repeat deployment and certification independently before changing the Answerlattice provider-send flag.
 
 The source does not silently activate when credentials appear; the product-specific flag remains a separate required gate.
 

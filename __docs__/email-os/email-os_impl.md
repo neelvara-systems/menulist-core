@@ -1,7 +1,7 @@
 # EmailOS — Implementation Blueprint
 
-> **Status:** Source implemented; provider onboarding and QA activation pending
-> **Last Updated:** August 15, 2026
+> **Status:** Source implemented; MenuList provider prepared; QA deployment and activation pending
+> **Last Updated:** August 16, 2026
 
 ## Architecture
 
@@ -241,4 +241,4 @@ npm --prefix functions-answerlattice run build
 npm run lint
 ```
 
-No production build or Vercel deploy is required. Firebase QA deployment is blocked until the product-specific Resend secrets are created during onboarding.
+No production build or Vercel deploy is required. MenuList's product-specific QA and production Resend secrets now exist as enabled version-1 Secret Manager values. The smallest QA Firebase deployment and provider certification remain separately gated; Answerlattice provider onboarding remains pending.

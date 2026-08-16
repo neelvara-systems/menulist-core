@@ -1,6 +1,6 @@
 # MenuList Staging Feature Certification Ledger
 
-> Status: active certification in progress  
+> Status: certification deferred by owner until MenuList QA and production configuration are complete
 > Scope: MenuList staging/QA only  
 > Started: August 14, 2026  
 > Environment: `menulist-qa` and Vercel custom environment `qa`, which tracks only branch `staging` (`VERCEL_ENV=preview`, `VERCEL_TARGET_ENV=qa`)
@@ -14,11 +14,13 @@ not duplicate that setup guide and does not convert setup evidence into feature
 certification without exercising the corresponding hosted application flow.
 
 Provider-state note: QA App Check was registered in monitoring mode on August
-16 after the exact hosted builds recorded below. Their references to the known
-missing-site-key diagnostic remain valid historical evidence. The next QA
-deployment must prove valid App Check token traffic before any enforcement is
-considered; this provider registration alone does not rewrite prior runtime
-results.
+16 after the earlier hosted builds recorded below. Their references to the
+known missing-site-key diagnostic remain valid historical evidence. Commit
+`5161d998e0ff4dcc0358cda02ec0e942856a4550` is the first recorded QA release
+with the public App Check site key configured. Firebase now displays verified
+request shares for Authentication and Cloud Firestore from that release.
+Storage has not received a request from the retained fixture, so the complete
+product smoke remains open and every displayed App Check API stays unenforced.
 
 ## Certification Contract
 
@@ -53,6 +55,18 @@ results.
 | QA website transport | `https://menulist.digital` returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive` | PASS |
 | QA sign-in transport | `https://app.menulist.digital/signin` returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive` | PASS |
 | Worktree boundary | Existing untracked `.tmp/` evidence is preserved and excluded from certification commits | PASS |
+
+## August 16 Provider-Configuration Release Checkpoint
+
+| Item | Evidence | Status |
+| --- | --- | --- |
+| Exact release | Vercel custom environment `qa` deployment `dpl_CtZcYkw7odQgKokMBBHViY5Uu2Qh` reached `Ready` from branch `staging`; `https://app.menulist.digital/api/version` returned build `5161d998e0ff4dcc0358cda02ec0e942856a4550`, environment `preview`, and deployment `menulist-core-io9arzio4-neelvara-systems.vercel.app` | PASS |
+| QA crawler isolation | `https://menulist.digital` and `https://app.menulist.digital/signin` returned HTTP 200 with `x-robots-tag: noindex, nofollow, noarchive`; `https://menulist.digital/robots.txt` returned `User-agent: *` and `Disallow: /` | PASS |
+| Keyless authenticated runtime | The retained QA owner session loaded the complete `/billing` owner shell for `admin@neelvara.com`, including the Starter yearly pending-payment state. Exact-deployment logs recorded successful session, access-status, set-claims, version, and billing requests with zero Warning, Error, or Fatal entries. No credential, token, cookie, or browser-storage value was inspected. | PASS |
+| App Check registration | Firebase Apps shows `MenuList QA Web` registered with reCAPTCHA and Firebase APIs remain Unenforced | PASS |
+| App Check token traffic | Firebase product metrics displayed 33% verified Authentication requests and 42% verified Cloud Firestore requests after the exact release. The authenticated `/assets` smoke rendered the complete owner shell with no browser warning/error, but its no-subscription guard issued no Storage request and Storage still shows no request metrics. | DEFERRED: STORAGE PROOF AFTER SETUP |
+| Maps public route | `https://qa-qr-health.menulist.digital/menu` returned HTTP 200 with the required QA noindex and wildcard-tenant headers | PASS |
+| Maps Embed request | The retained public fixture has no public location and therefore renders no map/directions embed. No provider request was fabricated and no fixture was mutated solely for certification. | DEFERRED: AUTHORIZED LOCATION FIXTURE AFTER SETUP |
 
 ## Status Vocabulary
 
@@ -185,6 +199,22 @@ a hosted flow into `PASS`.
 
 ## Hosted Certification Notes
 
+- `2026-08-16` - Vercel custom environment `qa` deployed exact branch commit
+  `5161d998e0ff4dcc0358cda02ec0e942856a4550` as deployment
+  `dpl_CtZcYkw7odQgKokMBBHViY5Uu2Qh`; it reached `Ready` after 4m58s.
+  Canonical `/api/version` returned the same build, environment `preview`, and
+  deployment `menulist-core-io9arzio4-neelvara-systems.vercel.app`. Website,
+  owner sign-in, and wildcard public-menu transport retained the QA noindex
+  boundary. The authenticated owner billing shell loaded through the keyless
+  runtime, while exact-deployment logs showed zero Warning, Error, or Fatal
+  entries and successful auth/session requests. Firebase confirms the QA web
+  app is registered with reCAPTCHA and all displayed APIs remain Unenforced.
+  Metrics now show verified Authentication and Cloud Firestore traffic. A
+  read-only `/assets` smoke rendered the authenticated owner shell without a
+  browser warning/error, but its no-subscription guard made no Storage request;
+  complete product smoke and App Check enforcement remain pending. The
+  retained public map fixture has no location, so
+  hosted Maps Embed provider traffic remains pending an authorized fixture.
 - `2026-08-14` - Vercel Preview commit
   `f05001553bc41525564351a6bcbb7d1826ad1792` reached `Ready`, and
   `https://menulist.digital/api/version` returned that exact build with

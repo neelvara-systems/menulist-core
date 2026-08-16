@@ -379,3 +379,12 @@ export function isFunctionFeatureEnabled(feature: keyof typeof FUNCTION_FLAGS): 
 
     return FUNCTION_FLAGS[feature];
 }
+
+/**
+ * WhatsApp credentials are needed when either WhatsAppOS or conversational
+ * messaging onboarding is enabled for the current Firebase target.
+ */
+export function isWhatsAppProviderRuntimeEnabled(): boolean {
+    return isFunctionFeatureEnabled('ENABLE_WHATSAPP_OS')
+        || parseFunctionFeatureOverride(process.env.ENABLE_MESSAGING_ONBOARDING) === true;
+}

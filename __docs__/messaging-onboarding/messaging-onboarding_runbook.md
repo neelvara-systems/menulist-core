@@ -2,7 +2,7 @@
 
 **Feature:** Messaging Onboarding  
 **Status:** ACTIVE SOURCE RUNBOOK — provider processing remains disabled in checked-in targets
-**Last Updated:** July 16, 2026
+**Last Updated:** August 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Execute provider operations only after the final owned account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy approval are documented.
 
@@ -13,6 +13,22 @@
 MenuList uses the official Meta WhatsApp Cloud API for messaging onboarding.
 
 Do not replace this path with OpenWA, `whatsapp-web.js`, QR-scanned WhatsApp Web sessions, or browser automation. Those tools are useful as architecture references for dashboards and runbooks, not as the messaging provider for MenuList.
+
+### Production Activation Parking Boundary
+
+Production WhatsApp is deliberately parked until truthful legal/business
+documents are ready. Do not create a personal-profile production-candidate app,
+reuse QA provider assets, create placeholder or temporary production secrets,
+register a production callback, enable production messaging, or send from the
+production target. QA may retain its existing unpublished Meta test boundary
+for later QA certification, but that boundary must never be promoted or copied
+into `menulist-prod`.
+
+Resume production preparation only with the final business-owned portfolio,
+verification and recovery evidence, portfolio-level 2FA, production
+WABA/number, least-privilege system user, and independently generated
+credentials. Provider preparation still does not authorize activation; the
+normal deploy, callback, smoke and launch gates continue to apply.
 
 ---
 
@@ -25,6 +41,9 @@ Do not replace this path with OpenWA, `whatsapp-web.js`, QR-scanned WhatsApp Web
 | `WHATSAPP_APP_SECRET` | Firebase Secret Manager | Required for HMAC verification |
 | `WHATSAPP_VERIFY_TOKEN` | Firebase Secret Manager | Required for Meta webhook registration |
 | `ENABLE_MESSAGING_ONBOARDING` | Function runtime env | Checked-in MenuList Functions env files default `false`; set `true` only on a target with real provider credentials and webhook registration |
+| `WHATSAPP_OS_ENABLED` | Function runtime env | Production is explicitly `false` while Meta ownership is parked; this also removes WhatsApp secrets from disabled-target function manifests |
+| `OWNER_NOTIFICATION_WHATSAPP_ENABLED` | Function runtime env | Production is explicitly `false`; owner notification WhatsApp delivery remains unavailable |
+| `PLATFORM_ALERT_WHATSAPP_ENABLED` | Function runtime env | Production is explicitly `false`; Sentry remains the admitted production alert destination |
 | `MESSAGING_ONBOARDING_PROVIDERS` | Function runtime env | Default `whatsapp` |
 | `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Function runtime env | Required owner-app preview host; QA/staging uses `https://app.menulist.digital`; production uses `https://app.menulist.ai` |
 

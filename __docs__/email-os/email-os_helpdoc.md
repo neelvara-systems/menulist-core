@@ -2,7 +2,7 @@
 
 > **Audience:** Founder and production operators
 > **Customer-facing:** No
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 16, 2026
 
 ## Quick Summary
 
@@ -18,15 +18,17 @@ EmailOS prepares MenuList and Answerlattice for Resend without enabling live del
 
 ## MenuList Onboarding Inputs
 
-1. Create the approved Resend team or account.
-2. Add the approved MenuList sending subdomain.
-3. Configure SPF, DKIM and DMARC.
-4. Create a sending-only API key restricted to the MenuList domain.
-5. Create the MenuList webhook and retain its signing secret.
-6. Store values using the `MENULIST_*` secret names from the implementation guide.
-7. Deploy the scoped MenuList webhook and sending targets to QA.
-8. Run controlled delivered, delayed, hard-bounce and suppression tests.
-9. Enable the MenuList provider-send flag only after every test passes.
+1. [x] Create the approved, MFA-protected `MenuList` Resend team boundary.
+2. [x] Add and verify `menulist.ai` for the canonical `MenuList <system@menulist.ai>` sender.
+3. [x] Configure outbound DKIM plus the isolated `send.menulist.ai` SPF/MX Return-Path without changing Google Workspace apex MX records or enabling Resend inbound mail.
+4. [x] Create distinct QA and production sending-only API keys restricted to `menulist.ai`.
+5. [x] Create distinct QA and production webhooks for the nine admitted EmailOS event types.
+6. [x] Store separate version-1 `MENULIST_RESEND_API_KEY` and `MENULIST_RESEND_WEBHOOK_SECRET` values in `menulist-qa` and `menulist-prod` Secret Manager.
+7. [ ] Deploy the scoped MenuList webhook and sending targets to QA under a separate deployment approval.
+8. [ ] Run controlled delivered, delayed, hard-bounce and suppression tests.
+9. [ ] Enable the MenuList provider-send flag only after every test passes and owner approval is recorded.
+
+The two registered webhook URLs intentionally precede their scoped Firebase deployments so the provider-generated signing secrets can exist before Functions bind them. Provider sending remains off, so the undeployed endpoints receive no legitimate EmailOS delivery traffic during this bootstrap state.
 
 ## Answerlattice Onboarding Inputs
 

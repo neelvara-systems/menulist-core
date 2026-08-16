@@ -101,6 +101,8 @@ const invalidRollout = loadModelRegistry({
 assert.equal(invalidRollout.CAMPAIGNCUE_CUE_LAYER_MODEL_REGISTRY[2].rolloutPercent, 0);
 
 const {
+    isFunctionFeatureEnabled,
+    isWhatsAppProviderRuntimeEnabled,
     parseFunctionFeatureOverride,
 } = require('../../functions/src/constants/features') as typeof import(
     '../../functions/src/constants/features'
@@ -112,6 +114,52 @@ assert.equal(parseFunctionFeatureOverride('0'), false);
 assert.equal(parseFunctionFeatureOverride('off'), false);
 assert.equal(parseFunctionFeatureOverride('flase'), null);
 assert.equal(parseFunctionFeatureOverride(''), null);
+
+const previousWhatsAppEnvironment = {
+    ENABLE_MESSAGING_ONBOARDING: process.env.ENABLE_MESSAGING_ONBOARDING,
+    WHATSAPP_OS_ENABLED: process.env.WHATSAPP_OS_ENABLED,
+    PLATFORM_ALERT_WHATSAPP_ENABLED: process.env.PLATFORM_ALERT_WHATSAPP_ENABLED,
+};
+try {
+    process.env.ENABLE_MESSAGING_ONBOARDING = 'false';
+    process.env.WHATSAPP_OS_ENABLED = 'false';
+    process.env.PLATFORM_ALERT_WHATSAPP_ENABLED = 'false';
+    assert.equal(isWhatsAppProviderRuntimeEnabled(), false);
+    assert.equal(isFunctionFeatureEnabled('ENABLE_PLATFORM_ALERT_WHATSAPP'), false);
+
+    const functionsSecretsPath = require.resolve('../../functions/src/config/secrets');
+    delete require.cache[functionsSecretsPath];
+    const disabledWhatsAppSecrets = require(functionsSecretsPath) as typeof import(
+        '../../functions/src/config/secrets'
+    );
+    assert.deepEqual(disabledWhatsAppSecrets.SECRET_GROUPS.WHATSAPP, []);
+    assert.deepEqual(disabledWhatsAppSecrets.SECRET_GROUPS.WHATSAPP_OUTBOUND, []);
+    assert.deepEqual(disabledWhatsAppSecrets.SECRET_GROUPS.PLATFORM_ALERT_DELIVERY, []);
+
+    process.env.ENABLE_MESSAGING_ONBOARDING = 'true';
+    process.env.PLATFORM_ALERT_WHATSAPP_ENABLED = 'true';
+    assert.equal(isWhatsAppProviderRuntimeEnabled(), true);
+    delete require.cache[functionsSecretsPath];
+    const enabledWhatsAppSecrets = require(functionsSecretsPath) as typeof import(
+        '../../functions/src/config/secrets'
+    );
+    assert.deepEqual(enabledWhatsAppSecrets.SECRET_GROUPS.WHATSAPP, [
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_PHONE_NUMBER_ID,
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_ACCESS_TOKEN,
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_APP_SECRET,
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_VERIFY_TOKEN,
+    ]);
+    assert.deepEqual(enabledWhatsAppSecrets.SECRET_GROUPS.PLATFORM_ALERT_DELIVERY, [
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_PHONE_NUMBER_ID,
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_ACCESS_TOKEN,
+        enabledWhatsAppSecrets.SECRETS.WHATSAPP_APP_SECRET,
+    ]);
+} finally {
+    Object.entries(previousWhatsAppEnvironment).forEach(([key, value]) => {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+    });
+}
 
 const {
     runEnvValidation,

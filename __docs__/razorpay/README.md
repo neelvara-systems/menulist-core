@@ -1,7 +1,17 @@
 # Razorpay Payment System — Documentation Hub
 
 **Status:** Billing architecture reference; not current launch certification | Razorpay is the ONLY payment provider
-**Last Updated:** August 14, 2026
+**Last Updated:** August 16, 2026
+
+> **August 16, 2026 pre-live credential exception:** The existing company
+> Razorpay Test Mode API pair is temporarily shared between MenuList QA and the
+> inactive production candidate. This avoids creating another merchant app or
+> using untruthful legal details while KYC is pending. It is not a launch
+> credential: production Live Mode, dedicated Live API keys, and the distinct
+> `https://app.menulist.ai/api/razorpay/webhook` signing secret/callback remain
+> mandatory release gates. Webhook secrets are never shared across QA and
+> production. The live execution evidence and replacement checklist are owned
+> by [MenuList Production Provider Setup](../deployment/menulist-production-provider-setup.md#phase-d---external-production-providers).
 
 > **Launch Boundary:** This hub records the frozen Razorpay billing architecture and source-gated implementation evidence, not current MenuList production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, past-due grace-period display fallback coverage, target deploy evidence, and production-host smoke.
 

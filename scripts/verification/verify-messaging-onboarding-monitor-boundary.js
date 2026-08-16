@@ -68,6 +68,17 @@ function verifyProviderRuntimeBoundary(
       assertIncludes(source, token, `Messaging onboarding ${label} env defaults`);
     });
   });
+  [
+    'WHATSAPP_OS_ENABLED=false',
+    'OWNER_NOTIFICATION_WHATSAPP_ENABLED=false',
+    'PLATFORM_ALERT_WHATSAPP_ENABLED=false',
+  ].forEach((token) => {
+    assertIncludes(
+      functionsEnvFiles.functionsProduction,
+      token,
+      'Messaging onboarding production WhatsApp parking boundary',
+    );
+  });
 
   Object.entries(rootEnvFiles).forEach(([label, source]) => {
     [
@@ -81,7 +92,7 @@ function verifyProviderRuntimeBoundary(
 
   [
     'const messagingOnboardingEnabled = FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING;',
-    'const whatsappOsEnabled = FUNCTION_FLAGS.ENABLE_WHATSAPP_OS;',
+    "const whatsappOsEnabled = isFunctionFeatureEnabled('ENABLE_WHATSAPP_OS');",
     'if (!messagingOnboardingEnabled && !whatsappOsEnabled) {',
     'res.status(200).send("OK");',
     'const provider = getProviderFromWebhookPath(req.path);',

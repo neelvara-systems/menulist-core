@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 35 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, and the exact-host Maps Embed credential are prepared; the Razorpay production webhook event contract is frozen while Live Mode remains owner-blocked; GA4, Telegram, external uptime monitoring, and EmailOS are intentionally omitted or parked for the initial production setup; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
+> **Current progress:** 39 of 61 checks complete; `PROD-B11` keyless architecture and provider preparation are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, and external uptime monitoring remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -749,21 +749,38 @@ new database; it does not overwrite `(default)` in place.
 These resources may be prepared inactive after Phase A. Do not enable live
 traffic.
 
-- [ ] `PROD-D01` Create a dedicated production Upstash Redis database and
+Execution-order note: the owner deferred remaining hosted QA feature/provider
+certification until both MenuList environments are configured. Continue the
+inactive production provider and environment setup in this phase and Phase E.
+That decision does not authorize Phase F deployment, DNS cutover, OAuth
+publishing, App Check enforcement, provider callbacks, paid calls, or live
+traffic.
+
+- [x] `PROD-D01` Create a dedicated production Upstash Redis database and
   confirm it does not share the QA REST URL or token.
-  - `2026-08-16` - Read-only Upstash verification confirmed the company-owned
-    Personal workspace is secured with MFA and currently contains exactly one
-    Free Tier database, `menulist-qa-rate-limit`, on GCP `US-CENTRAL1`. Upstash
-    permits only one Free Tier database in this workspace. Creating the required
-    isolated production database is blocked until the owner adds a payment card
-    through Upstash's Stripe-hosted billing flow. No card was added and no
-    database, token, purchase, subscription, or upgrade was created. After
-    financial approval, create `menulist-prod-rate-limit` on GCP `US-CENTRAL1`
-    using Pay as You Go with an explicit low monthly budget cap; do not reuse the
-    QA database, select a fixed plan, or add the optional USD 200/month Prod Pack
-    during pre-launch setup.
-- [ ] `PROD-D02` Vault the production Upstash REST URL/token and record region,
+  - `2026-08-16` - The owner created the company team `Neelvara Systems`, added
+    team billing, moved `menulist-qa-rate-limit` into that team, and created the
+    isolated `menulist-prod-rate-limit` database on GCP `US-CENTRAL1`. Production
+    uses Pay as You Go with Upstash's minimum USD 20 hard budget cap, TLS is
+    enabled, and the optional USD 200/month Prod Pack is not active. The provider
+    issued a distinct hidden endpoint/token pair for the production database;
+    neither value was recorded in this ledger. Credential transfer remains
+    separately open under `PROD-D02`.
+- [x] `PROD-D02` Vault the production Upstash REST URL/token and record region,
   owner, and rotation/revocation procedure.
+  - `2026-08-16` - Stored the hidden production pair as sensitive,
+    Production-only Vercel rows `MENULIST_UPSTASH_REDIS_REST_URL` and
+    `MENULIST_UPSTASH_REDIS_REST_TOKEN`. Created enabled version `1` in exact
+    Firebase project `menulist-prod` under the Functions runtime names
+    `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. Metadata readback
+    confirmed both version states without reading their values. The provider
+    owner is the company `Neelvara Systems` Upstash team and the database region
+    is GCP `US-CENTRAL1`. For rotation or suspected exposure, reset the database
+    password in Upstash, which revokes both Standard and Read Only REST tokens;
+    immediately replace both Vercel Production values and add new Secret Manager
+    versions, verify metadata, then disable superseded Firebase versions after
+    the replacement runtime is certified. Never place the Standard token in a
+    public variable or documentation.
 - [x] `PROD-D03` Configure MenuList's Sentry production environment/project and
   vault the production DSN without sending a production test event yet.
   - `2026-08-16` - Created a separate Next.js project named `menulist-prod` in
@@ -776,15 +793,21 @@ traffic.
     issue email alerting remains selected. No sample error, source-map auth
     token, paid upgrade, Firebase deployment, Vercel deployment, or production
     event was created.
-- [ ] `PROD-D04` Configure an approved production transactional sender or
+- [x] `PROD-D04` Configure an approved production transactional sender or
   controlled Workspace relay; never use a personal inbox password.
-  - `2026-08-16` - Deliberately parked by the owner. The approved long-term
-    direction remains product-scoped Resend onboarding under EmailOS, with
-    `system@menulist.ai` as sender and `support@neelvara.com` as reply-to.
-    No Resend account, sender-domain DNS, API key, webhook secret, SMTP
-    credential, provider send, deployment, or test email was created. Do not
-    substitute a personal Gmail password or placeholder secret while this item
-    is parked.
+  - `2026-08-16` - Unparked and prepared under the frozen EmailOS contract.
+    The MFA-protected Resend team is named `MenuList`; `menulist.ai` is verified
+    in the Tokyo sending region with DKIM and isolated `send.menulist.ai`
+    SPF/MX Return-Path records. Google Workspace apex MX records were not
+    changed and Resend inbound mail was not enabled. Distinct sending-only keys
+    restricted to `menulist.ai` exist for QA and production. Distinct signed
+    webhooks listen only for the nine code-admitted delivery/suppression event
+    types. Production version-1 `MENULIST_RESEND_API_KEY` and
+    `MENULIST_RESEND_WEBHOOK_SECRET` values are enabled in `menulist-prod`;
+    values were transferred without entering chat or the repository. The
+    canonical sender remains `MenuList <system@menulist.ai>` with
+    `support@neelvara.com` reply-to. No SMTP credential, provider send,
+    deployment, webhook event, or test email was created.
 - [ ] `PROD-D05` Complete truthful Razorpay merchant Live Mode activation/KYC
   when available; staging remains Test Mode.
   - `2026-08-16` - Read-only dashboard verification under the company account
@@ -793,14 +816,37 @@ traffic.
     This remains an owner-controlled legal and financial submission. No KYC
     field was entered, no document was uploaded, and Live Mode was not
     activated.
+  - `2026-08-16` - Deliberately parked by the owner because a truthful Neelvara
+    legal/KYC document set is not yet available. No personal-document fallback,
+    unregistered-company claim, placeholder detail, or provider submission was
+    made. Resume only after the legal merchant identity and supporting
+    documents are settled; `PROD-D06` and `PROD-D07` remain blocked.
+  - `2026-08-16` - Approved temporary pre-live exception: reuse the existing
+    company Razorpay Test Mode merchant account and API pair for the production
+    candidate instead of creating another app/account or using personal legal
+    claims. This exception permits test credentials only; it does not complete
+    KYC, enable Live Mode, authorize a real payment, or close this row.
 - [ ] `PROD-D06` Generate and vault dedicated Razorpay Live API credentials;
   do not place them in Preview or Firebase QA.
   - Blocked behind `PROD-D05`; no Live credential was created or stored.
+    Pending that replacement, the verified existing `rzp_test_` API pair is
+    stored in `menulist-prod` Secret Manager as enabled version 1 of
+    `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`, and in Vercel Production as
+    `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID` plus sensitive
+    `MENULIST_RAZORPAY_KEY_SECRET`. The same working pair was re-applied to the
+    custom `qa` and legacy `Preview (staging)` Vercel scopes. Vercel exports
+    managed sensitive values as opaque envelopes, so they were not treated as
+    plaintext readback evidence. A read-only provider request using the
+    production Secret Manager copy returned HTTP 200. Values were never printed
+    or committed. Replace every temporary Test Mode binding in one controlled
+    cutover after KYC; never promote the test pair to launch credentials.
 - [ ] `PROD-D07` Generate a distinct production Razorpay webhook secret and
   record the intended endpoint `https://app.menulist.ai/api/razorpay/webhook`;
   do not activate the Live webhook yet.
   - Blocked behind `PROD-D05`; no Live webhook, signing secret, callback, or
-    delivery was created.
+    delivery was created. The QA webhook secret was deliberately not copied:
+    webhook secrets and callback endpoints remain environment-specific even
+    during the temporary Test Mode API-key reuse period.
 - [x] `PROD-D08` Freeze the production Razorpay webhook subscription to these
   13 route-handled events before activation: `order.paid`, `payment.failed`,
   `refund.processed`, `subscription.paused`, `subscription.resumed`,
@@ -827,6 +873,15 @@ traffic.
     access. These QA/test assets must not be relabelled as production evidence.
     No portfolio setting, person, app, WhatsApp account, or verification field
     was changed.
+  - `2026-08-16` - The owner deliberately parked production WhatsApp until
+    truthful legal/business documents are ready. A briefly prepared Meta app
+    creation form was cancelled before submission; no production-candidate app
+    or provider asset was created. Do not use the founder's personal profile to
+    create a temporary production boundary, relabel or reuse QA assets, create
+    production secrets, register a callback, enable processing, or send. Resume
+    only with the final truthful business-owned portfolio, verification and
+    recovery evidence, portfolio-level 2FA, production WABA/number, least-
+    privilege system user, and independently generated credentials.
 - [ ] `PROD-D10` Prepare dedicated production WhatsApp credentials and verify
   token ownership without registering the production callback or sending.
   - Blocked behind `PROD-D09`; no production Meta app, WhatsApp Business
@@ -869,12 +924,19 @@ traffic.
 - [ ] `PROD-D14` Confirm every production provider account has company-owned
   recovery, MFA, and a named monthly/quarterly review owner.
   - Blocked. Google Workspace/Cloud, Vercel, GitHub, GoDaddy, Sentry, and the
-    current company vault have recorded ownership/recovery evidence, but the
-    production provider inventory is not yet complete: Upstash remains behind
-    owner billing, Razorpay Live remains behind KYC, Resend is parked, and Meta
-    lacks a production-owned verified asset set and portfolio-level 2FA. Do not
-    mark this control complete until those providers exist and their recovery,
-    MFA, and review-owner evidence is recorded without exposing recovery data.
+    current company vault have recorded ownership/recovery evidence. On
+    `2026-08-16`, provider readback confirmed the personal
+    `admin@neelvara.com` Upstash account has MFA enabled, the company
+    `Neelvara Systems` team requires MFA for every member, and transactional
+    usage-limit/team-invitation alerts are enabled. Upstash recovery material
+    was already recorded in the controlled company vault under `QA-A11`; the
+    current sole maintainer at `admin@neelvara.com` is the named monthly review
+    owner. This closes the Upstash portion only. The production provider
+    inventory remains incomplete: Razorpay Live is behind KYC and production
+    WhatsApp is deliberately parked until Meta has a business-owned verified
+    asset set and portfolio-level 2FA. Do not mark this control complete until those
+    providers exist and their recovery, MFA, and review-owner evidence is
+    recorded without exposing recovery data.
 
 ## Phase E - Inactive Secrets And Environment Wiring
 
@@ -929,20 +991,26 @@ No deploy is authorized by this phase.
   readback confirms version 2 is enabled and version 1 is disabled. Secret
   values remained hidden in all evidence, and no deployment was triggered, so
   the Vercel change remains pending live effect until a separately approved
-  release. This row remains open only because provider-owned webhook secrets
-  are unavailable while Razorpay Live Mode, EmailOS, and production
-  Meta/WhatsApp are blocked or parked. Do not invent placeholders or reuse QA
-  webhook values.
+  release. EmailOS no longer blocks this row: its production API key and
+  webhook secret are distinct from QA and stored only in `menulist-prod`.
+  Razorpay Live and production Meta/WhatsApp webhook secrets remain
+  unavailable, so the broader row stays open. The temporary shared Razorpay
+  Test Mode API pair does not change that result. Do not invent placeholders or
+  reuse QA webhook values.
 - [x] `PROD-E05` Set production Gemini, Upstash, SMTP, Razorpay, Sentry, Maps,
   analytics, and messaging values only for features intentionally admitted.
   - `2026-08-16` - Closed as an admission-controlled inventory, not as blanket
     provider activation. The production Gemini primary credential, Sentry DSN,
     and Maps Embed key are stored only in their approved Production scopes.
-    Upstash remains absent behind `PROD-D01` billing; SMTP/Resend is parked under
-    `PROD-D04`; Razorpay Live values remain absent behind `PROD-D05`-`PROD-D07`;
+    Upstash is now present only in its approved Production scopes; Resend is
+    prepared under `PROD-D04` with Functions-only product-scoped secrets while
+    provider sending remains off; SMTP stays unconfigured; the approved
+    temporary Razorpay Test Mode API pair is present in Vercel Production and
+    `menulist-prod` Secret Manager, while Live Mode and the production webhook
+    remain absent behind `PROD-D05`-`PROD-D07`;
     GA4/Clarity and Telegram/external uptime are intentionally omitted under
-    `PROD-D12`-`PROD-D13`; and production WhatsApp remains absent behind
-    `PROD-D09`-`PROD-D10`. No literal placeholder was added to a managed
+    `PROD-D12`-`PROD-D13`; and production WhatsApp remains absent and explicitly
+    runtime-disabled behind `PROD-D09`-`PROD-D10`. No literal placeholder was added to a managed
     environment, no optional provider was enabled merely to complete this row,
     and no deployment or provider call occurred.
 - [x] `PROD-E06` Keep every optional production feature fail-closed until its
@@ -950,40 +1018,53 @@ No deploy is authorized by this phase.
   - `2026-08-16` - Source and production configuration review confirms the
     parked provider paths remain closed without fake credentials. MenuList
     EmailOS provider transmission and owner WhatsApp notifications are disabled
-    by their product-specific source gates; the Functions production env keeps
-    messaging onboarding disabled; and the WhatsApp provider rejects operation
-    when phone/access credentials are absent. Razorpay Live, Upstash, Resend,
-    production WhatsApp, GA4/Clarity, Telegram, and external uptime values remain
-    absent for the blockers recorded above. App Check remains deliberately in
+    by their product-specific source gates. The Functions production env keeps
+    messaging onboarding, WhatsAppOS, owner WhatsApp delivery, and platform
+    WhatsApp alerts explicitly disabled. WhatsApp provider calls and disabled-
+    target function manifests both honor those gates, so production does not
+    depend on absent Meta secrets. Resend credentials are present
+    but inert behind `ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND=false`; Razorpay
+    has Test Mode API credentials only and no production webhook, while Live
+    Mode, production WhatsApp, GA4/Clarity, Telegram, and external uptime values
+    remain absent for the blockers recorded above. App Check remains deliberately in
     monitoring mode rather than being misreported as enforced. No flag was
     enabled, no placeholder was stored, and no deployment or provider smoke was
     run to close this source/configuration gate.
-- [ ] `PROD-E07` Create only Firebase Functions secret names declared by the
+- [x] `PROD-E07` Create only Firebase Functions secret names declared by the
   current MenuList Functions source, with production values in the approved
   production Firebase project.
   - `2026-08-16` - Metadata-only Firebase CLI readback, with no secret access,
     confirms enabled production versions exist for `GEMINI_AI_KEY`,
-    `MENULIST_GEMINI_TEXT_AI_KEY`, `SENTRY_DSN`, and
-    `REVALIDATION_SECRET`. Upstash, legacy and product-scoped WhatsApp,
-    SMTP/Resend, Razorpay, Telegram, and budget-webhook names are absent. This
-    is correct provider truth, but current function option groups still bind
-    some unavailable Upstash, legacy WhatsApp, Razorpay, and alert-delivery
-    names. Do not create dummy versions merely to make a deployment manifest
-    pass. Keep this row open until real admitted provider values exist or a
-    separately validated source change conditionally removes those bindings
-    from the production manifest. Canonical `MENULIST_WHATSAPP_*` constants are
-    not yet part of an active secret group and were not created speculatively.
+    `MENULIST_GEMINI_TEXT_AI_KEY`, `SENTRY_DSN`, `REVALIDATION_SECRET`,
+    `UPSTASH_REDIS_REST_URL`,
+    `UPSTASH_REDIS_REST_TOKEN`, `MENULIST_RESEND_API_KEY`, and
+    `MENULIST_RESEND_WEBHOOK_SECRET`. Both Resend values are enabled at version
+    1 and were verified by metadata only. Legacy and product-scoped WhatsApp,
+    SMTP, Razorpay, Telegram, and budget-webhook names were initially absent.
+    The target-aware Functions secret groups now omit
+    legacy WhatsApp and WhatsApp alert-delivery names when the production
+    WhatsApp gates are false; no dummy Meta secret is needed for the parked
+    target. On `2026-08-16`, the verified Razorpay Test Mode API pair was added
+    as enabled version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. A fresh,
+    production-specific random value was generated directly into enabled
+    `GCP_BUDGET_WEBHOOK_SECRET` version 1; the QA internal secret was not reused.
+    This completes the current production Functions secret manifest without
+    creating a Pub/Sub connection, callback, provider object, or deployment.
+    Canonical `MENULIST_WHATSAPP_*` constants are not yet part of an active
+    secret group and were not created speculatively.
 - [x] `PROD-E08` Configure non-secret Functions environment values, including
   `NEXT_PUBLIC_APP_URL=https://app.menulist.ai` and
   `MENULIST_TENANT_BASE_DOMAIN=menulist.online`.
   - `2026-08-16` - Prepared the private non-secret runtime file
     `functions/.env.menulist-prod` for exact project `menulist-prod`. It uses
     owner/message-preview origin `https://app.menulist.ai`, tenant base
-    `menulist.online`, the approved Gemini local admission ceiling, and keeps
-    messaging onboarding disabled while retaining the `whatsapp` provider name
-    only as dormant configuration with tracking enabled. No credential is in
-    the file, it remains uncommitted by contract, and no Functions deployment
-    or provider request occurred.
+    `menulist.online`, the approved Gemini local admission ceiling, and the
+    EmailOS sender contract `MenuList <system@menulist.ai>` with
+    `support@neelvara.com` reply-to. It keeps messaging onboarding, WhatsAppOS,
+    owner WhatsApp delivery, and platform WhatsApp alerts disabled while
+    retaining the `whatsapp` provider name only as dormant configuration with
+    tracking enabled. No credential is in the file, it remains uncommitted
+    by contract, and no Functions deployment or provider request occurred.
 - [x] `PROD-E09` Run configuration/source verifiers that do not deploy or make
   paid provider calls; record exact results in the production-readiness audit.
   - `2026-08-16` - Passed `verify:agent-readiness`,
@@ -997,20 +1078,32 @@ No deploy is authorized by this phase.
     local-only boundary. No build, deploy, live write, or paid provider call ran.
 - [x] `PROD-E10` Perform a secret-name and environment-separation review without
   printing secret values; confirm no literal placeholders remain.
-  - `2026-08-16` - Vercel metadata review under the Production filter found 29
+  - `2026-08-16` - The initial Vercel metadata review under the Production filter found 29
     expected MenuList rows: production routing/domain, Firebase Web, WIF,
     OAuth/NextAuth, App Check site key, Gemini, Sentry, Maps, and the three
     application secrets. Every displayed row is Production-scoped; no QA
     Firebase value, static Admin private key/client email, sibling-product
     placeholder, SMTP/Resend, Upstash, Razorpay Live, GA4/Clarity, Telegram, or
     production WhatsApp row is present. Values remained hidden. Firebase CLI
-    metadata confirmed the four current `menulist-prod` Secret Manager names
+    metadata confirmed the four names present at that checkpoint in
+    `menulist-prod` Secret Manager
     and did not access values. `npm run verify:env-targets` passed. The rows
     created in this pass came from exact provider metadata or fresh generated
     values, not literal `<...>` template text. The subsequent
-    `REVALIDATION_SECRET` version-2 rotation is recorded under `PROD-E04`; this
-    review does not supersede the missing provider bindings recorded under
+    `REVALIDATION_SECRET` version-2 rotation is recorded under `PROD-E04`.
+    Later provider additions and the completed Functions manifest are recorded
+    in their own dated entries under `PROD-D02`, `PROD-D04`, `PROD-D06`, and
     `PROD-E07`.
+  - `2026-08-16` - Follow-up metadata review confirms the temporary Razorpay
+    Test Mode exception added only `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID` and
+    sensitive `MENULIST_RAZORPAY_KEY_SECRET` to Vercel Production, plus enabled
+    version 1 of `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in exact project
+    `menulist-prod`. The key ID was checked for the `rzp_test_` prefix and the
+    production Secret Manager pair authenticated read-only with HTTP 200. No
+    production webhook secret, callback, Live key, WhatsApp row, deployment,
+    payment object, or charge was created. Vercel-managed sensitive values were
+    not decrypted or printed; runtime equality remains a hosted certification
+    item after an approved deployment.
 
 ## Phase F - Certification-Gated Activation And Launch Handoff
 
@@ -1031,6 +1124,8 @@ the production release gate is explicitly approved.
   after the deployed artifact, TLS, rollback plan, and exact records are ready.
 - [ ] `PROD-F07` Activate live provider callbacks/enforcement one provider at a
   time, including Razorpay, messaging, and App Check, with bounded evidence.
+  Razorpay activation is blocked while any production binding starts with
+  `rzp_test_` or the endpoint-specific production webhook is absent.
 - [ ] `PROD-F08` Complete production-host, browser/device, data-isolation,
   payment, messaging, backup/restore, observability, and rollback smoke before
   recording the final launch verdict.

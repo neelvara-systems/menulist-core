@@ -11,7 +11,7 @@ import type { Response } from "express";
 import * as functions from "firebase-functions";
 import type { MessagingProvider, NormalizedMessage } from "../types/messagingOnboarding.types";
 import { FEATURE_FLAGS } from "./constants";
-import { FUNCTION_FLAGS } from '../constants/features';
+import { isFunctionFeatureEnabled } from '../constants/features';
 import { logOnboardingEvent } from "./eventLogger";
 import {
   getProviderAdapter,
@@ -104,7 +104,7 @@ export async function messagingOnboardingWebhook(
   res: Response,
 ): Promise<void> {
   const messagingOnboardingEnabled = FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING;
-  const whatsappOsEnabled = FUNCTION_FLAGS.ENABLE_WHATSAPP_OS;
+  const whatsappOsEnabled = isFunctionFeatureEnabled('ENABLE_WHATSAPP_OS');
   if (!messagingOnboardingEnabled && !whatsappOsEnabled) {
     res.status(200).send("OK");
     return;

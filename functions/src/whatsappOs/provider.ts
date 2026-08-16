@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_FLAGS } from '../constants/features';
+import { isWhatsAppProviderRuntimeEnabled } from '../constants/features';
 import { firestoreAdmin } from '../firebaseAdmin';
 import {
   WHATSAPP_OS_GRAPH_API_VERSION,
@@ -55,7 +55,7 @@ export async function postWhatsAppOsProviderBody(params: {
 }): Promise<WhatsAppOsProviderPostResult> {
   const productCode = params.productCode || 'ML';
   const config = resolveConfig(productCode);
-  if (!FUNCTION_FLAGS.ENABLE_WHATSAPP_OS || !config.phoneNumberId || !config.accessToken) {
+  if (!isWhatsAppProviderRuntimeEnabled() || !config.phoneNumberId || !config.accessToken) {
     return { ok: false, ambiguous: false };
   }
   try {

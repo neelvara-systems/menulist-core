@@ -82,5 +82,5 @@ Source implementation is complete only when focused verification, dependency fre
 - Passed EmailOS contract parity, idempotency, suppression, webhook-signature, stale/future timestamp and provider-disabled dry runs.
 - Passed explicit browser-denial emulator cases for MenuList and Answerlattice delivery, receipt and suppression collections.
 - Passed both Functions builds, root typecheck, zero-warning lint, dependency freeze and SecurityOS evidence registration.
-- Live Resend delivery, DNS, secret, webhook and inbox certification remain intentionally pending provider onboarding.
-- MenuList and Answerlattice Resend API/webhook secrets are not present in QA, so the new webhook functions remain intentionally undeployed rather than creating invalid secret bindings.
+- MenuList outbound DNS, isolated API keys, webhook registrations and QA/production Secret Manager bindings were prepared on August 16, 2026. Live delivery and inbox certification remain intentionally pending scoped QA deployment.
+- MenuList QA and production each have enabled version-1 `MENULIST_RESEND_API_KEY` and `MENULIST_RESEND_WEBHOOK_SECRET` values. Answerlattice secrets remain absent and pending its separate onboarding; no placeholder value was created.
