@@ -88,6 +88,32 @@ Blocked until staging feature certification and production release gates pass:
   `menulist-prod` self-alias. Production commands must use literal project ID
   `menulist-prod`, allowing Firebase CLI to load
   `functions/.env.menulist-prod` exactly once by project ID.
+- `2026-08-16` - Production domain preflight completed without DNS mutation.
+  GoDaddy zone exports were saved locally as `menulist.ai.txt` and
+  `menulist.online.txt`; `menulist.ai` auto-renew was already enabled through
+  February 11, 2028, and the owner explicitly approved enabling
+  `menulist.online` auto-renew through February 12, 2027. Vercel still has no
+  MenuList production custom domains attached and no valid current Production
+  deployment, so no traffic moved.
+- `2026-08-16` - Application-source release candidate
+  `4cbe53d0691c74eec2b526a10519d4c882dccfd5` passed configuration safety,
+  workload-identity tests, Functions deploy preflight, TypeScript, lint, and
+  diff hygiene. The custom `qa` deployment
+  `menulist-core-6zootj7uq-neelvara-systems.vercel.app` became Ready, and both
+  canonical QA `/api/version` endpoints returned that exact build with the
+  expected runtime environment value `preview`. No `main` push, Production
+  deployment, production-domain assignment, or DNS edit occurred.
+- `2026-08-16` - The data-flow inventory was regenerated against exact candidate
+  `4cbe53d0691c74eec2b526a10519d4c882dccfd5`: 8,997 first-party files are in
+  scope, with 7,493 reviewed, 1,116 in progress, and 388 inventory-only; the
+  collection catalog contains 299 families. The current Firestore rules delta,
+  root collection registries, and unchanged `fontPreset` and
+  `ownerControlUsage` evidence rows were manually reviewed and relocked to exact
+  current fingerprints. `verify:data-flow-audit-tools`, the focused
+  NotificationOS and tenant/store rules emulators, SecurityOS registry audit,
+  and the complete 42-script MenuList root Firebase rules predeploy matrix all
+  passed. This closes the stale-fingerprint sub-blocker only; the hosted fixture
+  and true-device rows still prevent `PROD-F01` from closing.
 - `src/constants/deploymentTargets.ts`, the production env example, Functions
   runtime URL maps, backfill allowlists, setup commands, and their verifiers
   now require production project ID `menulist-prod`.

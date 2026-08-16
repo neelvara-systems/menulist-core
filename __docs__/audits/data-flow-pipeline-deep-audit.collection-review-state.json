@@ -887,7 +887,7 @@
   },
   "fontPreset": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4cc95f1ab424cb3e3831f18e16424cdbdb587925bacbbbae555d5e4a02a17b2b",
+    "reviewedEvidenceSha256": "b607532e685af19dda2346a98cbfc1653f9d23c25e4bf46e58e643f31ba2e2e9",
     "ownershipModel": "MenuList global platform-managed font preset subcollection at common/assets/fontPreset. The platform Font Presets surface is the only active consumer; its client DAL validates persisted shape and document IDs, uploads attempt-unique immutable font objects, creates/updates/deletes presets, performs exact-set batch ordering, and retains prior persisted Storage references because global exclusivity is not proven.",
     "rulesStatus": "The active nested match /common/assets/{assetType}/{docId} permits authenticated reads for owner editing tools. Create/update require an exact platform-admin claim and the closed bounded font schema; delete is platform-admin-only. No public unauthenticated, Answerlattice, CampaignCue or SignalDesk client receives access. The DAL independently projects persisted values because privileged or legacy data is still runtime input.",
     "indexStatus": "Reads use a 501-row overflow probe for the 500-preset/index contract and sorting uses an exact-set batch; no filtered or ordered Firestore query and no composite index or TTL policy applies. Storage objects use immutable cache control and deletion of prior persisted references is intentionally deferred. Restart 781 verified the scalar collection constant is traced into this DAL.",
@@ -1460,7 +1460,7 @@
   },
   "ownerControlUsage": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "4bf12e9ee3e121606507d7de1279ae94109508c9a29211a69de027c70aa34fbc",
+    "reviewedEvidenceSha256": "0728798a299d8adb63c4a100ca408341a439da8f323fa636794a3083380da202",
     "ownershipModel": "MenuList tenant/store aggregate produced by confirmed owner controls; exact owner/manager scope writes and same-store reads, with Admin-only nightly platform aggregation",
     "rulesStatus": "rule path observed; exact tenant/store document binding, create-at-one or one-control increment, current UTC month and server timestamps, staff/cross-scope/arbitrary rewrites/delete denied; emulator verified locally",
     "indexStatus": "Direct document read plus Admin document-ID pagination; no composite index required",
