@@ -1,6 +1,7 @@
 import type { Credential, GoogleOAuthAccessToken } from 'firebase-admin/app';
 import {
     ExternalAccountClient,
+    GoogleAuth,
     type AuthClient,
     type BaseExternalAccountClient,
 } from 'google-auth-library';
@@ -188,6 +189,15 @@ export const createWorkloadIdentityAuthClient = (
     if (!client) throw new Error('Failed to initialize Google Workload Identity credentials.');
     return client;
 };
+
+export const createWorkloadIdentityGoogleAuth = (
+    config: WorkloadIdentityConfig,
+    client: AuthClient,
+): GoogleAuth => new GoogleAuth({
+    authClient: client,
+    projectId: config.projectId,
+    scopes: [...FIREBASE_ADMIN_SCOPES],
+});
 
 const toFirebaseAccessToken = async (
     client: AuthClient,

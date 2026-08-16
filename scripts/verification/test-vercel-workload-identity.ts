@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import type { App } from 'firebase-admin/app';
 import {
     createProviderAudienceTokenSupplier,
+    createWorkloadIdentityGoogleAuth,
 } from '../../src/lib/google/vercelWorkloadIdentity';
+import {
+    createWorkloadIdentityFirestore,
+    createWorkloadIdentityStorageAdmin,
+} from '../../src/lib/google/workloadIdentityFirebaseServices';
 import {
     createAnswerlatticeWorkloadIdentityAuthClient,
     readAnswerlatticeWorkloadIdentityConfig,
@@ -172,6 +178,27 @@ const answerlatticeClient = createAnswerlatticeWorkloadIdentityAuthClient(
 );
 assert.ok(menulistClient);
 assert.ok(answerlatticeClient);
+
+const menulistConfig = projectContracts[1].read(projectContracts[1].values);
+const menulistGoogleAuth = createWorkloadIdentityGoogleAuth(menulistConfig, menulistClient);
+assert.equal(await menulistGoogleAuth.getClient(), menulistClient);
+
+const workloadIdentityFirestore = createWorkloadIdentityFirestore({
+    auth: menulistGoogleAuth,
+    projectId: menulistConfig.projectId,
+});
+assert.equal(workloadIdentityFirestore.collection('workload-identity-test').id, 'workload-identity-test');
+
+const firebaseApp = {} as App;
+const workloadIdentityStorage = createWorkloadIdentityStorageAdmin({
+    app: firebaseApp,
+    auth: menulistGoogleAuth,
+    defaultBucket: 'menulist-prod.firebasestorage.app',
+    projectId: menulistConfig.projectId,
+});
+assert.equal(workloadIdentityStorage.app, firebaseApp);
+assert.equal(workloadIdentityStorage.bucket().name, 'menulist-prod.firebasestorage.app');
+assert.equal(workloadIdentityStorage.bucket('explicit-bucket').name, 'explicit-bucket');
 
 expectThrows(
     () => readAnswerlatticeWorkloadIdentityConfig({}),

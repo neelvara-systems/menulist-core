@@ -395,6 +395,7 @@ function verifyEnvironmentTargets() {
   const menulistWorkloadIdentity = read('src/lib/google/menulistWorkloadIdentity.ts');
   const answerlatticeWorkloadIdentity = read('src/lib/google/answerlatticeWorkloadIdentity.ts');
   const sharedWorkloadIdentity = read('src/lib/google/vercelWorkloadIdentity.ts');
+  const workloadIdentityFirebaseServices = read('src/lib/google/workloadIdentityFirebaseServices.ts');
   const menulistCloudTasks = read('src/lib/google/cloudTask/index.ts');
   const workloadIdentityTest = read('scripts/verification/test-vercel-workload-identity.ts');
   const middleware = read('src/proxy.ts');
@@ -853,6 +854,12 @@ function verifyEnvironmentTargets() {
   assertIncludes(sharedWorkloadIdentity, 'https://sts.googleapis.com/v1/token', 'Google Security Token Service exchange endpoint');
   assertIncludes(sharedWorkloadIdentity, ':generateAccessToken', 'Google service-account impersonation endpoint');
   assertIncludes(sharedWorkloadIdentity, "targetEnv !== 'qa'", 'Vercel custom QA environment fail-closed boundary');
+  assertIncludes(firebaseAdminSource, 'createWorkloadIdentityFirestore', 'MenuList Firestore uses the typed Workload Identity GoogleAuth client');
+  assertIncludes(firebaseAdminSource, 'createWorkloadIdentityStorageAdmin', 'MenuList Storage uses the typed Workload Identity GoogleAuth client');
+  assertIncludes(answerlatticeFirebaseAdminSource, 'createWorkloadIdentityFirestore', 'Answerlattice Firestore uses the typed Workload Identity GoogleAuth client');
+  assertIncludes(answerlatticeFirebaseAdminSource, 'createWorkloadIdentityStorageAdmin', 'Answerlattice Storage uses the typed Workload Identity GoogleAuth client');
+  assertIncludes(workloadIdentityFirebaseServices, 'authClient: auth', 'Storage receives the shared Workload Identity GoogleAuth client');
+  assertIncludes(workloadIdentityFirebaseServices, 'new Firestore({', 'Firestore is constructed without Firebase Admin custom-credential rejection');
   assertIncludes(menulistCloudTasks, 'authClient: getCloudTasksWorkloadIdentityAuthClient()', 'Cloud Tasks typed Workload Identity auth client');
   assertIncludes(menulistCloudTasks, 'getMenulistWorkloadIdentityAuthClient() as unknown as CloudTasksAuthClient', 'Cloud Tasks shared Workload Identity auth client compatibility boundary');
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-qa'", 'MenuList QA OIDC regression');
@@ -860,6 +867,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice-qa'", 'Answerlattice QA OIDC regression');
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice'", 'Answerlattice production OIDC regression');
   assert(rootPackageJson.dependencies['@vercel/oidc'] === '3.8.4', 'Root package must pin @vercel/oidc 3.8.4 exactly');
+  assert(rootPackageJson.dependencies['@google-cloud/storage'] === '7.21.0', 'Root package must pin @google-cloud/storage 7.21.0 exactly');
   assert(rootPackageJson.dependencies['google-auth-library'] === '10.9.1', 'Root package must pin google-auth-library 10.9.1 exactly');
   assert(rootPackageJson.scripts['test:vercel-workload-identity'] === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-vercel-workload-identity.ts', 'Root package must expose the four-project Workload Identity regression');
   assertIncludes(functionsProductionEnv, 'NEXT_PUBLIC_APP_URL=https://app.menulist.ai', 'Production Functions env owner app');

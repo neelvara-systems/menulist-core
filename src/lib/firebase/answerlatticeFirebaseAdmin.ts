@@ -18,10 +18,18 @@ import { answerlatticeServerEnv } from '@lib/env/answerlatticeServerEnv';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
     getAnswerlatticeFirebaseWorkloadIdentityCredential,
+    getAnswerlatticeWorkloadIdentityAuthClient,
     readAnswerlatticeWorkloadIdentityConfig,
     resolveAnswerlatticeGoogleCredentialMode,
 } from '@lib/google/answerlatticeWorkloadIdentity';
-import { isManagedVercelQaOrProduction } from '@lib/google/vercelWorkloadIdentity';
+import {
+    createWorkloadIdentityGoogleAuth,
+    isManagedVercelQaOrProduction,
+} from '@lib/google/vercelWorkloadIdentity';
+import {
+    createWorkloadIdentityFirestore,
+    createWorkloadIdentityStorageAdmin,
+} from '@lib/google/workloadIdentityFirebaseServices';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -233,12 +241,43 @@ function getAnswerlatticeAdminApp(): admin.app.App | null {
 }
 
 const answerlatticeAdminApp = getAnswerlatticeAdminApp();
-const answerlatticeFirestoreAdmin = answerlatticeAdminApp
-    ? (answerlatticeFirestoreDatabaseId
-        ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
-        : getAdminFirestore(answerlatticeAdminApp))
+const answerlatticeCredentialMode = answerlatticeAdminApp && !shouldUseSharedAnswerlatticeFirebase
+    ? resolveAnswerlatticeGoogleCredentialMode()
     : null;
-const answerlatticeStorageAdmin = answerlatticeAdminApp ? admin.storage(answerlatticeAdminApp) : null;
+const answerlatticeWorkloadIdentity = answerlatticeCredentialMode === 'vercel_oidc'
+    ? readAnswerlatticeWorkloadIdentityConfig()
+    : null;
+const answerlatticeWorkloadIdentityAuthClient = answerlatticeWorkloadIdentity
+    ? getAnswerlatticeWorkloadIdentityAuthClient()
+    : null;
+const answerlatticeWorkloadIdentityGoogleAuth = answerlatticeWorkloadIdentity
+    && answerlatticeWorkloadIdentityAuthClient
+    ? createWorkloadIdentityGoogleAuth(
+        answerlatticeWorkloadIdentity,
+        answerlatticeWorkloadIdentityAuthClient,
+    )
+    : null;
+const answerlatticeFirestoreAdmin = answerlatticeAdminApp
+    ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityGoogleAuth
+        ? createWorkloadIdentityFirestore({
+            auth: answerlatticeWorkloadIdentityGoogleAuth,
+            databaseId: answerlatticeFirestoreDatabaseId || undefined,
+            projectId: answerlatticeWorkloadIdentity.projectId,
+        })
+        : (answerlatticeFirestoreDatabaseId
+            ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
+            : getAdminFirestore(answerlatticeAdminApp)))
+    : null;
+const answerlatticeStorageAdmin = answerlatticeAdminApp
+    ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityGoogleAuth
+        ? createWorkloadIdentityStorageAdmin({
+            app: answerlatticeAdminApp,
+            auth: answerlatticeWorkloadIdentityGoogleAuth,
+            defaultBucket: getAnswerlatticeStorageBucket(),
+            projectId: answerlatticeWorkloadIdentity.projectId,
+        })
+        : admin.storage(answerlatticeAdminApp))
+    : null;
 const answerlatticeAuthAdmin = answerlatticeAdminApp ? admin.auth(answerlatticeAdminApp) : null;
 
 function requireAnswerlatticeAdminService<T>(service: T | null, serviceName: string): T {

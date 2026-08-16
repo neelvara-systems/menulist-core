@@ -850,6 +850,7 @@
     "@dnd-kit/sortable": "7.0.2",
     "@emoji-mart/data": "1.2.1",
     "@google-analytics/data": "5.1.0",
+    "@google-cloud/storage": "7.21.0",
     "@google-cloud/tasks": "6.1.0",
     "@google/genai": "2.13.0",
     "@hookform/resolvers": "4.1.3",

@@ -501,15 +501,20 @@ but no Functions package, secret, env key, or deployment changes under
    exchange, and five non-secret MenuList WIF values in Vercel custom
    environment `qa` are complete. The verified MenuList/shared value inventory
    is also complete, with all Answerlattice Firebase/Admin values absent. The
-   next gate is a separately approved MenuList QA application deployment and
-   keyless runtime smoke. The first custom-`qa` deployment must skip domain
-   promotion because all four verified QA domains are still branch-bound to
-   generic Preview and custom environment `qa` has no attached domains. Prove
-   the generated deployment URL first, then move the four QA domains and run the
-   canonical-host smoke. Do not create the `menulist-prod` binding until that
-   smoke has passed and the former static QA Admin key has been removed from the
-   legacy Preview configuration and revoked. Answerlattice QA and production
-   remain pending until both MenuList passes close.
+   next gate is a successful MenuList QA application deployment and keyless
+   runtime smoke. Branch Tracking automatically started the first custom-`qa`
+   build from `staging` commit `7d4e2bf`; deployment
+   `dpl_2aDCkisLor8AUMUzEjPsLMYyExpM` failed during
+   `/client/sitemap.xml` page-data collection because Firebase Admin 14 does
+   not admit a generic custom credential for Firestore. TypeScript, lint, and
+   compilation passed before that failure. Keep all four QA domains on their
+   existing branch assignment while the shared Workload Identity
+   Firestore/Storage compatibility fix is verified and pushed. Prove the
+   replacement generated deployment URL first, then move the four QA domains
+   and run the canonical-host smoke. Do not create the `menulist-prod` binding
+   until that smoke has passed and the former static QA Admin key has been
+   removed from the legacy Preview configuration and revoked. Answerlattice QA
+   and production remain pending until both MenuList passes close.
 
 ## Phase B - Firebase And Google Cloud Foundation
 

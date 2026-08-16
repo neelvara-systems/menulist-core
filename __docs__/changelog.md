@@ -1,5 +1,17 @@
 # MenuList — Changelog
 
+## August 16, 2026 - Vercel OIDC Firestore And Storage Compatibility
+
+- Kept Firebase Auth on the short-lived Admin credential adapter while routing
+  Firestore and Cloud Storage through the same Workload Identity
+  `GoogleAuth` client required by their Google Cloud Node libraries.
+- Preserved lazy request-scoped Vercel OIDC token retrieval and the existing
+  MenuList/Answerlattice project separation; no static service-account key or
+  cross-project identity was added.
+- Added direct pinned Cloud Storage ownership and executable regression coverage
+  for Firestore construction, default-bucket resolution, and shared auth-client
+  reuse. The failed first custom-`qa` build changed no domain or runtime data.
+
 ## August 15, 2026 - Four-Project Vercel Keyless Identity Contract
 
 - Extended the Vercel OIDC and Google Workload Identity Federation source

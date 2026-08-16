@@ -4061,12 +4061,21 @@ of the former setup. The approved final hosted contract no longer uses that key:
   shows `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, and
   `*.menulist.digital` are verified but still have `gitBranch=staging` and
   `customEnvironmentId=null`; custom environment `qa` currently has no attached
-  domains. After explicit Vercel deployment approval, create the first `qa`
-  deployment with domain promotion skipped, prove the keyless Firebase Admin
-  path on its generated deployment URL, then attach those four QA domains to
+  domains. Exact-branch tracking creates a `qa` deployment whenever an approved
+  commit reaches `staging`; keep domain promotion skipped, prove the keyless
+  Firebase Admin path on its generated deployment URL, then attach those four QA domains to
   custom environment `qa` and run the canonical-host auth/Firestore/Storage/
   Cloud Tasks smoke. Only after that evidence passes, remove the two former
   static-key rows from legacy Preview and revoke the underlying Google key.
+  The first branch-tracked application attempt started automatically after
+  commit `7d4e2bf` reached `staging` and correctly targeted custom environment
+  `qa`, but deployment `dpl_2aDCkisLor8AUMUzEjPsLMYyExpM` failed while Next.js
+  collected `/client/sitemap.xml`. Firebase Admin 14 rejected the generic
+  custom credential when constructing Firestore before a request-scoped OIDC
+  token was needed. TypeScript, lint, and compilation had already passed. Keep
+  all QA domains unmoved while the shared Workload Identity Firestore/Storage
+  client compatibility fix is verified and pushed; the next `staging` push
+  will create the replacement `qa` deployment through Branch Tracking.
 
 8. In Vercel custom environment `qa` for exact branch `staging`, use the hosted values below:
 

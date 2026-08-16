@@ -3,25 +3,38 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
-    getMenulistFirebaseWorkloadIdentityCredential,
+    createMenulistFirebaseWorkloadIdentityCredential,
+    getMenulistWorkloadIdentityAuthClient,
     readMenulistWorkloadIdentityConfig,
     resolveMenulistGoogleCredentialMode,
 } from '@lib/google/menulistWorkloadIdentity';
+import { createWorkloadIdentityGoogleAuth } from '@lib/google/vercelWorkloadIdentity';
+import {
+    createWorkloadIdentityFirestore,
+    createWorkloadIdentityStorageAdmin,
+} from '@lib/google/workloadIdentityFirebaseServices';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 const DEFAULT_APP_NAME = '[DEFAULT]';
+const credentialMode = resolveMenulistGoogleCredentialMode();
+const workloadIdentity = credentialMode === 'vercel_oidc'
+    ? readMenulistWorkloadIdentityConfig()
+    : null;
+const workloadIdentityAuthClient = workloadIdentity
+    ? getMenulistWorkloadIdentityAuthClient()
+    : null;
+const workloadIdentityGoogleAuth = workloadIdentity && workloadIdentityAuthClient
+    ? createWorkloadIdentityGoogleAuth(workloadIdentity, workloadIdentityAuthClient)
+    : null;
 const existingDefaultApp = admin.getApps().find(app => app?.name === DEFAULT_APP_NAME);
 const firebaseAdminApp = existingDefaultApp || (() => {
     const storageBucket = menulistServerEnv.firebaseStorageBucket;
     const projectId = menulistServerEnv.firebaseProjectId;
     const privateKey = menulistServerEnv.firebasePrivateKey;
     const clientEmail = menulistServerEnv.firebaseClientEmail;
-    const credentialMode = resolveMenulistGoogleCredentialMode();
-
-    if (credentialMode === 'vercel_oidc') {
-        const workloadIdentity = readMenulistWorkloadIdentityConfig();
+    if (credentialMode === 'vercel_oidc' && workloadIdentity && workloadIdentityAuthClient) {
         const app = admin.initializeApp({
-            credential: getMenulistFirebaseWorkloadIdentityCredential(),
+            credential: createMenulistFirebaseWorkloadIdentityCredential(workloadIdentityAuthClient),
             projectId: workloadIdentity.projectId,
             serviceAccountId: workloadIdentity.serviceAccountEmail,
             ...(storageBucket ? { storageBucket } : {}),
@@ -65,8 +78,20 @@ const firebaseAdminApp = existingDefaultApp || (() => {
     return app;
 })();
 
-const firestoreAdmin = admin.firestore(firebaseAdminApp);
-const storageAdmin = admin.storage(firebaseAdminApp);
+const firestoreAdmin = workloadIdentity && workloadIdentityGoogleAuth
+    ? createWorkloadIdentityFirestore({
+        auth: workloadIdentityGoogleAuth,
+        projectId: workloadIdentity.projectId,
+    })
+    : admin.firestore(firebaseAdminApp);
+const storageAdmin = workloadIdentity && workloadIdentityGoogleAuth
+    ? createWorkloadIdentityStorageAdmin({
+        app: firebaseAdminApp,
+        auth: workloadIdentityGoogleAuth,
+        defaultBucket: menulistServerEnv.firebaseStorageBucket,
+        projectId: workloadIdentity.projectId,
+    })
+    : admin.storage(firebaseAdminApp);
 const authAdmin = admin.auth(firebaseAdminApp);
 type VectorValue = ReturnType<typeof FieldValue.vector> & {
     values?: number[];
