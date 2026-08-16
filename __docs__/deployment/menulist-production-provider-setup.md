@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; `menulist-qa` provider, custom-`qa` application, domain, auth, Firestore, Storage, and Cloud Tasks evidence are complete, exact former-key revocation is waiting only for Google operator reauthentication, `menulist-prod` is next, and both Answerlattice targets are explicitly pending
+> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; the full `menulist-qa` provider/runtime/domain/static-key-removal pass is complete, `menulist-prod` is next, and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -419,11 +419,12 @@ Blocked until staging feature certification and production release gates pass:
   `MENULIST_FIREBASE_PRIVATE_KEY` were removed. Public-key matching identifies
   the exact former Google key as
   `79ef5b9d27319c55c674fed85655e0b681443ec2` on
-  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. Google-side
-  deletion is the only remaining QA identity cleanup: Firebase CLI refresh is
-  expired and Google Cloud requires password reauthentication. Delete only that
-  key after reauthentication and verify it is absent. Do not reopen Vercel
-  static credentials. Answerlattice QA and production remain pending until the
+  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. After company
+  operator reauthentication, IAM pre-delete readback returned exactly that one
+  enabled user-managed key. The delete request targeted only its exact resource;
+  post-propagation IAM readback reports zero remaining user-managed keys. The
+  MenuList QA identity migration is complete. Do not reopen Vercel static
+  credentials. Answerlattice QA and production remain pending until the
   MenuList production pass closes.
 
 ## `PROD-B11` Keyless Runtime Decision
@@ -528,13 +529,13 @@ but no Functions package, secret, env key, or deployment changes under
    exchange, custom-`qa` value inventory, successful application deployment,
    canonical-domain cutover, auth/Firestore runtime, Storage object lifecycle,
    and queue-scoped Cloud Tasks creation are complete. The two former static
-   Vercel rows are removed. Reauthenticate the company Google operator, delete
-   only key `79ef5b9d27319c55c674fed85655e0b681443ec2` from
-   `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`, and verify the
-   key is absent. This is the final MenuList QA identity cleanup. Then start the
-   dedicated `menulist-prod` pool/provider/service-account pass. Answerlattice
-   QA and production remain explicitly pending until both MenuList passes
-   close.
+   Vercel rows are removed, and exact key
+   `79ef5b9d27319c55c674fed85655e0b681443ec2` is deleted from
+   `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`; IAM readback
+   confirms zero user-managed keys remain. MenuList QA is closed. Start the
+   dedicated `menulist-prod` pool/provider/service-account pass next.
+   Answerlattice QA and production remain explicitly pending until the MenuList
+   production pass closes.
 
 ## Phase B - Firebase And Google Cloud Foundation
 

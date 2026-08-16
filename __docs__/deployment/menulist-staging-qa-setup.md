@@ -54,9 +54,9 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   production runbook.
 - The later `QA-OIDC-01` through `QA-OIDC-05` keyless-runtime migration is a
   superseding infrastructure change and is not included in the historical
-  147-check count above. Its application/runtime proof is complete; only
-  Google-side revocation of the former Admin SDK key remains open because the
-  operator's Google/Firebase CLI session requires reauthentication.
+  147-check count above. The migration is complete: application/runtime proof
+  passed, the static Vercel rows were removed, and authenticated IAM readback
+  confirms the former Admin SDK service account now has zero user-managed keys.
 
 ## August 14 Razorpay Hosted Certification Checkpoint
 
@@ -4061,7 +4061,7 @@ of the former setup. The approved final hosted contract no longer uses that key:
   Vercel and revoke the underlying key after the first keyless MenuList QA
   runtime smoke passes. Answerlattice QA and production remain pending and do
   not block MenuList certification.
-- [ ] `QA-OIDC-05` Deploy the MenuList app to custom environment `qa` and close
+- [x] `QA-OIDC-05` Deploy the MenuList app to custom environment `qa` and close
   the runtime/domain cutover. Application deployment
   `dpl_uSd8VderSJwFav1uW8nt5BV52nTb` from commit
   `aea6c9314cc5fa2447fc1d9e53176cd17ae0860f` is **Ready** with target `qa`.
@@ -4100,12 +4100,13 @@ of the former setup. The approved final hosted contract no longer uses that key:
   Admin-key variable. Public-key matching identified the former Google
   user-managed key exactly as
   `79ef5b9d27319c55c674fed85655e0b681443ec2` on
-  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. The only open
-  part of `QA-OIDC-05` is deleting that exact Google key. Firebase CLI token
-  refresh currently fails and requires `firebase login --reauth`; the Google
-  Cloud browser session independently asks for password reauthentication. Do
-  not delete any other key and do not mark this item complete until the exact
-  key is absent on readback.
+  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. The company
+  operator reauthenticated Firebase CLI. A pre-delete IAM query returned
+  exactly that one enabled `USER_MANAGED`/`GOOGLE_PROVIDED` key. The scoped
+  delete request targeted only its full IAM resource name; a fresh readback
+  after propagation returned `verifiedAbsent=true` and
+  `remainingUserManagedKeyCount=0`. No other key or service account changed.
+  `QA-OIDC-05` is complete.
 
   Answerlattice QA and production remain pending and are not part of this
   MenuList-only closure.
