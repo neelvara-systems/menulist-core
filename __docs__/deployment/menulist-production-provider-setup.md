@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; the full `menulist-qa` provider/runtime/domain/static-key-removal pass is complete, `menulist-prod` is next, and both Answerlattice targets are explicitly pending
+> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; the full `menulist-qa` pass is complete, the dedicated `menulist-prod` provider/IAM/Vercel-selector preparation is complete with hosted production proof still release-gated, and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -426,6 +426,28 @@ Blocked until staging feature certification and production release gates pass:
   MenuList QA identity migration is complete. Do not reopen Vercel static
   credentials. Answerlattice QA and production remain pending until the
   MenuList production pass closes.
+- `2026-08-16` - The dedicated `menulist-prod` keyless provider preparation
+  completed without a production deployment. Security Token Service is
+  enabled; pool `menulist-vercel`, provider `menulist-prod`, and runtime service
+  account `menulist-vercel-prod@menulist-prod.iam.gserviceaccount.com` are
+  active. The provider maps the same four proven Vercel claims as QA and admits
+  only immutable team ID `team_pCphDvMJUPFjVfH8x1AXSmPz`, immutable project ID
+  `prj_9DIdLQC5fWX0HtExaBFpg0xAJklz`, exact environment `production`, and exact
+  subject `owner:neelvara-systems:project:menulist-core:environment:production`.
+  Project-scoped `roles/datastore.user` and `roles/firebaseauth.admin`,
+  bucket-scoped `roles/storage.objectAdmin`, self-scoped
+  `roles/iam.serviceAccountTokenCreator`, and exact-subject
+  `roles/iam.workloadIdentityUser` are applied. IAM readback reports zero
+  user-managed keys. The production Cloud Tasks queue does not exist yet, so
+  `roles/cloudtasks.enqueuer` remains intentionally pending at queue scope
+  until the approved production resource/deploy path creates it. Vercel
+  Production contains the five exact encrypted WIF selectors with deterministic
+  readback and contains neither legacy MenuList Admin credential variable.
+  `PROD-B11` remains open until a release-approved hosted Production deployment
+  proves the OIDC assertion, STS exchange, impersonation, Firebase Auth custom
+  token signing, Firestore, Storage, and the eventual queue-scoped Cloud Tasks
+  operation. No production alias, DNS, application secret, runtime traffic, or
+  business data was changed.
 
 ## `PROD-B11` Keyless Runtime Decision
 
@@ -532,10 +554,16 @@ but no Functions package, secret, env key, or deployment changes under
    Vercel rows are removed, and exact key
    `79ef5b9d27319c55c674fed85655e0b681443ec2` is deleted from
    `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`; IAM readback
-   confirms zero user-managed keys remain. MenuList QA is closed. Start the
-   dedicated `menulist-prod` pool/provider/service-account pass next.
-   Answerlattice QA and production remain explicitly pending until the MenuList
-   production pass closes.
+   confirms zero user-managed keys remain. MenuList QA is closed.
+6. The dedicated `menulist-prod` pool, provider, service account, current
+   least-privilege IAM, zero-key readback, and five Vercel Production selectors
+   are prepared. Do not run a Production deployment merely to probe OIDC. First
+   finish the independent production runtime-variable/provider gates and create
+   the production Cloud Tasks queue through the approved release path. At the
+   first release-approved hosted Production deployment, add only the
+   queue-scoped enqueuer binding and run the full OIDC/runtime proof before
+   checking `PROD-B11`. Answerlattice QA and production remain explicitly
+   pending until the MenuList production pass closes.
 
 ## Phase B - Firebase And Google Cloud Foundation
 
