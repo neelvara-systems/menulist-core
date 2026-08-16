@@ -99,6 +99,7 @@ const walk = (directory) => {
 walk(routeRoot);
 
 const rawMessageAllowlist = new Map([
+  ['src/app/api/campaigncue/campaigns/[campaignId]/offer-page/route.ts', ['CampaignCueOfferPageMutationError']],
   ['src/app/api/answerlattice/public-api-key/route.ts', ['AnswerlatticePublicApiKeyStoreError']],
   ['src/app/api/helpCenter/search-kb/route.ts', ['AnswerlatticeSupportSearchCapacityError']],
   ['src/app/api/widget/search/route.ts', ['AnswerlatticeSupportSearchCapacityError']],

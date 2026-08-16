@@ -666,9 +666,9 @@ function verifyMiddlewareBoundary() {
   );
   assertOrder(
     middleware,
+    "if (pathname.length > 1 && pathname.endsWith('/'))",
     "if (domainInfo.isClient && pathname !== pathname.toLowerCase())",
-    "if (domainInfo.isClient && pathname.length > 1 && pathname.endsWith('/'))",
-    'middleware lowercase normalization before trailing-slash normalization',
+    'middleware global trailing-slash normalization before tenant lowercase normalization',
   );
   assertIncludes(middleware, "if (!domainInfo.isClient)", 'middleware direct /client platform guard');
   assertIncludes(middleware, 'NextResponse.redirect(url, 301)', 'middleware direct /client guard uses permanent redirect');

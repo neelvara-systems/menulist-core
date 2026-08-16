@@ -136,7 +136,7 @@ function verifyBatchWorkerAdmission() {
   const source = read(route);
   const handler = source.slice(source.indexOf('export async function POST'));
   [
-    'BATCH_IMAGE_GENERATION_WORKER_SECRET',
+    'menulistServerEnv.batchImageGenerationWorkerSecret',
     "request.headers.get('x-menulist-task-secret')",
     "request.headers.get('project-id')",
     'timingSafeEqual',

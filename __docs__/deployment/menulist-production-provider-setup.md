@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 39 of 61 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, and external uptime monitoring remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` pass is complete; and both Answerlattice targets are explicitly pending
+> **Current progress:** 40 of 61 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete with hosted proof release-gated; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, and external uptime monitoring remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` provider setup is complete; the remaining QA certification fixtures and device/provider testing are owner-accepted parallel work rather than a production-deployment blocker; the local release aggregate and scoped MenuList matrix are recorded under `PROD-F02`; and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -1178,13 +1178,31 @@ No deploy is authorized by this phase.
 
 ## Phase F - Certification-Gated Activation And Launch Handoff
 
-Do not start until the staging feature-certification ledger is fully closed and
-the production release gate is explicitly approved.
+The default gate is a fully closed staging feature-certification ledger plus
+explicit production release approval. On `2026-08-16`, the owner explicitly
+accepted the remaining QA certification risk and directed those fixture,
+physical-device, Razorpay Test Mode, Answerlattice-backed support, and temporary
+elevated-role checks to continue in parallel. This exception authorizes the
+scoped MenuList production deployment path; it does not mark those QA checks as
+passed and does not authorize live Razorpay, WhatsApp, App Check enforcement,
+OAuth publishing, or final launch certification.
 
 - [ ] `PROD-F01` Confirm all staging feature-certification parent flows are
   closed with evidence and no release-blocking regression remains.
-- [ ] `PROD-F02` Run the current local production-readiness aggregate and record
+- [x] `PROD-F02` Run the current local production-readiness aggregate and record
   the exact commit, command, and result.
+  - `2026-08-16` - Run against staging base
+    `c1f53d235c5f92fc0cd5e7d57d2b855ade7a9732` plus the release-gate fixes
+    prepared for the next exact staging commit. The full
+    `npm run verify:production-readiness-local` aggregate stopped after `33/194`
+    checks at `verify:asset-factory` because eight parked Answerlattice website
+    asset fingerprints require separate visual review. A separate
+    MenuList/shared root-verifier matrix selected 155 checks: 153 passed,
+    `verify:production-readiness-local` retained that exact Answerlattice-only
+    stop, and `verify:upstash-readiness` retained its external certification
+    status. Focused regressions for every repaired verifier contract passed.
+    Exact commit, clean-tree typecheck/lint/docs, and hosted QA SHA evidence are
+    refreshed after this ledger update and before production promotion.
 - [ ] `PROD-F03` Deploy production Firestore rules/indexes and Storage rules only
   with explicit production approval and scoped commands.
 - [ ] `PROD-F04` Deploy the approved production Functions targets only after

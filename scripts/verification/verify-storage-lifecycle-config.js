@@ -52,9 +52,10 @@ const tracker = fs.readFileSync(trackerPath, 'utf8');
 const launchPrereqs = fs.readFileSync(launchPath, 'utf8');
 [
   'Step 2D: Apply Cloud Storage Lifecycle Config',
-  'gcloud storage buckets update gs://menulist-qa.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json',
-  'gcloud storage buckets update gs://menulist.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json',
-  'gcloud storage buckets describe gs://menulist-qa.appspot.com --format=json',
+  'gcloud storage buckets update gs://menulist-qa.firebasestorage.app --lifecycle-file=infra/storage/menulist-storage-lifecycle.json',
+  'gcloud storage buckets update gs://menulist-prod.firebasestorage.app --lifecycle-file=infra/storage/menulist-storage-lifecycle.json',
+  'gcloud storage buckets describe gs://menulist-qa.firebasestorage.app --format=json',
+  'gcloud storage buckets describe gs://menulist-prod.firebasestorage.app --format=json',
 ].forEach((token) => {
   assert(launchPrereqs.includes(token), `launch prerequisites document lifecycle command ${token}`);
 });

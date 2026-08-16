@@ -45,6 +45,7 @@ import {
 } from "@constant/campaigncue/outputPicker";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useAppSelector } from "@hook/useAppSelector";
+import { openIsolatedBrowserUrl } from "@lib/browser/openIsolatedBrowserUrl";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
@@ -4303,9 +4304,7 @@ export default function CampaignCueWorkspaceApp() {
     const openHostedOfferPage = (campaign: CampaignCueCampaign) => {
         const slug = campaign.pack?.offerPage?.slug;
         if (!slug) return;
-        const url = getCampaignCueHostedOfferUrl(slug);
-        const opened = window.open(url, "_blank", "noopener,noreferrer");
-        if (opened) opened.opener = null;
+        openIsolatedBrowserUrl(getCampaignCueHostedOfferUrl(slug));
     };
     const copyHostedOfferPage = async (campaign: CampaignCueCampaign) => {
         const slug = campaign.pack?.offerPage?.slug;

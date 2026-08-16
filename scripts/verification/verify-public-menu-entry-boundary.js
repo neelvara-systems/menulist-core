@@ -209,7 +209,7 @@ requireOrder(createRoute, [
   'deleted: false,',
   'slug: projectSlug,',
   'projectData._mce = toMCEMetadata(mceValidate({',
-  'transaction.set(projectRef, projectData);',
+  'transaction.set(projectRef, safeProjectData);',
   'const cacheResults = await Promise.allSettled',
   "revalidateTag(`menu-store-${result.storeId}`, { expire: 0 })",
   "revalidateTag(`store-${result.storeId}`, { expire: 0 })",
@@ -227,7 +227,7 @@ requireOrder(claimRoute, [
   'resolvePublicMenuClaimUserAuthority({',
   'requireAnyStorePermissionForStoreData(',
   '[PERMISSIONS.PUBLISH_MENU]',
-  'transaction.set(projectRef, projectData);',
+  'transaction.set(projectRef, safeProjectData);',
 ], 'Public Menu Entry current publish permission and write order');
 requireOrder(claimRoute, [
   'assertCurrentUserAvailableForOnboardingInTransaction(',
@@ -235,7 +235,7 @@ requireOrder(claimRoute, [
 ], 'Public Menu Entry new-account current-user lock before allocation');
 requireOrder(claimRoute, [
   'projectData._mce = toMCEMetadata(mceValidate({',
-  'transaction.set(projectRef, projectData);',
+  'transaction.set(projectRef, safeProjectData);',
 ], 'Public Menu Entry MCE stamp stays in project transaction');
 
 [

@@ -485,6 +485,9 @@ function withGrowthOSFlags<T>(overrides: Record<string, unknown>, fn: () => T): 
 }
 
 const makeSubscription = (planId: string, status = "active", tenantId = 101) => ({
+    billingMode: "manual",
+    cycleEndDate: new Date("2099-12-31T23:59:59.000Z"),
+    manualPaymentConfirmed: true,
     pId: "ML",
     planId,
     productId: "ML",

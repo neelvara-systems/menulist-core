@@ -6930,3 +6930,34 @@ Result: `PROD-E09` passed as local source/configuration evidence only. It does
 not certify a Next.js production build, Vercel deployment, Firebase deployment,
 Secret Manager runtime binding, provider smoke, production data path, App Check
 enforcement, OAuth publishing, live payment, or production traffic.
+
+## MenuList Production Parallel-Certification Release Decision - August 16, 2026
+
+Expected: preserve the truth of the remaining QA certification work while
+allowing a separately approved, scoped MenuList production deployment to move
+forward on an exact commit.
+
+Actual: the owner explicitly directed the entitled disposable fixture,
+physical-device, Razorpay Test Mode lifecycle, Answerlattice-backed support
+fixture, and temporary elevated-role certification work to continue in
+parallel. Those items remain open and are not recorded as passed. Live
+Razorpay, WhatsApp, App Check enforcement, OAuth publishing, and final launch
+certification remain disabled or gated independently.
+
+Local evidence: `npm run verify:production-readiness-local` stopped at
+`33/194` when `verify:asset-factory` reported eight stale Answerlattice website
+asset fingerprints. Answerlattice provider setup and visual asset renewal are
+parked, so no fingerprint was silently refreshed. The separate MenuList/shared
+root-verifier matrix selected 155 checks: 153 passed, the aggregate retained
+the exact Answerlattice-only stop, and `verify:upstash-readiness` remained an
+external certification item. Focused tests passed for the current Firebase
+predeploy rules, public-menu transaction sanitation, product-scoped batch-worker
+secret admission, host normalization, Storage lifecycle bucket names, mobile
+bounded diagnostics, GrowthOS entitlement fixture, and isolated browser-open
+behavior.
+
+Result: owner-accepted parallel certification authorizes the scoped MenuList
+production deployment sequence but does not convert the open QA evidence into
+a pass. The exact release commit, clean-tree gates, hosted QA SHA, Firebase
+deployment output, Vercel Production SHA, and domain/TLS evidence must be added
+as they are produced.

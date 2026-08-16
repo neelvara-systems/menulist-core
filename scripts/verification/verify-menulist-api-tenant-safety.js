@@ -5783,7 +5783,10 @@ function verifyOwnerUtilitySecureLogging() {
   assert(!desktopBusinessSettings.includes('updateTenantsStoreslist('), 'Desktop Business Settings must rely on the atomic store/summary/tenant-list DAL transaction');
   assert(storesDal.includes('storesList: upsertTenantStoreListEntry(tenantSnapshot.data()?.storesList, nextStore)'), 'Store rename transaction must derive tenant storesList from current state');
   assert(storesDal.includes('transaction.set(summaryRef, {'), 'Store create/update must write storesSummary inside its persistence transaction');
-  assert(mobileBasicSettings.includes('hasLogoUpdate: Boolean(updates.imageToUpdate)'), 'Mobile Basic Settings must include bounded logo-update context');
+  assert(
+    mobileBasicSettings.includes("hasLogoUpdate: Object.prototype.hasOwnProperty.call(updates, 'logo') || Boolean(updates.imageToUpdate)"),
+    'Mobile Basic Settings must include bounded logo-update context for persisted and upload-backed updates',
+  );
   assert(mobileBasicSettings.includes('tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name'), 'Mobile Basic Settings must include bounded tenant-name context');
   assert(mobileBusinessAttributes.includes('mobile_business_attributes_save_failed'), 'Mobile Business Attributes must log bounded save failures');
   assert(mobileBusinessAttributes.includes('assertStoreUpdateSucceeded('), 'Mobile Business Attributes must require explicit store-write acknowledgement before local success state');
