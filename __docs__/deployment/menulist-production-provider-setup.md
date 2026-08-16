@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; `menulist-qa` provider proof and custom-`qa` value migration are complete, `menulist-prod` follows after the MenuList QA runtime smoke, and both Answerlattice targets are explicitly pending
+> **Current progress:** 18 of 61 checks complete; `PROD-B11` keyless architecture and source migration are approved; `menulist-qa` provider, custom-`qa` application, domain, auth, Firestore, Storage, and Cloud Tasks evidence are complete, exact former-key revocation is waiting only for Google operator reauthentication, `menulist-prod` is next, and both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -398,6 +398,33 @@ Blocked until staging feature certification and production release gates pass:
   Admin-key or Answerlattice variable is present. The former key pair remains
   only in the legacy branch-specific Preview configuration pending successful
   keyless QA runtime proof, after which it must be removed and revoked.
+- `2026-08-16` - MenuList QA application/runtime proof passed on custom
+  environment `qa`. Deployment `dpl_uSd8VderSJwFav1uW8nt5BV52nTb` from commit
+  `aea6c9314cc5fa2447fc1d9e53176cd17ae0860f` is Ready. A stale copied Google
+  OAuth client secret first caused `invalid_client`; after correction, stale
+  Upstash credentials caused `/pipeline` HTTP 401 and `/api/auth/set-claims`
+  HTTP 503. Correcting the QA Upstash pair produced repeated 200 responses for
+  claim setting and session reads plus authenticated owner Firestore-backed
+  route loads. The apex, `www`, app `/api/version`, and a tenant subdomain all
+  return 200 through the application deployment. A disposable scoped probe
+  passed exact custom-`qa` claims, Google STS, service-account impersonation,
+  `signBlob`, Storage object create/read/delete, and Cloud Tasks task creation
+  on `batch-image-generation`; its intentionally invalid payload did not call
+  AI or mutate business data. The probe auto-promotion briefly pointed the QA
+  aliases at a 404 probe deployment; all aliases were immediately restored to
+  the application deployment and reverified. Both disposable deployments were
+  deleted and the generated Vercel automation bypass was revoked.
+- `2026-08-16` - The two legacy branch-specific Preview rows
+  `MENULIST_FIREBASE_CLIENT_EMAIL` and
+  `MENULIST_FIREBASE_PRIVATE_KEY` were removed. Public-key matching identifies
+  the exact former Google key as
+  `79ef5b9d27319c55c674fed85655e0b681443ec2` on
+  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. Google-side
+  deletion is the only remaining QA identity cleanup: Firebase CLI refresh is
+  expired and Google Cloud requires password reauthentication. Delete only that
+  key after reauthentication and verify it is absent. Do not reopen Vercel
+  static credentials. Answerlattice QA and production remain pending until the
+  MenuList production pass closes.
 
 ## `PROD-B11` Keyless Runtime Decision
 
@@ -498,29 +525,16 @@ but no Functions package, secret, env key, or deployment changes under
    `team_pCphDvMJUPFjVfH8x1AXSmPz`. Do not add Vercel Production env values or
    trigger a deployment yet.
 5. `menulist-qa` pool/provider/service-account binding, scoped hosted token
-   exchange, and five non-secret MenuList WIF values in Vercel custom
-   environment `qa` are complete. The verified MenuList/shared value inventory
-   is also complete, with all Answerlattice Firebase/Admin values absent. The
-   next gate is a successful MenuList QA application deployment and keyless
-   runtime smoke. Branch Tracking automatically started the first custom-`qa`
-   build from `staging` commit `7d4e2bf`; deployment
-   `dpl_2aDCkisLor8AUMUzEjPsLMYyExpM` failed during
-   `/client/sitemap.xml` page-data collection because Firebase Admin 14 does
-   not admit a generic custom credential for Firestore. TypeScript, lint, and
-   compilation passed before that failure. Keep all four QA domains on their
-   existing branch assignment while the shared Workload Identity
-   Firestore/Storage compatibility fix is verified and pushed. The first
-   replacement, deployment `dpl_6hJ4p8SEMBg59iwDM8n1c3RNmzQX` from commit
-   `9dacb253`, confirmed `environment: qa` in the emitted OIDC claims but exposed
-   one remaining `admin.firestore()` compatibility path while collecting
-   `/api/auth/claim-account`. The selected Firestore client is now registered
-   by Firebase app name so existing transaction callers reuse the keyless
-   product client without crossing MenuList and Answerlattice. Prove the next
-   generated deployment URL first, then move the four QA domains and run the
-   canonical-host smoke. Do not create the `menulist-prod` binding until that
-   smoke has passed and the former static QA Admin key has been removed from the
-   legacy Preview configuration and revoked. Answerlattice QA and production
-   remain pending until both MenuList passes close.
+   exchange, custom-`qa` value inventory, successful application deployment,
+   canonical-domain cutover, auth/Firestore runtime, Storage object lifecycle,
+   and queue-scoped Cloud Tasks creation are complete. The two former static
+   Vercel rows are removed. Reauthenticate the company Google operator, delete
+   only key `79ef5b9d27319c55c674fed85655e0b681443ec2` from
+   `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`, and verify the
+   key is absent. This is the final MenuList QA identity cleanup. Then start the
+   dedicated `menulist-prod` pool/provider/service-account pass. Answerlattice
+   QA and production remain explicitly pending until both MenuList passes
+   close.
 
 ## Phase B - Firebase And Google Cloud Foundation
 

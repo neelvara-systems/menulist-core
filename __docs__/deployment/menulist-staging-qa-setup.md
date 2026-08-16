@@ -52,6 +52,11 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   prepared, but production resources, secrets, provider assets, deploys, and
   host smoke must wait for feature-certification closure and the separate
   production runbook.
+- The later `QA-OIDC-01` through `QA-OIDC-05` keyless-runtime migration is a
+  superseding infrastructure change and is not included in the historical
+  147-check count above. Its application/runtime proof is complete; only
+  Google-side revocation of the former Admin SDK key remains open because the
+  operator's Google/Firebase CLI session requires reauthentication.
 
 ## August 14 Razorpay Hosted Certification Checkpoint
 
@@ -4057,16 +4062,53 @@ of the former setup. The approved final hosted contract no longer uses that key:
   runtime smoke passes. Answerlattice QA and production remain pending and do
   not block MenuList certification.
 - [ ] `QA-OIDC-05` Deploy the MenuList app to custom environment `qa` and close
-  the runtime/domain cutover. Read-only Vercel API evidence on August 16, 2026
-  shows `menulist.digital`, `www.menulist.digital`, `app.menulist.digital`, and
-  `*.menulist.digital` are verified but still have `gitBranch=staging` and
-  `customEnvironmentId=null`; custom environment `qa` currently has no attached
-  domains. Exact-branch tracking creates a `qa` deployment whenever an approved
-  commit reaches `staging`; keep domain promotion skipped, prove the keyless
-  Firebase Admin path on its generated deployment URL, then attach those four QA domains to
-  custom environment `qa` and run the canonical-host auth/Firestore/Storage/
-  Cloud Tasks smoke. Only after that evidence passes, remove the two former
-  static-key rows from legacy Preview and revoke the underlying Google key.
+  the runtime/domain cutover. Application deployment
+  `dpl_uSd8VderSJwFav1uW8nt5BV52nTb` from commit
+  `aea6c9314cc5fa2447fc1d9e53176cd17ae0860f` is **Ready** with target `qa`.
+  The custom environment initially inherited a stale Google OAuth client secret;
+  correcting it moved sign-in past `invalid_client`. The next authenticated
+  `/api/auth/set-claims` call returned HTTP 503 because the copied Upstash token
+  was stale and `/pipeline` returned HTTP 401. Replacing the QA Upstash URL/token
+  resolved that boundary. Current runtime logs show repeated HTTP 200 responses
+  for `/api/auth/set-claims` and `/api/auth/session`, plus authenticated owner
+  loads for `/today`, `/projects`, `/billing`, and `/business-settings`.
+  Canonical domains `menulist.digital`, `www.menulist.digital`,
+  `app.menulist.digital`, and `*.menulist.digital`, plus the custom-environment
+  Vercel alias, now resolve to that application deployment. Fresh HTTP readback
+  returns 200 for the apex, `www`, `/api/version`, and a tenant subdomain.
+  A scoped disposable probe using the same custom `qa` identity reconfirmed the
+  exact Vercel claims and passed Google STS, service-account impersonation,
+  `signBlob`, Storage object create/read/delete, and Cloud Tasks task creation on
+  queue `batch-image-generation`. The task used a deliberately invalid smoke
+  payload, so it proved queue-scoped enqueue permission without invoking AI or
+  mutating business data. The app deployment's authenticated owner loads prove
+  the Firestore-backed runtime path.
+
+  Two disposable probe deployments briefly auto-promoted the custom `qa`
+  aliases during the smoke and made the canonical hosts return 404. The issue
+  was detected immediately; all five aliases were reassigned to the application
+  deployment and the four canonical HTTP checks returned 200 again. Both probe
+  deployments were deleted and the generated Vercel automation bypass was
+  revoked; a fresh project-protection readback returned an empty
+  `protectionBypass` map.
+
+  `MENULIST_FIREBASE_CLIENT_EMAIL` and
+  `MENULIST_FIREBASE_PRIVATE_KEY` have now been removed from the legacy
+  branch-specific Preview configuration, and custom `qa` still has no static
+  Admin-key variable. Public-key matching identified the former Google
+  user-managed key exactly as
+  `79ef5b9d27319c55c674fed85655e0b681443ec2` on
+  `firebase-adminsdk-fbsvc@menulist-qa.iam.gserviceaccount.com`. The only open
+  part of `QA-OIDC-05` is deleting that exact Google key. Firebase CLI token
+  refresh currently fails and requires `firebase login --reauth`; the Google
+  Cloud browser session independently asks for password reauthentication. Do
+  not delete any other key and do not mark this item complete until the exact
+  key is absent on readback.
+
+  Answerlattice QA and production remain pending and are not part of this
+  MenuList-only closure.
+
+  Historical failed attempts are retained below for incident context.
   The first branch-tracked application attempt started automatically after
   commit `7d4e2bf` reached `staging` and correctly targeted custom environment
   `qa`, but deployment `dpl_2aDCkisLor8AUMUzEjPsLMYyExpM` failed while Next.js
@@ -4081,9 +4123,8 @@ of the former setup. The approved final hosted contract no longer uses that key:
   reconstruct Firestore from the custom credential. The selected Firestore
   client is now registered by Firebase app name so default MenuList and named
   Answerlattice callers remain isolated while reusing their keyless clients.
-  Focused QA module-load verification passes. Push this compatibility fix and
-  let Branch Tracking create the next replacement `qa` deployment before any
-  domain promotion.
+  Focused QA module-load verification passed before the successful deployment
+  and canonical-domain smoke recorded above.
 
 8. In Vercel custom environment `qa` for exact branch `staging`, use the hosted values below:
 
