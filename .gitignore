@@ -50,6 +50,7 @@ firestore-debug.log*
 /logs/*.log
 /routes-manifest.json
 /tmp/
+/.tmp/
 /tsconfig.tsbuildinfo
 
 # local env files
@@ -59,6 +60,7 @@ firestore-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+functions/.env.menulist-prod
 .service-account.json
 /service-account.json
 /answerlattice-service-account.json
