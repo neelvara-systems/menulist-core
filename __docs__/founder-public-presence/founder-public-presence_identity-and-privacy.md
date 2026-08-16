@@ -1,7 +1,7 @@
 # Proof & State Identity And Privacy
 
 **Status:** Mandatory privacy gate
-**Last Updated:** August 12, 2026
+**Last Updated:** August 16, 2026
 
 ## Governing Boundary
 
@@ -124,8 +124,14 @@ checked sources and dates.
 | Reddit upload avatar | `assets/proof-and-state-avatar-reddit.png` | 512 x 512 PNG derivative of the canonical avatar; under Reddit's 500 KB upload limit |
 | X banner | `assets/proof-and-state-x-banner.png` | X launch profile |
 | X upload banner | `assets/proof-and-state-x-banner-upload.png` | 1080 x 360 PNG derivative of the canonical X banner; under 500 KB |
+| Mobile-safe X banner v2 | `assets/proof-and-state-x-banner-v2.png` | Superseded retained source; removed the duplicate right-side mark and moved the slogan into the central safe area after the first mobile review |
+| Mobile-safe X upload banner v2 | `assets/proof-and-state-x-banner-upload-v2.png` | Superseded retained 1080 x 360 derivative; the mobile review passed for readability but the founder preferred slightly more vertical separation from X's controls |
+| Lowered X banner v3 | `assets/proof-and-state-x-banner-v3.png` | Current approved 1500 x 500 banner source; moves the complete v2 composition down by 30 pixels without changing the horizontal layout or identity |
+| Lowered X upload banner v3 | `assets/proof-and-state-x-banner-upload-v3.png` | Current approved 1080 x 360 upload derivative; 76,749 bytes. Founder uploaded it and supplied a final third-person mobile screenshot on August 16, 2026; crop, readability, avatar separation, and privacy review passed. Banner topic closed with no further revision pending. |
 
 The mark is four measured corners around one cobalt evidence point: proof inside
 bounded state. Do not add a face, mascot, verification badge, crypto styling,
 or unrelated logo variant. Platform upload derivatives must preserve this mark
-and must not replace the canonical source asset.
+and must not replace the canonical source asset. The banner may omit the mark
+when the adjacent profile avatar already carries it and retaining it would place
+the mark underneath platform controls.

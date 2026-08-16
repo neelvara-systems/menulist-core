@@ -885,7 +885,14 @@ function verifyEnvironmentTargets() {
   assertIncludes(functionsProductionEnvExample, 'WHATSAPP_OS_ENABLED=false', 'Production Functions env template WhatsAppOS parking boundary');
   assertIncludes(functionsProductionEnvExample, 'OWNER_NOTIFICATION_WHATSAPP_ENABLED=false', 'Production Functions env template owner WhatsApp parking boundary');
   assertIncludes(functionsProductionEnvExample, 'PLATFORM_ALERT_WHATSAPP_ENABLED=false', 'Production Functions env template platform WhatsApp parking boundary');
-  assertIncludes(menulistProductionProviderSetup, '**Current progress:** 39 of 61 checks complete', 'MenuList production provider ledger current progress');
+  const productionProviderChecks = [...menulistProductionProviderSetup.matchAll(/^- \[([ x])\] `PROD-[A-Z]\d+`/gm)];
+  const completedProductionProviderChecks = productionProviderChecks.filter((match) => match[1] === 'x').length;
+  assert(productionProviderChecks.length > 0, 'MenuList production provider ledger must expose PROD checklist rows');
+  assertIncludes(
+    menulistProductionProviderSetup,
+    `**Current progress:** ${completedProductionProviderChecks} of ${productionProviderChecks.length} checks complete`,
+    'MenuList production provider ledger current progress',
+  );
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B09`', 'MenuList production provider ledger Auth domain admission');
   assertIncludes(menulistProductionProviderSetup, '`app.menulist.ai` as the sole', 'MenuList production provider ledger exact custom Auth domain');
   assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production provider ledger exact Web app identity');

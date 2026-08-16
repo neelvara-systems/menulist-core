@@ -160,6 +160,22 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
 - A fresh disposable owner at exact MenuList scope `2/2` still reached `Could not load your menus`. Source and emulator tracing isolated the remaining defect to the deterministic first-project transaction: `addProject()` must read `projects/2/2/2-default-2` to distinguish missing state from retry recovery, while the deployed rule required `resource.data` identity even when the document did not exist.
 - The scoped rule now admits a missing resource only after exact authenticated tenant/store membership, using `resource == null`; existing documents remain project/tenant/store identity-bound. Emulator proof covers same-scope missing read, cross-store and cross-tenant denial, misbound existing-document denial, and the exact missing-read-then-create transaction. The full project verifier, session scope test, focused ESLint, TypeScript, and documentation-link checks pass.
 - Firebase accepted and compiled immutable ruleset `fd3bf828-2c33-4732-af32-4a4bf56a7735`; its full-source SHA-256 exactly matches the local `firestore.rules`. Although the release PATCH initially returned HTTP 503, independent release readback proves `projects/menulist-qa/releases/cloud.firestore` now points to that exact ruleset with update time `2026-08-14T04:52:56.959667Z`. The hosted CRUD matrix, exact Firestore projection checks, and guarded cleanup all passed. `QA-K09` remains open only because the subsequently isolated DAL session-cache priming correction is local and needs one staging push plus a clean hosted hard-reload rerun.
+- `2026-08-16` - The current shared rules source was revalidated after the
+  NotificationOS default-deny addition. The first deployment attempt reproduced
+  the same Google Rules API HTTP 503 previously seen on QA, proving the response
+  is not specific to `menulist-prod`. Unreachable helper trees reported by the
+  managed compiler were removed, the NotificationOS store-setting guard was
+  folded into the existing server-managed-field guard, and six redundant
+  explicit deny blocks were removed because the root recursive wildcard already
+  denies every unmatched document. Focused Answerlattice feedback, guest
+  feedback, and NotificationOS rules suites passed immediately after the
+  unreachable helper removal; the complete 42-script MenuList emulator matrix
+  then passed again against exact final source. The managed QA compiler accepted
+  that source with zero issues. Bounded official Rules REST retries created immutable ruleset
+  `7c859db2-3a1e-4808-bec8-3133760bc96d` and released it to
+  `projects/menulist-qa/releases/cloud.firestore`. Exact source readback matches
+  the repository SHA-256
+  `667cc95349abb7f232bff900b7c9ce79002cdc1f1399c2fec04e8e491d8169d9`.
 
 ## August 13 Razorpay Checkout Recovery Checkpoint
 

@@ -218,7 +218,6 @@ service cloud.firestore {
       allow update: if isAuthenticated()
         && preservesPosSyncWebhookSecret(resource.data, request.resource.data)
         && preservesServerManagedStoreApiCredentials(resource.data, request.resource.data)
-        && preservesNotificationOsSettings(resource.data, request.resource.data)
         && (
           isPlatformAdmin()
           || (
@@ -1380,12 +1379,9 @@ service cloud.firestore {
         'widgetConfigSchemaVersion',
         'widgetConfigUpdatedAt',
         'widgetConfigVersion',
-        'widgetRuntimeStatus'
+        'widgetRuntimeStatus',
+        'notificationSettings'
       ]);
-    }
-
-    function preservesNotificationOsSettings(before, after) {
-      return !after.diff(before).affectedKeys().hasAny(['notificationSettings']);
     }
 
     function isValidImageBatchJobCreate(tId, sId, docId) {
@@ -3819,94 +3815,6 @@ service cloud.firestore {
         );
     }
 
-    function answerlatticeFeedbackDocumentKeys() {
-      return [
-        'type', 'rating', 'comment', 'featureComment', 'featureIssues',
-        'featureRequest', 'votedPopularRequests', 'pId', 'sourceContext',
-        'traceId', 'requestId', 'sId', 'tId', 'role', 'uId', 'modifiedBy',
-        'modifiedOn', 'createdOn', 'createdBy'
-      ];
-    }
-
-    function isValidAnswerlatticeFeedbackText(value) {
-      return value is string && value.size() > 0 && value.size() <= 1000;
-    }
-
-    function isValidAnswerlatticeFeedbackIdentifier(value) {
-      return (value is string && value.size() > 0 && value.size() <= 180)
-        || value is int;
-    }
-
-    function isValidAnswerlatticeFeedbackSourceContext(data) {
-      return data.sourceContext == null
-        || (
-          data.sourceContext is map
-          && data.sourceContext.keys().hasAll(['uId', 'name', 'email'])
-          && data.sourceContext.keys().hasOnly(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId'])
-          && isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.uId)
-          && isValidAnswerlatticeFeedbackText(data.sourceContext.name)
-          && isValidAnswerlatticeFeedbackText(data.sourceContext.email)
-          && (!data.sourceContext.keys().hasAny(['phone']) || isValidAnswerlatticeFeedbackText(data.sourceContext.phone))
-          && (
-            !data.sourceContext.keys().hasAny(['pId'])
-            || (
-              data.sourceContext.pId is string
-              && ['ML', 'AL', 'CC', 'MC', 'SD', 'SF', 'GR', 'KS'].toSet().hasAny([data.sourceContext.pId])
-            )
-          )
-          && (!data.sourceContext.keys().hasAny(['tId']) || isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.tId))
-          && (!data.sourceContext.keys().hasAny(['sId']) || isValidAnswerlatticeFeedbackIdentifier(data.sourceContext.sId))
-        );
-    }
-
-    function answerlatticeFeedbackFeatureIssueValues() {
-      return [
-        'Account access', 'Billing and invoices', 'Onboarding and setup',
-        'Team roles and permissions', 'Settings and configuration',
-        'Integrations', 'Data import or export', 'Notifications and email',
-        'Reports and analytics', 'Performance or reliability'
-      ];
-    }
-
-    function answerlatticeFeedbackPopularRequestValues() {
-      return [
-        'Clearer setup guides', 'More integration options',
-        'Better billing controls', 'Easier data export and reports',
-        'Faster issue status updates'
-      ];
-    }
-
-    function isValidAnswerlatticeFeedbackVote(vote) {
-      return vote is map
-        && vote.keys().hasAll(['feature', 'interested'])
-        && vote.keys().hasOnly(['feature', 'interested'])
-        && vote.feature is string
-        && answerlatticeFeedbackPopularRequestValues().toSet().hasAny([vote.feature])
-        && vote.interested is bool;
-    }
-
-    function hasUniqueAnswerlatticeFeedbackVotes(votes) {
-      return (votes.size() < 2 || votes[0].feature != votes[1].feature)
-        && (votes.size() < 3 || (votes[0].feature != votes[2].feature && votes[1].feature != votes[2].feature))
-        && (votes.size() < 4 || (votes[0].feature != votes[3].feature && votes[1].feature != votes[3].feature && votes[2].feature != votes[3].feature))
-        && (votes.size() < 5 || (votes[0].feature != votes[4].feature && votes[1].feature != votes[4].feature && votes[2].feature != votes[4].feature && votes[3].feature != votes[4].feature));
-    }
-
-    function isValidAnswerlatticeFeedbackVotes(data) {
-      return !data.keys().hasAny(['votedPopularRequests'])
-        || (
-          data.votedPopularRequests is list
-          && data.votedPopularRequests.size() > 0
-          && data.votedPopularRequests.size() <= 5
-          && isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[0])
-          && (data.votedPopularRequests.size() < 2 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[1]))
-          && (data.votedPopularRequests.size() < 3 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[2]))
-          && (data.votedPopularRequests.size() < 4 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[3]))
-          && (data.votedPopularRequests.size() < 5 || isValidAnswerlatticeFeedbackVote(data.votedPopularRequests[4]))
-          && hasUniqueAnswerlatticeFeedbackVotes(data.votedPopularRequests)
-        );
-    }
-
     function isValidAnswerlatticeFeedbackSurfaceValue(data, field) {
       return !data.keys().hasAny([field])
         || data[field] == null
@@ -3950,41 +3858,6 @@ service cloud.firestore {
             && request.resource.data.surfaceAssignedAt == request.time
           )
         );
-    }
-
-    function answerlatticeContentFeedbackKeys() {
-      return [
-        'list', 'pId', 'sourceContext', 'traceId', 'requestId', 'sId', 'tId',
-        'role', 'uId', 'modifiedBy', 'modifiedOn', 'createdOn', 'createdBy'
-      ];
-    }
-
-    function isValidAnswerlatticeContentFeedbackSourceContext(sourceContext) {
-      return sourceContext is map
-        && sourceContext.keys().hasAll(['uId', 'name', 'email'])
-        && sourceContext.keys().hasOnly(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId'])
-        && isValidAnswerlatticeFeedbackIdentifier(sourceContext.uId)
-        && sourceContext.name is string
-        && sourceContext.name.size() > 0
-        && sourceContext.name.size() <= 160
-        && sourceContext.email is string
-        && sourceContext.email.size() <= 180
-        && (!sourceContext.keys().hasAny(['phone']) || (sourceContext.phone is string && sourceContext.phone.size() > 0 && sourceContext.phone.size() <= 80))
-        && (
-          !sourceContext.keys().hasAny(['pId'])
-          || (
-            sourceContext.pId is string
-            && ['ML', 'AL', 'CC', 'MC', 'SD', 'SF', 'GR', 'KS'].toSet().hasAny([sourceContext.pId])
-          )
-        )
-        && (!sourceContext.keys().hasAny(['tId']) || (sourceContext.tId is int && sourceContext.tId > 0))
-        && (!sourceContext.keys().hasAny(['sId']) || (sourceContext.sId is int && sourceContext.sId > 0));
-    }
-
-    function isAnswerlatticeContentFeedbackActor(item) {
-      return isPlatformAdmin()
-        || item.uId == request.auth.uid
-        || item.uId == request.auth.token.get('uId', '');
     }
 
     function hasAnswerlatticeContentFeedbackPermission() {
@@ -4504,31 +4377,5 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // NotificationOS delivery identity, provider receipts, and consent audit
-    // are server-only. Owners mutate the current settings projection through
-    // the authenticated API so consent evidence cannot be bypassed.
-    match /emailOsDeliveries/{documentId} {
-      allow read, write: if false;
-    }
-
-    match /emailOsWebhookReceipts/{documentId} {
-      allow read, write: if false;
-    }
-
-    match /emailOsSuppressions/{documentId} {
-      allow read, write: if false;
-    }
-
-    match /whatsappOsMessageRefs/{documentId} {
-      allow read, write: if false;
-    }
-
-    match /whatsappOsWebhookReceipts/{documentId} {
-      allow read, write: if false;
-    }
-
-    match /whatsappOsConsentEvents/{documentId} {
-      allow read, write: if false;
-    }
   }
 }

@@ -297,9 +297,17 @@ assert(
 const firestoreRules = read("firestore.rules");
 assert(
   firestoreRules.includes(
-    "preservesNotificationOsSettings(resource.data, request.resource.data)",
+    "'notificationSettings'",
   ),
   "Browser store updates must preserve server-managed notification settings",
+);
+assert(
+  firestoreRules.includes("match /{document=**}") &&
+    firestoreRules.includes("allow read, write: if false;"),
+  "MenuList rules must retain the global default-deny boundary",
+);
+const notificationRulesTest = read(
+  "scripts/verification/test-notification-os-rules.ts",
 );
 for (const collection of [
   "emailOsDeliveries",
@@ -310,8 +318,8 @@ for (const collection of [
   "whatsappOsConsentEvents",
 ]) {
   assert(
-    firestoreRules.includes(`match /${collection}/{documentId}`),
-    `${collection} must have an explicit server-only rules boundary`,
+    notificationRulesTest.includes(`'${collection}'`),
+    `${collection} must remain in the executable default-deny rules matrix`,
   );
 }
 const answerlatticeRules = read("firestore-answerlattice.rules");
