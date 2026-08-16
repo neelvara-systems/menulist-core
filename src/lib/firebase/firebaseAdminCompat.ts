@@ -23,6 +23,16 @@ import {
 import { getAuth, type Auth as FirebaseAuth, type UpdateRequest as FirebaseUpdateRequest } from 'firebase-admin/auth';
 import { getStorage, type Storage as FirebaseStorage } from 'firebase-admin/storage';
 
+const DEFAULT_FIREBASE_APP_NAME = '[DEFAULT]';
+const firestoreCompatInstances = new Map<string, FirebaseFirestore>();
+
+export const registerFirebaseFirestoreCompatInstance = (
+    firebaseApp: FirebaseApp,
+    firestore: FirebaseFirestore,
+): void => {
+    firestoreCompatInstances.set(firebaseApp.name, firestore);
+};
+
 /**
  * Narrow compatibility surface for repository code that still consumes
  * `admin.firestore.*` values and types. Runtime initialization and services use
@@ -56,6 +66,10 @@ export namespace admin {
     }
 
     export function firestore(firebaseApp?: FirebaseApp): FirebaseFirestore {
+        const registeredFirestore = firestoreCompatInstances.get(
+            firebaseApp?.name || DEFAULT_FIREBASE_APP_NAME,
+        );
+        if (registeredFirestore) return registeredFirestore;
         return firebaseApp ? getFirestore(firebaseApp) : getFirestore();
     }
 

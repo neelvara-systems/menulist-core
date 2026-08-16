@@ -11,6 +11,13 @@
 - Added direct pinned Cloud Storage ownership and executable regression coverage
   for Firestore construction, default-bucket resolution, and shared auth-client
   reuse. The failed first custom-`qa` build changed no domain or runtime data.
+- Registered the selected Firestore client by Firebase app name in the Admin
+  compatibility layer, so established `admin.firestore()` transaction callers
+  reuse the keyless MenuList or Answerlattice client without crossing projects.
+- The replacement custom-`qa` build for commit `9dacb253` exposed this remaining
+  compatibility path while collecting `/api/auth/claim-account`; it also changed
+  no domains or runtime data. Focused module-load coverage now proves that route
+  can initialize under the exact MenuList QA keyless environment shape.
 
 ## August 15, 2026 - Four-Project Vercel Keyless Identity Contract
 

@@ -7,7 +7,7 @@
  *
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md v4.3.0
  */
-import { admin } from './firebaseAdminCompat';
+import { admin, registerFirebaseFirestoreCompatInstance } from './firebaseAdminCompat';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -268,6 +268,9 @@ const answerlatticeFirestoreAdmin = answerlatticeAdminApp
             ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
             : getAdminFirestore(answerlatticeAdminApp)))
     : null;
+if (answerlatticeAdminApp && answerlatticeFirestoreAdmin) {
+    registerFirebaseFirestoreCompatInstance(answerlatticeAdminApp, answerlatticeFirestoreAdmin);
+}
 const answerlatticeStorageAdmin = answerlatticeAdminApp
     ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityGoogleAuth
         ? createWorkloadIdentityStorageAdmin({

@@ -4073,9 +4073,17 @@ of the former setup. The approved final hosted contract no longer uses that key:
   collected `/client/sitemap.xml`. Firebase Admin 14 rejected the generic
   custom credential when constructing Firestore before a request-scoped OIDC
   token was needed. TypeScript, lint, and compilation had already passed. Keep
-  all QA domains unmoved while the shared Workload Identity Firestore/Storage
-  client compatibility fix is verified and pushed; the next `staging` push
-  will create the replacement `qa` deployment through Branch Tracking.
+  all QA domains unmoved. The replacement deployment
+  `dpl_6hJ4p8SEMBg59iwDM8n1c3RNmzQX` for commit `9dacb253` also targeted custom
+  environment `qa` and confirmed the exact OIDC subject environment is `qa`,
+  but failed while collecting `/api/auth/claim-account`: established
+  `admin.firestore()` compatibility callers still asked Firebase Admin to
+  reconstruct Firestore from the custom credential. The selected Firestore
+  client is now registered by Firebase app name so default MenuList and named
+  Answerlattice callers remain isolated while reusing their keyless clients.
+  Focused QA module-load verification passes. Push this compatibility fix and
+  let Branch Tracking create the next replacement `qa` deployment before any
+  domain promotion.
 
 8. In Vercel custom environment `qa` for exact branch `staging`, use the hosted values below:
 

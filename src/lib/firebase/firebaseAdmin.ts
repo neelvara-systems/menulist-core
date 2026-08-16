@@ -1,4 +1,4 @@
-import { admin } from './firebaseAdminCompat';
+import { admin, registerFirebaseFirestoreCompatInstance } from './firebaseAdminCompat';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
@@ -84,6 +84,7 @@ const firestoreAdmin = workloadIdentity && workloadIdentityGoogleAuth
         projectId: workloadIdentity.projectId,
     })
     : admin.firestore(firebaseAdminApp);
+registerFirebaseFirestoreCompatInstance(firebaseAdminApp, firestoreAdmin);
 const storageAdmin = workloadIdentity && workloadIdentityGoogleAuth
     ? createWorkloadIdentityStorageAdmin({
         app: firebaseAdminApp,

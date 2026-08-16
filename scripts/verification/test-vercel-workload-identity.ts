@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import type { App } from 'firebase-admin/app';
 import {
+    admin as firebaseAdminCompat,
+    registerFirebaseFirestoreCompatInstance,
+} from '../../src/lib/firebase/firebaseAdminCompat';
+import {
     createProviderAudienceTokenSupplier,
     createWorkloadIdentityGoogleAuth,
 } from '../../src/lib/google/vercelWorkloadIdentity';
@@ -189,7 +193,26 @@ const workloadIdentityFirestore = createWorkloadIdentityFirestore({
 });
 assert.equal(workloadIdentityFirestore.collection('workload-identity-test').id, 'workload-identity-test');
 
-const firebaseApp = {} as App;
+const firebaseApp = { name: '[DEFAULT]' } as App;
+registerFirebaseFirestoreCompatInstance(firebaseApp, workloadIdentityFirestore);
+assert.equal(firebaseAdminCompat.firestore(), workloadIdentityFirestore);
+assert.equal(firebaseAdminCompat.firestore(firebaseApp), workloadIdentityFirestore);
+
+const answerlatticeFirebaseApp = { name: 'answerlattice-admin' } as App;
+const answerlatticeWorkloadIdentityFirestore = createWorkloadIdentityFirestore({
+    auth: menulistGoogleAuth,
+    projectId: 'answerlattice',
+});
+registerFirebaseFirestoreCompatInstance(
+    answerlatticeFirebaseApp,
+    answerlatticeWorkloadIdentityFirestore,
+);
+assert.equal(
+    firebaseAdminCompat.firestore(answerlatticeFirebaseApp),
+    answerlatticeWorkloadIdentityFirestore,
+);
+assert.equal(firebaseAdminCompat.firestore(), workloadIdentityFirestore);
+
 const workloadIdentityStorage = createWorkloadIdentityStorageAdmin({
     app: firebaseApp,
     auth: menulistGoogleAuth,

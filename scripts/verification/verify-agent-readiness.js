@@ -391,6 +391,7 @@ function verifyEnvironmentTargets() {
   const urls = read('src/constants/urls.ts');
   const envValidation = read('src/lib/env/validateEnv.ts');
   const firebaseAdminSource = read('src/lib/firebase/firebaseAdmin.ts');
+  const firebaseAdminCompatSource = read('src/lib/firebase/firebaseAdminCompat.ts');
   const answerlatticeFirebaseAdminSource = read('src/lib/firebase/answerlatticeFirebaseAdmin.ts');
   const menulistWorkloadIdentity = read('src/lib/google/menulistWorkloadIdentity.ts');
   const answerlatticeWorkloadIdentity = read('src/lib/google/answerlatticeWorkloadIdentity.ts');
@@ -860,6 +861,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(answerlatticeFirebaseAdminSource, 'createWorkloadIdentityStorageAdmin', 'Answerlattice Storage uses the typed Workload Identity GoogleAuth client');
   assertIncludes(workloadIdentityFirebaseServices, 'authClient: auth', 'Storage receives the shared Workload Identity GoogleAuth client');
   assertIncludes(workloadIdentityFirebaseServices, 'new Firestore({', 'Firestore is constructed without Firebase Admin custom-credential rejection');
+  assertIncludes(firebaseAdminCompatSource, 'firestoreCompatInstances.get(', 'Firebase Admin compatibility calls reuse the registered product Firestore client');
+  assertIncludes(firebaseAdminSource, 'registerFirebaseFirestoreCompatInstance(firebaseAdminApp, firestoreAdmin)', 'MenuList registers its selected Firestore client for compatibility callers');
+  assertIncludes(answerlatticeFirebaseAdminSource, 'registerFirebaseFirestoreCompatInstance(answerlatticeAdminApp, answerlatticeFirestoreAdmin)', 'Answerlattice registers its selected Firestore client by app name');
   assertIncludes(menulistCloudTasks, 'authClient: getCloudTasksWorkloadIdentityAuthClient()', 'Cloud Tasks typed Workload Identity auth client');
   assertIncludes(menulistCloudTasks, 'getMenulistWorkloadIdentityAuthClient() as unknown as CloudTasksAuthClient', 'Cloud Tasks shared Workload Identity auth client compatibility boundary');
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-qa'", 'MenuList QA OIDC regression');

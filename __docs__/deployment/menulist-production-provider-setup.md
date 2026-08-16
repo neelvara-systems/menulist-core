@@ -509,12 +509,18 @@ but no Functions package, secret, env key, or deployment changes under
    not admit a generic custom credential for Firestore. TypeScript, lint, and
    compilation passed before that failure. Keep all four QA domains on their
    existing branch assignment while the shared Workload Identity
-   Firestore/Storage compatibility fix is verified and pushed. Prove the
-   replacement generated deployment URL first, then move the four QA domains
-   and run the canonical-host smoke. Do not create the `menulist-prod` binding
-   until that smoke has passed and the former static QA Admin key has been
-   removed from the legacy Preview configuration and revoked. Answerlattice QA
-   and production remain pending until both MenuList passes close.
+   Firestore/Storage compatibility fix is verified and pushed. The first
+   replacement, deployment `dpl_6hJ4p8SEMBg59iwDM8n1c3RNmzQX` from commit
+   `9dacb253`, confirmed `environment: qa` in the emitted OIDC claims but exposed
+   one remaining `admin.firestore()` compatibility path while collecting
+   `/api/auth/claim-account`. The selected Firestore client is now registered
+   by Firebase app name so existing transaction callers reuse the keyless
+   product client without crossing MenuList and Answerlattice. Prove the next
+   generated deployment URL first, then move the four QA domains and run the
+   canonical-host smoke. Do not create the `menulist-prod` binding until that
+   smoke has passed and the former static QA Admin key has been removed from the
+   legacy Preview configuration and revoked. Answerlattice QA and production
+   remain pending until both MenuList passes close.
 
 ## Phase B - Firebase And Google Cloud Foundation
 
