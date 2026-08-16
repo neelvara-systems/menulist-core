@@ -889,6 +889,18 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-B13`', 'MenuList production provider ledger App Check registration');
   assertIncludes(menulistProductionProviderSetup, 'remains **Unenforced**', 'MenuList production provider ledger App Check monitoring boundary');
   assertIncludes(menulistProductionProviderSetup, 'No Vercel or Firebase deployment was triggered.', 'MenuList production provider ledger no-deploy evidence');
+  assertIncludes(menulistProductionProviderSetup, 'homepage `https://menulist.ai`', 'MenuList production provider ledger OAuth homepage contract');
+  assertIncludes(menulistProductionProviderSetup, '`https://menulist.ai/privacy-policy`', 'MenuList production provider ledger OAuth privacy policy contract');
+  assertIncludes(menulistProductionProviderSetup, '`https://menulist.ai/terms-of-service`', 'MenuList production provider ledger OAuth terms contract');
+  assertIncludes(menulistProductionProviderSetup, 'authorized domain\n  `menulist.ai`', 'MenuList production provider ledger OAuth authorized domain contract');
+  assertIncludes(menulistProductionProviderSetup, '`support@neelvara.com` Google Group', 'MenuList production OAuth support group contract');
+  assertIncludes(menulistProductionProviderSetup, '`contactus@` and\n    `help@` were not created', 'MenuList production canonical contact boundary');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-C01`', 'MenuList production OAuth branding completion');
+  assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-C06`', 'MenuList production NextAuth secret completion');
+  assertIncludes(menulistProductionProviderSetup, '**MenuList Production Web**', 'MenuList production dedicated OAuth client evidence');
+  assertIncludes(menulistProductionProviderSetup, 'No\n    deployment was triggered by this configuration work.', 'MenuList production OAuth no-deploy boundary');
+  assertIncludes(menulistProductionProviderSetup, '`PROD-F09` Move the MenuList OAuth audience', 'MenuList production OAuth publishing release gate');
+  assertIncludes(deploymentReadme, 'Continue at `PROD-C07`', 'Deployment hub current production resume point');
   assertIncludes(menulistProductionProviderSetup, '`firebase-adminsdk-fbsvc@menulist-prod.iam.gserviceaccount.com`', 'MenuList production provider ledger exact Firebase Admin service account');
   assertIncludes(menulistProductionProviderSetup, 'shows\n  **No keys**', 'MenuList production provider ledger empty Firebase Admin key inventory');
   assertIncludes(menulistProductionProviderSetup, 'effective status is\n  **Enforced**', 'MenuList production provider ledger inherited service-account key-creation enforcement');

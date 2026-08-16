@@ -227,9 +227,16 @@ account/payments profile and relinking the projects.
 Create these Neelvara addresses:
 
 - `hello@neelvara.com`
+- `support@neelvara.com` as a Google Group owned by the monitored company
+  administrator; Google Auth Platform can expose this group as its support
+  contact while ordinary user aliases are not selectable there
 - `legal@neelvara.com`
 - `privacy@neelvara.com`
 - `security@neelvara.com`
+
+Use aliases to the same licensed company mailbox for the non-group addresses.
+Do not create duplicate `contactus@neelvara.com` or `help@neelvara.com`
+identities unless the public contact contract is deliberately changed.
 
 Create these MenuList addresses:
 

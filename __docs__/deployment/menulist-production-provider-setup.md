@@ -666,18 +666,53 @@ new database; it does not overwrite `(default)` in place.
 
 ## Phase C - Authentication And Google-Owned Provider Setup
 
-- [ ] `PROD-C01` Configure the production Google OAuth consent/branding under
-  company ownership using truthful current business details.
-- [ ] `PROD-C02` Create a dedicated production OAuth Web client; do not reuse
+- [x] `PROD-C01` Configure the production Google OAuth consent/branding under
+  company ownership using truthful current business details. Use app name
+  `MenuList`, homepage `https://menulist.ai`, privacy policy
+  `https://menulist.ai/privacy-policy`, Terms of Service
+  `https://menulist.ai/terms-of-service`, and authorized domain
+  `menulist.ai`. Select the monitored `support@neelvara.com` Google Group as
+  the user support email and `admin@neelvara.com` as the developer contact.
+  The support identity is a Group owned by the company administrator because
+  Google Auth Platform exposes managed Groups, not ordinary user aliases, in
+  this selector. Move to `support@menulist.ai` only after `menulist.ai` is
+  deliberately added to Google Workspace and that product-facing Group is
+  proven eligible. Do not add QA, Vercel preview, tenant, Answerlattice, or
+  unrelated sister-product domains. Saving or publishing branding does not
+  authorize production deployment or OAuth client creation.
+  - `2026-08-16` - Workspace readback confirmed the existing
+    `billing@neelvara.com`, `security@neelvara.com`, and
+    `dmarc@neelvara.com` aliases. `hello@neelvara.com`,
+    `legal@neelvara.com`, and `privacy@neelvara.com` were added to the same
+    licensed `admin@neelvara.com` mailbox. The `support@neelvara.com` Google
+    Group was created with that administrator as owner, external posting
+    enabled, conversation/member visibility restricted to group roles, and
+    membership restricted to invited users. Google Auth Platform then exposed
+    the Group in the production support-email selector. `contactus@` and
+    `help@` were not created because they duplicate the canonical hello/support
+    contact contract.
+- [x] `PROD-C02` Create a dedicated production OAuth Web client; do not reuse
   QA credentials.
-- [ ] `PROD-C03` Add exact production JavaScript origins for
+- [x] `PROD-C03` Add exact production JavaScript origins for
   `https://app.menulist.ai` only where the client requires them.
-- [ ] `PROD-C04` Add exact production callback URI
+- [x] `PROD-C04` Add exact production callback URI
   `https://app.menulist.ai/api/auth/callback/google`.
-- [ ] `PROD-C05` Vault the production OAuth client ID/secret and record owner,
+- [x] `PROD-C05` Vault the production OAuth client ID/secret and record owner,
   creation date, and rotation/revocation procedure.
-- [ ] `PROD-C06` Create a distinct production `NEXTAUTH_SECRET`; never copy the
+- [x] `PROD-C06` Create a distinct production `NEXTAUTH_SECRET`; never copy the
   QA value.
+  - `2026-08-16` - Google Auth Platform created one enabled Web application
+    client named **MenuList Production Web**. Its only JavaScript origin is
+    `https://app.menulist.ai` and its only callback is
+    `https://app.menulist.ai/api/auth/callback/google`. The client ID and
+    private client secret were transferred without printing them into
+    Vercel-managed sensitive variables scoped only to Production. A fresh
+    production-only `NEXTAUTH_SECRET` and
+    `NEXTAUTH_URL=https://app.menulist.ai` were stored in the same scope. The
+    credential owner is `admin@neelvara.com`; rotate or revoke the client in
+    Google Auth Platform, replace the two Vercel OAuth variables, and create a
+    fresh deployment only through the release-approved Vercel path. No
+    deployment was triggered by this configuration work.
 - [ ] `PROD-C07` Create or approve the paid production Gemini project/key
   ownership model and its billing/spend-alert controls.
 - [ ] `PROD-C08` Create only the Gemini keys admitted by current code, restrict
@@ -768,6 +803,11 @@ the production release gate is explicitly approved.
 - [ ] `PROD-F08` Complete production-host, browser/device, data-isolation,
   payment, messaging, backup/restore, observability, and rollback smoke before
   recording the final launch verdict.
+- [ ] `PROD-F09` Move the MenuList OAuth audience from External/Testing to
+  Production only at the release gate, after required scopes, public branding
+  URLs, domain ownership, test-user smoke, and any Google verification
+  requirement are confirmed. Provider preparation alone must not publish the
+  OAuth app.
 
 ## Related Authorities
 

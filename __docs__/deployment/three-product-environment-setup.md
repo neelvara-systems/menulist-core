@@ -483,11 +483,17 @@ Create aliases or groups instead of paid users for every address below:
 Neelvara:
 
 - `hello@neelvara.com`
+- `support@neelvara.com` as a Google Group owned by the monitored company
+  administrator so it can be selected as a Google OAuth support contact
 - `billing@neelvara.com`
 - `security@neelvara.com`
 - `dmarc@neelvara.com`
 - `legal@neelvara.com`
 - `privacy@neelvara.com`
+
+Route the remaining Neelvara addresses above to the same licensed company
+mailbox as aliases. Do not add duplicate `contactus@neelvara.com` or
+`help@neelvara.com` identities unless the public contact contract is changed.
 
 MenuList:
 
