@@ -405,8 +405,8 @@ Blocked until staging feature certification and production release gates pass:
   Upstash credentials caused `/pipeline` HTTP 401 and `/api/auth/set-claims`
   HTTP 503. Correcting the QA Upstash pair produced repeated 200 responses for
   claim setting and session reads plus authenticated owner Firestore-backed
-  route loads. The apex, `www`, app `/api/version`, and a tenant subdomain all
-  return 200 through the application deployment. A disposable scoped probe
+  route loads. At that checkpoint the apex, `www`, app `/api/version`, and a
+  tenant subdomain all returned 200 through the application deployment. A disposable scoped probe
   passed exact custom-`qa` claims, Google STS, service-account impersonation,
   `signBlob`, Storage object create/read/delete, and Cloud Tasks task creation
   on `batch-image-generation`; its intentionally invalid payload did not call

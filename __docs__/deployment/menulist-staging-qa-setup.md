@@ -4072,10 +4072,12 @@ of the former setup. The approved final hosted contract no longer uses that key:
   resolved that boundary. Current runtime logs show repeated HTTP 200 responses
   for `/api/auth/set-claims` and `/api/auth/session`, plus authenticated owner
   loads for `/today`, `/projects`, `/billing`, and `/business-settings`.
-  Canonical domains `menulist.digital`, `www.menulist.digital`,
+  At this runtime-proof checkpoint, canonical domains `menulist.digital`, `www.menulist.digital`,
   `app.menulist.digital`, and `*.menulist.digital`, plus the custom-environment
-  Vercel alias, now resolve to that application deployment. Fresh HTTP readback
-  returns 200 for the apex, `www`, `/api/version`, and a tenant subdomain.
+  Vercel alias, resolved to that application deployment. HTTP readback returned
+  200 for the apex, `www`, `/api/version`, and a tenant subdomain. Later
+  branch-tracked `qa` builds may replace the deployment ID while retaining the
+  same four canonical environment assignments.
   A scoped disposable probe using the same custom `qa` identity reconfirmed the
   exact Vercel claims and passed Google STS, service-account impersonation,
   `signBlob`, Storage object create/read/delete, and Cloud Tasks task creation on
