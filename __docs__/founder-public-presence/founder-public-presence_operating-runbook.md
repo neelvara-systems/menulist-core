@@ -114,6 +114,19 @@ explicit instruction covering that action.
 After publication, update the content ledger status and add the post URL when
 available.
 
+### 5A. Exact execution packet
+
+Every founder handoff for a post, reply, comment, or similar external content
+action must be ready to execute without another research or strategy step. The
+handoff includes the exact channel, target URL and account, final copy with
+line breaks, character and native-format checks, evidence and privacy/product
+boundaries, rationale, the exact Asia/Kolkata publication window, the reason
+for that window, the missed-window instruction, and the one-line completion
+protocol. For replies and comments, Codex verifies the target post and the
+prepared composer read-only immediately before handing it over. The founder
+reviews and performs the final manual action; Codex does not click the final
+publish or send control.
+
 ### 6. Learn
 
 After enough observation time for the channel, record:

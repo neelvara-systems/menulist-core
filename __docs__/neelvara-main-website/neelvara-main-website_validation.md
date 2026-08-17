@@ -8,6 +8,17 @@
 
 ---
 
+## August 17, 2026 WhatsApp Open Graph Card Audit
+
+- Replaced the logo-only Open Graph derivative with an opaque `1200x630` branded social card so WhatsApp and other link previews explain the company before the page is opened.
+- The card now uses the public-facing reading order: one Neelvara wordmark, a plain-language purpose statement, MenuList and Answerlattice product explanations, and one `https://neelvara.com` URL in the bottom-right corner. Formal trade-name and full-description details remain in page metadata and structured data.
+- Added shared identity constants for the trade name, public brand, and full business description. The Organization JSON-LD now exposes `alternateName: Neelvara` and the full approved description.
+- Kept the existing page-specific Open Graph/Twitter metadata contract and pointed every Neelvara page to the same branded card asset.
+- Updated the asset verifier so transparent-corner requirements apply to logo, favicon, touch, and manifest assets, while the OG asset is explicitly required to be opaque.
+- Regenerated the card through `npm run generate:neelvara-assets` and visually inspected the final PNG at its native `1200x630` dimensions.
+
+---
+
 ## August 10, 2026 Company-Site Benchmark And Simplification Audit
 
 - Benchmarked the current Neelvara surface against the official Automattic, 37signals, and Tiny company/portfolio sites. Adopted their direct company-first hierarchy, restrained product proof, and short route-to-product model without importing their unrelated claims or brand systems.
@@ -26,7 +37,7 @@
 - Local route checks pass for all seven pages, `robots.txt`, `sitemap.xml`, `security.txt`, and the real `404`. Rendered checks pass at `1440x1000`, `390x844`, and `320x720` with no overflow, broken assets, small visible targets, retired product names, browser warnings/errors, or reached reveal targets left pending.
 - Metadata checks confirm one H1 per page, page-specific title/description/canonical/Open Graph values, one parseable Organization/WebSite JSON-LD graph, and only MenuList and Answerlattice in `knowsAbout`.
 - Focused Neelvara lint, logo-asset verification, environment-target verification, documentation-link integrity, documented-command verification, and scoped diff integrity pass.
-- Repository-wide TypeScript is currently blocked outside this website by `TS2802` errors in `src/lib/campaigncue/exportArchiveClient.ts:48` and `:89`; the compiler reports no Neelvara diagnostic. Those unrelated CampaignCue changes were not modified in this audit.
+- Repository-wide TypeScript passes after the OG metadata/card update; no Neelvara diagnostics are reported.
 
 ---
 

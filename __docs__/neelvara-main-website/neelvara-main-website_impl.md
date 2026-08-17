@@ -59,7 +59,7 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered on transparent square canvases |
 | `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the supplied mark |
 | `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the supplied mark without a visible frame |
-| `public/neelvara-og-image.png` | Transparent Open Graph derivative using the supplied mark |
+| `public/neelvara-og-image.png` | Opaque 1200x630 Open Graph/Twitter card showing Neelvara Systems, public brand Neelvara, the operated products, website, and approved business description |
 | `scripts/website-assets/generate-neelvara-logo-assets.js` | Reproducible generator for the favicon SVG, PNG logo, favicon fallbacks, touch/manifest icons, and Open Graph derivative |
 | `scripts/verification/verify-neelvara-logo-assets.js` | Source-hash, compound-path, palette, transparency, dimensions, optical-centering, small-size contrast, manifest, metadata, 404, and structured-data reference verifier |
 
@@ -128,7 +128,7 @@ Implemented:
 - canonical URL helper in `src/constants/neelvara/website.ts`
 - metadata in `src/app/sites/neelvara/layout.tsx`
 - per-page metadata through `buildPageMetadata` and custom Products/Contact metadata
-- Open Graph image metadata using `public/neelvara-og-image.png`
+- Open Graph and Twitter metadata using the branded `public/neelvara-og-image.png` social card
 - `Organization` and `WebSite` JSON-LD in `content.tsx`
 - product-domain `robots.txt`
 - product-domain `sitemap.xml`

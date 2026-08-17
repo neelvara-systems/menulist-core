@@ -1,10 +1,14 @@
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
 export const NEELVARA_SITE_URL = getProductDeploymentTarget('neelvara', 'production').url;
+export const NEELVARA_TRADE_NAME = 'Neelvara Systems';
+export const NEELVARA_PUBLIC_BRAND = 'Neelvara';
 export const NEELVARA_SITE_TITLE =
     'Neelvara Systems - Operating Company for MenuList and Answerlattice';
 export const NEELVARA_SITE_DESCRIPTION =
-    'Neelvara Systems operates MenuList and Answerlattice, focused software for public business facts and approved support answers.';
+    'Neelvara Systems (Neelvara) operates MenuList and Answerlattice for customer-facing business information.';
+export const NEELVARA_BUSINESS_DESCRIPTION =
+    'Software development and SaaS platforms for customer-facing business information management, online business profiles, digital listings, catalogues and menus, reputation and discovery information systems, data processing, and automation related to customer-facing business information.';
 export const NEELVARA_LOGO_PATH = '/neelvara-logo.svg';
 export const NEELVARA_OG_IMAGE_PATH = '/neelvara-og-image.png';
 

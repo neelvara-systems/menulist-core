@@ -152,6 +152,29 @@ advice merely to satisfy cadence.
 - Preserve captured, validated, drafting, founder-review, approved, published,
   measuring, reusable, deferred, rejected, retired, and blocked history.
 
+## Exact Execution Packet Rule
+
+Before asking the founder to publish, reply, comment, or perform any similar
+external content action, Codex must prepare a complete execution packet. The
+packet must contain:
+
+- the channel and action type;
+- the exact target account and post URL, verified read-only when available;
+- the exact final text, including intentional line breaks and punctuation;
+- the topic-selection rationale and audience problem;
+- the evidence/source basis and the privacy/product boundary;
+- the native-format, character-count, media, link, and disclosure checks;
+- the exact Asia/Kolkata date and bounded time window, with why that window was
+  selected;
+- the missed-window instruction and one result line for `DONE`, `BLOCKED`, or
+  `SKIP`.
+
+For replies and comments, inspect the target post and the prepared composer
+immediately before approval and confirm that the composer is addressed to the
+intended account. The founder should only need to review, approve, and perform
+the final manual external action. Never hand over incomplete research, a vague
+topic, an approximate URL, or copy that still requires strategic decisions.
+
 ## PresenceOS Boundary
 
 PresenceOS consists of maintained documentation, approved local visual assets,

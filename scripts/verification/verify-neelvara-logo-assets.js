@@ -162,11 +162,17 @@ async function main() {
     const stats = await imageStats(relativePath);
     assert(stats.width === expectedWidth && stats.height === expectedHeight, `${relativePath} must be ${expectedWidth}x${expectedHeight}`);
     assert(stats.visibleWidth > 0 && stats.visibleHeight > 0, `${relativePath} must contain visible logo pixels`);
-    assert(stats.transparentCorners, `${relativePath} must keep transparent corners without a visible frame`);
+    if (kind !== 'og') {
+      assert(stats.transparentCorners, `${relativePath} must keep transparent corners without a visible frame`);
+    }
     verifyBalance(relativePath, stats, 'x', expectedWidth <= 32 ? 1 : 3);
 
     if (kind === 'master' || kind === 'og') {
       verifyBalance(relativePath, stats, 'y', 3);
+    }
+
+    if (kind === 'og') {
+      assert(!stats.transparentCorners, `${relativePath} must use an opaque social-card background`);
     }
 
     if (kind === 'favicon') {

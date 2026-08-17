@@ -83,9 +83,10 @@ Logo rule:
 - the approved logo palette is exactly Clear Blue `#2384FF`, Neel Blue `#1457D9`, Royal Indigo `#2737C8`, and Controlled Violet `#6542E8`
 - the visible website logo must not sit inside a square, rounded-rectangle, card, or boxed frame
 - PNG derivatives are only for browser/favicon, Open Graph, or platform compatibility surfaces
+- `public/neelvara-og-image.png` is an opaque 1200x630 social card, not a transparent logo export. It should explain the public brand in one glance with the logo, a plain-language purpose statement, the two operated products, and one bottom-right `https://neelvara.com` URL. Formal trade-name and full-description details remain in page metadata and structured data.
 - `public/neelvara-favicon.svg` is the preferred browser favicon and reuses the exact supplied compound path and gradient on a balanced transparent square canvas without path transforms or color changes
-- favicon PNG fallbacks, Apple touch icon, manifest PNG derivatives, the compatibility PNG, and the Open Graph image are generated with `npm run generate:neelvara-assets` and verified with `npm run verify:neelvara-logo-assets`
-- all generated derivatives must keep transparent corners, a centered silhouette, and no visible frame
+- favicon PNG fallbacks, Apple touch icon, manifest PNG derivatives, the compatibility PNG, and the Open Graph card are generated with `npm run generate:neelvara-assets` and verified with `npm run verify:neelvara-logo-assets`
+- logo, favicon, touch, and manifest derivatives keep transparent corners; the Open Graph card intentionally uses an opaque background for social-preview readability
 - wordmark/page text stays `#071323`
 
 Avoid:

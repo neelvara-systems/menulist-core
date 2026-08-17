@@ -11,8 +11,8 @@
 1. Recheck `@proofandstate`; use the backup order only if unavailable.
 2. Set display name to `Proof & State`.
 3. Upload `assets/proof-and-state-avatar.png`.
-4. Upload `assets/proof-and-state-x-banner-upload.png`, the under-500-KB
-   derivative of the canonical X banner.
+4. Upload `assets/proof-and-state-x-banner-upload-v3.png`, the approved
+   mobile-safe, under-500-KB derivative of the canonical X banner.
 5. Use the bio and pinned post from the [strategy](./founder-public-presence_strategy.md).
 6. Add no location, product link, repository, personal site, birthday, or other
    social profile.

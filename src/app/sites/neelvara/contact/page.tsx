@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { LuExternalLink } from 'react-icons/lu';
 import {
     NEELVARA_OG_IMAGE_PATH,
+    NEELVARA_PUBLIC_BRAND,
     NEELVARA_PRODUCT_LINEUP,
     buildNeelvaraUrl,
 } from '../siteConfig';
@@ -15,14 +16,14 @@ export const metadata: Metadata = {
         title: 'Contact | Neelvara Systems',
         description: 'Company, legal, privacy, partnership, and business inquiry routes for Neelvara Systems.',
         url: buildNeelvaraUrl('/contact'),
-        siteName: 'Neelvara Systems',
+        siteName: NEELVARA_PUBLIC_BRAND,
         type: 'website',
         images: [
             {
                 url: buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH),
                 width: 1200,
                 height: 630,
-                alt: 'Neelvara Systems',
+                alt: 'Neelvara Systems, Neelvara, MenuList and Answerlattice',
             },
         ],
     },

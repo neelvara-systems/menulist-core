@@ -1,17 +1,20 @@
 import type { Metadata, Viewport } from 'next';
 import {
+    NEELVARA_BUSINESS_DESCRIPTION,
     NEELVARA_OG_IMAGE_PATH,
+    NEELVARA_PUBLIC_BRAND,
     NEELVARA_SITE_DESCRIPTION,
     NEELVARA_SITE_TITLE,
     NEELVARA_SITE_URL,
+    NEELVARA_TRADE_NAME,
     buildNeelvaraUrl,
 } from '@constant/neelvara/website';
 
 export const metadata: Metadata = {
-    applicationName: 'Neelvara Systems',
-    authors: [{ name: 'Neelvara Systems', url: NEELVARA_SITE_URL }],
-    creator: 'Neelvara Systems',
-    publisher: 'Neelvara Systems',
+    applicationName: NEELVARA_TRADE_NAME,
+    authors: [{ name: NEELVARA_TRADE_NAME, url: NEELVARA_SITE_URL }],
+    creator: NEELVARA_TRADE_NAME,
+    publisher: NEELVARA_TRADE_NAME,
     category: 'business information infrastructure',
     title: {
         default: NEELVARA_SITE_TITLE,
@@ -39,7 +42,9 @@ export const metadata: Metadata = {
         telephone: false,
     },
     keywords: [
-        'Neelvara Systems',
+        NEELVARA_TRADE_NAME,
+        NEELVARA_PUBLIC_BRAND,
+        NEELVARA_BUSINESS_DESCRIPTION,
         'customer-facing business information',
         'software infrastructure for business information',
         'MenuList',
@@ -51,7 +56,7 @@ export const metadata: Metadata = {
         title: NEELVARA_SITE_TITLE,
         description: NEELVARA_SITE_DESCRIPTION,
         url: NEELVARA_SITE_URL,
-        siteName: 'Neelvara Systems',
+        siteName: NEELVARA_PUBLIC_BRAND,
         locale: 'en_US',
         type: 'website',
         images: [
@@ -59,7 +64,7 @@ export const metadata: Metadata = {
                 url: buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH),
                 width: 1200,
                 height: 630,
-                alt: 'Neelvara Systems',
+                alt: 'Neelvara Systems, Neelvara, MenuList and Answerlattice',
             },
         ],
     },

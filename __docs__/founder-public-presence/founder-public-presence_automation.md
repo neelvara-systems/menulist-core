@@ -78,6 +78,15 @@ at a time only when it is distinct, evidence-backed, useful now, and not quota
 or catch-up volume. The founder's available time removes a capacity blocker; it
 does not itself create another action.
 
+Every proposed post, reply, comment, or similar external content action must be
+returned as an exact execution packet: verified target URL and account, exact
+final copy, rationale, evidence and privacy/product boundary, native-format
+and character checks, exact Asia/Kolkata date and bounded window, reason for
+the window, missed-window rule, and one `DONE`, `BLOCKED`, or `SKIP` result
+line. For replies and comments, the target and prepared composer are checked
+read-only immediately before handoff. The founder should only need to approve
+and perform the final manual action.
+
 ## Evening Accountability Output
 
 Use this exact compact structure:

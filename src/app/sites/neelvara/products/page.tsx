@@ -3,6 +3,7 @@ import { LuExternalLink, LuMail } from 'react-icons/lu';
 import {
     NEELVARA_CONTACT_EMAIL,
     NEELVARA_OG_IMAGE_PATH,
+    NEELVARA_PUBLIC_BRAND,
     NEELVARA_PRODUCT_LINEUP,
     NEELVARA_RELATIONSHIP_LINE,
     buildNeelvaraUrl,
@@ -18,14 +19,14 @@ export const metadata: Metadata = {
         title: 'Operated Products | Neelvara Systems',
         description: 'MenuList and Answerlattice are operated by Neelvara Systems. Visit their official product websites.',
         url: buildNeelvaraUrl('/products'),
-        siteName: 'Neelvara Systems',
+        siteName: NEELVARA_PUBLIC_BRAND,
         type: 'website',
         images: [
             {
                 url: buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH),
                 width: 1200,
                 height: 630,
-                alt: 'Neelvara Systems',
+                alt: 'Neelvara Systems, Neelvara, MenuList and Answerlattice',
             },
         ],
     },

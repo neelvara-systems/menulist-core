@@ -15,14 +15,17 @@ import {
     LuShieldCheck,
 } from 'react-icons/lu';
 import {
+    NEELVARA_BUSINESS_DESCRIPTION,
     NEELVARA_CONTACT_EMAIL,
     NEELVARA_LEGAL_EMAIL,
     NEELVARA_LOGO_PATH,
     NEELVARA_OG_IMAGE_PATH,
     NEELVARA_PRIVACY_EMAIL,
+    NEELVARA_PUBLIC_BRAND,
     NEELVARA_PRODUCT_LINEUP,
     NEELVARA_RELATIONSHIP_LINE,
     NEELVARA_SITE_DESCRIPTION,
+    NEELVARA_TRADE_NAME,
     buildNeelvaraUrl,
 } from './siteConfig';
 import ScrollRevealController from './ScrollRevealController';
@@ -159,7 +162,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     about: {
         slug: 'about',
         title: 'About Neelvara Systems',
-        description: 'Neelvara Systems operates MenuList and Answerlattice, focused software for public business facts and approved support answers.',
+        description: NEELVARA_SITE_DESCRIPTION,
         headline: 'The operating company behind MenuList and Answerlattice.',
         eyebrow: 'Company overview',
         cards: [
@@ -565,14 +568,14 @@ export function buildPageMetadata(page: PageData): Metadata {
             title: `${page.title} | Neelvara Systems`,
             description: page.description,
             url: buildNeelvaraUrl(`/${page.slug}`),
-            siteName: 'Neelvara Systems',
+            siteName: NEELVARA_PUBLIC_BRAND,
             type: 'website',
             images: [
                 {
                     url: buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH),
                     width: 1200,
                     height: 630,
-                    alt: 'Neelvara Systems',
+                    alt: 'Neelvara Systems, Neelvara, MenuList and Answerlattice',
                 },
             ],
         },
@@ -693,9 +696,11 @@ export function StructuredData() {
             {
                 '@type': 'Organization',
                 '@id': `${buildNeelvaraUrl('/')}#organization`,
-                name: 'Neelvara Systems',
+                name: NEELVARA_TRADE_NAME,
+                alternateName: NEELVARA_PUBLIC_BRAND,
                 url: buildNeelvaraUrl('/'),
                 logo: buildNeelvaraUrl(NEELVARA_LOGO_PATH),
+                description: NEELVARA_BUSINESS_DESCRIPTION,
                 email: NEELVARA_CONTACT_EMAIL,
                 contactPoint: [
                     {
@@ -719,12 +724,12 @@ export function StructuredData() {
             {
                 '@type': 'WebSite',
                 '@id': `${buildNeelvaraUrl('/')}#website`,
-                name: 'Neelvara Systems',
+                name: NEELVARA_PUBLIC_BRAND,
                 url: buildNeelvaraUrl('/'),
                 publisher: {
                     '@id': `${buildNeelvaraUrl('/')}#organization`,
                 },
-                description: NEELVARA_SITE_DESCRIPTION,
+                description: NEELVARA_BUSINESS_DESCRIPTION,
             },
         ],
     };
