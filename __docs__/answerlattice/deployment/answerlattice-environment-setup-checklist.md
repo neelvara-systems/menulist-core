@@ -88,20 +88,27 @@ Stop before any mutation when one of these is true:
   `admin@neelvara.com`. Project number: `216985843437`.
 - [ ] `AL-QA-A02` Record project number, organization, billing account,
   Firebase status, and active owner/break-glass identities.
-  - Current readback on August 20, 2026: project number `216985843437`,
+  - Current readback on August 21, 2026: project number `216985843437`,
     organization `neelvara.com`, billing account
     `0135AA-B5D4AD-C72CAB`, Firebase enabled, and
     `admin@neelvara.com` is the only visible principal with inherited
-    Organisation Administrator plus direct Owner. No separate break-glass
-    principal exists, so this item remains open.
-- [ ] `AL-QA-A03` Confirm billing alerts and hard provider spend controls are
+    Organisation Administrator plus direct Owner. This account is the existing
+    permanent break-glass administrator; the missing control is a named daily
+    operator with only required access, not another break-glass identity.
+    Google Workspace currently bills each assigned Business Base user at
+    INR 60/month through November 18, 2026 and INR 120/month afterward. No
+    second paid user was silently created; this governance decision remains
+    open and does not block the deployed QA runtime.
+- [x] `AL-QA-A03` Confirm billing alerts and hard provider spend controls are
   routed to the company operational mailbox.
-  - A project-scoped INR 25 monthly Google Cloud budget alert exists with
-    50%, 90%, and 100% thresholds. Dedicated operational-mailbox routing and
-    provider-specific hard controls remain open; the Google Cloud budget is an
-    alert, not a hard stop. The Vercel `qa` environment has the repository
-    admission guard `ANSWERLATTICE_GEMINI_SPEND_LIMIT_USD_10M=8`, but this does
-    not replace project-level alert routing or provider quota governance.
+  - A project-scoped INR 25 monthly Google Cloud budget alert exists with 50%,
+    90%, and 100% thresholds. A separate enforced INR 20 monthly spend cap now
+    applies only to Gemini API in `neelvara-answerlattice-qa`, with 50%, 80%,
+    and 100% notifications to billing administrators/users and project owners
+    at the company-managed account. The Vercel `qa` environment also retains
+    the repository admission guard
+    `ANSWERLATTICE_GEMINI_SPEND_LIMIT_USD_10M=8`. The cap can pause Gemini API
+    usage and is intentionally independent from the general project alert.
 - [x] `AL-QA-A04` Confirm service-account key creation policy and verify zero
   user-managed keys on the Vercel runtime service account.
   - Current readback on August 20, 2026: inherited constraint
@@ -155,6 +162,10 @@ Stop before any mutation when one of these is true:
 - [ ] `AL-QA-C06` Produce one authorized hosted proof for OIDC/STS, Firebase
   custom-token signing, Firestore, Storage, and any admitted task path without
   creating real customer data.
+  - Project-local WIF, least-privilege IAM, managed-environment selectors, and
+    hosted deployment identity are configured and source-verified. The final
+    custom-token/data-path proof needs an authorized disposable credential
+    fixture, so it remains deferred testing rather than missing provider setup.
 
 ### Secrets And Providers
 
@@ -228,7 +239,7 @@ Stop before any mutation when one of these is true:
 - [x] `AL-QA-E04` Read back active rules, Storage rules, index states,
   Functions, scheduler/task resources, secret bindings, and service-account
   identities from `neelvara-answerlattice-qa`.
-- [ ] `AL-QA-E05` After the prepared routing revision is deployed to QA,
+- [x] `AL-QA-E05` After the prepared routing revision is deployed to QA,
   attach `canonica.app` and `www.canonica.app` only to the custom Vercel `qa`
   environment and exact `staging` branch, then replace only the parked GoDaddy
   web records with Vercel's exact records. Preserve mail and verification DNS.
@@ -236,18 +247,30 @@ Stop before any mutation when one of these is true:
     A `216.150.1.1` and `www` CNAME
     `dd4b150d15c50a85.vercel-dns-017.com.`; public DNS and Vercel both report
     valid QA configuration. Mail and verification records were preserved.
-    The currently hosted build is still exact `staging` commit
-    `002a76ea056135203b908b64e29be03e18dcb142`, which predates the Canonica QA
-    routing contract and redirects Canonica to production. Final E05 closure
-    therefore waits for the bounded routing revision to deploy and for hosted
-    readback to confirm Canonica remains inside QA.
+    Exact staging commit `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`
+    is now live on both hosts. Hosted readback returned HTTP 200 with valid TLS,
+    `x-product-id: answerlattice`, and
+    `x-robots-tag: noindex, nofollow, noarchive`; Canonica remains inside QA and
+    no longer redirects to production.
 - [ ] `AL-QA-E06` Verify TLS, `/api/version`, noindex/robots policy, Auth,
   App Check monitoring, widget, owner dashboard, ticket, KB, and scheduler
   setup paths. Product testing evidence remains separate from setup closure.
+  - Base hosted proof is complete: `/api/version` returned exact commit
+    `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`, both Canonica hosts returned
+    HTTP 200 with the Answerlattice product header and QA crawler isolation,
+    `robots.txt` disallows all crawling, `sitemap.xml` returns 404, and the
+    production Answerlattice host remains HTTP 200 and indexable. Hydrated
+    browser readback confirmed AnswerLattice branding, the approved governed
+    source tagline, credential-only login, and no MenuList Google OAuth action.
+    Fixture-dependent App Check, widget, dashboard, ticket, KB, scheduler, and
+    authenticated identity-path certification remains deferred testing and is
+    not inferred from the base-host proof.
 - [ ] `AL-QA-E07` Complete a non-destructive backup/restore drill using
   `answerlattice-backup-recovery-runbook.md`.
   - A daily 14-week managed-backup schedule is active. The isolated restore
-    rehearsal remains pending until the first backup reaches READY state.
+    rehearsal remains pending until the first backup reaches READY state. A
+    Firebase CLI readback on August 21, 2026 returned no available backups and
+    confirmed the daily schedule with `8467200s` retention remains active.
 
 QA setup closes only when `AL-QA-A01` through `AL-QA-E07` have current
 evidence. Historical May/June deploy records do not waive these readbacks.
@@ -344,14 +367,17 @@ service-account JSON, or customer data.
 | 2026-08-20 | `AL-BASE-01` through `AL-BASE-06` | Source and public production host baseline recorded | Repository target/config files; HTTP header checks |
 | 2026-08-20 | `AL-BASE-07` | Superseded discovery | Firebase CLI as `admin@neelvara.com` could not read the retired external Answerlattice IDs; the company-owned replacement QA project was then created and verified |
 | 2026-08-20 | `AL-BASE-07` | Superseded discovery | Direct GCP checks confirmed the old IDs were inaccessible; they were retired rather than reused or requested |
-| 2026-08-20 | `AL-BASE-08` | Pass, later advanced | GoDaddy inventory confirmed `canonica.app` ownership; the domain was subsequently attached only to Vercel `qa` and exact web-record replacement began |
-| 2026-08-20 | `AL-BASE-09` | Prepared in source | Deployment target, product routing, widget staging URL, crawler isolation, and regression assertions moved to `canonica.app`; hosted evidence remains pending release |
+| 2026-08-20 | `AL-BASE-08` | Pass | GoDaddy inventory confirmed `canonica.app` ownership; the domain was attached only to Vercel `qa`, and the exact apex and `www` web records were replaced without changing mail or verification DNS |
+| 2026-08-20 | `AL-BASE-09` | Pass after hosted release | Deployment target, product routing, widget staging URL, crawler isolation, and regression assertions moved to `canonica.app`; exact staging commit `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` is live on both QA hosts |
 | 2026-08-20 | `AL-QA-D01` | Superseded pre-setup inventory | Custom Vercel `qa` was branch-locked to `staging` and initially had zero `ANSWERLATTICE_*` variables; dedicated values were added later in the setup |
 | 2026-08-20 | `AL-QA-A01` | Pass after fresh-project decision | The inaccessible external IDs were not modified; company-owned project `neelvara-answerlattice-qa` was created under `neelvara.com` and verified as `admin@neelvara.com` |
+| 2026-08-21 | `AL-QA-A03` | Pass | General INR 25 project alert remains active; enforced INR 20 monthly Gemini API spend cap added for `neelvara-answerlattice-qa` with 50%, 80%, and 100% notifications to billing users and project owners; Vercel admission guard remains 8 USD per 10 minutes |
 | 2026-08-20 | `AL-QA-B01` through `AL-QA-B05` | Pass with monitoring boundary | Firebase enabled; Firestore `nam5`; active Web app; US Storage; exact Auth domains; legacy reCAPTCHA v3 App Check registered with enforcement OFF |
 | 2026-08-20 | `AL-QA-C01` through `AL-QA-C05` | Pass | Dedicated keyless runtime service account, project-local WIF pool/provider, least-privilege roles, exact Vercel QA selectors, zero user-managed keys, and focused identity/env gates |
 | 2026-08-20 | `AL-QA-D01` through `AL-QA-D05` | Pass with OAuth deferral | Dedicated core secrets and Firebase/OIDC values exist; no MenuList secret or Redis credential reused; optional providers disabled; Google OAuth deferred because shared NextAuth is MenuList-scoped |
 | 2026-08-20 | `AL-QA-E02` through `AL-QA-E04` | Pass | Rules and Storage rules hashes match source; 100 composite indexes READY; 18 TTL fields ACTIVE; 11 approved Functions ACTIVE; one Scheduler job and one task queue active |
-| 2026-08-20 | `AL-QA-E05` | In progress after DNS completion | Canonica apex and `www` are attached only to Vercel `qa`; GoDaddy verification completed; public apex A and `www` CNAME match Vercel; hosted commit `002a76ea0` still redirects Canonica to production, so the bounded routing revision and hosted readback remain pending |
-| 2026-08-20 | `AL-QA-E07` | Partial | One daily Firestore backup schedule with `8467200s` retention exists; restore rehearsal waits for first READY backup |
+| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; Vercel deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` serves exact build `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
+| 2026-08-21 | `AL-QA-E06` | Setup pass; certification deferred | Exact `/api/version`, HTTP 200, TLS, Answerlattice product header, noindex header, disallow-all robots, absent sitemap, unaffected production host, and hydrated AnswerLattice credential-only login verified; fixture-dependent application and identity paths remain deferred testing |
+| 2026-08-21 | QA login deployment | Pass after scoped build repair | Initial deployment `dpl_AhmxMDzT73N2aFvUnhTP3eCMiXpY` failed because it referenced a local-only uncommitted website constant; the login copy dependency was made self-contained, source gates passed, and replacement deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` reached READY |
+| 2026-08-21 | `AL-QA-E07` | Waiting for first backup | One daily Firestore backup schedule with `8467200s` retention exists; Firebase CLI returned no available backups, so the isolated restore rehearsal cannot begin yet |
 | 2026-08-21 | `AL-QA-D06` | Pass | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key deleted and secret version 2 destroyed; fresh Vercel `qa` deployment `menulist-core-jo9gbj0hk-neelvara-systems.vercel.app` reached READY and `/api/version` returned exact commit `002a76ea056135203b908b64e29be03e18dcb142` |

@@ -1,8 +1,8 @@
 # Answerlattice Deployment Hub
 
 > **Category:** Answerlattice infrastructure and release operations
-> **Last updated:** August 20, 2026
-> **Status:** QA cloud foundation deployed; DNS and hosted closure in progress
+> **Last updated:** August 21, 2026
+> **Status:** QA cloud foundation and Canonica routing deployed; hosted workflow and recovery closure in progress
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -48,9 +48,12 @@ The following was verified on August 20, 2026:
 - `canonica.app` is owned in the company GoDaddy account. Its apex and `www`
   hosts are attached only to Vercel custom environment `qa`. GoDaddy now serves
   Vercel's exact apex A and `www` CNAME records; public DNS and Vercel report
-  valid configuration, and mail/verification DNS was preserved. The hosted
-  build still predates the Canonica routing contract, so final hosted closure
-  waits for the bounded QA routing deployment and readback.
+  valid configuration, and mail/verification DNS was preserved. Both hosts now
+  serve exact staging commit
+  `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` inside Answerlattice QA with
+  valid TLS and no production redirect. The hydrated Canonica login is
+  AnswerLattice-branded and credential-only; it does not expose the shared
+  MenuList Google OAuth action.
 - The QA host contract requires `X-Robots-Tag: noindex, nofollow, noarchive`,
   a disallow-all `robots.txt`, and no sitemap. Production remains indexable.
 - The former IDs `answerlattice-qa` and `answerlattice` exist outside the
@@ -68,16 +71,20 @@ The following was verified on August 20, 2026:
   needed for the current optional cache path.
 - The full Answerlattice runtime-truth aggregate, Answerlattice TypeScript,
   Answerlattice Functions build, whitespace validation, WIF/environment gates,
-  backup verifier, and documentation-link scan pass. These are source and
-  emulator-backed setup gates; they do not replace the pending hosted QA proof.
+  backup verifier, documentation-link scan, hosted route boundary, and hosted
+  login boundary pass. Fixture-dependent application certification remains a
+  separate testing gate.
 - The shared NextAuth runtime still exposes one MenuList-scoped Google OAuth
   client and `NEXTAUTH_URL`. Answerlattice QA uses credential authentication;
-  do not mutate or reuse MenuList OAuth. Product-specific Google sign-in needs
-  a separately approved host-aware auth change.
-- Remaining setup work is the approved bounded Vercel QA routing deployment
-  plus Canonica/TLS/OIDC/application readback, a separate
-  break-glass identity/operational alert route, and the first isolated restore
-  rehearsal after a ready backup exists.
+  its host-aware login now hides the MenuList OAuth action. Do not mutate or
+  reuse the MenuList OAuth client. Product-specific Google sign-in remains a
+  separately approved future design.
+- No additional Firebase, GCP, Vercel, DNS, key, or provider configuration is
+  currently required for Answerlattice QA. Two operational controls remain:
+  decide whether to fund a separate named daily operator account, and perform
+  the first isolated restore rehearsal after a managed backup reaches READY.
+  Fixture-dependent Auth/App Check/widget/dashboard/ticket/KB/scheduler proof
+  remains deferred testing, not missing setup.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -85,10 +92,11 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. Deploy the approved bounded routing revision to custom environment `qa` and
-   verify Canonica TLS, `/api/version`, crawler isolation, and OIDC/runtime smoke.
-2. Complete the break-glass/operational-alert controls and the first isolated
-   restore rehearsal after a ready backup exists.
+1. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
+   knowledge-base, scheduler, and identity-path certification when the QA
+   fixtures are available.
+2. Decide whether to fund the named daily operator and complete the first
+   isolated restore rehearsal after a ready backup exists.
 3. Close every remaining `AL-QA-*` item with current readback.
 4. Create and complete every `AL-PROD-*` preparation item independently in
    `neelvara-answerlattice-prod` only after QA setup closes.
