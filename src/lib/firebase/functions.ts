@@ -83,7 +83,8 @@ const logAnswerlatticeCallableFailure = (
     });
 };
 
-// Answerlattice Cloud Functions — answerlattice-qa locally/preview; answerlattice in production
+// Answerlattice Cloud Functions use neelvara-answerlattice-qa locally/preview
+// and neelvara-answerlattice-prod in production.
 export const regenerateEmbedding = async (articleId: string) => {
     const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
     const regenerateEmbeddingFn = httpsCallable(answerlatticeFunctions, 'regenerateEmbedding');

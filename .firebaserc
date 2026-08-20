@@ -1,8 +1,8 @@
 {
   "projects": {
     "default": "menulist-qa",
-    "answerlattice-qa": "answerlattice-qa",
-    "answerlattice-prod": "answerlattice",
+    "answerlattice-qa": "neelvara-answerlattice-qa",
+    "answerlattice-prod": "neelvara-answerlattice-prod",
     "campaigncue-qa": "campaigncue-qa",
     "campaigncue-prod": "campaigncue",
     "signaldesk-qa": "menulist-signaldesk-qa",

@@ -9,11 +9,11 @@ const root = path.resolve(__dirname, '../..');
 
 assert.deepEqual(resolveAnswerlatticeFirebaseBoundary({
     allowShared: true,
-    configuredProjectId: 'answerlattice-qa',
+    configuredProjectId: 'neelvara-answerlattice-qa',
     stage: 'local',
 }), {
     errorCode: null,
-    expectedProjectId: 'answerlattice-qa',
+    expectedProjectId: 'neelvara-answerlattice-qa',
     mode: 'separate',
     valid: true,
 });
@@ -40,20 +40,20 @@ assert.equal(resolveAnswerlatticeFirebaseBoundary({
 
 assert.equal(resolveAnswerlatticeFirebaseBoundary({
     allowShared: false,
-    configuredProjectId: 'answerlattice-qa',
+    configuredProjectId: 'neelvara-answerlattice-qa',
     modeValue: 'wrong-mode',
     stage: 'preview',
 }).errorCode, 'INVALID_MODE');
 
 assert.equal(resolveAnswerlatticeFirebaseBoundary({
     allowShared: false,
-    configuredProjectId: 'answerlattice',
+    configuredProjectId: 'neelvara-answerlattice-prod',
     stage: 'production',
 }).valid, true);
 
 assert.equal(resolveAnswerlatticeFirebaseBoundary({
     allowShared: false,
-    configuredProjectId: 'answerlattice-qa',
+    configuredProjectId: 'neelvara-answerlattice-qa',
     stage: 'production',
 }).errorCode, 'PROJECT_ID_MISMATCH');
 

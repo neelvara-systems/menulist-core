@@ -94,7 +94,7 @@ function resolveWidgetScriptSrc(): string {
         return `${origin}/widget/v1/answerlattice-widget.js`;
     }
     if (hostname === 'menulist.digital' || hostname.endsWith('.menulist.digital') || hostname.endsWith('.vercel.app')) {
-        return 'https://answerlattice.menulist.online/widget/v1/answerlattice-widget.js';
+        return 'https://canonica.app/widget/v1/answerlattice-widget.js';
     }
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 }

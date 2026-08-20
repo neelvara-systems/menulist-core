@@ -690,7 +690,7 @@ function verifyEnvironmentTargets() {
   assert(getProductDeploymentTarget('mycodex', 'local').devPathPrefix === '/__mycodex', 'Local MyCodex dev prefix must be /__mycodex');
   assert(getExpectedFirebaseProjectId('menulist', 'local') === 'menulist-qa', 'Local MenuList Firebase project must be menulist-qa');
   assert(getExpectedFirebaseProjectId('neelvara', 'local') === '', 'Local Neelvara must not require a Firebase project');
-  assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'answerlattice-qa', 'Local Answerlattice Firebase project must be answerlattice-qa');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'neelvara-answerlattice-qa', 'Local Answerlattice Firebase project must be neelvara-answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'local') === 'campaigncue-qa', 'Local CampaignCue Firebase project must be campaigncue-qa');
   assert(getExpectedFirebaseProjectId('mycodex', 'local') === '', 'Local MyCodex must not require a Firebase project');
 
@@ -701,13 +701,14 @@ function verifyEnvironmentTargets() {
   assert(DEPLOYMENT_TARGETS.preview.menulist.tenantDomains.includes('menulist.digital'), 'Preview MenuList tenant domain must use menulist.digital');
   assert(!(DEPLOYMENT_TARGETS.preview.menulist.redirectDomains || []).includes('menulist.digital'), 'Preview MenuList digital apex must be a staging website alias, not a redirect domain');
   assert(DEPLOYMENT_TARGETS.preview.neelvara.domains.includes('neelvara.menulist.online'), 'Preview Neelvara domain must include neelvara.menulist.online');
-  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('answerlattice.menulist.online'), 'Preview Answerlattice domain must include answerlattice.menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('canonica.app'), 'Preview Answerlattice domain must include canonica.app');
+  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('www.canonica.app'), 'Preview Answerlattice domain must include www.canonica.app');
   assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.signaldesk.domains.includes('signaldesk.menulist.online'), 'Preview SignalDesk domain must include signaldesk.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.length === 0, 'Preview MyCodex must not require a public domain');
   assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'menulist-qa', 'Preview MenuList Firebase project must be menulist-qa');
   assert(getExpectedFirebaseProjectId('neelvara', 'preview') === '', 'Preview Neelvara must not require a Firebase project');
-  assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'neelvara-answerlattice-qa', 'Preview Answerlattice Firebase project must be neelvara-answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'preview') === 'campaigncue-qa', 'Preview CampaignCue Firebase project must be campaigncue-qa');
   assert(getExpectedFirebaseProjectId('mycodex', 'preview') === '', 'Preview MyCodex must not require a Firebase project');
 
@@ -724,12 +725,12 @@ function verifyEnvironmentTargets() {
   assert(DEPLOYMENT_TARGETS.production.mycodex.domains.length === 0, 'Production MyCodex must not require a public domain');
   assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist-prod', 'Production MenuList Firebase project must be menulist-prod');
   assert(getExpectedFirebaseProjectId('neelvara', 'production') === '', 'Production Neelvara must not require a Firebase project');
-  assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'neelvara-answerlattice-prod', 'Production Answerlattice Firebase project must be neelvara-answerlattice-prod');
   assert(getExpectedFirebaseProjectId('campaigncue', 'production') === 'campaigncue', 'Production CampaignCue Firebase project must be campaigncue');
   assert(getExpectedFirebaseProjectId('mycodex', 'production') === '', 'Production MyCodex must not require a Firebase project');
 
   assert(ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX === '/__answerlattice', 'Answerlattice local dev prefix constant');
-  assert(ANSWERLATTICE_STAGING_DOMAINS.includes('answerlattice.menulist.online'), 'Answerlattice staging domain constant');
+  assert(ANSWERLATTICE_STAGING_DOMAINS.includes('canonica.app'), 'Answerlattice staging domain constant');
   assert(ANSWERLATTICE_PRODUCTION_DOMAINS.includes('answerlattice.com'), 'Answerlattice production domain constant');
   assertIncludes(productDomains, "getActiveProductDomains('answerlattice')", 'Product domain registry');
   assertIncludes(productDomains, "getActiveProductDomains('menulist')", 'Product domain registry');
@@ -746,7 +747,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(urls, 'QA: app.menulist.digital', 'Platform URL staging owner app contract');
   assertIncludes(urls, '{subdomain}.menulist.digital', 'MenuList QA tenant URL domain contract');
   assertIncludes(urls, '{subdomain}.menulist.online', 'MenuList production tenant URL domain contract');
-  assertIncludes(urls, 'QA: answerlattice.menulist.online', 'Platform URL domain contract');
+  assertIncludes(urls, 'QA: canonica.app', 'Platform URL domain contract');
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
   assertIncludes(envValidation, "'WHATSAPP_PHONE_NUMBER_ID'", 'Environment validation WhatsApp provider prerequisite warnings');
   assertIncludes(envValidation, "'WHATSAPP_ACCESS_TOKEN'", 'Environment validation WhatsApp provider prerequisite warnings');
@@ -775,8 +776,8 @@ function verifyEnvironmentTargets() {
   assert(firebaserc.projects.default === 'menulist-qa', '.firebaserc MenuList QA default project');
   assert(firebaserc.projects['menulist-qa'] === undefined, '.firebaserc must not duplicate the MenuList QA project id as an alias');
   assert(firebaserc.projects['menulist-prod'] === undefined, '.firebaserc must not define a self-alias for the literal MenuList production project ID');
-  assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
-  assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
+  assert(firebaserc.projects['answerlattice-qa'] === 'neelvara-answerlattice-qa', '.firebaserc Answerlattice QA alias');
+  assert(firebaserc.projects['answerlattice-prod'] === 'neelvara-answerlattice-prod', '.firebaserc Answerlattice production alias');
   assert(firebaserc.projects['campaigncue-qa'] === 'campaigncue-qa', '.firebaserc CampaignCue QA alias');
   assert(firebaserc.projects['campaigncue-prod'] === 'campaigncue', '.firebaserc CampaignCue production alias');
   assert(exists('firebase-campaigncue.json'), 'CampaignCue Firebase deploy config must exist');
@@ -868,8 +869,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistCloudTasks, 'getMenulistWorkloadIdentityAuthClient() as unknown as CloudTasksAuthClient', 'Cloud Tasks shared Workload Identity auth client compatibility boundary');
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-qa'", 'MenuList QA OIDC regression');
   assertIncludes(workloadIdentityTest, "expectedProjectId: 'menulist-prod'", 'MenuList production OIDC regression');
-  assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice-qa'", 'Answerlattice QA OIDC regression');
-  assertIncludes(workloadIdentityTest, "expectedProjectId: 'answerlattice'", 'Answerlattice production OIDC regression');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'neelvara-answerlattice-qa'", 'Answerlattice QA OIDC regression');
+  assertIncludes(workloadIdentityTest, "expectedProjectId: 'neelvara-answerlattice-prod'", 'Answerlattice production OIDC regression');
   assert(rootPackageJson.dependencies['@vercel/oidc'] === '3.8.4', 'Root package must pin @vercel/oidc 3.8.4 exactly');
   assert(rootPackageJson.dependencies['@google-cloud/storage'] === '7.21.0', 'Root package must pin @google-cloud/storage 7.21.0 exactly');
   assert(rootPackageJson.dependencies['google-auth-library'] === '10.9.1', 'Root package must pin google-auth-library 10.9.1 exactly');
@@ -2746,7 +2747,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(devProdEnvironmentGuide, '**Launch boundary:** Not current launch certification or deploy approval.', 'Dev/prod guide top launch/deploy boundary');
   assertIncludes(devProdEnvironmentGuide, 'This environment guide cannot approve go-live by itself; production readiness still requires External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.', 'Dev/prod guide top current evidence boundary');
   assertIncludes(devProdEnvironmentGuide, 'Create or confirm a test tenant/store in `menulist-qa`.', 'Dev/prod guide current QA fixture task');
-  assertIncludes(devProdEnvironmentGuide, 'Local/preview Firebase targets confirmed for `menulist-qa` and `answerlattice-qa`', 'Dev/prod guide current local/preview target checklist');
+  assertIncludes(devProdEnvironmentGuide, 'Local/preview Firebase targets confirmed for `menulist-qa` and `neelvara-answerlattice-qa`', 'Dev/prod guide current local/preview target checklist');
   assertIncludes(devProdEnvironmentGuide, 'Firebase QA Project Access', 'Dev/prod guide current Firebase account summary');
   assertIncludes(devProdEnvironmentGuide, 'Feature Flags: Target-Environment Review', 'Dev/prod guide feature-flag target review heading');
   assertIncludes(devProdEnvironmentGuide, 'This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.', 'Dev/prod guide feature-flag launch boundary');
@@ -2948,8 +2949,8 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN\n', 'Messaging onboarding active unscoped verify token secret command');
   assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_APP_SECRET\n', 'Messaging onboarding active unscoped app secret command');
   assertNotIncludes(messagingOnboardingImpl, 'WHATSAPP_API_TOKEN', 'Messaging onboarding active docs must not use stale WhatsApp API token naming');
-  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:qa'], '--project answerlattice-qa', 'Answerlattice Functions QA deploy script');
-  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:prod'], '--project answerlattice', 'Answerlattice Functions production deploy script');
+  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:qa'], '--project neelvara-answerlattice-qa', 'Answerlattice Functions QA deploy script');
+  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:prod'], '--project neelvara-answerlattice-prod', 'Answerlattice Functions production deploy script');
 }
 
 function platformPagePathToFile(pagePath) {
@@ -3459,7 +3460,7 @@ function verifyAnswerlatticeDiscovery() {
 
   assert(ANSWERLATTICE_PUBLIC_BRAND === 'AnswerLattice', 'AnswerLattice public brand casing must stay locked');
   assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.canonicalHost === 'answerlattice.com', 'AnswerLattice production canonical host must remain answerlattice.com');
-  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.previewHost === 'answerlattice.menulist.online', 'AnswerLattice preview host must remain answerlattice.menulist.online');
+  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.previewHost === 'canonica.app', 'AnswerLattice preview host must remain canonica.app');
   assertIncludes(siteConfig, 'ANSWERLATTICE_COMPARISONS', 'AnswerLattice site registry comparisons');
   assertIncludes(siteConfig, 'ANSWERLATTICE_DEVELOPER_DOCS', 'AnswerLattice site registry developer docs');
   assertIncludes(siteConfig, 'ANSWERLATTICE_RESOURCE_ARTICLES', 'AnswerLattice site registry resource articles');
@@ -3467,9 +3468,8 @@ function verifyAnswerlatticeDiscovery() {
   assertIncludes(productDomains, "name: 'AnswerLattice'", 'AnswerLattice product domain display name');
   assertIncludes(middleware, 'buildAnswerlatticeWebsiteRewritePath', 'AnswerLattice homepage internal rewrite helper');
   assertIncludes(middleware, "(publicPath === '/' || publicPath === '/home') ? basePath", 'AnswerLattice homepage internal rewrite target');
-  assertIncludes(middleware, 'isLegacyAnswerlatticePublicHostname', 'AnswerLattice legacy public host redirect');
-  assertIncludes(middleware, "'canonica.app'", 'AnswerLattice legacy public host redirect');
-  assertIncludes(middleware, "getProductDeploymentTarget('answerlattice', 'production')", 'AnswerLattice legacy public host canonical target');
+  assertIncludes(middleware, 'isAnswerlatticeQaHost', 'AnswerLattice QA host crawler isolation');
+  assertIncludes(middleware, "getProductDeploymentTarget('answerlattice', 'preview')", 'AnswerLattice QA deployment target');
   assertIncludes(llmsContract, '/developers', 'AnswerLattice llms.txt developer hub');
   assertIncludes(llmsContract, '/comparisons', 'AnswerLattice llms.txt comparisons hub');
   assertIncludes(renderedLlms, '/resources', 'AnswerLattice llms.txt resources hub');

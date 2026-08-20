@@ -1,7 +1,7 @@
 # Answerlattice Backup and Recovery Runbook
 
-> **Status:** Source tooling implemented; cloud schedule and restore evidence pending
-> **Last Updated:** 2026-07-18
+> **Status:** QA daily schedule active; first ready backup and restore rehearsal pending
+> **Last Updated:** 2026-08-20
 > **Scope:** Answerlattice Firestore managed backups and isolated restore rehearsal
 
 ## Recovery Objective
@@ -29,11 +29,14 @@ Firestore managed backups do not cover all Answerlattice recovery requirements:
 1. Install the current Google Cloud CLI in the operator environment or use Google Cloud Shell.
 2. Authenticate an operator with project visibility and Firestore backup/restore permissions.
 3. Confirm the intended stage:
-   - `qa` maps only to `answerlattice-qa`.
-   - `prod` maps only to `answerlattice`.
+   - `qa` maps only to `neelvara-answerlattice-qa`.
+   - `prod` maps only to `neelvara-answerlattice-prod`.
 4. Keep `ANSWERLATTICE_BACKUP_APPLY` unset during inspection.
 
-This workstation did not have `gcloud` installed on 2026-07-18, so no cloud schedule or restore was changed during source hardening.
+This workstation still has no `gcloud` binary. On August 20, 2026, the
+authenticated global Firebase CLI was used to create and read back the QA
+schedule without exposing credentials. The repository helper still requires
+`gcloud` (or Cloud Shell) for a full preflight and isolated restore rehearsal.
 
 ## Read-Only Preflight
 
@@ -46,7 +49,7 @@ npm run answerlattice:backup -- preflight qa
 Expected result:
 
 - an active gcloud account is printed;
-- project `answerlattice-qa` is accessible;
+- project `neelvara-answerlattice-qa` is accessible;
 - the `(default)` database is described;
 - existing managed-backup schedules are listed;
 - existing backups and their states are listed.
@@ -60,7 +63,7 @@ Only run after the read-only preflight succeeds:
 ```bash
 ANSWERLATTICE_BACKUP_APPLY=1 \
   npm run answerlattice:backup -- ensure-daily qa \
-  --confirm-project answerlattice-qa
+  --confirm-project neelvara-answerlattice-qa
 ```
 
 The command creates a daily 14-week schedule only when no managed-backup schedule exists. It accepts an existing policy only when the API reports exactly one daily schedule with `8467200s` retention. Any weekly, shorter-retention, or additional schedule is printed and stops the command for manual review rather than being silently edited or supplemented.
@@ -70,10 +73,24 @@ Repeat for production only after QA schedule and restore evidence are approved:
 ```bash
 ANSWERLATTICE_BACKUP_APPLY=1 \
   npm run answerlattice:backup -- ensure-daily prod \
-  --confirm-project answerlattice
+  --confirm-project neelvara-answerlattice-prod
 ```
 
 After the first scheduled run, rerun `preflight` and record the full ready backup resource name.
+
+### Current QA Schedule Evidence
+
+Read back on August 20, 2026:
+
+- project: `neelvara-answerlattice-qa`;
+- database: `(default)`;
+- recurrence: daily;
+- retention: `8467200s` (14 weeks);
+- schedule resource:
+  `projects/neelvara-answerlattice-qa/databases/(default)/backupSchedules/ec353e59-20bc-458e-b79e-a384e093ab07`.
+
+No ready backup existed immediately after schedule creation, so no restore was
+attempted. Do not fabricate a restore target or use `(default)` while waiting.
 
 ## Isolated Restore Rehearsal
 
@@ -83,9 +100,9 @@ Use a ready QA backup and a new dated destination:
 ANSWERLATTICE_BACKUP_APPLY=1 \
   npm run answerlattice:backup -- restore-rehearsal \
   qa \
-  projects/answerlattice-qa/locations/LOCATION/backups/BACKUP_ID \
+  projects/neelvara-answerlattice-qa/locations/LOCATION/backups/BACKUP_ID \
   answerlattice-recovery-YYYYMMDD \
-  --confirm-project answerlattice-qa
+  --confirm-project neelvara-answerlattice-qa
 ```
 
 The tool rejects:
@@ -142,7 +159,7 @@ For each rehearsal, record:
 - cleanup owner and completion evidence;
 - final pass/fail decision.
 
-Until that record exists, report: `Backup tooling is source-verified; deployed backup and restore status requires verification.`
+Until that record exists, report: `QA backup schedule is active; first ready backup and isolated restore evidence remain pending.`
 
 ## Official References
 

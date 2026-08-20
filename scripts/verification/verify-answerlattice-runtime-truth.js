@@ -580,12 +580,12 @@ function verifyAnswerlatticeOperationalHardening() {
     'Answerlattice Functions must pin nodemailer 9.0.3',
   );
 
-  assertIncludes(backupTool, "qa: 'answerlattice-qa'", 'Answerlattice QA backup project mapping');
-  assertIncludes(backupTool, "prod: 'answerlattice'", 'Answerlattice production backup project mapping');
+  assertIncludes(backupTool, "qa: 'neelvara-answerlattice-qa'", 'Answerlattice QA backup project mapping');
+  assertIncludes(backupTool, "prod: 'neelvara-answerlattice-prod'", 'Answerlattice production backup project mapping');
   assertIncludes(backupTool, "const APPLY_ENV = 'ANSWERLATTICE_BACKUP_APPLY'", 'Answerlattice backup apply guard');
   assertIncludes(backupTool, 'assertProjectConfirmation(projectId, confirmation);', 'Answerlattice backup exact project confirmation');
-  assertIncludes(backupRunbook, '--confirm-project answerlattice-qa', 'Answerlattice QA backup confirmation command');
-  assertIncludes(backupRunbook, '--confirm-project answerlattice', 'Answerlattice production backup confirmation command');
+  assertIncludes(backupRunbook, '--confirm-project neelvara-answerlattice-qa', 'Answerlattice QA backup confirmation command');
+  assertIncludes(backupRunbook, '--confirm-project neelvara-answerlattice-prod', 'Answerlattice production backup confirmation command');
   assertIncludes(backupTool, "const DEFAULT_DATABASE = '(default)'", 'Answerlattice default database boundary');
   assertIncludes(backupTool, 'answerlattice-recovery-', 'Answerlattice isolated restore database boundary');
   assertIncludes(backupTool, "'--recurrence=daily'", 'Answerlattice daily managed-backup schedule');
@@ -711,6 +711,9 @@ function verifyDedicatedAnswerlatticeFirebase() {
   const functionsAdmin = read('functions-answerlattice/src/firebaseAdmin.ts');
   const client = read('src/lib/firebase/answerlatticeFirebaseClient.ts');
   const config = read('src/lib/firebase/answerlatticeConfig.ts');
+  const appCheck = read('src/lib/firebase/answerlatticeAppCheck.ts');
+  const stagingEnv = read('.env.staging.example');
+  const productionEnv = read('.env.production.example');
   const dashboardLayout = read('src/components/answerlattice/AnswerlatticeDashboardLayout.tsx');
   const protectedLayout = read('src/app/(answerlattice)/layout.tsx');
 
@@ -724,9 +727,19 @@ function verifyDedicatedAnswerlatticeFirebase() {
   assertIncludes(admin, 'requireAnswerlatticeStorageAdmin', 'Answerlattice Admin Storage accessor export');
   assertIncludes(admin, 'requireAnswerlatticeAuthAdmin', 'Answerlattice Admin Auth accessor export');
   assertIncludes(client, 'answerlatticeFirebaseClient', 'Answerlattice client Firebase app name');
+  assertIncludes(client, "import('./answerlatticeAppCheck')", 'Answerlattice dedicated App Check module loading');
+  assertIncludes(client, '!shouldUseSharedAnswerlatticeFirebase', 'Answerlattice App Check stays on the dedicated Firebase app');
+  assertIncludes(client, 'answerlattice_app_check_module_load_failed', 'Answerlattice App Check module diagnostics');
   assertIncludes(config, 'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID', 'Answerlattice client Firebase project');
   assertIncludes(config, 'answerlatticeFirebaseModeOverride', 'Answerlattice Firebase shared-mode override');
   assertNotIncludes(config, 'isSameFirebaseProject', 'Answerlattice client shared mode must not be inferred from matching project IDs');
+  assertIncludes(appCheck, 'ReCaptchaV3Provider', 'Answerlattice App Check matches the MenuList reCAPTCHA v3 provider contract');
+  assertIncludes(appCheck, 'NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY', 'Answerlattice App Check product-scoped public site key');
+  assertIncludes(appCheck, 'answerlattice_app_check_site_key_missing', 'Answerlattice missing App Check key diagnostics');
+  assertIncludes(appCheck, 'answerlattice_app_check_initialize_failed', 'Answerlattice App Check initialization diagnostics');
+  assertNotIncludes(appCheck, 'ReCaptchaEnterpriseProvider', 'Answerlattice must not use reCAPTCHA Enterprise');
+  assertIncludes(stagingEnv, 'NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY=<answerlattice-qa-recaptcha-v3-site-key>', 'Answerlattice QA App Check environment contract');
+  assertIncludes(productionEnv, 'NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY=<answerlattice-production-recaptcha-v3-site-key>', 'Answerlattice production App Check environment contract');
   assertIncludes(functionsAdmin, 'getBoundedFunctionsAdminStringContext', 'Answerlattice Functions Admin bounded string context');
   assertIncludes(functionsAdmin, 'getFunctionsAdminErrorContext', 'Answerlattice Functions Admin source error context');
   assertIncludes(functionsAdmin, "normalizeAnswerlatticeFirebaseBoundaryMode(process.env.ANSWERLATTICE_FIREBASE_MODE) === 'shared'", 'Answerlattice Functions Admin explicit shared-mode boundary');
@@ -7998,9 +8011,14 @@ function verifyWorkflowIntegrationAdapterSafety() {
   assertIncludes(functionsIndex, 'retry: true', 'Answerlattice integration trigger retries pre-claim infrastructure failures');
   assertIncludes(functionsIndex, 'secrets: ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS', 'Answerlattice integration processor SMTP secret binding');
   assertIncludes(functionsIndex, "failureCode: 'answerlattice_integration_processor_invocation_failed'", 'Answerlattice integration invocation failure diagnostic');
-  assertIncludes(functionSecrets, "SMTP_HOST: defineSecret('ANSWERLATTICE_SMTP_HOST')", 'Answerlattice product-scoped SMTP host secret');
-  assertIncludes(functionSecrets, "SMTP_PASS: defineSecret('ANSWERLATTICE_SMTP_PASS')", 'Answerlattice product-scoped SMTP password secret');
-  assertIncludes(functionSecrets, 'WORKFLOW_INTEGRATIONS: [', 'Answerlattice workflow-integration secret group');
+  assertIncludes(functionSecrets, "SMTP_HOST: defineOptionalProviderSecret('ANSWERLATTICE_SMTP_HOST')", 'Answerlattice conditionally declared product-scoped SMTP host secret');
+  assertIncludes(functionSecrets, "SMTP_PASS: defineOptionalProviderSecret('ANSWERLATTICE_SMTP_PASS')", 'Answerlattice conditionally declared product-scoped SMTP password secret');
+  assertIncludes(functionSecrets, "process.env.ANSWERLATTICE_BIND_OPTIONAL_PROVIDER_SECRETS === 'true'", 'Answerlattice explicit optional-provider secret deployment gate');
+  assertIncludes(functionSecrets, 'function defineOptionalProviderSecret', 'Answerlattice optional-provider declaration gate');
+  assertIncludes(functionSecrets, 'function bindOptionalProviderSecrets', 'Answerlattice optional-provider secret binding helper');
+  assertIncludes(functionSecrets, 'WORKFLOW_INTEGRATIONS: bindOptionalProviderSecrets([', 'Answerlattice workflow-integration conditional secret group');
+  assertIncludes(functionSecrets, 'EMAIL_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice EmailOS webhook conditional secret group');
+  assertIncludes(functionSecrets, 'WHATSAPP_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice WhatsAppOS conditional secret group');
   assertIncludes(networkTarget, 'isBlockedNetworkTarget', 'Answerlattice Functions network target private-address guard');
   assertIncludes(networkTarget, "error: 'blocked_resolved_address'", 'Answerlattice Functions network target DNS guard');
 

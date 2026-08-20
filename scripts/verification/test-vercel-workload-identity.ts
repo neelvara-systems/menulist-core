@@ -128,25 +128,25 @@ const projectContracts = [
         },
     },
     {
-        expectedProjectId: 'answerlattice-qa',
-        expectedServiceAccount: 'answerlattice-vercel-qa@answerlattice-qa.iam.gserviceaccount.com',
+        expectedProjectId: 'neelvara-answerlattice-qa',
+        expectedServiceAccount: 'answerlattice-vercel-qa@neelvara-answerlattice-qa.iam.gserviceaccount.com',
         read: readAnswerlatticeWorkloadIdentityConfig,
         values: {
-            NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'answerlattice-qa',
+            NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'neelvara-answerlattice-qa',
             ANSWERLATTICE_GCP_PROJECT_NUMBER: '100000000002',
-            ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL: 'answerlattice-vercel-qa@answerlattice-qa.iam.gserviceaccount.com',
+            ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL: 'answerlattice-vercel-qa@neelvara-answerlattice-qa.iam.gserviceaccount.com',
             ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID: 'answerlattice-vercel',
             ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID: 'answerlattice-qa',
         },
     },
     {
-        expectedProjectId: 'answerlattice',
-        expectedServiceAccount: 'answerlattice-vercel-prod@answerlattice.iam.gserviceaccount.com',
+        expectedProjectId: 'neelvara-answerlattice-prod',
+        expectedServiceAccount: 'answerlattice-vercel-prod@neelvara-answerlattice-prod.iam.gserviceaccount.com',
         read: readAnswerlatticeWorkloadIdentityConfig,
         values: {
-            NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'answerlattice',
+            NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'neelvara-answerlattice-prod',
             ANSWERLATTICE_GCP_PROJECT_NUMBER: '100000000003',
-            ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL: 'answerlattice-vercel-prod@answerlattice.iam.gserviceaccount.com',
+            ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL: 'answerlattice-vercel-prod@neelvara-answerlattice-prod.iam.gserviceaccount.com',
             ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID: 'answerlattice-vercel',
             ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER_ID: 'answerlattice-prod',
         },
@@ -201,7 +201,7 @@ assert.equal(firebaseAdminCompat.firestore(firebaseApp), workloadIdentityFiresto
 const answerlatticeFirebaseApp = { name: 'answerlattice-admin' } as App;
 const answerlatticeWorkloadIdentityFirestore = createWorkloadIdentityFirestore({
     auth: menulistGoogleAuth,
-    projectId: 'answerlattice',
+    projectId: 'neelvara-answerlattice-prod',
 });
 registerFirebaseFirestoreCompatInstance(
     answerlatticeFirebaseApp,
@@ -239,7 +239,7 @@ expectThrows(
 );
 expectThrows(
     () => readAnswerlatticeWorkloadIdentityConfig({
-        NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'answerlattice',
+        NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID: 'neelvara-answerlattice-prod',
         ANSWERLATTICE_GCP_PROJECT_NUMBER: '100000000003',
         ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL: 'wrong-project@example.iam.gserviceaccount.com',
         ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_POOL_ID: 'answerlattice-vercel',

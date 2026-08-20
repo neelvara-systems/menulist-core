@@ -77,7 +77,7 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             url: 'http://localhost:3000/__answerlattice/',
             domains: [],
             devPathPrefix: '/__answerlattice',
-            firebaseProjectId: 'answerlattice-qa',
+            firebaseProjectId: 'neelvara-answerlattice-qa',
         },
         campaigncue: {
             productId: 'campaigncue',
@@ -120,10 +120,10 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
         },
         answerlattice: {
             productId: 'answerlattice',
-            url: 'https://answerlattice.menulist.online',
-            domains: ['answerlattice.menulist.online'],
+            url: 'https://canonica.app',
+            domains: ['canonica.app', 'www.canonica.app'],
             devPathPrefix: '',
-            firebaseProjectId: 'answerlattice-qa',
+            firebaseProjectId: 'neelvara-answerlattice-qa',
         },
         campaigncue: {
             productId: 'campaigncue',
@@ -170,7 +170,7 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             url: 'https://answerlattice.com',
             domains: ['answerlattice.com', 'www.answerlattice.com'],
             devPathPrefix: '',
-            firebaseProjectId: 'answerlattice',
+            firebaseProjectId: 'neelvara-answerlattice-prod',
         },
         campaigncue: {
             productId: 'campaigncue',

@@ -15,38 +15,38 @@ const {
 } = require('../answerlattice/backup-recovery');
 
 assert.deepStrictEqual(PROJECTS, {
-  qa: 'answerlattice-qa',
-  prod: 'answerlattice',
+  qa: 'neelvara-answerlattice-qa',
+  prod: 'neelvara-answerlattice-prod',
 });
 assert.strictEqual(DEFAULT_DATABASE, '(default)');
 assert.strictEqual(APPLY_ENV, 'ANSWERLATTICE_BACKUP_APPLY');
 assert.strictEqual(DAILY_RETENTION_SECONDS, '8467200s');
-assert.strictEqual(resolveStage('qa'), 'answerlattice-qa');
-assert.strictEqual(resolveStage('prod'), 'answerlattice');
+assert.strictEqual(resolveStage('qa'), 'neelvara-answerlattice-qa');
+assert.strictEqual(resolveStage('prod'), 'neelvara-answerlattice-prod');
 assert.throws(() => resolveStage('production'), /Stage must be one of/);
-assert.doesNotThrow(() => assertProjectConfirmation('answerlattice-qa', 'answerlattice-qa'));
+assert.doesNotThrow(() => assertProjectConfirmation('neelvara-answerlattice-qa', 'neelvara-answerlattice-qa'));
 assert.throws(
-  () => assertProjectConfirmation('answerlattice-qa', 'answerlattice'),
-  /--confirm-project answerlattice-qa/,
+  () => assertProjectConfirmation('neelvara-answerlattice-qa', 'neelvara-answerlattice-prod'),
+  /--confirm-project neelvara-answerlattice-qa/,
 );
 assert.throws(
-  () => assertProjectConfirmation('answerlattice', undefined),
-  /--confirm-project answerlattice/,
+  () => assertProjectConfirmation('neelvara-answerlattice-prod', undefined),
+  /--confirm-project neelvara-answerlattice-prod/,
 );
 
 assert.doesNotThrow(() => assertBackupResource(
-  'answerlattice-qa',
-  'projects/answerlattice-qa/locations/nam5/backups/2026-07-18T010203_12345',
+  'neelvara-answerlattice-qa',
+  'projects/neelvara-answerlattice-qa/locations/nam5/backups/2026-07-18T010203_12345',
 ));
 assert.throws(
   () => assertBackupResource(
-    'answerlattice-qa',
-    'projects/answerlattice/locations/nam5/backups/2026-07-18T010203_12345',
+    'neelvara-answerlattice-qa',
+    'projects/neelvara-answerlattice-prod/locations/nam5/backups/2026-07-18T010203_12345',
   ),
-  /must belong to answerlattice-qa/,
+  /must belong to neelvara-answerlattice-qa/,
 );
 assert.throws(
-  () => assertBackupResource('answerlattice-qa', 'backup-id-only'),
+  () => assertBackupResource('neelvara-answerlattice-qa', 'backup-id-only'),
   /full managed-backup resource name/,
 );
 
@@ -83,7 +83,7 @@ const missingConfirmation = spawnSync(
   },
 );
 assert.notStrictEqual(missingConfirmation.status, 0);
-assert.match(missingConfirmation.stderr, /--confirm-project answerlattice-qa/);
+assert.match(missingConfirmation.stderr, /--confirm-project neelvara-answerlattice-qa/);
 assert.doesNotMatch(
   `${missingConfirmation.stdout}\n${missingConfirmation.stderr}`,
   /gcloud is required|No active gcloud account/,

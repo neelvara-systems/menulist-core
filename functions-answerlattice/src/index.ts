@@ -3,8 +3,8 @@
  * 
  * All Answerlattice-specific Cloud Functions are exported from here.
  * Deploys to Answerlattice Firebase projects:
- * - QA/staging: answerlattice-qa
- * - Production: answerlattice
+ * - QA/staging: neelvara-answerlattice-qa
+ * - Production: neelvara-answerlattice-prod
  * 
  * Exported Functions:
  * - answerlatticeNightly: Scheduled Answerlattice master scheduler alias

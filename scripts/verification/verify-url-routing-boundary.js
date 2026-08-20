@@ -279,7 +279,7 @@ function verifyResolverRuntimeBoundary() {
     assert(resolveKnownProductIdByHostname('www.menulist.digital') === 'menulist', 'preview MenuList staging website www host must resolve to MenuList');
     assert(resolveKnownProductIdByHostname('app.menulist.digital') === 'menulist', 'preview MenuList owner app host must resolve to MenuList');
 
-    const answerlattice = resolveDomain('answerlattice.menulist.online');
+    const answerlattice = resolveDomain('canonica.app');
     assert(answerlattice.type === 'product', 'preview Answerlattice host must resolve as product');
     assert(answerlattice.productSite?.id === 'answerlattice', 'preview Answerlattice host must preserve product id');
 
@@ -300,19 +300,19 @@ function verifyResolverRuntimeBoundary() {
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.online') === 'signaldesk', 'known product host lookup must recognize preview SignalDesk');
     assert(resolveKnownProductIdByHostname('signaldesk.menulist.online:443') === 'signaldesk', 'known product host lookup must accept valid Host ports');
     assert(isActiveProductDomain('signaldesk', 'signaldesk.menulist.online:443') === true, 'active product-domain lookup must accept valid Host ports');
-    assert(isAnswerlatticeProductHostname('answerlattice.menulist.online:443') === true, 'Answerlattice product helper must accept valid Host ports');
+    assert(isAnswerlatticeProductHostname('canonica.app:443') === true, 'Answerlattice product helper must accept valid Host ports');
     assert(isCampaignCueProductHostname('campaigncue.menulist.online:443') === true, 'CampaignCue product helper must accept valid Host ports');
     assert(isNeelvaraProductHostname('neelvara.menulist.online:443') === true, 'Neelvara product helper must accept valid Host ports');
-    assert(resolveProductSiteByHostname('answerlattice.menulist.online.')?.id === 'answerlattice', 'product-site lookup must normalize trailing-dot product hosts');
+    assert(resolveProductSiteByHostname('canonica.app.')?.id === 'answerlattice', 'product-site lookup must normalize trailing-dot product hosts');
     [
-      'answerlattice.menulist.online:bad',
+      'canonica.app:bad',
       'signaldesk.menulist.online:bad',
       'menulist.digital:bad',
     ].forEach((malformedHost) => {
       assert(resolveKnownProductIdByHostname(malformedHost) === null, `known product host lookup must reject malformed authority ${malformedHost}`);
       assert(resolveProductSiteByHostname(malformedHost) === undefined, `product-site lookup must reject malformed authority ${malformedHost}`);
     });
-    assert(isAnswerlatticeProductHostname('answerlattice.menulist.online:bad') === false, 'Answerlattice product helper must reject malformed Host ports');
+    assert(isAnswerlatticeProductHostname('canonica.app:bad') === false, 'Answerlattice product helper must reject malformed Host ports');
     assert(isCampaignCueProductHostname('campaigncue.menulist.online:bad') === false, 'CampaignCue product helper must reject malformed Host ports');
     assert(isNeelvaraProductHostname('neelvara.menulist.online:bad') === false, 'Neelvara product helper must reject malformed Host ports');
   });
@@ -636,7 +636,7 @@ function verifyMiddlewareBoundary() {
   assertOrder(
     middleware,
     'const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);',
-    "if (\n        isLegacyAnswerlatticePublicHostname(hostname)",
+    "if (\n        process.env.VERCEL === '1'",
     'MenuList owner-app routing before product and tenant routing',
   );
 

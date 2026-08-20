@@ -110,6 +110,13 @@ function isMenuListQaHost(hostname: string | null): boolean {
     ));
 }
 
+function isAnswerlatticeQaHost(hostname: string | null): boolean {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return false;
+
+    return getProductDeploymentTarget('answerlattice', 'preview').domains.includes(normalizedHost);
+}
+
 function applySecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
     // Use VERCEL_ENV to distinguish real production from preview deployments.
     // On Vercel, NODE_ENV is always 'production' for both, but VERCEL_ENV is
@@ -222,10 +229,12 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         shouldApplyNoindexHeader(request.nextUrl.pathname)
         || isActiveMenuListOwnerAppHost(request.headers.get('host'))
         || isMenuListQaHost(request.headers.get('host'))
+        || isAnswerlatticeQaHost(request.headers.get('host'))
     ) {
         response.headers.set(
             'X-Robots-Tag',
             isMenuListQaHost(request.headers.get('host'))
+                || isAnswerlatticeQaHost(request.headers.get('host'))
                 ? 'noindex, nofollow, noarchive'
                 : 'noindex, nofollow',
         );
@@ -264,11 +273,6 @@ function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean {
     if (resolveKnownProductIdByHostname(hostname) === 'answerlattice') return true;
 
     return isTrustedLocalDevelopmentRequest(hostname);
-}
-
-function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {
-    const normalizedHost = normalizeHostname(hostname);
-    return normalizedHost === 'canonica.app' || normalizedHost === 'www.canonica.app';
 }
 
 function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: string): string {
@@ -729,6 +733,17 @@ export async function proxy(request: NextRequest) {
         return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
     }
 
+    if (isAnswerlatticeQaHost(hostname) && pathname === '/robots.txt') {
+        return applySecurityHeaders(request, new NextResponse('User-agent: *\nDisallow: /\n', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }));
+    }
+
+    if (isAnswerlatticeQaHost(hostname) && pathname === '/sitemap.xml') {
+        return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
+    }
+
     const menulistRedirectResponse = buildMenuListRedirectDomainResponse(hostname, request);
     if (menulistRedirectResponse) {
         return applySecurityHeaders(request, menulistRedirectResponse);
@@ -737,15 +752,6 @@ export async function proxy(request: NextRequest) {
     const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);
     if (menulistOwnerAppResponse) {
         return applySecurityHeaders(request, menulistOwnerAppResponse);
-    }
-
-    if (
-        isLegacyAnswerlatticePublicHostname(hostname)
-        && !shouldBypassDomainRouting(pathname)
-    ) {
-        const target = getProductDeploymentTarget('answerlattice', 'production');
-        const url = buildOriginPinnedRedirectUrl(target.url, request);
-        return applySecurityHeaders(request, NextResponse.redirect(url, 308));
     }
 
     if (
@@ -896,7 +902,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // 1a. Vercel hostname-based product routing.
-    // QA: answerlattice.menulist.online → /sites/answerlattice
+    // QA: canonica.app → /sites/answerlattice
     // Production: answerlattice.com → /sites/answerlattice
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
