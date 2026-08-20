@@ -5,7 +5,6 @@ import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import { resolveProductSiteByDevPath, resolveProductSiteByHostname } from '@constant/productDomains';
-import { ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
 import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
@@ -33,6 +32,8 @@ import { FcGoogle } from "react-icons/fc";
 import { LuLock, LuMoon, LuSun, LuUser } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import styles from './loginPage.module.scss';
+
+const ANSWERLATTICE_LOGIN_TAGLINE = 'The governed source behind customer answers.';
 
 const validateEmail = (email: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -307,7 +308,7 @@ function LoginPage() {
   const shouldOfferGoogleAuth = !isAnswerlatticeExperience;
   const loginProductName = isAnswerlatticeExperience ? 'AnswerLattice' : 'MenuList';
   const loginTagline = isAnswerlatticeExperience
-    ? ANSWERLATTICE_TAGLINE
+    ? ANSWERLATTICE_LOGIN_TAGLINE
     : 'Take your business beyond the four walls.';
   const loginManagementDescription = isAnswerlatticeExperience
     ? 'Log in to manage reviewed answers and support knowledge.'
