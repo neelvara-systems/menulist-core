@@ -5,6 +5,8 @@ import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import { resolveProductSiteByDevPath, resolveProductSiteByHostname } from '@constant/productDomains';
+import { ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
+import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { useAppSelector } from "@hook/useAppSelector";
@@ -296,8 +298,32 @@ function LoginPage() {
   const secretPlaceholder = getSecretPlaceholder(loginIdentifierKind);
   const callbackPathname = getCallbackPathname(searchParams?.get('callbackUrl'));
   const hostProduct = loginHostname ? resolveProductSiteByHostname(loginHostname) : undefined;
+  const callbackProduct = resolveProductSiteByDevPath(callbackPathname)?.product;
+  const isAnswerlatticeExperience = isAnswerlatticeProductHostname(loginHostname)
+    || hostProduct?.id === 'answerlattice'
+    || callbackProduct?.id === 'answerlattice'
+    || callbackPathname === '/answerlattice'
+    || callbackPathname.startsWith('/answerlattice/');
+  const shouldOfferGoogleAuth = !isAnswerlatticeExperience;
+  const loginProductName = isAnswerlatticeExperience ? 'AnswerLattice' : 'MenuList';
+  const loginTagline = isAnswerlatticeExperience
+    ? ANSWERLATTICE_TAGLINE
+    : 'Take your business beyond the four walls.';
+  const loginManagementDescription = isAnswerlatticeExperience
+    ? 'Log in to manage reviewed answers and support knowledge.'
+    : 'Log in to manage your menus.';
+  const claimManagementDescription = isAnswerlatticeExperience
+    ? 'Set up your account to manage reviewed answers and support knowledge'
+    : 'Set up your account to manage your digital menu';
   const usesGenericProductArtwork = Boolean(hostProduct && hostProduct.id !== 'menulist')
     || isNonMenuListProductPath(callbackPathname);
+
+  const getLoginHomeRoute = () => {
+    if (!isAnswerlatticeExperience) return HOME_ROUTING;
+    return isAnswerlatticeProductHostname(loginHostname)
+      ? HOME_ROUTING
+      : ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX;
+  };
 
 	  const getPostLoginRedirect = () => {
 	    const callbackUrl = searchParams?.get('callbackUrl');
@@ -786,18 +812,30 @@ function LoginPage() {
   ) => (
     <>
       <span className={styles.cardLogoShell}>
-        <BrandWordmark
-          showText={false}
-          iconHeight={44}
-          className={styles.cardLogoMark}
-        />
+        {isAnswerlatticeExperience ? (
+          <AnswerlatticeLogoMark
+            idPrefix="answerlattice-login-card"
+            height={44}
+            className={styles.cardLogoMark}
+          />
+        ) : (
+          <BrandWordmark
+            showText={false}
+            iconHeight={44}
+            className={styles.cardLogoMark}
+          />
+        )}
       </span>
       <h3 className={`${styles.heading}`} style={{ color: statusColor }}>{statusText}</h3>
-      <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>
-        <BrandWordmark
-          showLogo={false}
-          textClassName={styles.brandTitleText}
-        />
+      <h1 onClick={() => router.push(getLoginHomeRoute())} className={`heading ${styles.heading} ${styles.title}`}>
+        {isAnswerlatticeExperience ? (
+          <span className={styles.brandTitleText}>AnswerLattice</span>
+        ) : (
+          <BrandWordmark
+            showLogo={false}
+            textClassName={styles.brandTitleText}
+          />
+        )}
       </h1>
       <div className={styles.subHeading} style={{ color: subHeadingColor }}>{subHeading}</div>
     </>
@@ -831,19 +869,30 @@ function LoginPage() {
       <div className={styles.bodyContent}>
         <section className={styles.heroPanel}>
           <button
-            aria-label="Go to MenuList home"
+            aria-label={`Go to ${loginProductName} home`}
             className={styles.heroBrand}
             type="button"
-            onClick={() => router.push(HOME_ROUTING)}
+            onClick={() => router.push(getLoginHomeRoute())}
           >
-            <BrandWordmark
-              className={styles.heroBrandMark}
-              iconHeight={118}
-              logoClassName={styles.heroBrandLogo}
-              textClassName={styles.heroBrandText}
-            />
+            {isAnswerlatticeExperience ? (
+              <span className={styles.heroBrandMark}>
+                <AnswerlatticeLogoMark
+                  idPrefix="answerlattice-login-hero"
+                  height={118}
+                  className={styles.heroBrandLogo}
+                />
+                <span className={styles.heroBrandText}>AnswerLattice</span>
+              </span>
+            ) : (
+              <BrandWordmark
+                className={styles.heroBrandMark}
+                iconHeight={118}
+                logoClassName={styles.heroBrandLogo}
+                textClassName={styles.heroBrandText}
+              />
+            )}
           </button>
-          <p>Take your business beyond the four walls.</p>
+          <p>{loginTagline}</p>
         </section>
         <div className={styles.rightContent}>
           <div className={`${styles.formWrap} ${isDarkMode ? styles.formWrapDark : styles.formWrapLight}`}
@@ -852,7 +901,7 @@ function LoginPage() {
               renderBrandIntro(
                 `Welcome, ${claimInfo.businessName}!`,
                 token.colorTextLabel,
-                'Set up your account to manage your digital menu',
+                claimManagementDescription,
                 token.colorTextHeading,
               )
             ) : claimSetupSuccess ? (
@@ -867,7 +916,7 @@ function LoginPage() {
                 {renderBrandIntro(
                   'Welcome to',
                   token.colorTextLabel,
-                  'Take your business beyond the four walls',
+                  loginTagline,
                   token.colorTextHeading,
                 )}
               </div>
@@ -973,19 +1022,23 @@ function LoginPage() {
             ) : claimInfo && !claimSetupSuccess ? (
               /* ━━━ CLAIM FLOW: Choose Google or Email ━━━ */
               <>
-                <div className={styles.googleLoginWrap}>
-                  <Button type="default"
-                    size="large"
-                    icon={<FcGoogle />}
-                    loading={claimProcessing}
-                    onClick={() => {
-                      dispatch(startLoader("LoginPage:signInWithGoogle"));
-                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
-                    }}
-                  >
-                    Sign in with Google</Button>
-                </div>
-                <Divider className={styles.saperator}>Or</Divider>
+                {shouldOfferGoogleAuth ? (
+                  <>
+                    <div className={styles.googleLoginWrap}>
+                      <Button type="default"
+                        size="large"
+                        icon={<FcGoogle />}
+                        loading={claimProcessing}
+                        onClick={() => {
+                          dispatch(startLoader("LoginPage:signInWithGoogle"));
+                          signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                        }}
+                      >
+                        Sign in with Google</Button>
+                    </div>
+                    <Divider className={styles.saperator}>Or</Divider>
+                  </>
+                ) : null}
                 <Button type="default" size="large" style={{ width: '100%' }} onClick={() => setShowClaimEmailSetup(true)}>
                   Set up with email and password
                 </Button>
@@ -1000,20 +1053,24 @@ function LoginPage() {
               <>
                 <div className={styles.desktopAuthHeader}>
                   <h2>Welcome back</h2>
-                  <p>Log in to manage your menus.</p>
+                  <p>{loginManagementDescription}</p>
                 </div>
-                <div className={styles.googleLoginWrap}>
-                  <Button type="default"
-                    size="large"
-                    icon={<FcGoogle />}
-                    onClick={() => {
-                      dispatch(startLoader("LoginPage:signInWithGoogle"));
-                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
-                    }}
-                  >
-                    Continue with Google</Button>
-                </div>
-                <Divider className={styles.saperator}>Or use email</Divider>
+                {shouldOfferGoogleAuth ? (
+                  <>
+                    <div className={styles.googleLoginWrap}>
+                      <Button type="default"
+                        size="large"
+                        icon={<FcGoogle />}
+                        onClick={() => {
+                          dispatch(startLoader("LoginPage:signInWithGoogle"));
+                          signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                        }}
+                      >
+                        Continue with Google</Button>
+                    </div>
+                    <Divider className={styles.saperator}>Or use email</Divider>
+                  </>
+                ) : null}
                 <Form
                   form={loginForm}
                   name="normal_login"
