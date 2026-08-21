@@ -3799,6 +3799,7 @@ function verifyDeploymentVersionResponseDiagnostics() {
   assert(versionResponse.includes('isOptionalString(value.buildId)'), 'deployment version response parser must validate buildId type');
   assert(versionResponse.includes('isOptionalString(value.shortBuildId)'), 'deployment version response parser must validate shortBuildId type');
   assert(versionResponse.includes('isOptionalString(value.buildCreatedAt)'), 'deployment version response parser must validate buildCreatedAt type');
+  assert(versionResponse.includes('isOptionalBuildProvenance(value.buildProvenance)'), 'deployment version response parser must validate build provenance');
   assert(versionResponse.includes('isOptionalString(value.deploymentUrl)'), 'deployment version response parser must validate deploymentUrl type');
   assert(versionResponse.includes('isOptionalString(value.env)'), 'deployment version response parser must validate env type');
   assert(!versionResponse.includes('response.json()'), 'deployment version response parser must not use direct unbounded response parsing');

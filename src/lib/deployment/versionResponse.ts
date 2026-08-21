@@ -17,6 +17,7 @@ export type DeploymentVersionResponseSurface =
 export type DeploymentVersionResponse = {
     buildCreatedAt?: string;
     buildId?: string;
+    buildProvenance?: 'missing' | 'verified';
     deploymentUrl?: string;
     env?: string;
     shortBuildId?: string;
@@ -32,10 +33,15 @@ const isOptionalString = (value: unknown): boolean => (
     value === undefined || typeof value === 'string'
 );
 
+const isOptionalBuildProvenance = (value: unknown): boolean => (
+    value === undefined || value === 'missing' || value === 'verified'
+);
+
 export const isDeploymentVersionResponse = (value: unknown): value is DeploymentVersionResponse => (
     isRecord(value)
     && isOptionalString(value.buildCreatedAt)
     && isOptionalString(value.buildId)
+    && isOptionalBuildProvenance(value.buildProvenance)
     && isOptionalString(value.deploymentUrl)
     && isOptionalString(value.env)
     && isOptionalString(value.shortBuildId)

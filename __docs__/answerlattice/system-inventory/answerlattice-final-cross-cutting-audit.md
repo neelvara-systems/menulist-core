@@ -1,5 +1,11 @@
 # Answerlattice Final Cross-Cutting Audit
 
+> **Historical audit boundary:** This August 2 local-source snapshot is not the
+> current cloud setup ledger or release approval. Use
+> `../deployment/answerlattice-environment-setup-checklist.md` for current QA
+> and production infrastructure state. Do not execute project/domain commands
+> inferred from this snapshot.
+>
 > **Audit date:** 2026-08-02 Stack Change Watch refresh of the 2026-07-20 closure
 > **Scope:** Final C1-C8 pass after the strict 44-feature audit, including the Feature 3 Source Governance overlay, C3 workspace-lifecycle hardening, and product-scoped Gemini spend admission
 > **Verdict:** All 44 feature flows and C1-C8 are local-source complete. Answerlattice is not production-certified because required cloud, recovery, browser, provider, and real-client evidence remains external.

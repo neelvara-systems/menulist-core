@@ -3,7 +3,7 @@
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, connected owner-decision proof, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
 > **Date:** 2026-07-31
-> **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
+> **Domain:** answerlattice.com (production) | canonica.app (Vercel custom `qa`) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
 
@@ -290,7 +290,7 @@ Production:
   answerlattice.com/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Vercel Preview / QA:
-  answerlattice.menulist.online/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
+  canonica.app/* and www.canonica.app/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Local Dev:
   localhost:3000/__answerlattice/*  →  middleware detects dev prefix  →  rewrites to /sites/answerlattice/*

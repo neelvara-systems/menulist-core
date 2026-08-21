@@ -230,18 +230,28 @@ Workflow adapters still write the same delivery-log and health-summary rows thro
 
 The July 13 delivery-integrity pass made event claiming and completion transactional. It also made deterministic nightly event creation and delivery-attempt logging create-only/idempotent, so exact replays do not create new events and repeated acknowledgements cannot replace the first attempt record. A partial multi-adapter delivery is terminally `failed`, and circuit-breaker updates/probe leases derive from transaction snapshots. These changes explain the transaction reads/writes now included in §3.
 
-### Answerlattice SMTP Secret Provisioning
+### Optional Answerlattice SMTP Adapter Secrets
 
-`processIntegrationEvent` declares a dedicated workflow-integration secret group. All four secrets must exist in the same Answerlattice Firebase project before the function can deploy and the email adapter can initialize:
+Core Answerlattice product email uses the environment-scoped Resend integration.
+The workflow SMTP adapter is a separate controlled-rollout surface;
+`processIntegrationEvent` is intentionally outside the approved core Function
+set and its SMTP secrets are absent from QA and Production. Do not provision or
+deploy this optional adapter during baseline environment setup.
+
+If an explicit later rollout approves the SMTP adapter, create all four secrets
+inside the same company-owned Answerlattice Firebase project before deploying
+that function:
 
 ```bash
-firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project neelvara-answerlattice-qa
 ```
 
-Use the same names with `--project answerlattice` for production. Answerlattice Functions intentionally do not read generic `SMTP_*` variables from MenuList or another runtime plane.
+Use the same names with `--project neelvara-answerlattice-prod` only after an
+explicit Production rollout. Answerlattice Functions intentionally do not read
+generic `SMTP_*` variables from MenuList or another runtime plane.
 
 The July 19, 2026 Feature 34 audit attempted the smallest changed-function deployment with `firebase deploy --only functions:answerlattice:answerlatticeNightly,functions:answerlattice:processIntegrationEvent --project answerlattice-qa --config firebase-answerlattice.json`. Local Functions TypeScript had already passed, but the Firebase CLI stopped before project or secret inspection with `Error: Failed to authenticate, have you run firebase login?`. No QA function revision changed.
 

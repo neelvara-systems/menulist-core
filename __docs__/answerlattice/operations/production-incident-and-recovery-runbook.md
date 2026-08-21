@@ -1,13 +1,13 @@
 # Answerlattice Production Incident and Recovery Runbook
 
-**Status:** Required release runbook; cloud backup and restore rehearsal are not yet verified  
+**Status:** Required release runbook; structural cloud restores are verified and fixture-level recovery certification remains open
 **Product:** Answerlattice (`AL`)  
 **Runtime namespace:** Historical `canonica` names remain where migration compatibility requires them  
-**Last verified:** 2026-07-11
+**Last verified:** 2026-08-22
 
 ## Purpose
 
-This runbook defines the minimum operator response for Answerlattice authentication, retrieval, ingestion, scheduler, billing, credential, and data-recovery incidents. It does not claim that a backup exists. Production release remains blocked until the backup configuration and isolated restore rehearsal below are completed with cloud evidence.
+This runbook defines the minimum operator response for Answerlattice authentication, retrieval, ingestion, scheduler, billing, credential, and data-recovery incidents. Managed QA and production backups and isolated structural restores have current cloud evidence. Fixture-level tenant validation, TTL reapplication, Storage/Auth recovery, and approved cleanup remain certification work in the live environment setup checklist.
 
 ## Immediate Safety Actions
 
@@ -27,7 +27,7 @@ This runbook defines the minimum operator response for Answerlattice authenticat
 
 ## Recovery Order
 
-1. Verify the target environment and project: QA is `answerlattice-qa`; production is `answerlattice`.
+1. Verify the target environment and project: QA is `neelvara-answerlattice-qa` (CLI alias `answerlattice-qa`); production is `neelvara-answerlattice-prod` (CLI alias `answerlattice-prod`).
 2. Verify authentication and product-account scope before touching tenant data.
 3. Restore authoritative records before derived records.
 4. Rebuild summaries, bundles, indexes, embeddings, and caches from authoritative data.

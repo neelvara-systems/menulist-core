@@ -59,8 +59,8 @@ Product DAL files import from their own client, never from another product's cli
 Each separated product gets its own functions directory:
 
 ```
-functions/               → MenuList (local/preview menulist-qa, production menulist)
-functions-answerlattice/      → Answerlattice (local/preview answerlattice-qa, production answerlattice)
+functions/               → MenuList (local/QA menulist-qa, production menulist-prod)
+functions-answerlattice/ → Answerlattice (local/QA neelvara-answerlattice-qa, production neelvara-answerlattice-prod)
 functions-{product}/     → Future product
 ```
 
@@ -72,9 +72,9 @@ Each separated product gets prefixed env vars:
 
 | Environment | MenuList canonical project ID | Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` |
 | --- | --- | --- |
-| Local development | `menulist-qa` | `answerlattice-qa` |
-| Vercel Preview / QA | `menulist-qa` | `answerlattice-qa` |
-| Vercel Production | `menulist-prod` | `answerlattice` |
+| Local development | `menulist-qa` | `neelvara-answerlattice-qa` |
+| Vercel custom `qa` | `menulist-qa` | `neelvara-answerlattice-qa` |
+| Vercel Production | `menulist-prod` | `neelvara-answerlattice-prod` |
 
 Answerlattice env vars stay prefixed with `ANSWERLATTICE_` / `NEXT_PUBLIC_ANSWERLATTICE_`, and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate` is the active local, preview, and production path. The server reuses non-secret public Firebase identifiers; only Admin credentials remain private. Prefer env-based Admin credentials over a local service-account JSON file.
 

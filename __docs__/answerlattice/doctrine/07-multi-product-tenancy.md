@@ -336,8 +336,8 @@ FIREBASE_CLIENT_EMAIL=...
 
 # Answerlattice
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY=...
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa   # local/preview
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice      # production
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-qa   # local/QA
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-prod # production
 ANSWERLATTICE_FIREBASE_PRIVATE_KEY=...
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=...
 ```
@@ -438,14 +438,14 @@ Dormant MenuList chat-monitoring compatibility boundary: the old Feedback Intell
 npm run verify:functions-deploy-preflight
 firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 # MenuList production Functions require QA evidence and explicit production deploy approval.
-firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
-firebase deploy --only functions:answerlattice --project answerlattice --config firebase-answerlattice.json
+firebase deploy --only functions:answerlattice --project neelvara-answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only functions:answerlattice --project neelvara-answerlattice-prod --config firebase-answerlattice.json
 ```
 
 Two `firebase.json` configs at dashboard root:
 
-- `firebase.json` → MenuList targets (`menulist-qa` for local/preview, `menulist` for production)
-- `firebase-answerlattice.json` → Answerlattice targets (`answerlattice-qa` for local/preview, `answerlattice` for production)
+- `firebase.json` → MenuList targets (`menulist-qa` for local/QA, `menulist-prod` for production)
+- `firebase-answerlattice.json` → Answerlattice targets (`neelvara-answerlattice-qa` for local/QA, `neelvara-answerlattice-prod` for production)
 
 ### Client-Side Callable Functions
 

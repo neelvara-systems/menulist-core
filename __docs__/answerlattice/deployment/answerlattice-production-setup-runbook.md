@@ -26,6 +26,13 @@ The production project is readable and its core foundation is active on the
 verified Production deployment. Hosted application certification remains a
 separate gate.
 
+There is no remaining production provider-setup action before QA. Open
+`AL-PROD-C05` and `AL-PROD-E06` are post-setup certification gates. The current
+exact-artifact deployment also reports the legacy `/api/version` build fallback
+`local`; the repository now fails future hosted builds without a full Git
+revision, but closing that live evidence gap requires separately approved
+Vercel Production deployment.
+
 ## Current Readback
 
 Verified through August 22, 2026:

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { withSentryConfig } = require('@sentry/nextjs');
 const createNextIntlPlugin = require('next-intl/plugin');
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -108,13 +109,53 @@ const resolveNextDeploymentStage = () => {
     return serverVercelStage || publicVercelStage || publicStage || 'local';
 };
 
+const normalizeDeploymentBuildId = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (!/^[0-9a-f]{40,64}$/.test(normalized)) {
+        throw new Error('INVALID_DEPLOYMENT_BUILD_ID');
+    }
+    return normalized;
+};
+
+const resolveGitBuildId = () => {
+    try {
+        return normalizeDeploymentBuildId(execFileSync(
+            'git',
+            ['rev-parse', 'HEAD'],
+            {
+                cwd: __dirname,
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore'],
+            },
+        ));
+    } catch {
+        return null;
+    }
+};
+
+const resolveDeploymentBuildId = () => {
+    const explicitBuildId = normalizeDeploymentBuildId(process.env.NEXT_PUBLIC_BUILD_ID);
+    const vercelBuildId = normalizeDeploymentBuildId(process.env.VERCEL_GIT_COMMIT_SHA);
+    const buildId = explicitBuildId || vercelBuildId || resolveGitBuildId();
+    const isHostedVercelBuild = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
+
+    if (isHostedVercelBuild && !buildId) {
+        throw new Error('MISSING_VERCEL_BUILD_ID');
+    }
+
+    return buildId || 'local';
+};
+
 const nextDeploymentStage = resolveNextDeploymentStage();
 const isVercelDeployment = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
+const deploymentBuildId = resolveDeploymentBuildId();
 const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().toISOString();
 const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 const nextConfig = {
     poweredByHeader: false,
+    generateBuildId: async () => deploymentBuildId,
     // Keep canonical slash redirects inside Proxy so environment/host-specific
     // security and crawler headers are preserved on the redirect response.
     skipTrailingSlashRedirect: true,
@@ -123,7 +164,7 @@ const nextConfig = {
     distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR),
     outputFileTracingRoot: __dirname,
     env: {
-        NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+        NEXT_PUBLIC_BUILD_ID: deploymentBuildId,
         NEXT_PUBLIC_ENV: nextDeploymentStage,
         NEXT_PUBLIC_VERCEL_ENV: isVercelDeployment || process.env.NEXT_PUBLIC_VERCEL_ENV
             ? nextDeploymentStage

@@ -80,8 +80,8 @@ Conversation and notification indexes are maintained in both Answerlattice index
 Changes to either Firestore Rules or Storage Rules require the matching narrow QA deploy:
 
 ```bash
-firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
-firebase deploy --only storage --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only storage --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
 firebase deploy --only storage --project menulist-qa --config firebase.json --non-interactive
 ```

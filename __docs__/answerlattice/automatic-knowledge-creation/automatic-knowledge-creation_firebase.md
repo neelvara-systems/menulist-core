@@ -50,8 +50,8 @@ Signal events receive an `expiresAt` value from the shared Answerlattice retenti
 After rule or Functions changes pass local gates, attempt the smallest QA targets:
 
 ```bash
-firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json
-firebase deploy --only functions:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only functions:answerlatticeNightly --project neelvara-answerlattice-qa --config firebase-answerlattice.json
 ```
 
 Because the shared fallback rules are also maintained, deploy their QA target only when the shared file changed and access is available. Production/Vercel deployment is separate and requires explicit authorization.

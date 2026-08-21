@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const buildId = process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_BUILD_ID || 'unknown';
+    const buildId = process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'unknown';
+    const buildProvenance = /^[0-9a-f]{40,64}$/.test(buildId) ? 'verified' : 'missing';
     const env = process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_ENV || process.env.NODE_ENV || 'unknown';
     const deploymentUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_DEPLOYMENT_URL || '';
     const buildCreatedAt =
@@ -15,6 +16,7 @@ export async function GET() {
         {
             buildId,
             shortBuildId: buildId === 'unknown' ? buildId : buildId.slice(0, 7),
+            buildProvenance,
             env,
             deploymentUrl,
             buildCreatedAt,

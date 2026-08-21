@@ -61,7 +61,7 @@ July 17 cost recheck: support-ticket `messages`, `statuses`, `documents`, and in
 
 On July 16, 2026 both smallest-scope QA rule deployments were attempted after the dedicated and shared emulator suites passed:
 
-- `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json`
+- `firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json`
 - `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json`
 
 Each stopped at `firebaserules.googleapis.com ... :test` with HTTP 403, `The caller does not have permission`, before compilation/upload. No QA rule revision changed. The exact reruns remain owner/IAM-pending in `__docs__/owner-action-items.md`; production rule deployment remains out of scope until QA evidence and explicit approval exist.

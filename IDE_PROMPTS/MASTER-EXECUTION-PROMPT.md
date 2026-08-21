@@ -974,13 +974,13 @@ May NEVER open desktop dashboard. Zero jargon. Large touch targets. Instant feed
 
 ### Identity: `pId`/`tId`/`sId` on every document. No custom identity fields. Ever.
 
-### Firebase: menulist-qa = MenuList local/preview, menulist-prod = MenuList production, answerlattice = Answerlattice production. No cross-project queries.
+### Firebase: `menulist-qa` = MenuList local/QA, `menulist-prod` = MenuList production, `neelvara-answerlattice-qa` = Answerlattice local/QA, and `neelvara-answerlattice-prod` = Answerlattice production. No cross-project queries.
 
 ### CCT: Every product uses Answerlattice Client Token (signed JWT). Answerlattice never reads session directly.
 
 ### Answerlattice DAL: Uses `answerlatticeFirebaseClient`, NOT `firebaseClient`.
 
-### Answerlattice Functions: `functions-answerlattice/` directory, deploys to answerlattice project.
+### Answerlattice Functions: `functions-answerlattice/` directory, deploys independently to `neelvara-answerlattice-qa` or `neelvara-answerlattice-prod` through the matching Firebase alias/script.
 
 ### sourceContext: Required on all Answerlattice client documents. User identity always present.
 

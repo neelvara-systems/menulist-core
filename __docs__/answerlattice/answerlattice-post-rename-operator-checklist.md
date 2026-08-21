@@ -3,7 +3,16 @@
 Date: 2026-05-31
 Owner: founder/operator
 
-Use this after the code rename is merged. This checklist covers external systems that Git cannot update for you.
+> **Historical boundary:** This checklist records the rename-era operator plan
+> and is not executable current setup guidance. Its legacy project IDs, static
+> Admin-key instructions, and former deployment sequence are superseded by the
+> [Answerlattice Environment Setup Checklist](./deployment/answerlattice-environment-setup-checklist.md).
+> Current external server access is keyless through project-local Vercel OIDC
+> and Workload Identity Federation; never download or bind a service-account
+> private key for Vercel.
+
+Use this only to understand the completed rename history. Do not execute its
+commands against a current environment.
 
 ## Read Order
 

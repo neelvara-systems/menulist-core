@@ -168,7 +168,9 @@ Answerlattice has its OWN Firebase project (separate from MenuList's current `me
 
 - **Separate:** Firestore, Auth, Storage, Cloud Functions, App Check
 - **Separate:** `answerlatticeFirebaseClient.ts`, `answerlatticeFirebaseAdmin.ts`, `answerlatticeConfig.ts`
-- **Separate:** `functions-answerlattice/` directory (deploys to answerlattice project)
+- **Separate:** `functions-answerlattice/` directory (deploys independently to
+  `neelvara-answerlattice-qa` or `neelvara-answerlattice-prod`; Firebase CLI
+  aliases are `answerlattice-qa` and `answerlattice-prod`)
 - **Separate:** `ANSWERLATTICE_FIREBASE_*` environment variables
 
 Answerlattice STILL shares with MenuList:

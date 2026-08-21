@@ -427,16 +427,22 @@ Slack detail values pass through `safeSlackMrkdwnText()`, which bounds/redacts t
 
 The email formatter has an explicit repeated-AI-workflow-failure row set. It renders bounded internal phase names and a count, not customer questions or raw scheduler/provider errors. HTML values are secret-redacted before entity encoding.
 
-Before deploying the processor to an Answerlattice Firebase project, provision all four secret versions in that same project:
+The SMTP email adapter is a controlled-rollout surface, not baseline
+Answerlattice setup. Core product email uses the separately scoped Resend
+integration. Keep `processIntegrationEvent` undeployed and these secrets absent
+until an explicit adapter rollout is approved. At that point, provision all
+four secret versions in the same company-owned Firebase project:
 
 ```bash
-firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project neelvara-answerlattice-qa
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project neelvara-answerlattice-qa
 ```
 
-Repeat against `answerlattice` for production with production values. Generic `SMTP_*` variables belong to other runtime planes and are intentionally not used by Answerlattice Functions.
+Repeat against `neelvara-answerlattice-prod` for Production only after that
+separate approval. Generic `SMTP_*` variables belong to other runtime planes
+and are intentionally not used by Answerlattice Functions.
 
 ### 5.6 — Linear Adapter
 

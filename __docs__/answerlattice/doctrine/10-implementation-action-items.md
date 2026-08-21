@@ -1,7 +1,14 @@
-# Multi-Product Implementation — Action Items for Founder
+# Multi-Product Implementation — Historical Action Items
 
 > **Created:** 2025-03-05 | Post-implementation checklist
-> **Status:** Core codebase split is complete. Remaining items are deployment/configuration actions.
+> **Status:** Superseded setup history. Do not execute this file as a current checklist.
+> **Current authority:** `../deployment/answerlattice-environment-setup-checklist.md`
+
+The company-owned projects are `neelvara-answerlattice-qa` and
+`neelvara-answerlattice-prod`. The former external project IDs
+`answerlattice-qa` and `answerlattice` are retired literal cloud targets.
+Current Vercel server authentication uses project-local Workload Identity
+Federation, not service-account JSON or static Admin private keys.
 
 ---
 
@@ -32,17 +39,14 @@
 
 ---
 
-## YOUR Action Items (Manual Steps Required)
+## Historical Action Items (Completed And Superseded)
 
 ### 1. Create Answerlattice Firebase Project in GCP Console
 
-1. Go to https://console.firebase.google.com
-2. Click "Add project"
-3. Name it (e.g., "answerlattice" or "answerlattice-prod")
-4. Enable Firestore (Native mode)
-5. Enable Authentication
-6. Enable Storage
-7. Note the project ID
+1. QA project: `neelvara-answerlattice-qa`.
+2. Production project: `neelvara-answerlattice-prod`.
+3. Firestore, Authentication, Storage, App Check, required APIs, and billing
+   are configured independently in both projects.
 
 ### 2. Fill Answerlattice Environment Variables
 
@@ -52,23 +56,29 @@ Open `.env` and fill in the empty Answerlattice values (lines 50-59):
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY=<from Firebase console>
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa  # local/preview
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice     # production
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-qa   # local/QA
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-prod # production
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=<project-id>.appspot.com
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=<from Firebase console>
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=<from Firebase console>
 NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=<optional database id>
-ANSWERLATTICE_FIREBASE_PRIVATE_KEY=<from service account JSON>
-ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=<from service account JSON>
+ANSWERLATTICE_GCP_PROJECT_ID=<matching company-owned project ID>
+ANSWERLATTICE_GCP_SERVICE_ACCOUNT_EMAIL=<project-local runtime service account>
+ANSWERLATTICE_GCP_WORKLOAD_IDENTITY_PROVIDER=<project-local WIF provider resource>
 ```
 
-The server reuses the canonical public mode, project ID, storage bucket, and optional database ID. The active local and preview path uses `separate` mode with `answerlattice-qa`. Production uses `separate` mode with `answerlattice`. Use `shared` only for explicit legacy/emulator recovery.
-
-Also download the service account JSON and save as `answerlattice-service-account.json` in project root.
+The server reuses the canonical public mode, project ID, storage bucket, and
+optional database ID. Local and QA use `neelvara-answerlattice-qa`; Production
+uses `neelvara-answerlattice-prod`. Use `shared` only for explicit
+legacy/emulator recovery. Never download, store, or configure a service-account
+private-key JSON for Vercel.
 
 ### 3. Add Answerlattice Env Vars to Vercel
 
-Go to Vercel project settings → Environment Variables → add all `ANSWERLATTICE_FIREBASE_*` vars.
+The shared Vercel project has product-isolated Answerlattice selectors in
+custom environment `qa` and Production. Each environment uses its own public
+Firebase values and project-local WIF selectors. Do not copy values between
+QA, Production, or MenuList.
 
 ### 4. Deploy
 
@@ -110,7 +120,8 @@ After completing above:
 - [ ] Answerlattice Firebase project exists in GCP console
 - [ ] All `ANSWERLATTICE_FIREBASE_*` env vars filled in `.env`
 - [ ] Same vars added to Vercel
-- [ ] `answerlattice-service-account.json` exists in project root
+- [x] No `answerlattice-service-account.json` exists; Vercel uses project-local
+      OIDC/WIF and Firebase Functions use Google-managed runtime credentials
 - [x] `functions-answerlattice/` has Answerlattice nightly + KB callable functions
 - [ ] `tsc --noEmit` still passes with zero errors
 - [ ] `npm --prefix functions-answerlattice run build` still passes with zero errors

@@ -429,6 +429,15 @@ function verifyEnvironmentTargets() {
   const menulistProductionProviderSetup = read('__docs__/deployment/menulist-production-provider-setup.md');
   const initialAccountSetupGuide = read('__docs__/deployment/initial-account-domain-firebase-setup-guide.md');
   const deploymentReadme = read('__docs__/deployment/README.md');
+  const answerlatticeDocsReadme = read('__docs__/answerlattice/README.md');
+  const answerlatticeDeploymentReadme = read('__docs__/answerlattice/deployment/README.md');
+  const answerlatticeSetupLedger = read('__docs__/answerlattice/deployment/answerlattice-environment-setup-checklist.md');
+  const answerlatticeProductionRunbook = read('__docs__/answerlattice/deployment/answerlattice-production-setup-runbook.md');
+  const answerlatticeQaHistory = read('__docs__/answerlattice/deployment/answerlattice-qa-deployment-runbook.md');
+  const answerlatticeWebsiteReadme = read('__docs__/answerlattice/answerlattice-website/README.md');
+  const answerlatticeRecoveryRunbook = read('__docs__/answerlattice/operations/production-incident-and-recovery-runbook.md');
+  const answerlatticeHistoricalActions = read('__docs__/answerlattice/doctrine/10-implementation-action-items.md');
+  const deploymentBuildVisibility = read('__docs__/deployment/deployment-build-visibility.md');
   const menulistRulesPredeployRunner = read('scripts/verification/run-menulist-firebase-rules-predeploy.mjs');
   const urlRoutingArchitecture = read('__docs__/url-routing-architecture/url-routing-architecture_impl.md');
   const productionDeploymentChecklist = read('__docs__/deployment/production-deployment-checklist.md');
@@ -778,6 +787,32 @@ function verifyEnvironmentTargets() {
   assert(firebaserc.projects['menulist-prod'] === undefined, '.firebaserc must not define a self-alias for the literal MenuList production project ID');
   assert(firebaserc.projects['answerlattice-qa'] === 'neelvara-answerlattice-qa', '.firebaserc Answerlattice QA alias');
   assert(firebaserc.projects['answerlattice-prod'] === 'neelvara-answerlattice-prod', '.firebaserc Answerlattice production alias');
+  for (const [label, content] of [
+    ['Answerlattice deployment hub', answerlatticeDeploymentReadme],
+    ['Answerlattice setup ledger', answerlatticeSetupLedger],
+    ['Answerlattice production runbook', answerlatticeProductionRunbook],
+  ]) {
+    assertIncludes(content, 'neelvara-answerlattice-qa', `${label} QA project identity`);
+    assertIncludes(content, 'neelvara-answerlattice-prod', `${label} Production project identity`);
+    assertIncludes(content, 'canonica.app', `${label} QA domain`);
+    assertIncludes(content, 'answerlattice.com', `${label} Production domain`);
+    assertNotIncludes(content, 'answerlattice.menulist.online', `${label} retired shared staging host`);
+  }
+  assertIncludes(answerlatticeRecoveryRunbook, 'neelvara-answerlattice-qa', 'Answerlattice recovery runbook QA project identity');
+  assertIncludes(answerlatticeRecoveryRunbook, 'neelvara-answerlattice-prod', 'Answerlattice recovery runbook Production project identity');
+  assertNotIncludes(answerlatticeRecoveryRunbook, 'answerlattice.menulist.online', 'Answerlattice recovery runbook retired shared staging host');
+  assertIncludes(answerlatticeDeploymentReadme, '## Pre-QA Handoff', 'Answerlattice pre-QA handoff authority');
+  assertIncludes(answerlatticeDocsReadme, '**Deployment authority:**', 'Answerlattice feature-doc deployment history boundary');
+  assertIncludes(answerlatticeDeploymentReadme, 'No provider or infrastructure setup action remains before Answerlattice QA.', 'Answerlattice setup closure statement');
+  assertIncludes(answerlatticeProductionRunbook, 'provider and infrastructure setup complete; certification remains open', 'Answerlattice Production setup status');
+  assertIncludes(answerlatticeQaHistory, '**Evidence boundary:**', 'Answerlattice historical QA runbook boundary');
+  assertIncludes(answerlatticeQaHistory, '**Retired target warning:**', 'Answerlattice retired QA target warning');
+  assertIncludes(answerlatticeWebsiteReadme, 'canonica.app (Vercel custom `qa`)', 'Answerlattice website QA apex contract');
+  assertIncludes(answerlatticeWebsiteReadme, 'www.canonica.app', 'Answerlattice website QA www contract');
+  assertIncludes(answerlatticeHistoricalActions, 'Superseded setup history. Do not execute this file as a current checklist.', 'Answerlattice historical action boundary');
+  assertIncludes(answerlatticeHistoricalActions, 'No `answerlattice-service-account.json` exists', 'Answerlattice static Admin key rejection');
+  assertIncludes(deploymentBuildVisibility, '`buildProvenance`', 'Deployment build provenance evidence contract');
+  assertIncludes(deploymentBuildVisibility, 'MISSING_VERCEL_BUILD_ID', 'Hosted build provenance fail-closed documentation');
   assert(firebaserc.projects['campaigncue-qa'] === 'campaigncue-qa', '.firebaserc CampaignCue QA alias');
   assert(firebaserc.projects['campaigncue-prod'] === 'campaigncue', '.firebaserc CampaignCue production alias');
   assert(exists('firebase-campaigncue.json'), 'CampaignCue Firebase deploy config must exist');

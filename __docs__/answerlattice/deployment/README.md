@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 22, 2026
-> **Status:** QA setup complete; production has two setup gaps; certification and optional providers remain gated
+> **Status:** QA and production provider/infrastructure setup complete; testing, certification, and optional providers remain gated
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -30,7 +30,7 @@ provider IDs only; they are not cloud project IDs.
 | [Answerlattice Production Setup Runbook](./answerlattice-production-setup-runbook.md) | Production-only preparation and promotion sequence after QA setup closes |
 | [Answerlattice Backup And Recovery Runbook](./answerlattice-backup-recovery-runbook.md) | Backup discovery, project confirmation, restore drills, and recovery evidence |
 | [Production Readiness Certification](../answerlattice-production-certification.md) | Historical code certification and product evidence; it does not approve infrastructure setup or deployment |
-| [Final Cross-Cutting Audit](../system-inventory/answerlattice-final-cross-cutting-audit.md) | Current source/runtime audit and release evidence boundary |
+| [Final Cross-Cutting Audit](../system-inventory/answerlattice-final-cross-cutting-audit.md) | Historical August 2 local-source audit; use the live setup checklist for current cloud state |
 
 ## Current Verified State
 
@@ -198,6 +198,12 @@ The following was verified through August 22, 2026:
   OIDC/data-path proof, authenticated smoke, recovery fixture validation, TTL
   reapplication, Storage/Auth evidence, and recovery cleanup remain separately
   gated.
+  The active exact-artifact redeployment reports environment `production` but
+  cannot provide trustworthy source provenance in `/api/version`; it reports
+  the legacy fallback `local`. Source now rejects future Vercel builds without
+  a full Git revision and bakes that revision into both Next's build ID and
+  `/api/version`. This source correction requires a separately approved Vercel
+  Production deployment before the live provenance gap can close.
 - Current QA hosted readback is deployment
   `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz` at
   `menulist-core-eug4wxayt-neelvara-systems.vercel.app`, serving exact staging
@@ -207,6 +213,22 @@ The following was verified through August 22, 2026:
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
 account can read it back from the exact project.
+
+## Pre-QA Handoff
+
+No provider or infrastructure setup action remains before Answerlattice QA.
+Start QA from the open fixture-dependent items in the live checklist:
+`AL-QA-C06` and `AL-QA-E07`, plus the testing-only portions referenced by
+`AL-QA-D06`, `AL-QA-D07`, and `AL-QA-E06`.
+
+Production setup is also complete. `AL-PROD-C05` and `AL-PROD-E06` are
+certification work, not missing setup. Optional Redis, outbound EmailOS/Resend,
+SMTP, GitHub, WhatsApp, analytics, and provider-send paths remain deliberately
+disabled. Do not create or enable them merely for parity.
+
+The sole source-ready but deployment-only closure is the production
+`/api/version` provenance correction described above. It does not block QA and
+must not be deployed without explicit Vercel Production approval.
 
 ## Execution Order
 

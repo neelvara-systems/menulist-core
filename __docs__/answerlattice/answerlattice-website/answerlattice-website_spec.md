@@ -64,9 +64,10 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 - Public product name: `AnswerLattice`
 - Internal route/code slug: `answerlattice` unless a separate tested runtime migration changes it
 - Production canonical host: `answerlattice.com`
-- Preview / QA host: `answerlattice.menulist.online`
+- Preview / QA hosts: `canonica.app`, `www.canonica.app`
 - Local dev prefix: `/__answerlattice`
-- Legacy Canonica public hosts must redirect to the active AnswerLattice public host instead of serving duplicate public brand content.
+- Canonica hosts serve only the noindex QA environment and must never be
+  attached to Production or treated as production canonical URLs.
 - Public copy, metadata, OpenGraph, Twitter cards, schema, header, footer, resources, comparison pages, developer docs, robots, sitemap, and LLM context must use `AnswerLattice` as the standalone brand.
 - `Canonica` may remain only in internal historical docs, migration notes, or code names where renaming is not part of the tested runtime plan; it must not appear in rendered public AnswerLattice site copy.
 

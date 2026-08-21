@@ -1,7 +1,7 @@
 # Deployment Build Visibility (Preview + Production)
 
 > **Category:** Infrastructure  
-> **Last Updated:** June 30, 2026
+> **Last Updated:** August 22, 2026
 
 ---
 
@@ -30,12 +30,21 @@ It answers one operational question:
 2. Runtime verification endpoint
 - `GET /api/version`
 - Returns deployment/server truth: build ID, short build ID, env, deployment URL, and build-created value
+- Returns `buildProvenance: verified` only when the build ID is a full Git revision; `missing` is never acceptable release evidence
 
 3. Public env wiring for client visibility
 - `NEXT_PUBLIC_BUILD_ID`
 - `NEXT_PUBLIC_ENV`
 - `NEXT_PUBLIC_DEPLOYMENT_URL`
 - `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE`
+
+4. Fail-closed hosted build identity
+- Next uses the full revision as `generateBuildId`
+- Build resolution order is explicit `NEXT_PUBLIC_BUILD_ID`, Vercel
+  `VERCEL_GIT_COMMIT_SHA`, then the checked-out Git `HEAD`
+- A Vercel build fails with `MISSING_VERCEL_BUILD_ID` if none is available
+- `NEXT_PUBLIC_BUILD_ID` must be a full 40- or 64-character hexadecimal Git
+  revision; aliases such as `local`, branch names, and short SHAs are rejected
 
 4. Shared browser request and response guard
 - `src/lib/deployment/versionResponse.ts`
@@ -101,10 +110,12 @@ Expected JSON fields:
 - `env`
 - `deploymentUrl`
 - `buildCreatedAt`
+- `buildProvenance`
 
 ### 3) Compare both signals
 
-If badge build and `/api/version` build match, deployment is aligned.
+If badge build and `/api/version` build match and `buildProvenance` is
+`verified`, deployment is aligned.
 
 If they do not match, you are seeing a stale client state (usually cache/service worker/browser tab state).
 
@@ -120,6 +131,10 @@ If they do not match, you are seeing a stale client state (usually cache/service
 6. Denied session storage never blocks the owner shell or badge; the badge falls back to build-only output and records bounded development diagnostics.
 7. Badge can be disabled without code change by setting:
 - `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE=false`
+8. A hosted response with `buildId: local`, `buildId: unknown`, or
+`buildProvenance: missing` is a release-evidence failure. Rebuild from Git or
+provide the exact full source revision as `NEXT_PUBLIC_BUILD_ID`; do not infer
+the revision from a deployment timestamp or alias.
 
 ---
 

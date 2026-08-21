@@ -59,7 +59,7 @@ The aggregate Answerlattice runtime-truth command reaches an unrelated, previous
 The required dedicated-rules command was attempted:
 
 ```bash
-firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 ```
 
 It stopped before upload with `Error: Failed to authenticate, have you run firebase login?`. No remote rule revision changed. No Vercel, app, Functions, Storage, index, or website deployment was attempted.
