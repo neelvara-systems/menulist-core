@@ -116,8 +116,8 @@ account:
 ```text
 menulist-qa
 menulist-prod
-answerlattice-qa
-answerlattice
+neelvara-answerlattice-qa
+neelvara-answerlattice-prod
 campaigncue-qa
 campaigncue
 menulist-signaldesk-qa
@@ -138,7 +138,8 @@ Predeploy lint/build passed.
 HTTP Error: 403, The caller does not have permission.
 ```
 
-Answerlattice QA health-check deploy attempt:
+Superseded Answerlattice QA health-check deploy attempt against the retired
+external project (historical evidence only; do not reuse this target):
 
 ```bash
 firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
@@ -177,7 +178,7 @@ Complete these in order. Do not skip to production until QA passes.
    ```
 10. [ ] Deploy Answerlattice QA Functions after project access is fixed:
    ```bash
-   firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+   firebase deploy --only functions:answerlattice:answerlatticeNightly --project neelvara-answerlattice-qa --config firebase-answerlattice.json
    ```
 11. [ ] Deploy SignalDesk QA Functions after project access is fixed:
    ```bash
@@ -233,7 +234,7 @@ Complete these in order. Do not skip to production until QA passes.
 | --- | --- | --- | --- | --- | --- | --- |
 | MenuList | `ML` | `http://localhost:3000/` | website `https://menulist.digital`; owner app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | website `https://menulist.ai`; owner app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist-prod` |
 | Neelvara | none | `http://localhost:3000/__neelvara/` | `https://neelvara.menulist.online` | none | `https://neelvara.com` | none |
-| Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
+| Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://canonica.app` | `neelvara-answerlattice-qa` | `https://answerlattice.com` | `neelvara-answerlattice-prod` |
 | CampaignCue | `CC` | `http://localhost:3000/__campaigncue/` | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
 | SignalDesk | `SD` | `http://localhost:3000/signaldesk` | `https://signaldesk.menulist.online` | `menulist-signaldesk-qa` | `https://signaldesk.menulist.online` | `menulist-signaldesk` |
 | MyCodex | `MC` | `http://localhost:3000/__mycodex/` | no active domain | none | no active domain | none |
@@ -342,11 +343,11 @@ Use one parent operating identity and one shared infrastructure account stack:
 - Password manager: one company vault for registrar, Workspace, GitHub, Vercel,
   Firebase, Razorpay, provider credentials, and recovery codes.
 
-Use `admin@neelvara.com` as the break-glass Workspace Super Admin and a named
-operator such as `danny@neelvara.com` for routine setup with only required
-access. Do not create separate random Gmail accounts for each product. Add
-individual humans through IAM, retain offline recovery codes, and add a second
-trusted Super Admin before production when another owner is available.
+Use `admin@neelvara.com` as the only human Workspace, Google Cloud, Firebase,
+and provider owner/operator for every product. Do not create a named daily
+operator, product-specific user, duplicate Super Admin, or random Gmail
+account. Retain offline recovery codes and an independently controlled recovery
+path for this single identity.
 
 Create service accounts per project only where the app needs server credentials.
 Do not use personal user keys for application runtime.
@@ -446,7 +447,7 @@ domains across personal accounts.
 | `*.menulist.digital` | MenuList QA customer test links | Wildcard/subdomains only; configure in Vercel/DNS |
 | `answerlattice.com` | Answerlattice production website/app | Already resolves; retain and connect/verify in Vercel |
 | `campaigncue.ai` | CampaignCue production website/app | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
-| `canonica.app` | Legacy Answerlattice name if already owned | Retain only as redirect to `answerlattice.com`; do not create Canonica accounts |
+| `canonica.app` | Answerlattice QA website/app | Retain as the exact QA host; attach only to Vercel custom environment `qa` and branch `staging` |
 
 Do not purchase:
 
@@ -462,21 +463,16 @@ Do not purchase:
 
 Open Google Admin: https://admin.google.com/
 
-Create the break-glass Super Admin mailbox:
+Create the single company Super Admin and operator mailbox:
 
 ```text
 admin@neelvara.com
 ```
 
-Create the named daily operator mailbox:
-
-```text
-danny@neelvara.com
-```
-
-Use the founder's equivalent named address if a different name is appropriate.
-Keep the break-glass account out of daily browsing and provider work. Enable MFA
-on both and store break-glass recovery codes offline and in the company vault.
+Do not create another Workspace or Cloud Identity user for routine work or for
+any product. Use the controlled company profile for provider work, enable MFA
+on `admin@neelvara.com`, and store its recovery codes offline and in the
+company vault.
 
 Create aliases or groups instead of paid users for every address below:
 
@@ -546,7 +542,8 @@ Expected hostnames:
 | `app.menulist.digital` | staging | MenuList owner/staff app |
 | `*.menulist.digital` | staging | MenuList customer tests |
 | `neelvara.menulist.online` | staging | Neelvara |
-| `answerlattice.menulist.online` | staging | Answerlattice |
+| `canonica.app` | staging | Answerlattice |
+| `www.canonica.app` | staging | Answerlattice |
 | `campaigncue.menulist.online` | staging | CampaignCue |
 | `signaldesk.menulist.online` | staging | SignalDesk |
 | `menulist.ai` | production | MenuList |
@@ -616,7 +613,7 @@ Create or confirm exactly these Firebase project ids:
 | Product | Staging/local project | Production project |
 | --- | --- | --- |
 | MenuList | `menulist-qa` | `menulist-prod` |
-| Answerlattice | `answerlattice-qa` | `answerlattice` |
+| Answerlattice | `neelvara-answerlattice-qa` | `neelvara-answerlattice-prod` |
 | CampaignCue | `campaigncue-qa` | `campaigncue` |
 | SignalDesk | `menulist-signaldesk-qa` | `menulist-signaldesk` |
 | Neelvara | none | none |
@@ -642,8 +639,8 @@ Expected result:
 
 - [ ] `menulist-qa` is visible.
 - [ ] `menulist-prod` is visible.
-- [ ] `answerlattice-qa` is visible.
-- [ ] `answerlattice` is visible.
+- [ ] `neelvara-answerlattice-qa` is visible.
+- [ ] `neelvara-answerlattice-prod` is visible.
 - [ ] `campaigncue-qa` is visible.
 - [ ] `campaigncue` is visible.
 - [ ] `menulist-signaldesk-qa` is visible.
@@ -664,8 +661,8 @@ If any target project is missing:
 | --- | --- |
 | `menulist-qa` | https://console.firebase.google.com/project/menulist-qa/overview |
 | `menulist-prod` | https://console.firebase.google.com/project/menulist-prod/overview |
-| `answerlattice-qa` | https://console.firebase.google.com/project/answerlattice-qa/overview |
-| `answerlattice` | https://console.firebase.google.com/project/answerlattice/overview |
+| `neelvara-answerlattice-qa` | https://console.firebase.google.com/project/neelvara-answerlattice-qa/overview |
+| `neelvara-answerlattice-prod` | https://console.firebase.google.com/project/neelvara-answerlattice-prod/overview |
 | `campaigncue-qa` | https://console.firebase.google.com/project/campaigncue-qa/overview |
 | `campaigncue` | https://console.firebase.google.com/project/campaigncue/overview |
 | `menulist-signaldesk-qa` | https://console.firebase.google.com/project/menulist-signaldesk-qa/overview |
@@ -694,8 +691,8 @@ Projects:
 
 - [ ] `menulist-qa`
 - [ ] `menulist-prod`
-- [ ] `answerlattice-qa`
-- [ ] `answerlattice`
+- [ ] `neelvara-answerlattice-qa`
+- [ ] `neelvara-answerlattice-prod`
 - [ ] `campaigncue-qa`
 - [ ] `campaigncue`
 - [ ] `menulist-signaldesk-qa`
@@ -763,7 +760,7 @@ Answerlattice staging uses:
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate`
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa`
+- `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-qa`
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID`
@@ -771,7 +768,7 @@ Answerlattice staging uses:
 - `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID`
 
 Answerlattice production uses the same key names with
-`NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice`.
+`NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-prod`.
 
 CampaignCue staging uses:
 
@@ -825,8 +822,8 @@ Authorized domains:
 | --- | --- |
 | `menulist-qa` | `localhost`, `app.menulist.digital` |
 | `menulist-prod` | `app.menulist.ai` |
-| `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
-| `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
+| `neelvara-answerlattice-qa` | `localhost`, `canonica.app`, `www.canonica.app` |
+| `neelvara-answerlattice-prod` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
 | `menulist-signaldesk-qa` | `localhost`, `signaldesk.menulist.online` |
@@ -908,27 +905,40 @@ private-key, or credential-file variables. Never add a generic
 Open Google Cloud OAuth credentials:
 https://console.cloud.google.com/apis/credentials
 
-Create separate Web OAuth clients for QA/local and production. They may share
-approved company consent/branding ownership, but must not share credentials or
-mix origins/callbacks across environments.
+Create a separate Web OAuth client for every product and environment. MenuList
+QA, MenuList production, Answerlattice QA, and Answerlattice production may
+share approved company consent/branding ownership, but they must not share
+credentials or mix origins/callbacks across products or environments.
 
-Staging/local JavaScript origins:
+The shared NextAuth code uses one provider ID and callback shape but routes
+credentials by hostname. MenuList clients use `GOOGLE_CLIENT_*`; Answerlattice
+clients use `ANSWERLATTICE_GOOGLE_CLIENT_*`. This is code reuse, not credential
+reuse.
+
+MenuList QA/local JavaScript origins:
 
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
 - `https://app.menulist.digital`
-- `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
 
-Production JavaScript origins:
+MenuList production JavaScript origins:
 
 - `https://app.menulist.ai`
-- `https://answerlattice.com`
-- `https://www.answerlattice.com`
 - `https://campaigncue.ai`
 - `https://www.campaigncue.ai`
 - `https://signaldesk.menulist.online`
+
+Answerlattice QA JavaScript origins:
+
+- `https://canonica.app`
+- `https://www.canonica.app`
+
+Answerlattice production JavaScript origins:
+
+- `https://answerlattice.com`
+- `https://www.answerlattice.com`
 
 Redirect URI pattern:
 
@@ -936,30 +946,44 @@ Redirect URI pattern:
 https://<domain>/api/auth/callback/google
 ```
 
-QA/local redirect URIs, in the QA client:
+MenuList QA/local redirect URIs, in the MenuList QA client:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `http://127.0.0.1:3000/api/auth/callback/google`
 - `https://app.menulist.digital/api/auth/callback/google`
-- `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
 
-Production redirect URIs, in the separate production client:
+MenuList production redirect URIs, in the MenuList production client:
 
 - `https://app.menulist.ai/api/auth/callback/google`
-- `https://answerlattice.com/api/auth/callback/google`
-- `https://www.answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
 - `https://www.campaigncue.ai/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
+
+Answerlattice QA redirect URIs, in the Answerlattice QA client:
+
+- `https://canonica.app/api/auth/callback/google`
+- `https://www.canonica.app/api/auth/callback/google`
+
+Answerlattice production redirect URIs, in the Answerlattice production
+client:
+
+- `https://answerlattice.com/api/auth/callback/google`
+- `https://www.answerlattice.com/api/auth/callback/google`
 
 Vercel env, using different values in custom `qa` and Production:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- `ANSWERLATTICE_GOOGLE_CLIENT_ID`
+- `ANSWERLATTICE_GOOGLE_CLIENT_SECRET`
 - `NEXTAUTH_SECRET`
-- Optional: `NEXTAUTH_URL`
+
+Do not set `NEXTAUTH_URL` in a hosted shared Vercel environment. NextAuth must
+derive the current Vercel request origin so each host uses its own host-only
+cookie and exact callback. A localhost-only `NEXTAUTH_URL` remains allowed.
+Never add Canonica or Answerlattice callbacks to a MenuList OAuth client.
 
 Generate `NEXTAUTH_SECRET` with:
 
@@ -1001,14 +1025,17 @@ NEXT_PUBLIC_DEPLOYMENT_URL=https://menulist.digital
 NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital
 NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.digital,www.menulist.digital,app.menulist.digital
 NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.digital
-NEXTAUTH_URL=https://app.menulist.digital
 ```
+
+Do not set `NEXTAUTH_URL` in this hosted environment. It would force every
+shared-project OAuth callback to the MenuList host instead of the host that
+started sign-in.
 
 Use QA Firebase values:
 
 - MenuList: `menulist-qa`
 - Neelvara: no Firebase
-- Answerlattice: `answerlattice-qa`
+- Answerlattice: `neelvara-answerlattice-qa`
 - CampaignCue: `campaigncue-qa`
 - SignalDesk: `menulist-signaldesk-qa`
 - MyCodex: no Firebase
@@ -1061,7 +1088,7 @@ from.
 | Group | Variables | Source |
 | --- | --- | --- |
 | Runtime identity | `NEXT_PUBLIC_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DEPLOYMENT_URL`, `NEXT_PUBLIC_PLATFORM_DOMAIN`, `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`, `NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_BUILD_CREATED_AT`, `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE` | repo contract plus Vercel build metadata |
-| Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `NEXTAUTH_URL` | OpenSSL plus Google Cloud OAuth |
+| Auth | shared `NEXTAUTH_SECRET`; MenuList `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; Answerlattice `ANSWERLATTICE_GOOGLE_CLIENT_ID` / `ANSWERLATTICE_GOOGLE_CLIENT_SECRET`; no hosted `NEXTAUTH_URL` | OpenSSL plus separate product/environment Google Cloud OAuth clients |
 | MenuList Firebase client | `NEXT_PUBLIC_MENULIST_FIREBASE_*` only | Firebase Web App config |
 | MenuList Firebase Admin | custom QA and production: `MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc`, `MENULIST_GCP_PROJECT_NUMBER`, `MENULIST_GCP_SERVICE_ACCOUNT_EMAIL`, `MENULIST_GCP_WORKLOAD_IDENTITY_POOL_ID`, `MENULIST_GCP_WORKLOAD_IDENTITY_PROVIDER_ID`; both reuse canonical public project ID/bucket plus `MENULIST_FIREBASE_PROJECT_LOCATION` | project-local Vercel OIDC and Google Workload Identity Federation; local override is ADC |
 | Answerlattice Firebase client | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*`, `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Answerlattice Firebase Web App config |
@@ -1147,8 +1174,8 @@ Commands:
 ```bash
 gcloud services enable secretmanager.googleapis.com --project menulist-qa
 gcloud services enable secretmanager.googleapis.com --project menulist-prod
-gcloud services enable secretmanager.googleapis.com --project answerlattice-qa
-gcloud services enable secretmanager.googleapis.com --project answerlattice
+gcloud services enable secretmanager.googleapis.com --project neelvara-answerlattice-qa
+gcloud services enable secretmanager.googleapis.com --project neelvara-answerlattice-prod
 gcloud services enable secretmanager.googleapis.com --project campaigncue-qa
 gcloud services enable secretmanager.googleapis.com --project campaigncue
 gcloud services enable secretmanager.googleapis.com --project menulist-signaldesk-qa
@@ -1156,8 +1183,8 @@ gcloud services enable secretmanager.googleapis.com --project menulist-signaldes
 
 gcloud secrets list --project menulist-qa --format='value(name)'
 gcloud secrets list --project menulist-prod --format='value(name)'
-gcloud secrets list --project answerlattice-qa --format='value(name)'
-gcloud secrets list --project answerlattice --format='value(name)'
+gcloud secrets list --project neelvara-answerlattice-qa --format='value(name)'
+gcloud secrets list --project neelvara-answerlattice-prod --format='value(name)'
 gcloud secrets list --project campaigncue-qa --format='value(name)'
 gcloud secrets list --project campaigncue --format='value(name)'
 gcloud secrets list --project menulist-signaldesk-qa --format='value(name)'
@@ -1219,25 +1246,17 @@ Use production values, not copied staging/test secrets.
 Staging:
 
 ```bash
-firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project neelvara-answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project neelvara-answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project neelvara-answerlattice-qa --config firebase-answerlattice.json
 ```
 
 Production:
 
 ```bash
-firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice --config firebase-answerlattice.json
-firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project neelvara-answerlattice-prod --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project neelvara-answerlattice-prod --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project neelvara-answerlattice-prod --config firebase-answerlattice.json
 ```
 
 ### 5. CampaignCue, SignalDesk, Neelvara, and MyCodex secrets
@@ -1470,7 +1489,8 @@ Staging App Check domains:
 - `menulist.digital`
 - `app.menulist.digital`
 - tested non-reserved QA customer hosts such as `qa-cafe.menulist.digital`
-- `answerlattice.menulist.online`
+- `canonica.app`
+- `www.canonica.app`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
 
@@ -1679,7 +1699,7 @@ Open: https://uptimerobot.com/
 Checklist:
 
 - [ ] Add monitors for `https://menulist.digital` and `https://app.menulist.digital`.
-- [ ] Add monitor for `https://answerlattice.menulist.online`.
+- [ ] Add monitors for `https://canonica.app` and `https://www.canonica.app`.
 - [ ] Add monitor for `https://campaigncue.menulist.online`.
 - [ ] Add monitor for `https://signaldesk.menulist.online`.
 - [ ] Add monitor for `https://neelvara.menulist.online`.
@@ -1790,15 +1810,15 @@ inventory and explicitly widened the target.
 Answerlattice staging:
 
 ```bash
-firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only functions:answerlattice
+firebase deploy --project neelvara-answerlattice-qa --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --project neelvara-answerlattice-qa --config firebase-answerlattice.json --only functions:answerlattice
 ```
 
 Answerlattice production:
 
 ```bash
-firebase deploy --project answerlattice --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project answerlattice --config firebase-answerlattice.json --only functions:answerlattice
+firebase deploy --project neelvara-answerlattice-prod --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --project neelvara-answerlattice-prod --config firebase-answerlattice.json --only functions:answerlattice
 ```
 
 CampaignCue staging:
@@ -1942,9 +1962,9 @@ MenuList production:
 
 Answerlattice staging:
 
-- [ ] Open `https://answerlattice.menulist.online`.
-- [ ] Open `https://answerlattice.menulist.online/api/version`.
-- [ ] Confirm Answerlattice Firebase project is `answerlattice-qa`.
+- [ ] Open `https://canonica.app` and `https://www.canonica.app`.
+- [ ] Open `https://canonica.app/api/version`.
+- [ ] Confirm Answerlattice Firebase project is `neelvara-answerlattice-qa`.
 - [ ] Confirm widget script path loads when key exists.
 - [ ] Confirm public API debug is disabled unless intentionally enabled.
 
@@ -1952,7 +1972,7 @@ Answerlattice production:
 
 - [ ] Open `https://answerlattice.com`.
 - [ ] Open `https://answerlattice.com/api/version`.
-- [ ] Confirm Answerlattice Firebase project is `answerlattice`.
+- [ ] Confirm Answerlattice Firebase project is `neelvara-answerlattice-prod`.
 - [ ] Confirm production widget key/script.
 
 CampaignCue staging:

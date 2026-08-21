@@ -1,7 +1,18 @@
 export const dynamic = 'force-dynamic';
-import { authOptions } from "@lib/auth"
+import { getAuthOptionsForHostname } from "@lib/auth"
+import { normalizeRequestAuthority } from '@lib/routing/hostAuthority'
+import type { NextRequest } from 'next/server'
 import NextAuth from "next-auth"
 
-const handler = NextAuth(authOptions)
+type NextAuthRouteContext = {
+    params: Promise<{ nextauth: string[] }>;
+};
+
+const handler = (request: NextRequest, context: NextAuthRouteContext) => {
+    const forwardedAuthority = normalizeRequestAuthority(request.headers.get('x-forwarded-host'));
+    const hostAuthority = forwardedAuthority || normalizeRequestAuthority(request.headers.get('host'));
+
+    return NextAuth(request, context, getAuthOptionsForHostname(hostAuthority?.hostname));
+};
 
 export { handler as GET, handler as POST }

@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
+import { resolveKnownProductIdByHostname } from '@constant/deploymentTargets';
 import { sanitizeErrorForLog, sanitizeLogData } from '@lib/security/secureLogger';
 
 const runtimeEnvironment =
@@ -220,12 +221,48 @@ function sanitizeMonitoringBreadcrumb(breadcrumb: Record<string, unknown>): Reco
     return sanitized as Record<string, unknown>;
 }
 
+function getMonitoringEventRequestUrl(event: object): string | null {
+    try {
+        const eventDescriptor = Reflect.getOwnPropertyDescriptor(event, 'request');
+        if (!eventDescriptor || !('value' in eventDescriptor)) return null;
+        const request = eventDescriptor.value;
+        if (!request || typeof request !== 'object' || Array.isArray(request)) return null;
+        const urlDescriptor = Reflect.getOwnPropertyDescriptor(request, 'url');
+        return urlDescriptor && 'value' in urlDescriptor && typeof urlDescriptor.value === 'string'
+            ? urlDescriptor.value
+            : null;
+    } catch {
+        return null;
+    }
+}
+
+export function resolveMonitoringProductId(requestUrl?: string | null): string | null {
+    try {
+        const fallbackOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+        const parsed = fallbackOrigin ? new URL(requestUrl || fallbackOrigin, fallbackOrigin) : new URL(requestUrl || '');
+        return resolveKnownProductIdByHostname(parsed.hostname);
+    } catch {
+        return null;
+    }
+}
+
 export function sanitizeMonitoringEvent<T extends object>(event: T): T {
+    const monitoringProductId = resolveMonitoringProductId(getMonitoringEventRequestUrl(event));
     const sanitized = sanitizeMonitoringValue(event);
     if (!sanitized || typeof sanitized !== 'object' || Array.isArray(sanitized)) {
         return {} as T;
     }
     const sanitizedEvent = sanitized as Record<string, unknown>;
+
+    if (monitoringProductId) {
+        const existingTags = sanitizedEvent.tags;
+        sanitizedEvent.tags = {
+            ...(existingTags && typeof existingTags === 'object' && !Array.isArray(existingTags)
+                ? existingTags as Record<string, unknown>
+                : {}),
+            product: monitoringProductId,
+        };
+    }
 
     if (typeof sanitizedEvent.message === 'string') {
         sanitizedEvent.message = getSanitizedMonitoringMessage(sanitizedEvent.message);
@@ -297,6 +334,7 @@ export function applyMonitoringContext(scope: MonitoringScope | null | undefined
         'environment',
         'fileId',
         'model',
+        'product',
         'projectId',
         'requestId',
         'routePath',

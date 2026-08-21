@@ -28,6 +28,47 @@ function assertNoDirectConsole(content, label) {
   );
 }
 
+function verifyAnswerlatticeGoogleOAuthParity() {
+  const authRoute = read('src/app/api/auth/[...nextauth]/route.ts');
+  const authRuntime = read('src/lib/auth/googleOAuthRuntime.ts');
+  const onboarding = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
+  const sentry = read('src/lib/monitoring/sentryShared.ts');
+  const stagingEnv = read('.env.staging.example');
+  const productionEnv = read('.env.production.example');
+
+  assertIncludes(
+    onboarding,
+    "signIn('google'",
+    'Answerlattice onboarding must use the shared NextAuth Google provider flow',
+  );
+  assertIncludes(
+    authRoute,
+    'getAuthOptionsForHostname(hostAuthority?.hostname)',
+    'NextAuth route must select product credentials from normalized request hostname',
+  );
+  assertIncludes(
+    authRuntime,
+    'ANSWERLATTICE_GOOGLE_CLIENT_ID',
+    'Answerlattice Google OAuth client ID isolation',
+  );
+  assertIncludes(
+    authRuntime,
+    'ANSWERLATTICE_GOOGLE_CLIENT_SECRET',
+    'Answerlattice Google OAuth client secret isolation',
+  );
+  [stagingEnv, productionEnv].forEach((envTemplate, index) => {
+    const label = index === 0 ? 'staging env template' : 'production env template';
+    assertIncludes(envTemplate, 'ANSWERLATTICE_GOOGLE_CLIENT_ID=', `${label} Answerlattice OAuth ID`);
+    assertIncludes(envTemplate, 'ANSWERLATTICE_GOOGLE_CLIENT_SECRET=', `${label} Answerlattice OAuth secret`);
+    assertNotIncludes(envTemplate, 'NEXTAUTH_URL=https://', `${label} hosted NextAuth URL pin`);
+  });
+  assertIncludes(
+    sentry,
+    'product: monitoringProductId',
+    'Shared Next.js monitoring must retain hostname-derived product isolation',
+  );
+}
+
 function verifyAnswerlatticePersistedIdentityContract() {
   const types = read('src/types/answerlattice/index.ts');
   const documentComposer = read('src/lib/answerlattice/documentComposer.ts');
@@ -10669,5 +10710,6 @@ verifyAnswerlatticeFeatureInventoryTruth();
 verifyAnswerlatticeFeatureAuditTrackerTruth();
 verifyAnswerlatticeOperationalHardening();
 verifyAnswerlatticePersistedIdentityContract();
+verifyAnswerlatticeGoogleOAuthParity();
 
 console.log('Answerlattice runtime truth verifier passed');

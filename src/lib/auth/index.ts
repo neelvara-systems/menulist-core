@@ -15,6 +15,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from "./authDiagnostics";
+import { resolveGoogleOAuthRuntimeConfig } from './googleOAuthRuntime';
 import { consumePhoneOtpLoginToken, PhoneOtpError } from "./phoneOtp";
 import { normalizeAuthSessionStoreScope } from "./sessionUserBoundary";
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
@@ -465,6 +466,30 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ]
+}
+
+export function getAuthOptionsForHostname(hostname?: string | null): NextAuthOptions {
+    const googleOAuth = resolveGoogleOAuthRuntimeConfig(hostname);
+
+    if (!googleOAuth.configured) {
+        logAuthDiagnostic('google_oauth_credentials_missing', {
+            product: googleOAuth.product,
+            googleClientIdPresent: Boolean(googleOAuth.clientId),
+            googleClientSecretPresent: Boolean(googleOAuth.clientSecret),
+        });
+    }
+
+    return {
+        ...authOptions,
+        providers: authOptions.providers.map((provider) => (
+            provider.id === 'google'
+                ? GoogleProvider({
+                    clientId: googleOAuth.clientId,
+                    clientSecret: googleOAuth.clientSecret,
+                })
+                : provider
+        )),
+    };
 }
 
 export const signOutSession = async (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN): Promise<true> => {

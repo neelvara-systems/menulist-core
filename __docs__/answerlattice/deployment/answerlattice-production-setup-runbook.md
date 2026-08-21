@@ -1,10 +1,10 @@
 # Answerlattice Production Setup Runbook
 
-> **Last updated:** August 20, 2026
+> **Last updated:** August 21, 2026
 > **Firebase project:** `neelvara-answerlattice-prod`
 > **Firebase alias:** `answerlattice-prod`
 > **Public domains:** `answerlattice.com`, `www.answerlattice.com`
-> **Status:** preparation only; production cloud state is not currently readable
+> **Status:** foundation prepared; credential-dependent activation pending
 
 This runbook explains the production-only execution sequence. Track completion
 in [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md); do not maintain a second checklist here.
@@ -22,9 +22,40 @@ Do not start a production mutation until all are true:
    location, existing resources, and IAM have been inventoried.
 5. The requested deploy/provider action has explicit scoped approval.
 
-The currently reachable production website proves only Vercel domain/routing
-availability. It does not prove production Firebase, WIF, secrets, rules,
-indexes, Functions, App Check, provider, or recovery readiness.
+The production project is now readable and its foundation is prepared. The
+reachable website still proves only Vercel domain/routing availability until a
+new Production deployment activates the dedicated Firebase/WIF selectors.
+
+## Current Readback
+
+Completed on August 21, 2026:
+
+- company ownership, billing, independent budgets, and single human operator;
+- Firebase Web app, Email/Password Auth, exact authorized domains, Firestore
+  `nam5`, Storage, PITR, delete protection, daily 98-day backup schedule, and
+  supporting APIs;
+- source-hash-verified Firestore and Storage rules, 100 READY composite
+  indexes, and 18 TTL fields;
+- dedicated service account, ACTIVE project-local WIF provider, exact
+  Production subject restriction, least-privilege IAM, and zero user-managed
+  keys;
+- Vercel Production Firebase/OIDC selectors and fresh cron/bundle secrets;
+- healthy `answerlattice.com` and `www.answerlattice.com` TLS/routing.
+
+Still open by explicit boundary:
+
+- owner creation of dedicated Answerlattice QA and production Google Web OAuth
+  clients, direct transfer into their matching Vercel environments, removal of
+  hosted `NEXTAUTH_URL`, and hosted callback/session certification;
+- owner creation and direct transfer of the production Gemini authorization
+  key;
+- deployment/readback of the 11 approved Functions, Scheduler, task queue, and
+  exact secret bindings;
+- owner creation of a legacy reCAPTCHA v3 key, App Check registration, and
+  monitoring-first operation with enforcement OFF;
+- source promotion and a separately authorized Vercel Production redeploy;
+- hosted OIDC/data-path proof and the first isolated restore rehearsal after a
+  backup reaches READY.
 
 ## Production Sequence
 
@@ -79,6 +110,36 @@ indexes, Functions, App Check, provider, or recovery readiness.
     procedure without touching QA or MenuList.
 
 ## Provider Boundary
+
+Google OAuth is core identity infrastructure, not an optional provider. It must
+match the MenuList flow end to end: the same NextAuth `google` provider,
+identity scopes, account callbacks, and session logic, with credentials selected
+from the request hostname. Credential isolation remains mandatory:
+
+- QA client: origins `https://canonica.app` and
+  `https://www.canonica.app`; each origin plus
+  `/api/auth/callback/google` as an authorized redirect URI;
+- production client: origins `https://answerlattice.com` and
+  `https://www.answerlattice.com`; each origin plus
+  `/api/auth/callback/google` as an authorized redirect URI;
+- bind the clients through `ANSWERLATTICE_GOOGLE_CLIENT_ID` and sensitive
+  `ANSWERLATTICE_GOOGLE_CLIENT_SECRET` in only the matching Vercel environment;
+- omit hosted `NEXTAUTH_URL` so NextAuth derives the host that initiated the
+  request; keep a localhost override only for local development;
+- use `admin@neelvara.com` as the sole human company operator.
+
+Each Google Auth Platform project must use truthful product branding,
+`support@neelvara.com` as the support contact,
+`admin@neelvara.com` as the developer contact and sole Testing-mode test user,
+External audience, and only `openid`, `email`, and `profile`. QA legal URLs use
+`https://canonica.app/privacy-policy` and
+`https://canonica.app/terms-of-service`; production uses the same paths under
+`https://answerlattice.com`. Publishing production OAuth remains a separate
+release gate after hosted callback certification.
+
+The shared Next.js runtime may use one environment-scoped Sentry DSN, but every
+event must carry the hostname-derived `product` tag. Answerlattice Firebase
+Functions keep their project-local `SENTRY_DSN`.
 
 Core infrastructure readiness does not require enabling every optional
 provider. Keep any provider disabled when its legal ownership, account access,

@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 21, 2026
-> **Status:** QA cloud foundation and Canonica routing deployed; hosted workflow and recovery closure in progress
+> **Status:** QA setup prepared; production foundation prepared; credential-dependent activation remains open
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -34,7 +34,7 @@ provider IDs only; they are not cloud project IDs.
 
 ## Current Verified State
 
-The following was verified on August 20, 2026:
+The following was verified on August 21, 2026:
 
 - Source targets are `neelvara-answerlattice-qa` for local/QA and
   `neelvara-answerlattice-prod` for production in
@@ -51,9 +51,8 @@ The following was verified on August 20, 2026:
   valid configuration, and mail/verification DNS was preserved. Both hosts now
   serve exact staging commit
   `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` inside Answerlattice QA with
-  valid TLS and no production redirect. The hydrated Canonica login is
-  AnswerLattice-branded and credential-only; it does not expose the shared
-  MenuList Google OAuth action.
+  valid TLS and no production redirect. That hosted revision predates the
+  approved product-routed Google OAuth implementation described below.
 - The QA host contract requires `X-Robots-Tag: noindex, nofollow, noarchive`,
   a disallow-all `robots.txt`, and no sitemap. Production remains indexable.
 - The former IDs `answerlattice-qa` and `answerlattice` exist outside the
@@ -74,17 +73,58 @@ The following was verified on August 20, 2026:
   backup verifier, documentation-link scan, hosted route boundary, and hosted
   login boundary pass. Fixture-dependent application certification remains a
   separate testing gate.
-- The shared NextAuth runtime still exposes one MenuList-scoped Google OAuth
-  client and `NEXTAUTH_URL`. Answerlattice QA uses credential authentication;
-  its host-aware login now hides the MenuList OAuth action. Do not mutate or
-  reuse the MenuList OAuth client. Product-specific Google sign-in remains a
-  separately approved future design.
-- No additional Firebase, GCP, Vercel, DNS, key, or provider configuration is
-  currently required for Answerlattice QA. Two operational controls remain:
-  decide whether to fund a separate named daily operator account, and perform
-  the first isolated restore rehearsal after a managed backup reaches READY.
-  Fixture-dependent Auth/App Check/widget/dashboard/ticket/KB/scheduler proof
-  remains deferred testing, not missing setup.
+- Google OAuth parity is now an approved core setup requirement. The shared
+  NextAuth session implementation keeps the same `google` provider, identity
+  scopes, callback path, account validation, and separate Answerlattice
+  Firebase custom-token synchronization used by MenuList. The auth route
+  selects credentials by the actual request hostname: MenuList uses
+  `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; Answerlattice uses dedicated
+  `ANSWERLATTICE_GOOGLE_CLIENT_ID` / `ANSWERLATTICE_GOOGLE_CLIENT_SECRET`.
+  Never reuse or add Answerlattice callbacks to the MenuList client.
+- Hosted custom `qa` and Production environments must omit `NEXTAUTH_URL`.
+  NextAuth 4 otherwise forces every callback to one MenuList origin before it
+  can apply host routing. Vercel's trusted forwarded host supplies the exact
+  origin, and Google OAuth clients admit only their environment's explicit
+  origins and `/api/auth/callback/google` redirects. Localhost may still set a
+  local `NEXTAUTH_URL`.
+- The code and environment contract are prepared. Answerlattice QA Google Auth
+  Platform now has truthful Canonica branding, company support/developer
+  contacts, External Testing audience, the sole admin test user, and dedicated
+  Web client `Answerlattice QA Web`. The initially created secret was
+  invalidated before use after accessibility-label exposure; only its
+  replacement remains enabled. Vercel `qa` contains the dedicated sensitive
+  client binding and no hosted `NEXTAUTH_URL`. No secret was written to source
+  or documentation. The fresh hosted deployment, bounded login/callback and
+  session proof, and all production OAuth provider actions remain open.
+- The shared Next.js/Vercel process intentionally uses one environment-scoped
+  Sentry DSN because browser, server, and edge SDKs initialize once per runtime,
+  not once per custom domain. Monitoring now derives and records the product
+  tag before sanitizing request URLs. Answerlattice Firebase Functions remain
+  isolated on their project-local `SENTRY_DSN` Secret Manager value.
+- Firebase Functions and Secret Manager use the rotated QA AI Studio
+  authorization key, but the Canonica domains still serve staging revision
+  `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`. The later deployment carrying
+  the updated Vercel `qa` value was an old-main build and did not become the
+  Canonica target. A fresh custom-`qa` deployment from the approved `staging`
+  revision is therefore the remaining QA activation step before bounded
+  server-side Gemini readback. The owner-approved account model is closed:
+  `admin@neelvara.com` is the only human operator for every product; Cloud
+  Identity Free is active at no charge but no additional user was created.
+  The first isolated restore rehearsal also waits on a managed backup reaching
+  READY. Fixture-dependent Auth/App Check/widget/dashboard/ticket/KB/scheduler
+  proof remains deferred testing, not missing setup.
+- Production project `neelvara-answerlattice-prod` is company-owned and visible
+  to `admin@neelvara.com`. Firebase Web/Auth/Firestore/Storage, protected
+  `nam5` data, backup scheduling, budgets, required APIs, rules, Storage rules,
+  100 READY indexes, 18 TTL fields, keyless Vercel identity, and fresh cron and
+  bundle secrets are prepared. The runtime service account has no user-managed
+  keys or broad project role. Production domains and TLS are healthy.
+- Production activation is deliberately incomplete. The owner-created Gemini
+  authorization key and legacy reCAPTCHA v3 key are parked; App Check is not
+  registered; the 11 approved Functions, Scheduler, and embedding queue are not
+  deployed. The live Production Vercel build predates the new Answerlattice
+  Production env values, so source promotion, Production redeploy, and hosted
+  OIDC/data-path proof remain separately gated.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -92,17 +132,24 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
+1. With explicit Vercel deployment authorization, create a fresh custom-`qa`
+   deployment from the approved staging revision, confirm both Canonica hosts
+   move to it, and read back `/api/version` plus one bounded server AI call.
+2. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
-2. Decide whether to fund the named daily operator and complete the first
-   isolated restore rehearsal after a ready backup exists.
-3. Close every remaining `AL-QA-*` item with current readback.
-4. Create and complete every `AL-PROD-*` preparation item independently in
-   `neelvara-answerlattice-prod` only after QA setup closes.
-5. Promote the same approved source revision to production with dedicated
-   production identities and secrets.
-6. Run production-host and recovery evidence before any launch approval.
+3. Complete the first isolated restore rehearsal after a ready backup exists.
+4. Close every remaining `AL-QA-*` item with current readback.
+5. When the owner creates the production Gemini authorization key, transfer it
+   directly to Vercel Production and Secret Manager, then deploy and read back
+   only the 11 approved Answerlattice Functions plus their Scheduler and task
+   queue resources.
+6. When the owner creates the production legacy reCAPTCHA v3 key, register the
+   production Web app and keep enforcement OFF during monitoring.
+7. Promote the approved staging source to main and redeploy Vercel Production
+   only with explicit deployment authorization.
+8. Run production-host, OIDC/data-path, and recovery evidence before launch
+   approval.
 
 Do not copy MenuList service accounts, WIF providers, Firebase Web values,
 Secret Manager values, Upstash credentials, provider webhook secrets, or

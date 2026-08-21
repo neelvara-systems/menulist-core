@@ -365,6 +365,7 @@
     "test:active-session-scope-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-active-session-scope-boundary.ts",
     "test:auth-session-user-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-auth-session-user-boundary.ts",
     "test:auth-session-response-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-auth-session-response-boundary.ts",
+    "test:google-oauth-product-routing": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-google-oauth-product-routing.ts",
     "test:auth-access-status-scope": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-auth-access-status-scope.ts",
     "test:sensitive-server-store-scope": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-sensitive-server-store-scope.ts",
     "test:session-store-context-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-session-store-context-boundary.ts",

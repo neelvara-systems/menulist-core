@@ -2,7 +2,7 @@
 
 > Status: owner-facing one-time setup guide
 > Scope: Neelvara Systems, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex
-> Last updated: August 15, 2026
+> Last updated: August 21, 2026
 > Launch boundary: this guide prepares accounts, projects, env values, and DNS. It is not production launch approval. Production release still needs the current production-readiness audit, deploy approval, provider QA, browser/device QA, and production-host smoke checks.
 
 This is the step-by-step setup guide to follow from scratch. It is written for
@@ -13,13 +13,13 @@ For the first real setup pass, start with:
 [MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md). Use this
 combined guide only after MenuList QA is live and verified.
 
-The permanent break-glass Google owner identity is `admin@neelvara.com` in one
-Workspace tenant. Use a named mailbox such as `danny@neelvara.com` for daily
-work with only the access it needs. A founder's personal Google account may be
-a recovery identity, but a new `neelvara@gmail.com` account is not the
-permanent company root. Neelvara Systems remains an operating/trade name until
-registration exists; never enter invented corporate registration or tax details
-into a provider.
+The only human Google identity for company operations is
+`admin@neelvara.com` in one Workspace tenant. It owns and operates every
+product. Do not create product-specific users, a second daily-operator user, or
+a new `neelvara@gmail.com` account. A founder's personal Google account may be
+the independently controlled recovery identity only. Neelvara Systems remains
+an operating/trade name until registration exists; never enter invented
+corporate registration or tax details into a provider.
 
 Use the companion technical runbooks for exact env and command detail:
 
@@ -88,7 +88,7 @@ Stop immediately if:
 | --- | --- | --- | --- | --- |
 | MenuList | primary product | website `https://menulist.digital`/`www`; owner app `https://app.menulist.digital`; customer links `*.menulist.digital` | website `https://menulist.ai`/`www`; owner app `https://app.menulist.ai`; customer links `*.menulist.online` | `menulist-qa` / `menulist-prod` |
 | Neelvara | static parent site | `https://neelvara.menulist.online` | `https://neelvara.com` | none |
-| Answerlattice | product | `https://answerlattice.menulist.online` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
+| Answerlattice | product | `https://canonica.app`/`www` | `https://answerlattice.com`/`www` | `neelvara-answerlattice-qa` / `neelvara-answerlattice-prod` |
 | CampaignCue | product | `https://campaigncue.menulist.online` | `https://campaigncue.ai` | `campaigncue-qa` / `campaigncue` |
 | SignalDesk | private product surface | `https://signaldesk.menulist.online` | `https://signaldesk.menulist.online` unless later contract changes it | `menulist-signaldesk-qa` / `menulist-signaldesk` |
 | MyCodex | static private PWA | no active domain in new setup | no active domain in new setup | none |
@@ -200,14 +200,14 @@ What to do:
 
 1. Create one Google Workspace tenant using `neelvara.com` as the primary
    domain.
-2. Create the break-glass Super Admin mailbox:
+2. Create the single company Super Admin and operator mailbox:
    - `admin@neelvara.com`
-3. Create the named daily operator mailbox:
-   - `danny@neelvara.com`, or the founder's equivalent named address
-4. Turn on MFA for both accounts.
-5. Save break-glass login and recovery codes in the password vault and offline.
-6. Use the named operator for routine setup. Keep `admin@neelvara.com` for
-   Super Admin and account-recovery work.
+3. Do not create another Workspace or Cloud Identity user for a product or
+   daily operations.
+4. Turn on MFA for `admin@neelvara.com`.
+5. Save its login and recovery codes in the password vault and offline.
+6. Use the controlled company Chrome profile for routine setup and keep
+   personal browsing outside that profile.
 7. Add production product domains as secondary or alias domains:
    - `menulist.ai`
    - `answerlattice.com`
@@ -362,8 +362,8 @@ provisioning, so check the ID before pressing the final create button.
 | --- | --- | --- | --- |
 | MenuList | staging/local | `menulist-qa` | https://console.firebase.google.com/project/menulist-qa/overview |
 | MenuList | production | `menulist-prod` | https://console.firebase.google.com/project/menulist-prod/overview |
-| Answerlattice | staging/local | `answerlattice-qa` | https://console.firebase.google.com/project/answerlattice-qa/overview |
-| Answerlattice | production | `answerlattice` | https://console.firebase.google.com/project/answerlattice/overview |
+| Answerlattice | staging/local | `neelvara-answerlattice-qa` | https://console.firebase.google.com/project/neelvara-answerlattice-qa/overview |
+| Answerlattice | production | `neelvara-answerlattice-prod` | https://console.firebase.google.com/project/neelvara-answerlattice-prod/overview |
 | CampaignCue | staging/local | `campaigncue-qa` | https://console.firebase.google.com/project/campaigncue-qa/overview |
 | CampaignCue | production | `campaigncue` | https://console.firebase.google.com/project/campaigncue/overview |
 | SignalDesk | staging/local | `menulist-signaldesk-qa` | https://console.firebase.google.com/project/menulist-signaldesk-qa/overview |
@@ -426,8 +426,8 @@ Authorized domain checklist:
 | --- | --- |
 | `menulist-qa` | `localhost`, `app.menulist.digital` |
 | `menulist-prod` | `app.menulist.ai` |
-| `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
-| `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
+| `neelvara-answerlattice-qa` | `localhost`, `canonica.app`, `www.canonica.app` |
+| `neelvara-answerlattice-prod` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
 | `menulist-signaldesk-qa` | `localhost`, `signaldesk.menulist.online` |
@@ -449,7 +449,8 @@ What to do:
 
 1. Keep one shared Vercel project and create a custom `qa` environment attached
    only to Git branch `staging`.
-2. For `menulist-qa`, `menulist-prod`, `answerlattice-qa`, and `answerlattice`,
+2. For `menulist-qa`, `menulist-prod`, `neelvara-answerlattice-qa`, and
+   `neelvara-answerlattice-prod`,
    do not generate or download a Vercel runtime private key. Follow the approved
    Vercel OIDC -> Google Workload Identity Federation -> dedicated short-lived
    service-account impersonation contract.
@@ -469,7 +470,7 @@ Vercel env mapping:
 | Product | Staging/local env keys | Production env keys |
 | --- | --- | --- |
 | MenuList | canonical Web config using `menulist-qa`; `MENULIST_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc` plus project-local `MENULIST_GCP_*` WIF values; no static Admin key | canonical Web config using `menulist-prod`; the same variable names with separate production WIF values; no static Admin key |
-| Answerlattice | canonical Web config using `answerlattice-qa`; `ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc` plus project-local `ANSWERLATTICE_GCP_*` WIF values; no static Admin key | canonical Web config using `answerlattice`; the same variable names with separate production WIF values; no static Admin key |
+| Answerlattice | canonical Web config using `neelvara-answerlattice-qa`; `ANSWERLATTICE_FIREBASE_ADMIN_AUTH_MODE=vercel_oidc` plus project-local `ANSWERLATTICE_GCP_*` WIF values; no static Admin key | canonical Web config using `neelvara-answerlattice-prod`; the same variable names with separate production WIF values; no static Admin key |
 | CampaignCue | canonical `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue-qa` plus `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL` and `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY` | canonical project ID `campaigncue` plus separate production Admin credentials |
 | SignalDesk | `SIGNALDESK_FIREBASE_PROJECT_ID`, `SIGNALDESK_FIREBASE_CLIENT_EMAIL`, `SIGNALDESK_FIREBASE_PRIVATE_KEY` using `menulist-signaldesk-qa` | same variable names with separate credentials from `menulist-signaldesk` |
 
@@ -503,28 +504,24 @@ QA/local authorized JavaScript origins:
 
 - `http://localhost:3000`
 - `https://app.menulist.digital`
-- `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
 
 Production authorized JavaScript origins, in the separate production client:
 
 - `https://app.menulist.ai`
-- `https://answerlattice.com`
 - `https://campaigncue.ai`
 
 QA/local authorized redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `https://app.menulist.digital/api/auth/callback/google`
-- `https://answerlattice.menulist.online/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
 
 Production authorized redirect URIs, in the separate production client:
 
 - `https://app.menulist.ai/api/auth/callback/google`
-- `https://answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
 
 Expected result:
@@ -535,6 +532,25 @@ Expected result:
   exist only in Vercel Production after the production provider gate permits
   their creation.
 - Each client contains only exact origins and callbacks for its environment.
+
+Answerlattice uses the same NextAuth Google sign-in flow and callback path as
+MenuList, but never the same OAuth credentials. Create dedicated Answerlattice
+Web clients with only these origins and callbacks:
+
+- QA origins: `https://canonica.app`, `https://www.canonica.app`
+- QA callbacks: `https://canonica.app/api/auth/callback/google`,
+  `https://www.canonica.app/api/auth/callback/google`
+- Production origins: `https://answerlattice.com`,
+  `https://www.answerlattice.com`
+- Production callbacks:
+  `https://answerlattice.com/api/auth/callback/google`,
+  `https://www.answerlattice.com/api/auth/callback/google`
+
+Store those clients as `ANSWERLATTICE_GOOGLE_CLIENT_ID` and sensitive
+`ANSWERLATTICE_GOOGLE_CLIENT_SECRET` only in their matching Vercel environment.
+Do not add Canonica or Answerlattice origins/callbacks to a MenuList client.
+Use `admin@neelvara.com` as the sole human company operator; do not create a
+second Workspace user for product setup.
 
 ## Step 10: Create One Vercel Project
 
@@ -584,7 +600,8 @@ Add these staging domains:
 - `app.menulist.digital`
 - `*.menulist.digital`
 - `neelvara.menulist.online`
-- `answerlattice.menulist.online`
+- `canonica.app`
+- `www.canonica.app`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
 
@@ -670,7 +687,7 @@ What to do:
    with only configured rows and never retain literal `<...>` placeholders.
 3. Fill QA/staging Firebase values:
    - MenuList -> `menulist-qa`
-   - Answerlattice -> `answerlattice-qa`
+   - Answerlattice -> `neelvara-answerlattice-qa`
    - CampaignCue -> `campaigncue-qa`
    - SignalDesk -> `menulist-signaldesk-qa`
 4. Fill staging provider values only when the provider setup exists.
@@ -753,8 +770,8 @@ What to do:
    - `menulist-qa`
    - `menulist-prod`
 4. Set Answerlattice secrets in:
-   - `answerlattice-qa`
-   - `answerlattice`
+   - `neelvara-answerlattice-qa`
+   - `neelvara-answerlattice-prod`
 5. Do not set SignalDesk Firebase Function secrets today. Current SignalDesk
    Functions do not declare Secret Manager secrets.
 6. Do not set Firebase Functions secrets for CampaignCue today. CampaignCue has
@@ -1082,8 +1099,8 @@ npm run verify:functions-deploy-preflight
 npm --prefix functions run build
 npm --prefix functions run deploy:menulist-qa
 
-firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --project neelvara-answerlattice-qa --config firebase-answerlattice.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --only functions:answerlattice:answerlatticeNightly --project neelvara-answerlattice-qa --config firebase-answerlattice.json
 
 firebase deploy --project campaigncue-qa --config firebase-campaigncue.json --only firestore:rules,firestore:indexes,storage
 
@@ -1164,10 +1181,10 @@ Neelvara staging:
 
 Answerlattice staging:
 
-- Open `https://answerlattice.menulist.online`.
-- Open `https://answerlattice.menulist.online/api/version`.
+- Open `https://canonica.app` and `https://www.canonica.app`.
+- Open `https://canonica.app/api/version`.
 - Sign in.
-- Confirm data writes go to `answerlattice-qa`.
+- Confirm data writes go to `neelvara-answerlattice-qa`.
 
 CampaignCue staging:
 
@@ -1209,8 +1226,8 @@ Where:
 What to do:
 
 1. Confirm staging smoke is complete.
-2. Confirm the break-glass owner, named daily operator, recovery path, and
-   maintenance reminders are recorded.
+2. Confirm the single company owner/operator, recovery path, and maintenance
+   reminders are recorded.
 3. Confirm the production service-account approach: use Vercel OIDC/Workload
    Identity when validated for the runtime, or record the static-key owner,
    creation date, and rotation/revocation procedure.
@@ -1265,7 +1282,7 @@ result is true.
 | Password vault ready | [ ] | [ ] | MFA and recovery codes stored |
 | Domains purchased/confirmed | [ ] | [ ] | `neelvara.com` and `campaigncue.ai` verified at checkout |
 | Workspace created | [ ] | [ ] | `neelvara.com` primary |
-| Break-glass and daily Workspace accounts | [ ] | [ ] | `admin@` is recovery-only; named operator is daily use |
+| Single Workspace owner/operator account | [ ] | [ ] | only `admin@neelvara.com`; no product-specific or daily-operator users |
 | Product email aliases/groups | [ ] | [ ] | no separate tenant per product |
 | Email SPF/DKIM/DMARC | [ ] | [ ] | DNS verified |
 | Cloud organization | [ ] | [ ] | company-owned |

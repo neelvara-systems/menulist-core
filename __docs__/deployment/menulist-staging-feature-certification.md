@@ -842,7 +842,8 @@ a hosted flow into `PASS`.
 
 These remain open and must never be marked complete without direct evidence:
 
-- `QA-A05`: named daily operator.
+- Workspace identity setup is closed under the owner-approved single-account
+  policy: only `admin@neelvara.com` may operate company products.
 - Razorpay Test Mode final checkout authorization and first successful charge
   require owner-assisted browser interaction; no transition will be fabricated.
 
