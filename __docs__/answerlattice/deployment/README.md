@@ -172,13 +172,14 @@ The following was verified through August 22, 2026:
   composite indexes and 15 non-TTL field overrides match production. The 18
   TTL policies were absent as expected and remain an explicit recovery step.
 - Production core activation is complete without enabling optional providers.
-  The dedicated Google OAuth client and the intended legacy reCAPTCHA v3 public
-  site key are bound only to Vercel Production. However, live Firebase Console
-  readback on August 22 shows `Answerlattice Production Web` as **Not
-  registered** in App Check. The public key variable alone does not complete
-  Firebase provider registration, so production App Check remains an explicit
-  setup gap with enforcement OFF. The owner-created production Gemini
-  authorization key is active
+  The dedicated Google OAuth client and replacement legacy reCAPTCHA v3
+  credential are bound only to Vercel Production. Authoritative Firebase App
+  Check REST v1 readback reports `siteSecretSet=true`, a 24-hour token TTL, a
+  `0.5` score threshold, and `UNENFORCED` Firestore, Storage, and Authentication
+  services. The corresponding public site key and a fresh server-only
+  `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` are active in READY Production
+  deployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3`. The owner-created production
+  Gemini authorization key is active
   in sensitive Vercel Production and Secret Manager version 1; a bounded
   provider call returned HTTP 200 with exactly `OK`. All 11 approved core
   Functions are ACTIVE on Node 22 with exact secret readback: the eight
@@ -189,18 +190,14 @@ The following was verified through August 22, 2026:
   so public transport does not bypass Firebase callable authentication. The
   optional production EmailOS webhook and its provider credentials remain
   intentionally absent.
-  Vercel deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` is READY from exact
-  application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`.
-  `answerlattice.com` serves Answerlattice over TLS with that commit and
+  The current deployment is an exact-artifact redeployment of certified
+  deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` from application commit
+  `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`. `answerlattice.com` serves
+  Answerlattice over TLS with environment `production`, and
   `www.answerlattice.com` redirects permanently to the apex. Hosted
   OIDC/data-path proof, authenticated smoke, recovery fixture validation, TTL
   reapplication, Storage/Auth evidence, and recovery cleanup remain separately
   gated.
-- Vercel Production is also missing the required server-only
-  `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`. Source enables the production widget
-  and fails closed when this signing secret is absent. Generate a unique
-  production-only value, store it as a sensitive Production variable, and
-  activate it through a separately approved Vercel Production redeployment.
 - Current QA hosted readback is deployment
   `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz` at
   `menulist-core-eug4wxayt-neelvara-systems.vercel.app`, serving exact staging
@@ -213,18 +210,13 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. Register `Answerlattice Production Web` with the dedicated legacy reCAPTCHA
-   v3 App Check provider, retain enforcement OFF, and verify live registration.
-2. Generate and bind a production-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`;
-   activate it only through an explicitly approved Vercel Production
-   redeployment.
-3. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
+1. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
-4. Promote the exact application and evidence commits to main through the
+2. Promote the exact application and evidence commits to main through the
    approved Git review path; do not replace the certified Production build with
    an unrelated main revision.
-5. Run production-host, OIDC/data-path, authenticated smoke, fixture recovery,
+3. Run production-host, OIDC/data-path, authenticated smoke, fixture recovery,
    TTL reapplication, Storage/Auth recovery, and cleanup evidence before launch
    approval.
 

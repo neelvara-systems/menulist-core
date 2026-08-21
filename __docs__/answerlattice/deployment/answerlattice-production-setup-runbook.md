@@ -4,7 +4,7 @@
 > **Firebase project:** `neelvara-answerlattice-prod`
 > **Firebase alias:** `answerlattice-prod`
 > **Public domains:** `answerlattice.com`, `www.answerlattice.com`
-> **Status:** core runtime and host active; App Check and widget signing setup remain open
+> **Status:** provider and infrastructure setup complete; certification remains open
 
 This runbook explains the production-only execution sequence. Track completion
 in [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md); do not maintain a second checklist here.
@@ -28,7 +28,7 @@ separate gate.
 
 ## Current Readback
 
-Completed on August 21, 2026:
+Verified through August 22, 2026:
 
 - company ownership, billing, independent budgets, and single human operator;
 - Firebase Web app, Email/Password Auth, exact authorized domains, Firestore
@@ -52,20 +52,21 @@ Completed on August 21, 2026:
   recovery database, with all 100 composite indexes and 15 non-TTL field
   overrides matching production;
 - healthy `answerlattice.com` and `www.answerlattice.com` TLS/routing.
-- READY Vercel Production deployment
-  `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` from exact application commit
+- replacement legacy reCAPTCHA v3 App Check credential with authoritative REST
+  readback reporting `siteSecretSet=true`, 24-hour TTL, score threshold `0.5`,
+  and enforcement OFF for Firestore, Storage, and Authentication;
+- unique sensitive Production-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`;
+- READY exact-artifact Vercel Production redeployment
+  `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3`, derived from certified deployment
+  `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` and application commit
   `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`; the apex serves Answerlattice
-  with that `/api/version` identity and `www` redirects to the apex with `308`.
+  with environment `production`, deployment URL
+  `menulist-core-mv1su2gwu-neelvara-systems.vercel.app`, and `www` redirects to
+  the apex.
 
-Still open by explicit boundary:
+Still open as certification or release-governance work, not provider setup:
 
-- register `Answerlattice Production Web` with its dedicated legacy reCAPTCHA
-  v3 App Check provider and retain enforcement OFF; current Firebase Console
-  readback reports `Not registered`;
-- create the required production-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`,
-  store it as a sensitive Vercel Production variable, and activate it through a
-  separately approved Production redeployment;
-- activation and hosted callback/session certification of the already bound
+- hosted callback/session certification of the already bound and activated
   production Google OAuth client;
 - promotion of the exact application and evidence commits through the approved
   Git review path;

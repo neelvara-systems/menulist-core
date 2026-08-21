@@ -479,13 +479,17 @@ activation require an explicit scoped approval.
   `answerlattice.com` and `www.answerlattice.com`.
   - Auth is complete: only Email/Password is enabled and the exact apex and
     `www` hosts are authorized alongside Firebase defaults.
-- [ ] `AL-PROD-B05` Register `Answerlattice Production Web` with its dedicated
+- [x] `AL-PROD-B05` Register `Answerlattice Production Web` with its dedicated
   legacy score-based reCAPTCHA v3 App Check provider and retain enforcement OFF.
-  - Vercel Production contains the intended public site key as
-    `NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY`, isolated from custom `qa`.
-    That variable is not registration evidence. Live Firebase Console readback
-    on August 22, 2026 shows the production Web app as `Not registered` and
-    offers `Register attestation providers`; this setup item is therefore open.
+  - The owner created a replacement legacy score-based reCAPTCHA v3 credential
+    for `answerlattice.com` after the first credential was superseded.
+    Firebase App Check REST v1 accepted the replacement secret with HTTP 200 and
+    readback reports `siteSecretSet=true`, `tokenTtl=86400s`, and
+    `minValidScore=0.5`. Firestore, Storage, and Authentication all remain
+    `UNENFORCED`. The corresponding public site key is isolated to Vercel
+    Production as `NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY` and is active in
+    READY deployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3`. No credential value is
+    recorded in source or this ledger.
 
 ### Keyless Vercel Runtime
 
@@ -576,15 +580,16 @@ activation require an explicit scoped approval.
     neither new row includes Preview. Production deployment activation is
     complete; hosted callback/session and Firebase custom-token proof remain
     open certification work. No credential value is recorded in this ledger.
-- [ ] `AL-PROD-D07` Create one unique server-only
+- [x] `AL-PROD-D07` Create one unique server-only
   `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` of at least 32 random bytes in Vercel
   Production and activate it through a separately approved Production
   redeployment. Do not reuse the QA value or a workspace-issued public `al_*`
   credential.
-  - Live Vercel Production metadata readback on August 22, 2026 confirms this
-    variable is absent. Source enables the Answerlattice widget and the server
-    token signer throws `ANSWERLATTICE_WIDGET_RUNTIME_SECRET_NOT_CONFIGURED`
-    when the variable is missing, so this is a real setup gap.
+  - A fresh 48-byte random value was generated directly for Vercel Production
+    and stored only as the sensitive server-only variable. The value was not
+    displayed, persisted locally, copied from QA, or written to documentation.
+    Exact-artifact Production redeployment
+    `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3` reached READY and activated the variable.
 
 ### Production Promotion And Setup Closure
 
@@ -631,6 +636,14 @@ activation require an explicit scoped approval.
     build identity. `www.answerlattice.com` returns method-preserving permanent
     `308` to the same path on the apex, and following the redirect returns the
     same production build identity.
+  - Credential-activation redeployment
+    `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3` rebuilt the exact previously certified
+    Production artifact with the replacement App Check site key and widget
+    runtime secret. It reached READY on August 22, 2026 and owns the apex,
+    `www`, and remaining Production aliases. `answerlattice.com` returns HTTP
+    200 with TLS, HSTS, `x-product-id: answerlattice`, and `/api/version`
+    environment `production` with deployment URL
+    `menulist-core-mv1su2gwu-neelvara-systems.vercel.app`.
 - [ ] `AL-PROD-E06` Complete authenticated backend smoke and a bounded
   backup/restore drill before launch certification.
   - Managed backup
@@ -654,8 +667,8 @@ activation require an explicit scoped approval.
     provider-send path; its dedicated production client setup is complete under
     `AL-PROD-D06`, while hosted identity certification remains open.
 
-Production setup remains open only on `AL-PROD-B05` and `AL-PROD-D07`.
-Release certification, real-client onboarding, provider
+Production provider and infrastructure setup is complete. Release
+certification, real-client onboarding, provider
 delivery certification, browser/device checks, and launch approval remain
 separate gates.
 
@@ -704,3 +717,4 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-PROD-E05` | Pass | Vercel Production deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` reached READY from exact application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`. The apex returns HTTP 200 with HSTS, Answerlattice routing headers, environment `production`, and matching `/api/version`; `www` returns `308` to the same apex path and resolves to the identical build. |
 | 2026-08-22 | `AL-PROD-E03`, `AL-PROD-E04` | Approved core Function target complete | Deployed the two retry-safe Firestore analytics/support triggers and the PLATFORM-authorized analytics backfill callable. Live readback reports 11 approved core Functions ACTIVE on Node 22 in `us-central1`. The callable retains Firebase auth and current PLATFORM authorization while using the QA-proven DRS-compatible transport annotation `run.googleapis.com/invoker-iam-disabled=true`; an unsigned POST returned HTTP 401 `UNAUTHENTICATED`. The optional EmailOS webhook remains intentionally undeployed with provider credentials absent. |
 | 2026-08-22 | Full QA/production setup audit | Current-state reconciliation | Independent source, Firebase CLI, Google/Firebase Console, Vercel, public-host, OAuth, App Check, Resend, budget, and validation-gate readback completed. QA setup is complete and currently serves staging commit `f6256fba66d60a4dbd3d88314300f2a79d28ff25` from deployment `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz`; its remaining items are fixture-based testing/certification. Production core infrastructure and 11 Functions are active, but live readback supersedes the August 21 App Check claims: `Answerlattice Production Web` is `Not registered`, and Vercel Production lacks `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`. These are tracked under `AL-PROD-B05` and `AL-PROD-D07`. Historical rows above remain point-in-time evidence and do not override this current snapshot. |
+| 2026-08-22 | `AL-PROD-B05`, `AL-PROD-D07`, `AL-PROD-E05` | Production setup closure pass | Owner-created replacement legacy reCAPTCHA v3 credential was bound through Firebase App Check REST v1; sanitized readback returned HTTP 200, `siteSecretSet=true`, 24-hour TTL, score threshold `0.5`, and `UNENFORCED` Firestore, Storage, and Authentication services. The matching public site key and a fresh sensitive 48-byte widget runtime secret are isolated to Vercel Production. Exact-artifact redeployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3` reached READY, owns all Production aliases, serves `answerlattice.com` with HTTP 200 and Answerlattice routing headers, and reports environment `production` with deployment URL `menulist-core-mv1su2gwu-neelvara-systems.vercel.app`. Credential values are not recorded. The superseded reCAPTCHA key remains temporarily available only as rollback protection until separately approved retirement. |
