@@ -213,16 +213,14 @@ Stop before any mutation when one of these is true:
     confirmation, Codex verifies metadata and performs the secret transfer,
     scoped redeploys, readback, and retirement without displaying secret values.
   - The AI Studio key, Vercel `qa` value, Secret Manager version 3, eight
-    Firebase Function bindings, provider call, and old-key retirement are
-    complete. The later Vercel deployment using the rotated value was a
-    separate build of old main revision
-    `002a76ea056135203b908b64e29be03e18dcb142`; it did not replace the Canonica
-    domain target. Current public readback on August 21, 2026 still reports QA
-    revision `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`. Because shared Next.js
-    Answerlattice API routes read `ANSWERLATTICE_GEMINI_AI_KEY`, this item stays
-    open until a fresh authorized custom-`qa` deployment from the approved
-    `staging` revision becomes the Canonica target and `/api/version` plus one
-    bounded server AI call are read back.
+    Firebase Function bindings, direct provider call, and old-key retirement
+    are complete. Custom QA deployment
+    `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` was verified serving
+    exact staging revision `1589272a29e1f342ae7d4b93985da91f66922152` on both
+    Canonica hosts, and `/api/version` confirmed that build. Because shared
+    Next.js Answerlattice API routes read `ANSWERLATTICE_GEMINI_AI_KEY`, this
+    item stays open only until one authenticated bounded server-side Gemini
+    call is read back using a disposable QA workspace fixture.
 - [ ] `AL-QA-D07` Complete Google OAuth parity for Canonica without reusing the
   MenuList client. In Google Auth Platform for `neelvara-answerlattice-qa`, use
   truthful branding `Answerlattice QA`, support email
@@ -264,10 +262,16 @@ Stop before any mutation when one of these is true:
     removed without changing `NEXTAUTH_SECRET` or the MenuList
     `GOOGLE_CLIENT_*` pair. No secret value was written to the repository or
     documentation, and temporary automation buffers were cleared.
-  - A fresh deployment of the exact approved staging revision plus bounded
-    login, callback, host-only session, and Answerlattice Firebase custom-token
-    proof remain open. Keep this checklist item unchecked until that evidence
-    is recorded.
+  - Custom QA deployment
+    `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` served exact staging
+    revision `1589272a29e1f342ae7d4b93985da91f66922152` on both Canonica hosts.
+    Hosted provider readback derives the exact apex and `www` callbacks and
+    requests only `openid email profile`. A bounded Google consent/callback as
+    `admin@neelvara.com` returned to `canonica.app` authenticated. The session
+    remained host-only: the apex retained the signed-in state while `www`
+    remained signed out. Answerlattice Firebase custom-token synchronization
+    still requires an authorized disposable workspace fixture. Keep this item
+    unchecked until that final proof is recorded.
 
 ### Scoped Deploy And Setup Closure
 
@@ -300,8 +304,9 @@ Stop before any mutation when one of these is true:
     A `216.150.1.1` and `www` CNAME
     `dd4b150d15c50a85.vercel-dns-017.com.`; public DNS and Vercel both report
     valid QA configuration. Mail and verification records were preserved.
-    Exact staging commit `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`
-    is now live on both hosts. Hosted readback returned HTTP 200 with valid TLS,
+    Exact staging commit `1589272a29e1f342ae7d4b93985da91f66922152`
+    was verified live on both hosts. Later ledger-only commits do not change the
+    application runtime. Hosted readback returned HTTP 200 with valid TLS,
     `x-product-id: answerlattice`, and
     `x-robots-tag: noindex, nofollow, noarchive`; Canonica remains inside QA and
     no longer redirects to production.
@@ -310,14 +315,15 @@ Stop before any mutation when one of these is true:
   ticket/KB/scheduler setup surfaces. Product workflow testing remains separate
   from setup closure.
   - Base hosted proof is complete: `/api/version` returned exact commit
-    `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`, both Canonica hosts returned
+    `1589272a29e1f342ae7d4b93985da91f66922152`, both Canonica hosts returned
     HTTP 200 with the Answerlattice product header and QA crawler isolation,
     `robots.txt` disallows all crawling, `sitemap.xml` returns 404, and the
     production Answerlattice host remains HTTP 200 and indexable. Hydrated
-    browser readback confirmed AnswerLattice branding, the approved governed
-    source tagline and the former credential-only boundary. Product-routed
-    Google OAuth requires a fresh hosted deployment and remains open in
-    `AL-QA-D07`.
+    browser readback confirmed AnswerLattice branding and the approved governed
+    source tagline. Product-routed Google OAuth now passes provider
+    configuration, consent, callback, authenticated NextAuth session, and
+    host-only cookie proof. Answerlattice Firebase custom-token proof remains
+    open in `AL-QA-D07`.
     Fixture-dependent App Check, widget, dashboard, ticket, KB, scheduler, and
     authenticated identity-path certification remains deferred testing and is
     not inferred from the base-host proof.
@@ -464,11 +470,11 @@ activation require an explicit scoped approval.
 
 - [x] `AL-PROD-E01` Freeze the exact source revision that passed QA and rerun
   the focused source gates.
-  - The hosted QA application revision is
-    `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`; current staging HEAD
-    `48b7f54287f541a1146e31f44e1f78d84aab4429` differs only by setup evidence.
-    Answerlattice TypeScript, Functions build, WIF contracts, and environment
-    target matrix passed again on August 21, 2026.
+  - The hosted QA application revision and approved application source are
+    `1589272a29e1f342ae7d4b93985da91f66922152`. Answerlattice TypeScript,
+    Functions build, WIF contracts, environment target matrix, and hosted
+    OAuth routing passed again on August 21, 2026. Later ledger-only commits do
+    not change this application release boundary.
 - [x] `AL-PROD-E02` Audit production remote indexes before deploy; never use
   `--force` as a shortcut.
   - Current production readback has 100 composite indexes and all 100 are
@@ -528,13 +534,14 @@ service-account JSON, or customer data.
 | 2026-08-20 | `AL-QA-D01` through `AL-QA-D05` | Historical pass before OAuth parity approval | Dedicated core secrets and Firebase/OIDC values exist; no MenuList secret or Redis credential reused; optional providers disabled; the former credential-only OAuth decision was superseded on August 21 |
 | 2026-08-21 | `AL-QA-D07` / `AL-PROD-D06` | Source prepared; QA binding complete; deployment and production binding open | Shared NextAuth now selects dedicated MenuList or Answerlattice Google credentials from the request hostname while retaining the same `google` provider and callback path. QA has its dedicated client and sensitive Vercel binding with hosted `NEXTAUTH_URL` absent. QA deployment/callback proof and every production provider action remain open. |
 | 2026-08-21 | `AL-QA-D07` | Provider and credential binding prepared; deployment open | QA Google Auth Platform has truthful Answerlattice QA branding, Canonica legal URLs and authorized domain, company support/developer contacts, External Testing audience, sole test user `admin@neelvara.com`, and dedicated client `Answerlattice QA Web`. The first secret was invalidated before use after accessibility-label exposure; only its replacement remains enabled and is bound directly to Vercel `qa`. Hosted `NEXTAUTH_URL` is absent. No secret value was written to source or documentation. |
+| 2026-08-21 | `AL-QA-D07` | Hosted OAuth and session boundary pass; Firebase sync fixture open | Deployment `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` serves exact staging build `1589272a29e1f342ae7d4b93985da91f66922152` on Canonica. Both hosts derive exact Google callback URLs with `openid email profile`. The authorized admin consent/callback returned authenticated on the apex, and the session did not cross to `www`. A disposable workspace is still required for Answerlattice Firebase custom-token proof. |
 | 2026-08-21 | `AL-PROD-D06` | Live provider readback | Production Google Auth Platform remains unconfigured; production setup begins only after the QA client and hosted callback are certified. |
 | 2026-08-20 | `AL-QA-E02` through `AL-QA-E04` | Pass | Rules and Storage rules hashes match source; 100 composite indexes READY; 18 TTL fields ACTIVE; 11 approved Functions ACTIVE; one Scheduler job and one task queue active |
-| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; Vercel deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` serves exact build `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
-| 2026-08-21 | `AL-QA-E06` | Base setup pass; OAuth deployment open | Exact `/api/version`, HTTP 200, TLS, Answerlattice product header, noindex header, disallow-all robots, absent sitemap, unaffected production host, and the former credential-only login boundary were verified. Product-routed OAuth and fixture-dependent application paths require the fresh hosted revision. |
+| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; deployment `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` serves exact build `1589272a29e1f342ae7d4b93985da91f66922152` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
+| 2026-08-21 | `AL-QA-E06` | Base setup and OAuth-host pass | Exact `/api/version`, HTTP 200, TLS, Answerlattice product header, noindex header, disallow-all robots, absent sitemap, and product-routed OAuth callback/session behavior were verified on the fresh hosted revision. Fixture-dependent application paths and Firebase custom-token synchronization remain separate testing evidence. |
 | 2026-08-21 | QA login deployment | Pass after scoped build repair | Initial deployment `dpl_AhmxMDzT73N2aFvUnhTP3eCMiXpY` failed because it referenced a local-only uncommitted website constant; the login copy dependency was made self-contained, source gates passed, and replacement deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` reached READY |
 | 2026-08-21 | `AL-QA-E07` | Waiting for first backup | One daily Firestore backup schedule with `8467200s` retention exists; Firebase CLI returned no available backups, so the isolated restore rehearsal cannot begin yet |
-| 2026-08-21 | `AL-QA-D06` | Partial; canonical QA activation open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key deleted and secret version 2 destroyed. Separate deployment `menulist-core-jo9gbj0hk-neelvara-systems.vercel.app` reached READY on old main revision `002a76ea056135203b908b64e29be03e18dcb142`, but it did not become the Canonica target. Public Canonica readback remains on `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`, so a fresh authorized custom-`qa` deployment from the approved staging revision remains required. |
+| 2026-08-21 | `AL-QA-D06` | Partial; authenticated server call open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions are ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key and secret version 2 were destroyed. Current Canonica build `1589272a29e1f342ae7d4b93985da91f66922152` carries the rotated QA environment. One authenticated bounded Next.js server-side Gemini readback remains fixture-dependent. |
 | 2026-08-21 | `AL-PROD-A01` through `AL-PROD-A03` | Pass | Company-owned production project is visible to `admin@neelvara.com`; independent project budgets exist; runtime service account has least-privilege roles and zero user-managed keys |
 | 2026-08-21 | `AL-PROD-B01` through `AL-PROD-B04` | Foundation prepared; two credential gates open | Firebase Web/Auth/Firestore/Storage and supporting APIs are ready; Firestore is protected in `nam5`; exact Auth hosts are active; App Check and Functions await owner-created production credentials |
 | 2026-08-21 | `AL-PROD-C01` through `AL-PROD-C04` | Pass | Production WIF provider is ACTIVE with exact team/project/environment/subject restriction; Vercel selectors exist; static Admin key material is absent |

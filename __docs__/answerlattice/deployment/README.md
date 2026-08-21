@@ -48,10 +48,10 @@ The following was verified on August 21, 2026:
 - `canonica.app` is owned in the company GoDaddy account. Its apex and `www`
   hosts are attached only to Vercel custom environment `qa`. GoDaddy now serves
   Vercel's exact apex A and `www` CNAME records; public DNS and Vercel report
-  valid configuration, and mail/verification DNS was preserved. Both hosts now
-  serve exact staging commit
-  `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea` inside Answerlattice QA with
-  valid TLS and no production redirect. That hosted revision predates the
+  valid configuration, and mail/verification DNS was preserved. Both hosts
+  were verified serving exact staging commit
+  `1589272a29e1f342ae7d4b93985da91f66922152` inside Answerlattice QA with
+  valid TLS and no production redirect. This hosted revision includes the
   approved product-routed Google OAuth implementation described below.
 - The QA host contract requires `X-Robots-Tag: noindex, nofollow, noarchive`,
   a disallow-all `robots.txt`, and no sitemap. Production remains indexable.
@@ -94,22 +94,30 @@ The following was verified on August 21, 2026:
   invalidated before use after accessibility-label exposure; only its
   replacement remains enabled. Vercel `qa` contains the dedicated sensitive
   client binding and no hosted `NEXTAUTH_URL`. No secret was written to source
-  or documentation. The fresh hosted deployment, bounded login/callback and
-  session proof, and all production OAuth provider actions remain open.
+  or documentation. Custom QA deployment
+  `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` served exact
+  staging commit `1589272a29e1f342ae7d4b93985da91f66922152` on both Canonica
+  hosts. Both hosts derive their own exact Google callback and request only
+  `openid email profile`. A bounded consent/callback with
+  `admin@neelvara.com` returned to `canonica.app` authenticated, and the apex
+  session did not cross to `www`, proving the host-only cookie boundary.
+  Answerlattice Firebase custom-token synchronization remains open until an
+  authorized disposable workspace fixture exists; all production OAuth
+  provider actions also remain open.
 - The shared Next.js/Vercel process intentionally uses one environment-scoped
   Sentry DSN because browser, server, and edge SDKs initialize once per runtime,
   not once per custom domain. Monitoring now derives and records the product
   tag before sanitizing request URLs. Answerlattice Firebase Functions remain
   isolated on their project-local `SENTRY_DSN` Secret Manager value.
-- Firebase Functions and Secret Manager use the rotated QA AI Studio
-  authorization key, but the Canonica domains still serve staging revision
-  `f02e2c9dc18af21d83a4e8a4c2bfd86f22a043ea`. The later deployment carrying
-  the updated Vercel `qa` value was an old-main build and did not become the
-  Canonica target. A fresh custom-`qa` deployment from the approved `staging`
-  revision is therefore the remaining QA activation step before bounded
-  server-side Gemini readback. The owner-approved account model is closed:
-  `admin@neelvara.com` is the only human operator for every product; Cloud
+- Firebase Functions, Secret Manager, and the current Canonica deployment use
+  the rotated QA AI Studio authorization key. The exact current staging
+  revision is live; one authenticated bounded Next.js server-side Gemini
+  readback remains fixture-dependent. The owner-approved account model is
+  closed: `admin@neelvara.com` is the only human operator for every product;
+  Cloud
   Identity Free is active at no charge but no additional user was created.
+  Later ledger-only commits may advance `/api/version` without changing this
+  verified OAuth application release boundary.
   The first isolated restore rehearsal also waits on a managed backup reaching
   READY. Fixture-dependent Auth/App Check/widget/dashboard/ticket/KB/scheduler
   proof remains deferred testing, not missing setup.
