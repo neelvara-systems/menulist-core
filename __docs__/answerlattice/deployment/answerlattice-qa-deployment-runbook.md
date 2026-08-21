@@ -345,7 +345,7 @@ firebase deploy --only firestore:rules,firestore:indexes,storage --project answe
 App Engine application:
 
 ```bash
-gcloud app create --project answerlattice-qa --region=us-central --quiet
+gcloud app create --project neelvara-answerlattice-qa --region=us-central --quiet
 ```
 
 Artifact cleanup:
@@ -357,9 +357,9 @@ firebase functions:artifacts:setpolicy --project answerlattice-qa --config fireb
 Secret Manager:
 
 ```bash
-gcloud services enable secretmanager.googleapis.com --project answerlattice-qa --quiet
-gcloud secrets create ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --replication-policy=automatic
-gcloud secrets versions add ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --data-file=<local-secret-file>
+gcloud services enable secretmanager.googleapis.com --project neelvara-answerlattice-qa --quiet
+gcloud secrets create ANSWERLATTICE_CRON_SECRET --project neelvara-answerlattice-qa --replication-policy=automatic
+gcloud secrets versions add ANSWERLATTICE_CRON_SECRET --project neelvara-answerlattice-qa --data-file=<local-secret-file>
 firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice-qa
 firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice-qa
 ```
@@ -381,7 +381,7 @@ When Firebase CLI returns `409 index already exists`, verify live indexes before
 
 ```bash
 gcloud firestore indexes composite create \
-  --project=answerlattice-qa \
+  --project=neelvara-answerlattice-qa \
   --database='(default)' \
   --collection-group=supportTickets \
   --query-scope=COLLECTION \
@@ -389,7 +389,7 @@ gcloud firestore indexes composite create \
   --field-config=field-path=createdOn,order=descending
 
 gcloud firestore indexes composite create \
-  --project=answerlattice-qa \
+  --project=neelvara-answerlattice-qa \
   --database='(default)' \
   --collection-group=supportTickets \
   --query-scope=COLLECTION \
@@ -405,7 +405,7 @@ Manual scheduler smoke test:
 curl -sS -X POST \
   -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
   -H "Content-Type: application/json" \
-  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+  https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
 ```
 
 Scoped manual retry for one workspace:
@@ -415,7 +415,7 @@ curl -sS -X POST \
   -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"tId":123,"sId":456}' \
-  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+  https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
 ```
 
 Expected QA result when the code default `ENABLE_ANSWERLATTICE_NIGHTLY=true` is deployed and no eligible tenant has `hasEntities=true`:

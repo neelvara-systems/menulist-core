@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { DEPLOYMENT_TARGETS } from '@constant/deploymentTargets';
 import { getCurrentPlatformUser, resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { PRODUCT_IDS } from '@constant/product';
 import {
@@ -52,7 +53,10 @@ const TriggerSchema = z.object({
 const ANSWERLATTICE_INTAKE_TRIGGER_MAX_BODY_BYTES = 2 * 1024;
 const ANSWERLATTICE_MANUAL_TRIGGER_RESPONSE_MAX_BYTES = 512 * 1024;
 const ANSWERLATTICE_MANUAL_TRIGGER_PATH = '/triggerAnswerlatticeNightly';
-const ANSWERLATTICE_ALLOWED_PROJECT_IDS = new Set(['answerlattice-qa', 'answerlattice']);
+const ANSWERLATTICE_ALLOWED_PROJECT_IDS = new Set([
+    DEPLOYMENT_TARGETS.preview.answerlattice.firebaseProjectId,
+    DEPLOYMENT_TARGETS.production.answerlattice.firebaseProjectId,
+]);
 const ANSWERLATTICE_ALLOWED_MANUAL_TRIGGER_HOSTS = new Set(
     Array.from(ANSWERLATTICE_ALLOWED_PROJECT_IDS, projectId => `us-central1-${projectId}.cloudfunctions.net`),
 );

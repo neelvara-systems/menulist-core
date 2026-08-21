@@ -6018,6 +6018,9 @@ function verifyKnowledgeIntakePublishRecovery() {
   assertIncludes(platformMonitorRoute, "error: 'Answerlattice nightly retry response was invalid.'", 'Answerlattice intake monitor route fixed invalid trigger response copy');
   assertIncludes(platformMonitorRoute, 'validateServerNetworkTargetUrl', 'Answerlattice intake monitor manual trigger target validation');
   assertIncludes(platformMonitorRoute, 'ANSWERLATTICE_ALLOWED_MANUAL_TRIGGER_HOSTS', 'Answerlattice intake monitor fixed trigger host allowlist');
+  assertIncludes(platformMonitorRoute, 'DEPLOYMENT_TARGETS.preview.answerlattice.firebaseProjectId', 'Answerlattice intake monitor QA trigger project source');
+  assertIncludes(platformMonitorRoute, 'DEPLOYMENT_TARGETS.production.answerlattice.firebaseProjectId', 'Answerlattice intake monitor production trigger project source');
+  assertNotIncludes(platformMonitorRoute, "new Set(['answerlattice-qa', 'answerlattice'])", 'Answerlattice intake monitor retired trigger project allowlist');
   assertIncludes(platformMonitorRoute, 'ANSWERLATTICE_MANUAL_TRIGGER_PATH', 'Answerlattice intake monitor fixed trigger path');
   assertIncludes(platformMonitorRoute, 'resolveManualTriggerTarget(triggerUrl)', 'Answerlattice intake monitor trigger resolver');
   assertIncludes(platformMonitorRoute, 'fetch(triggerTarget.normalizedUrl', 'Answerlattice intake monitor normalized trigger fetch');
