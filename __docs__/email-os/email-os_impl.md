@@ -248,4 +248,4 @@ npm --prefix functions-answerlattice run build
 npm run lint
 ```
 
-No production build or Vercel deploy is required. MenuList's product-specific QA and production Resend secrets now exist as enabled version-1 Secret Manager values. The smallest QA Firebase deployment and provider certification remain separately gated; Answerlattice provider onboarding remains pending.
+No production build or Production Vercel deployment was required for this Answerlattice QA webhook step. MenuList's product-specific QA and production Resend secrets exist as enabled version-1 Secret Manager values. Answerlattice QA now has its signing secret and scoped inbound webhook deployment, but its owner-created sending key has not been transferred to Vercel or Secret Manager. Provider certification and every outbound-send activation remain separately gated.

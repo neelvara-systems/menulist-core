@@ -216,10 +216,10 @@ Stop before any mutation when one of these is true:
     scoped redeploys, readback, and retirement without displaying secret values.
   - The AI Studio key, Vercel `qa` value, Secret Manager version 3, eight
     Firebase Function bindings, direct provider call, and old-key retirement
-    are complete. Custom QA deployment
-    `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` was verified serving
-    exact staging revision `1589272a29e1f342ae7d4b93985da91f66922152` on both
-    Canonica hosts, and `/api/version` confirmed that build. Because shared
+    are complete. Current QA deployment
+    `menulist-core-1f590am4b-neelvara-systems.vercel.app` serves exact staging
+    revision `a6afeafd25ee05235c06ce2199fa15e9f3945177` on both Canonica hosts, and
+    `/api/version` confirms that build. Because shared
     Next.js Answerlattice API routes read `ANSWERLATTICE_GEMINI_AI_KEY`, this
     item stays open only until one authenticated bounded server-side Gemini
     call is read back using a disposable QA workspace fixture.
@@ -303,14 +303,28 @@ Stop before any mutation when one of these is true:
     delivery certification. Its Cloud Run transport invoker is public so
     Resend can reach it, while the handler remains fail-closed on the raw-body
     Resend signature and product-local delivery binding before any write.
+  - Current partial evidence on August 21, 2026: the verified sender domain,
+    isolated return-path DNS, QA webhook registration, enabled webhook-signing
+    secret version 1, non-secret Vercel sender values, and scoped webhook
+    deployment are complete. Active revision
+    `answerlatticeemailoswebhook-00006-zer` binds only the signing secret.
+    Cloud Run retains `run.googleapis.com/invoker-iam-disabled=true` under the
+    organization Domain Restricted Sharing policy, and an unsigned POST
+    reached the handler and returned HTTP 400 `Invalid webhook`. The separate
+    owner-created sending key has not been transferred to Vercel or Secret
+    Manager, no controlled email has been sent, and provider sending remains
+    disabled. Keep this item unchecked.
 - [x] `AL-QA-D09` Create one unique server-only
   `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` of at least 32 random bytes in Vercel
   custom environment `qa`. A fresh 32-byte Base64URL value is stored as a
   sensitive QA-only Vercel variable. It was transferred without display or
   repository persistence. This is a host-to-iframe token-signing key, not the
   workspace-issued public `al_*` widget credential and not a Firebase Functions
-  secret. A later explicitly approved QA redeployment is required before the
-  hosted runtime sees this new value.
+  secret. Hosted activation is complete:
+  deployment `dpl_91Uj4beXQWDCppJQK88VqvT56ZHQ` reached READY in custom
+  environment `qa` from exact staging commit
+  `a6afeafd25ee05235c06ce2199fa15e9f3945177`, and both Canonica hosts return
+  that build from `/api/version`.
 - [x] `AL-QA-D10` Verify the Answerlattice monitoring boundary without creating
   unused provider state. Live Sentry readback shows the maintained MenuList QA
   and production projects, while the shared Vercel QA process has its one
@@ -352,7 +366,7 @@ Stop before any mutation when one of these is true:
     A `216.150.1.1` and `www` CNAME
     `dd4b150d15c50a85.vercel-dns-017.com.`; public DNS and Vercel both report
     valid QA configuration. Mail and verification records were preserved.
-    Exact staging commit `1589272a29e1f342ae7d4b93985da91f66922152`
+    Exact staging commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`
     was verified live on both hosts. Later ledger-only commits do not change the
     application runtime. Hosted readback returned HTTP 200 with valid TLS,
     `x-product-id: answerlattice`, and
@@ -363,7 +377,7 @@ Stop before any mutation when one of these is true:
   ticket/KB/scheduler setup surfaces. Product workflow testing remains separate
   from setup closure.
   - Base hosted proof is complete: `/api/version` returned exact commit
-    `1589272a29e1f342ae7d4b93985da91f66922152`, both Canonica hosts returned
+    `a6afeafd25ee05235c06ce2199fa15e9f3945177`, both Canonica hosts returned
     HTTP 200 with the Answerlattice product header and QA crawler isolation,
     `robots.txt` disallows all crawling, `sitemap.xml` returns 404, and the
     production Answerlattice host remains HTTP 200 and indexable. Hydrated
@@ -525,7 +539,7 @@ activation require an explicit scoped approval.
 - [x] `AL-PROD-E01` Freeze the exact source revision that passed QA and rerun
   the focused source gates.
   - The hosted QA application revision and approved application source are
-    `1589272a29e1f342ae7d4b93985da91f66922152`. Answerlattice TypeScript,
+    `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Answerlattice TypeScript,
     Functions build, WIF contracts, environment target matrix, and hosted
     OAuth routing passed again on August 21, 2026. Later ledger-only commits do
     not change this application release boundary.
@@ -591,13 +605,15 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-QA-D07` | Hosted OAuth and session boundary pass; Firebase sync fixture open | Deployment `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` serves exact staging build `1589272a29e1f342ae7d4b93985da91f66922152` on Canonica. Both hosts derive exact Google callback URLs with `openid email profile`. The authorized admin consent/callback returned authenticated on the apex, and the session did not cross to `www`. A disposable workspace is still required for Answerlattice Firebase custom-token proof. |
 | 2026-08-21 | `AL-PROD-D06` | Live provider readback | Production Google Auth Platform remains unconfigured; production setup begins only after the QA client and hosted callback are certified. |
 | 2026-08-20 | `AL-QA-E02` through `AL-QA-E04` | Pass | Rules and Storage rules hashes match source; 100 composite indexes READY; 18 TTL fields ACTIVE; 11 approved Functions ACTIVE; one Scheduler job and one task queue active |
-| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; deployment `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` serves exact build `1589272a29e1f342ae7d4b93985da91f66922152` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
+| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; deployment `menulist-core-1f590am4b-neelvara-systems.vercel.app` serves exact build `a6afeafd25ee05235c06ce2199fa15e9f3945177` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
 | 2026-08-21 | `AL-QA-E06` | Base setup and OAuth-host pass | Exact `/api/version`, HTTP 200, TLS, Answerlattice product header, noindex header, disallow-all robots, absent sitemap, and product-routed OAuth callback/session behavior were verified on the fresh hosted revision. Fixture-dependent application paths and Firebase custom-token synchronization remain separate testing evidence. |
 | 2026-08-21 | QA login deployment | Pass after scoped build repair | Initial deployment `dpl_AhmxMDzT73N2aFvUnhTP3eCMiXpY` failed because it referenced a local-only uncommitted website constant; the login copy dependency was made self-contained, source gates passed, and replacement deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` reached READY |
 | 2026-08-21 | `AL-QA-E07` | Waiting for first backup | One daily Firestore backup schedule with `8467200s` retention exists; Firebase CLI returned no available backups, so the isolated restore rehearsal cannot begin yet |
-| 2026-08-21 | `AL-QA-D06` | Partial; authenticated server call open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions are ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key and secret version 2 were destroyed. Current Canonica build `1589272a29e1f342ae7d4b93985da91f66922152` carries the rotated QA environment. One authenticated bounded Next.js server-side Gemini readback remains fixture-dependent. |
+| 2026-08-21 | `AL-QA-D06` | Partial; authenticated server call open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions are ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key and secret version 2 were destroyed. Current Canonica build `a6afeafd25ee05235c06ce2199fa15e9f3945177` carries the rotated QA environment. One authenticated bounded Next.js server-side Gemini readback remains fixture-dependent. |
 | 2026-08-21 | `AL-QA-D04`, `AL-QA-D08` through `AL-QA-D10` | Setup-only parity audit | Correct-profile live readback found independent Answerlattice Resend onboarding absent and confirmed the new private widget runtime secret in Vercel QA. The shared Next.js Sentry DSN is present; source and Secret Manager readback confirm Answerlattice Functions intentionally use Cloud Logging and require no Sentry secret. Disabled GitHub, MCP, WhatsApp, SMTP, paid Redis, analytics, and fixture widget-key values remain intentionally absent. |
 | 2026-08-21 | `AL-QA-D09` | Pass; deployment activation pending | Generated a unique 32-byte Base64URL widget runtime secret and stored it as a sensitive variable only in Vercel custom `qa`; the value was not displayed or persisted locally. Vercel requires a later approved QA redeployment before the hosted runtime receives it. |
+| 2026-08-21 | `AL-QA-D08` | Partial; sending-key transfer open | Sender domain, isolated return path, QA webhook registration, webhook secret version 1 and non-secret sender configuration are prepared. Scoped Function revision `answerlatticeemailoswebhook-00006-zer` is ACTIVE, binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, retains the DRS-compatible public transport setting, and rejects an unsigned request with HTTP 400 `Invalid webhook`. The owner-created sending key is intentionally not yet present in Vercel or Secret Manager; provider sending remains disabled. |
+| 2026-08-21 | `AL-QA-D09` | Pass; hosted activation complete | Automatic deployment `dpl_91Uj4beXQWDCppJQK88VqvT56ZHQ` reached READY in custom environment `qa` from exact commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Vercel emitted environment `qa` and the expected QA OIDC subject; `canonica.app` and `www.canonica.app` both serve that build with Answerlattice and noindex headers. |
 | 2026-08-21 | `AL-PROD-A01` through `AL-PROD-A03` | Pass | Company-owned production project is visible to `admin@neelvara.com`; independent project budgets exist; runtime service account has least-privilege roles and zero user-managed keys |
 | 2026-08-21 | `AL-PROD-B01` through `AL-PROD-B04` | Foundation prepared; two credential gates open | Firebase Web/Auth/Firestore/Storage and supporting APIs are ready; Firestore is protected in `nam5`; exact Auth hosts are active; App Check and Functions await owner-created production credentials |
 | 2026-08-21 | `AL-PROD-C01` through `AL-PROD-C04` | Pass | Production WIF provider is ACTIVE with exact team/project/environment/subject restriction; Vercel selectors exist; static Admin key material is absent |

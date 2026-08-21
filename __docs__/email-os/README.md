@@ -1,9 +1,9 @@
 # EmailOS — Documentation Hub
 
 > **Feature:** Cross-product production email infrastructure
-> **Status:** MenuList provider prepared; deployment, certification and activation remain disabled
-> **Last Updated:** August 16, 2026
-> **Version:** 1.0.1
+> **Status:** MenuList provider prepared; Answerlattice QA inbound webhook active; all outbound provider sending disabled
+> **Last Updated:** August 21, 2026
+> **Version:** 1.0.3
 
 ## Quick Navigation
 
@@ -37,9 +37,17 @@ EmailOS is the email delivery plane beneath [NotificationOS](../notification-os/
   write, so shared-team event fan-out cannot mutate the wrong product. Resend's
   provider suppression list, reputation and quotas remain team-wide and are an
   explicit accepted constraint at the current operating scale.
-- Every provider-send flag remains off, neither webhook Function has been deployed as part of provider preparation, and no live email has been sent.
+- Answerlattice QA now has its verified sender domain, isolated return path,
+  webhook registration, enabled signing-secret version and deployed inbound
+  webhook. Revision `answerlatticeemailoswebhook-00006-zer` binds only the
+  signing secret and rejects unsigned traffic. Its separate sending key has not
+  been transferred to Vercel or Secret Manager.
+- Every provider-send flag remains off. The Answerlattice QA inbound webhook is
+  the only newly deployed provider target; no live email has been sent and the
+  MenuList webhook deployment remains separately pending.
 - Existing SMTP delivery remains only as the controlled pre-onboarding migration path. It is removed after product-by-product QA cutover certification.
-- QA TTL deployment is pending: MenuList’s Firebase deploy preflight returned two Rules API `503` responses; the current operator lacks Answerlattice QA index permission; and the direct `gcloud` TTL command is unavailable on this machine.
+- Answerlattice QA EmailOS TTL field overrides are active. MenuList rules and
+  TTL rollout remains a separate product deployment concern.
 
 ## Product Boundary
 
@@ -79,6 +87,7 @@ All provider-send flags default to `false`. Rendering and contract verification 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.0.3 | 2026-08-21 | Deployed the signature-bound Answerlattice QA inbound webhook while preserving the missing sending-key and no-send boundary |
 | 1.0.2 | 2026-08-21 | Approved one MenuList/Answerlattice Resend team with isolated product domains, keys, webhook secrets and local state; added product-tag plus local-delivery webhook binding |
 | 1.0.1 | 2026-08-16 | Recorded MenuList Resend account security, verified sender DNS, isolated QA/production credentials and webhooks while preserving the no-send/no-deploy gate |
 | 1.0.0 | 2026-08-15 | Frozen cross-product contract, product boundaries and Resend onboarding gate |

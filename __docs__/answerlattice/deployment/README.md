@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 21, 2026
-> **Status:** QA core setup active; EmailOS and widget-secret activation remain open; production foundation prepared
+> **Status:** QA core setup active; EmailOS sending-key transfer remains open; production foundation prepared
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -49,10 +49,11 @@ The following was verified on August 21, 2026:
   hosts are attached only to Vercel custom environment `qa`. GoDaddy now serves
   Vercel's exact apex A and `www` CNAME records; public DNS and Vercel report
   valid configuration, and mail/verification DNS was preserved. Both hosts
-  were verified serving exact staging commit
-  `1589272a29e1f342ae7d4b93985da91f66922152` inside Answerlattice QA with
-  valid TLS and no production redirect. This hosted revision includes the
-  approved product-routed Google OAuth implementation described below.
+  now serve exact staging commit
+  `a6afeafd25ee05235c06ce2199fa15e9f3945177` inside Answerlattice QA with
+  valid TLS and no production redirect. The approved product-routed Google
+  OAuth consent and session proof was completed on the earlier certified
+  application revision described below.
 - The QA host contract requires `X-Robots-Tag: noindex, nofollow, noarchive`,
   a disallow-all `robots.txt`, and no sitemap. Production remains indexable.
 - The former IDs `answerlattice-qa` and `answerlattice` exist outside the
@@ -83,6 +84,20 @@ The following was verified on August 21, 2026:
   GitHub, MCP, WhatsApp, SMTP, paid Redis, optional analytics, and a global
   public widget key remain intentionally absent; they are not MenuList parity
   requirements.
+- The Vercel QA activation gap is closed. Deployment
+  `dpl_91Uj4beXQWDCppJQK88VqvT56ZHQ` reached READY in custom environment `qa`
+  from exact staging commit
+  `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Both Canonica hosts serve that
+  build with Answerlattice identity and QA crawler isolation. Its OIDC token
+  reports custom environment `qa` and subject
+  `owner:neelvara-systems:project:menulist-core:environment:qa`.
+- Answerlattice QA EmailOS inbound setup is active without enabling outbound
+  email. Function revision `answerlatticeemailoswebhook-00006-zer` binds only
+  `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, uses the organization-policy
+  compatible Cloud Run public transport setting, and returns HTTP 400
+  `Invalid webhook` for an unsigned request. The owner-created Resend sending
+  key has not been transferred to Vercel or Secret Manager, and
+  `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND` remains `false`.
 - Google OAuth parity is now an approved core setup requirement. The shared
   NextAuth session implementation keeps the same `google` provider, identity
   scopes, callback path, account validation, and separate Answerlattice
@@ -150,9 +165,10 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. With explicit Vercel deployment authorization, create a fresh custom-`qa`
-   deployment from the approved staging revision, confirm both Canonica hosts
-   move to it, and read back `/api/version` plus one bounded server AI call.
+1. When the owner is at the machine, transfer the already created
+   Answerlattice QA Resend sending key directly to Vercel custom `qa` and
+   `neelvara-answerlattice-qa` Secret Manager without displaying or persisting
+   it, then run the controlled delivery certification before enabling sending.
 2. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
