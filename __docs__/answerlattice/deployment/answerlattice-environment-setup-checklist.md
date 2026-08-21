@@ -507,22 +507,25 @@ activation require an explicit scoped approval.
 
 ### Secrets, Providers, And Spend
 
-- [ ] `AL-PROD-D01` Create fresh production core secrets; do not promote QA
+- [x] `AL-PROD-D01` Create fresh production core secrets; do not promote QA
   secret values.
   - Fresh `ANSWERLATTICE_CRON_SECRET` and
     `ANSWERLATTICE_PUBLIC_BUNDLE_SALT` exist independently in Vercel Production
-    and Secret Manager. `ANSWERLATTICE_GEMINI_AI_KEY` is intentionally parked
-    for owner creation and is absent from Production.
-- [ ] `AL-PROD-D02` Create an independent Google AI Studio authorization key,
+    and Secret Manager. The owner-created production
+    `ANSWERLATTICE_GEMINI_AI_KEY` is also present as a sensitive Vercel
+    Production variable and enabled Secret Manager version 1. No QA or
+    MenuList secret value was reused.
+- [x] `AL-PROD-D02` Create an independent Google AI Studio authorization key,
   billing attribution, usage alerting, and spend-control evidence for project
   `neelvara-answerlattice-prod`. Do not create or promote a standard Gemini API
   key that will be rejected after September 2026.
   - The production project is imported into AI Studio and its independent
-    billing/spend controls already exist. Two bounded creation attempts for
-    `Answerlattice Production Gemini Authorization` were rejected by AI
-    Studio's automated security check as a suspicious request. No fallback
-    standard key, QA key, MenuList key, placeholder, or Cloud-console-created
-    unrestricted key was substituted. Owner creation remains parked.
+    billing/spend controls already exist. The owner created
+    `Answerlattice Production Gemini Authorization` in that project. Codex
+    transferred it without display to Vercel Production and Secret Manager,
+    and a bounded direct provider call returned HTTP 200 with exactly `OK`.
+    No fallback standard key, QA key, MenuList key, placeholder, or
+    Cloud-console-created unrestricted key was substituted.
 - [x] `AL-PROD-D03` Create a production Upstash database and hard budget only
   if the admitted production paths require it; never share QA credentials.
   - No production Upstash database or credential was created. Current Redis
@@ -533,10 +536,13 @@ activation require an explicit scoped approval.
   disabled until legal/ownership/certification gates close.
   - Resend, SMTP, GitHub, WhatsApp, analytics, and other provider-send
     credentials remain absent and their optional Functions remain undeployed.
-- [ ] `AL-PROD-D05` Verify every enabled Secret Manager version is bound only
+- [x] `AL-PROD-D05` Verify every enabled Secret Manager version is bound only
   to the exact Functions that declare it.
-  - No production Answerlattice Function is deployed yet, so no runtime secret
-    binding exists to certify.
+  - Secret Manager contains only the three production core secrets. Current
+    Function readback shows all eight deployed Gemini-bound Functions ACTIVE
+    on Node 22 in `us-central1`: each AI path binds
+    `ANSWERLATTICE_GEMINI_AI_KEY` version 1, the scheduler paths bind only their
+    declared bundle/cron secrets, and no optional provider secret is present.
 - [ ] `AL-PROD-D06` Create and bind the dedicated Answerlattice production Web
   OAuth client in `neelvara-answerlattice-prod`. Configure truthful branding
   `Answerlattice`, support email `support@neelvara.com`, developer contact
@@ -584,13 +590,17 @@ activation require an explicit scoped approval.
   Storage rules, approved indexes, and approved Functions targets to project
   `neelvara-answerlattice-prod` using `firebase-answerlattice.json`.
   - Firestore rules, Storage rules, and the approved indexes are deployed and
-    source-hash verified. The 12 approved Functions remain blocked only by the
-    parked production Gemini key; no placeholder or QA secret was used.
+    source-hash verified. The eight Gemini-bound Functions, Scheduler, and
+    embedding task queue are deployed and ACTIVE with no placeholder or QA
+    secret. The four non-AI Functions remain outside this scoped activation,
+    so the full 12-Function item remains open.
 - [ ] `AL-PROD-E04` Read back active rules, Storage rules, indexes, Functions,
   service identities, secret bindings, scheduler/tasks, and budgets.
-  - Rules/indexes, service identities, databases, budgets, and core secret
-    names are read back. Functions, Scheduler, task queue, and exact secret
-    bindings are absent until the scoped Functions deployment.
+  - Rules/indexes, service identities, databases, budgets, and all three core
+    secret names are read back. The eight scoped Functions, Scheduler, task
+    queue, Node 22 runtime, trigger regions, and exact secret version bindings
+    are also read back. Full closure awaits the separately reviewed four
+    non-AI Functions.
 - [ ] `AL-PROD-E05` Verify Vercel Production assignments for
   `answerlattice.com` and `www.answerlattice.com`, TLS, canonical redirects,
   `/api/version`, and production environment identity.
@@ -612,9 +622,10 @@ activation require an explicit scoped approval.
     non-TTL field overrides match production. The expected 18 TTL policies were
     not restored and remain an explicit reapplication/readback step. The live
     production `(default)` database was not modified or connected to the
-    recovery database. Authenticated backend smoke, fixture-level tenant/data
-    validation, Storage/Auth recovery evidence, TTL reapplication, and approved
-    cleanup remain open certification work.
+    recovery database. The new production authorization key passed a bounded
+    direct Gemini HTTP 200 `OK` call. Hosted authenticated backend smoke,
+    fixture-level tenant/data validation, Storage/Auth recovery evidence, TTL
+    reapplication, and approved cleanup remain open certification work.
 - [x] `AL-PROD-E07` Record intentionally disabled providers and feature flags;
   setup closure must not silently activate them.
   - Optional Redis, Resend, SMTP, GitHub, WhatsApp, analytics, and provider-send
@@ -668,3 +679,5 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-PROD-E01` through `AL-PROD-E07` | Infrastructure partial | Focused source gates pass; 100 indexes are READY and 18 TTL fields exist; rules/Storage/indexes are deployed; domains/TLS are healthy; the isolated structural restore completed; Functions, Vercel activation, authenticated smoke, fixture recovery validation, TTL reapplication, Storage/Auth evidence, and cleanup remain open |
 | 2026-08-21 | `AL-PROD-B04`, `AL-PROD-D02`, `AL-PROD-D06` | App Check and OAuth binding complete; Gemini parked | Dedicated production legacy reCAPTCHA v3 App Check is registered with enforcement OFF. The site key and dedicated Google OAuth client credentials are bound only to Vercel Production; the existing custom-`qa` rows remain isolated and Preview is excluded. Production `NEXTAUTH_URL` remains absent while staging Preview is unchanged. Gemini authorization-key creation remains parked after two AI Studio automated security-check rejections. No secret value was written to source or documentation. |
 | 2026-08-21 | `AL-PROD-E06` | Structural restore pass; certification checks open | READY backup `5bad4389-5ae1-42b8-bce3-1e1ec7720723` restored into delete-protected non-default database `answerlattice-prod-recovery-20260821` in `nam5`. Completion was observed in 46 minutes 57 seconds with a 2 hour 38 minute 16 second RPO. All 100 composite indexes and 15 non-TTL field overrides match production; 18 TTL policies were absent as expected. Production `(default)` remained untouched. Authenticated smoke, fixture content/tenant validation, TTL reapplication, Storage/Auth evidence, and cleanup remain open. |
+| 2026-08-21 | `AL-PROD-D01`, `AL-PROD-D02`, `AL-PROD-D05` | Pass | Owner-created AI Studio authorization key transferred without display to sensitive Vercel Production and Secret Manager version 1; direct provider smoke returned HTTP 200 with exactly `OK`; all three production core secret names and their exact Function bindings were read back. |
+| 2026-08-21 | `AL-PROD-E03`, `AL-PROD-E04` | Scoped Gemini activation pass; four non-AI Functions open | The first deployment exposed Google's new-project default build-account boundary. The standard `roles/cloudbuild.builds.builder` role was added only to `48335396774-compute@developer.gserviceaccount.com`; the pre-existing Eventarc service-agent role was left unchanged. All eight Gemini-bound Functions are ACTIVE on Node 22 in `us-central1`, with Firestore triggers on production `(default)` in `nam5`, one Scheduler, one embedding task queue, and exact Secret Manager version 1 bindings. |

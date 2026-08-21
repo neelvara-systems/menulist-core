@@ -171,10 +171,13 @@ The following was verified on August 21, 2026:
 - Production activation is deliberately incomplete. Dedicated legacy
   reCAPTCHA v3 App Check is registered with enforcement OFF, and its public
   site key plus the dedicated Google OAuth client are bound only to Vercel
-  Production. The production Gemini authorization key remains parked; the 12
-  approved Functions, Scheduler, and embedding queue are not deployed. The
-  live Production Vercel build predates the new Answerlattice Production env
-  values, so source promotion, Production redeploy, hosted OIDC/data-path proof,
+  Production. The owner-created production Gemini authorization key is active
+  in sensitive Vercel Production and Secret Manager version 1; a bounded
+  provider call returned HTTP 200 with exactly `OK`. The eight Gemini-bound
+  Functions, Scheduler, and embedding queue are ACTIVE on Node 22 with exact
+  secret readback. Four non-AI Functions remain outside that scoped deploy.
+  The live Production Vercel build still predates the new Answerlattice
+  Production env values, so Production redeploy, hosted OIDC/data-path proof,
   authenticated smoke, recovery fixture validation, TTL reapplication,
   Storage/Auth evidence, and recovery cleanup remain separately gated.
 
@@ -191,10 +194,8 @@ account can read it back from the exact project.
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
 3. Close every remaining `AL-QA-*` item with current readback.
-4. When the owner creates the production Gemini authorization key, transfer it
-   directly to Vercel Production and Secret Manager, then deploy and read back
-   only the approved Answerlattice Functions plus their Scheduler and task
-   queue resources.
+4. Review and deploy the four remaining non-AI production Functions without
+   enabling any optional provider-send path.
 5. Promote the approved staging source to main and redeploy Vercel Production
    only with explicit deployment authorization.
 6. Run production-host, OIDC/data-path, authenticated smoke, fixture recovery,

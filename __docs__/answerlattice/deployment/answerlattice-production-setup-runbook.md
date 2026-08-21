@@ -4,7 +4,7 @@
 > **Firebase project:** `neelvara-answerlattice-prod`
 > **Firebase alias:** `answerlattice-prod`
 > **Public domains:** `answerlattice.com`, `www.answerlattice.com`
-> **Status:** foundation prepared; credential-dependent activation pending
+> **Status:** Gemini runtime active; hosted and non-AI activation pending
 
 This runbook explains the production-only execution sequence. Track completion
 in [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md); do not maintain a second checklist here.
@@ -40,6 +40,11 @@ Completed on August 21, 2026:
   Production subject restriction, least-privilege IAM, and zero user-managed
   keys;
 - Vercel Production Firebase/OIDC selectors and fresh cron/bundle secrets;
+- owner-created production Gemini authorization key in sensitive Vercel
+  Production and Secret Manager version 1, with a bounded HTTP 200 provider
+  proof;
+- eight ACTIVE Gemini-bound Functions on Node 22 in `us-central1`, including
+  Scheduler and embedding task queue resources with exact secret bindings;
 - dedicated legacy reCAPTCHA v3 App Check registration with enforcement OFF;
 - truthful production Google OAuth branding, test audience/user, exact
   apex/`www` client origins and callbacks, and Production-only Vercel client
@@ -53,10 +58,8 @@ Still open by explicit boundary:
 
 - activation and hosted callback/session certification of the already bound
   production Google OAuth client;
-- owner creation and direct transfer of the production Gemini authorization
-  key;
-- deployment/readback of the 12 approved Functions, Scheduler, task queue, and
-  exact secret bindings;
+- deployment/readback of the four remaining non-AI Functions without enabling
+  optional provider sending;
 - source promotion and a separately authorized Vercel Production redeploy;
 - hosted OIDC/data-path proof, authenticated backend smoke, recovery fixture
   validation, TTL reapplication, Storage/Auth recovery evidence, and approved
