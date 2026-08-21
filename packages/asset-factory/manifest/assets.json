@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-16",
+  "updatedAt": "2026-08-20",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -22,10 +22,10 @@
           "packages/asset-factory/slots/menulist.asset-slots.ts": "427fc6db6a7f0ec6de1ceff9c19bdcaa5a7d597afe037f35c16867d433cfc18b",
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
-          "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec",
-          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
+          "scripts/website-assets/generate-stage6-assets.mjs": "f3deeadbb8bfe43dbcaa0806bf7f866429a302dbc052eb93de026554941fe085",
+          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -54,9 +54,9 @@
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/content/websiteIndustries.ts": "3725fa80496b7b8751db6e8e61e350a1be8afb7ea8053062c5e64c0426f534f6",
           "src/components/website/industries/IndustryLandingPage.tsx": "e4afbf709d91f325e27f0e8eef13e440b4de61f88b3ee8a1b371ed0fed5b7768",
-          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
+          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -85,10 +85,10 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
-          "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec",
+          "scripts/website-assets/generate-stage6-assets.mjs": "f3deeadbb8bfe43dbcaa0806bf7f866429a302dbc052eb93de026554941fe085",
           "public/images/website/menulist-hero-official-source.webp": "141a1cdbfe99ee340cfe142a99c73eb92b8d31d16c82d8fd8f8eaac17df60935"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -119,7 +119,7 @@
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/app/client/[[...slug]]/page.tsx": "e507789b2b080871705f2d8295d3e00bbc825d89b72c7889bbc30c8fe83fadf6"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -149,7 +149,7 @@
           "src/components/website/home/BusinessSection.tsx": "774610c9373c5bd239f89e310e5f2e01621faaee981e16d78b33faea8d542ff4",
           "src/app/client/obp/OBPContent.tsx": "c8b8dc8de45dd1423412b8222e4e8c909493817ae125d12df4ea94ea9900ecb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -179,7 +179,7 @@
           "src/components/website/home/SetupReliefSection.tsx": "78d32d10f3c5c78f047181663b28d3b1f9a108b89b279d902b16d6a7e41a7af3",
           "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "f068037e9e0feff0edb3d4672cbf7c93b37a4fdf363fc233ccff640506d9c41f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -210,7 +210,7 @@
           "src/components/mobile/screens/MobileShareScreen.tsx": "fd8f5c8c607be2b34e6d27014743be229b47a08626d106904ea9652685eeca1e",
           "src/app/client/obp/OBPContent.tsx": "c8b8dc8de45dd1423412b8222e4e8c909493817ae125d12df4ea94ea9900ecb0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -240,7 +240,7 @@
           "src/components/website/home/AnalyticsInsightsSection.tsx": "8ad7d8b55138eb96e5cbbf05aab02b79d046ce1dcb920c8f7d2acc6240717549",
           "src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx": "b61e1517d8da81007a3078ddccc831e17549a997c5db7531461947fa4f75f874"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -268,9 +268,9 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
-          "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec"
+          "scripts/website-assets/generate-stage6-assets.mjs": "f3deeadbb8bfe43dbcaa0806bf7f866429a302dbc052eb93de026554941fe085"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -298,9 +298,9 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
-          "scripts/website-assets/generate-stage6-assets.mjs": "186f1710989c650f3f6dea75ae215745226fd940582dcbb8c5b563e57812aeec"
+          "scripts/website-assets/generate-stage6-assets.mjs": "f3deeadbb8bfe43dbcaa0806bf7f866429a302dbc052eb93de026554941fe085"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -334,11 +334,11 @@
           "__docs__/videos/hyperframes/menulist-business-truth-loop/index.html": "ab0a1b7d92d8df39ef038a4f346fd883d09665f5541f077aed987a9cc9fc9946",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0",
           "public/icons/icon-512x512.png": "2ef92365aadbc02eeaf609c077a17523eba7f2815eecca24f3d6c8d6a04dd380",
-          "src/components/website/home/HeroSection.tsx": "d27ef4fe1b2615481be892a08d111cdda0d5cbaede08ad144706b51fbb36670b",
+          "src/components/website/home/HeroSection.tsx": "3e585cc143fa55dea55aae76bcbbe7d61305f9cad283ed860a3dd9211a00ba83",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/styles/website.css": "54866e1e87df76b1ea65c754135ad9a0c54abefe2ff868cd9d162e50607c5cb0"
+          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -381,7 +381,7 @@
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/components/mobile/MobileShell.tsx": "0f2dbf3dfce51adc8061b9940c7e9a2b27f05c9fcdf32b0c22c3780607e85044"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "menulist.launch.video.frame.approved-source": {
@@ -413,7 +413,7 @@
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "menulist.launch.video.frame.public-surfaces": {
@@ -445,7 +445,7 @@
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "menulist.launch.video.frame.stable-loop": {
@@ -477,7 +477,7 @@
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "menulist.launch.video.frame.final-proof": {
@@ -509,7 +509,7 @@
           "public/images/website/menulist-business-truth-loop.mp4": "4343607be5ea5d4c6f735a7b4436dd6690faefdabf2ada354870fdb7dfa4f216",
           "__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json": "1131fc48c4b20ad8a8c142c4ee01748b9be538a845d13eb6ea46be02e8201ca0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "menulist.industry.salons-spas.demo-placeholder": {
@@ -556,7 +556,7 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md": "d601d4b4fcb26e364655effb8bd8f220a300cfe899ff309f92e06b0c0c1b9b49"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -643,7 +643,7 @@
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -672,7 +672,7 @@
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -701,7 +701,7 @@
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-10."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -731,7 +731,7 @@
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
           "src/components/mobile/screens/MobileShareScreen.tsx": "fd8f5c8c607be2b34e6d27014743be229b47a08626d106904ea9652685eeca1e"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -761,7 +761,7 @@
           "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
           "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "5ebdff18fb4b0a681f5f34a1b74d0eae1cc7d61f21f3e02235f3a67f4257afd0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -792,7 +792,7 @@
           "src/components/website/features/PrintReadyKitProofGallery.tsx": "b36f9a7daba5ac4f395492f48c768518eb104309a2504b38d1fbfd2b0b7f6d32",
           "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx": "5ebdff18fb4b0a681f5f34a1b74d0eae1cc7d61f21f3e02235f3a67f4257afd0"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -824,7 +824,7 @@
           "src/components/website/home/OwnerProofSection.tsx": "cf36b9e144579eda771fa160635c0f558a9d5261ed7fe0c12104861876d5499d",
           "src/components/website/ai-menu-manager/AiMenuManagerPage.tsx": "7c20fc3f8e13ca61578afc532bfc077526b236f3b7f1384a26a4b1e8389e9fca"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -856,7 +856,7 @@
           "src/components/website/home/OwnerProofSection.tsx": "cf36b9e144579eda771fa160635c0f558a9d5261ed7fe0c12104861876d5499d",
           "src/components/website/features/BusinessHealthFeaturePage.tsx": "31b220f28b9f9fa35055f928640a8ad4378898279ce7d0a1e1f38f8814b7147f"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-16."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -883,14 +883,14 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
-          "src/app/sites/answerlattice/layout.tsx": "6c4a1c004c48d2020f712beca044d1aafd49522663ad4206933e55cde1ba804d",
-          "src/app/sites/answerlattice/components/HeroSection.tsx": "cdc3265663faedf159d474d57db96dd0df8dfdf474e33fd2411652b6d85ceccd",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
+          "src/app/sites/answerlattice/layout.tsx": "582909c860ab185bbfed2d000e58b602fa3520da38ff6ddcaf460f80eb8fa6bb",
+          "src/app/sites/answerlattice/components/HeroSection.tsx": "0e90bb5b590cdc7b6836ed2766796b457912d77a66aab867d0699e48e389990a",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "public/answerlattice-og-image.svg": "6d87b8311a3ab171fe622619454e88f90e9a2e6f20afc5aa6cf419ff287408be",
-          "scripts/website-assets/generate-answerlattice-logo-assets.js": "ba7e94b9aafd4c226e470653f4676b2652fe86b4f2b340396c7007a64b642757"
+          "public/answerlattice-og-image.svg": "1e9647cf474e32b81934136b792ca341fbade434744c5f77ae902cde29234165",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "3838e8753253be96abf059a6030061c0944496a45f649f678751a26593dfce0b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -918,13 +918,13 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx": "468a5ea5c35b9541ce36dece7ae49d2e6e661e4eaaf655e2fe97358163747f11",
           "src/components/atoms/answerlatticeLogoMark/index.tsx": "ea682765e062ad7281cee8b094f431c6fe7471939223069e34f16a39f885e874",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "scripts/website-assets/generate-answerlattice-logo-assets.js": "ba7e94b9aafd4c226e470653f4676b2652fe86b4f2b340396c7007a64b642757"
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "3838e8753253be96abf059a6030061c0944496a45f649f678751a26593dfce0b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -963,12 +963,12 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "public/answerlattice.webmanifest": "e6540163236b502b7c96df259a18dc0a72c66faf3f12b330dc555c29c54a2348",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "scripts/website-assets/generate-answerlattice-logo-assets.js": "ba7e94b9aafd4c226e470653f4676b2652fe86b4f2b340396c7007a64b642757"
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "3838e8753253be96abf059a6030061c0944496a45f649f678751a26593dfce0b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -1002,14 +1002,14 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "src/lib/answerlattice/pwaAssets.ts": "9d7275dd3027b1da0a6c0a74759dc721031a7f87b45aa72e99004e6db53161ec",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
           "public/answerlattice-logo-mark-wide.png": "10c034f0e177bc9af1a9f51df876d27568fe9e8a46c7e2c8fee2baaebe729ff5",
-          "scripts/website-assets/generate-answerlattice-logo-assets.js": "ba7e94b9aafd4c226e470653f4676b2652fe86b4f2b340396c7007a64b642757",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "3838e8753253be96abf059a6030061c0944496a45f649f678751a26593dfce0b",
           "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -1037,20 +1037,20 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-support-control-motion/index.html": "b72d46a51287b4622df5f7bf03f2bf9454442dd3e8056e16235f2779fbe83902",
           "__docs__/videos/hyperframes/answerlattice-support-control-motion/shot-plan.json": "222b35cd47ea6f7492520c65af7dce330ce91930edba529d77b0ca26b8a4e660",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "src/app/sites/answerlattice/page.tsx": "cd9ae7fbaaefaff1012ff860f2cecb15468f4be28a4e36549821599ea8925ccf",
-          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "aebeb842ee15a4f37b16b040eef44ad5e239d126aaa787333ffa92ddd35adc8a",
+          "src/app/sites/answerlattice/page.tsx": "88a273027495d9f52fcbff1788e36b9d72adff5c4d8053f7b553f849e4192aab",
+          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "8a5c985a05d43158db071d4ddbb769e0ab5eb1cb6b352589aec7863eabb1ea4a",
           "src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx": "daeed7a0f1f01b0cf45697fc0af89fcd9d0a1818dc4f1775f2b4ee3bfeb8a6a5",
-          "src/app/sites/answerlattice/components/HeroSection.tsx": "cdc3265663faedf159d474d57db96dd0df8dfdf474e33fd2411652b6d85ceccd",
+          "src/app/sites/answerlattice/components/HeroSection.tsx": "0e90bb5b590cdc7b6836ed2766796b457912d77a66aab867d0699e48e389990a",
           "src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx": "6ba22e4f9b677426a70efff0af4079ff8c4f202dc70c9fc7240583e0b9a07c20",
-          "src/app/sites/answerlattice/styles.css": "1efa868c3864f846b08facff957f9a32f7e51bcfad960c177809a5f119414bae"
+          "src/app/sites/answerlattice/styles.css": "9a2b8bdfda7daba869934627b4b7c88e274f881c27ae92b5b4804320aba75fd3"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -1078,20 +1078,20 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-authority-transfer/index.html": "a8e3af8d3945558fd124a4734a1979691c9ac02d9346af1475746c99fd79549c",
           "__docs__/videos/hyperframes/answerlattice-authority-transfer/shot-plan.json": "1a9fc38f1d66791ecfaf800a3e1a3dfd084761f6846f0d394befad8edf5bb4ad",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "src/app/sites/answerlattice/page.tsx": "cd9ae7fbaaefaff1012ff860f2cecb15468f4be28a4e36549821599ea8925ccf",
-          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "aebeb842ee15a4f37b16b040eef44ad5e239d126aaa787333ffa92ddd35adc8a",
+          "src/app/sites/answerlattice/page.tsx": "88a273027495d9f52fcbff1788e36b9d72adff5c4d8053f7b553f849e4192aab",
+          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "8a5c985a05d43158db071d4ddbb769e0ab5eb1cb6b352589aec7863eabb1ea4a",
           "src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx": "daeed7a0f1f01b0cf45697fc0af89fcd9d0a1818dc4f1775f2b4ee3bfeb8a6a5",
-          "src/app/sites/answerlattice/components/ClosedLoopSection.tsx": "e013fc33debfb49f8d2d83fda5b5f0cf3bae71a16c439e589f8c54b1d477b86f",
+          "src/app/sites/answerlattice/components/ClosedLoopSection.tsx": "9b0bc6ffef99d5dd9ddd8b2cf5991e6ebefc3f75252d6ea18d48f957eaec810c",
           "src/app/sites/answerlattice/components/AnswerlatticeProofBlocks.tsx": "9753da1be4073b932070f15c4259b45d5cf3e2cfe57e0c14e2ab5b4c219ac79d",
-          "src/app/sites/answerlattice/styles.css": "1efa868c3864f846b08facff957f9a32f7e51bcfad960c177809a5f119414bae"
+          "src/app/sites/answerlattice/styles.css": "9a2b8bdfda7daba869934627b4b7c88e274f881c27ae92b5b4804320aba75fd3"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -1119,20 +1119,20 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "scripts/website-assets/generate-assetos-motion-compositions.mjs": "f3e2f5542ee1998edfacdb403fe720cbd8e0b9d3da2559e8d8348f06c957b6ee",
           "scripts/website-assets/transcode-assetos-motion-assets.mjs": "05e839c246cd0b460d0a8239a98e5c2b89d83d3ecc400adab7df8727063f028a",
           "__docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/index.html": "0f1b824aa0c88092f474bf25e258958b533dcb4fab95310b2d211f250d8d657f",
           "__docs__/videos/hyperframes/answerlattice-page-aware-widget-clip/shot-plan.json": "faeccfaf9c4b613a234b7b89fed90d4cc637e3e44a6741e250c4044d07bbd1ac",
           "public/answerlattice-logo.svg": "679e6710fba3148e04ce57cdceaec87e97b52d04df4ff62c7a415e29314a33e3",
-          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "aebeb842ee15a4f37b16b040eef44ad5e239d126aaa787333ffa92ddd35adc8a",
+          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "8a5c985a05d43158db071d4ddbb769e0ab5eb1cb6b352589aec7863eabb1ea4a",
           "src/app/sites/answerlattice/components/AnswerlatticeMotionAsset.tsx": "daeed7a0f1f01b0cf45697fc0af89fcd9d0a1818dc4f1775f2b4ee3bfeb8a6a5",
-          "src/app/sites/answerlattice/components/ProductCapabilityLandingPage.tsx": "fd9d937cabede6d98e217ff41a3de249c5937e406e74c987c4c72db288b032a7",
+          "src/app/sites/answerlattice/components/ProductCapabilityLandingPage.tsx": "4148db210c59d635654ba858cb1217891b21ea600a18be30961ef089d446b934",
           "src/app/sites/answerlattice/product/page-aware-widget/page.tsx": "26f5bce21e291d3f9f858826db7f6f0078b2b46ce66d5dedfe5b5814a51ba892",
           "src/app/sites/answerlattice/components/HomePageAwareDemoSection.tsx": "85600675be36e3b8ddd6affd5b5fbbea2a8228f07ca74bef3c87b65b3780b28d",
-          "src/app/sites/answerlattice/styles.css": "1efa868c3864f846b08facff957f9a32f7e51bcfad960c177809a5f119414bae"
+          "src/app/sites/answerlattice/styles.css": "9a2b8bdfda7daba869934627b4b7c88e274f881c27ae92b5b4804320aba75fd3"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       },
       "review": {
         "decision": "approved",
@@ -1168,14 +1168,14 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "__docs__/answerlattice/answerlattice-website/answerlattice-website_assets-preparation.md": "68f02228aaa6ebe09dfab193d1f84aa34eb41a00a4719ec1803001ec99aa5f19",
           "__docs__/answerlattice/founder-daily-brief/founder-daily-brief_website.md": "6545d3bd6c97f44c3d6cc355dd67e9ee54ceb68ec7137dda285576b3b26b7f79",
           "scripts/website-assets/generate-answerlattice-website-dummy-assets.js": "d36a532e0f222edb2620e327efd1839efd8ef5f3ed7ba9466ce3a4f0ba257e22",
-          "src/app/sites/answerlattice/page.tsx": "cd9ae7fbaaefaff1012ff860f2cecb15468f4be28a4e36549821599ea8925ccf",
-          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "aebeb842ee15a4f37b16b040eef44ad5e239d126aaa787333ffa92ddd35adc8a"
+          "src/app/sites/answerlattice/page.tsx": "88a273027495d9f52fcbff1788e36b9d72adff5c4d8053f7b553f849e4192aab",
+          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "8a5c985a05d43158db071d4ddbb769e0ab5eb1cb6b352589aec7863eabb1ea4a"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "answerlattice.product.knowledge-map": {
@@ -1201,15 +1201,15 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
-          "__docs__/answerlattice/knowledge-map/README.md": "3acb80e003296a91f54a9638b1768b0549d3aa6755e135073370907a918fb0f3",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
+          "__docs__/answerlattice/knowledge-map/README.md": "f552faa8617cf9c1aa1527be6aad09d72ef94c997224ef6ef95ccb4d68ac9e44",
           "__docs__/answerlattice/knowledge-map/knowledge-map_website.md": "902a7de0d47b842abdb2addcd0be5045a8ed46073ff4abd566f3d2bfd6cea382",
           "scripts/website-assets/generate-answerlattice-website-dummy-assets.js": "d36a532e0f222edb2620e327efd1839efd8ef5f3ed7ba9466ce3a4f0ba257e22",
-          "src/app/sites/answerlattice/product/knowledge-governance/page.tsx": "52793fb15548b383304ad8eacb015b86ce6fcc278de86477b262c3ee8c18b652",
-          "src/components/templates/answerlattice/governance/KnowledgeMapDashboard.tsx": "bc3ad1ec01ea7fab4f9e83aaed3d736bc8faa02b855600a914d13c37d6f0b052",
-          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "aebeb842ee15a4f37b16b040eef44ad5e239d126aaa787333ffa92ddd35adc8a"
+          "src/app/sites/answerlattice/product/knowledge-governance/page.tsx": "4ca84458aafb63255672683030368fdcfa361790ffd5d418dd8b18bfb1570ea1",
+          "src/components/templates/answerlattice/governance/KnowledgeMapDashboard.tsx": "1f5417eb692e70b07841bc7d4dd9ce1f23bf4b9397a334d0029daebf8ec4b6c8",
+          "src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts": "8a5c985a05d43158db071d4ddbb769e0ab5eb1cb6b352589aec7863eabb1ea4a"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "answerlattice.product.release-assurance": {
@@ -1235,16 +1235,16 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "__docs__/answerlattice/answerlattice-website/answerlattice-website_assets-preparation.md": "68f02228aaa6ebe09dfab193d1f84aa34eb41a00a4719ec1803001ec99aa5f19",
           "__docs__/answerlattice/founder-support-controls/founder-support-controls_validation.md": "823a2bba23104250df2461a3d2b1412c83f10229c154abfbed94480f13d6739f",
-          "__docs__/answerlattice/changelog-system/changelog-system_validation.md": "f36cd07b970b52d8898dfdb94ea19ac913d5c3a97bd4e010897acd997b1b21cc",
+          "__docs__/answerlattice/changelog-system/changelog-system_validation.md": "5e0b087ba424b8ae089edee36662861972a94424b5c6cfc04b4aeca69e7a8062",
           "scripts/website-assets/generate-answerlattice-website-dummy-assets.js": "d36a532e0f222edb2620e327efd1839efd8ef5f3ed7ba9466ce3a4f0ba257e22",
-          "src/app/sites/answerlattice/product/knowledge-governance/page.tsx": "52793fb15548b383304ad8eacb015b86ce6fcc278de86477b262c3ee8c18b652",
-          "src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx": "4df5c1824463ddb96c4d065a44f6ff5327b4be7daa4f1dc16b400515819065a9",
-          "src/lib/answerlattice/releaseServer.ts": "9ead0b21aa5be26bcdcfc8f29aaeddb48349c361c02794f786c3ac055b4e6be6"
+          "src/app/sites/answerlattice/product/knowledge-governance/page.tsx": "4ca84458aafb63255672683030368fdcfa361790ffd5d418dd8b18bfb1570ea1",
+          "src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx": "577e04e01472587c76df94c2ca275a73a60df8535e3d7d03e676b20f0c7fdbe5",
+          "src/lib/answerlattice/releaseServer.ts": "861616a6c0a3b96a164e23294aca67ba3132ba3ae6cb6c87a1e5ae0da8fd6cf4"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     },
     "answerlattice.product.article-topic-map": {
@@ -1270,15 +1270,15 @@
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "526a1baa3c3cdfdb23730ab97901a54949fa225ae65faf5be762c63e9871d896",
           "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "d7322ab053fa0783153e69fefd1404a23d4ef1c6949b683473910ecc8751c565",
+          "__docs__/answerlattice/answerlattice-website/README.md": "a31464136fafb98353e672944569fecb3c9778739544f59633136737b523f16f",
           "__docs__/answerlattice/answerlattice-website/answerlattice-website_assets-preparation.md": "68f02228aaa6ebe09dfab193d1f84aa34eb41a00a4719ec1803001ec99aa5f19",
           "__docs__/answerlattice/knowledge-map/knowledge-map_website.md": "902a7de0d47b842abdb2addcd0be5045a8ed46073ff4abd566f3d2bfd6cea382",
           "scripts/website-assets/generate-answerlattice-website-dummy-assets.js": "d36a532e0f222edb2620e327efd1839efd8ef5f3ed7ba9466ce3a4f0ba257e22",
-          "src/app/sites/answerlattice/components/ProductFeatureLandingPage.tsx": "095af64aa075afbfb951213b125f7ec54906f5afedd16e685f73e2711398c659",
+          "src/app/sites/answerlattice/components/ProductFeatureLandingPage.tsx": "71f606a3ff992ad668db999f718664ae0d963cd4ceaca3526a73d79b73469584",
           "src/components/templates/answerlattice/hostedHelp/ArticleTopicMap.tsx": "71975613f803de9884eaf261b1e1b0f46db1b4525bd085627571115641085c9c",
           "src/lib/answerlattice/publicRichText.ts": "ee400439a4049bd7df02637e26f19446315f1312cccd52e061771800818d21f9"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-01."
+        "notes": "Locked by assets:fingerprint on 2026-08-20."
       }
     }
   }

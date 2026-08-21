@@ -34,8 +34,8 @@ assertIncludes(nextConfig, 'resolved.startsWith(`${__dirname}${path.sep}`)', 'Is
 assertIncludes(nextConfig, 'fs.realpathSync(resolved)', 'Isolated release-build symlink containment');
 assertIncludes(nextConfig, 'distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR)', 'Isolated release-build output support');
 assertExcludes(nextConfig, 'collected[normalizeAppRoute(rawRoute)]', 'Next App Router manifest compatibility');
-assertIncludes(csp, 'https://us-central1-answerlattice-qa.cloudfunctions.net', 'Answerlattice QA callable CSP origin');
-assertIncludes(csp, 'https://us-central1-answerlattice.cloudfunctions.net', 'Answerlattice production callable CSP origin');
+assertIncludes(csp, 'https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net', 'Answerlattice QA callable CSP origin');
+assertIncludes(csp, 'https://us-central1-neelvara-answerlattice-prod.cloudfunctions.net', 'Answerlattice production callable CSP origin');
 assertIncludes(scope, 'export function isAnswerlatticeActiveStoreInScope(', 'Active Answerlattice workspace boundary');
 assertIncludes(access, 'isAnswerlatticeActiveStoreInScope(storeData, scope, storeSnap.id)', 'Management active-workspace enforcement');
 assertIncludes(publicApi, 'isAnswerlatticeActiveStoreInScope(storeData, { tenantId: tId, storeId: sId }, storeId)', 'Public API active-workspace enforcement');

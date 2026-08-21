@@ -174,9 +174,17 @@ Industry pages explain how the same official-source layer applies to common list
 
 ### Section 1 — Hero
 
+**Eyebrow:**
+
+> One approved list. Customer links stay aligned.
+
 **Headline:**
 
 > Turn your current menu or service list into your official customer link.
+
+> The official customer-facing version of your business.
+
+> Publish your menu, hours, links, and business information from one owner-approved source.
 
 **Subline:**
 
@@ -1930,7 +1938,9 @@ Secondary CTA:
 
 **Source line:**
 
-> MenuList keeps the list you approve behind the links and materials customers use.
+> MenuList keeps its customer links, QR files, and print materials tied to your approved list.
+
+The eyebrow, subline, source line, Features hero, source-to-output workflow heading, and How It Works flow title must keep the same approved-list and supported-output boundary in all eight advertised website locales. Do not restore absolute `every link`, `every public place`, no-extra-work, or timed-launch wording at the brand-framing layer.
 
 **AI summary shortcut:**
 

@@ -254,7 +254,7 @@ withCleanEnvironment({
     );
 
     delete process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID;
-    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID = 'answerlattice-qa';
+    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID = 'neelvara-answerlattice-qa';
     const partialAnswerlatticeResult = validateEnvironment();
     assert.ok(
         partialAnswerlatticeResult.missing.some((message) => message.includes('Answerlattice')),

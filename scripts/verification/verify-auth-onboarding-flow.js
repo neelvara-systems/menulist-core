@@ -38,6 +38,12 @@ assert.doesNotMatch(claimAccount, /normalizeOnboardingUserId\(session\.user\.id\
 assert.match(loginPage, /const claimProcessingRef = useRef\(false\);/);
 assert.match(loginPage, /if \(pendingClaim && claimProcessingRef\.current\) return;/);
 assert.doesNotMatch(loginPage, /\[sessionData, router, claimProcessing, dispatch, updateSession\]/);
+assert.match(loginPage, /const isAnswerlatticeExperience = isAnswerlatticeProductHostname\(loginHostname\)/);
+assert.match(loginPage, /const shouldOfferGoogleAuth = !isAnswerlatticeExperience;/);
+assert.match(loginPage, /Log in to manage reviewed answers and support knowledge\./);
+assert.match(loginPage, /<AnswerlatticeLogoMark/);
+assert.match(loginPage, /aria-label=\{`Go to \$\{loginProductName\} home`\}/);
+assert.match(loginPage, /isAnswerlatticeProductHostname\(loginHostname\)/);
 assert.match(loginProviders, /<AntdThemeProvider>/);
 assert.doesNotMatch(loginProviders, /ensureReduxContext/);
 assert.doesNotMatch(loginProviders, /useEffect|useState|isMounted/);

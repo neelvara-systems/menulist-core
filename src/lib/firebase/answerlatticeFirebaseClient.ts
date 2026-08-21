@@ -26,6 +26,7 @@ import {
     firebaseStorage,
     functions,
 } from "./firebaseClient";
+import { logFirebaseBootstrapFailure } from './firebaseDiagnostics';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice';
 
@@ -51,6 +52,22 @@ const answerlatticeFirebaseClient = answerlatticeApp
 const answerlatticeAuth = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? firebaseAuth : getAuth(answerlatticeApp)) : null as any;
 const answerlatticeStorage = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? firebaseStorage : getStorage(answerlatticeApp)) : null as any;
 const answerlatticeFunctions = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? functions : getFunctions(answerlatticeApp)) : null as any;
+
+if (
+    answerlatticeApp &&
+    !shouldUseSharedAnswerlatticeFirebase &&
+    typeof window !== 'undefined'
+) {
+    import('./answerlatticeAppCheck')
+        .then(({ initAnswerlatticeAppCheck }) => {
+            initAnswerlatticeAppCheck(answerlatticeApp);
+        })
+        .catch((error) => {
+            logFirebaseBootstrapFailure('answerlattice_app_check_module_load_failed', error, {
+                product: 'answerlattice',
+            });
+        });
+}
 
 export {
     answerlatticeApp,

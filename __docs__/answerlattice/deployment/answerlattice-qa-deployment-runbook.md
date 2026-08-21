@@ -4,12 +4,37 @@
 > Environment: QA / staging
 > Firebase project: `answerlattice-qa`
 > Local dev URL: `http://localhost:3000/__answerlattice/`
-> Product staging domain: `answerlattice.menulist.online`
+> Historical product staging domain: `answerlattice.menulist.online`
 > Product production domain: `answerlattice.com`
 
-This runbook records the Answerlattice QA infrastructure setup and the repeatable production checklist. Do not store service account private keys, cron secrets, API keys, OAuth client secrets, or SMTP secrets in this document.
+> **Evidence boundary:** This file preserves dated QA deployment and diagnostic
+> history. It is not the live setup ledger. Use the
+> [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md)
+> for current QA/production status and the
+> [Answerlattice Production Setup Runbook](./answerlattice-production-setup-runbook.md)
+> for production execution.
 
-## Current QA State
+> **Retired target warning:** Every command and endpoint below that names cloud
+> project `answerlattice-qa` applies only to the inaccessible historical target
+> and must not be executed. Current QA commands use Firebase alias
+> `answerlattice-qa`, which resolves through `.firebaserc` to company-owned
+> project `neelvara-answerlattice-qa`. Do not substitute or request access to
+> the retired project.
+
+This runbook records historical Answerlattice QA infrastructure work. Do not
+store service account private keys, cron secrets, API keys, OAuth client
+secrets, or SMTP secrets in this document.
+
+## Historically Recorded QA State
+
+The table below reflects prior deployment evidence. On August 20, 2026, the
+currently authenticated Firebase CLI account could not read either
+Answerlattice project, so every cloud claim requires current readback before it
+can close a live checklist item.
+
+The current approved QA host is `canonica.app` with `www.canonica.app`; this
+file retains the old host below only as historical evidence. Follow the live
+setup checklist for all new work.
 
 Answerlattice is running as a separate product inside the shared Next.js/Vercel codebase.
 
@@ -380,7 +405,7 @@ Manual scheduler smoke test:
 curl -sS -X POST \
   -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
   -H "Content-Type: application/json" \
-  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+  https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
 ```
 
 Scoped manual retry for one workspace:
@@ -390,7 +415,7 @@ curl -sS -X POST \
   -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"tId":123,"sId":456}' \
-  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+  https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
 ```
 
 Expected QA result when the code default `ENABLE_ANSWERLATTICE_NIGHTLY=true` is deployed and no eligible tenant has `hasEntities=true`:

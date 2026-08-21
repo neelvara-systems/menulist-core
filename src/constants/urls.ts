@@ -14,7 +14,7 @@
  *   QA: menulist.digital + www    — MenuList staging main website
  *   QA: app.menulist.digital      — MenuList owner/staff app
  *   QA: neelvara.menulist.online — Neelvara preview/staging
- *   QA: answerlattice.menulist.online — Answerlattice preview/staging
+ *   QA: canonica.app — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
  *   QA: signaldesk.menulist.online — private SignalDesk preview app
  *   Prod: menulist.ai         — MenuList production

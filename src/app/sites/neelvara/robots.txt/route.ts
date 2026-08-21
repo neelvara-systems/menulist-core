@@ -5,6 +5,7 @@ export const dynamic = 'force-static';
 
 export function GET() {
     const body = [
+        `# Agent context: ${NEELVARA_SITE_URL}/llms.txt`,
         'User-agent: *',
         'Allow: /',
         `Sitemap: ${NEELVARA_SITE_URL}/sitemap.xml`,

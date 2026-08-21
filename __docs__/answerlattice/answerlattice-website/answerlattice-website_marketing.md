@@ -32,6 +32,16 @@ The public path should prove:
 
 ## Positioning
 
+Public tagline:
+
+> The governed source behind customer answers.
+
+Supporting line:
+
+> Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.
+
+This wording is intentionally bounded. It does not claim that Answerlattice controls every customer answer or publishes every response automatically.
+
 Approved public position:
 
 > AnswerLattice is a support layer for founder-led SaaS that turns scattered product knowledge into approved answers, safe fallback, and reviewable support gaps.

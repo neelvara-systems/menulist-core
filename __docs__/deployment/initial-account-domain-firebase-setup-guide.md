@@ -2,7 +2,7 @@
 
 > Status: owner-facing one-time setup guide
 > Scope: Neelvara Systems, MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex
-> Last updated: August 15, 2026
+> Last updated: August 21, 2026
 > Launch boundary: this guide prepares accounts, projects, env values, and DNS. It is not production launch approval. Production release still needs the current production-readiness audit, deploy approval, provider QA, browser/device QA, and production-host smoke checks.
 
 This is the step-by-step setup guide to follow from scratch. It is written for
@@ -13,13 +13,13 @@ For the first real setup pass, start with:
 [MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md). Use this
 combined guide only after MenuList QA is live and verified.
 
-The permanent break-glass Google owner identity is `admin@neelvara.com` in one
-Workspace tenant. Use a named mailbox such as `danny@neelvara.com` for daily
-work with only the access it needs. A founder's personal Google account may be
-a recovery identity, but a new `neelvara@gmail.com` account is not the
-permanent company root. Neelvara Systems remains an operating/trade name until
-registration exists; never enter invented corporate registration or tax details
-into a provider.
+The only human Google identity for company operations is
+`admin@neelvara.com` in one Workspace tenant. It owns and operates every
+product. Do not create product-specific users, a second daily-operator user, or
+a new `neelvara@gmail.com` account. A founder's personal Google account may be
+the independently controlled recovery identity only. Neelvara Systems remains
+an operating/trade name until registration exists; never enter invented
+corporate registration or tax details into a provider.
 
 Use the companion technical runbooks for exact env and command detail:
 
@@ -88,7 +88,7 @@ Stop immediately if:
 | --- | --- | --- | --- | --- |
 | MenuList | primary product | website `https://menulist.digital`/`www`; owner app `https://app.menulist.digital`; customer links `*.menulist.digital` | website `https://menulist.ai`/`www`; owner app `https://app.menulist.ai`; customer links `*.menulist.online` | `menulist-qa` / `menulist-prod` |
 | Neelvara | static parent site | `https://neelvara.menulist.online` | `https://neelvara.com` | none |
-| Answerlattice | product | `https://answerlattice.menulist.online` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
+| Answerlattice | product | `https://canonica.app` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
 | CampaignCue | product | `https://campaigncue.menulist.online` | `https://campaigncue.ai` | `campaigncue-qa` / `campaigncue` |
 | SignalDesk | private product surface | `https://signaldesk.menulist.online` | `https://signaldesk.menulist.online` unless later contract changes it | `menulist-signaldesk-qa` / `menulist-signaldesk` |
 | MyCodex | static private PWA | no active domain in new setup | no active domain in new setup | none |
@@ -181,8 +181,8 @@ Do not purchase or create:
 - MenuNexus domains
 - separate MyCodex domain
 - separate SignalDesk domain
-- Canonica domains/accounts beyond retaining `canonica.app` as an optional
-  legacy redirect if you already own it.
+- Additional Canonica domains or product accounts. The owned `canonica.app`
+  domain is reserved solely as the private Answerlattice QA host.
 
 Stop if:
 
@@ -200,14 +200,14 @@ What to do:
 
 1. Create one Google Workspace tenant using `neelvara.com` as the primary
    domain.
-2. Create the break-glass Super Admin mailbox:
+2. Create the single company Super Admin and operator mailbox:
    - `admin@neelvara.com`
-3. Create the named daily operator mailbox:
-   - `danny@neelvara.com`, or the founder's equivalent named address
-4. Turn on MFA for both accounts.
-5. Save break-glass login and recovery codes in the password vault and offline.
-6. Use the named operator for routine setup. Keep `admin@neelvara.com` for
-   Super Admin and account-recovery work.
+3. Do not create another Workspace or Cloud Identity user for a product or
+   daily operations.
+4. Turn on MFA for `admin@neelvara.com`.
+5. Save its login and recovery codes in the password vault and offline.
+6. Use the controlled company Chrome profile for routine setup and keep
+   personal browsing outside that profile.
 7. Add production product domains as secondary or alias domains:
    - `menulist.ai`
    - `answerlattice.com`
@@ -426,7 +426,7 @@ Authorized domain checklist:
 | --- | --- |
 | `menulist-qa` | `localhost`, `app.menulist.digital` |
 | `menulist-prod` | `app.menulist.ai` |
-| `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
+| `answerlattice-qa` | `localhost`, `canonica.app`, `www.canonica.app` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
@@ -503,7 +503,7 @@ QA/local authorized JavaScript origins:
 
 - `http://localhost:3000`
 - `https://app.menulist.digital`
-- `https://answerlattice.menulist.online`
+- `https://canonica.app`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
 
@@ -517,7 +517,7 @@ QA/local authorized redirect URIs:
 
 - `http://localhost:3000/api/auth/callback/google`
 - `https://app.menulist.digital/api/auth/callback/google`
-- `https://answerlattice.menulist.online/api/auth/callback/google`
+- `https://canonica.app/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
 
@@ -584,7 +584,8 @@ Add these staging domains:
 - `app.menulist.digital`
 - `*.menulist.digital`
 - `neelvara.menulist.online`
-- `answerlattice.menulist.online`
+- `canonica.app`
+- `www.canonica.app`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
 
@@ -1164,8 +1165,8 @@ Neelvara staging:
 
 Answerlattice staging:
 
-- Open `https://answerlattice.menulist.online`.
-- Open `https://answerlattice.menulist.online/api/version`.
+- Open `https://canonica.app`.
+- Open `https://canonica.app/api/version`.
 - Sign in.
 - Confirm data writes go to `answerlattice-qa`.
 
@@ -1209,8 +1210,8 @@ Where:
 What to do:
 
 1. Confirm staging smoke is complete.
-2. Confirm the break-glass owner, named daily operator, recovery path, and
-   maintenance reminders are recorded.
+2. Confirm the single company owner/operator, recovery path, and maintenance
+   reminders are recorded.
 3. Confirm the production service-account approach: use Vercel OIDC/Workload
    Identity when validated for the runtime, or record the static-key owner,
    creation date, and rotation/revocation procedure.
@@ -1265,7 +1266,7 @@ result is true.
 | Password vault ready | [ ] | [ ] | MFA and recovery codes stored |
 | Domains purchased/confirmed | [ ] | [ ] | `neelvara.com` and `campaigncue.ai` verified at checkout |
 | Workspace created | [ ] | [ ] | `neelvara.com` primary |
-| Break-glass and daily Workspace accounts | [ ] | [ ] | `admin@` is recovery-only; named operator is daily use |
+| Single Workspace owner/operator account | [ ] | [ ] | only `admin@neelvara.com`; no product-specific or daily-operator users |
 | Product email aliases/groups | [ ] | [ ] | no separate tenant per product |
 | Email SPF/DKIM/DMARC | [ ] | [ ] | DNS verified |
 | Cloud organization | [ ] | [ ] | company-owned |

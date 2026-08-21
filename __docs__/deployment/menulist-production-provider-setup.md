@@ -156,8 +156,9 @@ Blocked until staging feature certification and production release gates pass:
   invalid local ruleset. Production therefore remains on its initial 163-byte
   locked ruleset, which does not match repository SHA-256
   `667cc95349abb7f232bff900b7c9ce79002cdc1f1399c2fec04e8e491d8169d9`.
-  The current Basic Google Cloud support account cannot file paid technical
-  cases, so no IAM role or support-plan change was made.
+  At that checkpoint, the Basic Google Cloud support route did not offer a paid
+  technical case, so no IAM role or support-plan change was made; the later
+  Firebase Support case is recorded in the `2026-08-18` entry below.
   Four
   WhatsApp-independent Functions are ACTIVE in `us-central1`:
   `processMenuImages`, `mapsPlaceCheck`, `backfillStoresSummary`, and
@@ -172,6 +173,68 @@ Blocked until staging feature certification and production release gates pass:
   deployed and no placeholder secret was created. Artifact Registry cleanup
   remains a separate destructive-retention decision; no automatic deletion
   policy was enabled during this release.
+- `2026-08-18` - Firebase Support case `10420179` replied after observing the
+  small production ruleset and asked whether the issue still persisted. That
+  small ruleset is the diagnostic deny-all control, not the intended production
+  policy. The intended repository source is 193,131 UTF-8 bytes across 4,381
+  lines with SHA-256
+  `667cc95349abb7f232bff900b7c9ce79002cdc1f1399c2fec04e8e491d8169d9`.
+  All 42 local emulator rule scripts passed again. One fresh authenticated,
+  rules-only production retry at `2026-08-18T16:34:18Z` reached
+  `POST /v1/projects/menulist-prod:test` and returned HTTP 503 `UNAVAILABLE`.
+  The failure occurred during the managed test/preflight call, so no ruleset or
+  release was created and production remains on the diagnostic deny-all
+  ruleset. The support follow-up must confirm that the issue persists and ask
+  Google to inspect the production managed-compiler path, report the compiled
+  policy size, and identify any internal limit that this source reaches.
+- `2026-08-20` - The Firebase Support recommendation to remove comments was
+  tested without modifying canonical `firestore.rules`. A string-aware lexical
+  transform removed comments and blank lines only, reducing the temporary
+  deployment candidate from 193,131 bytes and 4,381 lines to 171,753 bytes and
+  3,767 lines. All three `https://` string literals were preserved. The
+  canonical 42-script emulator matrix passed, and the temporary candidate
+  compiled successfully in the local Firestore emulator. One scoped production
+  deployment using Firebase CLI `15.26.0` authenticated as
+  `admin@neelvara.com`, passed IAM and database access, then again received HTTP
+  503 `UNAVAILABLE` from `POST /v1/projects/menulist-prod:test` before any
+  ruleset or release mutation. Comments and raw source payload size are
+  therefore not the production-specific trigger. Canonical `firestore.rules`
+  remains unchanged at SHA-256
+  `667cc95349abb7f232bff900b7c9ce79002cdc1f1399c2fec04e8e491d8169d9`, and
+  production remains on the diagnostic deny-all ruleset. The support follow-up
+  should include both source files and request engineering review of the
+  production managed compiler's internal complexity or compiled-AST failure.
+- `2026-08-20` - A read-only QA/production setup-parity audit found no missing
+  customer-controlled Rules prerequisite. Both Firebase projects are ACTIVE,
+  belong to organisation `936910729624`, use the same enabled billing account,
+  and have a Native-mode `(default)` Firestore database in `us-central1`.
+  `firebaserules.googleapis.com`, `firestore.googleapis.com`, Firebase,
+  Identity Toolkit, and Service Usage are enabled in both projects. Both use
+  the same default repository targets (`firestore.rules` and
+  `firestore.indexes.json`), grant `admin@neelvara.com` every tested Rules and
+  Service Usage permission, have the correctly numbered
+  `service-<project-number>@firebase-rules.iam.gserviceaccount.com` service
+  agent with only `roles/firebaserules.system`, and expose identical Rules API
+  quotas with no overrides. The expected differences are production PITR,
+  production's narrower approved Functions set, and its additional
+  Compute/Cloud Run service roles; none participates in Rules compilation.
+  Static inspection of canonical `firestore.rules` found no project-ID or
+  environment literal, no duplicate helper name, no custom-function cycle,
+  and a maximum helper-call depth of 6, below Firebase's documented limit of
+  20. A back-to-back authenticated `projects:test` control using the exact
+  canonical bytes returned HTTP 200 with zero issues for `menulist-qa` at
+  `2026-08-20T05:05:26Z`, then HTTP 503 for `menulist-prod` at
+  `2026-08-20T05:05:30Z`; the production 163-byte deny-all control returned
+  HTTP 200 at `2026-08-20T05:08:21Z`. Production also already contains an
+  immutable, byte-identical canonical ruleset created on `2026-08-16` with the
+  repository SHA-256 and 193,131-byte source, proving full-source ingestion
+  succeeded. Testing that stored ruleset returned HTTP 503, while testing QA's
+  byte-identical stored ruleset returned HTTP 200. The active production
+  `cloud.firestore` release still points to the 163-byte deny-all ruleset; no
+  release mutation was attempted. This isolates the blocker to a
+  production-project-specific managed compile/test path after ingestion, not
+  project setup, IAM, API enablement, quotas, source selection, CLI version,
+  browser transport, comments, or raw payload size.
 - `2026-08-16` - The data-flow inventory was regenerated against exact candidate
   `4cbe53d0691c74eec2b526a10519d4c882dccfd5`: 8,997 first-party files are in
   scope, with 7,493 reviewed, 1,116 in progress, and 388 inventory-only; the

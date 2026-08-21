@@ -233,7 +233,7 @@ Complete these in order. Do not skip to production until QA passes.
 | --- | --- | --- | --- | --- | --- | --- |
 | MenuList | `ML` | `http://localhost:3000/` | website `https://menulist.digital`; owner app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | website `https://menulist.ai`; owner app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist-prod` |
 | Neelvara | none | `http://localhost:3000/__neelvara/` | `https://neelvara.menulist.online` | none | `https://neelvara.com` | none |
-| Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
+| Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://canonica.app` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
 | CampaignCue | `CC` | `http://localhost:3000/__campaigncue/` | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
 | SignalDesk | `SD` | `http://localhost:3000/signaldesk` | `https://signaldesk.menulist.online` | `menulist-signaldesk-qa` | `https://signaldesk.menulist.online` | `menulist-signaldesk` |
 | MyCodex | `MC` | `http://localhost:3000/__mycodex/` | no active domain | none | no active domain | none |
@@ -342,11 +342,11 @@ Use one parent operating identity and one shared infrastructure account stack:
 - Password manager: one company vault for registrar, Workspace, GitHub, Vercel,
   Firebase, Razorpay, provider credentials, and recovery codes.
 
-Use `admin@neelvara.com` as the break-glass Workspace Super Admin and a named
-operator such as `danny@neelvara.com` for routine setup with only required
-access. Do not create separate random Gmail accounts for each product. Add
-individual humans through IAM, retain offline recovery codes, and add a second
-trusted Super Admin before production when another owner is available.
+Use `admin@neelvara.com` as the only human Workspace, Google Cloud, Firebase,
+and provider owner/operator for every product. Do not create a named daily
+operator, product-specific user, duplicate Super Admin, or random Gmail
+account. Retain offline recovery codes and an independently controlled recovery
+path for this single identity.
 
 Create service accounts per project only where the app needs server credentials.
 Do not use personal user keys for application runtime.
@@ -446,7 +446,7 @@ domains across personal accounts.
 | `*.menulist.digital` | MenuList QA customer test links | Wildcard/subdomains only; configure in Vercel/DNS |
 | `answerlattice.com` | Answerlattice production website/app | Already resolves; retain and connect/verify in Vercel |
 | `campaigncue.ai` | CampaignCue production website/app | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
-| `canonica.app` | Legacy Answerlattice name if already owned | Retain only as redirect to `answerlattice.com`; do not create Canonica accounts |
+| `canonica.app` | Answerlattice QA website/app | Attach only to custom Vercel `qa`; keep noindex, disallow all crawlers, and publish no sitemap |
 
 Do not purchase:
 
@@ -462,21 +462,16 @@ Do not purchase:
 
 Open Google Admin: https://admin.google.com/
 
-Create the break-glass Super Admin mailbox:
+Create the single company Super Admin and operator mailbox:
 
 ```text
 admin@neelvara.com
 ```
 
-Create the named daily operator mailbox:
-
-```text
-danny@neelvara.com
-```
-
-Use the founder's equivalent named address if a different name is appropriate.
-Keep the break-glass account out of daily browsing and provider work. Enable MFA
-on both and store break-glass recovery codes offline and in the company vault.
+Do not create another Workspace or Cloud Identity user for routine work or for
+any product. Use the controlled company profile for provider work, enable MFA
+on `admin@neelvara.com`, and store its recovery codes offline and in the
+company vault.
 
 Create aliases or groups instead of paid users for every address below:
 
@@ -546,7 +541,8 @@ Expected hostnames:
 | `app.menulist.digital` | staging | MenuList owner/staff app |
 | `*.menulist.digital` | staging | MenuList customer tests |
 | `neelvara.menulist.online` | staging | Neelvara |
-| `answerlattice.menulist.online` | staging | Answerlattice |
+| `canonica.app` | staging | Answerlattice |
+| `www.canonica.app` | staging | Answerlattice QA alias |
 | `campaigncue.menulist.online` | staging | CampaignCue |
 | `signaldesk.menulist.online` | staging | SignalDesk |
 | `menulist.ai` | production | MenuList |
@@ -825,7 +821,7 @@ Authorized domains:
 | --- | --- |
 | `menulist-qa` | `localhost`, `app.menulist.digital` |
 | `menulist-prod` | `app.menulist.ai` |
-| `answerlattice-qa` | `localhost`, `answerlattice.menulist.online` |
+| `answerlattice-qa` | `localhost`, `canonica.app`, `www.canonica.app` |
 | `answerlattice` | `answerlattice.com`, `www.answerlattice.com` |
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
@@ -917,7 +913,7 @@ Staging/local JavaScript origins:
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
 - `https://app.menulist.digital`
-- `https://answerlattice.menulist.online`
+- `https://canonica.app`
 - `https://campaigncue.menulist.online`
 - `https://signaldesk.menulist.online`
 
@@ -941,7 +937,7 @@ QA/local redirect URIs, in the QA client:
 - `http://localhost:3000/api/auth/callback/google`
 - `http://127.0.0.1:3000/api/auth/callback/google`
 - `https://app.menulist.digital/api/auth/callback/google`
-- `https://answerlattice.menulist.online/api/auth/callback/google`
+- `https://canonica.app/api/auth/callback/google`
 - `https://campaigncue.menulist.online/api/auth/callback/google`
 - `https://signaldesk.menulist.online/api/auth/callback/google`
 
@@ -1470,7 +1466,8 @@ Staging App Check domains:
 - `menulist.digital`
 - `app.menulist.digital`
 - tested non-reserved QA customer hosts such as `qa-cafe.menulist.digital`
-- `answerlattice.menulist.online`
+- `canonica.app`
+- `www.canonica.app`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
 
@@ -1679,7 +1676,7 @@ Open: https://uptimerobot.com/
 Checklist:
 
 - [ ] Add monitors for `https://menulist.digital` and `https://app.menulist.digital`.
-- [ ] Add monitor for `https://answerlattice.menulist.online`.
+- [ ] Add monitor for `https://canonica.app`.
 - [ ] Add monitor for `https://campaigncue.menulist.online`.
 - [ ] Add monitor for `https://signaldesk.menulist.online`.
 - [ ] Add monitor for `https://neelvara.menulist.online`.
@@ -1942,8 +1939,8 @@ MenuList production:
 
 Answerlattice staging:
 
-- [ ] Open `https://answerlattice.menulist.online`.
-- [ ] Open `https://answerlattice.menulist.online/api/version`.
+- [ ] Open `https://canonica.app`.
+- [ ] Open `https://canonica.app/api/version`.
 - [ ] Confirm Answerlattice Firebase project is `answerlattice-qa`.
 - [ ] Confirm widget script path loads when key exists.
 - [ ] Confirm public API debug is disabled unless intentionally enabled.

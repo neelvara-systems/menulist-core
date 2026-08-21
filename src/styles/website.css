@@ -737,6 +737,14 @@ body[data-menulist-website="true"] {
   text-transform: uppercase;
 }
 
+.ws-hero-tagline {
+  margin: 0 0 var(--ws-space-3);
+  color: var(--ws-text-primary);
+  font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .ws-hero-official__actions {
   display: flex;
   align-items: center;
@@ -13850,5 +13858,157 @@ body[data-menulist-website="true"] {
   .owner-referral-invite-media img {
     height: 88px !important;
     max-width: calc(100% - 24px) !important;
+  }
+}
+
+/* ============================================
+   Focused public-site presentation refinement
+   Floating solid navigation + one composed hero proof stage.
+   ============================================ */
+
+.ws-header {
+  padding: 0.75rem var(--ws-space-4) 0;
+  background: transparent;
+}
+
+.ws-header__nav {
+  border: 1px solid var(--ws-border-default);
+  border-radius: 1rem;
+  background: var(--ws-bg-sticky);
+  box-shadow: 0 1.25rem 3.5rem -2.6rem color-mix(in srgb, var(--ws-brand-primary) 28%, transparent);
+}
+
+.ws-hero-official--showcase {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ws-hero-official--showcase::before {
+  position: absolute;
+  top: 2rem;
+  right: max(-9rem, calc((100vw - var(--ws-max-w-content)) / 2 - 10rem));
+  z-index: -1;
+  width: clamp(20rem, 36vw, 34rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ws-brand-light) 78%, transparent);
+  filter: blur(5.5rem);
+  opacity: 0.58;
+  pointer-events: none;
+  content: "";
+}
+
+.ws-hero-official__copy {
+  align-self: center;
+}
+
+.ws-hero-official__headline {
+  max-width: 12ch;
+  text-wrap: balance;
+}
+
+.ws-hero-official__description {
+  max-width: 38rem;
+  margin-top: var(--ws-space-6);
+  text-wrap: pretty;
+}
+
+.ws-hero-official__caption {
+  max-width: 34rem;
+  margin-top: var(--ws-space-4);
+}
+
+.ws-hero-official__visual {
+  position: relative;
+  padding: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--ws-brand-secondary) 16%, var(--ws-border-default));
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--ws-bg-surface) 92%, var(--ws-brand-light));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ws-bg-surface) 86%, transparent),
+    0 2rem 5.5rem -3.4rem color-mix(in srgb, var(--ws-brand-primary) 42%, transparent);
+}
+
+.ws-hero-product-stage {
+  border-radius: 0.9rem;
+  box-shadow: none;
+}
+
+.ws-hero-surfaces {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--ws-border-subtle);
+}
+
+.ws-hero-surface-pill {
+  justify-content: center;
+  min-width: 0;
+  border: 0;
+  border-radius: var(--ws-radius-md);
+  background: transparent;
+  box-shadow: none;
+  padding: 0.625rem 0.5rem;
+  text-align: center;
+}
+
+.ws-hero-surface-pill:first-child {
+  background: var(--ws-bg-accent);
+  color: var(--ws-text-primary);
+}
+
+@media (max-width: 980px) {
+  .ws-header {
+    padding: 0.625rem var(--ws-space-3) 0;
+  }
+
+  .ws-hero-official--showcase::before {
+    top: 28%;
+    right: -12rem;
+    opacity: 0.42;
+  }
+
+  .ws-hero-official__headline {
+    max-width: 15ch;
+  }
+}
+
+@media (max-width: 520px) {
+  .ws-header {
+    padding: 0.5rem var(--ws-space-3) 0;
+  }
+
+  .ws-header__nav {
+    border-radius: 0.875rem;
+  }
+
+  .ws-hero-official__copy {
+    text-align: center;
+  }
+
+  .ws-hero-tagline,
+  .ws-hero-eyebrow,
+  .ws-hero-official__headline,
+  .ws-hero-official__description,
+  .ws-hero-official__caption {
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .ws-hero-amm-teaser {
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .ws-hero-official__visual {
+    padding: 0.35rem;
+    border-radius: 1rem;
+  }
+
+  .ws-hero-product-stage {
+    border-radius: 0.75rem;
   }
 }

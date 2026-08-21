@@ -3,7 +3,7 @@
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, connected owner-decision proof, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
 > **Date:** 2026-07-31
-> **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
+> **Domain:** answerlattice.com (production) | canonica.app (Vercel custom `qa`) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
 
@@ -46,6 +46,12 @@ The deterministic demo has no network/provider path. Get Started uses native for
 - The three depths are guidance only. They do not create product editions, workspace modes, maturity scores, automatic progression, or new runtime state.
 - Larger-company fit is determined by the operating group and required controls, not employee count. Public copy must not imply unverified SAML, SCIM, contractual service levels, certifications, workforce management, or contact-center capability.
 - The guide, navigation link, use-case alignment, and Founder Launch Kit handoff are bundled static content with no Firebase or provider work.
+
+## August 20, 2026 Brand Tagline Synchronization
+
+- Added the approved AnswerLattice tagline, `The governed source behind customer answers.`, to the canonical website constants, homepage hero, footer, generated `llms.txt` and `llms-full.txt` context, and maintained website documentation.
+- Added the supporting line, `Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.`
+- Kept the existing reviewed-support-layer category, approved-answer-first path, fallback boundary, and human-review guardrails unchanged.
 
 ## Related Strategy
 
@@ -290,7 +296,7 @@ Production:
   answerlattice.com/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Vercel Preview / QA:
-  answerlattice.menulist.online/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
+  canonica.app/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Local Dev:
   localhost:3000/__answerlattice/*  →  middleware detects dev prefix  →  rewrites to /sites/answerlattice/*

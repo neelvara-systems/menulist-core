@@ -106,9 +106,9 @@ assert.equal(isSupportTicketAttachmentStoragePath({
     sId: 34,
 }), false);
 
-const trustedDownloadUrl = 'https://firebasestorage.googleapis.com/v0/b/answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F34%2Fproof.pdf?alt=media&token=token-value';
+const trustedDownloadUrl = 'https://firebasestorage.googleapis.com/v0/b/neelvara-answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F34%2Fproof.pdf?alt=media&token=token-value';
 assert.equal(getSupportTicketAttachmentDownloadUrl({
-    bucket: 'answerlattice-qa.firebasestorage.app',
+    bucket: 'neelvara-answerlattice-qa.firebasestorage.app',
     collection: 'supportTickets',
     url: trustedDownloadUrl,
     tId: 12,
@@ -118,11 +118,11 @@ for (const url of [
     'javascript:alert(1)',
     'https://example.com/proof.pdf',
     'https://firebasestorage.googleapis.com/v0/b/attacker.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F34%2Fproof.pdf?alt=media',
-    'https://firebasestorage.googleapis.com/v0/b/answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F99%2Fproof.pdf?alt=media',
-    'https://firebasestorage.googleapis.com/v0/b/answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F34%2Fproof.pdf',
+    'https://firebasestorage.googleapis.com/v0/b/neelvara-answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F99%2Fproof.pdf?alt=media',
+    'https://firebasestorage.googleapis.com/v0/b/neelvara-answerlattice-qa.firebasestorage.app/o/supportTickets%2Fdocuments%2F12%2F34%2Fproof.pdf',
 ]) {
     assert.equal(getSupportTicketAttachmentDownloadUrl({
-        bucket: 'answerlattice-qa.firebasestorage.app',
+        bucket: 'neelvara-answerlattice-qa.firebasestorage.app',
         collection: 'supportTickets',
         url,
         tId: 12,

@@ -84,8 +84,8 @@ export const CSP_ALLOWLIST = {
         'https://*.razorpay.com', // Razorpay payment processing API calls
         'https://us-central1-menulist-qa.cloudfunctions.net', // MenuList QA callable Cloud Functions
         'https://us-central1-menulist.cloudfunctions.net', // MenuList production callable Cloud Functions
-        'https://us-central1-answerlattice-qa.cloudfunctions.net', // Answerlattice QA callable Cloud Functions
-        'https://us-central1-answerlattice.cloudfunctions.net', // Answerlattice production callable Cloud Functions
+        'https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net', // Answerlattice QA callable Cloud Functions
+        'https://us-central1-neelvara-answerlattice-prod.cloudfunctions.net', // Answerlattice production callable Cloud Functions
         'https://*.sentry.io', // Sentry client event transport
         'https://*.ingest.sentry.io', // Sentry ingest endpoints
         'https://*.ingest.us.sentry.io', // Sentry US region ingest endpoints

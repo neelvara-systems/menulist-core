@@ -137,12 +137,12 @@ const runGuard = (script: string, scriptArgs: string[], expected: RegExp) => {
 runGuard(
     'scripts/migrations/backfill-answerlattice-signal-expiry.ts',
     [],
-    /Pass --project-id=<answerlattice-qa\|answerlattice>/,
+    /Pass --project-id=<neelvara-answerlattice-qa\|answerlattice>/,
 );
 runGuard(
     'scripts/migrations/backfill-answerlattice-signal-expiry.ts',
-    ['--project-id=answerlattice-qa', '--apply'],
-    /Refusing apply: pass --confirm-project=answerlattice-qa/,
+    ['--project-id=neelvara-answerlattice-qa', '--apply'],
+    /Refusing apply: pass --confirm-project=neelvara-answerlattice-qa/,
 );
 runGuard(
     'scripts/migrate-business-type-swap.ts',

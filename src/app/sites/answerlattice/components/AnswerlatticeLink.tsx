@@ -10,7 +10,7 @@ interface AnswerlatticeLinkProps extends Omit<React.ComponentProps<typeof Link>,
 
 /**
  * Product-aware Link for AnswerLattice website.
- * On product hosts (QA answerlattice.menulist.online, production answerlattice.com): basePath="" → links work naturally
+ * On product hosts (QA canonica.app, production answerlattice.com): basePath="" → links work naturally
  * In dev mode: basePath="/__answerlattice" → links prefixed automatically
  */
 export default function AnswerlatticeLink({ href, basePath = '', children, ...props }: AnswerlatticeLinkProps) {

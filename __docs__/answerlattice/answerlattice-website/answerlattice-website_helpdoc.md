@@ -3,6 +3,10 @@
 > **Audience:** Prospective buyer or new founder account
 > **Last audited:** July 29, 2026
 
+## Public Positioning
+
+AnswerLattice's short public description is: **The governed source behind customer answers.** It keeps approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces. This describes the knowledge layer; it does not mean AnswerLattice controls every answer or replaces a helpdesk.
+
 ## Evaluate Before Signup
 
 1. Open **Demo** to inspect the seeded source-conflict, approval, release-drift, fallback, correction, and audit loop.

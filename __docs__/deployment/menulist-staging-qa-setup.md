@@ -222,17 +222,13 @@ Important Next.js rule: browser-exposed variables must still start with
 
 ## Permanent Owner Account Decision
 
-Use `admin@neelvara.com` from one Google Workspace tenant as the permanent
-break-glass Google, Google Cloud, Firebase, and provider owner identity. Do not
-use it for routine browsing or daily operations after the initial setup. During
-the MenuList QA bootstrap only, one licensed user is allowed:
-`admin@neelvara.com` may perform the setup after MFA and recovery are secured.
-Create a named daily operator such as `danny@neelvara.com` before production
-operations, grant only the access needed, and return `admin@neelvara.com` to
-break-glass-only use. Do not use a new address such as
-`neelvara@gmail.com` as the permanent company root account. A founder's
-existing long-lived personal email may be the recovery address, but it is not
-the shared operational owner.
+Use `admin@neelvara.com` from one Google Workspace tenant as the only human
+Google, Google Cloud, Firebase, and provider owner/operator for every product.
+Do not create a separate daily operator, product-specific account, duplicate
+Super Admin, or a new `neelvara@gmail.com` account. Use the controlled company
+browser profile for routine operations, keep unrelated personal browsing out
+of that profile, and retain MFA, offline recovery codes, and an independently
+controlled recovery address for this single identity.
 
 Creating the Workspace tenant requires control of `neelvara.com`. Google asks
 you to prove that control through a DNS verification record. Neelvara Systems
@@ -457,9 +453,8 @@ Operator progress:
 - `2026-08-05` - The operator chose a temporary one-user Workspace setup to
   avoid paying for a second user before MenuList QA is stable. Use only
   `admin@neelvara.com` during this QA bootstrap, after completing MFA/recovery
-  under `QA-A04`. `QA-A05` is intentionally deferred and remains open; create a
-  named daily operator before production operations and then stop using the
-  Super Admin for routine work.
+  under `QA-A04`. The former plan to add a daily operator was superseded by the
+  permanent one-account decision recorded on August 21, 2026.
 - `2026-08-05` - The Admin Console account switcher confirms the active managed
   account is exactly `admin@neelvara.com`. This satisfies the identity portion
   of `QA-A04`; keep the item open until account recovery and MFA are configured
@@ -2914,12 +2909,16 @@ Operator progress:
 - `2026-08-14` - The owner reaffirmed the one-person operating model and
   deliberately deferred `QA-A05`. `admin@neelvara.com` remains the secured
   sole maintainer/operator for QA; no second paid Workspace identity is being
-  created merely to represent the same person. This does not mark the control
-  complete: create a least-privilege named operator before routine access is
-  delegated to another person, or when production operations justify
-  separating daily work from Super Admin authority. Until then, use the admin
-  account only from the controlled company profile and retain its existing MFA,
-  recovery, and vault controls.
+  created merely to represent the same person. This dated deferral was
+  superseded by the permanent one-account decision on August 21, 2026. Use the
+  admin account only from the controlled company profile and retain its
+  existing MFA, recovery, and vault controls.
+- `2026-08-21` - The owner made the one-account model permanent across all
+  products: only `admin@neelvara.com` may be used as a human Workspace, Google
+  Cloud, Firebase, and provider identity. Do not create the formerly proposed
+  `danny@neelvara.com` operator or any product-specific user. Cloud Identity
+  Free was activated at no charge with 50 identities available, but no user was
+  created and Google Workspace Business Base remains at one assigned license.
 - `2026-08-14` - The owner enabled Upstash MFA and confirmed its recovery
   material is stored in the controlled company vault. No QR code, seed, OTP,
   recovery code, or credential value was shared. This closes the Upstash
@@ -2953,8 +2952,8 @@ Operator progress:
   offline recovery material, and ownership record are stored in the controlled
   company vault. A fake or duplicate administrator will not be created merely
   to represent the same person. `QA-A13` is complete for the one-maintainer QA
-  model by explicit deferral: add a second trusted Super Admin only when
-  another real trusted maintainer exists, before shared production operations.
+  model. The August 21, 2026 owner decision makes this the permanent
+  single-account model across products.
 - `2026-08-14` - `QA-A15` completed as a no-target MenuList inventory. Pinned
   Firebase CLI readback under the authenticated company owner exposes only
   active project `menulist-qa`; the owner separately confirmed Google Cloud
@@ -2996,8 +2995,8 @@ Status rules:
 | [x] | QA-A01 | Password vault exists for MenuList QA setup | Password manager | Operator confirmed the Bitwarden `Neelvara Systems` vault setup is complete; no credentials or recovery material were shared in evidence |
 | [x] | QA-A02 | Registrar account secured and required domains confirmed | Registrar account | Operator confirmed ownership, auto-renew, payment readiness, Domain Lock, tested two-step verification, and independently recoverable secured account records |
 | [x] | QA-A03 | Workspace tenant created and primary domain verified | Google Workspace/Admin Console and registrar DNS | Google accepted the manually published TXT record and displayed **Your domain is verified** for the `Neelvara Systems` Workspace tenant using `neelvara.com` |
-| [x] | QA-A04 | Break-glass Workspace Super Admin secured | Google Account and Google Workspace Admin Console | `admin@neelvara.com` has active Authenticator-backed 2-Step Verification, independently stored backup codes, and verified recovery phone/email; it may perform the one-user QA bootstrap but returns to break-glass-only use before production operations |
-| [ ] | QA-A05 | Named daily operator created | Google Workspace and Google Cloud IAM | Deliberately deferred under the owner-confirmed one-person model: `admin@neelvara.com` remains the secured sole QA operator. Reopen before another person receives routine access or when production operations justify separating daily work from Super Admin authority; then create a named account and grant only required access |
+| [x] | QA-A04 | Single Workspace Super Admin and operator secured | Google Account and Google Workspace Admin Console | `admin@neelvara.com` has active Authenticator-backed 2-Step Verification, independently stored backup codes, and verified recovery phone/email; it is the only permitted human company identity across products |
+| [x] | QA-A05 | Single-account operating policy confirmed | Google Workspace and Google Cloud IAM | Owner decision on August 21, 2026: do not create a named daily operator or product-specific user. Cloud Identity Free is active at no charge, no additional user exists, and Google Workspace Business Base remains at one assigned license |
 | [x] | QA-A06 | Gmail delivery activated and tested | Google Admin Console, DNS, and every currently licensed mailbox | Google accepted the published MX; post-DKIM mail from `admin@neelvara.com` reached an external Gmail Inbox with SPF, DKIM, and DMARC all passing, and the external reply reached the admin Inbox |
 | [x] | QA-A07 | SPF, DKIM, and monitor-only DMARC configured | Google Admin Console and DNS | Authoritative DNS and a fresh Inbox message prove Google-only SPF, active 2048-bit Google DKIM, and monitor-only DMARC reporting to the tested `dmarc@neelvara.com` alias; obsolete GoDaddy mail CNAMEs are removed |
 | [x] | QA-A08 | Provider-notice aliases/groups created | Google Admin Console | `billing@neelvara.com`, `security@neelvara.com`, and `dmarc@neelvara.com` are aliases on the one licensed admin mailbox, and separate external delivery tests reached its Inbox |
@@ -3006,7 +3005,7 @@ Status rules:
 | [x] | QA-A10 | Fresh single Vercel project and Git integration created | Fresh Neelvara Vercel account and Project -> Settings -> Git | Exactly one fresh project is linked to `neelvara-systems/menulist-core`; readback confirms the intended framework/root/build/runtime settings, exact-branch Preview env support, and zero inherited or new deployments |
 | [x] | QA-A11 | MFA enabled and recovery codes stored | Registrar, Google, GitHub, Vercel, providers | GoDaddy, Google, GitHub, Vercel, Sentry, Upstash, Razorpay, and the temporary authentic personal Meta administrator have verified MFA/recovery evidence; the Meta QA business portfolio requires 2FA for everyone. Recovery material is vaulted, and the personal Meta profile remains explicitly temporary and unapproved as company-owned production access |
 | [x] | QA-A12 | Secret sharing rule accepted | This guide and password vault | Secrets remain vaulted; maintained evidence records only names, versions, redacted identifiers, and non-secret outcomes, with no real secret copied into docs, chat, screenshots, or git |
-| [x] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | The founder recovery identity, offline codes, and recovery owner are vaulted. Under the confirmed one-maintainer model, a duplicate/fake administrator is intentionally not created; add a second trusted Super Admin only when another real trusted maintainer exists, before shared production operations |
+| [x] | QA-A13 | Founder recovery identity and ownership recorded | Google Workspace and password vault | The founder recovery identity, offline codes, and recovery owner are vaulted. Under the permanent single-account model, no duplicate administrator or second Workspace identity is created |
 | [x] | QA-A14 | Google Cloud organization visible | Google Cloud Console | Google Cloud visibly confirmed creation of the `neelvara.com` organization and assignment of Organization Administrator to `admin@neelvara.com` before `menulist-qa` creation |
 | [x] | QA-A15 | Retired Firebase service-account keys revoked | Google Cloud Console -> IAM & Admin -> Service Accounts for every retired project | No retired MenuList project is visible to the company owner and Firebase CLI exposes only active `menulist-qa`, so there is no retired MenuList key target. The current August 9 QA key is preserved; production and separate-product credentials were not opened, changed, or misclassified |
 | [x] | QA-A16 | Maintenance calendar created | Company `admin@neelvara.com` Calendar | Quarterly IAM/secret review starts September 1, 2026 at 9:00 AM IST and recurs every three months; annual domain/payment/recovery review starts August 1, 2027 at 9:00 AM IST and recurs yearly. Calendar search confirmed both series under `Neelvara Systems Admin` |
@@ -3453,10 +3452,8 @@ What to do:
    The managed Google Account name fields may be read-only; the non-blocking
    display-name correction is tracked separately in `QA-A18` and must be made
    from Admin Console -> Directory -> Users before production operations.
-16. A second paid user is not required during the initial MenuList QA bootstrap.
-   Before production operations, create the named daily operator
-   `danny@neelvara.com` or the founder's equivalent named mailbox, grant only
-   the roles needed, and return `admin@neelvara.com` to break-glass-only use.
+16. Do not create a second Workspace or Cloud Identity user. Use only
+   `admin@neelvara.com` for every product from the controlled company profile.
 17. Create `billing@neelvara.com`, `security@neelvara.com`, and
    `dmarc@neelvara.com` as aliases or groups that deliver to named real users.
    Do not create shared-password users for these addresses. Configure the DMARC
@@ -3478,13 +3475,11 @@ What to do:
     address. Do not move to quarantine/reject during initial setup.
 22. Use a founder's long-lived personal email only as the recovery address. Do
    not create or use `neelvara@gmail.com` as the permanent company root.
-23. Turn on MFA for `admin@neelvara.com` now and store its break-glass recovery
-   codes offline and in the controlled vault. When the named daily operator is
-   created before production, turn on MFA for that account as well.
-24. During the one-user QA bootstrap, use `admin@neelvara.com` only for this
-   controlled setup and confirm the `neelvara.com` organization resource is
-   visible. After the named daily operator is created, use that account for
-   normal work and return the Super Admin to break-glass-only use.
+23. Turn on MFA for `admin@neelvara.com` and store its recovery codes offline
+   and in the controlled vault.
+24. Use `admin@neelvara.com` only from the controlled company profile and
+   confirm the `neelvara.com` organization resource is visible. Keep unrelated
+   personal browsing outside that profile.
 25. Complete GitHub before starting Vercel. Create the fresh company-admin
     account with verified `admin@neelvara.com` and username
     `neelvara-admin`. The public profile name may remain blank; do not require
@@ -3525,9 +3520,8 @@ What to do:
 
 Expected result:
 
-- `admin@neelvara.com` is the recoverable owner and may perform the one-user QA
-  bootstrap. Before production operations, a named daily operator performs
-  routine work and the Super Admin returns to break-glass-only use.
+- `admin@neelvara.com` is the recoverable owner and the only human operator for
+  every product; no second Workspace or Cloud Identity user exists.
 - You can access registrar, Google/Firebase, and Vercel from owner-controlled
   accounts, with recovery details stored separately.
 - Workspace mail can send and receive, and SPF, DKIM, and monitor-only DMARC are

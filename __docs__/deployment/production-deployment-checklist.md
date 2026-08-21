@@ -37,10 +37,11 @@ Stop and fix code/docs first if the local source gate fails.
 
 Before production setup or deploy approval, confirm:
 
-- `admin@neelvara.com` is the recoverable break-glass Super Admin; a named
-  company operator performs daily work with least-required access.
-- Another trusted Super Admin is added when a second owner is available;
-  offline recovery codes and provider recovery ownership are recorded.
+- `admin@neelvara.com` is the only human Google/Workspace owner and operator
+  for every product. No product-specific, duplicate, or daily-operator account
+  is created.
+- Offline recovery codes and independently controlled recovery ownership are
+  recorded for that single company identity.
 - MenuList remains on the single current `us-central1` Firebase/Google Cloud
   contract. No regional copies or third deployed environment are introduced.
 - Production secrets exist only in Vercel Production. QA values live in the

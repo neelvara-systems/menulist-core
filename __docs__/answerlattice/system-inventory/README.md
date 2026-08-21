@@ -45,7 +45,7 @@ Docs under `__docs__/answerlattice/` were cross-checked after code discovery. Wh
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
 | Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app` | `answerlattice-qa` |
 | Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
 
 `src/constants/deploymentTargets.ts` is the code-level source of truth for this matrix. Domain routing, environment validation, Firebase aliases, and Answerlattice deploy scripts must stay in sync with it.

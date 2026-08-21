@@ -491,14 +491,19 @@ Design rules:
 
 ```
 height: 64px (h-16)
-bg: white (solid, no blur/transparency)
-border-bottom: 1px solid --border-default
-position: sticky top-0
+bg: token-based solid sticky surface (no blur/transparency)
+border: 1px solid --border-default on the contained navigation shell
+radius: 16px desktop / 14px phone
+position: sticky top-0 with 12px desktop / 8px phone outer breathing room
 z-index: 50
 no background change on scroll
-no shadow on scroll
+one quiet brand-tinted elevation shadow; no shadow change on scroll
 no backdrop-filter / glass blur on public website routes
 ```
+
+The floating-shell treatment is a layout refinement, not glassmorphism. Keep the
+surface opaque enough for readable light and dark themes, retain the canonical
+navigation and action hierarchy, and do not add scroll-dependent state.
 
 - Mobile hamburger navigation should not render long feature/resource lists as one always-expanded column. Use accordions for dense groups, keep `Features` open by default, keep `Resources` collapsed unless already on a resource page, and use nested Start/Publish/Operate groups for feature links.
 - Mobile drawer rows must keep 44px+ touch targets, token-based light/dark colors, visible focus states, and active-route highlighting without duplicating the same destination in both top-level and nested navigation.

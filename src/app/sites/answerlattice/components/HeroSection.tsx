@@ -1,6 +1,7 @@
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticeMotionAsset from './AnswerlatticeMotionAsset';
 import { ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION } from '../answerlatticeWebsiteAssets';
+import { ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '../siteConfig';
 import {
     LuArrowRight,
     LuFileInput,
@@ -21,6 +22,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
         <section className="relative overflow-hidden px-4 pb-10 pt-24 sm:px-6 lg:pt-28">
             <div className="mx-auto grid min-h-[calc(78svh-4rem)] w-full min-w-0 max-w-7xl gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
                 <div className="relative min-w-0 text-center lg:text-left">
+                    <p className="mb-3 text-sm font-semibold tracking-wide text-teal-200">{ANSWERLATTICE_TAGLINE}</p>
                     <div className="relative mb-6 inline-flex max-w-[18rem] items-center justify-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-center sm:max-w-none">
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
                         <span className="text-xs font-medium text-[#a0a0c0]">For founders shipping SaaS products</span>
@@ -36,7 +38,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </h1>
 
                     <p className="al-page-hero__description relative mx-auto w-full lg:mx-0">
-                        Turn scattered docs, tickets, releases, screenshots, notes, and repeated replies into reviewed support knowledge. AnswerLattice serves approved answers first, opens fallback when coverage is missing, and turns every miss into review work.
+                        {ANSWERLATTICE_SUPPORTING_LINE} Approved answers come first; missing coverage becomes visible review work.
                     </p>
 
                     <div className="al-page-hero__actions relative mx-auto w-full sm:max-w-none lg:mx-0 lg:justify-start">

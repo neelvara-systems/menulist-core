@@ -40,7 +40,7 @@ assert.equal(resolveMenuListFirebaseClientBoundary({
 assert.equal(resolveMenuListFirebaseClientBoundary({
     configuredOptions: {
         ...completeOptions,
-        projectId: 'answerlattice-qa',
+        projectId: 'neelvara-answerlattice-qa',
     },
     expectedProjectId: 'menulist-qa',
 }).errorCode, 'PROJECT_ID_MISMATCH');
@@ -60,7 +60,7 @@ for (const [field, value] of [
     ['authDomain', 'other.firebaseapp.com'],
     ['databaseURL', 'https://other-default-rtdb.firebaseio.com'],
     ['messagingSenderId', '987654321'],
-    ['projectId', 'answerlattice-qa'],
+    ['projectId', 'neelvara-answerlattice-qa'],
     ['storageBucket', 'other.firebasestorage.app'],
 ] as const) {
     const result = resolveMenuListFirebaseClientBoundary({

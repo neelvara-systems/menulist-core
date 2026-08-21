@@ -2,7 +2,8 @@
  * Answerlattice Firebase Configuration
  *
  * Answerlattice uses a separate Firebase project in all active environments:
- * local + Vercel preview use answerlattice-qa, Vercel production uses answerlattice.
+ * local + Vercel preview use neelvara-answerlattice-qa; Vercel production uses
+ * neelvara-answerlattice-prod.
  * Shared mode remains only as an explicit legacy/emulator override.
  *
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md v4.3.0

@@ -1,8 +1,8 @@
 const { spawnSync } = require('child_process');
 
 const PROJECTS = Object.freeze({
-  qa: 'answerlattice-qa',
-  prod: 'answerlattice',
+  qa: 'neelvara-answerlattice-qa',
+  prod: 'neelvara-answerlattice-prod',
 });
 
 const DEFAULT_DATABASE = '(default)';

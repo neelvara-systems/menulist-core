@@ -170,7 +170,7 @@ async function run(): Promise<void> {
   );
 
   await assert.rejects(
-    main(['--project-id', 'answerlattice-qa']),
+    main(['--project-id', 'neelvara-answerlattice-qa']),
     /non-MenuList project/,
   );
   await assert.rejects(

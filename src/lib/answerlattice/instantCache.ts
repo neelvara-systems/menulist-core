@@ -7,7 +7,7 @@
  * Cache key: canon:v5:{tId}:{sId}:e:{entityHash}:v{version}:q:{queryHash}:c:{contextHash}:p:{planHash}:r:{roleHash}:s:{stateHash}
  * Invalidation: Version-based (automatic). TTL: 24 hours.
  * 
- * Reuses existing Upstash instance (same as rate limiting in src/lib/rateLimit.ts).
+ * Uses dedicated ANSWERLATTICE_UPSTASH_* credentials only when configured.
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_INSTANT_CACHE
  * @see __docs__/answerlattice/instant-response-infrastructure/
@@ -40,8 +40,8 @@ const hasRedisConfig = Boolean(
 );
 const ANSWERLATTICE_ANSWER_TYPE_SET = new Set<string>(Object.values(ANSWERLATTICE_ANSWER_TYPES));
 
-// Reuse existing Upstash connection pattern from rateLimit.ts. Missing Redis
-// env must degrade to the live retrieval pipeline, never crash module import.
+// Missing dedicated Answerlattice Redis env must degrade to the live retrieval
+// pipeline, never crash module import or reuse another product's credentials.
 const redis = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && hasRedisConfig
     ? new Redis({
         url: answerlatticeUpstashEnv.url!,

@@ -13,6 +13,7 @@
 /products
 /about
 /contact
+/trust
 /legal
 /privacy
 /terms
@@ -20,6 +21,8 @@
 ```
 
 The site is intentionally small. Do not add blog, pricing, demo, resources, careers, investor pages, press pages, or unapproved product placeholders in v1.
+
+Agent-readable discovery is intentionally informational: `/llms.txt` explains when to use the company site, directs product questions to the relevant product, and states that Neelvara exposes no API, MCP, auth, form, purchase, or autonomous action surface. The homepage may also return a compact Markdown representation when explicitly requested through HTTP content negotiation.
 
 ---
 
@@ -34,7 +37,7 @@ Header:
 Footer:
 
 - Line: `© 2026 Neelvara Systems`
-- Links: `Products`, `About`, `Legal`, `Privacy`, `Terms`, `Contact`
+- Links: `Products`, `About`, `Trust`, `Legal`, `Privacy`, `Terms`, `Contact`
 
 Do not place GSTIN, PAN, residential address, or unreviewed entity claims in global chrome unless legal/CA review requires it and the owner approves public display.
 
@@ -71,6 +74,7 @@ Layout language:
 - Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
 - home page uses a brand-first split hero with an unframed source logo visual, compact company ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact routing, and footer
 - secondary pages use one clear editorial hero; repeated right-side reference-summary cards are not used
+- `/trust` uses one maintained reference-status ledger followed by company, product-boundary, website-data, contact, and verification-note rows
 - legal, privacy, and terms sections use unframed document rows that collapse to one readable column on mobile
 - decorative browser mocks, fake charts, marquees, numbered section labels, and duplicate summary-card grids are not part of the current public layout
 
@@ -116,7 +120,7 @@ MenuList and Answerlattice are operated by Neelvara Systems.
 Homepage support copy:
 
 ```text
-We operate focused software for public business facts and approved support answers.
+Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
 ```
 
 Do not use the old relationship phrasing in runtime copy. Use `operated by`.
@@ -129,12 +133,14 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 
 Required flow:
 
-1. Brand-first split hero: `Neelvara Systems` is the H1, followed by `Information customers can rely on.`, concise operating copy, `View Products`, `Email Neelvara`, and an unframed source-logo visual.
+1. Brand-first split hero: `Neelvara Systems` is the H1, followed by `The trusted information layer between businesses and customers.`, the supporting operating copy, `View Products`, `Email Neelvara`, and an unframed source-logo visual.
 2. Entity ledger: company, operated products, and country.
 3. Operating approach: an asymmetric editorial layout with three unframed rows for company reference, independent product surfaces, and direct inquiry routing.
 4. Company relationship statement using the canonical relationship sentence.
 5. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
 6. Contact routes: business, legal, and privacy inbox rows.
+
+The current-products introduction must state the architecture plainly: `MenuList keeps public business information official. Answerlattice keeps customer answers grounded in approved knowledge. Each product has its own website, policies, and support route.`
 
 Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, fake dashboards, decorative activity charts, numeric product proof, a company/product/app comparison matrix, or a repeated closing CTA.
 
@@ -158,8 +164,10 @@ Required sections:
 
 Product summaries:
 
-- MenuList: `Keeps menus, hours, profiles, and customer-facing details in a public business information source.`
-- Answerlattice: `Keeps support knowledge, help content, and business responses tied to approved answers.`
+- MenuList tagline: `The official customer-facing version of your business.`
+- MenuList summary: `Keeps menus, hours, profiles, and customer-facing details in a public business information source.`
+- Answerlattice tagline: `The governed source behind customer answers.`
+- Answerlattice summary: `Keeps support knowledge, help content, and business responses tied to approved answers.`
 
 Only show products approved for company-site mention. Do not show Canonica, GrowthOS, KitStamp, SurfaceOS, MyCodex, private/internal tools, placeholder products, or future-product cards.
 

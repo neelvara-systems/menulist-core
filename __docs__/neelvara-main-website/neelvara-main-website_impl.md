@@ -44,6 +44,8 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `src/app/sites/neelvara/products/page.tsx` | Products page |
 | `src/app/sites/neelvara/about/page.tsx` | About page |
 | `src/app/sites/neelvara/contact/page.tsx` | Contact page |
+| `src/app/sites/neelvara/trust/page.tsx` | Trust & Verification page |
+| `src/app/sites/neelvara/llms.txt/route.ts` | Agent-readable company index and use boundary |
 | `src/app/sites/neelvara/legal/page.tsx` | Legal page |
 | `src/app/sites/neelvara/privacy/page.tsx` | Privacy page |
 | `src/app/sites/neelvara/terms/page.tsx` | Terms page |
@@ -86,6 +88,7 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `/products` | Show approved products in the Neelvara lineup and link to product domains |
 | `/about` | Explain operating focus and boundaries |
 | `/contact` | List business, legal, and privacy contact points |
+| `/trust` | Provide a source-linked status ledger for company identity, operated products, website boundaries, and verification routing |
 | `/legal` | Provide entity and product relationship reference |
 | `/privacy` | Company-website-only privacy policy |
 | `/terms` | Company-website-only terms |
@@ -110,6 +113,7 @@ The visual implementation now follows the current-color Neelvara Prism glass par
 - Akshar-only typography across display headings, body copy, buttons, labels, legal pages, product cards, and inline 404 output; `Inter` remains the first fallback in the font stack
 - floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact once, with one `Email us` action
 - home page anatomy: floating nav, brand-first logo-led hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact rows, footer
+- the homepage source mark stays unframed but receives more first-fold space on wide screens and a compact mobile presentation instead of disappearing; this is factual company identity, not a product mock, metric, or second conversion flow
 - About, Legal, Privacy, and Terms inherit the same mesh shell, one clear hero, unframed document rows, policy dates where applicable, and page-specific final CTAs
 - Products and Contact use focused custom flows without duplicate hero summary cards
 - scroll reveal remains local to Neelvara sections, one-time on viewport entry through IntersectionObserver, route-aware on client navigation, and disabled for reduced-motion users; non-rendered responsive targets resolve immediately, while a passive animation-frame recovery reveals any pending section already passed by a fast scroll or resize
@@ -118,6 +122,7 @@ The visual implementation now follows the current-color Neelvara Prism glass par
 - homepage proof avoids numeric product-count and page-count signals; products are listed as operated products lower on the page
 - local development links preserve the `/__neelvara` prefix without server header reads or hydration divergence; the server and first client render use canonical paths before the local alias snapshot resolves
 - public copy remains concise, factual, and governed by Neelvara's legal/product separation rules
+- Trust & Verification is a footer-level static reference. Its status labels describe published source availability, not a certification, SLA, audit result, or product security guarantee.
 
 ---
 
@@ -133,6 +138,9 @@ Implemented:
 - product-domain `robots.txt`
 - product-domain `sitemap.xml`
 - product-domain `.well-known/security.txt`
+- product-domain `llms.txt` linked from `robots.txt`
+- homepage `Accept: text/markdown` negotiation with cache-safe `Vary` headers
+- Markdown recovery body for unknown Markdown requests while preserving the real `404` status
 - site logo in `public/neelvara-logo.svg`
 - browser favicon, Apple touch icon, and manifest icon derivatives from the refined mark
 - duplicate `/home` route canonicalized to `/`; it remains indexable because the local root alias renders through the same route

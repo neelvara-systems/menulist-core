@@ -7,11 +7,11 @@
     "serve": "npm run build && firebase emulators:start --only functions --config ../firebase-answerlattice.json",
     "shell": "npm run build && firebase functions:shell --config ../firebase-answerlattice.json",
     "deploy": "npm run deploy:prod",
-    "deploy:qa": "firebase deploy --only functions:answerlattice --project answerlattice-qa --config ../firebase-answerlattice.json",
-    "deploy:prod": "firebase deploy --only functions:answerlattice --project answerlattice --config ../firebase-answerlattice.json",
+    "deploy:qa": "firebase deploy --only functions:answerlattice --project neelvara-answerlattice-qa --config ../firebase-answerlattice.json",
+    "deploy:prod": "firebase deploy --only functions:answerlattice --project neelvara-answerlattice-prod --config ../firebase-answerlattice.json",
     "logs": "npm run logs:prod",
-    "logs:qa": "firebase functions:log --project answerlattice-qa --config ../firebase-answerlattice.json",
-    "logs:prod": "firebase functions:log --project answerlattice --config ../firebase-answerlattice.json"
+    "logs:qa": "firebase functions:log --project neelvara-answerlattice-qa --config ../firebase-answerlattice.json",
+    "logs:prod": "firebase functions:log --project neelvara-answerlattice-prod --config ../firebase-answerlattice.json"
   },
   "engines": {
     "node": "22"

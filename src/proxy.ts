@@ -54,6 +54,14 @@ import {
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import {
+    NEELVARA_MARKDOWN_CONTENT_TYPE,
+    NEELVARA_MARKDOWN_VARY,
+    acceptsNeelvaraMarkdown,
+    isKnownNeelvaraDiscoveryPath,
+    renderNeelvaraHomepageMarkdown,
+    renderNeelvaraNotFoundMarkdown,
+} from '@lib/seo/neelvaraAgentReadiness';
+import {
     MYCODEX_LOGIN_PATH,
     MYCODEX_PRODUCT_SLUG,
     MYCODEX_ROBOTS_TAG,
@@ -108,6 +116,13 @@ function isMenuListQaHost(hostname: string | null): boolean {
     return (qaTarget.tenantDomains || []).some((domain) => (
         normalizedHost === domain || normalizedHost.endsWith(`.${domain}`)
     ));
+}
+
+function isAnswerlatticeQaHost(hostname: string | null): boolean {
+    const normalizedHost = normalizeRequestAuthority(hostname)?.hostname;
+    if (!normalizedHost) return false;
+
+    return getProductDeploymentTarget('answerlattice', 'preview').domains.includes(normalizedHost);
 }
 
 function applySecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
@@ -222,10 +237,12 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         shouldApplyNoindexHeader(request.nextUrl.pathname)
         || isActiveMenuListOwnerAppHost(request.headers.get('host'))
         || isMenuListQaHost(request.headers.get('host'))
+        || isAnswerlatticeQaHost(request.headers.get('host'))
     ) {
         response.headers.set(
             'X-Robots-Tag',
             isMenuListQaHost(request.headers.get('host'))
+                || isAnswerlatticeQaHost(request.headers.get('host'))
                 ? 'noindex, nofollow, noarchive'
                 : 'noindex, nofollow',
         );
@@ -266,17 +283,46 @@ function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean {
     return isTrustedLocalDevelopmentRequest(hostname);
 }
 
-function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {
-    const normalizedHost = normalizeHostname(hostname);
-    return normalizedHost === 'canonica.app' || normalizedHost === 'www.canonica.app';
-}
-
 function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: string): string {
     return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
 }
 
 function buildNeelvaraWebsiteRewritePath(basePath: string, publicPath: string): string {
     return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
+}
+
+function buildNeelvaraAgentMarkdownResponse(
+    request: NextRequest,
+    publicPath: string,
+    productConfig: ProductDomainConfig,
+    basePath = '',
+): NextResponse | null {
+    if (!acceptsNeelvaraMarkdown(request)) return null;
+
+    const isHomepage = publicPath === '/' || publicPath === '/home';
+    if (!isHomepage && isKnownNeelvaraDiscoveryPath(publicPath)) return null;
+
+    const status = isHomepage ? 200 : 404;
+    const response = new NextResponse(
+        isHomepage ? renderNeelvaraHomepageMarkdown() : renderNeelvaraNotFoundMarkdown(),
+        {
+            status,
+            headers: {
+                'Content-Type': NEELVARA_MARKDOWN_CONTENT_TYPE,
+                'Content-Language': 'en',
+                'Cache-Control': status === 200
+                    ? 'public, max-age=3600, s-maxage=86400'
+                    : 'no-store, max-age=0',
+                'Vary': NEELVARA_MARKDOWN_VARY,
+            },
+        },
+    );
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    if (basePath) response.headers.set('x-product-base-path', basePath);
+    if (basePath === '/nv') response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
+    return response;
 }
 
 function rewriteWithProductHeaders(
@@ -729,6 +775,17 @@ export async function proxy(request: NextRequest) {
         return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
     }
 
+    if (isAnswerlatticeQaHost(hostname) && pathname === '/robots.txt') {
+        return applySecurityHeaders(request, new NextResponse('User-agent: *\nDisallow: /\n', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }));
+    }
+
+    if (isAnswerlatticeQaHost(hostname) && pathname === '/sitemap.xml') {
+        return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
+    }
+
     const menulistRedirectResponse = buildMenuListRedirectDomainResponse(hostname, request);
     if (menulistRedirectResponse) {
         return applySecurityHeaders(request, menulistRedirectResponse);
@@ -737,15 +794,6 @@ export async function proxy(request: NextRequest) {
     const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);
     if (menulistOwnerAppResponse) {
         return applySecurityHeaders(request, menulistOwnerAppResponse);
-    }
-
-    if (
-        isLegacyAnswerlatticePublicHostname(hostname)
-        && !shouldBypassDomainRouting(pathname)
-    ) {
-        const target = getProductDeploymentTarget('answerlattice', 'production');
-        const url = buildOriginPinnedRedirectUrl(target.url, request);
-        return applySecurityHeaders(request, NextResponse.redirect(url, 308));
     }
 
     if (
@@ -866,6 +914,15 @@ export async function proxy(request: NextRequest) {
         const aliasMatch = resolveMyCodexProductAliasPath(pathname);
         if (aliasMatch) {
             const { product, basePath, strippedPath } = aliasMatch;
+            if (product.id === 'neelvara') {
+                const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                    request,
+                    strippedPath,
+                    product,
+                    basePath,
+                );
+                if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
+            }
             const url = request.nextUrl.clone();
 
             if (product.id === 'answerlattice') {
@@ -896,7 +953,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // 1a. Vercel hostname-based product routing.
-    // QA: answerlattice.menulist.online → /sites/answerlattice
+    // QA: canonica.app → /sites/answerlattice
     // Production: answerlattice.com → /sites/answerlattice
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
@@ -906,6 +963,15 @@ export async function proxy(request: NextRequest) {
             if (authResponse) {
                 return applySecurityHeaders(request, authResponse);
             }
+        }
+
+        if (productConfig.id === 'neelvara') {
+            const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                request,
+                pathname,
+                productConfig,
+            );
+            if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
         }
 
         if (productConfig.id === 'answerlattice') {
@@ -975,6 +1041,16 @@ export async function proxy(request: NextRequest) {
                 if (authResponse) {
                     return applySecurityHeaders(request, authResponse);
                 }
+            }
+
+            if (product.id === 'neelvara') {
+                const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                    request,
+                    strippedPath,
+                    product,
+                    product.devPathPrefix,
+                );
+                if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
             }
 
             const url = request.nextUrl.clone();

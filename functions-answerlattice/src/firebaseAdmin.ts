@@ -2,7 +2,8 @@
  * Answerlattice Firebase Admin — Server-side initialization
  *
  * Answerlattice Functions run against Answerlattice Firebase targets:
- * QA/staging deploys to answerlattice-qa; production deploys to answerlattice.
+ * QA/staging deploys to neelvara-answerlattice-qa; production deploys to
+ * neelvara-answerlattice-prod.
  * Shared mode is only an explicit legacy/emulator override.
  *
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
@@ -75,7 +76,7 @@ const isAnswerlatticeEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
 const configuredAnswerlatticeProjectId = getAnswerlatticeProjectId();
 const answerlatticeFunctionsStage: AnswerlatticeFirebaseBoundaryStage = isAnswerlatticeEmulator
     ? 'local'
-    : configuredAnswerlatticeProjectId === 'answerlattice'
+    : configuredAnswerlatticeProjectId === 'neelvara-answerlattice-prod'
         ? 'production'
         : 'preview';
 const answerlatticeFunctionsBoundary = resolveAnswerlatticeFirebaseBoundary({

@@ -2,9 +2,9 @@ export type AnswerlatticeFirebaseBoundaryStage = 'local' | 'preview' | 'producti
 export type AnswerlatticeFirebaseBoundaryMode = 'shared' | 'separate';
 
 export const ANSWERLATTICE_FIREBASE_PROJECTS = {
-    local: 'answerlattice-qa',
-    preview: 'answerlattice-qa',
-    production: 'answerlattice',
+    local: 'neelvara-answerlattice-qa',
+    preview: 'neelvara-answerlattice-qa',
+    production: 'neelvara-answerlattice-prod',
 } as const satisfies Record<AnswerlatticeFirebaseBoundaryStage, string>;
 
 const SHARED_MODE_ALIASES = new Set(['shared', 'same', 'default']);

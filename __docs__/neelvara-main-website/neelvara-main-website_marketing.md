@@ -14,7 +14,7 @@ It verifies the operating company behind the current operated product lineup, ex
 
 The site should make a visitor understand:
 
-- Neelvara Systems operates software infrastructure for customer-facing business information.
+- Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
 - MenuList and Answerlattice are operated by Neelvara Systems.
 - The company scope is clear and narrow.
 - Company, legal, privacy, and product-support routes are separated.
@@ -22,6 +22,14 @@ The site should make a visitor understand:
 ---
 
 ## 2. Core Message
+
+Brand tagline:
+
+> The trusted information layer between businesses and customers.
+
+Supporting line:
+
+> Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
 
 Short:
 
@@ -45,7 +53,8 @@ Entity description:
 
 Allowed:
 
-- Neelvara Systems operates software infrastructure for customer-facing business information.
+- Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
+- Neelvara uses the trusted-information-layer tagline as umbrella positioning, not as a certification or security guarantee.
 - MenuList and Answerlattice are operated by Neelvara Systems.
 - MenuList keeps menus, hours, profiles, and customer-facing details in a public business information source.
 - Answerlattice keeps support knowledge, help content, and business responses tied to approved answers.
@@ -115,13 +124,14 @@ Allowed navigation:
 - Privacy
 - Terms
 
-Primary header navigation should show only `Products`, `About`, and `Contact`; Legal, Privacy, and Terms remain footer/legal-surface links.
+Primary header navigation should show only `Products`, `About`, and `Contact`; Trust, Legal, Privacy, and Terms remain footer/legal-surface links.
 
 Allowed CTAs:
 
 - View Products
 - Email Neelvara
 - Contact Routes
+- Trust & Verification
 - Email Legal
 - Email Privacy
 
@@ -165,6 +175,9 @@ Use:
 - actual product marks for MenuList and Answerlattice
 - direct contact-routing sections
 - page-specific Privacy Policy, Terms of Use, Legal, Contact, Products, About, and 404 content
+- a factual Trust & Verification page with published/current/product-specific/pending-review status labels
+
+Trust copy must not imply a SOC report, ISO certification, penetration test, uptime commitment, security program, formal entity registration, or product control unless an approved source is linked and current.
 
 Reject:
 
@@ -216,7 +229,7 @@ Both Privacy and Terms must show `Last updated: June 26, 2026`.
 Home:
 
 - Title: `Neelvara Systems - Customer-Facing Business Information Infrastructure`
-- Description: `Neelvara Systems operates software infrastructure for customer-facing business information.`
+- Description: `Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.`
 
 Products:
 

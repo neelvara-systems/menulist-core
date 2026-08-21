@@ -1428,6 +1428,16 @@
     margin: 14px 0 0;
 }
 
+.nv-product-row .nv-product-card-tagline,
+.nv-product-detail-card .nv-product-detail-tagline {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.nv-product-detail-card .nv-product-detail-tagline {
+    margin-top: 18px;
+}
+
 .nv-product-card-link {
     display: flex;
     align-items: center;
@@ -1708,6 +1718,114 @@
 .nv-contact-note {
     padding: 38px 0;
     border-top: 1px solid var(--line-2);
+}
+
+.nv-trust-overview {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.48fr) minmax(0, 1fr);
+    gap: 42px;
+    padding: 38px 0;
+    border-top: 1px solid var(--line-2);
+}
+
+.nv-trust-overview-head {
+    min-width: 0;
+}
+
+.nv-trust-overview-head h2 {
+    margin-top: 18px;
+    font-size: 3.2rem;
+}
+
+.nv-trust-overview-head p {
+    max-width: 520px;
+    margin: 18px 0 0;
+}
+
+.nv-trust-status-list {
+    display: grid;
+    min-width: 0;
+    border-top: 1px solid var(--line-2);
+}
+
+.nv-trust-status-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 18px;
+    align-items: start;
+    min-width: 0;
+    padding: 18px 30px 18px 0;
+    border-bottom: 1px solid var(--line-2);
+    color: var(--ink);
+    text-decoration: none;
+    transition: color 180ms ease, padding-left 180ms ease;
+}
+
+.nv-trust-status-row:hover,
+.nv-trust-status-row:focus-visible {
+    padding-left: 8px;
+    color: var(--m-blue);
+}
+
+.nv-trust-status-row > svg {
+    position: absolute;
+    top: 22px;
+    right: 0;
+    width: 17px;
+    height: 17px;
+    color: var(--m-blue);
+}
+
+.nv-trust-status-label {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.nv-trust-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    min-height: 26px;
+    padding: 4px 9px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.nv-trust-status-published,
+.nv-trust-status-current {
+    border-color: rgb(20 87 217 / 18%);
+    color: var(--m-blue);
+    background: rgb(20 87 217 / 8%);
+}
+
+.nv-trust-status-product-specific {
+    border-color: rgb(101 66 232 / 18%);
+    color: var(--m-violet);
+    background: rgb(101 66 232 / 8%);
+}
+
+.nv-trust-status-pending-review {
+    border-color: rgb(93 102 120 / 22%);
+    color: var(--ink-mute);
+    background: rgb(93 102 120 / 8%);
+}
+
+.nv-trust-status-row p {
+    grid-column: 1 / -1;
+    max-width: 620px;
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.94rem;
+    line-height: 1.55;
 }
 
 .nv-contact-note {
@@ -2062,6 +2180,11 @@
         gap: 24px;
     }
 
+    .nv-trust-overview {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
     .nv-section-head {
         gap: 24px;
         align-items: start;
@@ -2297,6 +2420,29 @@
         padding: 28px 0;
     }
 
+    .nv-trust-overview {
+        gap: 24px;
+        padding: 28px 0;
+    }
+
+    .nv-trust-overview-head h2 {
+        font-size: 2.45rem;
+    }
+
+    .nv-trust-status-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+        padding-right: 26px;
+    }
+
+    .nv-trust-status-badge {
+        justify-self: start;
+    }
+
+    .nv-trust-status-row > svg {
+        top: 20px;
+    }
+
     .nv-quote blockquote {
         font-size: 2.35rem;
     }
@@ -2387,5 +2533,70 @@
     .nv-operating-card,
     .nv-bento-card {
         padding: 22px;
+    }
+}
+
+/* Editorial first-fold refinement: more air, stronger source mark, mobile-specific proof. */
+.nv-hero {
+    padding-top: 76px;
+}
+
+.nv-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.68fr);
+    gap: clamp(42px, 5vw, 70px);
+}
+
+.nv-hero-symbol {
+    min-height: 390px;
+}
+
+.nv-hero-symbol-mark {
+    width: min(100%, 500px);
+}
+
+.nv-ledger-section {
+    position: relative;
+    z-index: 3;
+}
+
+.nv-ledger {
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 86%),
+        0 2rem 5rem -3.8rem rgb(20 87 217 / 42%);
+}
+
+@media (max-width: 1080px) {
+    .nv-hero-layout {
+        grid-template-columns: 1fr;
+        gap: 34px;
+    }
+
+    .nv-hero-symbol {
+        display: grid;
+        width: min(100%, 560px);
+        min-height: 220px;
+        margin: 0 auto;
+    }
+
+    .nv-hero-symbol-mark {
+        width: min(78%, 400px);
+    }
+}
+
+@media (max-width: 640px) {
+    .nv-hero {
+        padding-top: 52px;
+    }
+
+    .nv-hero-layout {
+        gap: 26px;
+    }
+
+    .nv-hero-symbol {
+        min-height: 168px;
+    }
+
+    .nv-hero-symbol-mark {
+        width: min(74%, 280px);
     }
 }

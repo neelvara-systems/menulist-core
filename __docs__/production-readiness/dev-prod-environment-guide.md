@@ -14,11 +14,11 @@ This is the current source-of-truth contract for the shared Vercel app. Code mir
 
 | Environment | Vercel env | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- | --- |
-| Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Staging / QA | Preview | website `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
-| Production | Production | website `https://menulist.ai`; app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
+| Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `neelvara-answerlattice-qa` |
+| Staging / QA | Preview | website `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app` | `neelvara-answerlattice-qa` |
+| Production | Production | website `https://menulist.ai`; app `https://app.menulist.ai`; customers `*.menulist.online` | `menulist-prod` | `https://answerlattice.com` | `neelvara-answerlattice-prod` |
 
-Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist-prod`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
+Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist-prod`. Answerlattice is separate in every active environment: `neelvara-answerlattice-qa` for local/preview and `neelvara-answerlattice-prod` for production.
 
 Keep the infrastructure model simple: select `us-central1` when Firestore asks for
 a location and use `us-central1` for MenuList Storage, Functions, and Cloud Tasks.
@@ -40,7 +40,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | ChatGPT Claim                                    | Verdict            | Codebase Evidence                                                                                                              |
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist-prod`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
+| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist-prod`; local/preview Answerlattice uses `neelvara-answerlattice-qa`, production Answerlattice uses `neelvara-answerlattice-prod`. |
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `menulist-qa.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | MenuList uses environment-specific values: a shared 1-3 key pool plus one dedicated paid extraction credential. Keys in one project still share quota. |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
@@ -133,7 +133,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
 | 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v14.2.0; MenuList Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Core database, auth, storage | `NEXT_PUBLIC_MENULIST_FIREBASE_*`, `MENULIST_FIREBASE_*` | Auto from project | Local/custom `qa`: `menulist-qa` | Production: `menulist-prod` |
-| 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, optional application credentials | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
+| 2   | **Firebase (Answerlattice)** | Root app: modular `firebase-admin` v14.2.0; Answerlattice Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`, optional application credentials | Local/Preview: `neelvara-answerlattice-qa` | Production: `neelvara-answerlattice-prod` |
 | 2A  | **Firebase (SignalDesk)** | Root app: modular `firebase-admin` v14.2.0; SignalDesk Functions: `firebase-admin` v13.10.0, stable `firebase-functions` v7.3.0 | Private SignalDesk growth-control data | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `SIGNALDESK_FIREBASE_*` | Auto from the dedicated Functions project | Local/Preview: `menulist-signaldesk-qa` | Production: `menulist-signaldesk` |
 | 3   | **Razorpay**            | Root app: v2.9.6; MenuList Functions: v2.9.8 | Payments & subscriptions | `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET` | project-local `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys** | Live mode keys |
 | 4   | **Google Gemini AI**    | Root/MenuList Functions/Answerlattice Functions: `@google/genai` v2.13.0; explicit stable Gemini 3 IDs through the shared compatibility compiler | OCR, descriptions, translations, images | Shared `MENULIST_GEMINI_AI_KEY` plus `_2`, `_3` | Shared `GEMINI_AI_KEY` plus `_2`, `_3`; extraction-only `MENULIST_GEMINI_TEXT_AI_KEY` | MenuList QA paid key set | Separate MenuList production paid key set |
@@ -152,7 +152,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | Service                 | Why Separate                                                       | How                                    |
 | ----------------------- | ------------------------------------------------------------------ | -------------------------------------- |
 | **Firebase (MenuList)** | Production data must not mix with local/QA data | Keep local/custom `qa` on `menulist-qa`; set Vercel Production vars to `menulist-prod` |
-| **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
+| **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `neelvara-answerlattice-qa` locally/in Preview; use `neelvara-answerlattice-prod` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Configured through env; no DSNs in code |
 | **Gemini AI**           | Separate budgets, restrictions, revocation, and incident response  | Use separate MenuList QA and production key sets |
@@ -311,24 +311,24 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 **Step 1: Keep Local/Preview Targets Stable**
 
 1. Local MenuList uses `http://localhost:3000/` and Firebase `menulist-qa`.
-2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `answerlattice-qa`.
+2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `neelvara-answerlattice-qa`.
 3. Vercel Preview MenuList uses `https://menulist.digital` for the website,
    `https://app.menulist.digital` for the owner app, `*.menulist.digital` for
    customer links, and Firebase `menulist-qa`. Scope its QA env values to the
    exact `staging` Git branch.
-4. Vercel Preview Answerlattice uses `https://answerlattice.menulist.online` and Firebase `answerlattice-qa`.
+4. Vercel Preview Answerlattice uses `https://canonica.app` and Firebase `neelvara-answerlattice-qa`.
 
 **Step 2: Configure Local Development**
 
 1. MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID` points to `menulist-qa`; server code reuses it.
-2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` points to `answerlattice-qa`; browser and server runtimes reuse it.
+2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` points to `neelvara-answerlattice-qa`; browser and server runtimes reuse it.
 3. Answerlattice local site access stays under `/__answerlattice`; do not add local host aliases for Answerlattice website work.
 
 **Step 3: Configure Vercel Production**
 
 1. In Vercel Dashboard → Settings → Environment Variables
 2. Set MenuList `NEXT_PUBLIC_MENULIST_FIREBASE_*` Web config and the server-only Admin credentials to the production Firebase project `menulist-prod`.
-3. Set Answerlattice's canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` identifiers to the production Firebase project `answerlattice`, with only Admin credentials under `ANSWERLATTICE_FIREBASE_*`.
+3. Set Answerlattice's canonical `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` identifiers to the production Firebase project `neelvara-answerlattice-prod`, with only Admin credentials under `ANSWERLATTICE_FIREBASE_*`.
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` and `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.online` in Production.
 5. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.digital`,
    `NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN=menulist.digital`, and
@@ -379,7 +379,7 @@ This guide is a companion environment checklist. It does not approve production 
 
 ### Pre-Launch (Do Once)
 
-- [ ] Local/preview Firebase targets confirmed for `menulist-qa` and `answerlattice-qa`
+- [ ] Local/preview Firebase targets confirmed for `menulist-qa` and `neelvara-answerlattice-qa`
 - [ ] Razorpay test keys in dev, live keys in prod (Vercel)
 - [ ] All required env vars set in Vercel (see master list above)
 - [ ] Sentry dev + prod projects configured
@@ -713,7 +713,7 @@ required production monitors before launch; do not defer them to post-launch.
 
 | #   | Service              | Account Type          | Cost            | Priority | Feature Flag                 |
 | --- | -------------------- | --------------------- | --------------- | -------- | ---------------------------- |
-| 1   | Firebase QA Project Access | Confirm `menulist-qa` and `answerlattice-qa` access | Existing project access | P0       | N/A                          |
+| 1   | Firebase QA Project Access | Confirm `menulist-qa` and `neelvara-answerlattice-qa` access | Existing project access | P0       | N/A                          |
 | 2   | Razorpay Live        | Switch to live mode   | Per transaction | P0       | N/A                          |
 | 3   | Vercel               | Configure env scopes  | Free tier       | P0       | N/A                          |
 | 4   | Sentry               | Create 2 projects     | Free            | P1       | `ENABLE_SENTRY`              |
@@ -736,8 +736,8 @@ required production monitors before launch; do not defer them to post-launch.
 **Before Launch (P0):**
 
 - [ ] Configure MenuList production Firebase env vars for `menulist-prod`
-- [ ] Configure Answerlattice production Firebase env vars for `answerlattice`
-- [ ] Confirm local/preview Firebase env vars for `menulist-qa` and `answerlattice-qa`
+- [ ] Configure Answerlattice production Firebase env vars for `neelvara-answerlattice-prod`
+- [ ] Confirm local/preview Firebase env vars for `menulist-qa` and `neelvara-answerlattice-qa`
 - [ ] Get Razorpay live API keys
 - [ ] Configure Vercel QA env vars only for Preview branch `staging`, and production vars only for Production
 - [ ] Confirm every `menulist.digital` host is `noindex`, serves disallow-all `robots.txt`, and publishes no sitemap
