@@ -447,17 +447,17 @@ activation require an explicit scoped approval.
 
 ### Firebase Foundation
 
-- [ ] `AL-PROD-B01` Verify or create the Firebase Web app, Auth, Firestore,
+- [x] `AL-PROD-B01` Verify or create the Firebase Web app, Auth, Firestore,
   Storage, App Check, Functions, Eventarc, Cloud Tasks, Scheduler, Artifact
   Registry, Secret Manager, Pub/Sub, and Cloud Run foundation.
-  - Foundation readback is complete except the Gemini-dependent runtime
-    activation. Firebase Web app `Answerlattice Production Web`, Email/Password
-    Auth, Firestore, Storage, required APIs, App Engine `us-central`, Artifact
-    Registry, Secret Manager, Eventarc, Pub/Sub, Cloud Tasks, Scheduler, Cloud
-    Run, and Cloud Functions APIs exist. App Check has been initialized and its
-    dedicated legacy score-based reCAPTCHA v3 provider is registered with
-    enforcement OFF. No production Answerlattice Functions, queue, or scheduler
-    are deployed yet.
+  - Foundation readback is complete. Firebase Web app
+    `Answerlattice Production Web`, Email/Password Auth, Firestore, Storage,
+    required APIs, App Engine `us-central`, Artifact Registry, Secret Manager,
+    Eventarc, Pub/Sub, Cloud Tasks, Scheduler, Cloud Run, and Cloud Functions
+    APIs exist. App Check has been initialized and its dedicated legacy
+    score-based reCAPTCHA v3 provider is registered with enforcement OFF. All
+    11 approved core Functions are ACTIVE, and the Scheduler and embedding
+    task queue are deployed in the production project.
 - [x] `AL-PROD-B02` Confirm the immutable Firestore location before creation.
   Use the approved Answerlattice architecture; do not copy MenuList's regional
   decision automatically.
@@ -471,9 +471,10 @@ activation require an explicit scoped approval.
   Vercel Production using `.env.production.example`.
   - Vercel Production contains the complete public Firebase selector family,
     `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate`, and the production OIDC
-    selectors. Static Admin client-email/private-key variables are absent. The
-    current live build predates these values, so activation still requires a
-    separately authorized Production redeploy.
+    selectors. Static Admin client-email/private-key variables are absent.
+    Approved production deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` is live
+    with those environment assignments; authenticated data-path proof remains
+    separately tracked under `AL-PROD-C05`.
 - [x] `AL-PROD-B04` Configure exact production Auth domains and App Check
   registration for `answerlattice.com` and `www.answerlattice.com`.
   - Auth is complete: only Email/Password is enabled and the exact apex and
@@ -501,9 +502,10 @@ activation require an explicit scoped approval.
     and environment-target gates pass.
 - [ ] `AL-PROD-C05` Produce an authenticated hosted production proof for
   OIDC/STS, custom-token signing, Firestore, Storage, and admitted task paths.
-  - The identity and managed environment are ready. Hosted proof remains
-    blocked until the production source is promoted and a Vercel Production
-    deployment activates the newly added values.
+  - The identity, managed environment, and approved Vercel Production
+    deployment are active. Hosted proof now depends only on the authorized
+    production workspace/data fixture and remains a certification gate, not a
+    missing identity or deployment setup step.
 
 ### Secrets, Providers, And Spend
 
@@ -570,9 +572,9 @@ activation require an explicit scoped approval.
     Preview value was preserved. The client ID and sensitive client secret are
     now bound to Vercel Production only as the two product-specific variables;
     readback confirms the pre-existing custom-`qa` rows remain `qa`-only and
-    neither new row includes Preview. Deployment activation and hosted
-    callback/session proof remain open. No credential value is recorded in
-    this ledger.
+    neither new row includes Preview. Production deployment activation is
+    complete; hosted callback/session and Firebase custom-token proof remain
+    open. No credential value is recorded in this ledger.
 
 ### Production Promotion And Setup Closure
 
