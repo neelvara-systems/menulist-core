@@ -45,7 +45,12 @@ The two registered webhook URLs intentionally precede their scoped Firebase depl
    `answerlattice.com`. Never display, log, or reuse the MenuList key.
    The owner-created value was transferred through standard input to Vercel
    custom `qa` and Answerlattice QA Secret Manager without display, logging or
-   repository persistence.
+   repository persistence. Approved deployment
+   `dpl_BdKiiGMKCR5hsdpLywDTTn1PqBLf` is READY in custom environment `qa` from
+   exact certified commit
+   `a6afeafd25ee05235c06ce2199fa15e9f3945177`; both Canonica aliases serve that
+   build. This activates only server-side secret availability, not email
+   transmission.
 5. [x] Create a separate Answerlattice QA webhook registration and signing
    secret in the shared team at
    `https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/answerlatticeEmailOsWebhook`

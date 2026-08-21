@@ -1,7 +1,7 @@
 # EmailOS — Implementation Blueprint
 
-> **Status:** Source implemented; MenuList provider prepared; QA deployment and activation pending
-> **Last Updated:** August 16, 2026
+> **Status:** Source implemented; MenuList provider prepared; Answerlattice QA key hosted; provider sends disabled
+> **Last Updated:** August 21, 2026
 
 ## Architecture
 
@@ -248,4 +248,4 @@ npm --prefix functions-answerlattice run build
 npm run lint
 ```
 
-No production build or Production Vercel deployment was required for this Answerlattice QA webhook step. MenuList's product-specific QA and production Resend secrets exist as enabled version-1 Secret Manager values. Answerlattice QA now has its signing secret, scoped inbound webhook deployment, and an independently restricted sending key stored as a sensitive Vercel custom-`qa` variable and enabled Secret Manager version 1. The transfer used standard input and did not display or persist the value in the repository. Vercel deployment activation, provider certification and every outbound-send activation remain separately gated.
+No Production Vercel deployment was required for this Answerlattice QA step. MenuList's product-specific QA and production Resend secrets exist as enabled version-1 Secret Manager values. Answerlattice QA now has its signing secret, scoped inbound webhook deployment, and an independently restricted sending key stored as a sensitive Vercel custom-`qa` variable and enabled Secret Manager version 1. The transfer used standard input and did not display or persist the value in the repository. Approved deployment `dpl_BdKiiGMKCR5hsdpLywDTTn1PqBLf` reached READY in custom environment `qa` from exact certified commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`, activating server-side key availability on both Canonica aliases. Provider certification and every outbound-send activation remain separately gated.

@@ -99,7 +99,13 @@ The following was verified on August 21, 2026:
   key is now stored as a sensitive value only in Vercel custom `qa` and as
   enabled Secret Manager version 1 in `neelvara-answerlattice-qa`; it was
   transferred through standard input without display or repository persistence.
-  `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND` remains `false`.
+  Approved redeployment `dpl_BdKiiGMKCR5hsdpLywDTTn1PqBLf` reached READY in
+  custom environment `qa` from the same certified staging commit
+  `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Both Canonica hosts serve the
+  redeployment with Answerlattice identity and QA crawler isolation. The
+  sensitive sending key is therefore available to the hosted QA runtime, but
+  `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND` remains `false`; no email was
+  sent and controlled delivery certification remains open.
 - Google OAuth parity is now an approved core setup requirement. The shared
   NextAuth session implementation keeps the same `google` provider, identity
   scopes, callback path, account validation, and separate Answerlattice
