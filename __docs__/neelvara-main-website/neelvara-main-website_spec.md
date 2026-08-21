@@ -26,6 +26,13 @@ Therefore the Neelvara website is implemented as a static public site inside the
 
 ## 2. Goal
 
+The approved umbrella brand system is:
+
+- Tagline: `The trusted information layer between businesses and customers.`
+- Supporting line: `Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.`
+
+The tagline is positioning language only. It must not be presented as a certification, audit, uptime commitment, or product-security guarantee.
+
 Create a small public website that answers five questions:
 
 1. What is Neelvara Systems?
@@ -33,6 +40,8 @@ Create a small public website that answers five questions:
 3. How is it related to MenuList and Answerlattice?
 4. How can someone contact the operator?
 5. Where can someone find basic legal, privacy, and terms information?
+
+The `/trust` page extends this reference path with a factual verification ledger. It identifies published sources and product-specific boundaries without asserting certifications, formal entity evidence, uptime, or security controls that have not been reviewed.
 
 The website succeeds when a visitor can verify the operating company behind the current product lineup without being invited into a second sales flow.
 
@@ -99,7 +108,7 @@ The site should not optimize for:
 
 ### Approved Positioning
 
-Neelvara Systems operates software infrastructure for customer-facing business information.
+Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
 
 Use this long-form positioning internally and in public copy where appropriate:
 
@@ -136,6 +145,7 @@ unless the legal structure changes and legal/CA review approves the wording.
 | `/products` | Shows approved products in the lineup | Yes | No unapproved placeholder cards |
 | `/about` | Explains operating focus and boundaries | Yes | No founder bio required |
 | `/contact` | Email-based contact paths | Yes | No form in v1 |
+| `/trust` | Company verification ledger and source boundaries | Yes | Footer-level reference; no invented certifications or security claims |
 | `/legal` | Basic operating identity and links to policies | Yes | No GSTIN/PAN/address unless approved |
 | `/privacy` | Company website privacy policy | Yes | Company website only |
 | `/terms` | Company website terms | Yes | Company website only |
@@ -222,6 +232,9 @@ Required:
 - Open Graph defaults
 - Organization JSON-LD on the home page
 - Website JSON-LD on the home page
+- `llms.txt` with explicit when-to-use, product-boundary, and no-action guidance
+- `Accept: text/markdown` homepage representation with `Vary: Accept, Accept-Encoding`
+- Markdown recovery guidance for unknown paths requested as Markdown while preserving HTTP `404`
 - Exact spelling: `Neelvara Systems`
 - Exact operated-product relationship line on Products and Legal
 

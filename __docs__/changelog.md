@@ -1,5 +1,32 @@
 # MenuList — Changelog
 
+## August 22, 2026 - Neelvara Agent-Readable Discovery Hardening
+
+- Recorded Neelvara's first public Is Agentic baseline at 73/100 and classified each finding against the static operating-company boundary.
+- Added a Neelvara-specific `llms.txt`, explicit homepage Markdown negotiation with cache-safe `Vary` behavior, and a Markdown recovery body that retains a real HTTP 404.
+- Preserved the existing HTML site, product boundaries, security headers, tenant routing, no-API/no-MCP/no-form posture, and legal rule against publishing an unapproved address.
+- No Vercel deployment or public rescan was performed as part of the source change.
+
+## August 20, 2026 - Public Website Presentation Refinement
+
+- Applied the reviewed Lucidream reference selectively across the MenuList, AnswerLattice, and Neelvara first folds while retaining the three distinct brand systems and product boundaries.
+- MenuList now uses a contained solid floating header, a more focused hero proof stage, and a compact output rail; AnswerLattice uses a contained Verdigris glass header, capability rail, and stronger motion-proof frame; Neelvara gives its unframed source mark more desktop space and a compact mobile presentation.
+- Preserved existing routes, localized copy, metadata, product claims, reduced-motion behavior, keyboard focus, static/Firebase boundaries, and dependencies. No auto-rotating tabs, faded required text, unsupported outcome metrics, or Vercel deployment was added.
+
+## August 20, 2026 - Cross-Product Brand Tagline Synchronization
+
+- Synchronized the approved Neelvara, MenuList, and AnswerLattice tagline system across canonical public-site copy, metadata, generated Neelvara social assets, AnswerLattice agent-readable context, and maintained website documentation.
+- Kept the wording bounded to owner-approved public information and reviewed support knowledge; no permanent-availability, universal-answer-control, automatic-publishing, or external-platform-sync claim was added.
+- Refined the MenuList hero, Features hero, source-to-output workflow, How It Works flow, and footer across all eight advertised website locales; shortened the visible AnswerLattice hero and separated its footer hierarchy; and made Neelvara's two-product architecture explicit without changing product runtime or metadata discovery scope.
+- The final multilingual cross-check removed legacy `live in 10 minutes`, all-surfaces, no-extra-work, no-ongoing-work, and automatic-distribution wording from setup statistics, workflow steps, FAQ answers, change-handling headings, surface descriptions, and CTA captions; verifier coverage now rejects those regressions in every advertised locale.
+
+## August 20, 2026 - Neelvara Trust & Verification Reference
+
+- Added the footer-linked `/trust` page to the Neelvara static company website.
+- Added a maintained status ledger for company identity, operated products, company-site privacy/terms, security contact discovery, product-specific controls, and pending legal evidence.
+- Kept the page within the quiet operating-company boundary: no certification, uptime, security-control, API, form, analytics, Firebase, or product-funnel claims were added.
+- Updated Neelvara route, sitemap, website, marketing, help, mobile, implementation, and test documentation.
+
 ## August 16, 2026 - MenuList Production Sentry Project Prepared
 
 - Created an isolated Next.js Sentry project named `menulist-prod` beside the

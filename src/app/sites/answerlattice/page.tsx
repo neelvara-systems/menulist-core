@@ -33,7 +33,11 @@ import {
     ANSWERLATTICE_OWNER_DECISION_ASSET,
     ANSWERLATTICE_PRODUCT_AREA_ASSETS,
 } from './answerlatticeWebsiteAssets';
-import { ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE } from './siteConfig';
+import {
+    ANSWERLATTICE_SITE_DESCRIPTION,
+    ANSWERLATTICE_SITE_TITLE,
+    ANSWERLATTICE_TAGLINE,
+} from './siteConfig';
 
 export const metadata: Metadata = {
     title: ANSWERLATTICE_SITE_TITLE,
@@ -517,9 +521,12 @@ function getHeroWordStyle(index: number): CSSProperties {
 
 function HomepageHero({ basePath }: { basePath: string }) {
     return (
-        <section className="relative overflow-hidden px-4 pb-14 pt-24 sm:px-6 lg:pt-32">
-            <div className="mx-auto max-w-7xl">
+        <section className="al-home-hero relative overflow-hidden px-4 pb-14 pt-24 sm:px-6 lg:pt-32">
+            <div className="al-home-hero__inner mx-auto max-w-7xl">
                 <div className="mx-auto max-w-6xl text-center">
+                    <p className="mb-3 text-sm font-semibold tracking-wide text-teal-200">
+                        {ANSWERLATTICE_TAGLINE}
+                    </p>
                     <p className="al-home-hero__eyebrow mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Scattered product knowledge into structured support
                     </p>
@@ -558,7 +565,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-4xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        AnswerLattice turns scattered docs, tickets, release notes, screenshots, recordings, owner notes, and repeated replies into reviewed support knowledge for your in-app widget, hosted help center, documentation, FAQs, changelog, and future AI-agent context. Approved answers come first; missing coverage becomes a ticket and review work.
+                        Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces. Approved answers come first; missing coverage becomes visible review work.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -582,7 +589,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                     </div>
                 </div>
 
-                <div className="al-home-hero__chips mx-auto mt-7 flex max-w-4xl flex-wrap justify-center gap-2">
+                <div className="al-home-hero__chips al-home-hero__capability-rail mx-auto mt-7 flex max-w-4xl flex-wrap justify-center gap-2" aria-label="Included support surfaces">
                     {HERO_CHIPS.map((chip) => (
                         <span key={chip} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-[#a0a0c0]">
                             {chip}
@@ -590,7 +597,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                     ))}
                 </div>
 
-                <div className="al-home-hero__image mx-auto mt-12 max-w-6xl" data-answerlattice-visual-slot="home.hero.product-loop">
+                <div className="al-home-hero__image al-home-hero__stage mx-auto mt-12 max-w-6xl" data-answerlattice-visual-slot="home.hero.product-loop">
                     <AnswerlatticeMotionAsset
                         asset={ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION}
                         assetSlotId="answerlattice.home.hero.support-control-motion"

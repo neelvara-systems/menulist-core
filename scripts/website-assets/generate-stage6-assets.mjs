@@ -587,18 +587,35 @@ function drawHeroComposite() {
 }
 
 function drawOgImage() {
-  const { canvas, ctx } = makeCanvas(1200, 630, '#f8fbff');
+  const { canvas, ctx } = makeCanvas(1200, 630, '#070714');
+  ctx.fillStyle = 'rgba(96, 165, 250, 0.12)';
+  for (let y = 6; y < 630; y += 64) {
+    for (let x = 6; x < 1200; x += 64) {
+      dot(ctx, x, y, 'rgba(96, 165, 250, 0.12)', 2);
+    }
+  }
+  const rightGlow = ctx.createRadialGradient(978, 116, 0, 978, 116, 258);
+  rightGlow.addColorStop(0, 'rgba(29, 78, 216, 0.48)');
+  rightGlow.addColorStop(1, 'rgba(29, 78, 216, 0)');
+  ctx.fillStyle = rightGlow;
+  ctx.fillRect(720, 0, 480, 374);
+  const leftGlow = ctx.createRadialGradient(170, 535, 0, 170, 535, 220);
+  leftGlow.addColorStop(0, 'rgba(14, 116, 144, 0.28)');
+  leftGlow.addColorStop(1, 'rgba(14, 116, 144, 0)');
+  ctx.fillStyle = leftGlow;
+  ctx.fillRect(0, 315, 390, 315);
   logoMark(ctx, 70, 62, 48);
-  text(ctx, 'MenuList', 132, 70, { size: 25, weight: 800, color: C.ink });
-  text(ctx, 'One official customer link for menus and services.', 70, 150, {
+  text(ctx, 'MenuList', 132, 70, { size: 25, weight: 800, color: '#f8fafc' });
+  text(ctx, 'The official customer-facing version of your business.', 70, 150, {
     size: 48,
     weight: 800,
+    color: '#f8fafc',
     maxWidth: 510,
     lineHeight: 56,
   });
-  text(ctx, 'Start from a menu, service list, price list, or catalogue. Review before publishing. Use one current link for QR, WhatsApp, Instagram and print.', 72, 350, {
+  text(ctx, 'Publish your menu, hours, links, and business information from one owner-approved source.', 72, 390, {
     size: 20,
-    color: C.muted,
+    color: '#cbd5e1',
     maxWidth: 505,
     lineHeight: 29,
   });
@@ -610,9 +627,22 @@ function drawOgImage() {
     ],
   });
   drawServiceListPhone(ctx, 922, 64, 220, 540);
-  pill(ctx, 'Review before publishing', 70, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
-  pill(ctx, 'QR and customer link included', 285, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
-  pill(ctx, 'No desktop required', 530, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
+  pill(ctx, 'Owner-approved source', 70, 520, {
+    fill: C.white,
+    stroke: '#bfdbfe',
+    color: C.ink,
+    size: 16,
+    padX: 16,
+    padY: 9,
+  });
+  pill(ctx, 'QR and customer link included', 310, 520, {
+    fill: C.white,
+    stroke: '#bfdbfe',
+    color: C.ink,
+    size: 16,
+    padX: 16,
+    padY: 9,
+  });
   return canvas;
 }
 

@@ -49,10 +49,10 @@ const normalizeCursor = (value: string): string => {
 async function run(): Promise<void> {
     const requestedProjectId = getArg('project-id').trim();
     if (!requestedProjectId) {
-        throw new Error('Pass --project-id=<answerlattice-qa|answerlattice> before running the signal TTL backfill.');
+        throw new Error('Pass --project-id=<neelvara-answerlattice-qa|neelvara-answerlattice-prod> before running the signal TTL backfill.');
     }
-    if (!['answerlattice-qa', 'answerlattice'].includes(requestedProjectId)) {
-        throw new Error('--project-id must be answerlattice-qa or answerlattice.');
+    if (!['neelvara-answerlattice-qa', 'neelvara-answerlattice-prod'].includes(requestedProjectId)) {
+        throw new Error('--project-id must be neelvara-answerlattice-qa or neelvara-answerlattice-prod.');
     }
     const apply = process.argv.includes('--apply');
     if (apply && getArg('confirm-project').trim() !== requestedProjectId) {

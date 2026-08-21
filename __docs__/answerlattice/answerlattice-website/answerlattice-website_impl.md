@@ -4,6 +4,20 @@
 > **Last Updated:** 2026-08-14
 > **Audience:** Developers
 
+## August 20, 2026 Focused Presentation Refinement
+
+- Reframed the fixed public header as a contained Verdigris glass shell without changing its routes, dropdowns, actions, theme switcher ownership, or mobile drawer behavior.
+- Consolidated the homepage support-surface chips into one readable capability rail and strengthened the existing motion asset as the single first-fold proof stage.
+- Kept the dark Verdigris identity, approved-answer-first doctrine, static website boundary, reduced-motion behavior, and Light/System/Dark tokens intact; no Lucidream palette, auto-rotating tab behavior, unsupported result claim, Firebase operation, or dependency was introduced.
+
+## August 20, 2026 Brand Tagline Synchronization
+
+- Added `src/constants/answerlattice/website.ts` as the canonical source for the bounded public tagline and supporting line.
+- Used the tagline in the homepage hero and the supporting line in the footer and generated agent-readable `llms.txt`/`llms-full.txt` context.
+- Shortened the visible homepage description to the buyer-facing transformation while retaining the fuller source inventory in metadata and discovery context.
+- Split the footer into category, canonical tagline, and supporting-description rows so each layer has a clear presentation job.
+- Kept the approved-answer-first retrieval story, fallback boundary, and human-review contract unchanged.
+
 ---
 
 ## August 14, 2026 Proof-Before-Plan Onboarding
@@ -93,7 +107,11 @@ No Firestore rule, index, Storage rule, Cloud Function, collection, listener, pr
 
 AnswerLattice is the public product brand for this surface. Internal code paths, dashboard routes, constants, and file names may continue using the lowercase `answerlattice` slug or `Answerlattice*` component identifiers until a separate tested runtime migration is planned.
 
-Production canonical URLs use `https://answerlattice.com`. `https://answerlattice.menulist.online` remains the Vercel Preview / QA host in deployment-domain routing and must not be promoted to production canonical copy without a deployment-target change. Legacy Canonica public hosts are redirected by middleware to the active AnswerLattice public target so crawlers do not see two public brands for the same product.
+Production canonical URLs use `https://answerlattice.com`. `https://canonica.app`
+and `https://www.canonica.app` are assigned only to the custom Vercel `qa`
+environment. Middleware keeps both QA hosts noindex, serves a disallow-all
+`robots.txt`, and returns no sitemap so the QA brand surface cannot compete
+with the production canonical host.
 
 `src/content/answerlatticePublic/` is the shared public-content registry for this release. `src/app/sites/answerlattice/publicContent.ts` remains as a compatibility re-export so existing public pages can keep stable imports while the content source is separated from route code. The module stores:
 
@@ -415,7 +433,7 @@ All product domains are registered here. The middleware reads the hostname and r
 
 ```
 answerlattice.com/*  →  middleware  →  /sites/answerlattice/*        (production)
-answerlattice.menulist.online/*   →  middleware  →  /sites/answerlattice/*        (Vercel Preview / QA)
+canonica.app/*   →  middleware  →  /sites/answerlattice/*        (Vercel custom QA)
 localhost/__answerlattice/*  →  middleware  →  /sites/answerlattice/*  (dev only)
 ```
 
@@ -426,7 +444,7 @@ Product-host `/` and `/home` requests both rewrite to `/sites/answerlattice`, th
 **File:** `src/middleware.ts`
 
 Priority order:
-1. Active product website domains (QA answerlattice.menulist.online / production answerlattice.com → /sites/answerlattice)
+1. Active product website domains (QA canonica.app / production answerlattice.com → /sites/answerlattice)
 2. Dev path prefixes (/__answerlattice → /sites/answerlattice) — local dev only
 3. Client tenant domains (*.client-domain.example → /_client)
 4. Platform domain (platform.example → (website) route group)
@@ -520,7 +538,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 ### Prerequisites
 1. Add `answerlattice.com` domain to Vercel project dashboard
 2. Configure DNS for answerlattice.com pointing to Vercel
-3. Keep `public/answerlattice-og-image.png`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and AnswerLattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. `public/answerlattice-logo.svg` is the design-final canonical source and must not be redrawn, recolored, reshaped, or simplified; the exported black canvas/frame is removed so the SVG behaves like a transparent mark. Splash, OpenGraph, and loader surfaces own their backgrounds separately. Header, footer, diagrams, dashboard navigation, server loaders, and global loaders use the shared `AnswerlatticeLogoMark` inline SVG-path atom so UI renders the exact canonical geometry/colors while loader classes only animate the path strokes.
+3. Keep `public/answerlattice-og-image.png`, `public/answerlattice-og-image.svg`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and AnswerLattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. The OpenGraph PNG/SVG artwork renders the approved governed-source tagline and supporting line. `public/answerlattice-logo.svg` is the design-final canonical source and must not be redrawn, recolored, reshaped, or simplified; the exported black canvas/frame is removed so the SVG behaves like a transparent mark. Splash, OpenGraph, and loader surfaces own their backgrounds separately. Header, footer, diagrams, dashboard navigation, server loaders, and global loaders use the shared `AnswerlatticeLogoMark` inline SVG-path atom so UI renders the exact canonical geometry/colors while loader classes only animate the path strokes.
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)

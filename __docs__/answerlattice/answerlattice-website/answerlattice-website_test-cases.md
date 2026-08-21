@@ -4,6 +4,8 @@
 
 ## Automated Source Gate
 
+The public copy gate must also preserve the exact bounded tagline `The governed source behind customer answers.` and reject absolute variants such as `The source of truth behind every customer answer.`
+
 Run:
 
 ```bash

@@ -47,6 +47,7 @@
 | CNT-07 | GST/PAN/address | Not displayed unless approved |
 | CNT-08 | Product links | Products page links to MenuList and Answerlattice canonical production URLs only |
 | CNT-09 | Public copy audit | No placeholders, hype claims, forbidden AI language, unsupported company-status claims, or inactive product names |
+| CNT-10 | Trust boundary | Trust page distinguishes published/current/product-specific/pending-review references and does not invent certifications or security guarantees |
 
 ---
 
@@ -83,6 +84,10 @@
 | SEO-10 | Open Graph image | Neelvara pages expose `public/neelvara-og-image.png` in metadata |
 | SEO-11 | Security contact discovery | `/.well-known/security.txt` returns a static security contact file |
 | SEO-12 | `/nv` alias indexing | `/nv` alias responses carry `X-Robots-Tag: noindex, nofollow` |
+| SEO-13 | Trust canonical | `/trust` exposes a canonical URL and appears once in the sitemap |
+| SEO-14 | Agent context | `/llms.txt` names the correct company/product boundary, when-to-use guidance, canonical pages, and no-action boundary |
+| SEO-15 | Markdown negotiation | Homepage requests with `Accept: text/markdown` return Markdown plus `Vary: Accept, Accept-Encoding`; ordinary HTML requests remain unchanged |
+| SEO-16 | Agent-friendly 404 | Unknown Markdown requests return a non-reflective Markdown recovery body with HTTP `404` and links to home, `llms.txt`, and sitemap |
 
 ---
 
@@ -94,6 +99,7 @@
 | VIS-02 | Selective glass primitive | Navigation, product cards, and primary actions use restrained glass/gradient treatment; policy and contact rows remain unframed and readable |
 | VIS-03 | No product-funnel import | SaaS pricing/customer/testimonial sections are not copied as-is |
 | VIS-04 | Home section order | Brand-first hero, entity ledger, operating approach, relationship statement, product lineup, contact routes, footer |
+| COPY-01 | Brand tagline system | Neelvara homepage and generated social card use the approved umbrella tagline; product cards use the approved MenuList and Answerlattice taglines without absolute promises |
 | VIS-05 | Homepage transition | Hero flows directly into the entity ledger without a decorative or duplicate company-reference panel |
 | VIS-06 | CTA contrast | Solid CTA text remains white and readable in normal, visited, and focus states over the supplied blue-to-violet gradient |
 | VIS-07 | Akshar typography | Neelvara content, navigation, buttons, cards, footer, and legal text resolve to Akshar with Inter/system fallback |
@@ -105,6 +111,7 @@
 | VIS-13 | Cross-page grid fit | Every repeated-item layout uses the current item count without empty tracks; the two-product detail grid uses two columns and collapses to one column on mobile |
 | VIS-14 | No duplicate summary UI | Home has no comparison table or repeated final CTA; Products has no product map; secondary heroes have no right-side summary card |
 | VIS-15 | Company-first hierarchy | The homepage H1 is `Neelvara Systems`; the company identity appears before category explanation or product detail |
+| VIS-16 | Trust ledger | Trust page opens with a readable status ledger, links to published sources, and keeps policy rows unframed |
 
 ---
 
@@ -119,6 +126,7 @@
 | MOB-05 | Footer legal links | Legal/privacy/terms visible on mobile |
 | MOB-06 | Collapsed mobile navigation | Products, About, and Contact remain reachable through the 44px menu control |
 | MOB-07 | Secondary information rows | About, Legal, Privacy, and Terms rows collapse to one column without clipped list content or excessive empty space |
+| MOB-08 | Trust status rows | Trust ledger and status labels collapse to one column at 320px-390px without overflow |
 | A11Y-01 | Keyboard nav | Header, CTAs, and footer links reachable |
 | A11Y-02 | Focus states | Browser focus indicator remains visible |
 | A11Y-03 | Semantic headings | One H1 per page, logical heading order |

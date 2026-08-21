@@ -20,6 +20,8 @@ export {
     NEELVARA_SITE_DESCRIPTION,
     NEELVARA_SITE_TITLE,
     NEELVARA_SITE_URL,
+    NEELVARA_SUPPORTING_LINE,
+    NEELVARA_TAGLINE,
     NEELVARA_TRADE_NAME,
     buildNeelvaraUrl,
 } from '@constant/neelvara/website';

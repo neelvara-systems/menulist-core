@@ -54,6 +54,14 @@ import {
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import { normalizeRequestAuthority } from '@lib/routing/hostAuthority';
 import {
+    NEELVARA_MARKDOWN_CONTENT_TYPE,
+    NEELVARA_MARKDOWN_VARY,
+    acceptsNeelvaraMarkdown,
+    isKnownNeelvaraDiscoveryPath,
+    renderNeelvaraHomepageMarkdown,
+    renderNeelvaraNotFoundMarkdown,
+} from '@lib/seo/neelvaraAgentReadiness';
+import {
     MYCODEX_LOGIN_PATH,
     MYCODEX_PRODUCT_SLUG,
     MYCODEX_ROBOTS_TAG,
@@ -281,6 +289,40 @@ function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: stri
 
 function buildNeelvaraWebsiteRewritePath(basePath: string, publicPath: string): string {
     return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
+}
+
+function buildNeelvaraAgentMarkdownResponse(
+    request: NextRequest,
+    publicPath: string,
+    productConfig: ProductDomainConfig,
+    basePath = '',
+): NextResponse | null {
+    if (!acceptsNeelvaraMarkdown(request)) return null;
+
+    const isHomepage = publicPath === '/' || publicPath === '/home';
+    if (!isHomepage && isKnownNeelvaraDiscoveryPath(publicPath)) return null;
+
+    const status = isHomepage ? 200 : 404;
+    const response = new NextResponse(
+        isHomepage ? renderNeelvaraHomepageMarkdown() : renderNeelvaraNotFoundMarkdown(),
+        {
+            status,
+            headers: {
+                'Content-Type': NEELVARA_MARKDOWN_CONTENT_TYPE,
+                'Content-Language': 'en',
+                'Cache-Control': status === 200
+                    ? 'public, max-age=3600, s-maxage=86400'
+                    : 'no-store, max-age=0',
+                'Vary': NEELVARA_MARKDOWN_VARY,
+            },
+        },
+    );
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    if (basePath) response.headers.set('x-product-base-path', basePath);
+    if (basePath === '/nv') response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
+    return response;
 }
 
 function rewriteWithProductHeaders(
@@ -872,6 +914,15 @@ export async function proxy(request: NextRequest) {
         const aliasMatch = resolveMyCodexProductAliasPath(pathname);
         if (aliasMatch) {
             const { product, basePath, strippedPath } = aliasMatch;
+            if (product.id === 'neelvara') {
+                const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                    request,
+                    strippedPath,
+                    product,
+                    basePath,
+                );
+                if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
+            }
             const url = request.nextUrl.clone();
 
             if (product.id === 'answerlattice') {
@@ -912,6 +963,15 @@ export async function proxy(request: NextRequest) {
             if (authResponse) {
                 return applySecurityHeaders(request, authResponse);
             }
+        }
+
+        if (productConfig.id === 'neelvara') {
+            const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                request,
+                pathname,
+                productConfig,
+            );
+            if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
         }
 
         if (productConfig.id === 'answerlattice') {
@@ -981,6 +1041,16 @@ export async function proxy(request: NextRequest) {
                 if (authResponse) {
                     return applySecurityHeaders(request, authResponse);
                 }
+            }
+
+            if (product.id === 'neelvara') {
+                const markdownResponse = buildNeelvaraAgentMarkdownResponse(
+                    request,
+                    strippedPath,
+                    product,
+                    product.devPathPrefix,
+                );
+                if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
             }
 
             const url = request.nextUrl.clone();

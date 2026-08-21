@@ -97,6 +97,7 @@ export default function NeelvaraProductsPage() {
                                     <h2 className="serif">{product.name}</h2>
                                 </div>
                             </div>
+                            <p className="nv-product-detail-tagline">{product.tagline}</p>
                             <p>{product.summary}</p>
                             <ul className="nv-product-focus-list">
                                 {PRODUCT_FOCUS[product.name].map((item) => (

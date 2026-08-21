@@ -642,7 +642,7 @@ The GitHub adapter keeps the fixed `https://api.github.com` provider host and UR
 
 `functions-answerlattice/src/index.ts` keeps the deployed `processIntegrationEvent` trigger and still passes the raw event ID to `processEvent()` because Firestore document lookup requires it. Runtime breadcrumbs now log event ID presence/length metadata instead of raw event IDs when an integration event starts and completes processing.
 
-The trigger timeout is 240 seconds, platform retry is enabled, and the function declares `ANSWERLATTICE_SMTP_HOST`, `ANSWERLATTICE_SMTP_PORT`, `ANSWERLATTICE_SMTP_USER`, and `ANSWERLATTICE_SMTP_PASS` through `ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS`. An unexpected invocation failure attempts to move an exact claimed event to `failed` before rethrowing; a retry cannot reclaim an event that already advanced beyond `pending`.
+The trigger timeout is 240 seconds and platform retry is enabled. SMTP secrets are declared through `ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS` only when the operator runs the provider-function deployment with `ANSWERLATTICE_BIND_OPTIONAL_PROVIDER_SECRETS=true` and the real Firebase secrets already exist. Core deployments leave that flag unset, bind no optional SMTP, Resend, or WhatsApp secrets, and do not deploy those provider exports. This prevents Firebase's whole-manifest analyzer from requiring fake credentials while provider delivery remains disabled and fail-closed. An unexpected invocation failure attempts to move an exact claimed event to `failed` before rethrowing; a retry cannot reclaim an event that already advanced beyond `pending`.
 
 ### Delivery Identity and Payload Boundaries
 

@@ -38,6 +38,12 @@ The public acquisition flow is admitted only when all of these remain coherent:
 
 ## Purpose
 
+Approved brand framing:
+
+- Tagline: `The governed source behind customer answers.`
+- Supporting line: `Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.`
+- Guardrail: do not expand this into `every customer answer`, universal answer control, automatic publishing, or helpdesk replacement.
+
 Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as a reviewed support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
 
 The first-use path remains optimized for a solo technical founder. Deeper pages may show how the same product supports a small team or a bounded product/support/engineering group inside a growing company. This progression must be taught as optional operating guidance, not as product modes, maturity scoring, or enterprise-readiness proof.
@@ -64,9 +70,11 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 - Public product name: `AnswerLattice`
 - Internal route/code slug: `answerlattice` unless a separate tested runtime migration changes it
 - Production canonical host: `answerlattice.com`
-- Preview / QA host: `answerlattice.menulist.online`
+- Preview / QA hosts: `canonica.app`, `www.canonica.app`
 - Local dev prefix: `/__answerlattice`
-- Legacy Canonica public hosts must redirect to the active AnswerLattice public host instead of serving duplicate public brand content.
+- Canonica hosts are private Answerlattice QA surfaces only. They must be
+  noindex, disallow all crawlers, publish no sitemap, and never be assigned to
+  Vercel Production.
 - Public copy, metadata, OpenGraph, Twitter cards, schema, header, footer, resources, comparison pages, developer docs, robots, sitemap, and LLM context must use `AnswerLattice` as the standalone brand.
 - `Canonica` may remain only in internal historical docs, migration notes, or code names where renaming is not part of the tested runtime plan; it must not appear in rendered public AnswerLattice site copy.
 
@@ -582,7 +590,7 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | AnswerLattice - Governed Support Layer for SaaS Products | AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, and replies into reviewed support for your widget, help center, FAQs, and fallback. |
+| `/` | AnswerLattice - Governed Support Layer for SaaS Products | AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents. |
 | `/product` | Product \| AnswerLattice | One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
 | `/product/launch-setup` | Set Up Support \| AnswerLattice | Create an AnswerLattice workspace, add team access, import starter knowledge, map product pages, and verify the widget before launch. |
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |

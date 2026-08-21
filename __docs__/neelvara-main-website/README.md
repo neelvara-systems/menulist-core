@@ -29,6 +29,7 @@ Build Neelvara inside the existing Next.js/Vercel product-site architecture:
 - no `PRODUCT_IDS` entry
 - no Firebase project
 - no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
+- footer-level `/trust` reference for company identity, operated-product boundaries, website data scope, evidence status, and verification routes
 - optional public contact email env keys only: `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL`
 - no Neelvara-owned browser preference storage is required in v1
 - restrained Prism-influenced visual system applied only to presentation: ice-white canvas, deep navy text, the supplied blue-to-violet Neelvara loop mark, a fixed low-contrast mesh, subtle grain, selective glass on navigation and product surfaces, and unframed factual information rows; no product funnel behavior added
@@ -84,8 +85,10 @@ Validation completed:
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
 - Neelvara contact, legal, and privacy email addresses are read from optional public env-backed constants with current address fallbacks
 - current Neelvara relayout route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
+- Trust & Verification page added as a static, footer-linked company reference without certifications, uptime claims, or invented controls
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
 - Open Graph image and `.well-known/security.txt` are present for the company website
+- `llms.txt`, homepage Markdown negotiation, and Markdown 404 recovery expose the same bounded company/product truth to agents without adding an action surface
 - `/nv` internal alias responses are marked `noindex, nofollow`; `https://neelvara.com` remains canonical
 - no cookie banner, browser preference storage, analytics, forms, auth, Firebase, or API routes are mounted for Neelvara
 

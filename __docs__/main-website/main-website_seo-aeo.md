@@ -94,8 +94,8 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
-| Global fallback | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
+| Homepage       | Publish your menu, hours, links, and business information from one owner-approved source. |
+| Global fallback | Publish your menu, hours, links, and business information from one owner-approved source. |
 | Features       | See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health. |
 | Analytics      | MenuList shows today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard. |
 | WhatsApp Onboarding | Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link. |
@@ -370,7 +370,7 @@ Agent boundaries:
 />
 <meta
   property="og:description"
-  content="Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks."
+  content="Publish your menu, hours, links, and business information from one owner-approved source."
 />
 <meta property="og:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 <meta property="og:url" content="https://menulist.ai" />
@@ -385,7 +385,7 @@ Agent boundaries:
 />
 <meta
   name="twitter:description"
-  content="Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks."
+  content="Publish your menu, hours, links, and business information from one owner-approved source."
 />
 <meta name="twitter:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 ```

@@ -220,8 +220,6 @@ export default function Header() {
           position: "sticky",
           top: 0,
           zIndex: 50,
-          backgroundColor: "var(--ws-bg-primary)",
-          borderBottom: "1px solid var(--ws-border-default)",
         }}
       >
         <nav

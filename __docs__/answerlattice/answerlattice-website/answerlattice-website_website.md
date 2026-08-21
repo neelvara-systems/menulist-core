@@ -27,6 +27,12 @@ Public pages must not duplicate plan amounts, private dashboard routes, or provi
 
 ## Homepage Front Door
 
+The public product tagline is `The governed source behind customer answers.` The supporting line is `Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.` Use these as brand-level framing above the existing founder-first hero, not as a replacement for the implemented approved-answer, fallback, and review-loop proof.
+
+The visible homepage description is intentionally shorter: `Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces. Approved answers come first; missing coverage becomes visible review work.` Keep the longer transformation wording in metadata where it supports discovery, rather than repeating the full inventory in the first fold.
+
+The footer must present three separate levels: the reviewed-support-layer category, the canonical tagline, and the supporting description. Do not collapse them into one dense paragraph.
+
 The compressed homepage must communicate one transformation before it explains internal product systems:
 
 `scattered founder knowledge -> reviewed support structure -> familiar support destinations -> owner-approved official guidance`

@@ -32,7 +32,7 @@ export default function HeroSection() {
 
   return (
     <section
-      className="ws-hero-official"
+      className="ws-hero-official ws-hero-official--showcase"
       style={{
         padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-18)',
         backgroundColor: 'var(--ws-bg-primary)',
@@ -41,6 +41,7 @@ export default function HeroSection() {
       <div className="ws-container">
         <div className="ws-hero-official__grid">
           <AnimateOnScroll preset="hero" className="ws-hero-official__copy">
+            <p className="ws-hero-tagline">{t('Hero.tagline')}</p>
             <p className="ws-hero-eyebrow">{t('Hero.eyebrow')}</p>
             <Link href="/ai-menu-manager" className="ws-hero-amm-teaser">
               <LuBot size={16} aria-hidden="true" />
@@ -56,7 +57,7 @@ export default function HeroSection() {
               <span className="ws-hero-official__phrase">{t('Hero.titlePart2')}</span>
             </WebsiteHeadline>
 
-            <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '620px' }}>
+            <p className="ws-body ws-hero-official__description">
               {t('Hero.subtitle')}
             </p>
 
@@ -69,7 +70,7 @@ export default function HeroSection() {
               </WebsiteButton>
             </div>
 
-            <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
+            <p className="ws-caption ws-hero-official__caption">
               {t('Hero.caption')}
             </p>
 

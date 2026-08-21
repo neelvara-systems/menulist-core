@@ -4409,8 +4409,8 @@
       "featureAiMenuManagerDesc": "अनुमोदन कार्ड के साथ, संदेश द्वारा अपनी सूची अपडेट करें।"
     },
     "Footer": {
-      "tagline": "आपके मेनू, सेवाओं और व्यावसायिक विवरण के लिए एक स्वीकृत ग्राहक लिंक।",
-      "sourceLine": "MenuList ग्राहकों द्वारा उपयोग किए जाने वाले प्रत्येक लिंक, QR और मुद्रित सामग्री के पीछे आपकी स्वीकृत सूची रखता है।",
+      "tagline": "आपके business का official customer-facing version.",
+      "sourceLine": "MenuList अपने customer links, QR files और print materials को आपकी approved list से connected रखता है।",
       "ctaEyebrow": "आपकी सूची तैयार होते ही हम भी तैयार हैं",
       "ctaTitle": "एक विश्वसनीय ग्राहक लिंक ऑनलाइन डालें।",
       "ctaBody": "आपके पास पहले से मौजूद मेनू, मूल्य सूची, कैटलॉग या सेवा सूची से शुरुआत करें। MenuList ग्राहक-सामना करने वाला संस्करण तैयार करता है और उसके आसपास लिंक और सामग्री रखता है।",
@@ -4489,11 +4489,12 @@
       "cta": "All resources खोलें"
     },
     "Hero": {
-      "eyebrow": "One approved list. हर customer link.",
+      "tagline": "आपके business का official customer-facing version.",
+      "eyebrow": "One approved list. Customer links aligned रहें.",
       "titlePart1": "अपने current menu या service list को बनाएं",
       "titleHighlight": "अपना official customer link.",
       "titlePart2": "",
-      "subtitle": "Clear photo या owned public menu, service-list, image या PDF link से शुरू करें। MenuList customer-facing version review के लिए prepare करता है और हर public surface को approved source से connected रखता है।",
+      "subtitle": "Clear photo या owned public menu, service-list, image या PDF link से शुरू करें। MenuList इसे review के लिए prepare करता है, फिर supported MenuList public outputs को आपके approved version से connected रखता है।",
       "cta": "Customer link बनाएं →",
       "ctaAria": "अपना official customer link बनाएं",
       "secondaryCta": "Example customer page देखें",
@@ -6571,8 +6572,8 @@
     },
     "Workflow": {
       "eyebrow": "List से customer link तक",
-      "title": "One approved list हर customer link current रखता है।",
-      "highlight": "customer touchpoint",
+      "title": "One approved list supported customer outputs को connected रखता है।",
+      "highlight": "supported customer outputs",
       "pipelinePhoto": "फोटो",
       "pipelinePdf": "PDF",
       "pipelineLink": "मौजूदा link",
@@ -7146,7 +7147,7 @@
     "Features": {
       "heroEyebrow": "Full lifecycle",
       "heroTitle1": "One approved list.",
-      "heroTitle2": "हर customer touchpoint.",
+      "heroTitle2": "Supported outputs connected रहें.",
       "heroSubtitle": "MenuList आपके current menu से start करता है, उसे review के लिए prepare करता है, official customer link publish करता है, QR और print पर place करता है, फिर owner updates, feedback और health checks connected रखता है।",
       "heroCta": "Customer link बनाएं →",
       "cardCta": "Feature देखें",
@@ -7277,7 +7278,7 @@
       "heroHighlight": "काम करता है।",
       "heroSubtitle": "जो menu आपके पास already है, वहीं से start करें। MenuList उसे owner review के लिए prepare करता है, फिर approved version को customer links और pages पर publish करने में मदद करता है।",
       "heroCta": "Customer link बनाएं →",
-      "flowTitle": "एक approved list. हर customer link.",
+      "flowTitle": "One approved list. Supported outputs connected रहें.",
       "flowSubtitle": "एक menu source से start करें, एक बार review करें, फिर QR, links, screens, PDF और official page उसी approved source से publish करें.",
       "flowPhoto": "फोटो",
       "flowPdf": "Public PDF या image link",

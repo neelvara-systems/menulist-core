@@ -25,6 +25,10 @@ import {
     ANSWERLATTICE_WIDGET_SCRIPT_URL,
 } from './constants';
 import { ANSWERLATTICE_RESOURCE_ARTICLES } from '../../../content/answerlatticePublic';
+import {
+    ANSWERLATTICE_SUPPORTING_LINE,
+    ANSWERLATTICE_TAGLINE,
+} from '@constant/answerlattice/website';
 
 export type AnswerlatticeInstallDocKey =
     | 'overview'
@@ -964,7 +968,7 @@ export function renderAnswerlatticeLlmsTxt() {
     return normalizeLines(`
 # AnswerLattice
 
-> AnswerLattice is governed answer infrastructure for SaaS products. These docs help coding agents install the AnswerLattice widget, pass safe page context, respect dashboard route rules, and verify the integration.
+> ${ANSWERLATTICE_TAGLINE} ${ANSWERLATTICE_SUPPORTING_LINE} These docs help coding agents install the AnswerLattice widget, pass safe page context, respect dashboard route rules, and verify the integration.
 
 ## Start here
 
@@ -1004,7 +1008,7 @@ export function renderAnswerlatticeLlmsFullTxt() {
     return normalizeLines(`
 # AnswerLattice - Full Agent Context
 
-> AnswerLattice is the Governed Answer Infrastructure for SaaS Support. This file expands AnswerLattice public product boundaries and the agent install layer for coding agents.
+> ${ANSWERLATTICE_TAGLINE} ${ANSWERLATTICE_SUPPORTING_LINE} This file expands AnswerLattice public product boundaries and the agent install layer for coding agents.
 
 ## Product boundary
 
