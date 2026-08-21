@@ -1,7 +1,7 @@
 # Answerlattice Backup and Recovery Runbook
 
-> **Status:** QA daily schedule active; first ready backup and restore rehearsal pending
-> **Last Updated:** 2026-08-20
+> **Status:** QA daily schedule active; isolated structural restore complete; fixture and separate-service recovery certification pending
+> **Last Updated:** 2026-08-21
 > **Scope:** Answerlattice Firestore managed backups and isolated restore rehearsal
 
 ## Recovery Objective
@@ -12,7 +12,10 @@
 - Restore target: a new `answerlattice-recovery-*` Firestore database only.
 - The default database must never be used as the rehearsal restore target.
 
-These are operating targets, not verified production claims. They become evidence only after the cloud schedule exists, a backup reaches a ready state, an isolated restore completes, and the validation checklist is recorded.
+These are operating targets, not verified production claims. The first QA cloud
+restore met the eight-hour structural target with an observed upper-bound RTO of
+32 minutes 7 seconds. Full recovery certification still requires the content,
+TTL, Storage, and Auth checks below.
 
 ## Boundaries
 
@@ -33,10 +36,11 @@ Firestore managed backups do not cover all Answerlattice recovery requirements:
    - `prod` maps only to `neelvara-answerlattice-prod`.
 4. Keep `ANSWERLATTICE_BACKUP_APPLY` unset during inspection.
 
-This workstation still has no `gcloud` binary. On August 20, 2026, the
-authenticated global Firebase CLI was used to create and read back the QA
-schedule without exposing credentials. The repository helper still requires
-`gcloud` (or Cloud Shell) for a full preflight and isolated restore rehearsal.
+This workstation still has no `gcloud` binary. Firebase CLI `14.15.1` supports
+schedule readback, backup readback, database restore, restored-database status,
+and index readback and was used for the first QA structural rehearsal. The
+repository helper still requires `gcloud` (or Cloud Shell) for its guarded
+preflight workflow and percentage-level operation progress.
 
 ## Read-Only Preflight
 
@@ -89,8 +93,12 @@ Read back on August 20, 2026:
 - schedule resource:
   `projects/neelvara-answerlattice-qa/databases/(default)/backupSchedules/ec353e59-20bc-458e-b79e-a384e093ab07`.
 
-No ready backup existed immediately after schedule creation, so no restore was
-attempted. Do not fabricate a restore target or use `(default)` while waiting.
+The first scheduled backup reached `READY` on August 21, 2026:
+
+- backup resource:
+  `projects/neelvara-answerlattice-qa/locations/nam5/backups/36bebe19-9fd9-4f25-9609-d0facd1c34f2`;
+- snapshot time: `2026-08-21T12:47:41.894133Z`;
+- expiry time: `2026-11-27T12:47:41.894133Z`.
 
 ## Isolated Restore Rehearsal
 
@@ -115,6 +123,31 @@ The tool rejects:
 - a confirmation project that is absent or does not exactly match the selected stage.
 
 It does not switch application traffic, alter environment variables, copy secrets, delete the recovery database, or overwrite live data.
+
+### Current QA Structural Restore Evidence
+
+Completed on August 21, 2026:
+
+- operator: `admin@neelvara.com` through the authenticated Firebase CLI;
+- source project/database: `neelvara-answerlattice-qa` / `(default)`;
+- destination database: `answerlattice-recovery-20260821`;
+- location: `nam5`;
+- restore start: `2026-08-21T15:12:44Z`;
+- completion observed: `2026-08-21T15:44:51Z`;
+- observed upper-bound RTO: 32 minutes 7 seconds;
+- measured RPO at restore start: 2 hours 25 minutes 2 seconds;
+- operation state: `COMPLETED`;
+- destination delete protection: `ENABLED`;
+- source composite indexes: 100;
+- restored composite indexes: 100;
+- source field overrides: 33, including 18 TTL policies;
+- restored field overrides: 15, with 0 TTL policies, matching the documented
+  Firestore backup limitation.
+
+No runtime, Vercel environment, widget, API, scheduler, or public route was
+pointed at the recovery database. The isolated database remains delete-protected
+until fixture validation, TTL reapplication/readback, and an explicitly approved
+cleanup action are complete.
 
 ## Restore Validation
 
@@ -159,7 +192,9 @@ For each rehearsal, record:
 - cleanup owner and completion evidence;
 - final pass/fail decision.
 
-Until that record exists, report: `QA backup schedule is active; first ready backup and isolated restore evidence remain pending.`
+Until every validation item is recorded, report: `QA backup schedule and isolated
+structural restore are verified; fixture data, TTL, Storage, Auth, and cleanup
+evidence remain pending.`
 
 ## Official References
 

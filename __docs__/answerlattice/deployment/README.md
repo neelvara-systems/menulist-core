@@ -151,9 +151,11 @@ The following was verified on August 21, 2026:
   Identity Free is active at no charge but no additional user was created.
   Later ledger-only commits may advance `/api/version` without changing this
   verified OAuth application release boundary.
-  The first isolated restore rehearsal also waits on a managed backup reaching
-  READY. Fixture-dependent Auth/App Check/widget/dashboard/ticket/KB/scheduler
-  proof remains deferred testing, not missing setup.
+  The first QA managed backup reached READY and restored successfully into an
+  isolated delete-protected database with all 100 composite indexes. Fixture
+  content, TTL reapplication, Storage/Auth recovery, cleanup, and the
+  Auth/App Check/widget/dashboard/ticket/KB/scheduler paths remain deferred
+  testing or post-setup certification, not missing provider setup.
 - Production project `neelvara-answerlattice-prod` is company-owned and visible
   to `admin@neelvara.com`. Firebase Web/Auth/Firestore/Storage, protected
   `nam5` data, backup scheduling, budgets, required APIs, rules, Storage rules,
@@ -162,7 +164,7 @@ The following was verified on August 21, 2026:
   keys or broad project role. Production domains and TLS are healthy.
 - Production activation is deliberately incomplete. The owner-created Gemini
   authorization key and legacy reCAPTCHA v3 key are parked; App Check is not
-  registered; the 11 approved Functions, Scheduler, and embedding queue are not
+  registered; the 12 approved Functions, Scheduler, and embedding queue are not
   deployed. The live Production Vercel build predates the new Answerlattice
   Production env values, so source promotion, Production redeploy, and hosted
   OIDC/data-path proof remain separately gated.

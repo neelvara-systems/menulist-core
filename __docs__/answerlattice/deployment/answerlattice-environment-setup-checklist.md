@@ -373,7 +373,7 @@ Stop before any mutation when one of these is true:
     A `216.150.1.1` and `www` CNAME
     `dd4b150d15c50a85.vercel-dns-017.com.`; public DNS and Vercel both report
     valid QA configuration. Mail and verification records were preserved.
-    Exact staging commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`
+    Exact staging commit `05779ae3fefe58fe07352067ad5adcbd1693ac24`
     was verified live on both hosts. Later ledger-only commits do not change the
     application runtime. Hosted readback returned HTTP 200 with valid TLS,
     `x-product-id: answerlattice`, and
@@ -384,7 +384,7 @@ Stop before any mutation when one of these is true:
   ticket/KB/scheduler setup surfaces. Product workflow testing remains separate
   from setup closure.
   - Base hosted proof is complete: `/api/version` returned exact commit
-    `a6afeafd25ee05235c06ce2199fa15e9f3945177`, both Canonica hosts returned
+    `05779ae3fefe58fe07352067ad5adcbd1693ac24`, both Canonica hosts returned
     HTTP 200 with the Answerlattice product header and QA crawler isolation,
     `robots.txt` disallows all crawling, `sitemap.xml` returns 404, and the
     production Answerlattice host remains HTTP 200 and indexable. Hydrated
@@ -398,10 +398,13 @@ Stop before any mutation when one of these is true:
     not inferred from the base-host proof.
 - [ ] `AL-QA-E07` Complete a non-destructive backup/restore drill using
   `answerlattice-backup-recovery-runbook.md`.
-  - A daily 14-week managed-backup schedule is active. The isolated restore
-    rehearsal remains pending until the first backup reaches READY state. A
-    Firebase CLI readback on August 21, 2026 returned no available backups and
-    confirmed the daily schedule with `8467200s` retention remains active.
+  - A daily 14-week managed-backup schedule is active. The first backup reached
+    `READY`, and its isolated restore into delete-protected database
+    `answerlattice-recovery-20260821` completed on August 21, 2026. The structural
+    rehearsal preserved all 100 composite indexes. As expected, the 18 source
+    TTL policies were not restored. Keep this item open for fixture content and
+    tenant-lineage validation, TTL reapplication/readback, separate Storage/Auth
+    recovery evidence, and explicitly approved cleanup.
 
 QA provider and infrastructure setup closes when the checked core items plus
 `AL-QA-D08` through `AL-QA-D10` have current evidence and the Vercel QA
@@ -409,9 +412,10 @@ redeployment recorded by `AL-QA-D09` is active. The remaining hosted
 data-path portion of `AL-QA-C06`, authenticated application-call portion of
 `AL-QA-D06`, Firebase custom-token portion of `AL-QA-D07`, and
 fixture-dependent paths named under `AL-QA-E06` are testing-only evidence, not
-missing setup. `AL-QA-E07` is a post-setup recovery rehearsal that waits for the
-provider-managed backup to become available. Historical May/June deploy records
-do not waive current setup readbacks.
+missing setup. `AL-QA-E07` is a post-setup recovery certification whose
+structural cloud restore is complete; its remaining fixture, TTL, Storage, Auth,
+and cleanup checks are not missing provider setup. Historical May/June deploy
+records do not waive current setup readbacks.
 
 ## Answerlattice Production
 
@@ -546,7 +550,7 @@ activation require an explicit scoped approval.
 - [x] `AL-PROD-E01` Freeze the exact source revision that passed QA and rerun
   the focused source gates.
   - The hosted QA application revision and approved application source are
-    `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Answerlattice TypeScript,
+    `05779ae3fefe58fe07352067ad5adcbd1693ac24`. Answerlattice TypeScript,
     Functions build, WIF contracts, environment target matrix, and hosted
     OAuth routing passed again on August 21, 2026. Later ledger-only commits do
     not change this application release boundary.
@@ -558,7 +562,7 @@ activation require an explicit scoped approval.
   Storage rules, approved indexes, and approved Functions targets to project
   `neelvara-answerlattice-prod` using `firebase-answerlattice.json`.
   - Firestore rules, Storage rules, and the approved indexes are deployed and
-    source-hash verified. The 11 approved Functions remain blocked only by the
+    source-hash verified. The 12 approved Functions remain blocked only by the
     parked production Gemini key; no placeholder or QA secret was used.
 - [ ] `AL-PROD-E04` Read back active rules, Storage rules, indexes, Functions,
   service identities, secret bindings, scheduler/tasks, and budgets.
@@ -611,16 +615,17 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-QA-D07` | Provider and credential binding prepared; deployment open | QA Google Auth Platform has truthful Answerlattice QA branding, Canonica legal URLs and authorized domain, company support/developer contacts, External Testing audience, sole test user `admin@neelvara.com`, and dedicated client `Answerlattice QA Web`. The first secret was invalidated before use after accessibility-label exposure; only its replacement remains enabled and is bound directly to Vercel `qa`. Hosted `NEXTAUTH_URL` is absent. No secret value was written to source or documentation. |
 | 2026-08-21 | `AL-QA-D07` | Hosted OAuth and session boundary pass; Firebase sync fixture open | Deployment `menulist-core-2ix2pt0p5-neelvara-systems.vercel.app` serves exact staging build `1589272a29e1f342ae7d4b93985da91f66922152` on Canonica. Both hosts derive exact Google callback URLs with `openid email profile`. The authorized admin consent/callback returned authenticated on the apex, and the session did not cross to `www`. A disposable workspace is still required for Answerlattice Firebase custom-token proof. |
 | 2026-08-21 | `AL-PROD-D06` | Live provider readback | Production Google Auth Platform remains unconfigured; production setup begins only after the QA client and hosted callback are certified. |
-| 2026-08-20 | `AL-QA-E02` through `AL-QA-E04` | Pass | Rules and Storage rules hashes match source; 100 composite indexes READY; 18 TTL fields ACTIVE; 11 approved Functions ACTIVE; one Scheduler job and one task queue active |
-| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; deployment `menulist-core-1f590am4b-neelvara-systems.vercel.app` serves exact build `a6afeafd25ee05235c06ce2199fa15e9f3945177` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
+| 2026-08-20 | `AL-QA-E02` through `AL-QA-E04` | Pass | Rules and Storage rules hashes match source; 100 composite indexes READY; 18 TTL fields ACTIVE; 12 approved Functions ACTIVE on Node 22 in `us-central1`; one Scheduler job and one task queue active |
+| 2026-08-21 | `AL-QA-E05` | Pass | Canonica apex and `www` are attached only to Vercel `qa`; public DNS and Vercel are valid; deployment `dpl_8JAgWBZiFvzgo1PqUXi64RqgHvBq` at `menulist-core-jun1m21ji-neelvara-systems.vercel.app` serves exact application-bearing build `05779ae3fefe58fe07352067ad5adcbd1693ac24` with HTTP 200, valid TLS, Answerlattice product identity, QA crawler isolation, and no production redirect |
 | 2026-08-21 | `AL-QA-E06` | Base setup and OAuth-host pass | Exact `/api/version`, HTTP 200, TLS, Answerlattice product header, noindex header, disallow-all robots, absent sitemap, and product-routed OAuth callback/session behavior were verified on the fresh hosted revision. Fixture-dependent application paths and Firebase custom-token synchronization remain separate testing evidence. |
 | 2026-08-21 | QA login deployment | Pass after scoped build repair | Initial deployment `dpl_AhmxMDzT73N2aFvUnhTP3eCMiXpY` failed because it referenced a local-only uncommitted website constant; the login copy dependency was made self-contained, source gates passed, and replacement deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` reached READY |
-| 2026-08-21 | `AL-QA-E07` | Waiting for first backup | One daily Firestore backup schedule with `8467200s` retention exists; Firebase CLI returned no available backups, so the isolated restore rehearsal cannot begin yet |
+| 2026-08-21 | `AL-QA-E07` | Structural restore pass; certification checks open | READY backup `36bebe19-9fd9-4f25-9609-d0facd1c34f2` restored into delete-protected database `answerlattice-recovery-20260821` in `nam5`. Completion was observed in 32 minutes 7 seconds with a 2 hour 25 minute 2 second RPO. All 100 composite indexes restored; 18 TTL policies were absent as expected. Fixture content/tenant validation, TTL reapplication, Storage/Auth evidence, and cleanup remain open. |
 | 2026-08-21 | `AL-QA-D06` | Partial; authenticated server call open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions are ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key and secret version 2 were destroyed. Current Canonica build `a6afeafd25ee05235c06ce2199fa15e9f3945177` carries the rotated QA environment. One authenticated bounded Next.js server-side Gemini readback remains fixture-dependent. |
 | 2026-08-21 | `AL-QA-D04`, `AL-QA-D08` through `AL-QA-D10` | Setup-only parity audit | Correct-profile live readback found independent Answerlattice Resend onboarding absent and confirmed the new private widget runtime secret in Vercel QA. The shared Next.js Sentry DSN is present; source and Secret Manager readback confirm Answerlattice Functions intentionally use Cloud Logging and require no Sentry secret. Disabled GitHub, MCP, WhatsApp, SMTP, paid Redis, analytics, and fixture widget-key values remain intentionally absent. |
 | 2026-08-21 | `AL-QA-D09` | Pass; deployment activation pending | Generated a unique 32-byte Base64URL widget runtime secret and stored it as a sensitive variable only in Vercel custom `qa`; the value was not displayed or persisted locally. Vercel requires a later approved QA redeployment before the hosted runtime receives it. |
 | 2026-08-21 | `AL-QA-D08` | Partial; hosted key activation complete, certification open | Sender domain, isolated return path, QA webhook registration, webhook secret version 1 and non-secret sender configuration are prepared. Scoped Function revision `answerlatticeemailoswebhook-00006-zer` is ACTIVE, binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, retains the DRS-compatible public transport setting, and rejects an unsigned request with HTTP 400 `Invalid webhook`. The separately restricted sending key is a sensitive Vercel custom-`qa` variable and enabled Answerlattice QA Secret Manager version 1; transfer occurred through standard input without display or repository persistence. Approved deployment `dpl_BdKiiGMKCR5hsdpLywDTTn1PqBLf` reached READY from exact certified commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`; both Canonica aliases serve it with Answerlattice identity and QA noindex headers. No controlled email has been sent and provider sending remains disabled. |
 | 2026-08-21 | `AL-QA-D09` | Pass; hosted activation complete | Automatic deployment `dpl_91Uj4beXQWDCppJQK88VqvT56ZHQ` reached READY in custom environment `qa` from exact commit `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Vercel emitted environment `qa` and the expected QA OIDC subject; `canonica.app` and `www.canonica.app` both serve that build with Answerlattice and noindex headers. |
+| 2026-08-21 | QA runtime target correction | Pass | Retired external scheduler project IDs were replaced with the frozen company-owned deployment targets. Runtime-truth, final-readiness, WIF, environment, EmailOS, backup-recovery, typecheck, Functions build, focused lint, documentation, and diff gates passed. Custom-`qa` deployment `dpl_8JAgWBZiFvzgo1PqUXi64RqgHvBq` reached READY from exact commit `05779ae3fefe58fe07352067ad5adcbd1693ac24`; both Canonica aliases serve it and CSP admits the company-owned QA and production Function origins. |
 | 2026-08-21 | `AL-PROD-A01` through `AL-PROD-A03` | Pass | Company-owned production project is visible to `admin@neelvara.com`; independent project budgets exist; runtime service account has least-privilege roles and zero user-managed keys |
 | 2026-08-21 | `AL-PROD-B01` through `AL-PROD-B04` | Foundation prepared; two credential gates open | Firebase Web/Auth/Firestore/Storage and supporting APIs are ready; Firestore is protected in `nam5`; exact Auth hosts are active; App Check and Functions await owner-created production credentials |
 | 2026-08-21 | `AL-PROD-C01` through `AL-PROD-C04` | Pass | Production WIF provider is ACTIVE with exact team/project/environment/subject restriction; Vercel selectors exist; static Admin key material is absent |

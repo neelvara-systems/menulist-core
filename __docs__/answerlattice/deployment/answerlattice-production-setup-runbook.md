@@ -49,7 +49,7 @@ Still open by explicit boundary:
   hosted `NEXTAUTH_URL`, and hosted callback/session certification;
 - owner creation and direct transfer of the production Gemini authorization
   key;
-- deployment/readback of the 11 approved Functions, Scheduler, task queue, and
+- deployment/readback of the 12 approved Functions, Scheduler, task queue, and
   exact secret bindings;
 - owner creation of a legacy reCAPTCHA v3 key, App Check registration, and
   monitoring-first operation with enforcement OFF;
