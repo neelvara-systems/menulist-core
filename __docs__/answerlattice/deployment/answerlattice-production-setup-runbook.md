@@ -1,10 +1,10 @@
 # Answerlattice Production Setup Runbook
 
-> **Last updated:** August 21, 2026
+> **Last updated:** August 22, 2026
 > **Firebase project:** `neelvara-answerlattice-prod`
 > **Firebase alias:** `answerlattice-prod`
 > **Public domains:** `answerlattice.com`, `www.answerlattice.com`
-> **Status:** Gemini runtime and Production host active; non-AI and hosted certification pending
+> **Status:** core runtime and host active; App Check and widget signing setup remain open
 
 This runbook explains the production-only execution sequence. Track completion
 in [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md); do not maintain a second checklist here.
@@ -22,9 +22,9 @@ Do not start a production mutation until all are true:
    location, existing resources, and IAM have been inventoried.
 5. The requested deploy/provider action has explicit scoped approval.
 
-The production project is now readable and its foundation is prepared. The
-reachable website still proves only Vercel domain/routing availability until a
-new Production deployment activates the dedicated Firebase/WIF selectors.
+The production project is readable and its core foundation is active on the
+verified Production deployment. Hosted application certification remains a
+separate gate.
 
 ## Current Readback
 
@@ -45,7 +45,6 @@ Completed on August 21, 2026:
   proof;
 - eight ACTIVE Gemini-bound Functions on Node 22 in `us-central1`, including
   Scheduler and embedding task queue resources with exact secret bindings;
-- dedicated legacy reCAPTCHA v3 App Check registration with enforcement OFF;
 - truthful production Google OAuth branding, test audience/user, exact
   apex/`www` client origins and callbacks, and Production-only Vercel client
   bindings with hosted `NEXTAUTH_URL` absent;
@@ -60,10 +59,14 @@ Completed on August 21, 2026:
 
 Still open by explicit boundary:
 
+- register `Answerlattice Production Web` with its dedicated legacy reCAPTCHA
+  v3 App Check provider and retain enforcement OFF; current Firebase Console
+  readback reports `Not registered`;
+- create the required production-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`,
+  store it as a sensitive Vercel Production variable, and activate it through a
+  separately approved Production redeployment;
 - activation and hosted callback/session certification of the already bound
   production Google OAuth client;
-- deployment/readback of the four remaining non-AI Functions without enabling
-  optional provider sending;
 - promotion of the exact application and evidence commits through the approved
   Git review path;
 - hosted OIDC/data-path proof, authenticated backend smoke, recovery fixture
@@ -152,7 +155,8 @@ release gate after hosted callback certification.
 
 The shared Next.js runtime may use one environment-scoped Sentry DSN, but every
 event must carry the hostname-derived `product` tag. Answerlattice Firebase
-Functions keep their project-local `SENTRY_DSN`.
+Functions use Google Cloud Logging and intentionally do not declare Sentry or a
+project-local `SENTRY_DSN` secret.
 
 Core infrastructure readiness does not require enabling every optional
 provider. Keep any provider disabled when its legal ownership, account access,

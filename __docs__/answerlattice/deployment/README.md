@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 22, 2026
-> **Status:** QA and production core infrastructure active; certification and optional providers remain gated
+> **Status:** QA setup complete; production has two setup gaps; certification and optional providers remain gated
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -43,14 +43,15 @@ The following was verified through August 22, 2026:
   package scripts, and the environment examples agree on those project IDs.
 - Dedicated Firestore rules, index, Storage rules, and Functions source files
   exist in the repository.
-- `https://answerlattice.com` and `https://www.answerlattice.com` return HTTP
-  200 from Vercel.
+- `https://answerlattice.com` returns HTTP 200 from Vercel and
+  `https://www.answerlattice.com` returns the intended permanent HTTP 308
+  redirect to the apex.
 - `canonica.app` is owned in the company GoDaddy account. Its apex and `www`
   hosts are attached only to Vercel custom environment `qa`. GoDaddy now serves
   Vercel's exact apex A and `www` CNAME records; public DNS and Vercel report
   valid configuration, and mail/verification DNS was preserved. Both hosts
   now serve exact staging commit
-  `a6afeafd25ee05235c06ce2199fa15e9f3945177` inside Answerlattice QA with
+  `f6256fba66d60a4dbd3d88314300f2a79d28ff25` inside Answerlattice QA with
   valid TLS and no production redirect. The approved product-routed Google
   OAuth consent and session proof was completed on the earlier certified
   application revision described below.
@@ -64,7 +65,7 @@ The following was verified through August 22, 2026:
   `neelvara-answerlattice-qa` (project number `216985843437`) in organization
   `neelvara.com`. Billing account `0135AA-B5D4AD-C72CAB` is linked. Firebase,
   Firestore, Storage, Auth, legacy reCAPTCHA v3 App Check, required APIs,
-  project-local keyless Vercel identity, core secrets, rules, indexes, 11
+  project-local keyless Vercel identity, core secrets, rules, indexes, 12
   approved Functions, Scheduler, Cloud Tasks, and a daily 14-week Firestore
   backup schedule are active. App Check enforcement remains monitoring-only.
   Optional provider-send paths remain disabled. No paid Upstash database is
@@ -137,13 +138,15 @@ The following was verified through August 22, 2026:
   Answerlattice Firebase custom-token synchronization remains open until an
   authorized disposable workspace fixture exists. Production now has its own
   truthful `Answerlattice Production Web` client and Production-only Vercel
-  binding with hosted `NEXTAUTH_URL` absent; production deployment, callback,
-  session, and custom-token proof remain open.
+  binding with hosted `NEXTAUTH_URL` absent; production deployment activation
+  is complete, while callback, session, and custom-token proof remain open
+  certification work.
 - The shared Next.js/Vercel process intentionally uses one environment-scoped
   Sentry DSN because browser, server, and edge SDKs initialize once per runtime,
   not once per custom domain. Monitoring now derives and records the product
-  tag before sanitizing request URLs. Answerlattice Firebase Functions remain
-  isolated on their project-local `SENTRY_DSN` Secret Manager value.
+  tag before sanitizing request URLs. Answerlattice Firebase Functions use
+  Google Cloud Logging and intentionally do not declare Sentry or a
+  project-local `SENTRY_DSN` secret.
 - Firebase Functions, Secret Manager, and the current Canonica deployment use
   the rotated QA AI Studio authorization key. The exact current staging
   revision is live; one authenticated bounded Next.js server-side Gemini
@@ -169,10 +172,13 @@ The following was verified through August 22, 2026:
   composite indexes and 15 non-TTL field overrides match production. The 18
   TTL policies were absent as expected and remain an explicit recovery step.
 - Production core activation is complete without enabling optional providers.
-  Dedicated legacy
-  reCAPTCHA v3 App Check is registered with enforcement OFF, and its public
-  site key plus the dedicated Google OAuth client are bound only to Vercel
-  Production. The owner-created production Gemini authorization key is active
+  The dedicated Google OAuth client and the intended legacy reCAPTCHA v3 public
+  site key are bound only to Vercel Production. However, live Firebase Console
+  readback on August 22 shows `Answerlattice Production Web` as **Not
+  registered** in App Check. The public key variable alone does not complete
+  Firebase provider registration, so production App Check remains an explicit
+  setup gap with enforcement OFF. The owner-created production Gemini
+  authorization key is active
   in sensitive Vercel Production and Secret Manager version 1; a bounded
   provider call returned HTTP 200 with exactly `OK`. All 11 approved core
   Functions are ACTIVE on Node 22 with exact secret readback: the eight
@@ -190,6 +196,16 @@ The following was verified through August 22, 2026:
   OIDC/data-path proof, authenticated smoke, recovery fixture validation, TTL
   reapplication, Storage/Auth evidence, and recovery cleanup remain separately
   gated.
+- Vercel Production is also missing the required server-only
+  `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`. Source enables the production widget
+  and fails closed when this signing secret is absent. Generate a unique
+  production-only value, store it as a sensitive Production variable, and
+  activate it through a separately approved Vercel Production redeployment.
+- Current QA hosted readback is deployment
+  `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz` at
+  `menulist-core-eug4wxayt-neelvara-systems.vercel.app`, serving exact staging
+  commit `f6256fba66d60a4dbd3d88314300f2a79d28ff25`. Earlier deployment IDs in the
+  evidence log are retained as historical release points.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -197,13 +213,14 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. Under explicit Vercel deployment approval, redeploy custom environment `qa`
-   so its runtime receives the staged Answerlattice QA sending key. Then run the
-   controlled delivery certification before enabling provider sending.
-2. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
+1. Register `Answerlattice Production Web` with the dedicated legacy reCAPTCHA
+   v3 App Check provider, retain enforcement OFF, and verify live registration.
+2. Generate and bind a production-only `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`;
+   activate it only through an explicitly approved Vercel Production
+   redeployment.
+3. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
-3. Close every remaining `AL-QA-*` item with current readback.
 4. Promote the exact application and evidence commits to main through the
    approved Git review path; do not replace the certified Production build with
    an unrelated main revision.
