@@ -176,10 +176,13 @@ The following was verified on August 21, 2026:
   provider call returned HTTP 200 with exactly `OK`. The eight Gemini-bound
   Functions, Scheduler, and embedding queue are ACTIVE on Node 22 with exact
   secret readback. Four non-AI Functions remain outside that scoped deploy.
-  The live Production Vercel build still predates the new Answerlattice
-  Production env values, so Production redeploy, hosted OIDC/data-path proof,
-  authenticated smoke, recovery fixture validation, TTL reapplication,
-  Storage/Auth evidence, and recovery cleanup remain separately gated.
+  Vercel deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` is READY from exact
+  application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`.
+  `answerlattice.com` serves Answerlattice over TLS with that commit and
+  `www.answerlattice.com` redirects permanently to the apex. Hosted
+  OIDC/data-path proof, authenticated smoke, recovery fixture validation, TTL
+  reapplication, Storage/Auth evidence, and recovery cleanup remain separately
+  gated.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -196,8 +199,9 @@ account can read it back from the exact project.
 3. Close every remaining `AL-QA-*` item with current readback.
 4. Review and deploy the four remaining non-AI production Functions without
    enabling any optional provider-send path.
-5. Promote the approved staging source to main and redeploy Vercel Production
-   only with explicit deployment authorization.
+5. Promote the exact application and evidence commits to main through the
+   approved Git review path; do not replace the certified Production build with
+   an unrelated main revision.
 6. Run production-host, OIDC/data-path, authenticated smoke, fixture recovery,
    TTL reapplication, Storage/Auth recovery, and cleanup evidence before launch
    approval.

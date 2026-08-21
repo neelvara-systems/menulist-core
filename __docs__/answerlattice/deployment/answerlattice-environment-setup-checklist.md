@@ -601,15 +601,16 @@ activation require an explicit scoped approval.
     queue, Node 22 runtime, trigger regions, and exact secret version bindings
     are also read back. Full closure awaits the separately reviewed four
     non-AI Functions.
-- [ ] `AL-PROD-E05` Verify Vercel Production assignments for
+- [x] `AL-PROD-E05` Verify Vercel Production assignments for
   `answerlattice.com` and `www.answerlattice.com`, TLS, canonical redirects,
   `/api/version`, and production environment identity.
-  - Both domains are assigned to `menulist-core` Production, return HTTP 200
-    with valid TLS and Answerlattice headers, and `/api/version` reports
-    environment `production`. The live build is still main revision
-    `002a76ea056135203b908b64e29be03e18dcb142` and predates the company-owned
-    production project selectors, so this item remains open until promotion and
-    redeploy.
+  - Vercel deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` is READY from exact
+    application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`.
+    `answerlattice.com` returns HTTP 200 with valid TLS, HSTS, Answerlattice
+    product headers, environment `production`, and that exact `/api/version`
+    build identity. `www.answerlattice.com` returns method-preserving permanent
+    `308` to the same path on the apex, and following the redirect returns the
+    same production build identity.
 - [ ] `AL-PROD-E06` Complete authenticated backend smoke and a bounded
   backup/restore drill before launch certification.
   - Managed backup
@@ -681,3 +682,4 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-PROD-E06` | Structural restore pass; certification checks open | READY backup `5bad4389-5ae1-42b8-bce3-1e1ec7720723` restored into delete-protected non-default database `answerlattice-prod-recovery-20260821` in `nam5`. Completion was observed in 46 minutes 57 seconds with a 2 hour 38 minute 16 second RPO. All 100 composite indexes and 15 non-TTL field overrides match production; 18 TTL policies were absent as expected. Production `(default)` remained untouched. Authenticated smoke, fixture content/tenant validation, TTL reapplication, Storage/Auth evidence, and cleanup remain open. |
 | 2026-08-21 | `AL-PROD-D01`, `AL-PROD-D02`, `AL-PROD-D05` | Pass | Owner-created AI Studio authorization key transferred without display to sensitive Vercel Production and Secret Manager version 1; direct provider smoke returned HTTP 200 with exactly `OK`; all three production core secret names and their exact Function bindings were read back. |
 | 2026-08-21 | `AL-PROD-E03`, `AL-PROD-E04` | Scoped Gemini activation pass; four non-AI Functions open | The first deployment exposed Google's new-project default build-account boundary. The standard `roles/cloudbuild.builds.builder` role was added only to `48335396774-compute@developer.gserviceaccount.com`; the pre-existing Eventarc service-agent role was left unchanged. All eight Gemini-bound Functions are ACTIVE on Node 22 in `us-central1`, with Firestore triggers on production `(default)` in `nam5`, one Scheduler, one embedding task queue, and exact Secret Manager version 1 bindings. |
+| 2026-08-21 | `AL-PROD-E05` | Pass | Vercel Production deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` reached READY from exact application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`. The apex returns HTTP 200 with HSTS, Answerlattice routing headers, environment `production`, and matching `/api/version`; `www` returns `308` to the same apex path and resolves to the identical build. |

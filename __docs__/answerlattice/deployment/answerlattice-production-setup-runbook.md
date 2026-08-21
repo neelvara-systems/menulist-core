@@ -4,7 +4,7 @@
 > **Firebase project:** `neelvara-answerlattice-prod`
 > **Firebase alias:** `answerlattice-prod`
 > **Public domains:** `answerlattice.com`, `www.answerlattice.com`
-> **Status:** Gemini runtime active; hosted and non-AI activation pending
+> **Status:** Gemini runtime and Production host active; non-AI and hosted certification pending
 
 This runbook explains the production-only execution sequence. Track completion
 in [Answerlattice Environment Setup Checklist](./answerlattice-environment-setup-checklist.md); do not maintain a second checklist here.
@@ -53,6 +53,10 @@ Completed on August 21, 2026:
   recovery database, with all 100 composite indexes and 15 non-TTL field
   overrides matching production;
 - healthy `answerlattice.com` and `www.answerlattice.com` TLS/routing.
+- READY Vercel Production deployment
+  `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` from exact application commit
+  `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`; the apex serves Answerlattice
+  with that `/api/version` identity and `www` redirects to the apex with `308`.
 
 Still open by explicit boundary:
 
@@ -60,7 +64,8 @@ Still open by explicit boundary:
   production Google OAuth client;
 - deployment/readback of the four remaining non-AI Functions without enabling
   optional provider sending;
-- source promotion and a separately authorized Vercel Production redeploy;
+- promotion of the exact application and evidence commits through the approved
+  Git review path;
 - hosted OIDC/data-path proof, authenticated backend smoke, recovery fixture
   validation, TTL reapplication, Storage/Auth recovery evidence, and approved
   recovery-database cleanup.
