@@ -8,6 +8,8 @@ export const answerlatticeEmailOsWebhook = onRequest(
         timeoutSeconds: 30,
         memory: '256MiB',
         maxInstances: 3,
+        // Resend must reach the transport endpoint; the handler authenticates every event signature.
+        invoker: 'public',
         secrets: ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS_WEBHOOK,
     },
     handleAnswerlatticeEmailOsWebhook,

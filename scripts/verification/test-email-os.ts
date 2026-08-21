@@ -3,11 +3,13 @@ import { createHash } from 'node:crypto';
 import {
     EMAIL_OS_DELIVERY_TAG_NAME,
     EMAIL_OS_LIMITS,
+    EMAIL_OS_PRODUCT_TAG_NAME,
     EmailOsContractError,
     assertEmailOsEnvelope,
     assertEmailOsSenderDomain,
     buildEmailOsIdempotencyKey,
     buildEmailOsRecipientHash,
+    isEmailOsProviderEventBoundToProduct,
     normalizeEmailOsProviderEvent,
     shouldAdvanceEmailOsDeliveryStatus,
 } from '../../src/data/shared/emailOs';
@@ -57,13 +59,29 @@ async function main(): Promise<void> {
         data: {
             email_id: 'email_123',
             to: ['owner@example.com'],
-            tags: { [EMAIL_OS_DELIVERY_TAG_NAME]: 'a'.repeat(64) },
+            tags: {
+                [EMAIL_OS_DELIVERY_TAG_NAME]: 'a'.repeat(64),
+                [EMAIL_OS_PRODUCT_TAG_NAME]: 'ML',
+            },
         },
     }, 'evt_123');
     assert.equal(providerEvent.deliveryStatus, 'bounced');
     assert.equal(providerEvent.suppressionAction, 'activate');
     assert.equal(providerEvent.suppressionReason, 'bounce');
     assert.equal(providerEvent.localDeliveryId, 'a'.repeat(64));
+    assert.equal(providerEvent.productCode, 'ML');
+    assert.equal(isEmailOsProviderEventBoundToProduct(providerEvent, 'ML', true), true);
+    assert.equal(isEmailOsProviderEventBoundToProduct(providerEvent, 'AL', true), false);
+    assert.equal(isEmailOsProviderEventBoundToProduct(providerEvent, 'ML', false), false);
+
+    const legacyProviderEvent = normalizeEmailOsProviderEvent({
+        type: 'email.delivered',
+        created_at: '2026-08-15T10:00:00.000Z',
+        data: { email_id: 'email_legacy', to: ['owner@example.com'] },
+    }, 'evt_legacy');
+    assert.equal(legacyProviderEvent.productCode, null);
+    assert.equal(isEmailOsProviderEventBoundToProduct(legacyProviderEvent, 'AL', true), true);
+    assert.equal(isEmailOsProviderEventBoundToProduct(legacyProviderEvent, 'AL', false), false);
 
     assert.notEqual(
         buildEmailOsRecipientHash('ML', 'owner@example.com', sha256),
@@ -83,6 +101,10 @@ async function main(): Promise<void> {
         ...envelope,
         tags: [{ name: EMAIL_OS_DELIVERY_TAG_NAME, value: 'caller_override' }],
     }), EmailOsContractError);
+    assert.throws(() => assertEmailOsEnvelope({
+        ...envelope,
+        tags: [{ name: EMAIL_OS_PRODUCT_TAG_NAME, value: 'AL' }],
+    }), EmailOsContractError);
     assert.throws(() => normalizeEmailOsProviderEvent({
         type: 'email.sent',
         created_at: '2026-08-15T10:00:00.000Z',
@@ -92,6 +114,15 @@ async function main(): Promise<void> {
             tags: { [EMAIL_OS_DELIVERY_TAG_NAME]: '../wrong-delivery' },
         },
     }, 'evt_invalid_tag'), EmailOsContractError);
+    assert.throws(() => normalizeEmailOsProviderEvent({
+        type: 'email.sent',
+        created_at: '2026-08-15T10:00:00.000Z',
+        data: {
+            email_id: 'email_123',
+            to: ['owner@example.com'],
+            tags: { [EMAIL_OS_PRODUCT_TAG_NAME]: 'UNKNOWN' },
+        },
+    }, 'evt_invalid_product_tag'), EmailOsContractError);
     assert.throws(() => normalizeEmailOsProviderEvent({
         type: 'email.sent',
         created_at: '2019-12-31T23:59:59.000Z',

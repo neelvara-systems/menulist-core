@@ -8,6 +8,7 @@ import {
     EMAIL_OS_LIMITS,
     EMAIL_OS_DELIVERY_STATUS_PRECEDENCE,
     EMAIL_OS_DELIVERY_TAG_NAME,
+    EMAIL_OS_PRODUCT_TAG_NAME,
     EMAIL_OS_PROVIDER,
     EmailOsDeliveryStatus,
     EmailOsEnvelope,
@@ -154,6 +155,7 @@ export async function sendAnswerlatticeEmailOs(envelopeInput: EmailOsEnvelope): 
             text: envelope.text,
             tags: [
                 ...Array.from(envelope.tags || []),
+                { name: EMAIL_OS_PRODUCT_TAG_NAME, value: envelope.productCode },
                 { name: EMAIL_OS_DELIVERY_TAG_NAME, value: deliveryId },
             ],
         }, { idempotencyKey });

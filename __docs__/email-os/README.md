@@ -29,6 +29,14 @@ EmailOS is the email delivery plane beneath [NotificationOS](../notification-os/
 
 - Shared contracts, React Email rendering, Resend adapters, signed webhook processors, suppression state, TTL declarations, migration branches and focused verification are implemented.
 - The MFA-protected `MenuList` Resend boundary, verified `menulist.ai` sending domain, distinct QA/production sending-only keys, and distinct QA/production signed webhooks are prepared. Both Firebase projects hold enabled version-1 product-scoped secrets; no value is stored in this repository.
+- Answerlattice reuses the MFA-protected MenuList Resend team but not MenuList
+  credentials or state. Its verified `answerlattice.com` sender,
+  domain-restricted key, webhook registration/signing secret, Firebase secrets,
+  delivery records and local suppressions remain independent. Both webhooks
+  require an immutable product tag plus a matching local delivery before any
+  write, so shared-team event fan-out cannot mutate the wrong product. Resend's
+  provider suppression list, reputation and quotas remain team-wide and are an
+  explicit accepted constraint at the current operating scale.
 - Every provider-send flag remains off, neither webhook Function has been deployed as part of provider preparation, and no live email has been sent.
 - Existing SMTP delivery remains only as the controlled pre-onboarding migration path. It is removed after product-by-product QA cutover certification.
 - QA TTL deployment is pending: MenuList’s Firebase deploy preflight returned two Rules API `503` responses; the current operator lacks Answerlattice QA index permission; and the direct `gcloud` TTL command is unavailable on this machine.
@@ -71,5 +79,6 @@ All provider-send flags default to `false`. Rendering and contract verification 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.0.2 | 2026-08-21 | Approved one MenuList/Answerlattice Resend team with isolated product domains, keys, webhook secrets and local state; added product-tag plus local-delivery webhook binding |
 | 1.0.1 | 2026-08-16 | Recorded MenuList Resend account security, verified sender DNS, isolated QA/production credentials and webhooks while preserving the no-send/no-deploy gate |
 | 1.0.0 | 2026-08-15 | Frozen cross-product contract, product boundaries and Resend onboarding gate |

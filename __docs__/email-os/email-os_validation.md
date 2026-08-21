@@ -1,6 +1,6 @@
 # EmailOS — Post-Implementation Validation
 
-> **Validation date:** August 16, 2026
+> **Validation date:** August 21, 2026
 > **Scope:** Source, documentation, product routing, provider boundary, webhook boundary, Firestore declarations and local verification
 > **Activation state:** Provider transmission disabled; no live email sent
 
@@ -26,6 +26,7 @@ The source implementation is locally complete and keeps provider activation clos
 | Provider success | Provider identity retained without regressing webhook truth | Monotonic transaction stores ID/hash and advances only when allowed | Pass |
 | Early webhook | Webhook can reconcile before the send response write | Reserved `email_os_delivery_id` tag directly resolves the pre-provider claim; provider hash remains fallback | Pass |
 | Webhook verification | Raw body, all Svix headers, size bound and product secret required | Both product endpoints reject malformed requests generically before Firestore work | Pass |
+| Shared-team webhook routing | A signed event cannot mutate the wrong product | Every provider request carries `email_os_product` and `email_os_delivery_id`; both webhooks require expected-product local delivery proof before any write | Pass |
 | Webhook replay | At-least-once delivery causes one state mutation | Hashed `svix-id` receipt is transactionally create-once; duplicate returns `200` | Pass |
 | Out-of-order webhook | Older/lower state cannot regress a delivery | Shared precedence and occurrence-time helper guards both products | Pass |
 | Bounce/complaint/suppression | Future sends stop for that product | Verified events create active product-scoped hashed suppression | Pass |
@@ -51,7 +52,8 @@ The source implementation is locally complete and keeps provider activation clos
 | High | Recipient hashes were identical across products despite product-scoped suppression policy | Included product code in the recipient hash input |
 | High | Root owner notifications hardcoded MenuList when processing Answerlattice events | Required the owner event's `ML`/`AL` product identity in readiness and send paths |
 | High | Generic notifications mapped any non-Answerlattice product to MenuList | Added strict `ML`/`AL` admission and fail-closed behavior |
-| High | Caller tags could collide with the internal delivery lookup tag | Reserved the tag name in validation and reduced caller tag capacity to seven |
+| High | Caller tags could collide with internal routing tags | Reserved both provider-owned tag names in validation and reduced caller tag capacity to six |
+| Critical | A valid shared-team suppression webhook could mutate both products because signature verification alone did not prove product ownership | Added the reserved product tag, reduced caller capacity to six, required a matching product delivery before every receipt/delivery/suppression write, and made wrong-product or unbound events no-write `200 ignored` responses |
 | Medium | Test documentation expected `401`, while both generic malformed-signature paths return `400` | Aligned the documented contract to the implemented generic `400` response |
 | Medium | Firebase operation estimates omitted claim and monotonic-update transaction reads | Corrected the per-send and webhook operation matrix |
 

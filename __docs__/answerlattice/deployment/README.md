@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 21, 2026
-> **Status:** QA setup prepared; production foundation prepared; credential-dependent activation remains open
+> **Status:** QA core setup active; EmailOS and widget-secret activation remain open; production foundation prepared
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -73,6 +73,16 @@ The following was verified on August 21, 2026:
   backup verifier, documentation-link scan, hosted route boundary, and hosted
   login boundary pass. Fixture-dependent application certification remains a
   separate testing gate.
+- A setup-only parity audit on August 21, 2026 found two genuine QA gaps:
+  product-isolated Answerlattice Resend/EmailOS onboarding inside the approved
+  shared MenuList/Answerlattice provider team and a Vercel QA
+  redeployment to activate the newly stored private
+  `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`. Answerlattice Functions intentionally
+  use Google Cloud Logging and do not declare Sentry or `SENTRY_DSN`; the
+  shared Next.js runtime keeps the environment-scoped DSN with product tags.
+  GitHub, MCP, WhatsApp, SMTP, paid Redis, optional analytics, and a global
+  public widget key remain intentionally absent; they are not MenuList parity
+  requirements.
 - Google OAuth parity is now an approved core setup requirement. The shared
   NextAuth session implementation keeps the same `google` provider, identity
   scopes, callback path, account validation, and separate Answerlattice

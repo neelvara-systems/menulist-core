@@ -190,9 +190,11 @@ Stop before any mutation when one of these is true:
   integrations are optional fast paths; when the dedicated variables are
   absent they degrade to Firestore/live retrieval. Durable truth remains in
   Firestore. Reopen this item only after measured load justifies Redis.
-- [x] `AL-QA-D04` Keep Resend, SMTP, GitHub, WhatsApp, analytics, and
-  other optional providers only when their feature gate and certification are
-  approved. Keep provider-send paths disabled until then.
+- [x] `AL-QA-D04` Keep SMTP, GitHub, WhatsApp, MCP, paid Redis, and optional
+  analytics absent while their owning feature gates remain disabled. Blank
+  values are intentional; do not create placeholder credentials. EmailOS is
+  tracked separately because its provider preparation is an approved setup
+  requirement even while outbound sending remains disabled.
 - [x] `AL-QA-D05` Verify no MenuList API key, webhook secret, Redis token, or
   Firebase secret is reused.
   - Google OAuth is not an exception to isolation. Host-routed OAuth source is
@@ -272,6 +274,51 @@ Stop before any mutation when one of these is true:
     remained signed out. Answerlattice Firebase custom-token synchronization
     still requires an authorized disposable workspace fixture. Keep this item
     unchecked until that final proof is recorded.
+- [ ] `AL-QA-D08` Complete the product-isolated Answerlattice QA Resend/EmailOS
+  boundary inside the existing MFA-protected `MenuList` Resend team. Do not
+  create another paid team or human account.
+  - The approved shared-team architecture accepts Resend's team-wide provider
+    suppression, reputation and quotas at the current operating scale. It does
+    not share domains, API keys, webhook registrations/signing secrets,
+    Firebase secrets, delivery collections or local suppression state.
+  - Team-scoped webhooks can deliver both products' signed events to both
+    endpoints. Source therefore attaches `email_os_product` and
+    `email_os_delivery_id`; each webhook requires a matching product-local
+    delivery before any receipt, status or suppression write. A wrong-product
+    or unbound signed event returns `200 ignored` with zero product writes.
+  - Required provider state: verified sender domain `answerlattice.com`,
+    isolated return-path `send.answerlattice.com`, owner-created QA sending key
+    restricted to `answerlattice.com`, and a QA webhook subscribed only to the
+    nine code-admitted delivery and suppression events.
+  - Required secret boundary: Vercel custom `qa` receives only the QA sending
+    key and non-secret From configuration. Project
+    `neelvara-answerlattice-qa` receives separate enabled
+    `ANSWERLATTICE_RESEND_API_KEY` and
+    `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` versions. The webhook signing secret
+    must never enter Vercel or source.
+  - Required runtime state: deploy only `answerlatticeEmailOsWebhook` with
+    optional provider secret binding enabled. Keep
+    `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND=false` until later controlled
+    delivery certification. Its Cloud Run transport invoker is public so
+    Resend can reach it, while the handler remains fail-closed on the raw-body
+    Resend signature and product-local delivery binding before any write.
+- [x] `AL-QA-D09` Create one unique server-only
+  `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` of at least 32 random bytes in Vercel
+  custom environment `qa`. A fresh 32-byte Base64URL value is stored as a
+  sensitive QA-only Vercel variable. It was transferred without display or
+  repository persistence. This is a host-to-iframe token-signing key, not the
+  workspace-issued public `al_*` widget credential and not a Firebase Functions
+  secret. A later explicitly approved QA redeployment is required before the
+  hosted runtime sees this new value.
+- [x] `AL-QA-D10` Verify the Answerlattice monitoring boundary without creating
+  unused provider state. Live Sentry readback shows the maintained MenuList QA
+  and production projects, while the shared Vercel QA process has its one
+  environment-scoped `NEXT_PUBLIC_SENTRY_DSN` and tags events by product.
+  Source readback confirms `functions-answerlattice/` has no Sentry dependency,
+  initialization, or `SENTRY_DSN` declaration and uses Google Cloud Logging.
+  No Answerlattice Functions Sentry secret or additional Sentry project is
+  required. The project-local `SENTRY_DSN` rule applies only to MenuList
+  Functions, whose source declares that integration.
 
 ### Scoped Deploy And Setup Closure
 
@@ -334,9 +381,15 @@ Stop before any mutation when one of these is true:
     Firebase CLI readback on August 21, 2026 returned no available backups and
     confirmed the daily schedule with `8467200s` retention remains active.
 
-QA setup closes only when `AL-QA-A01` through `AL-QA-E07`, including
-`AL-QA-D07`, have current
-evidence. Historical May/June deploy records do not waive these readbacks.
+QA provider and infrastructure setup closes when the checked core items plus
+`AL-QA-D08` through `AL-QA-D10` have current evidence and the Vercel QA
+redeployment recorded by `AL-QA-D09` is active. The remaining hosted
+data-path portion of `AL-QA-C06`, authenticated application-call portion of
+`AL-QA-D06`, Firebase custom-token portion of `AL-QA-D07`, and
+fixture-dependent paths named under `AL-QA-E06` are testing-only evidence, not
+missing setup. `AL-QA-E07` is a post-setup recovery rehearsal that waits for the
+provider-managed backup to become available. Historical May/June deploy records
+do not waive current setup readbacks.
 
 ## Answerlattice Production
 
@@ -542,6 +595,8 @@ service-account JSON, or customer data.
 | 2026-08-21 | QA login deployment | Pass after scoped build repair | Initial deployment `dpl_AhmxMDzT73N2aFvUnhTP3eCMiXpY` failed because it referenced a local-only uncommitted website constant; the login copy dependency was made self-contained, source gates passed, and replacement deployment `dpl_4RrusSrXKWKUDyVvV9UjUGogxy9R` reached READY |
 | 2026-08-21 | `AL-QA-E07` | Waiting for first backup | One daily Firestore backup schedule with `8467200s` retention exists; Firebase CLI returned no available backups, so the isolated restore rehearsal cannot begin yet |
 | 2026-08-21 | `AL-QA-D06` | Partial; authenticated server call open | Owner created the project-local AI Studio authorization key; metadata and API restriction verified; Vercel `qa` and Firebase Secret Manager rotated; eight AI Functions are ACTIVE on secret version 3; direct Gemini call returned HTTP 200 with `OK`; old standard key and secret version 2 were destroyed. Current Canonica build `1589272a29e1f342ae7d4b93985da91f66922152` carries the rotated QA environment. One authenticated bounded Next.js server-side Gemini readback remains fixture-dependent. |
+| 2026-08-21 | `AL-QA-D04`, `AL-QA-D08` through `AL-QA-D10` | Setup-only parity audit | Correct-profile live readback found independent Answerlattice Resend onboarding absent and confirmed the new private widget runtime secret in Vercel QA. The shared Next.js Sentry DSN is present; source and Secret Manager readback confirm Answerlattice Functions intentionally use Cloud Logging and require no Sentry secret. Disabled GitHub, MCP, WhatsApp, SMTP, paid Redis, analytics, and fixture widget-key values remain intentionally absent. |
+| 2026-08-21 | `AL-QA-D09` | Pass; deployment activation pending | Generated a unique 32-byte Base64URL widget runtime secret and stored it as a sensitive variable only in Vercel custom `qa`; the value was not displayed or persisted locally. Vercel requires a later approved QA redeployment before the hosted runtime receives it. |
 | 2026-08-21 | `AL-PROD-A01` through `AL-PROD-A03` | Pass | Company-owned production project is visible to `admin@neelvara.com`; independent project budgets exist; runtime service account has least-privilege roles and zero user-managed keys |
 | 2026-08-21 | `AL-PROD-B01` through `AL-PROD-B04` | Foundation prepared; two credential gates open | Firebase Web/Auth/Firestore/Storage and supporting APIs are ready; Firestore is protected in `nam5`; exact Auth hosts are active; App Check and Functions await owner-created production credentials |
 | 2026-08-21 | `AL-PROD-C01` through `AL-PROD-C04` | Pass | Production WIF provider is ACTIVE with exact team/project/environment/subject restriction; Vercel selectors exist; static Admin key material is absent |

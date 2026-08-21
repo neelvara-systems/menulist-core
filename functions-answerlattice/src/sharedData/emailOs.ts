@@ -7,6 +7,7 @@
 
 export const EMAIL_OS_PROVIDER = 'resend' as const;
 export const EMAIL_OS_DELIVERY_TAG_NAME = 'email_os_delivery_id' as const;
+export const EMAIL_OS_PRODUCT_TAG_NAME = 'email_os_product' as const;
 
 export const EMAIL_OS_PRODUCT_CODES = {
     MENULIST: 'ML',
@@ -73,7 +74,7 @@ export const EMAIL_OS_LIMITS = {
     MAX_PROVIDER_MESSAGE_ID_LENGTH: 200,
     MAX_REPLY_TO_COUNT: 1,
     MAX_SUBJECT_LENGTH: 200,
-    MAX_TAG_COUNT: 7,
+    MAX_TAG_COUNT: 6,
     MAX_TAG_NAME_LENGTH: 50,
     MAX_TAG_VALUE_LENGTH: 256,
     RETENTION_DAYS: 90,
@@ -148,6 +149,7 @@ export interface EmailOsProviderEvent {
     providerEventId: string;
     providerMessageId: string | null;
     localDeliveryId: string | null;
+    productCode: EmailOsProductCode | null;
     recipient: string | null;
     occurredAt: string;
     deliveryStatus: EmailOsDeliveryStatus | null;
@@ -245,6 +247,7 @@ export function assertEmailOsEnvelope(value: EmailOsEnvelope): EmailOsEnvelope {
             !tag
             || typeof tag.name !== 'string'
             || tag.name === EMAIL_OS_DELIVERY_TAG_NAME
+            || tag.name === EMAIL_OS_PRODUCT_TAG_NAME
             || tag.name.length < 1
             || tag.name.length > EMAIL_OS_LIMITS.MAX_TAG_NAME_LENGTH
             || !TAG_NAME_PATTERN.test(tag.name)
@@ -302,6 +305,14 @@ export function shouldAdvanceEmailOsDeliveryStatus(
     const nextRank = EMAIL_OS_DELIVERY_STATUS_PRECEDENCE[nextStatus];
     if (nextRank > currentRank) return true;
     return nextRank === currentRank && nextOccurredAtMillis > currentOccurredAtMillis;
+}
+
+export function isEmailOsProviderEventBoundToProduct(
+    event: Pick<EmailOsProviderEvent, 'productCode'>,
+    expectedProductCode: EmailOsProductCode,
+    hasMatchingDelivery: boolean,
+): boolean {
+    return hasMatchingDelivery && (event.productCode === null || event.productCode === expectedProductCode);
 }
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -368,6 +379,12 @@ export function normalizeEmailOsProviderEvent(value: unknown, providerEventId: s
         : typeof localDeliveryIdValue === 'string' && /^[a-f0-9]{64}$/.test(localDeliveryIdValue)
             ? localDeliveryIdValue
             : (() => { throw new EmailOsContractError('EMAIL_OS_PROVIDER_DELIVERY_TAG_INVALID'); })();
+    const productCodeValue = tags?.[EMAIL_OS_PRODUCT_TAG_NAME];
+    const productCode = productCodeValue === undefined || productCodeValue === null
+        ? null
+        : typeof productCodeValue === 'string' && productCodeValue in EMAIL_OS_PRODUCT_POLICIES
+            ? productCodeValue as EmailOsProductCode
+            : (() => { throw new EmailOsContractError('EMAIL_OS_PROVIDER_PRODUCT_TAG_INVALID'); })();
 
     const statusByType: Partial<Record<EmailOsProviderEventType, EmailOsDeliveryStatus>> = {
         'email.sent': 'sent',
@@ -402,6 +419,7 @@ export function normalizeEmailOsProviderEvent(value: unknown, providerEventId: s
         ),
         providerMessageId,
         localDeliveryId,
+        productCode,
         recipient,
         occurredAt,
         deliveryStatus,

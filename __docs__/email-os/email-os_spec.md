@@ -89,8 +89,9 @@ Every send request contains:
 ### Suppression
 
 - Recipient identity is stored as `SHA-256(productCode:canonicalRecipient)`, not a plaintext address.
-- Permanent bounce, complaint and provider suppression stop future sends for that product.
+- Local permanent bounce, complaint and provider suppression state stops future sends for that product.
 - A provider suppression removal can clear the provider-derived block, with an audit receipt.
+- Resend's provider suppression list, reputation and quotas are team-wide. MenuList and Answerlattice accept that provider-level coupling while they share one team; their application suppression records remain product-scoped.
 - SignalDesk never shares suppression or reputation with transactional products.
 
 ## Success Metrics
@@ -119,10 +120,11 @@ Every send request contains:
 | Duplicate webhook | Hashed `svix-id` receipt create-once boundary |
 | Duplicate send after provider idempotency expiry | Durable deterministic local claim checked before every provider call |
 | Webhook before provider response persistence | Reserved local-delivery provider tag plus provider-ID-hash fallback |
+| Shared-team webhook fan-out | Reserved product tag plus a matching local delivery; wrong-product or unbound signed events return `200 ignored` with zero product writes |
 | Out-of-order webhook | Monotonic state precedence and provider timestamp comparison |
-| Domain reputation damage | Separate subdomains, product isolation and hashed suppressions |
+| Domain reputation damage | Separate sending domains and keys; monitor the accepted MenuList/Answerlattice team-wide reputation boundary and split teams if volume, SLA or reputation risk requires it |
 | Secret leakage | Secret Manager, server-only access and bounded metadata logs |
-| Cross-product data leakage | Separate Firebase deployments, keys, webhooks and collections |
+| Cross-product data leakage | Separate Firebase deployments, keys, webhook secrets and collections plus product-bound event reconciliation |
 | Provider cost | Send-off defaults, per-product quotas and documented provider activation |
 
 ## Decisions Frozen
@@ -134,7 +136,9 @@ Every send request contains:
 5. SignalDesk uses a separate reputation boundary if approved.
 6. No automatic fallback provider is implemented.
 7. Provider onboarding is a certification step after source implementation.
+8. MenuList and Answerlattice share one Resend team at the current operating scale, but use separate domains, domain-scoped keys, webhook registrations/secrets, Firebase secrets and local state.
+9. A separate MenuList or Answerlattice team becomes mandatory if measured volume, reputation, quota or SLA risk makes the accepted team-wide provider coupling unsafe.
 
 ## Doctrine Preservation Check
 
-This decision creates a reusable cross-product rule: shared capability does not imply shared credentials, data, reputation or activation. The rule is contained in this EmailOS specification and does not modify MenuList or Answerlattice core product doctrine.
+This decision creates a reusable cross-product rule: a shared provider account does not imply shared credentials, data or activation. MenuList and Answerlattice deliberately share provider-level reputation, suppression and quota behavior for now, while application state and credentials remain isolated. The rule is contained in this EmailOS specification and does not modify MenuList or Answerlattice core product doctrine.

@@ -69,7 +69,7 @@ answerlattice_emailOsWebhookReceipts/{sha256(svixId)}
 answerlattice_emailOsSuppressions/{sha256(productCode:canonicalRecipient)}
 ```
 
-Delivery documents contain product code, provider, bounded provider message ID and its hash, local reference, event type, classification, current status, provider event time, created/modified timestamps and retention expiry. They do not contain subject, HTML, plain text or plaintext recipient. The pre-provider document ID comes from the deterministic local delivery identity. Every provider request reserves one Resend tag named `email_os_delivery_id` for that document ID; webhook lookup uses it first and falls back to the provider message ID hash for older or untagged messages.
+Delivery documents contain product code, provider, bounded provider message ID and its hash, local reference, event type, classification, current status, provider event time, created/modified timestamps and retention expiry. They do not contain subject, HTML, plain text or plaintext recipient. The pre-provider document ID comes from the deterministic local delivery identity. Every provider request reserves `email_os_product` for the immutable product code and `email_os_delivery_id` for that document ID. Webhook lookup uses the delivery tag first and falls back to the provider message ID hash for older or untagged messages.
 
 Webhook receipts contain event ID hash, event type, provider message ID hash, processing result, provider event time, created timestamp and expiry.
 
@@ -86,7 +86,7 @@ The adapter performs this order, with flag/config validation occurring before Fi
 5. Read the product-scoped hashed suppression record.
 6. Transactionally create the deterministic local delivery claim before any provider call.
 7. Return the existing result without a provider call when the claim already exists, except for an explicit non-ambiguous retryable provider rejection.
-8. Call Resend with HTML, plain text, up to seven caller tags, the reserved local-delivery tag and the deterministic idempotency key.
+8. Call Resend with HTML, plain text, up to six caller tags, the reserved product and local-delivery tags, and the deterministic idempotency key.
 9. Bound the provider response and transactionally advance the compact delivery status without regressing a newer webhook state.
 10. Return a normalized result to the existing product delivery processor.
 
@@ -101,12 +101,17 @@ Each product endpoint:
 3. Requires all three Svix headers.
 4. Verifies through `resend.webhooks.verify` and the product webhook secret.
 5. Normalizes only admitted event types.
-6. Creates a hashed receipt in a Firestore transaction.
-7. Resolves the delivery directly through the signed provider payload's reserved local-delivery tag, with provider-ID-hash fallback.
-8. Applies monotonic delivery-state changes and stores the provider identity even if the webhook arrives before the send response is persisted.
-9. Creates or updates a product-scoped hashed suppression for permanent bounce, complaint and suppression events.
-10. Returns `200` for newly processed and duplicate verified events.
-11. Returns generic `400` validation errors without exposing verification details.
+6. Rejects an explicit wrong-product tag before Firestore work.
+7. Resolves a delivery in the owning product collection through the signed local-delivery tag, with provider-ID-hash fallback, and verifies any already-stored provider identity.
+8. Requires the resolved delivery to carry the expected product code. Legacy untagged events are admitted only through this local delivery proof.
+9. Returns `200 ignored` without a receipt, delivery update or suppression write when the event is unbound or belongs to another product.
+10. Creates a hashed receipt only after product binding succeeds.
+11. Applies monotonic delivery-state changes and stores the provider identity even if the webhook arrives before the send response is persisted.
+12. Creates or updates a product-scoped hashed suppression only for a product-bound permanent bounce, complaint or suppression event.
+13. Returns `200` for newly processed and duplicate verified events.
+14. Returns generic `400` validation errors without exposing verification details.
+
+MenuList and Answerlattice use one Resend team at the current operating scale. They retain separate verified domains, domain-scoped keys, webhook registrations and signing secrets, Firebase secrets, delivery collections and suppression collections. Because Resend webhook subscriptions are team-scoped, both endpoints can receive both products' signed events; the product tag plus local-delivery proof prevents cross-product mutation. Resend's own suppression list, reputation and quotas remain team-wide and are an explicit accepted provider constraint, not an application-isolation claim.
 
 ## Feature Flags
 
@@ -142,6 +147,8 @@ Each product endpoint:
 No `RESEND_*`, `ML_*` or `AL_*` alias is admitted.
 
 MenuList outbound callers bind `MENULIST_RESEND_API_KEY` through their existing platform-delivery secret group; the MenuList webhook binds only `MENULIST_RESEND_WEBHOOK_SECRET`. Answerlattice workflow delivery binds `ANSWERLATTICE_RESEND_API_KEY`; its webhook binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET`. These declarations deliberately prevent Function deployment until onboarding has created the product-specific secrets.
+
+The Answerlattice HTTPS webhook declares `invoker: 'public'` because Resend is an external caller and cannot present Google IAM credentials. Public transport access is not event authorization: the handler verifies the Resend signature over `request.rawBody` before parsing or writing, then requires a matching Answerlattice-local delivery identity before any receipt, status, or suppression mutation.
 
 ## File Inventory
 

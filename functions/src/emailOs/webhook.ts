@@ -10,8 +10,10 @@ import {
     EMAIL_OS_LIMITS,
     EMAIL_OS_DELIVERY_STATUS_PRECEDENCE,
     EmailOsDeliveryStatus,
+    EmailOsProviderEvent,
     buildEmailOsProviderIdentityHash,
     buildEmailOsRecipientHash,
+    isEmailOsProviderEventBoundToProduct,
     normalizeEmailOsProviderEvent,
     shouldAdvanceEmailOsDeliveryStatus,
 } from '../sharedData/emailOs';
@@ -26,6 +28,17 @@ function isDeliveryStatus(value: unknown): value is EmailOsDeliveryStatus {
 function readHeader(request: Request, name: string): string | null {
     const value = request.header(name);
     return value && value.length <= EMAIL_OS_LIMITS.MAX_PROVIDER_EVENT_ID_LENGTH ? value : null;
+}
+
+function deliveryMatchesProductAndProvider(
+    delivery: FirebaseFirestore.DocumentSnapshot,
+    providerMessageIdHash: string | null,
+): boolean {
+    if (!delivery.exists || delivery.get('productCode') !== 'ML') return false;
+    const storedProviderMessageIdHash = delivery.get('providerMessageIdHash');
+    return !providerMessageIdHash
+        || typeof storedProviderMessageIdHash !== 'string'
+        || storedProviderMessageIdHash === providerMessageIdHash;
 }
 
 export async function handleMenuListEmailOsWebhook(request: RawBodyRequest, response: Response): Promise<void> {
@@ -53,7 +66,7 @@ export async function handleMenuListEmailOsWebhook(request: RawBodyRequest, resp
         return;
     }
 
-    let event;
+    let event: EmailOsProviderEvent;
     try {
         const verified = new Resend().webhooks.verify({
             payload: rawBody.toString('utf8'),
@@ -66,10 +79,23 @@ export async function handleMenuListEmailOsWebhook(request: RawBodyRequest, resp
         return;
     }
 
+    if (event.productCode !== null && event.productCode !== 'ML') {
+        logger.info('[EmailOS] MenuList provider event ignored', {
+            eventType: event.eventType,
+            reason: 'product_tag_mismatch',
+        });
+        response.status(200).json({ accepted: true, ignored: true });
+        return;
+    }
+
     const receiptId = sha256(event.providerEventId);
     const occurredAtMillis = Date.parse(event.occurredAt);
     const expiresAt = Timestamp.fromMillis(Date.now() + EMAIL_OS_LIMITS.RETENTION_DAYS * 86_400_000);
+    const providerMessageIdHash = event.providerMessageId
+        ? buildEmailOsProviderIdentityHash(event.providerMessageId, sha256)
+        : null;
     let duplicate = false;
+    let ignored = false;
 
     await firestoreAdmin.runTransaction(async (transaction) => {
         const receiptRef = firestoreAdmin.collection(DB_COLLECTIONS.EMAIL_OS_WEBHOOK_RECEIPTS).doc(receiptId);
@@ -79,53 +105,55 @@ export async function handleMenuListEmailOsWebhook(request: RawBodyRequest, resp
             return;
         }
 
+        let delivery: FirebaseFirestore.DocumentSnapshot | undefined;
+        if (event.localDeliveryId) {
+            const directMatch = await transaction.get(
+                firestoreAdmin.collection(DB_COLLECTIONS.EMAIL_OS_DELIVERIES).doc(event.localDeliveryId),
+            );
+            if (deliveryMatchesProductAndProvider(directMatch, providerMessageIdHash)) delivery = directMatch;
+        }
+        if (!delivery && providerMessageIdHash) {
+            const query = firestoreAdmin.collection(DB_COLLECTIONS.EMAIL_OS_DELIVERIES)
+                .where('providerMessageIdHash', '==', providerMessageIdHash)
+                .limit(2);
+            const matches = await transaction.get(query);
+            delivery = matches.docs.find((candidate) => deliveryMatchesProductAndProvider(candidate, providerMessageIdHash));
+        }
+        if (!isEmailOsProviderEventBoundToProduct(event, 'ML', Boolean(delivery))) {
+            ignored = true;
+            return;
+        }
+
         let deliveryUpdate: { ref: FirebaseFirestore.DocumentReference; fields: Record<string, unknown> } | null = null;
-        if (event.providerMessageId && event.deliveryStatus) {
-            const providerMessageIdHash = buildEmailOsProviderIdentityHash(event.providerMessageId, sha256);
-            let delivery: FirebaseFirestore.DocumentSnapshot | undefined;
-            if (event.localDeliveryId) {
-                const directMatch = await transaction.get(
-                    firestoreAdmin.collection(DB_COLLECTIONS.EMAIL_OS_DELIVERIES).doc(event.localDeliveryId),
-                );
-                if (directMatch.exists && directMatch.get('productCode') === 'ML') delivery = directMatch;
-            }
-            if (!delivery) {
-                const query = firestoreAdmin.collection(DB_COLLECTIONS.EMAIL_OS_DELIVERIES)
-                    .where('providerMessageIdHash', '==', providerMessageIdHash)
-                    .limit(1);
-                const matches = await transaction.get(query);
-                delivery = matches.docs[0];
-            }
-            if (delivery?.exists) {
-                const currentStatus = delivery.get('status');
-                const currentOccurredAt = delivery.get('statusOccurredAt');
-                const currentMillis = typeof currentOccurredAt?.toMillis === 'function' ? currentOccurredAt.toMillis() : 0;
-                if (
-                    isDeliveryStatus(currentStatus)
-                    && shouldAdvanceEmailOsDeliveryStatus(currentStatus, event.deliveryStatus, currentMillis, occurredAtMillis)
-                ) {
-                    deliveryUpdate = {
-                        ref: delivery.ref,
-                        fields: {
-                            providerMessageId: event.providerMessageId,
-                            providerMessageIdHash,
-                            status: event.deliveryStatus,
-                            statusOccurredAt: Timestamp.fromMillis(occurredAtMillis),
-                            lastProviderEventType: event.eventType,
-                            updatedAt: FieldValue.serverTimestamp(),
-                        },
-                    };
-                }
+        if (delivery?.exists && event.providerMessageId && providerMessageIdHash && event.deliveryStatus) {
+            const currentStatus = delivery.get('status');
+            const currentOccurredAt = delivery.get('statusOccurredAt');
+            const currentMillis = typeof currentOccurredAt?.toMillis === 'function' ? currentOccurredAt.toMillis() : 0;
+            if (
+                isDeliveryStatus(currentStatus)
+                && shouldAdvanceEmailOsDeliveryStatus(currentStatus, event.deliveryStatus, currentMillis, occurredAtMillis)
+            ) {
+                deliveryUpdate = {
+                    ref: delivery.ref,
+                    fields: {
+                        providerMessageId: event.providerMessageId,
+                        providerMessageIdHash,
+                        status: event.deliveryStatus,
+                        statusOccurredAt: Timestamp.fromMillis(occurredAtMillis),
+                        lastProviderEventType: event.eventType,
+                        updatedAt: FieldValue.serverTimestamp(),
+                    },
+                };
             }
         }
 
         transaction.create(receiptRef, {
             provider: event.provider,
+            productCode: 'ML',
             eventType: event.eventType,
             providerEventIdHash: receiptId,
-            providerMessageIdHash: event.providerMessageId
-                ? buildEmailOsProviderIdentityHash(event.providerMessageId, sha256)
-                : null,
+            providerMessageIdHash,
+            productTagPresent: event.productCode !== null,
             receivedAt: FieldValue.serverTimestamp(),
             expiresAt,
         });
@@ -139,14 +167,22 @@ export async function handleMenuListEmailOsWebhook(request: RawBodyRequest, resp
                 reason: event.suppressionReason,
                 recipientHash,
                 sourceEventType: event.eventType,
-                sourceProviderMessageIdHash: event.providerMessageId
-                    ? buildEmailOsProviderIdentityHash(event.providerMessageId, sha256)
-                    : null,
+                sourceProviderMessageIdHash: providerMessageIdHash,
                 updatedAt: FieldValue.serverTimestamp(),
                 expiresAt: event.suppressionAction === 'activate' ? FieldValue.delete() : expiresAt,
             }, { merge: true });
         }
     });
+
+    if (ignored) {
+        logger.info('[EmailOS] MenuList provider event ignored', {
+            eventType: event.eventType,
+            reason: 'delivery_not_bound',
+            productTagPresent: event.productCode !== null,
+        });
+        response.status(200).json({ accepted: true, ignored: true });
+        return;
+    }
 
     logger.info('[EmailOS] MenuList provider event accepted', {
         duplicate,

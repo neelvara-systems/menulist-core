@@ -48,7 +48,9 @@
 | EO-208 | Permanent bounce | Product suppression becomes active |
 | EO-209 | Complaint | Product suppression becomes active |
 | EO-210 | Suppression removal | Matching provider-derived suppression becomes inactive |
-| EO-211 | Message from another product | No cross-project lookup or write |
+| EO-211 | Signed message from another product | Explicit wrong-product tag or missing local delivery returns `200 ignored`; no receipt, delivery or suppression write |
+| EO-212 | Legacy event without product tag | Accepted only when provider ID or local delivery ID resolves to the expected product delivery |
+| EO-213 | Forged expected-product tag without local delivery | Returns `200 ignored`; a tag alone never authorizes product mutation |
 
 ## Product Boundary Tests
 

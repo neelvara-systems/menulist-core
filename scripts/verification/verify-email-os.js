@@ -36,12 +36,17 @@ const requiredFiles = [
   'functions/src/emailOs/render.ts',
   'functions/src/emailOs/webhook.ts',
   'functions-answerlattice/src/emailOs/provider.ts',
+  'functions-answerlattice/src/emailOs/http.ts',
   'functions-answerlattice/src/emailOs/render.ts',
   'functions-answerlattice/src/emailOs/webhook.ts',
 ];
 for (const filePath of requiredFiles) {
   assert(fs.existsSync(path.join(ROOT, filePath)), `${filePath} is required by EmailOS`);
 }
+
+const answerlatticeWebhookTransport = read('functions-answerlattice/src/emailOs/http.ts');
+assert(answerlatticeWebhookTransport.includes("invoker: 'public'"), 'Answerlattice EmailOS webhook transport must admit external Resend delivery');
+assert(answerlatticeWebhookTransport.includes('ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS_WEBHOOK'), 'Answerlattice EmailOS webhook must bind only its webhook secret group');
 
 const rootFlags = read('src/config/features.ts');
 const menuListFlags = read('functions/src/constants/features.ts');
@@ -62,6 +67,8 @@ for (const webhookPath of ['functions/src/emailOs/webhook.ts', 'functions-answer
   assert(source.includes('runTransaction'), `${webhookPath} must deduplicate receipts transactionally`);
   assert(source.includes('shouldAdvanceEmailOsDeliveryStatus'), `${webhookPath} must enforce monotonic delivery state`);
   assert(source.includes('event.localDeliveryId'), `${webhookPath} must resolve early webhooks by the internal delivery tag`);
+  assert(source.includes('isEmailOsProviderEventBoundToProduct'), `${webhookPath} must reject events without a matching product delivery`);
+  assert(source.includes('delivery_not_bound'), `${webhookPath} must ignore unbound shared-team events without writing product state`);
   assert(source.includes('providerMessageIdHash'), `${webhookPath} must retain provider identity on delivery updates`);
   assert(source.indexOf('transaction.get(query)') < source.indexOf('transaction.create(receiptRef'), `${webhookPath} must complete transaction reads before writes`);
   assert(source.includes("FieldValue.delete()"), `${webhookPath} must prevent active suppressions from expiring`);
@@ -77,6 +84,7 @@ for (const providerPath of [
   assert(source.includes('idempotencyKey'), `${providerPath} must send with an idempotency key`);
   assert(source.includes('transaction.create(deliveryRef'), `${providerPath} must claim the local delivery before calling the provider`);
   assert(source.includes('EMAIL_OS_DELIVERY_TAG_NAME'), `${providerPath} must attach the internal delivery identity tag`);
+  assert(source.includes('EMAIL_OS_PRODUCT_TAG_NAME'), `${providerPath} must attach the immutable product-routing tag`);
   assert(source.includes("'outcome_unknown'"), `${providerPath} must preserve ambiguous provider outcomes`);
   assert(source.includes('EMAIL_OS_SUPPRESSIONS'), `${providerPath} must check local suppressions`);
   assert(!source.includes('console.log'), `${providerPath} must not log raw provider data`);
@@ -90,7 +98,8 @@ assert(ownerProcessor.includes('productCode: event.productId'), 'Owner notificat
 assert(genericNotifications.includes("productId !== PRODUCT_IDS.MENULIST && productId !== PRODUCT_IDS.ANSWERLATTICE"), 'Generic notifications must reject unsupported product identities');
 assert(canonicalContract.includes("CC: {\n        productCode: 'CC',\n        activationState: 'export_only'"), 'CampaignCue must remain export-only');
 assert(canonicalContract.includes("MC: {\n        productCode: 'MC',\n        activationState: 'disabled'"), 'MyCodex email must remain disabled');
-assert(canonicalContract.includes('MAX_TAG_COUNT: 7'), 'One provider tag slot must remain reserved for the internal delivery identity');
+assert(canonicalContract.includes('MAX_TAG_COUNT: 6'), 'Two provider tag slots must remain reserved for product and delivery identity');
+assert(canonicalContract.includes("EMAIL_OS_PRODUCT_TAG_NAME = 'email_os_product'"), 'EmailOS must define the reserved product-routing tag');
 
 const ttlPolicies = [
   ['firestore.indexes.json', 'emailOsDeliveries', 'emailOsWebhookReceipts', 'emailOsSuppressions'],

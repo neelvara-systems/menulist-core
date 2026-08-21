@@ -32,7 +32,46 @@ The two registered webhook URLs intentionally precede their scoped Firebase depl
 
 ## Answerlattice Onboarding Inputs
 
-Repeat the process with an independent Answerlattice team or account boundary, domain, API key, webhook secret, Firebase project and flags. Never reuse MenuList secret values.
+1. [ ] Use the existing MFA-protected `MenuList` Resend team under the sole
+   human provider account. Do not create another paid team or human login.
+   Provider suppression, reputation and quotas are therefore shared, while all
+   product credentials and application state below remain isolated.
+2. [ ] Add and verify `answerlattice.com` in that team for the canonical
+   `Answerlattice <system@answerlattice.com>` sender.
+3. [ ] Configure outbound DKIM plus an isolated `send.answerlattice.com`
+   SPF/MX Return-Path. Preserve the Google Workspace apex MX records and do not
+   enable Resend inbound mail.
+4. [ ] As the owner, create a dedicated QA sending-only API key restricted to
+   `answerlattice.com`. Never display, log, or reuse the MenuList key.
+5. [ ] Create a separate Answerlattice QA webhook registration and signing
+   secret in the shared team at
+   `https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/answerlatticeEmailOsWebhook`
+   for only the nine admitted events: `email.sent`, `email.delivered`,
+   `email.delivery_delayed`, `email.failed`, `email.bounced`,
+   `email.complained`, `email.suppressed`, `suppression.added`, and
+   `suppression.removed`.
+6. [ ] Store independent enabled Answerlattice QA values for
+   `ANSWERLATTICE_RESEND_API_KEY` and
+   `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` in project
+   `neelvara-answerlattice-qa`. Put only the sending key and the non-secret From
+   configuration in Vercel custom environment `qa`; the webhook signing secret
+   belongs only to Firebase Functions.
+7. [ ] Set the Vercel QA non-secret sender values to
+   `ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN=answerlattice.com`,
+   `ANSWERLATTICE_EMAIL_OS_FROM=Answerlattice <system@answerlattice.com>`, and
+   `ANSWERLATTICE_EMAIL_OS_REPLY_TO=support@neelvara.com`.
+8. [ ] Deploy only the Answerlattice EmailOS webhook with optional provider
+   secret binding enabled. Keep provider sending disabled.
+9. [ ] Run the controlled provider certification matrix below before enabling
+   the independent Answerlattice provider-send flag.
+
+Never reuse MenuList secret values, webhook registrations, or Firebase
+collections. Shared-team webhooks receive provider events for both products;
+the runtime admits an event only when its reserved product tag and local
+delivery evidence bind it to that endpoint. Production repeats the same process
+with a separate production key, webhook, Firebase secret versions, and
+deployment evidence. Split the provider team only when measured volume,
+reputation, quota or SLA risk justifies the additional paid boundary.
 
 ## Troubleshooting
 

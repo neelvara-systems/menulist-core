@@ -31,7 +31,8 @@
 | Delivery status event with internal tag | New verified event | 2 | 2 | Receipt read/create plus direct delivery read/update |
 | Untagged legacy delivery status | New verified event | Up to 3 | 2 | Receipt read, optional direct lookup and provider-ID-hash fallback query |
 | Bounce or complaint | New verified terminal event | 2 | 3 | Receipt and delivery reads; receipt, delivery and suppression writes |
-| Suppression removal | Verified provider removal | 1 | 2 | Receipt read/create plus suppression update; no delivery status lookup |
+| Suppression removal | Verified product-bound provider removal | Up to 3 | 2 | Receipt read, delivery identity lookup, receipt create and suppression update |
+| Wrong-product or unbound signed event | Valid team webhook event without local product proof | Up to 3 | 0 | Returns `200 ignored`; no receipt, delivery or suppression write |
 | Invalid signature | Unverified request | 0 | 0 | No Firestore operation |
 
 The exact transaction may perform fewer operations when no matching delivery or suppression record exists.
