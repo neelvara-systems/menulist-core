@@ -146,7 +146,7 @@ MenuList and Answerlattice use one Resend team at the current operating scale. T
 
 No `RESEND_*`, `ML_*` or `AL_*` alias is admitted.
 
-MenuList outbound callers bind `MENULIST_RESEND_API_KEY` through their existing platform-delivery secret group; the MenuList webhook binds only `MENULIST_RESEND_WEBHOOK_SECRET`. Answerlattice workflow delivery binds `ANSWERLATTICE_RESEND_API_KEY`; its webhook binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET`. These declarations deliberately prevent Function deployment until onboarding has created the product-specific secrets.
+MenuList outbound callers bind `MENULIST_RESEND_API_KEY` through their existing platform-delivery secret group; the MenuList webhook binds only `MENULIST_RESEND_WEBHOOK_SECRET`. Answerlattice workflow delivery binds the optional `ANSWERLATTICE_RESEND_API_KEY` only when outbound provider onboarding is explicitly enabled. Its deployed webhook always binds `ANSWERLATTICE_RESEND_WEBHOOK_SECRET`, so inbound signature verification cannot depend on the optional outbound-provider deployment switch. The required webhook secret must exist before that HTTPS Function is deployed; the sending key may remain absent while provider sending is disabled.
 
 The Answerlattice HTTPS webhook declares `invoker: 'public'` because Resend is an external caller and cannot present Google IAM credentials. Public transport access is not event authorization: the handler verifies the Resend signature over `request.rawBody` before parsing or writing, then requires a matching Answerlattice-local delivery identity before any receipt, status, or suppression mutation.
 

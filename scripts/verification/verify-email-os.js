@@ -45,8 +45,12 @@ for (const filePath of requiredFiles) {
 }
 
 const answerlatticeWebhookTransport = read('functions-answerlattice/src/emailOs/http.ts');
+const answerlatticeFunctionSecrets = read('functions-answerlattice/src/config/secrets.ts');
 assert(answerlatticeWebhookTransport.includes("invoker: 'public'"), 'Answerlattice EmailOS webhook transport must admit external Resend delivery');
 assert(answerlatticeWebhookTransport.includes('ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS_WEBHOOK'), 'Answerlattice EmailOS webhook must bind only its webhook secret group');
+assert(answerlatticeFunctionSecrets.includes("RESEND_WEBHOOK_SECRET: defineSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')"), 'Answerlattice EmailOS webhook signing secret must be required at deployment');
+assert(answerlatticeFunctionSecrets.includes('EMAIL_OS_WEBHOOK: ['), 'Answerlattice EmailOS webhook must use a required secret group');
+assert(!answerlatticeFunctionSecrets.includes("RESEND_WEBHOOK_SECRET: defineOptionalProviderSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')"), 'Answerlattice EmailOS webhook signing secret must not depend on the optional outbound-provider gate');
 
 const rootFlags = read('src/config/features.ts');
 const menuListFlags = read('functions/src/constants/features.ts');
@@ -58,7 +62,7 @@ assert(menuListFlags.includes('ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND: false'), 
 assert(answerlatticeFlags.includes('ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND: false'), 'Answerlattice Functions provider send must default off');
 assert(rootFlags.includes('ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false'), 'SignalDesk provider send must remain off');
 assert(read('functions/src/config/secrets.ts').includes('SECRETS.MENULIST_RESEND_API_KEY'), 'MenuList Functions must declare its Resend API secret');
-assert(read('functions-answerlattice/src/config/secrets.ts').includes('ANSWERLATTICE_SECRETS.RESEND_API_KEY'), 'Answerlattice Functions must declare its Resend API secret');
+assert(answerlatticeFunctionSecrets.includes('ANSWERLATTICE_SECRETS.RESEND_API_KEY'), 'Answerlattice Functions must declare its Resend API secret');
 
 for (const webhookPath of ['functions/src/emailOs/webhook.ts', 'functions-answerlattice/src/emailOs/webhook.ts']) {
   const source = read(webhookPath);

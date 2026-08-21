@@ -296,8 +296,9 @@ Stop before any mutation when one of these is true:
     `ANSWERLATTICE_RESEND_API_KEY` and
     `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` versions. The webhook signing secret
     must never enter Vercel or source.
-  - Required runtime state: deploy only `answerlatticeEmailOsWebhook` with
-    optional provider secret binding enabled. Keep
+  - Required runtime state: deploy only `answerlatticeEmailOsWebhook`; its
+    signing secret is an unconditional Function binding and does not depend on
+    the optional outbound-provider secret switch. Keep
     `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND=false` until later controlled
     delivery certification. Its Cloud Run transport invoker is public so
     Resend can reach it, while the handler remains fail-closed on the raw-body
