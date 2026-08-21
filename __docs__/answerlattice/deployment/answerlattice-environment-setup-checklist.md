@@ -539,10 +539,11 @@ activation require an explicit scoped approval.
 - [x] `AL-PROD-D05` Verify every enabled Secret Manager version is bound only
   to the exact Functions that declare it.
   - Secret Manager contains only the three production core secrets. Current
-    Function readback shows all eight deployed Gemini-bound Functions ACTIVE
-    on Node 22 in `us-central1`: each AI path binds
+    Function readback shows all 11 approved core Functions ACTIVE on Node 22
+    in `us-central1`. Each of the eight AI paths binds
     `ANSWERLATTICE_GEMINI_AI_KEY` version 1, the scheduler paths bind only their
-    declared bundle/cron secrets, and no optional provider secret is present.
+    declared bundle/cron secrets, and the three non-AI analytics/support
+    Functions bind no secrets. No optional provider secret is present.
 - [ ] `AL-PROD-D06` Create and bind the dedicated Answerlattice production Web
   OAuth client in `neelvara-answerlattice-prod`. Configure truthful branding
   `Answerlattice`, support email `support@neelvara.com`, developer contact
@@ -586,21 +587,27 @@ activation require an explicit scoped approval.
   `--force` as a shortcut.
   - Current production readback has 100 composite indexes and all 100 are
     READY. The 18 TTL field configurations are present.
-- [ ] `AL-PROD-E03` With explicit scoped approval, deploy dedicated rules,
+- [x] `AL-PROD-E03` With explicit scoped approval, deploy dedicated rules,
   Storage rules, approved indexes, and approved Functions targets to project
   `neelvara-answerlattice-prod` using `firebase-answerlattice.json`.
   - Firestore rules, Storage rules, and the approved indexes are deployed and
-    source-hash verified. The eight Gemini-bound Functions, Scheduler, and
-    embedding task queue are deployed and ACTIVE with no placeholder or QA
-    secret. The four non-AI Functions remain outside this scoped activation,
-    so the full 12-Function item remains open.
-- [ ] `AL-PROD-E04` Read back active rules, Storage rules, indexes, Functions,
+    source-hash verified. All 11 approved core Functions are deployed and
+    ACTIVE with no placeholder or QA secret: eight Gemini-bound Functions,
+    Scheduler and embedding task infrastructure, two retry-safe Firestore
+    analytics/support triggers, and the PLATFORM-authorized analytics backfill
+    callable. The optional EmailOS webhook is intentionally excluded under
+    `AL-PROD-D04`; its absence does not leave the approved core target partial.
+- [x] `AL-PROD-E04` Read back active rules, Storage rules, indexes, Functions,
   service identities, secret bindings, scheduler/tasks, and budgets.
   - Rules/indexes, service identities, databases, budgets, and all three core
-    secret names are read back. The eight scoped Functions, Scheduler, task
-    queue, Node 22 runtime, trigger regions, and exact secret version bindings
-    are also read back. Full closure awaits the separately reviewed four
-    non-AI Functions.
+    secret names are read back. All 11 approved core Functions report ACTIVE
+    on Node 22 in `us-central1`; Scheduler, task queue, trigger regions, and
+    exact secret version bindings are read back. Production
+    `backfillChatAnalytics` uses the same Domain Restricted Sharing-compatible
+    Cloud Run transport setting as QA:
+    `run.googleapis.com/invoker-iam-disabled=true`. An unsigned POST reached
+    the callable and returned HTTP 401 `UNAUTHENTICATED`, proving transport is
+    reachable while Firebase callable authentication remains enforced.
 - [x] `AL-PROD-E05` Verify Vercel Production assignments for
   `answerlattice.com` and `www.answerlattice.com`, TLS, canonical redirects,
   `/api/version`, and production environment identity.
@@ -683,3 +690,4 @@ service-account JSON, or customer data.
 | 2026-08-21 | `AL-PROD-D01`, `AL-PROD-D02`, `AL-PROD-D05` | Pass | Owner-created AI Studio authorization key transferred without display to sensitive Vercel Production and Secret Manager version 1; direct provider smoke returned HTTP 200 with exactly `OK`; all three production core secret names and their exact Function bindings were read back. |
 | 2026-08-21 | `AL-PROD-E03`, `AL-PROD-E04` | Scoped Gemini activation pass; four non-AI Functions open | The first deployment exposed Google's new-project default build-account boundary. The standard `roles/cloudbuild.builds.builder` role was added only to `48335396774-compute@developer.gserviceaccount.com`; the pre-existing Eventarc service-agent role was left unchanged. All eight Gemini-bound Functions are ACTIVE on Node 22 in `us-central1`, with Firestore triggers on production `(default)` in `nam5`, one Scheduler, one embedding task queue, and exact Secret Manager version 1 bindings. |
 | 2026-08-21 | `AL-PROD-E05` | Pass | Vercel Production deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` reached READY from exact application commit `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`. The apex returns HTTP 200 with HSTS, Answerlattice routing headers, environment `production`, and matching `/api/version`; `www` returns `308` to the same apex path and resolves to the identical build. |
+| 2026-08-22 | `AL-PROD-E03`, `AL-PROD-E04` | Approved core Function target complete | Deployed the two retry-safe Firestore analytics/support triggers and the PLATFORM-authorized analytics backfill callable. Live readback reports 11 approved core Functions ACTIVE on Node 22 in `us-central1`. The callable retains Firebase auth and current PLATFORM authorization while using the QA-proven DRS-compatible transport annotation `run.googleapis.com/invoker-iam-disabled=true`; an unsigned POST returned HTTP 401 `UNAUTHENTICATED`. The optional EmailOS webhook remains intentionally undeployed with provider credentials absent. |
