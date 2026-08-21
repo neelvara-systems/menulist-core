@@ -41,11 +41,11 @@ The two registered webhook URLs intentionally precede their scoped Firebase depl
 3. [x] Configure outbound DKIM plus an isolated `send.answerlattice.com`
    SPF/MX Return-Path. Preserve the Google Workspace apex MX records and do not
    enable Resend inbound mail.
-4. [ ] As the owner, create a dedicated QA sending-only API key restricted to
+4. [x] As the owner, create a dedicated QA sending-only API key restricted to
    `answerlattice.com`. Never display, log, or reuse the MenuList key.
-   The key is created, but its one-time value has not been transferred to
-   Vercel or Secret Manager. Keep this item open until direct transfer is
-   verified.
+   The owner-created value was transferred through standard input to Vercel
+   custom `qa` and Answerlattice QA Secret Manager without display, logging or
+   repository persistence.
 5. [x] Create a separate Answerlattice QA webhook registration and signing
    secret in the shared team at
    `https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net/answerlatticeEmailOsWebhook`
@@ -53,14 +53,15 @@ The two registered webhook URLs intentionally precede their scoped Firebase depl
    `email.delivery_delayed`, `email.failed`, `email.bounced`,
    `email.complained`, `email.suppressed`, `suppression.added`, and
    `suppression.removed`.
-6. [ ] Store independent enabled Answerlattice QA values for
+6. [x] Store independent enabled Answerlattice QA values for
    `ANSWERLATTICE_RESEND_API_KEY` and
    `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` in project
    `neelvara-answerlattice-qa`. Put only the sending key and the non-secret From
    configuration in Vercel custom environment `qa`; the webhook signing secret
    belongs only to Firebase Functions.
-   The webhook signing secret is stored as enabled version 1. The sending key
-   remains absent, so this combined item stays open.
+   Both project-local secrets are stored as enabled version 1. Vercel custom
+   `qa` contains only the sending key as a sensitive variable; it does not
+   contain the webhook signing secret.
 7. [x] Set the Vercel QA non-secret sender values to
    `ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN=answerlattice.com`,
    `ANSWERLATTICE_EMAIL_OS_FROM=Answerlattice <system@answerlattice.com>`, and

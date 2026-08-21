@@ -3,7 +3,7 @@
 > **Feature:** Cross-product production email infrastructure
 > **Status:** MenuList provider prepared; Answerlattice QA inbound webhook active; all outbound provider sending disabled
 > **Last Updated:** August 21, 2026
-> **Version:** 1.0.3
+> **Version:** 1.0.4
 
 ## Quick Navigation
 
@@ -40,8 +40,10 @@ EmailOS is the email delivery plane beneath [NotificationOS](../notification-os/
 - Answerlattice QA now has its verified sender domain, isolated return path,
   webhook registration, enabled signing-secret version and deployed inbound
   webhook. Revision `answerlatticeemailoswebhook-00006-zer` binds only the
-  signing secret and rejects unsigned traffic. Its separate sending key has not
-  been transferred to Vercel or Secret Manager.
+  signing secret and rejects unsigned traffic. Its separate sending key is now
+  stored as a sensitive variable only in Vercel custom environment `qa` and as
+  enabled Secret Manager version 1 in `neelvara-answerlattice-qa`; the value was
+  transferred through standard input without repository persistence or display.
 - Every provider-send flag remains off. The Answerlattice QA inbound webhook is
   the only newly deployed provider target; no live email has been sent and the
   MenuList webhook deployment remains separately pending.
@@ -81,12 +83,13 @@ For owner/account lifecycle events, the product queue is the existing Owner Noti
 
 ## Feature Flags
 
-All provider-send flags default to `false`. Rendering and contract verification are safe without provider transmission. MenuList now has its key, webhook secret, verified domain and DNS evidence, but no live send is admitted until scoped QA deployment and certification are complete. Answerlattice remains independently pending.
+All provider-send flags default to `false`. Rendering and contract verification are safe without provider transmission. MenuList now has its key, webhook secret, verified domain and DNS evidence, but no live send is admitted until scoped QA deployment and certification are complete. Answerlattice has staged its independent QA key and webhook boundary, but deployment activation and controlled provider certification remain pending.
 
 ## Version History
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.0.4 | 2026-08-21 | Transferred the isolated Answerlattice QA sending key to Vercel custom `qa` and Answerlattice QA Secret Manager while preserving the no-send certification gate |
 | 1.0.3 | 2026-08-21 | Deployed the signature-bound Answerlattice QA inbound webhook while preserving the missing sending-key and no-send boundary |
 | 1.0.2 | 2026-08-21 | Approved one MenuList/Answerlattice Resend team with isolated product domains, keys, webhook secrets and local state; added product-tag plus local-delivery webhook binding |
 | 1.0.1 | 2026-08-16 | Recorded MenuList Resend account security, verified sender DNS, isolated QA/production credentials and webhooks while preserving the no-send/no-deploy gate |

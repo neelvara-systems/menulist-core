@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 21, 2026
-> **Status:** QA core setup active; EmailOS sending-key transfer remains open; production foundation prepared
+> **Status:** QA core setup active; EmailOS key staged and certification open; production foundation prepared
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -96,7 +96,9 @@ The following was verified on August 21, 2026:
   `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, uses the organization-policy
   compatible Cloud Run public transport setting, and returns HTTP 400
   `Invalid webhook` for an unsigned request. The owner-created Resend sending
-  key has not been transferred to Vercel or Secret Manager, and
+  key is now stored as a sensitive value only in Vercel custom `qa` and as
+  enabled Secret Manager version 1 in `neelvara-answerlattice-qa`; it was
+  transferred through standard input without display or repository persistence.
   `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND` remains `false`.
 - Google OAuth parity is now an approved core setup requirement. The shared
   NextAuth session implementation keeps the same `google` provider, identity
@@ -165,10 +167,9 @@ account can read it back from the exact project.
 
 ## Execution Order
 
-1. When the owner is at the machine, transfer the already created
-   Answerlattice QA Resend sending key directly to Vercel custom `qa` and
-   `neelvara-answerlattice-qa` Secret Manager without displaying or persisting
-   it, then run the controlled delivery certification before enabling sending.
+1. Under explicit Vercel deployment approval, redeploy custom environment `qa`
+   so its runtime receives the staged Answerlattice QA sending key. Then run the
+   controlled delivery certification before enabling provider sending.
 2. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
