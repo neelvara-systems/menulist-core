@@ -135,8 +135,10 @@ The following was verified on August 21, 2026:
   `admin@neelvara.com` returned to `canonica.app` authenticated, and the apex
   session did not cross to `www`, proving the host-only cookie boundary.
   Answerlattice Firebase custom-token synchronization remains open until an
-  authorized disposable workspace fixture exists; all production OAuth
-  provider actions also remain open.
+  authorized disposable workspace fixture exists. Production now has its own
+  truthful `Answerlattice Production Web` client and Production-only Vercel
+  binding with hosted `NEXTAUTH_URL` absent; production deployment, callback,
+  session, and custom-token proof remain open.
 - The shared Next.js/Vercel process intentionally uses one environment-scoped
   Sentry DSN because browser, server, and edge SDKs initialize once per runtime,
   not once per custom domain. Monitoring now derives and records the product
@@ -161,13 +163,20 @@ The following was verified on August 21, 2026:
   `nam5` data, backup scheduling, budgets, required APIs, rules, Storage rules,
   100 READY indexes, 18 TTL fields, keyless Vercel identity, and fresh cron and
   bundle secrets are prepared. The runtime service account has no user-managed
-  keys or broad project role. Production domains and TLS are healthy.
-- Production activation is deliberately incomplete. The owner-created Gemini
-  authorization key and legacy reCAPTCHA v3 key are parked; App Check is not
-  registered; the 12 approved Functions, Scheduler, and embedding queue are not
-  deployed. The live Production Vercel build predates the new Answerlattice
-  Production env values, so source promotion, Production redeploy, and hosted
-  OIDC/data-path proof remain separately gated.
+  keys or broad project role. Production domains and TLS are healthy. The first
+  managed backup restored successfully into delete-protected database
+  `answerlattice-prod-recovery-20260821` without touching `(default)`; all 100
+  composite indexes and 15 non-TTL field overrides match production. The 18
+  TTL policies were absent as expected and remain an explicit recovery step.
+- Production activation is deliberately incomplete. Dedicated legacy
+  reCAPTCHA v3 App Check is registered with enforcement OFF, and its public
+  site key plus the dedicated Google OAuth client are bound only to Vercel
+  Production. The production Gemini authorization key remains parked; the 12
+  approved Functions, Scheduler, and embedding queue are not deployed. The
+  live Production Vercel build predates the new Answerlattice Production env
+  values, so source promotion, Production redeploy, hosted OIDC/data-path proof,
+  authenticated smoke, recovery fixture validation, TTL reapplication,
+  Storage/Auth evidence, and recovery cleanup remain separately gated.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -181,17 +190,15 @@ account can read it back from the exact project.
 2. Complete fixture-dependent Auth, App Check, widget, dashboard, ticket,
    knowledge-base, scheduler, and identity-path certification when the QA
    fixtures are available.
-3. Complete the first isolated restore rehearsal after a ready backup exists.
-4. Close every remaining `AL-QA-*` item with current readback.
-5. When the owner creates the production Gemini authorization key, transfer it
+3. Close every remaining `AL-QA-*` item with current readback.
+4. When the owner creates the production Gemini authorization key, transfer it
    directly to Vercel Production and Secret Manager, then deploy and read back
-   only the 11 approved Answerlattice Functions plus their Scheduler and task
+   only the approved Answerlattice Functions plus their Scheduler and task
    queue resources.
-6. When the owner creates the production legacy reCAPTCHA v3 key, register the
-   production Web app and keep enforcement OFF during monitoring.
-7. Promote the approved staging source to main and redeploy Vercel Production
+5. Promote the approved staging source to main and redeploy Vercel Production
    only with explicit deployment authorization.
-8. Run production-host, OIDC/data-path, and recovery evidence before launch
+6. Run production-host, OIDC/data-path, authenticated smoke, fixture recovery,
+   TTL reapplication, Storage/Auth recovery, and cleanup evidence before launch
    approval.
 
 Do not copy MenuList service accounts, WIF providers, Firebase Web values,

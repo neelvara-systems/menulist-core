@@ -102,7 +102,8 @@ The first scheduled backup reached `READY` on August 21, 2026:
 
 ## Isolated Restore Rehearsal
 
-Use a ready QA backup and a new dated destination:
+Use a ready backup and the stage-specific new dated destination. QA uses
+`answerlattice-recovery-*`; production uses `answerlattice-prod-recovery-*`.
 
 ```bash
 ANSWERLATTICE_BACKUP_APPLY=1 \
@@ -113,11 +114,20 @@ ANSWERLATTICE_BACKUP_APPLY=1 \
   --confirm-project neelvara-answerlattice-qa
 ```
 
+```bash
+ANSWERLATTICE_BACKUP_APPLY=1 \
+  npm run answerlattice:backup -- restore-rehearsal \
+  prod \
+  projects/neelvara-answerlattice-prod/locations/LOCATION/backups/BACKUP_ID \
+  answerlattice-prod-recovery-YYYYMMDD \
+  --confirm-project neelvara-answerlattice-prod
+```
+
 The tool rejects:
 
 - a backup belonging to another project;
 - a short or malformed backup identifier;
-- `(default)` or any non-recovery destination;
+- `(default)` or any destination outside the selected stage's recovery prefix;
 - an existing destination database;
 - a cloud mutation without `ANSWERLATTICE_BACKUP_APPLY=1`.
 - a confirmation project that is absent or does not exactly match the selected stage.
@@ -148,6 +158,38 @@ No runtime, Vercel environment, widget, API, scheduler, or public route was
 pointed at the recovery database. The isolated database remains delete-protected
 until fixture validation, TTL reapplication/readback, and an explicitly approved
 cleanup action are complete.
+
+### Current Production Structural Restore Evidence
+
+Completed on August 21, 2026:
+
+- operator: `admin@neelvara.com` through the authenticated Firebase CLI;
+- source project/database: `neelvara-answerlattice-prod` / `(default)`;
+- source backup:
+  `projects/neelvara-answerlattice-prod/locations/nam5/backups/5bad4389-5ae1-42b8-bce3-1e1ec7720723`;
+- source snapshot time: `2026-08-21T13:41:43.122400Z`;
+- destination database: `answerlattice-prod-recovery-20260821`;
+- location: `nam5`;
+- restore start: `2026-08-21T16:19:59Z`;
+- completion observed: `2026-08-21T17:06:56Z`;
+- observed upper-bound RTO: 46 minutes 57 seconds;
+- measured RPO at restore start: 2 hours 38 minutes 16 seconds;
+- operation state: `COMPLETED`;
+- destination delete protection: `ENABLED`;
+- source composite indexes: 100;
+- restored composite indexes: 100, structurally equal to the source inventory;
+- source non-TTL field overrides: 15;
+- restored non-TTL field overrides: 15, structurally equal to the source
+  inventory;
+- source TTL policies: 18;
+- restored TTL policies: 0, matching the documented Firestore backup
+  limitation.
+
+No runtime, Vercel environment, widget, API, scheduler, or public route was
+pointed at the production recovery database. The live production `(default)`
+database remained unchanged. The isolated database remains delete-protected
+until fixture validation, TTL reapplication/readback, Storage/Auth recovery
+evidence, and an explicitly approved cleanup action are complete.
 
 ## Restore Validation
 
@@ -192,9 +234,9 @@ For each rehearsal, record:
 - cleanup owner and completion evidence;
 - final pass/fail decision.
 
-Until every validation item is recorded, report: `QA backup schedule and isolated
-structural restore are verified; fixture data, TTL, Storage, Auth, and cleanup
-evidence remain pending.`
+Until every validation item is recorded, report: `The environment backup
+schedule and isolated structural restore are verified; fixture data, TTL,
+Storage, Auth, and cleanup evidence remain pending.`
 
 ## Official References
 

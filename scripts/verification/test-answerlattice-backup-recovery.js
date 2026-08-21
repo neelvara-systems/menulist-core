@@ -6,7 +6,7 @@ const {
   DAILY_RETENTION_SECONDS,
   DEFAULT_DATABASE,
   PROJECTS,
-  RESTORE_DATABASE_PATTERN,
+  RESTORE_DATABASE_PATTERNS,
   assertBackupResource,
   assertProjectConfirmation,
   assertRestoreDatabase,
@@ -50,12 +50,23 @@ assert.throws(
   /full managed-backup resource name/,
 );
 
-assert(RESTORE_DATABASE_PATTERN.test('answerlattice-recovery-20260718'));
-assert.doesNotThrow(() => assertRestoreDatabase('answerlattice-recovery-20260718'));
-assert.throws(() => assertRestoreDatabase('(default)'), /answerlattice-recovery/);
-assert.throws(() => assertRestoreDatabase('answerlattice'), /answerlattice-recovery/);
+assert(RESTORE_DATABASE_PATTERNS.qa.test('answerlattice-recovery-20260718'));
+assert(RESTORE_DATABASE_PATTERNS.prod.test('answerlattice-prod-recovery-20260718'));
+assert.doesNotThrow(() => assertRestoreDatabase('qa', 'answerlattice-recovery-20260718'));
+assert.doesNotThrow(() => assertRestoreDatabase('prod', 'answerlattice-prod-recovery-20260718'));
+assert.throws(() => assertRestoreDatabase('qa', '(default)'), /answerlattice-recovery/);
+assert.throws(() => assertRestoreDatabase('prod', '(default)'), /answerlattice-prod-recovery/);
+assert.throws(() => assertRestoreDatabase('qa', 'answerlattice'), /answerlattice-recovery/);
 assert.throws(
-  () => assertRestoreDatabase('answerlattice-recovery-2026_07_18'),
+  () => assertRestoreDatabase('qa', 'answerlattice-recovery-2026_07_18'),
+  /answerlattice-recovery/,
+);
+assert.throws(
+  () => assertRestoreDatabase('prod', 'answerlattice-recovery-20260718'),
+  /answerlattice-prod-recovery/,
+);
+assert.throws(
+  () => assertRestoreDatabase('qa', 'answerlattice-prod-recovery-20260718'),
   /answerlattice-recovery/,
 );
 

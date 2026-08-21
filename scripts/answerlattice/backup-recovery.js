@@ -8,7 +8,10 @@ const PROJECTS = Object.freeze({
 const DEFAULT_DATABASE = '(default)';
 const APPLY_ENV = 'ANSWERLATTICE_BACKUP_APPLY';
 const DAILY_RETENTION_SECONDS = '8467200s';
-const RESTORE_DATABASE_PATTERN = /^answerlattice-recovery-[a-z0-9-]{8,40}$/;
+const RESTORE_DATABASE_PATTERNS = Object.freeze({
+  qa: /^answerlattice-recovery-[a-z0-9-]{8,40}$/,
+  prod: /^answerlattice-prod-recovery-[a-z0-9-]{8,40}$/,
+});
 
 function fail(message) {
   throw new Error(message);
@@ -43,9 +46,14 @@ function assertBackupResource(projectId, backupResource) {
   }
 }
 
-function assertRestoreDatabase(databaseId) {
-  if (!RESTORE_DATABASE_PATTERN.test(databaseId)) {
-    fail('Restore database must be a new answerlattice-recovery-* database with a dated suffix');
+function assertRestoreDatabase(stage, databaseId) {
+  const pattern = RESTORE_DATABASE_PATTERNS[stage];
+  if (!pattern) {
+    fail(`Stage must be one of: ${Object.keys(RESTORE_DATABASE_PATTERNS).join(', ')}`);
+  }
+  if (!pattern.test(databaseId)) {
+    const prefix = stage === 'prod' ? 'answerlattice-prod-recovery-*' : 'answerlattice-recovery-*';
+    fail(`Restore database for ${stage} must be a new ${prefix} database with a dated suffix`);
   }
   if (databaseId === DEFAULT_DATABASE) {
     fail('The default database is never a permitted restore target');
@@ -176,7 +184,7 @@ function restoreRehearsal(stage, backupResource, destinationDatabase, confirmati
   assertApplyEnabled();
   assertProjectConfirmation(projectId, confirmation);
   assertBackupResource(projectId, backupResource);
-  assertRestoreDatabase(destinationDatabase);
+  assertRestoreDatabase(stage, destinationDatabase);
   assertOperatorAccess(projectId);
 
   const databasesRaw = runGcloud([
@@ -215,7 +223,8 @@ function printUsage() {
   console.log(`Usage:
   node scripts/answerlattice/backup-recovery.js preflight <qa|prod>
   ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js ensure-daily <qa|prod> --confirm-project <project-id>
-  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js restore-rehearsal <qa|prod> <backup-resource> <answerlattice-recovery-* database> --confirm-project <project-id>`);
+  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js restore-rehearsal qa <backup-resource> <answerlattice-recovery-* database> --confirm-project neelvara-answerlattice-qa
+  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js restore-rehearsal prod <backup-resource> <answerlattice-prod-recovery-* database> --confirm-project neelvara-answerlattice-prod`);
 }
 
 function main(argv) {
@@ -280,7 +289,7 @@ module.exports = {
   DAILY_RETENTION_SECONDS,
   DEFAULT_DATABASE,
   PROJECTS,
-  RESTORE_DATABASE_PATTERN,
+  RESTORE_DATABASE_PATTERNS,
   assertBackupResource,
   assertProjectConfirmation,
   assertRestoreDatabase,

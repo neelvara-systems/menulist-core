@@ -40,22 +40,27 @@ Completed on August 21, 2026:
   Production subject restriction, least-privilege IAM, and zero user-managed
   keys;
 - Vercel Production Firebase/OIDC selectors and fresh cron/bundle secrets;
+- dedicated legacy reCAPTCHA v3 App Check registration with enforcement OFF;
+- truthful production Google OAuth branding, test audience/user, exact
+  apex/`www` client origins and callbacks, and Production-only Vercel client
+  bindings with hosted `NEXTAUTH_URL` absent;
+- completed isolated Firestore restore into the delete-protected non-default
+  recovery database, with all 100 composite indexes and 15 non-TTL field
+  overrides matching production;
 - healthy `answerlattice.com` and `www.answerlattice.com` TLS/routing.
 
 Still open by explicit boundary:
 
-- owner creation of dedicated Answerlattice QA and production Google Web OAuth
-  clients, direct transfer into their matching Vercel environments, removal of
-  hosted `NEXTAUTH_URL`, and hosted callback/session certification;
+- activation and hosted callback/session certification of the already bound
+  production Google OAuth client;
 - owner creation and direct transfer of the production Gemini authorization
   key;
 - deployment/readback of the 12 approved Functions, Scheduler, task queue, and
   exact secret bindings;
-- owner creation of a legacy reCAPTCHA v3 key, App Check registration, and
-  monitoring-first operation with enforcement OFF;
 - source promotion and a separately authorized Vercel Production redeploy;
-- hosted OIDC/data-path proof and the first isolated restore rehearsal after a
-  backup reaches READY.
+- hosted OIDC/data-path proof, authenticated backend smoke, recovery fixture
+  validation, TTL reapplication, Storage/Auth recovery evidence, and approved
+  recovery-database cleanup.
 
 ## Production Sequence
 
