@@ -240,13 +240,14 @@ account can read it back from the exact project.
 
 ## Pre-QA Handoff
 
-One release action is open before managed Answerlattice QA can resume:
+No provider or infrastructure setup action remains before Answerlattice QA.
+The onboarding ownership/diagnostic correction is active, the quarantined
+attempt was resumed without creating a second provider object, and the managed
+QA workspace now exists with its retained Razorpay Test subscription in the
+authoritative payment-pending state. Payment-pending does not grant paid AI or
+Knowledge Intake entitlement.
 
-1. Promote and activate the tested onboarding ownership/diagnostic correction,
-   then resume the exact quarantined attempt without creating a second provider
-   object.
-
-After those close, continue the fixture-dependent items in the live checklist:
+Continue the fixture-dependent items in the live checklist:
 `AL-QA-C06` and `AL-QA-E07`, plus the testing-only portions referenced by
 `AL-QA-D06`, `AL-QA-D07`, and `AL-QA-E06`. `AL-PROD-C05` and `AL-PROD-E06`
 remain certification work. Optional Redis, outbound EmailOS/Resend, SMTP,

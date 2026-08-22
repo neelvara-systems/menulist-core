@@ -352,9 +352,12 @@ Stop before any mutation when one of these is true:
     `MENULIST_RAZORPAY_KEY_SECRET` in Vercel custom `qa` and Production. No key
     was created or rotated, and the inactive generic fallback rows were not
     changed.
-  - Do not retry the quarantined workspace or create a second provider plan
-    until the onboarding correction is active. Never write either value to
-    source, logs, shell history, or this ledger.
+  - The onboarding correction is active and the quarantined attempt was resumed
+    without creating a second provider object. The managed QA workspace now
+    retains one Razorpay Test subscription in the authoritative
+    payment-pending state. Never write either credential value to source, logs,
+    shell history, or this ledger, and never fabricate paid entitlement to
+    bypass the provider Test checkout boundary.
 
 ### Scoped Deploy And Setup Closure
 

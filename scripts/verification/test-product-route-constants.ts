@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
+    ANSWERLATTICE_WIDGET_TABS,
     getAnswerlatticeGovernanceTabFromPathname,
     getAnswerlatticeTeamTabFromPathname,
     getAnswerlatticeWidgetTabFromPathname,
@@ -38,6 +41,16 @@ assert.equal(
     getAnswerlatticeTeamTabFromPathname('/answerlattice/team/roles'),
     'roles',
 );
+
+// The public embed owns /widget/[apiKey]. These static aliases ensure clean
+// product-host dashboard navigation cannot interpret a management tab as a key.
+for (const tab of Object.values(ANSWERLATTICE_WIDGET_TABS)) {
+    assert.equal(
+        existsSync(resolve(process.cwd(), `src/app/(answerlattice)/widget/${tab}/page.tsx`)),
+        true,
+        `Missing authenticated clean-path alias for /widget/${tab}`,
+    );
+}
 
 for (const malformedPath of [
     '/answerlattice/governance/%',
