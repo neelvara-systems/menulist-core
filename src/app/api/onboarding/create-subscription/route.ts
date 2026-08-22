@@ -49,6 +49,7 @@ import { Timestamp as ClientTimestamp } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { type AuthenticatedHandler, withAuth } from "../../../../middleware/auth";
+import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 
 const LOG_FILE = "razorpay-subscription.log";
 const ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES = 16 * 1024;
@@ -239,6 +240,7 @@ async function recoverOnboardingProviderSubscription(params: {
     attemptId: string;
     planId: string;
     providerPlanId: string;
+    quantity: number;
     startedAtMillis: number;
     storeId: number;
     tenantId: number;
@@ -364,7 +366,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = validation.data;
+        const { businessName, businessIndustry, planId, interval, currency, userType, quantity, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = validation.data;
         const selfReportedDiscovery = FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY
             ? buildSelfReportedDiscoveryAttribution(selfReportedDiscoveryChannel)
             : null;
@@ -389,6 +391,9 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
 
         if (!selectedPlan) {
             return NextResponse.json({ error: "Plan not found." }, { status: 404 });
+        }
+        if (!isValidMenuListPlanQuantity({ planId, quantity, userType })) {
+            return NextResponse.json({ error: "The selected plan and location count do not match." }, { status: 400 });
         }
 
         const priceKey = currency === 'USD' ? 'priceUSD' : 'priceINR';
@@ -518,7 +523,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             const providerSubscription = await razorpayClient.subscriptions.create({
                 plan_id: razorpayPlanId,
                 total_count: totalCount,
-                quantity: 1,
+                quantity,
                 notes: {
                     tenantId: result.tenantId,  // ← Server-created IDs (secure)
                     storeId: result.storeId,
@@ -540,6 +545,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                 candidate: providerSubscription,
                 planId,
                 providerPlanId: razorpayPlanId,
+                quantity,
                 storeId: result.storeId,
                 tenantId: result.tenantId,
                 totalCount,
@@ -610,6 +616,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                         attemptId: onboardingAttemptId,
                         planId,
                         providerPlanId: razorpayPlanId,
+                        quantity,
                         startedAtMillis: providerAttemptStartedAtMillis,
                         storeId: result.storeId,
                         tenantId: result.tenantId,
@@ -700,7 +707,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             planType: interval,
             userType,
             currency,
-            amount: selectedPrice.price,
+            amount: selectedPrice.price * quantity,
             status: "pending",
             providerStatus: "created",
             lastWebhook: null,
@@ -730,13 +737,13 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                 {
                     status: "pending",
                     timestamp: ClientTimestamp.now(),
-                    amount: selectedPrice.price,
+                    amount: selectedPrice.price * quantity,
                     currency: currency,
                     remark: "Onboarding Subscription Initiated",
                 },
             ],
             billingHistory: [],
-            quantity: 1,  // Multi-Outlet Billing (Feature #4C-B): 1 = single store (master)
+            quantity,
         };
 
         try {
@@ -746,6 +753,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             if (!isMatchingPersistedOnboardingSubscription({
                 planId,
                 providerSubscriptionId: razorpaySubscription.id,
+                quantity,
                 storeId: result.storeId,
                 subscription: persistedSubscription,
                 tenantId: result.tenantId,

@@ -32,6 +32,7 @@ export function isMatchingOnboardingProviderSubscription(params: {
     candidate: unknown;
     planId: string;
     providerPlanId: string;
+    quantity: number;
     storeId: number;
     tenantId: number;
     totalCount: number;
@@ -40,7 +41,7 @@ export function isMatchingOnboardingProviderSubscription(params: {
     if (!isOwnedOnboardingProviderSubscriptionAttempt(params)) return false;
     const record = params.candidate as OnboardingProviderSubscription;
     return record.plan_id === params.providerPlanId
-        && record.quantity === 1
+        && record.quantity === params.quantity
         && record.total_count === params.totalCount;
 }
 
@@ -70,6 +71,7 @@ export function findOnboardingProviderSubscriptionForAttempt(params: {
     candidates: unknown;
     planId: string;
     providerPlanId: string;
+    quantity: number;
     storeId: number;
     tenantId: number;
     totalCount: number;
@@ -90,6 +92,7 @@ export function findOnboardingProviderSubscriptionForAttempt(params: {
 export function isMatchingPersistedOnboardingSubscription(params: {
     planId: string;
     providerSubscriptionId: string;
+    quantity: number;
     storeId: number;
     subscription: unknown;
     tenantId: number;
@@ -112,6 +115,7 @@ export function isMatchingPersistedOnboardingSubscription(params: {
         && record.storeId === params.storeId
         && record.sId === params.storeId
         && exactProviderNote(record.planId) === params.planId
+        && record.quantity === params.quantity
         && providerStatus !== null
         && RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP[providerStatus] === record.status;
 }

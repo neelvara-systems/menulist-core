@@ -3026,6 +3026,10 @@ function verifyMenuListDiscovery() {
   const agentReadinessFirebase = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_firebase.md');
   const agentReadinessMobile = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_mobile-support.md');
   const menulistWebsiteConstants = read('src/constants/menulist/website.ts');
+  const menulistAgentReadiness = read('src/lib/seo/menulistAgentReadiness.ts');
+  const menulistDevelopersPage = read('src/app/(website)/developers/page.tsx');
+  const menulistOpenApi = read('src/app/(website)/developers/openapi/route.ts');
+  const proxy = read('src/proxy.ts');
   const schemaMarkup = read('src/components/website/SchemaMarkup.tsx');
   const pageStructuredData = read('src/components/website/WebsitePageStructuredData.tsx');
   const languageSwitcher = read('src/components/website/shared/WebsiteLanguageSwitcher.tsx');
@@ -3305,6 +3309,17 @@ function verifyMenuListDiscovery() {
   assertIncludes(languageSwitcher, 'isReviewedWebsiteResourceLocale', 'MenuList website language switcher localized resource routing');
   assertIncludes(languageSwitcher, 'router.push(localizedResourcePath)', 'MenuList website language switcher localized resource routing');
   assertNotIncludes(llms, 'https://menulist.ai/product', 'MenuList llms.txt');
+  assertIncludes(llms, '## When to use MenuList', 'MenuList llms.txt when-to-use guidance');
+  assertIncludes(llms, 'https://menulist.ai/developers', 'MenuList llms.txt developer reference');
+  assertIncludes(llmsFull, 'X-API-Key', 'MenuList llms-full API authentication boundary');
+  assertIncludes(llmsFull, 'official npm SDK', 'MenuList llms-full unrelated npm package boundary');
+  assertIncludes(menulistAgentReadiness, 'renderMenuListHomepageMarkdown', 'MenuList homepage Markdown renderer');
+  assertIncludes(menulistAgentReadiness, 'renderMenuListNotFoundMarkdown', 'MenuList Markdown 404 renderer');
+  assertIncludes(menulistAgentReadiness, 'Accept, Accept-Encoding', 'MenuList Markdown Vary contract');
+  assertIncludes(proxy, 'buildMenuListAgentMarkdownResponse', 'MenuList Markdown negotiation proxy boundary');
+  assertIncludes(menulistDevelopersPage, 'WebsitePageStructuredData', 'MenuList developer reference structured data');
+  assertIncludes(menulistOpenApi, "openapi: '3.1.0'", 'MenuList OpenAPI version');
+  assertIncludes(menulistOpenApi, "name: 'X-API-Key'", 'MenuList OpenAPI authentication boundary');
 
   const discoveryPagePaths = new Set(PLATFORM_DISCOVERY_PAGES.map((page) => page.path));
   const concreteWebsiteRouteFamilies = [

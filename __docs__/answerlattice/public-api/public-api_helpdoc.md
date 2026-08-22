@@ -13,6 +13,8 @@ You need:
 
 Do not put an Answerlattice Public API key in browser JavaScript, a mobile application, a public repository, analytics events, support messages, or screenshots.
 
+The machine-readable contract is available at `https://answerlattice.com/openapi.json`. It describes request shapes, success responses, and errors but does not prove the feature is enabled for a workspace. Every JSON error includes a fixed `resolution` hint; follow it without exposing the request secret or private payload.
+
 ## Create a Key
 
 1. Open **Public API** in the Answerlattice workspace.

@@ -7,6 +7,7 @@
 - authenticated, flag-gated `/answerlattice/public-api` management page;
 - account-specific implementation material after enablement;
 - controlled developer documentation shared with an approved customer;
+- the public `/openapi.json` contract, provided it states that the API is disabled by default, account-gated, server-only, and not a self-serve entitlement;
 - secondary architecture copy explaining that approved answers can support external server-side surfaces.
 
 ## Disallowed Placement

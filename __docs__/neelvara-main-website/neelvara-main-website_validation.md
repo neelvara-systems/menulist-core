@@ -19,6 +19,18 @@
 - Local HTTP smoke passed for ordinary homepage HTML, negotiated homepage Markdown, `/__neelvara/llms.txt`, and an unknown Markdown path with HTTP `404`.
 - No Vercel deployment or public rescan was performed, so the public score remains the recorded 73/100 baseline until the source changes are explicitly deployed.
 
+### Public rescan and evidence-backed follow-up
+
+- After the approved production deployment, the public Is Agentic rescan reached `94/100`: 76.2/80 Essential, 16/20 Recommended, and +1.6 bonus.
+- The remaining report items were reclassified against live HTML and repository truth. The homepage is server-rendered and has a valid H1/H2/H3 hierarchy, so no scanner-driven heading rewrite or alternate bot-only HTML was added.
+- Updated `/llms.txt` so its canonical company, product, and page destinations are real Markdown links.
+- Replaced inline hydrated product-logo SVG components on Neelvara pages with existing static public logo assets, reducing avoidable HTML and client-boundary overhead without changing the product lineup or visible identity.
+- Kept the Organization address omitted: no verified and owner/legal-approved public address exists in the current source contract. Adding a partial or residential address only to increase a scanner score remains prohibited.
+- Exact-name search still does not surface `neelvara.com`; robots, sitemap, canonical metadata, rendered content, and Organization/WebSite JSON-LD already pass, so this remains a search-engine indexing/authority follow-up rather than a code defect.
+- Focused agent-readiness tests, scoped ESLint, full TypeScript, URL-routing regression, logo-asset verification, and scoped whitespace checks pass.
+- Local browser verification at desktop and `390x844` confirms both static product marks load at their intended dimensions, the H1/H2/H3 structure remains valid, there is no horizontal overflow, and no browser warning/error is emitted.
+- These follow-up source changes are local until a separately approved Vercel deployment; the public `94/100` score describes the preceding deployed commit.
+
 ---
 
 ## August 20, 2026 Trust & Verification Page

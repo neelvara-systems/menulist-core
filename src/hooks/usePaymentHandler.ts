@@ -27,6 +27,10 @@ import { isRazorpayCheckoutConfigurationReady } from '@lib/billing/razorpayScrip
 import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
 import { getBillingPlansForProduct } from '@lib/billing/productBillingPlans';
 import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
+import {
+    getMenuListPlanCheckoutQuantity,
+    getMenuListPlanMinimumQuantity,
+} from '@lib/billing/menulistPricingPolicy';
 
 declare global {
     interface Window {
@@ -143,7 +147,7 @@ type PaymentLoaderDispatch = (
 ) => unknown;
 
 const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHandlerOptions = {}) => {
-    const [pendingPlan, setPendingPlan] = useState<{ plan: Plan; currency: Currency } | null>(null);
+    const [pendingPlan, setPendingPlan] = useState<{ plan: Plan; currency: Currency; quantity: number } | null>(null);
     const { data: session, update } = useSession();
     const isScriptLoaded = useRazorpayScript();
     const checkoutInFlightRef = useRef(false);
@@ -354,9 +358,10 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         });
     }
 
-    const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void, quantity: number = 1) => {
+    const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void, quantity?: number) => {
+        const checkoutQuantity = normalizeSubscriptionQuantity(quantity ?? getMenuListPlanCheckoutQuantity(plan));
         if (!session || !session.user || !session.user.id || !hasBillingScope) {
-            setPendingPlan({ plan, currency });
+            setPendingPlan({ plan, currency, quantity: checkoutQuantity });
             onAuthRequired();
             return;
         }
@@ -374,14 +379,14 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         }
         checkoutInFlightRef.current = true;
         try {
-            return await createSubscription(plan, currency, quantity);
+            return await createSubscription(plan, currency, checkoutQuantity);
         } catch (error) {
             if (!isPaymentCheckoutDismissedError(error)) {
                 logPaymentFailure('payment_card_click_failed', error, buildPaymentLogContext('payment_card_click', {
                     ...getBoundedPaymentStringContext('planId', plan.planId),
-                    requestedQuantityValid: Number.isSafeInteger(quantity)
-                        && quantity >= 1
-                        && quantity <= MAX_SUBSCRIPTION_QUANTITY,
+                    requestedQuantityValid: Number.isSafeInteger(checkoutQuantity)
+                        && checkoutQuantity >= 1
+                        && checkoutQuantity <= MAX_SUBSCRIPTION_QUANTITY,
                 }));
             }
             throw error;
@@ -581,7 +586,12 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
             );
         }
         checkoutInFlightRef.current = true;
-        const targetQuantity = normalizeSubscriptionQuantity(quantity ?? currentPlan.quantity ?? 1);
+        const requestedQuantity = normalizeSubscriptionQuantity(quantity ?? currentPlan.quantity ?? getMenuListPlanCheckoutQuantity(newPlan));
+        const targetQuantity = newPlan.type === 'B2C'
+            ? newPlan.planId === 'premium'
+                ? Math.max(requestedQuantity, getMenuListPlanMinimumQuantity(newPlan))
+                : 1
+            : requestedQuantity;
         try {
             const paymentResponse = await createSubscription(
                 newPlan,
@@ -755,7 +765,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
         return await new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
             void (async () => {
             try {
-                const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = purchaseIntent;
+                const { businessName, businessIndustry, currency, plan, quantity, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = purchaseIntent;
 
                 if (!session?.user) {
                     throw new Error('Unauthorized');
@@ -784,6 +794,7 @@ const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHa
                         businessName,
                         businessIndustry,
                         planId: plan.planId,
+                        quantity,
                         interval: plan.billingInterval,
                         currency,
                         userType: plan.type,

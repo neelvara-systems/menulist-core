@@ -95,10 +95,11 @@ Validation completed:
 Current public-launch state:
 
 - source, local routes, responsive layout, content, metadata, accessibility, and motion checks pass
-- `https://neelvara.com` currently serves a GoDaddy Website Builder page rather than this repository implementation
-- publishing this implementation requires an explicitly approved Vercel deployment, domain attachment, and DNS cutover; none was performed during this audit
+- `https://neelvara.com` serves this repository implementation from Vercel
+- the first post-deployment Is Agentic rescan scored `94/100`; linked `llms.txt` destinations and static product-logo delivery are implemented locally as the next evidence-backed refinement
+- any deployment of the current local follow-up still requires explicit Vercel approval
 - `neelvara.com` publishes Google MX, SPF, Google DKIM, and DMARC records; owner-side send/receive checks are still required for `hello@`, `legal@`, and `privacy@`
-- owner/CA/legal approval and trademark-search evidence remain required before public launch
+- owner/CA/legal approval remains required before publishing stronger entity wording, tax details, or an address; trademark-search evidence remains an external governance item
 
 ---
 

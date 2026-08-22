@@ -1,11 +1,32 @@
 # MenuList — Changelog
 
+## August 22, 2026 - AnswerLattice Agent-Readable Discovery Audit
+
+- Recorded the public Is Agentic baseline at 60/100 and classified each finding against AnswerLattice doctrine, current source, and live production responses.
+- Added optional homepage Markdown negotiation, Markdown 404 recovery, explicit when-to-use guidance, and a public OpenAPI 3.1 description of the existing rollout-gated Public API.
+- Added fixed safe resolution guidance to Public API JSON errors, corrected the footer heading hierarchy, and added the verified support ContactPoint to Organization schema.
+- Preserved the default-off Public API and MCP gates, server-only credentials, explicit scopes, owner approval, and human-governed signal boundary.
+- Rejected an unverified postal address, fake ratings/reviews, unsupported API general-availability claims, framework-hydration churn, and source changes for external search-index state.
+- Kept all changes local; no Vercel or Firebase deployment was run.
+
+## August 22, 2026 - MenuList Agent-Readable Discovery Audit
+
+- Recorded the public Is Agentic baseline at 68/100 and classified the findings against live responses and source truth before editing.
+- Added optional homepage `text/markdown` negotiation with cache-safe `Vary` behavior and a non-reflective Markdown recovery body that retains a real HTTP 404.
+- Added explicit “When to use MenuList” guidance to the agent context files.
+- Published a bounded `/developers` reference and `/developers/openapi` contract for the already-implemented read-only Platform Pull API, including `X-API-Key`, `public:read`, rate-limit, ETag, and no-write boundaries.
+- Explicitly stated that MenuList has no official npm SDK and that the similarly named npm package is unrelated.
+- Rejected source changes for scanner-only crawler failures, the contradicted heading finding, current brand-search visibility, OAuth replacement, fake schema breadth, and framework hydration overhead.
+- Kept all changes local; no Vercel or Firebase deployment was run.
+
 ## August 22, 2026 - Neelvara Agent-Readable Discovery Hardening
 
 - Recorded Neelvara's first public Is Agentic baseline at 73/100 and classified each finding against the static operating-company boundary.
 - Added a Neelvara-specific `llms.txt`, explicit homepage Markdown negotiation with cache-safe `Vary` behavior, and a Markdown recovery body that retains a real HTTP 404.
+- Recorded the approved production rescan at 94/100 and rechecked its residual findings against live HTML, exact-name search, and the maintained legal boundary.
+- Converted canonical destinations in `llms.txt` from plain URLs to Markdown links and moved Neelvara product-card marks from inline hydrated SVG components to existing static public assets.
 - Preserved the existing HTML site, product boundaries, security headers, tenant routing, no-API/no-MCP/no-form posture, and legal rule against publishing an unapproved address.
-- No Vercel deployment or public rescan was performed as part of the source change.
+- The latest follow-up changes remain local until a separately approved Vercel deployment.
 
 ## August 20, 2026 - Public Website Presentation Refinement
 

@@ -3903,7 +3903,7 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
     gap: 2rem;
 }
 
-.al-site-footer__column h4 {
+.al-site-footer__column h2 {
     margin: 0 0 1.1rem;
     color: var(--al-text-muted);
     font-size: 0.82rem;

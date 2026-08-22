@@ -7,21 +7,21 @@ import PlatformFeaturesList from "./PlatformFeaturesList";
 // ***********
 
 const B2CplansList = [
-    // Starter Monthly
+    // Official Monthly (stable internal ID: starter)
     {
-        "planId": "starter", "type": "B2C", "name": "Starter Plan", "isRecommended": false,
+        "planId": "starter", "type": "B2C", "name": "Official", "isRecommended": false,
         "description": "For one business that needs an official menu, customer page, QR, and share link.",
-        "priceINR": { "price": 49900, "monthlyCredits": 75 },
+        "priceINR": { "price": 59900, "monthlyCredits": 75 },
         "priceUSD": { "price": 2900, "monthlyCredits": 100 },
-        "billingInterval": "MONTH"
+        "billingInterval": "MONTH", "minimumQuantity": 1
     },
-    // Starter Yearly
+    // Official Yearly (10 monthly payments)
     {
-        "planId": "starter", "type": "B2C", "name": "Starter Plan (Yearly)", "isRecommended": false,
+        "planId": "starter", "type": "B2C", "name": "Official (Yearly)", "isRecommended": false,
         "description": "For one business that needs an official menu, customer page, QR, and share link.",
-        "priceINR": { "price": 499000, "monthlyCredits": 75 },
+        "priceINR": { "price": 599000, "monthlyCredits": 75 },
         "priceUSD": { "price": 29000, "monthlyCredits": 100 },
-        "billingInterval": "YEAR"
+        "billingInterval": "YEAR", "minimumQuantity": 1
     },
     // Pro Monthly
     {
@@ -29,7 +29,7 @@ const B2CplansList = [
         "description": "For businesses that want stronger presentation, AI-assisted updates, languages, images, and action insights.",
         "priceINR": { "price": 149900, "monthlyCredits": 200 },
         "priceUSD": { "price": 7900, "monthlyCredits": 400 },
-        "billingInterval": "MONTH"
+        "billingInterval": "MONTH", "minimumQuantity": 1
     },
     // Pro Yearly
     {
@@ -37,23 +37,23 @@ const B2CplansList = [
         "description": "For businesses that want stronger presentation, AI-assisted updates, languages, images, and action insights.",
         "priceINR": { "price": 1499000, "monthlyCredits": 200 },
         "priceUSD": { "price": 79000, "monthlyCredits": 400 },
-        "billingInterval": "YEAR"
+        "billingInterval": "YEAR", "minimumQuantity": 1
     },
-    // Premium Monthly
+    // Multi-location Monthly (stable internal ID: premium; per location)
     {
-        "planId": "premium", "type": "B2C", "name": "Premium Plan", "isRecommended": false,
+        "planId": "premium", "type": "B2C", "name": "Multi-location", "isRecommended": false,
         "description": "For brands that need multi-location menu governance and outlet-level control.",
-        "priceINR": { "price": 399900, "monthlyCredits": 600 },
-        "priceUSD": { "price": 14900, "monthlyCredits": 1000 },
-        "billingInterval": "MONTH"
+        "priceINR": { "price": 149900, "monthlyCredits": 600 },
+        "priceUSD": { "price": 7900, "monthlyCredits": 1000 },
+        "billingInterval": "MONTH", "minimumQuantity": 2
     },
-    // Premium Yearly
+    // Multi-location Yearly (per location; 10 monthly payments)
     {
-        "planId": "premium", "type": "B2C", "name": "Premium Plan (Yearly)", "isRecommended": false,
+        "planId": "premium", "type": "B2C", "name": "Multi-location (Yearly)", "isRecommended": false,
         "description": "For brands that need multi-location menu governance and outlet-level control.",
-        "priceINR": { "price": 3999000, "monthlyCredits": 600 },
-        "priceUSD": { "price": 149000, "monthlyCredits": 1000 },
-        "billingInterval": "YEAR"
+        "priceINR": { "price": 1499000, "monthlyCredits": 600 },
+        "priceUSD": { "price": 79000, "monthlyCredits": 1000 },
+        "billingInterval": "YEAR", "minimumQuantity": 2
     }
 ] as const;
 

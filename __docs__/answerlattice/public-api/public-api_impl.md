@@ -1,7 +1,7 @@
 # Answerlattice Public API v1 - Implementation
 
 > **Status:** Implemented, locally audited, rollout-gated
-> **Last Updated:** 2026-07-26
+> **Last Updated:** 2026-08-22
 
 ## Connected File Map
 
@@ -20,6 +20,7 @@
 | `src/app/api/answerlattice/public/v1/answers/route.ts` | Canonical answer retrieval. |
 | `src/app/api/answerlattice/public/v1/entities/route.ts` | Public entity registry and ETag behavior. |
 | `src/app/api/answerlattice/public/v1/signals/route.ts` | Governed signal intake and replay-conflict response. |
+| `src/app/sites/answerlattice/openapi.json/route.ts` | Public OpenAPI 3.1 description of the rollout-gated source contract. |
 | `src/lib/publicApi/auth.ts` | Shared hash lookup primitives; Answerlattice disables legacy raw fallback and positive auth cache. |
 | `src/lib/answerlattice/canonicalRetrieval.ts` | Canonical-first retrieval and applicability resolution. |
 | `src/lib/answerlattice/signalEmitter.ts` | Deterministic signal persistence and payload-conflict enforcement. |
@@ -73,6 +74,8 @@ The browser never receives the hash. Firestore never receives the raw key. Audit
 
 `mcp:read` is deliberately separate from `public:read`. The MCP session exchange cannot turn an ordinary public-read credential into private compiled-context access.
 9. Retrieval or signal work begins.
+
+Public API errors are JSON objects with fixed `code`, `message`, and `resolution` fields. Resolution hints are code-owned and never echo raw requests, credentials, provider errors, tenant identifiers, or private payloads.
 
 Key-management requests separately reject cross-origin browser submissions before permission or Firestore work, and require initiating-workspace corroboration before any credential read or write.
 

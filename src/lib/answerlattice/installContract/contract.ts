@@ -981,6 +981,7 @@ export function renderAnswerlatticeLlmsTxt() {
 - [AnswerLattice Widget Contract v1](${ANSWERLATTICE_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
 - [Resources](${ANSWERLATTICE_SITE_URL}/resources): Launch setup, pre-onboarding, widget verification, support control, pricing, and runtime-safety guides.
 - [Developers](${ANSWERLATTICE_SITE_URL}/developers): Widget install, safe page context, optional signed visitor context, bounded evidence links, verification, framework quickstarts, and agent install packets.
+- [Public API OpenAPI contract](${ANSWERLATTICE_SITE_URL}/openapi.json): Machine-readable description of the disabled-by-default, account-gated server API for approved integrations. Publishing the contract does not enable the API for any workspace.
 - [Verified visitor context](${ANSWERLATTICE_SITE_URL}/developers/verified-visitor-context): Server-side signing, identity reset, evidence-host controls, and fail-open support availability.
 - [Comparisons](${ANSWERLATTICE_SITE_URL}/comparisons): Category comparisons with scoped claims and no unsupported vendor rankings.
 - [Manual install](${ANSWERLATTICE_SITE_URL}/install/manual.md): Human-readable script install.
@@ -997,6 +998,13 @@ ${ANSWERLATTICE_WIDGET_SCRIPT_URL}
 
 Do not send:
 tenantId, storeId, userId, email, phone, tokens, cookies, secrets, billing data, payment data, or private account metadata.
+
+## When to use AnswerLattice
+
+- Use AnswerLattice when a SaaS team needs reviewed support knowledge reused across its in-app widget, hosted help, FAQs, fallback, and future agent surfaces.
+- Use the install and developer guides to add the public v1 widget, pass safe page context, and verify the integration.
+- Use the Public API contract only for a named, approved server-side integration after the workspace owner enables the rollout-gated API and issues the required scopes.
+- Do not use AnswerLattice as a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, autonomous publisher, or source of unapproved answers.
 
 ## Public API note
 
@@ -1044,6 +1052,7 @@ export function renderAnswerlatticeLlmsFullTxt() {
 - ${ANSWERLATTICE_SITE_URL}/developers/safe-page-context
 - ${ANSWERLATTICE_SITE_URL}/developers/widget-verification
 - ${ANSWERLATTICE_SITE_URL}/developers/verified-visitor-context
+- ${ANSWERLATTICE_SITE_URL}/openapi.json
 - ${ANSWERLATTICE_SITE_URL}/comparisons
 - ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-chatbots
 - ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-helpdesks

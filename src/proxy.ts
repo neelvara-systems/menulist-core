@@ -62,6 +62,22 @@ import {
     renderNeelvaraNotFoundMarkdown,
 } from '@lib/seo/neelvaraAgentReadiness';
 import {
+    MENULIST_MARKDOWN_CONTENT_TYPE,
+    MENULIST_MARKDOWN_VARY,
+    acceptsMenuListMarkdown,
+    isKnownMenuListDiscoveryPath,
+    renderMenuListHomepageMarkdown,
+    renderMenuListNotFoundMarkdown,
+} from '@lib/seo/menulistAgentReadiness';
+import {
+    ANSWERLATTICE_MARKDOWN_CONTENT_TYPE,
+    ANSWERLATTICE_MARKDOWN_VARY,
+    acceptsAnswerlatticeMarkdown,
+    isKnownAnswerlatticeDiscoveryPath,
+    renderAnswerlatticeHomepageMarkdown,
+    renderAnswerlatticeNotFoundMarkdown,
+} from '@lib/seo/answerlatticeAgentReadiness';
+import {
     MYCODEX_LOGIN_PATH,
     MYCODEX_PRODUCT_SLUG,
     MYCODEX_ROBOTS_TAG,
@@ -321,6 +337,66 @@ function buildNeelvaraAgentMarkdownResponse(
     response.headers.set('x-product-name', productConfig.name);
     if (basePath) response.headers.set('x-product-base-path', basePath);
     if (basePath === '/nv') response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
+    return response;
+}
+
+function buildMenuListAgentMarkdownResponse(
+    request: NextRequest,
+    publicPath: string,
+): NextResponse | null {
+    if (!acceptsMenuListMarkdown(request)) return null;
+
+    const isHomepage = publicPath === '/' || publicPath === '/home';
+    if (!isHomepage && isKnownMenuListDiscoveryPath(publicPath)) return null;
+
+    const status = isHomepage ? 200 : 404;
+    return new NextResponse(
+        isHomepage ? renderMenuListHomepageMarkdown() : renderMenuListNotFoundMarkdown(),
+        {
+            status,
+            headers: {
+                'Content-Type': MENULIST_MARKDOWN_CONTENT_TYPE,
+                'Content-Language': 'en',
+                'Cache-Control': status === 200
+                    ? 'public, max-age=3600, s-maxage=86400'
+                    : 'no-store, max-age=0',
+                'Vary': MENULIST_MARKDOWN_VARY,
+            },
+        },
+    );
+}
+
+function buildAnswerlatticeAgentMarkdownResponse(
+    request: NextRequest,
+    publicPath: string,
+    productConfig: ProductDomainConfig,
+    basePath = '',
+): NextResponse | null {
+    if (!acceptsAnswerlatticeMarkdown(request)) return null;
+
+    const isHomepage = publicPath === '/' || publicPath === '/home';
+    if (!isHomepage && isKnownAnswerlatticeDiscoveryPath(publicPath)) return null;
+
+    const status = isHomepage ? 200 : 404;
+    const response = new NextResponse(
+        isHomepage ? renderAnswerlatticeHomepageMarkdown() : renderAnswerlatticeNotFoundMarkdown(),
+        {
+            status,
+            headers: {
+                'Content-Type': ANSWERLATTICE_MARKDOWN_CONTENT_TYPE,
+                'Content-Language': 'en',
+                'Cache-Control': status === 200
+                    ? 'public, max-age=3600, s-maxage=86400'
+                    : 'no-store, max-age=0',
+                'Vary': ANSWERLATTICE_MARKDOWN_VARY,
+            },
+        },
+    );
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    if (basePath) response.headers.set('x-product-base-path', basePath);
+    if (basePath === '/__answerlattice') response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 
     return response;
 }
@@ -914,6 +990,15 @@ export async function proxy(request: NextRequest) {
         const aliasMatch = resolveMyCodexProductAliasPath(pathname);
         if (aliasMatch) {
             const { product, basePath, strippedPath } = aliasMatch;
+            if (product.id === 'answerlattice') {
+                const markdownResponse = buildAnswerlatticeAgentMarkdownResponse(
+                    request,
+                    strippedPath,
+                    product,
+                    basePath,
+                );
+                if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
+            }
             if (product.id === 'neelvara') {
                 const markdownResponse = buildNeelvaraAgentMarkdownResponse(
                     request,
@@ -975,6 +1060,13 @@ export async function proxy(request: NextRequest) {
         }
 
         if (productConfig.id === 'answerlattice') {
+            const markdownResponse = buildAnswerlatticeAgentMarkdownResponse(
+                request,
+                pathname,
+                productConfig,
+            );
+            if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
+
             if (pathname === '/answerlattice' || pathname.startsWith('/answerlattice/')) {
                 const url = request.nextUrl.clone();
                 url.pathname = pathname === '/answerlattice'
@@ -1105,6 +1197,11 @@ export async function proxy(request: NextRequest) {
 
     if (skipRouting) {
         return applySecurityHeaders(request, nextWithSanitizedRoutingHeaders(request));
+    }
+
+    if (domainInfo.type === 'platform' || domainInfo.type === 'localhost') {
+        const markdownResponse = buildMenuListAgentMarkdownResponse(request, pathname);
+        if (markdownResponse) return applySecurityHeaders(request, markdownResponse);
     }
 
     // URL Routing Architecture — Phase 2: Lowercase + trailing slash normalization

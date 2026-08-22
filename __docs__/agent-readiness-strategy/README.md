@@ -39,7 +39,7 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 5. **Strategic documentation** — Long-term positioning guide for agent-readable public business truth
 
 **What this is NOT:**
-- ❌ Public API / developer platform
+- ❌ Anonymous API, API marketplace, SDK ecosystem, OAuth platform, or write-capable developer platform. MenuList separately maintains a scoped read-only Platform Pull API and a public reference for approved integrations.
 - ❌ Agent billing / per-request pricing
 - ❌ UCP (Universal Commerce Protocol) implementation
 - ❌ Architecture rewrite
@@ -56,6 +56,8 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 | `src/lib/schema/index.ts` | Shared schema.org utilities (existing) | UNCHANGED |
 | `src/lib/seo/discoveryPolicy.ts` | Shared platform route and crawler discovery policy | ADDED |
 | `src/lib/seo/publicMetadata.ts` | Shared public preview metadata normalization | ADDED |
+| `src/lib/seo/menulistAgentReadiness.ts` | Homepage Markdown negotiation and safe Markdown 404 recovery | ADDED |
+| `src/app/(website)/developers/page.tsx` | Public reference for the existing read-only Platform Pull API | ADDED |
 | `src/app/client/obp/schema.ts` | OBP schema generator (existing) | UNCHANGED |
 | `src/app/client/[[...slug]]/page.tsx` | Menu schema generator (existing) | UNCHANGED |
 

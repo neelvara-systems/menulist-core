@@ -138,7 +138,7 @@ Implemented:
 - product-domain `robots.txt`
 - product-domain `sitemap.xml`
 - product-domain `.well-known/security.txt`
-- product-domain `llms.txt` linked from `robots.txt`
+- product-domain `llms.txt` linked from `robots.txt`, with canonical company, product, and page destinations expressed as Markdown links
 - homepage `Accept: text/markdown` negotiation with cache-safe `Vary` headers
 - Markdown recovery body for unknown Markdown requests while preserving the real `404` status
 - site logo in `public/neelvara-logo.svg`

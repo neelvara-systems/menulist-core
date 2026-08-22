@@ -97,7 +97,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                     <nav className="al-site-footer__nav" aria-label="AnswerLattice footer navigation">
                         {Object.entries(FOOTER_LINKS).map(([title, links]) => (
                             <div key={title} className="al-site-footer__column" data-answerlattice-reveal-item>
-                                <h4>/{title}</h4>
+                                <h2>/{title}</h2>
                                 <ul>
                                     {links.map((link) => (
                                         <li key={`${link.href}:${link.label}`}>

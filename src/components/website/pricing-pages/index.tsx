@@ -35,6 +35,21 @@ import WelcomeBackBanner from './WelcomeBackBanner';
 import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 
 const FeatureComparisonTable = dynamic(() => import('./FeatureComparisonTable'), { ssr: false });
+
+const PUBLIC_PRICING_COMPARISON_FEATURE_IDS = new Set([
+    'projects',
+    'ai_data_extraction',
+    'ai_descriptions',
+    'ai_multi_language',
+    'ai_image_generator',
+    'qr_code',
+    'menu_kit',
+    'official_business_page',
+    'analytics_dashboard',
+    'custom_domain',
+    'remove_branding',
+    'support',
+]);
 const OnboardingModal = dynamic(() => import('./OnboardingModal'), { ssr: false });
 const SubscriptionPayementSuccessModal = dynamic(() => import('./SubscriptionPayementSuccessModal'), { ssr: false });
 
@@ -532,7 +547,9 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         {isComparisonOpen && (
                             <div id="pricing-feature-comparison" style={{ marginTop: 'var(--ws-space-10)' }}>
                                 <FeatureComparisonTable
-                                    allFeaturesList={PlatformFeaturesList.B2C}
+                                    allFeaturesList={PlatformFeaturesList.B2C.filter((feature) => (
+                                        PUBLIC_PRICING_COMPARISON_FEATURE_IDS.has(feature.id)
+                                    ))}
                                     plans={activePlans}
                                     planType={activeBusinessType}
                                 />

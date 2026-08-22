@@ -45,6 +45,7 @@ export interface Price {
 export interface PurchaseIntent {
     plan: Plan;
     currency: Currency;
+    quantity: number;
     businessName: string;
     businessIndustry: string;
     timeZone?: string;
@@ -58,6 +59,7 @@ export interface Plan {
     name: string;
     description: string;
     isRecommended?: boolean;
+    minimumQuantity?: number;
     priceINR: Price;
     priceUSD: Price;
     billingInterval: string;

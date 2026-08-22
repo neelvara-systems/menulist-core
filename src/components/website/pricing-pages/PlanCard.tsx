@@ -6,6 +6,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { LuBuilding2, LuCheck, LuStore, LuZap } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
+import { getMenuListPlanMinimumQuantity } from '@lib/billing/menulistPricingPolicy';
 import './main.css';
 
 type PlanCardProps = {
@@ -17,7 +18,7 @@ type PlanCardProps = {
 const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
     const t = useTranslations('Website');
 
-    const price = plan[`price${currency}`].price;
+    const unitPrice = plan[`price${currency}`].price;
     const normalizedPlanId = ['starter', 'pro', 'premium'].includes(plan.planId) ? plan.planId : 'custom';
     const planCopy = {
         audience: t(`Pricing.${normalizedPlanId}Audience`),
@@ -50,20 +51,11 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
 
     const currentStyle = planStyles[normalizedPlanId as keyof typeof planStyles];
 
-    const getDailyPrice = () => {
-        if (!price || plan.billingInterval !== 'YEAR') return null;
-        const dailyAmount = (price / 100) / 365;
-        return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-IN', {
-            style: 'currency',
-            currency: currency.toUpperCase(),
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(dailyAmount);
-    };
-
     const intervalLabel = plan.billingInterval === 'MONTH' ? t('Pricing.planMonthlyShort') : t('Pricing.planYearlyShort');
     const planName = plan.name.replace(` (Yearly)`, '').replace(` (Monthly)`, '');
-    const dailyPrice = getDailyPrice();
+    const minimumQuantity = getMenuListPlanMinimumQuantity(plan);
+    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === 'premium';
+    const displayedPrice = unitPrice === null ? null : unitPrice * minimumQuantity;
 
     return (
         <article style={planCardStyle(plan.isRecommended)}>
@@ -77,12 +69,17 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
                     <h3 style={planNameStyle}>{planName}</h3>
                     {normalizedPlanId !== 'custom' ? (
                         <div style={planPriceRowStyle}>
-                            <span style={planPriceStyle}>{price !== null ? formatCurrencyOnPricingPage(price, currency) : t('Pricing.planPriceUnavailable')}</span>
+                            <span style={planPriceStyle}>{displayedPrice !== null ? formatCurrencyOnPricingPage(displayedPrice, currency) : t('Pricing.planPriceUnavailable')}</span>
                             <span style={planIntervalStyle}>/ {intervalLabel}</span>
                         </div>
                     ) : null}
-                    {dailyPrice ? (
-                        <p style={planDailyStyle}>{t('Pricing.planDailySuffix', { daily: dailyPrice })}</p>
+                    {isMultiLocationPlan && unitPrice !== null ? (
+                        <p style={planPriceDetailStyle}>
+                            {t('Pricing.planPerLocationDetail', {
+                                count: minimumQuantity,
+                                price: formatCurrencyOnPricingPage(unitPrice, currency),
+                            })}
+                        </p>
                     ) : null}
                 </div>
             </div>
@@ -204,7 +201,7 @@ const planIntervalStyle: React.CSSProperties = {
     fontWeight: 650,
 };
 
-const planDailyStyle: React.CSSProperties = {
+const planPriceDetailStyle: React.CSSProperties = {
     color: 'var(--ws-text-secondary)',
     fontSize: '0.8125rem',
     lineHeight: 1.35,

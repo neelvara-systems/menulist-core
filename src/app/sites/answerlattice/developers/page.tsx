@@ -110,6 +110,25 @@ export default async function AnswerlatticeDevelopersPage() {
                         </div>
                     </div>
                 </section>
+
+                <section className="border-t border-white/[0.06] px-6 py-16">
+                    <div className="mx-auto max-w-5xl rounded-[1.5rem] border border-white/[0.06] bg-white/[0.025] p-6 sm:p-8">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Account-gated server integration</p>
+                        <h2 className="text-2xl font-semibold text-white">Inspect the Public API contract without treating it as enabled.</h2>
+                        <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[#a0a0c0]">
+                            AnswerLattice source includes a server-only API for governed answers, public entity identifiers, and bounded review signals. It is disabled by default, requires a named approved workflow, workspace readiness, an owner-issued al_ key, and explicit scopes. It is not a self-serve public entitlement.
+                        </p>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/openapi.json"
+                            data-answerlattice-event="developer_openapi_clicked"
+                            data-answerlattice-label="Public API OpenAPI contract"
+                            className="mt-6 inline-flex rounded-xl border border-teal-300/25 bg-teal-400/[0.055] px-5 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-200/40 hover:bg-teal-400/[0.09]"
+                        >
+                            View machine-readable OpenAPI contract
+                        </AnswerlatticeLink>
+                    </div>
+                </section>
             </main>
             <AnswerlatticeFooter basePath={basePath} />
         </>

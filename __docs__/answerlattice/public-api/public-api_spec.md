@@ -1,7 +1,7 @@
 # Answerlattice Public API v1 - Product Specification
 
 > **Status:** Implemented, locally audited, disabled by default
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-08-22
 
 ## Customer Job
 
@@ -61,7 +61,8 @@ This is not designed for a browser developer embedding a secret key, a generic c
 - Bounded request and response parsing.
 - No private source URLs, ticket PII, internal audit, hidden evidence identifiers, or unapproved graph-derived guidance.
 - `public:read` never grants private MCP context; MCP session exchange requires explicit `mcp:read`.
-- Fixed error responses and bounded logs.
+- Fixed JSON error responses with code, message, safe resolution guidance, and bounded logs.
+- A public OpenAPI 3.1 document may describe the disabled-by-default contract, but it must not imply general availability or self-serve access.
 
 ## Quality Requirements
 

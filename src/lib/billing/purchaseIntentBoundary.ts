@@ -3,7 +3,7 @@ import { getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { OnboardingSubscriptionSchema } from '@lib/validation/apiSchemas';
 
 export const PURCHASE_INTENT_STORAGE_KEY = 'purchaseIntent';
-export const PURCHASE_INTENT_STORAGE_VERSION = 1;
+export const PURCHASE_INTENT_STORAGE_VERSION = 2;
 export const PURCHASE_INTENT_MAX_AGE_MS = 2 * 60 * 60 * 1_000;
 
 type StoredPurchaseIntentEnvelope = {
@@ -30,6 +30,7 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         currency: value.currency,
         interval: value.plan.billingInterval,
         planId: value.plan.planId,
+        quantity: value.quantity,
         selfReportedDiscoveryChannel: normalizeOptionalString(value.selfReportedDiscoveryChannel),
         timeZone: normalizeOptionalString(value.timeZone),
         userType: value.plan.type,
@@ -50,6 +51,7 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         businessDayEndTime: parsed.data.businessDayEndTime,
         currency: parsed.data.currency,
         plan,
+        quantity: parsed.data.quantity,
         selfReportedDiscoveryChannel: parsed.data.selfReportedDiscoveryChannel,
         timeZone: parsed.data.timeZone,
     };

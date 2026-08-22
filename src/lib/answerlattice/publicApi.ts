@@ -4,7 +4,7 @@ import {
     toAnswerlatticePublicIsoTimestamp,
 } from '@lib/answerlattice/publicApiContracts';
 import { isAnswerlatticeActiveStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
-import { apiError, hashApiKey, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
+import { hashApiKey, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -36,9 +36,35 @@ export function answerlatticePublicApiError(
     status: number,
     headers: Record<string, string> = {},
 ): NextResponse {
-    return apiError(code, message, status, {
-        ...ANSWERLATTICE_PUBLIC_API_NO_STORE_HEADERS,
-        ...headers,
+    const resolutions: Record<string, string> = {
+        FEATURE_DISABLED: 'Keep the integration disabled and contact the workspace owner before retrying.',
+        INVALID_API_KEY: 'Verify the server-side credential and required scope, or rotate the key if its status is uncertain.',
+        BROWSER_ACCESS_NOT_SUPPORTED: 'Move this request to a trusted backend or serverless function.',
+        RATE_LIMIT_EXCEEDED: 'Honor Retry-After before sending another request.',
+        RATE_LIMIT_UNAVAILABLE: 'Retry later; AnswerLattice fails closed while admission is unavailable.',
+        INVALID_INPUT: 'Correct the request against the published OpenAPI schema before retrying.',
+        REQUEST_BODY_TOO_LARGE: 'Reduce the request body to the documented endpoint limit.',
+        IDEMPOTENCY_KEY_REQUIRED: 'Provide one valid externalId or Idempotency-Key.',
+        IDEMPOTENCY_KEY_CONFLICT: 'Send one idempotency key or make externalId and Idempotency-Key identical.',
+        IDEMPOTENCY_REPLAY_CONFLICT: 'Reuse the original payload or choose a new key for a genuinely new event.',
+        CANONICAL_ANSWERS_DISABLED: 'Keep answer retrieval off until the workspace owner enables governed canonical answers.',
+        SIGNAL_MUTATION_DISABLED: 'Keep signal ingestion off until the workspace owner enables governed signal mutation.',
+        SIGNAL_PERSISTENCE_UNAVAILABLE: 'Retry later without changing the idempotency key or payload.',
+        INTERNAL_ERROR: 'Retry later or contact the workspace owner without sending secrets or raw private payloads.',
+    };
+
+    return NextResponse.json({
+        error: {
+            code,
+            message,
+            resolution: resolutions[code] || 'Review the OpenAPI contract and contact the workspace owner if the request remains blocked.',
+        },
+    }, {
+        status,
+        headers: {
+            ...ANSWERLATTICE_PUBLIC_API_NO_STORE_HEADERS,
+            ...headers,
+        },
     });
 }
 

@@ -4,6 +4,14 @@
 > **Last Updated:** 2026-08-14
 > **Audience:** Developers
 
+## August 22, 2026 Agent-Readable Discovery Hardening
+
+- `src/lib/seo/answerlatticeAgentReadiness.ts` owns optional homepage Markdown negotiation and a non-reflective Markdown 404 recovery body.
+- `src/app/sites/answerlattice/openapi.json/route.ts` describes the existing disabled-by-default Public API with unique operations, typed inputs and success responses, API-key scopes, and structured errors; it does not enable or broaden the runtime.
+- Generated LLM context now includes explicit when-to-use guidance and the OpenAPI route. The developer page keeps this server integration secondary and account-gated.
+- Public API errors add fixed safe resolution guidance. Footer navigation headings now follow the page hierarchy, and Organization schema uses the verified support email as a ContactPoint while retaining the no-unverified-address boundary.
+- No Firebase rule, index, Function, credential, rollout flag, provider, dependency, or deployed environment changed.
+
 ## August 20, 2026 Focused Presentation Refinement
 
 - Reframed the fixed public header as a contained Verdigris glass shell without changing its routes, dropdowns, actions, theme switcher ownership, or mobile drawer behavior.

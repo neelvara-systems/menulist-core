@@ -98,6 +98,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/create-menu/preview/[draftId]` | `(website)/create-menu/preview/[draftId]/page.tsx` | `PreviewClient` | — | — |
 | `/create-menu/success` | `(website)/create-menu/success/page.tsx` + `CreateMenuSuccessClient.tsx` | `CreateMenuSuccessClient` | Server metadata wrapper + client success UI | `noindex, nofollow, nocache` |
 | `/resources` | `(website)/resources/page.tsx` | `ResourcesHub` | Server | Per-page |
+| `/developers` | `(website)/developers/page.tsx` | `DevelopersPage` | Server route + static public reference | Per-page |
 | `/tools` | `(website)/tools/page.tsx` | `ToolsHubPage` | Feature-gated static route with client index component | Per-page |
 | `/tools/reports` | `(website)/tools/reports/page.tsx` | `ToolReportPage` | Server route + client hash-fragment report viewer | Per-page |
 | `/tools/public-truth-check` | `(website)/tools/public-truth-check/page.tsx` | `PublicTruthCheckPage` | Server route + client browser-local tool | Per-page |
@@ -137,10 +138,11 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 190 implemented website routes (63 concrete route files + 15 generated English resource articles + 7 reviewed localized resource hubs + 105 reviewed localized resource articles)**
+**Total: 191 implemented website routes (64 concrete route files + 15 generated English resource articles + 7 reviewed localized resource hubs + 105 reviewed localized resource articles)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
+- `/developers` documents the existing read-only Platform Pull API, its scoped store-generated key contract, rate limit, cache behavior, and explicit non-goals. `/developers/openapi` serves the matching JSON contract with typed success responses without introducing a new data operation.
 - `/whatsapp` is an informational campaign route for the source-implemented messaging-onboarding flow. It uses localized availability copy, page-level structured data, a chat-style proof visual, trust boundaries, `PLATFORM_DISCOVERY_PAGES`, static sitemap, and LLM context coverage. Checked-in Functions targets keep provider processing disabled, so both primary actions use the existing `/create-menu` signed-in photo or permission-confirmed public-link intake. The component must not contain a test number or active `wa.me` onboarding action.
 - `/invite` is the private Owner Referral intake utility. The encrypted token stays in the URL fragment, the server route exports `noindex, nofollow, nocache`, and the route remains outside `PLATFORM_DISCOVERY_PAGES`, sitemap, `llms.txt`, and `llms-full.txt`.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.

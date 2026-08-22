@@ -85,7 +85,7 @@
 | SEO-11 | Security contact discovery | `/.well-known/security.txt` returns a static security contact file |
 | SEO-12 | `/nv` alias indexing | `/nv` alias responses carry `X-Robots-Tag: noindex, nofollow` |
 | SEO-13 | Trust canonical | `/trust` exposes a canonical URL and appears once in the sitemap |
-| SEO-14 | Agent context | `/llms.txt` names the correct company/product boundary, when-to-use guidance, canonical pages, and no-action boundary |
+| SEO-14 | Agent context | `/llms.txt` names the correct company/product boundary, when-to-use guidance, canonical pages, and no-action boundary; canonical destinations use Markdown links rather than plain-text URLs |
 | SEO-15 | Markdown negotiation | Homepage requests with `Accept: text/markdown` return Markdown plus `Vary: Accept, Accept-Encoding`; ordinary HTML requests remain unchanged |
 | SEO-16 | Agent-friendly 404 | Unknown Markdown requests return a non-reflective Markdown recovery body with HTTP `404` and links to home, `llms.txt`, and sitemap |
 

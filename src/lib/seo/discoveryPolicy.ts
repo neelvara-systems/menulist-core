@@ -64,6 +64,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.9,
     },
     {
+        label: 'Developer Integration',
+        path: '/developers',
+        description: 'Read-only MenuList business and menu API reference, scoped API-key access, limits, caching, and integration boundaries',
+        changeFrequency: 'monthly',
+        priority: 0.72,
+    },
+    {
         label: 'AI Menu Manager',
         path: '/ai-menu-manager',
         description: 'Approval-based AI menu operations for prices, sold-out items, specials, images, imports, design, and publishing',

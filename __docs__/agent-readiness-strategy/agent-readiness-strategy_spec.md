@@ -35,7 +35,7 @@ The internet is shifting from human browsing to machine querying. By 2030, Morga
 
 **Out of Scope:**
 
-- Public API / developer platform
+- Anonymous API, API marketplace, OAuth platform, official SDK ecosystem, or write-capable developer platform. The existing scoped read-only Platform Pull API remains a separate implemented integration surface.
 - Agent billing / per-request pricing
 - UCP (Universal Commerce Protocol) implementation
 - Architecture rewrites or new Firestore collections
@@ -159,7 +159,7 @@ Full doc suite documenting the long-term positioning, competitive analysis, and 
 | Per-request pricing / HTTP 402  | Wrong business model. Revenue = SMB subscriptions, not agent billing.                                            |
 | UCP manifest (/.well-known/ucp) | UCP is for commerce checkout (Shopify, Walmart). MenuList provides read-only business truth. Different paradigm. |
 | Agent onboarding automation     | Agents don't "onboard" to MenuList. They read public pages.                                                      |
-| Developer documentation portal  | No developer audience yet. When demand appears, reassess.                                                        |
+| Broad developer portal or SDK ecosystem | Rejected. The public `/developers` reference is limited to the existing scoped read-only Platform Pull API and does not create anonymous access, OAuth, writes, MCP actions, or an official SDK. |
 | Trust scoring API               | Over-engineering. dateModified + MCE + schema consistency is sufficient.                                         |
 
 ---

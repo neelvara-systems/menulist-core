@@ -7,17 +7,15 @@ import {
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 import {
+    ANSWERLATTICE_SITE_DESCRIPTION,
     ANSWERLATTICE_SUPPORTING_LINE,
     ANSWERLATTICE_TAGLINE,
 } from '@constant/answerlattice/website';
 
-export { ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
+export { ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
 
 export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Reviewed Support Layer for SaaS Products';
-
-export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;

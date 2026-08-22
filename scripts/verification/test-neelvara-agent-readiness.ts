@@ -72,6 +72,11 @@ async function main() {
         assert.match(homepageMarkdown, /MenuList and Answerlattice are operated by Neelvara Systems\./);
         assert.match(llms, /^## Agent action boundary$/m);
         assert.match(llms, /provides no API, MCP server, authentication flow, form submission, purchasing action, or autonomous tool call/);
+        assert.match(llms, /Canonical site: \[https:\/\/neelvara\.com\]\(https:\/\/neelvara\.com\)/);
+        assert.match(llms, /- \[MenuList\]\(https:\/\/menulist\.ai\)/);
+        assert.match(llms, /- \[Answerlattice\]\(https:\/\/answerlattice\.com\)/);
+        assert.match(llms, /- \[[^\]]*Trust[^\]]*\]\(https:\/\/neelvara\.com\/trust\)/);
+        assert.doesNotMatch(llms, /^- [^\[][^\n]*: https?:\/\//m);
         assert.match(notFoundMarkdown, /https:\/\/neelvara\.com\/llms\.txt/);
         assert.match(notFoundMarkdown, /https:\/\/neelvara\.com\/sitemap\.xml/);
 
@@ -130,7 +135,8 @@ async function main() {
             'menulist.ai',
             { accept: 'text/markdown' },
         ));
-        assert.notEqual(response.headers.get('content-type'), 'text/markdown; charset=utf-8');
+        assert.equal(response.headers.get('content-type'), 'text/markdown; charset=utf-8');
+        assert.match(await response.text(), /^# MenuList$/m);
 
         console.log('Neelvara agent-readiness contracts passed.');
     } finally {

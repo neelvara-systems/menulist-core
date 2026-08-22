@@ -34,6 +34,15 @@ Current boundaries:
 - Food safety claims such as allergens, gluten-free preparation, halal status, vegan status, and cross-contamination details must be repeated only when explicitly published by the business.
 - WebMCP is not the current production contract for MenuList public pages. It may become a browser-agent enhancement later, but the durable contract today is the public truth layer: HTML, JSON-LD, sitemaps, LLM context files, and gated APIs where enabled.
 
+## Developer Integration
+
+- [Developer reference](https://menulist.ai/developers)
+- [OpenAPI contract](https://menulist.ai/developers/openapi)
+- Authentication uses a store-generated `ml_` credential in the `X-API-Key` header with the `public:read` scope.
+- The two supported operations are `GET /api/public/v1/business` and `GET /api/public/v1/menu`.
+- The API is read-only and rate-limited to 60 requests per 60 seconds for each admitted key. Successful responses support ETags.
+- MenuList does not provide anonymous API access, write endpoints, OAuth, MCP/WebMCP actions, or an official npm SDK. The similarly named npm package is unrelated to MenuList.
+
 ## Schema.org Types Used
 
 ### On Official Business Pages (OBP)

@@ -1,8 +1,8 @@
 # Answerlattice Public API v1
 
 > **Status:** Implemented, locally audited, and disabled by default
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-20
+> **Version:** 1.2.0
+> **Last Updated:** 2026-08-22
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_PUBLIC_API` (`false`)
 > **Owner Permission:** `MANAGE_INTEGRATIONS`
 
@@ -27,6 +27,8 @@ The Public API is:
 - server-side only;
 - explicit about abstention and clarification;
 - disabled until a named customer workflow passes rollout gates.
+
+The public [`/openapi.json`](https://answerlattice.com/openapi.json) document describes this existing source contract for approved integrations. Publishing the contract does not enable the API, issue a credential, create a self-serve entitlement, or relax any rollout gate.
 
 ## Endpoints
 
@@ -60,6 +62,7 @@ All endpoints:
 - apply fail-closed IP admission before key lookup and per-key/endpoint rate limiting before retrieval or writes;
 - reject browser-origin requests and return private/no-store or bounded private-cache headers;
 - return fixed public errors without raw stack traces;
+- return structured JSON errors with fixed code, message, and safe resolution guidance;
 - expose no tenant/store identifiers in normal response bodies.
 
 ## Answer Contract
@@ -105,6 +108,7 @@ Keep the feature flag off until one target tenant has:
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-22 | 1.2.0 | Published a rollout-gated OpenAPI 3.1 contract and added fixed safe resolution guidance to existing JSON errors without enabling the API or changing credential scope. |
 | 2026-07-20 | 1.1.0 | Added exact credential contracts, owner key lifecycle, audit-safe rotation/revocation, server-only admission, immediate invalidation, public entity/signal restrictions, stable ETags, replay-conflict handling, strict UI responses, full docs, and focused tests. |
 | 2026-06-16 | 1.0.1 | Suppressed internal production debug traces and added explicit signal idempotency. |
 | 2026-05-16 | 1.0.0 | Added rollout-gated answers, entities, and signal ingestion routes. |

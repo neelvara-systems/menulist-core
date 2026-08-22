@@ -27,6 +27,8 @@ Current source contract:
 
 Historical sections below remain context, but this source gate is the current acceptance boundary.
 
+The public integration reference lives at `src/app/(website)/developers/page.tsx`; its machine-readable contract lives at `src/app/(website)/developers/openapi/route.ts`. Both describe the implemented read-only routes and existing `X-API-Key` boundary. They add no Firestore read, write, API credential, OAuth flow, SDK, MCP action, or runtime mutation.
+
 ## Architecture
 
 ```
@@ -162,4 +164,4 @@ Every successful request logs a fixed `public_api_request`-style diagnostic with
 
 ---
 
-**Last Updated:** July 22, 2026
+**Last Updated:** August 22, 2026

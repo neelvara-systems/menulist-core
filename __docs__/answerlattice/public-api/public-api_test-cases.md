@@ -1,6 +1,6 @@
 # Answerlattice Public API v1 - Test Cases
 
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-08-22
 
 ## Local Source and Contract Tests
 
@@ -39,6 +39,9 @@
 | Metadata | Reserved source/user/request/actor fields | Stripped and replaced by server-owned values where required. |
 | Metadata | Cyclic object, invalid date, nonfinite number, throwing getter, or Proxy | Failure-contained normalization; no object coercion, unstable identity, or incompatible write. |
 | Response | Owner/API payload malformed or oversized | Fixed error; no raw body/error projection. |
+| Error recovery | Public API failure | JSON contains fixed code, message, and safe resolution guidance without request, secret, or provider echo. |
+| OpenAPI | Public contract requested | OpenAPI 3.1 describes three unique operations, typed inputs and success responses, API-key scopes, errors, and the disabled-by-default rollout boundary. |
+| Agent discovery | Homepage requested with `Accept: text/markdown` | Compact Markdown with `Vary: Accept, Accept-Encoding`; unknown public path keeps 404 with recovery links. |
 
 ## Automated Commands
 

@@ -53,6 +53,14 @@ The deterministic demo has no network/provider path. Get Started uses native for
 - Added the supporting line, `Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.`
 - Kept the existing reviewed-support-layer category, approved-answer-first path, fallback boundary, and human-review guardrails unchanged.
 
+## August 22, 2026 Agent-Readable Discovery Audit
+
+- Recorded the public Is Agentic baseline at 60/100 and separated source-backed gaps from search-index state, framework overhead, and unsupported recommendations.
+- Added homepage Markdown negotiation, Markdown 404 recovery, explicit when-to-use guidance, and a public OpenAPI description for the already-built rollout-gated Public API.
+- Added fixed safe recovery guidance to existing Public API JSON errors, corrected footer heading hierarchy, and added the verified support contact point to Organization schema.
+- Kept the Public API and MCP disabled by default, preserved server-only credential/scoping rules, and did not publish an unverified company address or unsupported rating/review schema.
+- All changes remain local pending the combined three-site deployment pass.
+
 ## Related Strategy
 
 - `../self-sellable-product-strategy.md` — AnswerLattice's self-serve ICP, AI-built SaaS founder positioning, broader bounded-team fit, pricing direction, website message bank, and sellable-launch task list. Use this before changing public AnswerLattice website copy.

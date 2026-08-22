@@ -449,6 +449,7 @@ export const OnboardingSubscriptionSchema = z.object({
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']),
+    quantity: z.number().int().min(1).max(31),
     timeZone: z.string().trim().min(1).max(100).optional(),
     businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
     selfReportedDiscoveryChannel: z.enum(SELF_REPORTED_DISCOVERY_CHANNELS).optional(),

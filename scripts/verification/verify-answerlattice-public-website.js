@@ -132,6 +132,12 @@ const onboardingResponse = read('src/lib/answerlattice/onboardingResponse.ts');
 const onboardingPage = read(`${WEBSITE_ROOT}/get-started/page.tsx`);
 const billingPlans = read('src/lib/billing/productBillingPlans.ts');
 const structuredData = read(`${WEBSITE_ROOT}/components/StructuredData.tsx`);
+const footer = read(`${WEBSITE_ROOT}/components/Footer.tsx`);
+const developersPage = read(`${WEBSITE_ROOT}/developers/page.tsx`);
+const openApiRoute = read(`${WEBSITE_ROOT}/openapi.json/route.ts`);
+const installContract = read('src/lib/answerlattice/installContract/contract.ts');
+const agentReadiness = read('src/lib/seo/answerlatticeAgentReadiness.ts');
+const publicApi = read('src/lib/answerlattice/publicApi.ts');
 const themeProvider = read(`${WEBSITE_ROOT}/components/AnswerlatticeThemeProvider.tsx`);
 const websiteImpl = read(`${WEBSITE_DOCS_ROOT}/answerlattice-website_impl.md`);
 const analytics = read(`${WEBSITE_ROOT}/components/AnswerlatticeAnalytics.tsx`);
@@ -140,6 +146,21 @@ const knowledgeMapWebsiteDoc = read('__docs__/answerlattice/knowledge-map/knowle
 const operatingGuideRoute = read(`${WEBSITE_ROOT}/resources/answerlattice-operating-guide/page.tsx`);
 const founderLaunchKit = read(`${WEBSITE_ROOT}/resources/founder-launch-kit/page.tsx`);
 const operatingGuide = getAnswerlatticeResourceArticle('answerlattice-operating-guide');
+
+assertIncludes(structuredData, "'@type': 'ContactPoint'", 'AnswerLattice Organization support contact point');
+assertNotIncludes(structuredData, "'@type': 'PostalAddress'", 'AnswerLattice unverified public address boundary');
+assertIncludes(footer, '<h2>/{title}</h2>', 'AnswerLattice footer heading hierarchy');
+assertIncludes(developersPage, 'disabled by default', 'AnswerLattice developer API rollout gate');
+assertIncludes(developersPage, 'href="/openapi.json"', 'AnswerLattice developer OpenAPI link');
+assertIncludes(openApiRoute, "openapi: '3.1.0'", 'AnswerLattice OpenAPI version');
+assertIncludes(openApiRoute, "operationId: 'retrieveGovernedAnswer'", 'AnswerLattice OpenAPI answer operation');
+assertIncludes(openApiRoute, "operationId: 'listGovernedEntities'", 'AnswerLattice OpenAPI entity operation');
+assertIncludes(openApiRoute, "operationId: 'submitGovernanceSignal'", 'AnswerLattice OpenAPI signal operation');
+assertIncludes(installContract, '## When to use AnswerLattice', 'AnswerLattice agent when-to-use guidance');
+assertIncludes(installContract, '/openapi.json', 'AnswerLattice agent OpenAPI discovery');
+assertIncludes(agentReadiness, 'renderAnswerlatticeNotFoundMarkdown', 'AnswerLattice Markdown 404 recovery');
+assertIncludes(agentReadiness, 'Accept, Accept-Encoding', 'AnswerLattice Markdown Vary contract');
+assertIncludes(publicApi, 'resolution: resolutions[code]', 'AnswerLattice public API resolution hint');
 
 assert(operatingGuide, 'public Operating Guide article must exist');
 assert(
@@ -499,7 +520,6 @@ for (const assetPath of [
 }
 
 const header = read(`${WEBSITE_ROOT}/components/Header.tsx`);
-const footer = read(`${WEBSITE_ROOT}/components/Footer.tsx`);
 assertIncludes(header, 'aria-controls="answerlattice-mobile-navigation"', 'mobile drawer trigger relationship');
 assertIncludes(header, 'drawerRef.current', 'mobile drawer focus boundary');
 assertIncludes(header, "event.key !== 'Tab'", 'mobile drawer focus trap');
@@ -609,8 +629,13 @@ for (const doc of requiredDocs) {
 const packageJson = JSON.parse(read('package.json'));
 assert(
   packageJson.scripts['verify:answerlattice-public-website']
-    === 'node scripts/verification/verify-answerlattice-public-website.js && npm run test:answerlattice-public-resource-boundary && npm run test:answerlattice-public-roi-calculator && npm run test:answerlattice-public-contact-contracts && npm run test:answerlattice-robots-policy',
+    === 'node scripts/verification/verify-answerlattice-public-website.js && npm run test:answerlattice-agent-readiness && npm run test:answerlattice-public-resource-boundary && npm run test:answerlattice-public-roi-calculator && npm run test:answerlattice-public-contact-contracts && npm run test:answerlattice-robots-policy',
   'package must expose the Answerlattice public-website verifier',
+);
+assert(
+  packageJson.scripts['test:answerlattice-agent-readiness']
+    === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-answerlattice-agent-readiness.ts',
+  'package must expose the AnswerLattice agent-readiness regression test',
 );
 assert(
   packageJson.scripts['test:answerlattice-public-resource-boundary']

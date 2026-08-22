@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
@@ -62,6 +63,7 @@ import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
@@ -251,6 +253,16 @@ export const POST = withAuth(async (request, session) => {
         const email = session?.user?.email || '';
         const remainingCredits = 0;
         const quantity = Math.max(1, requestedQuantity);
+
+        if (
+            productId === PRODUCT_IDS.MENULIST
+            && !isValidMenuListPlanQuantity({ planId, quantity, userType: resolvedUserType })
+        ) {
+            return NextResponse.json(
+                { error: 'The selected plan and location count do not match.' },
+                { status: 400 },
+            );
+        }
 
         const currentSubscription = await getDirectActiveProductSubscriptionForStore(productId, tenantId, storeId);
         const replacementSubscription = replacementForSubscriptionId

@@ -6,6 +6,8 @@
 **Feature Flag:** `ENABLE_PUBLIC_API: true`
 **Date:** February 22, 2026
 
+**Public reference:** [`https://menulist.ai/developers`](https://menulist.ai/developers) documents the two existing read-only endpoints, scoped key contract, request limit, cache behavior, and explicit non-goals. [`/developers/openapi`](https://menulist.ai/developers/openapi) is the matching machine-readable contract; it does not add an API operation.
+
 ---
 
 ## Quick Navigation
@@ -90,4 +92,4 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 
 **Document Signature:** Cascade (Lead Architect)  
 **Created:** February 22, 2026  
-**Last Updated:** July 22, 2026
+**Last Updated:** August 22, 2026

@@ -23,6 +23,12 @@ export default function AnswerlatticeStructuredData() {
                 name: 'AnswerLattice',
                 url: ANSWERLATTICE_SITE_URL,
                 email: 'hello@answerlattice.com',
+                contactPoint: {
+                    '@type': 'ContactPoint',
+                    contactType: 'customer support',
+                    email: 'hello@answerlattice.com',
+                    url: buildAnswerlatticeUrl('/contact'),
+                },
                 logo: {
                     '@type': 'ImageObject',
                     url: buildAnswerlatticeUrl('/answerlattice-apple-touch-icon.png'),
