@@ -109,6 +109,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     const proration = subscription ? calculateProration(subscription) : null;
     const currency = subscription?.currency || 'INR';
     const isManualBilling = subscription?.billingMode === 'manual';
+    const isDirectMultiLocationPlan = !isManualBilling && subscription?.planId === 'premium';
     const activeStoreCount = (tenantDetails?.storesList || []).filter((store: any) => store?.active !== false).length || 1;
     const prepaidCapacity = Number(subscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoreCount;
@@ -119,7 +120,12 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
         && subscription?.paymentMethod?.type === 'upi'
         && prepaidCapacity <= activeStoreCount,
     );
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet);
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (
+        hasPaidSubscriptionAccess
+        && hasManualCapacity
+        && !needsCheckoutBeforeOutlet
+        && (isManualBilling || isDirectMultiLocationPlan)
+    );
 
     const openBilling = () => {
         handleClose();
@@ -277,6 +283,16 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                         showIcon
                         message="Active plan required"
                         description="Choose an active plan before adding another location."
+                    />
+                )}
+
+                {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && subscription && !isManualBilling && !isDirectMultiLocationPlan && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Multi-location plan required"
+                        description="Choose Multi-location before adding another outlet."
+                        action={<Button size="small" onClick={openBilling}>Open Billing</Button>}
                     />
                 )}
 

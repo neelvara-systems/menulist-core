@@ -192,6 +192,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
     const isManualBilling = activeSubscription?.billingMode === 'manual';
+    const isDirectMultiLocationPlan = !isManualBilling && activeSubscription?.planId === 'premium';
     const prepaidCapacity = Number(activeSubscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoresList.length;
     const hasPaidSubscriptionAccess = hasValidSubscriptionAccess(activeSubscription);
@@ -201,7 +202,12 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
         && activeSubscription?.paymentMethod?.type === 'upi'
         && prepaidCapacity <= activeStoresList.length,
     );
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (hasPaidSubscriptionAccess && hasManualCapacity && !needsCheckoutBeforeOutlet);
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (
+        hasPaidSubscriptionAccess
+        && hasManualCapacity
+        && !needsCheckoutBeforeOutlet
+        && (isManualBilling || isDirectMultiLocationPlan)
+    );
     const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
 
     const handleSwitchStore = async (storeId: number) => {
@@ -837,6 +843,20 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                         {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && !activeSubscription ? (
                             <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                 <Text>Choose an active plan before adding another location.</Text>
+                            </Card>
+                        ) : null}
+
+                        {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && activeSubscription && !isManualBilling && !isDirectMultiLocationPlan ? (
+                            <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
+                                <Flex gap={8} vertical>
+                                    <Text strong>Multi-location plan required</Text>
+                                    <Text type="secondary">Choose Multi-location before adding another outlet.</Text>
+                                    {onOpenBilling ? (
+                                        <Button block color="primary" fill="outline" onClick={onOpenBilling} size="large">
+                                            Open Billing
+                                        </Button>
+                                    ) : null}
+                                </Flex>
                             </Card>
                         ) : null}
 

@@ -10,6 +10,10 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
+import {
+    MENULIST_MULTI_LOCATION_MINIMUM_QUANTITY,
+    MENULIST_MULTI_LOCATION_PLAN_ID,
+} from '@lib/billing/menulistPricingPolicy';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
@@ -320,7 +324,9 @@ export const POST = withAuth(async (request, session) => {
                 if (sub && (sub.quantity || 1) > activeStoresAfterDeactivation) {
                     const providerSubId = getRazorpayManagedSubscriptionId(sub);
                     if (providerSubId && sub.id && hasVerifiedSubscriptionPaymentEvidence(sub)) {
-                        const newQty = activeStoresAfterDeactivation;
+                        const newQty = sub.planId === MENULIST_MULTI_LOCATION_PLAN_ID
+                            ? Math.max(activeStoresAfterDeactivation, MENULIST_MULTI_LOCATION_MINIMUM_QUANTITY)
+                            : activeStoresAfterDeactivation;
                         await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
                         await updateSubscription(sub.id, { quantity: newQty });
                         billingReduced = true;

@@ -64,6 +64,7 @@ import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
+import { isMultiOutletTenantStoreListEntryInScope } from '@lib/multiOutlet/projectIdBoundary';
 
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
@@ -289,6 +290,30 @@ export const POST = withAuth(async (request, session) => {
                     { error: 'The current subscription is not eligible for replacement.' },
                     { status: 409 },
                 );
+            }
+
+            if (
+                productId === PRODUCT_IDS.MENULIST
+                && resolvedUserType === 'B2C'
+                && replacementSubscription?.planId === 'premium'
+                && planId !== 'premium'
+            ) {
+                const tenantSnapshot = await firestoreAdmin
+                    .collection(DB_COLLECTIONS.TENANTS)
+                    .doc(String(tenantId))
+                    .get();
+                const storesList = tenantSnapshot.exists && Array.isArray(tenantSnapshot.data()?.storesList)
+                    ? tenantSnapshot.data()?.storesList
+                    : [];
+                const activeStoreCount = storesList.filter((store: unknown) => (
+                    isMultiOutletTenantStoreListEntryInScope(store, {})
+                )).length;
+                if (activeStoreCount > 1) {
+                    return NextResponse.json(
+                        { error: 'Move to one active location before changing to a single-location plan.' },
+                        { status: 409 },
+                    );
+                }
             }
         } else if (currentSubscription && currentSubscription.status !== 'pending') {
             return NextResponse.json(
