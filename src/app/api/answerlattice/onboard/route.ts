@@ -75,7 +75,11 @@ import { getCurrentUser, isCurrentUserRecordEligible } from '@lib/auth/currentPl
 import { createTenantStoreInTransaction } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    getBoundedRuntimeStringContext,
+    logRuntimeDiagnostic,
+    logRuntimeFailure,
+} from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { hashApiKey } from '@lib/publicApi/auth';
@@ -303,6 +307,38 @@ const normalizeOnboardingSurfaces = (values: string[]): string[] => {
     ));
 
     return selected.length ? selected : DEFAULT_ONBOARDING_SURFACES;
+};
+
+const logAnswerlatticeOnboardingFingerprintMismatch = (params: {
+    billingModel: string;
+    businessDayEndTime: string;
+    companyName: string;
+    currency: string;
+    existingFingerprint: string;
+    interval: string;
+    planId: string;
+    primarySurfaces: string[];
+    productName: string;
+    productUrl: string;
+    requestFingerprint: string;
+    supportEmail: string;
+    timeZone: string;
+}): void => {
+    logRuntimeDiagnostic('answerlattice_onboard_request_fingerprint_mismatch', {
+        billingModel: params.billingModel,
+        businessDayEndTime: params.businessDayEndTime,
+        companyNameLength: params.companyName.length,
+        currency: params.currency,
+        existingFingerprintPrefix: params.existingFingerprint.slice(0, 12),
+        interval: params.interval,
+        planId: params.planId,
+        primarySurfaces: params.primarySurfaces.join(','),
+        productNameLength: params.productName.length,
+        productUrlLength: params.productUrl.length,
+        requestFingerprintPrefix: params.requestFingerprint.slice(0, 12),
+        supportEmailLength: params.supportEmail.length,
+        timeZone: params.timeZone,
+    });
 };
 
 const bootstrapInitialProductSurfaces = async (params: {
@@ -827,6 +863,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PAYMENT_PENDING && existingScope) {
             if (existingScope.requestFingerprint !== requestFingerprint) {
+                logAnswerlatticeOnboardingFingerprintMismatch({
+                    billingModel,
+                    businessDayEndTime: schedulerBusinessDayEndTime,
+                    companyName,
+                    currency,
+                    existingFingerprint: existingScope.requestFingerprint,
+                    interval,
+                    planId: plan.planId,
+                    primarySurfaces: normalizedSurfaces,
+                    productName: productName || '',
+                    productUrl: productUrl || '',
+                    requestFingerprint,
+                    supportEmail: supportEmail || '',
+                    timeZone: schedulerTimeZone,
+                });
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_SETUP_REQUEST_CHANGED');
             }
             const storeSnapshot = await db.collection(DB_COLLECTIONS.STORES).doc(String(existingScope.storeId)).get();
@@ -898,6 +949,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             && existingScope
         ) {
             if (existingScope.requestFingerprint !== requestFingerprint) {
+                logAnswerlatticeOnboardingFingerprintMismatch({
+                    billingModel,
+                    businessDayEndTime: schedulerBusinessDayEndTime,
+                    companyName,
+                    currency,
+                    existingFingerprint: existingScope.requestFingerprint,
+                    interval,
+                    planId: plan.planId,
+                    primarySurfaces: normalizedSurfaces,
+                    productName: productName || '',
+                    productUrl: productUrl || '',
+                    requestFingerprint,
+                    supportEmail: supportEmail || '',
+                    timeZone: schedulerTimeZone,
+                });
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_SETUP_REQUEST_CHANGED');
             }
             recoveryAvailableAtForRetry = existingScope.recoveryAvailableAt;
