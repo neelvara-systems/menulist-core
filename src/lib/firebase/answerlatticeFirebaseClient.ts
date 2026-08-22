@@ -9,10 +9,10 @@
  */
 
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from 'firebase/firestore';
-import { getFunctions } from "firebase/functions";
-import { getStorage } from "firebase/storage";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
+import { connectStorageEmulator, getStorage } from "firebase/storage";
 import answerlatticeFirebaseConfig, {
     answerlatticeFirebaseMode,
     answerlatticeFirestoreDatabaseId,
@@ -52,11 +52,57 @@ const answerlatticeFirebaseClient = answerlatticeApp
 const answerlatticeAuth = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? firebaseAuth : getAuth(answerlatticeApp)) : null as any;
 const answerlatticeStorage = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? firebaseStorage : getStorage(answerlatticeApp)) : null as any;
 const answerlatticeFunctions = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? functions : getFunctions(answerlatticeApp)) : null as any;
+const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+
+const isFirebaseEmulatorAlreadyConfigured = (error: unknown): boolean => {
+    const code = typeof error === 'object' && error && 'code' in error
+        ? String((error as { code?: unknown }).code || '')
+        : '';
+    return code === 'failed-precondition' || code.endsWith('/failed-precondition');
+};
+
+const connectAnswerlatticeEmulator = (connect: () => void, service: string): void => {
+    try {
+        connect();
+    } catch (error) {
+        if (isFirebaseEmulatorAlreadyConfigured(error)) return;
+        logFirebaseBootstrapFailure('answerlattice_emulator_connect_failed', error, {
+            product: 'answerlattice',
+            service,
+            useFirebaseEmulators,
+        });
+    }
+};
 
 if (
     answerlatticeApp &&
     !shouldUseSharedAnswerlatticeFirebase &&
-    typeof window !== 'undefined'
+    useFirebaseEmulators &&
+    process.env.NODE_ENV === 'development'
+) {
+    connectAnswerlatticeEmulator(
+        () => connectAuthEmulator(answerlatticeAuth, 'http://127.0.0.1:9099', { disableWarnings: true }),
+        'auth',
+    );
+    connectAnswerlatticeEmulator(
+        () => connectFirestoreEmulator(answerlatticeFirebaseClient, '127.0.0.1', 8080),
+        'firestore',
+    );
+    connectAnswerlatticeEmulator(
+        () => connectFunctionsEmulator(answerlatticeFunctions, '127.0.0.1', 5001),
+        'functions',
+    );
+    connectAnswerlatticeEmulator(
+        () => connectStorageEmulator(answerlatticeStorage, '127.0.0.1', 9199),
+        'storage',
+    );
+}
+
+if (
+    answerlatticeApp &&
+    !shouldUseSharedAnswerlatticeFirebase &&
+    typeof window !== 'undefined' &&
+    !(process.env.NODE_ENV === 'development' && useFirebaseEmulators)
 ) {
     import('./answerlatticeAppCheck')
         .then(({ initAnswerlatticeAppCheck }) => {

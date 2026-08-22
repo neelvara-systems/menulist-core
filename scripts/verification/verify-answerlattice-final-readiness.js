@@ -13,6 +13,7 @@ const assertExcludes = (source, forbidden, label) => {
 };
 
 const nextConfig = read('next.config.js');
+const versionRoute = read('src/app/api/version/route.ts');
 const csp = read('src/config/csp-allowlist.ts');
 const scope = read('src/lib/answerlattice/sessionScope.ts');
 const access = read('src/lib/answerlattice/accessControl.ts');
@@ -33,6 +34,10 @@ assertIncludes(nextConfig, 'path.isAbsolute(candidate)', 'Isolated release-build
 assertIncludes(nextConfig, 'resolved.startsWith(`${__dirname}${path.sep}`)', 'Isolated release-build repository containment');
 assertIncludes(nextConfig, 'fs.realpathSync(resolved)', 'Isolated release-build symlink containment');
 assertIncludes(nextConfig, 'distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR)', 'Isolated release-build output support');
+assertIncludes(nextConfig, "throw new Error('MISSING_VERCEL_BUILD_ID')", 'Hosted build provenance fail-closed guard');
+assertIncludes(nextConfig, 'generateBuildId: async () => deploymentBuildId', 'Deterministic Next build identity');
+assertIncludes(nextConfig, 'NEXT_PUBLIC_BUILD_ID: deploymentBuildId', 'Baked deployment build identity');
+assertIncludes(versionRoute, "const buildProvenance = /^[0-9a-f]{40,64}$/.test(buildId) ? 'verified' : 'missing';", 'Runtime build provenance signal');
 assertExcludes(nextConfig, 'collected[normalizeAppRoute(rawRoute)]', 'Next App Router manifest compatibility');
 assertIncludes(csp, 'https://us-central1-neelvara-answerlattice-qa.cloudfunctions.net', 'Answerlattice QA callable CSP origin');
 assertIncludes(csp, 'https://us-central1-neelvara-answerlattice-prod.cloudfunctions.net', 'Answerlattice production callable CSP origin');

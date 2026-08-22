@@ -5,6 +5,14 @@
 > **Audit Type:** Codebase-first forensic documentation
 > **Feature Scope:** 16 subsystems, 190+ files, Answerlattice + Help Center Firestore collections
 
+> **Deployment authority:** Dated deploy attempts and permission failures inside
+> feature documents are historical evidence, not current environment status.
+> Use the
+> [Answerlattice environment setup ledger](./deployment/answerlattice-environment-setup-checklist.md)
+> for live QA/Production setup state and the
+> [deployment hub](./deployment/README.md) for the pre-QA handoff. Never rerun a
+> legacy command merely because a feature document says deployment was blocked.
+
 ---
 
 ## What Is This
@@ -383,7 +391,7 @@ No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytic
 
 Owner Support Assistant adds no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The live summary-only route reuses the existing coverage, trust, Support Board, friction, Knowledge Intake, and Activation compact summaries through one bounded `getAll()` call. An independent flag, disabled by default, can let selected launch/release actions prefill the existing Support Board create form; opening that form performs no write, and the owner must use the existing Create action to persist a card. Direct ticket/reply/governance adapters, action audit records, AI operation paths, and the compact `ownerSupportAssistantSummary` / `ownerSupportAnalyticsSummary` read models remain deferred and are not written by the current runtime.
 
-**Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Platform/support fallback claims must still use the `productAccounts.AL` tenant/store scope, not the default MenuList store. If separate Answerlattice Firebase Auth cannot mint the custom token, the route returns a controlled service-unavailable response rather than silently falling back to MenuList Firebase credentials. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
+**Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active company-owned Firebase targets (`neelvara-answerlattice-qa` locally/in QA, `neelvara-answerlattice-prod` in Production). Firebase CLI aliases `answerlattice-qa` and `answerlattice-prod` resolve to those exact projects. `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Platform/support fallback claims must still use the `productAccounts.AL` tenant/store scope, not the default MenuList store. If separate Answerlattice Firebase Auth cannot mint the custom token, the route returns a controlled service-unavailable response rather than silently falling back to MenuList Firebase credentials. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
 ---
 

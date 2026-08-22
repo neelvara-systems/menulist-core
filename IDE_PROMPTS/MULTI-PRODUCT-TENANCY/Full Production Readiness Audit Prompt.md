@@ -8,7 +8,8 @@ This repository contains two major systems:
 Both systems now run in a single Next.js codebase but use **separate Firebase projects**.
 
 MenuList → Firebase projects: menulist-qa for local/preview, menulist-prod for production
-Answerlattice → Firebase project: answerlattice
+Answerlattice → Firebase projects: `neelvara-answerlattice-qa` for local/QA and
+`neelvara-answerlattice-prod` for Production
 
 The platform architecture includes:
 

@@ -144,6 +144,7 @@
     var pendingSuggestionInteractionId = null;
     var pendingSuggestionClicked = false;
     var predictiveRequestTimer = null;
+    var remoteConfigContextRefreshTimer = null;
     var predictiveRequestGeneration = 0;
     var predictiveRequestInFlightKey = null;
     var contextBundleConfig = null;
@@ -1347,6 +1348,7 @@
             emitEvent('context', { context: copyProductContext() });
             sendContextToIframe();
             syncRouteAvailability();
+            scheduleRemoteConfigContextRefresh();
             if (sanitizedContext && !runtimeDenied && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { window.AnswerlatticeWidget.setContext(ctx); },
@@ -1632,6 +1634,22 @@
             });
         }
         return url.toString();
+    }
+
+    function scheduleRemoteConfigContextRefresh() {
+        if (!useRemoteConfig) return;
+        if (remoteConfigContextRefreshTimer) window.clearTimeout(remoteConfigContextRefreshTimer);
+
+        function refreshWhenIdle() {
+            if (remoteConfigRequestInFlight) {
+                remoteConfigContextRefreshTimer = window.setTimeout(refreshWhenIdle, 100);
+                return;
+            }
+            remoteConfigContextRefreshTimer = null;
+            loadRemoteConfig(true);
+        }
+
+        remoteConfigContextRefreshTimer = window.setTimeout(refreshWhenIdle, 50);
     }
 
     function loadRemoteConfig(forceRefresh) {

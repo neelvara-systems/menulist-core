@@ -14,7 +14,7 @@
  * - Paid: $0.20 per 100K requests
  * 
  * Development Mode:
- * - Set ENABLE_RATE_LIMITING = false in features.ts
+ * - Start the local process with ENABLE_RATE_LIMITING=false
  * - All requests allowed (no Upstash needed)
  * - Faster testing workflow
  */

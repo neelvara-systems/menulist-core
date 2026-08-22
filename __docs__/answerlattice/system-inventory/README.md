@@ -1,7 +1,7 @@
 # Answerlattice System Inventory
 
 > **Status:** Codebase-first inventory  
-> **Last Updated:** 2026-08-15
+> **Last Updated:** 2026-08-22
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
 > **Product Boundary:** Answerlattice is a separate product. MenuList is one independent client integration and shared codebase neighbor.
 
@@ -44,11 +44,15 @@ Docs under `__docs__/answerlattice/` were cross-checked after code discovery. Wh
 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
-| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app` | `answerlattice-qa` |
-| Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
+| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `neelvara-answerlattice-qa` |
+| Vercel custom `qa` | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app`, `https://www.canonica.app` | `neelvara-answerlattice-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com`, `https://www.answerlattice.com` | `neelvara-answerlattice-prod` |
 
-`src/constants/deploymentTargets.ts` is the code-level source of truth for this matrix. Domain routing, environment validation, Firebase aliases, and Answerlattice deploy scripts must stay in sync with it.
+`src/constants/deploymentTargets.ts` is the code-level source of truth for this
+matrix. Firebase CLI aliases `answerlattice-qa` and `answerlattice-prod` resolve
+to the company-owned project IDs above. The former external cloud project IDs
+`answerlattice-qa` and `answerlattice` are retired and must never appear as
+literal deploy targets.
 
 ## Answerlattice Operating Model
 
@@ -446,26 +450,47 @@ The following remain intentional rollout controls:
 
 Those features remain behind intentional rollout controls and should stay conservative in website copy unless enabled for a client.
 
-Source implementation is not production evidence. The current production blockers are:
+Source implementation is not production evidence. Provider and infrastructure
+setup is complete for both company-owned Answerlattice targets. The remaining
+boundaries are certification or release evidence, not missing setup:
 
-- the Answerlattice CI workflow is source-controlled, but no successful remote workflow run has been verified on this worktree;
-- backup/recovery tooling and the runbook are source-controlled, but no cloud schedule, ready backup, or isolated restore rehearsal has been verified;
-- the root full and production dependency audits require zero vulnerabilities after stable Next 16.3.0 moved its private PostCSS dependency to patched 8.5.23 and the compatible brace-expansion/fast-uri refresh closed the remaining new advisories. Fabric 7.4.0, Firebase Admin 14.2.0, Sharp 0.35.3, and the UUID 11.1.1 override remain guarded. `functions-answerlattice` stays separate on the stable modular Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair;
-- QA Firebase deployment and Firebase-console TTL/migration state require cloud IAM and operator verification;
-- browser/device/accessibility, live payment/provider, DNS/OAuth callback, and production telemetry journeys remain externally unverified;
-- workspace closure/recovery/erasure is source-implemented behind a disabled internal flag, but QA deployment, cross-service rule readback, dedicated-Auth deletion, and disposable-workspace rehearsal are not yet production evidence;
-- App Check remains an explicit external-client onboarding decision rather than a verified deployed control;
-- the centralized scheduler is designed for the current small-workspace range but is not load-proven for 1,000+ simultaneously due workspaces.
+- the Answerlattice CI workflow is source-controlled, but no successful remote
+  workflow run has been verified on this worktree;
+- QA and Production each have an active 98-day daily managed-backup schedule, a
+  READY backup, and an isolated delete-protected structural restore. The tooling
+  keeps new-database-only restores as a hard safety boundary. Fixture
+  lineage, TTL reapplication/readback, Storage/Auth recovery evidence, and
+  cleanup remain certification work;
+- the root full and production dependency audits must remain at zero vulnerabilities.
+  Fabric 7.4.0, Firebase Admin 14.2.0, Sharp 0.35.3, and the
+  UUID 11.1.1 override remain guarded. `functions-answerlattice` stays separate
+  on the stable modular Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair;
+- Firebase projects, rules, Storage rules, indexes, TTL, approved Functions,
+  task/scheduler resources, keyless runtime identities, secrets, budgets,
+  App Check registration, OAuth, Resend, Vercel environments, domains, and TLS
+  have provider readback recorded in the canonical environment setup ledger;
+- browser/device/accessibility, authenticated OAuth callback/session,
+  App Check, widget, ticket, KB, scheduler, and bounded backend journeys still
+  require controlled fixtures and owner QA;
+- workspace closure/recovery/erasure is source-implemented behind a disabled
+  internal flag; disposable-workspace rehearsal and dedicated Auth deletion
+  remain certification evidence;
+- the current Production credential-activation deployment reports
+  `/api/version` `buildId: "local"`. Source now fails hosted builds without a
+  full Git revision, but live provenance requires the next explicitly approved
+  Vercel Production deployment and readback;
+- the centralized scheduler is designed for the current small-workspace range
+  but is not load-proven for 1,000+ simultaneously due workspaces.
 
 ### Hardening Priority Order
 
 | Priority | Area | Current evidence | Required next action |
 | --- | --- | --- | --- |
 | P0 | Dependency and release gate | Stable Next 16.3.0 carries patched PostCSS 8.5.23; both root full and production audits are required to stay at zero. `.github/workflows/answerlattice-quality.yml` runs freeze, security, recovery, Functions, typecheck, readiness, runtime, rules, and emulator gates. | Obtain one successful remote CI run and keep the exact validated stable dependency freeze; do not force-downgrade Next or adopt a canary/preview. |
-| P0 | Backup and recovery | Source tool and dedicated runbook enforce QA/prod project mapping, explicit apply confirmation, daily 14-week schedule intent, and new-database-only restores. No deployed schedule or restore evidence exists. | Install/authenticate `gcloud`, configure QA managed backups, rehearse an isolated restore, validate tenant and canonical lineage, reapply TTL, and record measured RPO/RTO plus separate Storage/Auth evidence. |
-| P0 | Deployed-state proof | Source and emulator evidence exist; QA/prod rules, indexes, TTL, Functions, secrets, and migrations are not confirmed here | Restore Firebase access, run the scoped deployment/readback runbook, and verify deployed hashes/state before enabling client traffic. |
+| P0 | Backup and recovery | QA and Production each have an active daily 98-day schedule, READY backup, and isolated structural restore with measured RPO/RTO. Production and QA `(default)` databases remained untouched. | During certification, validate fixture tenant/canonical lineage, reapply and read back TTL on the isolated targets, capture separate Storage/Auth evidence, then clean up the temporary databases. |
+| P0 | Deployed-state proof | The canonical setup ledger records provider readback for both company-owned Firebase projects, rules, indexes, TTL, approved Functions, secrets, WIF, App Check, OAuth, Resend, Vercel environments, domains, and TLS. Production live build provenance is the sole deployment-only gap. | Start QA certification. On the next explicitly approved Production deploy, verify that `/api/version` reports the exact full release revision and `buildProvenance: "verified"`. |
 | P1 | Real-client answer evaluation | Answer Tests and quality controls are implemented; representative customer evaluation data is not repository-verifiable | Run a 50-100 question first-client set covering canonical hits, conflicts, abstention, citations, plan/version context, and regression blockers. |
-| P1 | Workspace lifecycle rollout proof | Reviewed source, contract/rule tests, and a Firestore/Storage service emulator cover closure, access-only recovery, retained evidence, foreign-row preservation, and resumable erasure | Keep the flag off; deploy dedicated QA Firestore/Storage rules, verify Storage-to-Firestore rule access, and rehearse close/recover/erase with disposable workspace and dedicated staff Auth identities. |
+| P1 | Workspace lifecycle rollout proof | Reviewed source, contract/rule tests, deployed dedicated rules, and a Firestore/Storage service emulator cover closure, access-only recovery, retained evidence, foreign-row preservation, and resumable erasure. | Keep the flag off and rehearse close/recover/erase with a disposable QA workspace and dedicated staff Auth identities. |
 | P1 | Browser and integration proof | Deterministic source tests exist; real browser, accessibility, widget-host, payment, email, DNS, OAuth, and provider journeys remain external | Complete controlled QA journeys on desktop/mobile and the first real client product before general availability. |
 | P2 | Scheduler scale | Bounded single-instance scheduler is appropriate for current scale; 1,000+ due-workspace load is unproven | Add load evidence before replacing it with task fan-out; do not redesign early. |
 | P2 | Rollout-gated surfaces | Public API, MCP, hybrid evidence, AI escalation, native connectors, autonomous actions, multilingual, and advanced white label remain off | Keep off until a named ICP workflow, security contract, quality gate, and paying-client evidence justify each rollout. |

@@ -74,7 +74,7 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 - Local dev prefix: `/__answerlattice`
 - Canonica hosts are private Answerlattice QA surfaces only. They must be
   noindex, disallow all crawlers, publish no sitemap, and never be assigned to
-  Vercel Production.
+  Vercel Production or treated as production canonical URLs.
 - Public copy, metadata, OpenGraph, Twitter cards, schema, header, footer, resources, comparison pages, developer docs, robots, sitemap, and LLM context must use `AnswerLattice` as the standalone brand.
 - `Canonica` may remain only in internal historical docs, migration notes, or code names where renaming is not part of the tested runtime plan; it must not appear in rendered public AnswerLattice site copy.
 

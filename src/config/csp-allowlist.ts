@@ -137,6 +137,8 @@ export const CSP_DEV_SETTINGS = {
      * Local emulator connections must never be admitted to a production CSP.
      */
     connectSources: [
+        'http://127.0.0.1:9099',
+        'http://localhost:9099',
         'http://127.0.0.1:5001',
         'http://localhost:5001',
         'http://127.0.0.1:8080',

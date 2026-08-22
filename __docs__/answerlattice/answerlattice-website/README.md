@@ -304,7 +304,7 @@ Production:
   answerlattice.com/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Vercel Preview / QA:
-  canonica.app/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
+  canonica.app/* and www.canonica.app/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Local Dev:
   localhost:3000/__answerlattice/*  →  middleware detects dev prefix  →  rewrites to /sites/answerlattice/*

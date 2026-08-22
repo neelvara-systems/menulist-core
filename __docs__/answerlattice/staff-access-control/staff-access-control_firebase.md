@@ -63,7 +63,7 @@ Answerlattice management access scope boundary: the shared management access con
 QA rules deploy target:
 
 ```bash
-firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 ```
 
 Production deploy target remains separate and opt-in:

@@ -79,7 +79,7 @@ Feature 35 changes Next.js routes, components, shared TypeScript contracts, dedi
 After local emulator verification, both required QA deploys were attempted on 2026-07-20:
 
 ```bash
-firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
 ```
 

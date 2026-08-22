@@ -633,7 +633,8 @@ function verifyAnswerlatticeOperationalHardening() {
   assertIncludes(backupTool, "'--retention=14w'", 'Answerlattice managed-backup retention');
   assertIncludes(backupTool, "'restore'", 'Answerlattice managed restore command');
   assertNotIncludes(backupTool, 'databases delete', 'Answerlattice backup tool destructive database deletion');
-  assertIncludes(backupTest, "assertRestoreDatabase('(default)')", 'Answerlattice default restore rejection test');
+  assertIncludes(backupTest, "assertRestoreDatabase('qa', '(default)')", 'Answerlattice QA default restore rejection test');
+  assertIncludes(backupTest, "assertRestoreDatabase('prod', '(default)')", 'Answerlattice production default restore rejection test');
 
   assertIncludes(backupRunbook, 'one day', 'Answerlattice recovery point objective');
   assertIncludes(backupRunbook, 'eight hours', 'Answerlattice recovery time objective');
@@ -8061,9 +8062,8 @@ function verifyWorkflowIntegrationAdapterSafety() {
   assertIncludes(functionSecrets, 'function defineOptionalProviderSecret', 'Answerlattice optional-provider declaration gate');
   assertIncludes(functionSecrets, 'function bindOptionalProviderSecrets', 'Answerlattice optional-provider secret binding helper');
   assertIncludes(functionSecrets, 'WORKFLOW_INTEGRATIONS: bindOptionalProviderSecrets([', 'Answerlattice workflow-integration conditional secret group');
-  assertIncludes(functionSecrets, "RESEND_WEBHOOK_SECRET: defineSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')", 'Answerlattice required product-scoped EmailOS webhook secret');
-  assertIncludes(functionSecrets, 'EMAIL_OS_WEBHOOK: [', 'Answerlattice EmailOS webhook required secret group');
-  assertNotIncludes(functionSecrets, "RESEND_WEBHOOK_SECRET: defineOptionalProviderSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')", 'Answerlattice optional EmailOS webhook secret');
+  assertIncludes(functionSecrets, "RESEND_WEBHOOK_SECRET: defineOptionalProviderSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')", 'Answerlattice conditionally declared product-scoped EmailOS webhook secret');
+  assertIncludes(functionSecrets, 'EMAIL_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice EmailOS webhook conditional secret group');
   assertIncludes(functionSecrets, 'WHATSAPP_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice WhatsAppOS conditional secret group');
   assertIncludes(networkTarget, 'isBlockedNetworkTarget', 'Answerlattice Functions network target private-address guard');
   assertIncludes(networkTarget, "error: 'blocked_resolved_address'", 'Answerlattice Functions network target DNS guard');

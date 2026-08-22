@@ -1,7 +1,7 @@
 # Product Separation Playbook — Answerlattice
 
 > **v1.2.0** | 2026-05-25 | Ref: 07-multi-product-tenancy.md v4.1.0
-> Local and QA separate-mode paths are fixed on `answerlattice-qa`. Production uses the `answerlattice` Firebase project and still requires production credentials/deploy verification.
+> Local and QA separate-mode paths are fixed on company-owned project `neelvara-answerlattice-qa`. Production uses `neelvara-answerlattice-prod`. Firebase CLI aliases are `answerlattice-qa` and `answerlattice-prod` only.
 
 > QA deployment status is tracked in `__docs__/answerlattice/deployment/answerlattice-qa-deployment-runbook.md`.
 
@@ -11,9 +11,9 @@ Answerlattice and MenuList share the same Vercel project, but product hostnames 
 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
-| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app` | `answerlattice-qa` |
-| Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com` | `answerlattice` |
+| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `neelvara-answerlattice-qa` |
+| Vercel custom `qa` | `https://menulist.digital`; app `https://app.menulist.digital`; customers `*.menulist.digital` | `menulist-qa` | `https://canonica.app`, `https://www.canonica.app` | `neelvara-answerlattice-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist-prod` | `https://answerlattice.com`, `https://www.answerlattice.com` | `neelvara-answerlattice-prod` |
 
 The source-of-truth code for this matrix is `src/constants/deploymentTargets.ts`. Run `npm run verify:env-targets` after changing domain, Firebase, or deploy-script configuration.
 
@@ -119,8 +119,8 @@ Local development and staging use the Answerlattice QA Firebase project. Product
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa   # local/preview
-NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice      # production
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-qa   # local/QA
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=neelvara-answerlattice-prod # production
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=...
@@ -129,7 +129,7 @@ ANSWERLATTICE_FIREBASE_PRIVATE_KEY=...
 ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=...
 ```
 
-The server reuses the canonical public mode, project ID, bucket, and optional database ID. Use `shared` mode only for explicit legacy/emulator recovery. The active local path is separate mode against `answerlattice-qa`, and production stays separate against `answerlattice`.
+The server reuses the canonical public mode, project ID, bucket, and optional database ID. Use `shared` mode only for explicit legacy/emulator recovery. The active local/QA path is separate mode against `neelvara-answerlattice-qa`, and production stays separate against `neelvara-answerlattice-prod`.
 
 ---
 
@@ -221,23 +221,23 @@ firebase deploy --project menulist-qa --config firebase.json --only functions:pr
 # MenuList production Functions require QA evidence and explicit production deploy approval.
 
 # Answerlattice QA functions
-firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only functions:answerlattice --project neelvara-answerlattice-qa --config firebase-answerlattice.json
 
 # Answerlattice production functions
-firebase deploy --only functions:answerlattice --project answerlattice --config firebase-answerlattice.json
+firebase deploy --only functions:answerlattice --project neelvara-answerlattice-prod --config firebase-answerlattice.json
 
 # Answerlattice QA Firestore/Storage rules and indexes
-firebase deploy --only firestore:rules,firestore:indexes,storage --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules,firestore:indexes,storage --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 
 # Answerlattice production Firestore/Storage rules and indexes
-firebase deploy --only firestore:rules,firestore:indexes,storage --project answerlattice --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules,firestore:indexes,storage --project neelvara-answerlattice-prod --config firebase-answerlattice.json --non-interactive
 ```
 
 ---
 
 ## PART 5: Execution Order
 
-1. Create GCP project `answerlattice` + enable Firestore/Auth/Storage
+1. Use company-owned GCP projects `neelvara-answerlattice-qa` and `neelvara-answerlattice-prod`; enable and verify Firestore/Auth/Storage independently
 2. Add `ANSWERLATTICE_FIREBASE_*` env vars
 3. Create 3 new Firebase files (config, client, admin)
 4. Update all DAL imports (18 directories)

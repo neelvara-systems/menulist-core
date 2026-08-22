@@ -39,7 +39,7 @@ Canonical drift state remains on the canonical answer until human validation. Au
 The dedicated `answerlatticeNightly` Function changed and requires this scoped QA deploy after authentication:
 
 ```bash
-firebase deploy --only functions:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only functions:answerlatticeNightly --project neelvara-answerlattice-qa --config firebase-answerlattice.json
 ```
 
 No Firestore rule, index, or Storage rule changed for Feature 10.

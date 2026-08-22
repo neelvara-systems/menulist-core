@@ -67,7 +67,7 @@
 Feature 5 changes dedicated Firestore rules, shared compatibility rules, and the existing dedicated nightly retention function. Narrow QA deploys were attempted after local verification:
 
 ```bash
-firebase deploy --only firestore:rules,functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules,functions:answerlattice:answerlatticeNightly --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive
 firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
 ```
 

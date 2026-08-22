@@ -123,6 +123,8 @@ assert.ok(
 assert.ok(loader.includes('page: function (ctx) { window.AnswerlatticeWidget.setContext(ctx); }'));
 assert.ok(!loader.includes('page: function (ctx) { this.setContext(ctx); }'));
 assert.ok(loader.includes("emitEvent('context', { context: copyProductContext() });"));
+assert.ok(loader.includes('scheduleRemoteConfigContextRefresh();'));
+assert.ok(loader.includes('if (remoteConfigRequestInFlight) {'));
 assert.ok(loader.includes("emitEvent('identify', { visitor: copyVisitorContext() });"));
 assert.ok(loader.includes('getContext: function () { return copyProductContext(); }'));
 assert.ok(loader.includes('getVisitor: function () { return copyVisitorContext(); }'));
@@ -146,6 +148,8 @@ assert.ok(!widgetKeyRoute.includes('Delete an old key before creating another.')
 assert.ok(publicWidgetConfigRoute.includes('const buildErrorResponse'));
 assert.ok(publicWidgetConfigRoute.includes("'Cache-Control': 'no-store'"));
 assert.ok(publicWidgetConfigRoute.includes("buildErrorResponse(request, { error: 'Origin not allowed' }, 403)"));
+assert.ok(publicWidgetConfigRoute.includes("...['path', 'contextKey', 'feature', 'page'].map"));
+assert.ok(publicWidgetConfigRoute.includes('buildCacheKey(apiKey, requestOrigin, request.nextUrl.searchParams)'));
 assert.ok(publicWidgetConfigRoute.includes('body: Record<string, unknown>'));
 assert.ok(publicWidgetConfigRoute.includes('return answerlatticeFirestoreAdmin;'));
 assert.ok(publicWidgetConfigRoute.includes('const toIsoTimestamp = (value: unknown): string | null =>'));

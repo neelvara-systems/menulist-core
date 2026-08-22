@@ -119,7 +119,8 @@ Production canonical URLs use `https://answerlattice.com`. `https://canonica.app
 and `https://www.canonica.app` are assigned only to the custom Vercel `qa`
 environment. Middleware keeps both QA hosts noindex, serves a disallow-all
 `robots.txt`, and returns no sitemap so the QA brand surface cannot compete
-with the production canonical host.
+with the production canonical host. They must not be promoted to production
+canonical copy or attached to Vercel Production.
 
 `src/content/answerlatticePublic/` is the shared public-content registry for this release. `src/app/sites/answerlattice/publicContent.ts` remains as a compatibility re-export so existing public pages can keep stable imports while the content source is separated from route code. The module stores:
 
@@ -441,7 +442,7 @@ All product domains are registered here. The middleware reads the hostname and r
 
 ```
 answerlattice.com/*  →  middleware  →  /sites/answerlattice/*        (production)
-canonica.app/*   →  middleware  →  /sites/answerlattice/*        (Vercel custom QA)
+canonica.app/* and www.canonica.app/*  →  middleware  →  /sites/answerlattice/*  (Vercel custom QA)
 localhost/__answerlattice/*  →  middleware  →  /sites/answerlattice/*  (dev only)
 ```
 

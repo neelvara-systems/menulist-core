@@ -49,6 +49,7 @@ const ANSWERLATTICE_INTAKE_REVIEW_DRAFTS_GENERATE_FAILED = 'Could not generate r
 const ANSWERLATTICE_INTAKE_REVIEW_ITEM_UPDATE_FAILED = 'Could not update review item.';
 const ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED = 'Could not publish intake items.';
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ANSWERLATTICE_KNOWLEDGE_INTAKE_ERROR_MESSAGE_MAX_LENGTH = 240;
 const ANSWERLATTICE_SOURCE_GOVERNANCE_MAX_PENDING_ATTEMPTS = 20;
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
     cache: 'no-store',
@@ -279,6 +280,14 @@ const getKnowledgeIntakeResponseLogContext = (
     responseStatus: response.status,
 });
 
+const getKnowledgeIntakeClientErrorMessage = (payload: unknown, fallbackMessage: string): string => {
+    if (!isRecord(payload) || typeof payload.error !== 'string') return fallbackMessage;
+    const message = payload.error.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim();
+    return message && message.length <= ANSWERLATTICE_KNOWLEDGE_INTAKE_ERROR_MESSAGE_MAX_LENGTH
+        ? message
+        : fallbackMessage;
+};
+
 const readKnowledgeIntakeResponse = async <T>(
     response: Response,
     options: KnowledgeIntakeResponseOptions<T>,
@@ -304,7 +313,7 @@ const readKnowledgeIntakeResponse = async <T>(
             undefined,
             getKnowledgeIntakeResponseLogContext(options.responseKind, response),
         );
-        throw new Error(options.fallbackMessage);
+        throw new Error(getKnowledgeIntakeClientErrorMessage(payload, options.fallbackMessage));
     }
 
     if (!options.isValid(payload)) {
@@ -469,9 +478,9 @@ export function useKnowledgeIntake() {
             await refreshBundle(data.job.id);
             message.success('Knowledge intake created');
             return data.job;
-        } catch {
+        } catch (error) {
             if (!isAnswerlatticeKnowledgeIntakeScopeCurrent(operationScopeKey, scopeKeyRef.current)) return null;
-            message.error(ANSWERLATTICE_INTAKE_JOB_CREATE_FAILED);
+            message.error(error instanceof Error ? error.message : ANSWERLATTICE_INTAKE_JOB_CREATE_FAILED);
             return null;
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);

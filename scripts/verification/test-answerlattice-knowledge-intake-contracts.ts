@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { PRODUCT_IDS } from '../../src/constants/product';
 import {
     AnswerlatticeIntakeReviewItemSchema,
@@ -12,6 +14,18 @@ import {
 } from '../../src/lib/answerlattice/knowledgeIntakeContracts';
 import { sanitizeAnswerlatticeIntakeMetadata } from '../../src/lib/answerlattice/knowledgeIntakePrivacy';
 import { getAnswerlatticeKnowledgeIntakeLogContext } from '../../src/lib/answerlattice/knowledgeIntakeDiagnostics';
+
+const intakeHookSource = readFileSync(resolve('src/hooks/answerlattice/useKnowledgeIntake.ts'), 'utf8');
+assert.match(
+    intakeHookSource,
+    /throw new Error\(getKnowledgeIntakeClientErrorMessage\(payload, options\.fallbackMessage\)\)/,
+    'bounded API error messages must survive the response boundary',
+);
+assert.match(
+    intakeHookSource,
+    /message\.error\(error instanceof Error \? error\.message : ANSWERLATTICE_INTAKE_JOB_CREATE_FAILED\)/,
+    'job creation must surface the bounded actionable API error',
+);
 
 const timestamp = '2026-07-11T00:00:00.000Z';
 const job = {
