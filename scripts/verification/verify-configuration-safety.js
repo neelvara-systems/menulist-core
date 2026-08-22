@@ -78,28 +78,24 @@ for (const [label, template, stage] of [
     `${label} must not expose private credentials through NEXT_PUBLIC variables`,
   );
 }
-const productionEmailOsOnlyKeys = new Set([
-  'ANSWERLATTICE_EMAIL_OS_FROM',
-  'ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN',
-  'ANSWERLATTICE_EMAIL_OS_REPLY_TO',
-  'ANSWERLATTICE_RESEND_API_KEY',
+const stagingKeys = environmentKeys(stagingTemplate);
+const productionKeys = environmentKeys(productionTemplate);
+const productionOnlyKeys = new Set([
   'MENULIST_EMAIL_OS_FROM',
   'MENULIST_EMAIL_OS_FROM_DOMAIN',
   'MENULIST_EMAIL_OS_REPLY_TO',
   'MENULIST_RESEND_API_KEY',
 ]);
-const stagingKeys = environmentKeys(stagingTemplate);
-const productionKeys = environmentKeys(productionTemplate);
 const stagingSharedKeys = [...stagingKeys]
   .sort();
 const productionSharedKeys = [...productionKeys]
-  .filter((key) => !productionEmailOsOnlyKeys.has(key))
+  .filter((key) => !productionOnlyKeys.has(key))
   .sort();
 assert(
   JSON.stringify(stagingSharedKeys) === JSON.stringify(productionSharedKeys),
-  'staging and production env templates may differ only by explicitly approved environment-specific keys',
+  'staging and production env templates may differ only by approved production-only keys',
 );
-for (const key of productionEmailOsOnlyKeys) {
+for (const key of productionOnlyKeys) {
   assert(productionKeys.has(key) && !stagingKeys.has(key), `${key} must remain production-only`);
 }
 for (const [label, template] of [

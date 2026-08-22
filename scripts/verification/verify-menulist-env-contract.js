@@ -115,6 +115,8 @@ const REQUIRED_CANONICAL_NAMES = [
   'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
   'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET',
   'NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID',
+  'NEXT_PUBLIC_USE_EMULATORS',
+  'NEXT_PUBLIC_USE_FIREBASE_EMULATORS',
   'NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_MODE',
   'NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID',
   'NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET',
@@ -158,6 +160,16 @@ for (const relativePath of ['.env.staging.example', '.env.production.example']) 
     'ANSWERLATTICE_GEMINI_AI_KEY_4',
   ]) {
     if (names.has(retiredName)) fail(`${relativePath} contains retired permanent Gemini credential ${retiredName}`);
+  }
+}
+
+for (const relativePath of ['.env.staging.example', '.env.production.example']) {
+  const template = read(relativePath);
+  if (!template.includes('NEXT_PUBLIC_USE_EMULATORS=false')) {
+    fail(`${relativePath} must keep general emulator behavior disabled in managed environments`);
+  }
+  if (!template.includes('NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false')) {
+    fail(`${relativePath} must keep Firebase browser emulators explicitly disabled in managed environments`);
   }
 }
 
