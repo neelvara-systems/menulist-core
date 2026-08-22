@@ -14,7 +14,7 @@ import {
 import { updateList } from '@util/utils';
 import { Flex, message, Table, theme, Typography } from 'antd';
 import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
-import { LuSearch } from 'react-icons/lu';
+import { LuInbox, LuSearch } from 'react-icons/lu';
 import TicketDetailView from './TicketDetailView';
 import TicketFiltersBar from './TicketFiltersBar';
 import { getTicketTableColumns } from './TicketTableColumns';
@@ -113,6 +113,34 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
             return matchesSearch && matchesFilters && matchesDateRange && matchesTags && matchesSLA && matchesLongRunning;
         });
     }, [tickets, searchTerm, filters]);
+
+    const hasActiveFilters = searchTerm.trim().length > 0
+        || Boolean(filters.status)
+        || Boolean(filters.priority)
+        || Boolean(filters.category)
+        || Boolean(filters.client)
+        || Boolean(filters.dateRange)
+        || filters.tags.length > 0
+        || Boolean(filters.slaStatus)
+        || filters.longRunning;
+
+    const emptyState = hasActiveFilters
+        ? {
+            icon: <LuSearch size={48} style={{ opacity: 0.15 }} />,
+            title: 'No matching tickets',
+            description: 'Clear or adjust your search and filters.',
+        }
+        : isTrashView
+            ? {
+                icon: <LuInbox size={48} style={{ opacity: 0.15 }} />,
+                title: 'No deleted tickets',
+                description: 'Deleted tickets will appear here.',
+            }
+            : {
+                icon: <LuInbox size={48} style={{ opacity: 0.15 }} />,
+                title: 'No support tickets yet',
+                description: 'New customer requests and unresolved questions will appear here.',
+            };
 
     // Expose export method to parent
     useImperativeHandle(ref, () => ({
@@ -233,9 +261,9 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
                 locale={{
                     emptyText: (
                         <Flex vertical align="center" gap={12} style={{ padding: '60px 20px' }}>
-                            <LuSearch size={48} style={{ opacity: 0.15 }} />
-                            <Text type="secondary" style={{ fontSize: 16 }}>No tickets found</Text>
-                            <Text type="secondary" style={{ fontSize: 13 }}>Try adjusting your search or filters</Text>
+                            {emptyState.icon}
+                            <Text type="secondary" style={{ fontSize: 16 }}>{emptyState.title}</Text>
+                            <Text type="secondary" style={{ fontSize: 13 }}>{emptyState.description}</Text>
                         </Flex>
                     )
                 }}

@@ -1904,6 +1904,10 @@ function verifyAnswerlatticeBrowserHandoffDiagnostics() {
   const ticketActions = read('src/components/templates/platform/supportTickets/TicketActions.tsx');
   const ticketDetailView = read('src/components/templates/platform/supportTickets/TicketDetailView.tsx');
   const platformTicketsView = read('src/components/templates/platform/supportTickets/PlatformTicketsView.tsx');
+  assertIncludes(platformTicketsView, "title: 'No support tickets yet'", 'Ticket queue explains a genuinely empty owner inbox');
+  assertIncludes(platformTicketsView, "description: 'New customer requests and unresolved questions will appear here.'", 'Ticket queue explains what will arrive next');
+  assertIncludes(platformTicketsView, "title: 'No matching tickets'", 'Ticket filtering has a distinct empty state');
+  assertIncludes(platformTicketsView, "title: 'No deleted tickets'", 'Deleted ticket view has a distinct empty state');
   const conversationTimeline = read('src/components/templates/platform/supportTickets/ConversationTimeline.tsx');
   const ticketsDal = read('src/database/tickets/index.ts');
   const addSupportTicket = read('src/components/organisms/addSupportTicket/index.tsx');
