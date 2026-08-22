@@ -195,7 +195,12 @@ export const FEATURE_FLAGS = {
      * Note: Rate limiting still works with feature flag off,
      * it just always returns { allowed: true }
      */
-    ENABLE_RATE_LIMITING: true, // Toggle this for dev/prod
+    ENABLE_RATE_LIMITING: process.env.ENABLE_RATE_LIMITING
+        ? process.env.ENABLE_RATE_LIMITING === "true"
+        : !(
+            process.env.NODE_ENV === "development"
+            && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true"
+        ),
 
     /**
      * Enable Firebase App Check with reCAPTCHA v3

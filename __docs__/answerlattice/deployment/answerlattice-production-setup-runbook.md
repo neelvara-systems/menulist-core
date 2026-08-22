@@ -48,10 +48,13 @@ Verified through August 22, 2026:
   keys;
 - Vercel Production Firebase/OIDC selectors and fresh cron/bundle secrets;
 - owner-created production Gemini authorization key in sensitive Vercel
-  Production and Secret Manager version 1, with a bounded HTTP 200 provider
+  Production and Secret Manager version 2, with a bounded HTTP 200 provider
   proof;
 - eight ACTIVE Gemini-bound Functions on Node 22 in `us-central1`, including
-  Scheduler and embedding task queue resources with exact secret bindings;
+  Scheduler and embedding task queue resources with exact version-2 secret
+  bindings; version 1 is destroyed, while the previous AI Studio credential
+  remains enabled until an approved Vercel Production redeployment drains the
+  prior environment snapshot;
 - truthful production Google OAuth branding, test audience/user, exact
   apex/`www` client origins and callbacks, and Production-only Vercel client
   bindings with hosted `NEXTAUTH_URL` absent;

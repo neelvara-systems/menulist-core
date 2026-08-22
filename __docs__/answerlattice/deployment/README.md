@@ -180,7 +180,7 @@ The following was verified through August 22, 2026:
   `ANSWERLATTICE_WIDGET_RUNTIME_SECRET` are active in READY Production
   deployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3`. The owner-created production
   Gemini authorization key is active
-  in sensitive Vercel Production and Secret Manager version 1; a bounded
+  in sensitive Vercel Production and Secret Manager version 2; a bounded
   provider call returned HTTP 200 with exactly `OK`. All 11 approved core
   Functions are ACTIVE on Node 22 with exact secret readback: the eight
   Gemini-bound paths plus two retry-safe Firestore analytics/support triggers
@@ -188,7 +188,10 @@ The following was verified through August 22, 2026:
   the QA-proven Domain Restricted Sharing-compatible Cloud Run transport
   annotation and returns HTTP 401 `UNAUTHENTICATED` to an unsigned request,
   so public transport does not bypass Firebase callable authentication. The
-  optional production EmailOS webhook and its provider credentials remain
+  Secret Manager version 1 is destroyed after the eight AI Functions moved to
+  version 2. The previous AI Studio credential remains enabled only until an
+  approved Vercel Production redeployment drains the old environment snapshot.
+  The optional production EmailOS webhook and its provider credentials remain
   intentionally absent.
   The current deployment is an exact-artifact redeployment of certified
   deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` from application commit

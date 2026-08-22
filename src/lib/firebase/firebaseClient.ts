@@ -1,9 +1,9 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, signOut } from "firebase/auth";
+import { connectAuthEmulator, getAuth, signOut } from "firebase/auth";
 import { getDatabase } from "firebase/database";
-import { getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
-import { getStorage } from "firebase/storage";
+import { connectStorageEmulator, getStorage } from "firebase/storage";
 import { getExpectedFirebaseProjectId } from "@constant/deploymentTargets";
 import firebaseConfig from "./config";
 import { logFirebaseBootstrapFailure } from "./firebaseDiagnostics";
@@ -74,6 +74,27 @@ const firebaseStorageUrl = firebaseConfig.storageBucket
     : '';
 const signOutFirebaseAuth = () => firebaseAuth ? signOut(firebaseAuth) : Promise.resolve();
 const functions = firebaseApp ? getFunctions(firebaseApp) : null as any;
+const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+
+const isFirebaseEmulatorAlreadyConfigured = (error: unknown): boolean => {
+    const code = typeof error === 'object' && error && 'code' in error
+        ? String((error as { code?: unknown }).code || '')
+        : '';
+    return code === 'failed-precondition' || code.endsWith('/failed-precondition');
+};
+
+const connectMenuListEmulator = (connect: () => void, service: string): void => {
+    try {
+        connect();
+    } catch (error) {
+        if (isFirebaseEmulatorAlreadyConfigured(error)) return;
+        logFirebaseBootstrapFailure('firebase_emulator_connect_failed', error, {
+            isDevelopment: true,
+            service,
+            useFirebaseEmulators,
+        });
+    }
+};
 
 // Initialize App Check (bot protection)
 // Call this after firebaseApp is initialized
@@ -95,14 +116,23 @@ if (firebaseApp && typeof window !== 'undefined') {
 }
 
 if (firebaseApp && process.env.NODE_ENV === 'development') {
-    try {
-        connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-        // Firestore & Storage emulators NOT connected — app reads tenant/store data from production
-        // The Functions emulator backend handles emulator Firestore via FIRESTORE_EMULATOR_HOST
-    } catch (error) {
-        logFirebaseBootstrapFailure('firebase_functions_emulator_connect_failed', error, {
-            isDevelopment: true,
-        });
+    connectMenuListEmulator(
+        () => connectFunctionsEmulator(functions, '127.0.0.1', 5001),
+        'functions',
+    );
+    if (useFirebaseEmulators) {
+        connectMenuListEmulator(
+            () => connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true }),
+            'auth',
+        );
+        connectMenuListEmulator(
+            () => connectFirestoreEmulator(firebaseClient, '127.0.0.1', 8080),
+            'firestore',
+        );
+        connectMenuListEmulator(
+            () => connectStorageEmulator(firebaseStorage, '127.0.0.1', 9199),
+            'storage',
+        );
     }
 }
 

@@ -155,6 +155,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
     const isMobile = screens.md !== true;
 
     const titleValue = Form.useWatch('title', form);
+    const contentValue = Form.useWatch('content', form);
     const showSurfaceBinding = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES && from !== 'review';
     const showGeneratedFaqs = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT && from === 'review';
     const showFaqLinks = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT && from !== 'review' && Boolean(editingArticle);
@@ -675,7 +676,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                                         style={{ marginBottom: 0 }}
                                     >
                                         <TiptapEditor
-                                            value={form.getFieldValue('content')}
+                                            value={contentValue}
                                             onChange={value => form.setFieldsValue({ content: value })}
                                             placeholder="Start writing your article..."
                                         />

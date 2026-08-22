@@ -520,7 +520,8 @@ activation require an explicit scoped approval.
     `ANSWERLATTICE_PUBLIC_BUNDLE_SALT` exist independently in Vercel Production
     and Secret Manager. The owner-created production
     `ANSWERLATTICE_GEMINI_AI_KEY` is also present as a sensitive Vercel
-    Production variable and enabled Secret Manager version 1. No QA or
+    Production variable and enabled Secret Manager version 2. Version 1 is
+    destroyed after the eight bound Functions moved to version 2. No QA or
     MenuList secret value was reused.
 - [x] `AL-PROD-D02` Create an independent Google AI Studio authorization key,
   billing attribution, usage alerting, and spend-control evidence for project
@@ -529,9 +530,13 @@ activation require an explicit scoped approval.
   - The production project is imported into AI Studio and its independent
     billing/spend controls already exist. The owner created
     `Answerlattice Production Gemini Authorization` in that project. Codex
-    transferred it without display to Vercel Production and Secret Manager,
-    and a bounded direct provider call returned HTTP 200 with exactly `OK`.
-    No fallback standard key, QA key, MenuList key, placeholder, or
+    transferred it without display to Vercel Production and Secret Manager.
+    The August 22 rotation replaced both managed values in place, moved all
+    eight Gemini-bound Functions to Secret Manager version 2, and passed a
+    bounded direct provider call with HTTP 200 and exactly `OK`. The previous
+    AI Studio credential remains enabled only until an approved Vercel
+    Production redeployment drains the prior deployment snapshot; do not revoke
+    it earlier. No fallback standard key, QA key, MenuList key, placeholder, or
     Cloud-console-created unrestricted key was substituted.
 - [x] `AL-PROD-D03` Create a production Upstash database and hard budget only
   if the admitted production paths require it; never share QA credentials.
@@ -548,7 +553,7 @@ activation require an explicit scoped approval.
   - Secret Manager contains only the three production core secrets. Current
     Function readback shows all 11 approved core Functions ACTIVE on Node 22
     in `us-central1`. Each of the eight AI paths binds
-    `ANSWERLATTICE_GEMINI_AI_KEY` version 1, the scheduler paths bind only their
+    `ANSWERLATTICE_GEMINI_AI_KEY` version 2, the scheduler paths bind only their
     declared bundle/cron secrets, and the three non-AI analytics/support
     Functions bind no secrets. No optional provider secret is present.
 - [x] `AL-PROD-D06` Create and bind the dedicated Answerlattice production Web
@@ -726,3 +731,5 @@ service-account JSON, or customer data.
 | 2026-08-22 | Full QA/production setup audit | Current-state reconciliation | Independent source, Firebase CLI, Google/Firebase Console, Vercel, public-host, OAuth, App Check, Resend, budget, and validation-gate readback completed. QA setup is complete and currently serves staging commit `f6256fba66d60a4dbd3d88314300f2a79d28ff25` from deployment `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz`; its remaining items are fixture-based testing/certification. Production core infrastructure and 11 Functions are active, but live readback supersedes the August 21 App Check claims: `Answerlattice Production Web` is `Not registered`, and Vercel Production lacks `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`. These are tracked under `AL-PROD-B05` and `AL-PROD-D07`. Historical rows above remain point-in-time evidence and do not override this current snapshot. |
 | 2026-08-22 | `AL-PROD-B05`, `AL-PROD-D07`, `AL-PROD-E05` | Production setup closure pass | Owner-created replacement legacy reCAPTCHA v3 credential was bound through Firebase App Check REST v1; sanitized readback returned HTTP 200, `siteSecretSet=true`, 24-hour TTL, score threshold `0.5`, and `UNENFORCED` Firestore, Storage, and Authentication services. The matching public site key and a fresh sensitive 48-byte widget runtime secret are isolated to Vercel Production. Exact-artifact redeployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3` reached READY, owns all Production aliases, serves `answerlattice.com` with HTTP 200 and Answerlattice routing headers, and reports environment `production` with deployment URL `menulist-core-mv1su2gwu-neelvara-systems.vercel.app`. Credential values are not recorded. After replacement verification, the superseded reCAPTCHA key was deleted; its settings URL redirects to the active replacement key. The Firebase CLI session was revoked and freshly authenticated as the sole approved human operator, `admin@neelvara.com`, with readback of both Answerlattice Firebase projects. |
 | 2026-08-22 | Production build provenance | Source fixed; live redeploy pending | The current credential-activation deployment reports `/api/version` `buildId: "local"`. This is a release-evidence gap, not an incomplete provider/infrastructure setup item. Source now derives and validates one full Git revision for `generateBuildId`, the baked `NEXT_PUBLIC_BUILD_ID`, and `/api/version`, and fails a hosted build when no valid revision exists. Live closure requires the next explicitly approved Vercel Production deployment and exact readback. |
+| 2026-08-22 | `AL-PROD-D01`, `AL-PROD-D02`, `AL-PROD-D05` | Production Gemini rotation prepared; Vercel activation pending | Owner-created replacement authorization key was transferred without display to sensitive Vercel Production and Secret Manager version 2. All eight Gemini-bound Functions were rebuilt from unchanged Functions source, updated successfully, read back ACTIVE on version 2, and a bounded direct provider call returned HTTP 200 with exactly `OK`. Secret Manager version 1 is destroyed. The previous AI Studio credential must remain enabled until an explicitly approved Vercel Production redeployment drains the old environment snapshot; no Vercel deployment was performed in this rotation. |
+| 2026-08-22 | Local QA browser release candidate | Source verified; hosted promotion pending | Added explicit opt-in Auth, Firestore, and Storage emulator wiring, kept normal managed QA/production clients unchanged, added a reproducible `answerlattice:seed-local-browser-fixture` command that requires operator-supplied emulator-only email/password values, fixed article editor synchronization, preserved bounded Knowledge Intake errors, and refreshed widget config after route-context changes with context-aware cache isolation. TypeScript, focused contracts, runtime truth, final readiness, official emulator suites, documentation checks, browser route coverage, and diff integrity passed before release integration. No fixture credential or provider secret is stored in source. |

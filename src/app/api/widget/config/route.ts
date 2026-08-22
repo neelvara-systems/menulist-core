@@ -46,8 +46,18 @@ type RuntimeConfigCacheEntry = {
 
 const runtimeConfigCache = new Map<string, RuntimeConfigCacheEntry>();
 
-const buildCacheKey = (apiKey: string, origin: string | null): string => (
-    `${hashApiKey(apiKey)}:${origin || 'no-origin'}`
+const buildCacheKey = (
+    apiKey: string,
+    origin: string | null,
+    params: URLSearchParams,
+): string => (
+    [
+        hashApiKey(apiKey),
+        origin || 'no-origin',
+        ...['path', 'contextKey', 'feature', 'page'].map((name) => (
+            String(params.get(name) || '').slice(0, 120)
+        )),
+    ].join(':')
 );
 
 const buildResponse = (
@@ -260,7 +270,7 @@ export async function GET(request: NextRequest) {
         }
 
         const requestOrigin = request.headers.get('origin') || request.nextUrl.origin;
-        const cacheKey = buildCacheKey(apiKey, requestOrigin);
+        const cacheKey = buildCacheKey(apiKey, requestOrigin, request.nextUrl.searchParams);
         const cached = runtimeConfigCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
             return buildResponse(request, cached.body, cached.etag);
