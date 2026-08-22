@@ -264,6 +264,7 @@ function verifyResolverRuntimeBoundary() {
     NEXT_PUBLIC_VERCEL_ENV: 'preview',
     NODE_ENV: 'production',
   }, ({
+    getAnswerlatticeDashboardRewritePath,
     isActiveProductDomain,
     isAnswerlatticeProductHostname,
     isCampaignCueProductHostname,
@@ -315,6 +316,21 @@ function verifyResolverRuntimeBoundary() {
     assert(isAnswerlatticeProductHostname('canonica.app:bad') === false, 'Answerlattice product helper must reject malformed Host ports');
     assert(isCampaignCueProductHostname('campaigncue.menulist.online:bad') === false, 'CampaignCue product helper must reject malformed Host ports');
     assert(isNeelvaraProductHostname('neelvara.menulist.online:bad') === false, 'Neelvara product helper must reject malformed Host ports');
+    [
+      'answer-tests',
+      'feedback',
+      'knowledge-intake',
+      'known-issues',
+      'launch-answers',
+      'public-api',
+      'support-assistant',
+      'workflow-notifications',
+    ].forEach((routeRoot) => {
+      assert(
+        getAnswerlatticeDashboardRewritePath(`/${routeRoot}`) === `/answerlattice/${routeRoot}`,
+        `Answerlattice product host must rewrite the ${routeRoot} dashboard route`,
+      );
+    });
   });
 
   withRoutingEnv({
