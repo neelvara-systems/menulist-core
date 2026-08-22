@@ -255,6 +255,11 @@ service cloud.firestore {
     // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Answerlattice summary docs
     match /platformSummary/{document} {
       allow get: if isAuthenticated()
+                 && isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                 && hasAnswerlatticePlatformSummaryReadPermission(document)
+                 && isAnswerlatticeCurrentWorkspaceReadableSummaryDocument(document)
+                 && !exists(/databases/$(database)/documents/platformSummary/$(document));
+      allow get: if isAuthenticated()
                  && (isAnswerlatticeSourceVersionsDoc(document) || isAnswerlatticeBundleManifestDoc(document))
                  && hasAnswerlatticePlatformSummaryWritePermission(document)
                  && (
@@ -2893,6 +2898,23 @@ service cloud.firestore {
             + string(request.auth.token.get('tenantId', null))
             + '_'
             + string(request.auth.token.get('storeId', null))
+        );
+    }
+
+    function isAnswerlatticeCurrentWorkspaceReadableSummaryDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && document.matches(
+          '^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|integrationHealth)_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+            + '$'
+        )
+        && isAnswerlatticeActiveWorkspace(
+          request.auth.token.get('tenantId', null),
+          request.auth.token.get('storeId', null)
         );
     }
 

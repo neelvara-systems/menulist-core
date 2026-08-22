@@ -73,6 +73,11 @@ async function run(): Promise<void> {
 
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'coverage_1_101')));
         await assertFails(getDoc(doc(otherDb, 'platformSummary', 'coverage_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'frictionSnapshot_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'friction_1_101')));
+        await assertFails(getDoc(doc(otherDb, 'platformSummary', 'frictionSnapshot_1_101')));
+        await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'frictionSnapshot_2_202')));
+        await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'integrationConfig_1_101')));
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'entityGraphIndex_1_101')));
         await assertFails(getDoc(doc(otherDb, 'platformSummary', 'entityGraphIndex_1_101')));
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));

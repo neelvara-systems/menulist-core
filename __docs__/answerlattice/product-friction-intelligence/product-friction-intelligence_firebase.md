@@ -25,6 +25,14 @@ One optional server-owned advisory summary linked to a strictly normalized deter
 - Nightly cleanup: one exact `pId: AL + tId + sId + date` query, at most 100 deletes, and a fixed-run-clock UTC cutoff; invalid rows or failed commit fail the task instead of returning a success count.
 - Weekly: one snapshot read, one provider operation, one accounting write attempt for every completed provider response (including rejected output), and one source-read/advisory-write transaction only for valid output. Firestore may retry the transaction under contention; a changed source produces no advisory write.
 - Owner surface: one deterministic snapshot read and one optional advisory read.
+- A fresh active workspace may not have either summary until the scheduled
+  aggregations run. Exact point reads of the current workspace's missing
+  `frictionSnapshot_{tId}_{sId}` and `friction_{tId}_{sId}` documents return
+  the normal non-existent result. This exception requires authentication,
+  current tenant/store claims, an active `AL` workspace, readiness permission,
+  an allowlisted client-readable summary ID, and document absence. It does not
+  permit collection queries, cross-workspace reads, writes, or private
+  integration-config reads.
 - Daily Brief focus and Knowledge Map links: zero operations until the owner
   opens the destination; no friction listener or navigation write.
 - Evidence brief preparation, review-path changes, copy, and Markdown download:
@@ -60,6 +68,8 @@ Actual cost must be measured from Firebase and AI-operation accounting. Static c
 
 - client writes to daily stats and platform summaries are denied;
 - client reads require exact tenant/store membership and readiness permission;
+- missing friction summaries are readable only as exact current-workspace
+  point gets under the same readiness permission and active-workspace boundary;
 - platform summary document IDs must match stored scope;
 - both dedicated Answerlattice and shared Firestore rules carry the same read boundary.
 
@@ -76,6 +86,19 @@ it does not change the two-read owner surface or any history query.
 ## Deployment
 
 Function changes require a narrow QA deployment of `answerlatticeNightly`; this exact product-aware daily-stat query also requires both maintained index manifests to be deployed to the matching environment. Rules deployment is required only when rules source changes.
+
+### August 22, 2026 empty-summary publication
+
+Hosted QA exposed the legitimate pre-aggregation state: both friction summary
+documents were absent, but the client received a permission error instead of a
+non-existent result. Dedicated and shared rules now admit only the bounded
+missing-document point gets described above. Focused positive and adversarial
+emulator tests and the complete Answerlattice runtime-truth matrix passed.
+The dedicated rules were then compiled and released to
+`neelvara-answerlattice-qa` and `neelvara-answerlattice-prod`. Hosted QA
+retesting changed the Friction surface from a load failure to the intended
+empty state. No index, Storage, Function, credential, or Vercel deployment was
+changed.
 
 ### July 29, 2026 QA attempt
 
