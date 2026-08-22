@@ -127,6 +127,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         );
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(sub?.quantity || 1));
+    const isMultiLocationPlan = sub?.planId === 'premium';
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const monthlyCredits = sub?.monthlyCredits || 0;
     const topUpCredits = sub?.topUpCredits || 0;
@@ -267,6 +268,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         }
         if (!sub || !currentSubscriptionPlan) {
             Toast.show({ content: 'Current plan details are not available.', duration: 2200 });
+            return;
+        }
+        if (!isMultiLocationPlan) {
+            Toast.show({ content: 'Choose the Multi-location plan before adding locations.', duration: 2600 });
+            setShowPlans(true);
             return;
         }
         if (isManualBilling) {
@@ -656,10 +662,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     <Flex gap={8} vertical>
                                         <Flex align="center" gap={8}>
                                             <LuMapPin color={token.colorPrimary} size={16} />
-                                            <Text strong>Paid locations</Text>
+                                            <Text strong>{isMultiLocationPlan ? 'Paid locations' : 'Multi-location plan'}</Text>
                                         </Flex>
                                         <Text type="secondary">
-                                            {paidLocationCount} paid, {activeStoreCount} active. Add one paid location before creating the next outlet.
+                                            {isMultiLocationPlan
+                                                ? `${paidLocationCount} paid, ${activeStoreCount} active. Add one paid location before creating the next outlet.`
+                                                : 'Choose Multi-location to manage two or more active locations from one approved source.'}
                                         </Text>
                                         <Button
                                             block
@@ -670,8 +678,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             size="large"
                                         >
                                             <Flex align="center" gap={6} justify="center">
-                                                <LuPlus size={14} />
-                                                <Text>Add paid location</Text>
+                                                {isMultiLocationPlan ? <LuPlus size={14} /> : <LuBuilding2 size={14} />}
+                                                <Text>{isMultiLocationPlan ? 'Add paid location' : 'View plans'}</Text>
                                             </Flex>
                                         </Button>
                                     </Flex>

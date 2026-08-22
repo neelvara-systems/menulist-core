@@ -307,6 +307,12 @@ export const POST = withAuth(async (request, session) => {
                     { status: 402 },
                 );
             }
+            if (sub.planId !== 'premium') {
+                return NextResponse.json(
+                    { error: "Choose the Multi-location plan before adding another location" },
+                    { status: 402 },
+                );
+            }
             subId = sub.id;
             providerSubId = getRazorpayManagedSubscriptionId(sub) || undefined;
             previousQty = Math.max(1, Number(sub.quantity || 1));

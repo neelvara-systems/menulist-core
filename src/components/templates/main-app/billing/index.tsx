@@ -108,6 +108,7 @@ function BillingPage() {
     const isManualBilling = activeSubscription?.billingMode === 'manual';
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(activeSubscription?.quantity || 1));
+    const isMultiLocationPlan = activeSubscription?.planId === 'premium';
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const currentSubscriptionPlan = useMemo(() => {
         if (!activeSubscription) return null;
@@ -274,6 +275,11 @@ function BillingPage() {
             message.error('Current plan details are not available.');
             return;
         }
+        if (!isMultiLocationPlan) {
+            message.info('Choose the Multi-location plan before adding locations.');
+            setIsPricingModalOpen({ active: true, action: 'upgrade' });
+            return;
+        }
         if (isManualBilling) {
             message.info('Ask your reseller to add prepaid location capacity.');
             return;
@@ -411,20 +417,22 @@ function BillingPage() {
                         <Flex align="center" gap={10}>
                             <LuMapPin size={20} />
                             <Flex vertical>
-                                <Text strong>Paid locations</Text>
+                                <Text strong>{isMultiLocationPlan ? 'Paid locations' : 'Multi-location plan'}</Text>
                                 <Text type="secondary">
-                                    {paidLocationCount} paid, {activeStoreCount} active. Add one paid location before creating the next outlet.
+                                    {isMultiLocationPlan
+                                        ? `${paidLocationCount} paid, ${activeStoreCount} active. Add one paid location before creating the next outlet.`
+                                        : 'Choose Multi-location to manage two or more active locations from one approved source.'}
                                 </Text>
                             </Flex>
                         </Flex>
                         <Button
                             disabled={!currentSubscriptionPlan}
-                            icon={<LuPlusCircle />}
+                            icon={isMultiLocationPlan ? <LuPlusCircle /> : <LuBuilding2 />}
                             loading={isAddingPaidLocation}
                             onClick={() => void handleAddPaidLocation()}
                             type="primary"
                         >
-                            Add paid location
+                            {isMultiLocationPlan ? 'Add paid location' : 'View plans'}
                         </Button>
                     </Flex>
                 </Card>
