@@ -41,8 +41,8 @@ Existing Answerlattice APIs now call `requireAnswerlatticePermission()` for work
 ## Login Modes
 
 - Email members receive a password setup email when first created.
-- Email creation does not generate an unused alternate staff ID, avoiding the default/Answerlattice uniqueness queries. The explicit Login reset path generates one only when temporary credentials are requested.
-- A successful create replay does not repeat the setup-email provider call. If the original delivery failed or was lost, **Login** is the explicit recovery action.
+- Email creation does not generate an unused alternate staff ID, avoiding the default/Answerlattice uniqueness queries. The explicit **Reset login** path generates one only when temporary credentials are requested.
+- A successful create replay does not repeat the setup-email provider call. If the original delivery failed or was lost, **Reset login** is the explicit recovery action.
 - Password setup email calls use the fixed Firebase Auth `sendOobCode` host/path, encode the local API key with `URLSearchParams`, reject malformed local API keys before contacting Firebase Auth, and use manual redirect handling plus a timeout for the provider request.
 - Password reset email provider failures, timeouts, and rejected responses log bounded `answerlattice_staff_password_reset_provider_*` diagnostics and return the fixed `password_reset_email_failed` response marker; Firebase Auth provider text is not retained for UI reuse.
 - Owner reset creates a one-time temporary passcode and revokes refresh access for both email-backed and owner-passcode members, matching the MenuList staff model without claiming instant deletion of already-issued ID tokens.
@@ -51,6 +51,7 @@ Existing Answerlattice APIs now call `requireAnswerlatticePermission()` for work
 - Phone number, country code, dial code, staff login id, and auth mode follow the MenuList staff shape so reset and share flows behave consistently.
 - Owner-triggered password/passcode resets and force sign-out revoke Firebase refresh tokens and refresh Answerlattice permission claims.
 - Self-removal and last-owner guards use coded local policy errors before returning fixed client messages; self matching covers both project-local user ID and normalized email identity and does not branch on raw exception text.
+- Team Access labels the current member as **You** and omits self sign-out, deactivate, and remove controls. Server guards remain authoritative if a stale or forged client calls those mutations directly.
 - Default auth users receive/refresh `productAccounts.AL` so NextAuth can resolve Answerlattice scope.
 - Separate Answerlattice Firebase Auth receives Answerlattice permission custom claims for direct client DAL rules.
 - Workspace removal returns `removed: true`; Team Access removes the row for the current workspace even when the identity remains active in another workspace.

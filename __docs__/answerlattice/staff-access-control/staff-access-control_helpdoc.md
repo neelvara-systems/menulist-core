@@ -15,4 +15,5 @@ Use **Team > Members** to add a member, change their role, reset login details, 
 - A role must be reassigned from every member who still has it, including inactive members, before it can be turned off.
 - Owner, Manager, and Support Staff are protected defaults. Create a custom role when you need different permissions.
 - **Create and assign roles** requires **Manage team access**. Turning on role assignment also turns on team access; turning team access off removes role-assignment authority.
-- A temporary passcode is shown once. Use **Login** to create new login details when needed.
+- A temporary passcode is shown once. Use **Reset login** to create new login details when needed.
+- Your own row is marked **You**. Sign out from the profile menu; Answerlattice does not show controls that could deactivate or remove your current access.

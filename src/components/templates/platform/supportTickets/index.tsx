@@ -16,8 +16,12 @@ import PlatformTicketsView, { PlatformTicketsViewRef } from './PlatformTicketsVi
 
 const { Title } = Typography;
 
-const SupportTickets = () => {
-    const [activeView, setActiveView] = useState<string>('analytics');
+type SupportTicketsProps = {
+    initialView?: 'analytics' | 'queue' | 'trash';
+};
+
+const SupportTickets = ({ initialView = 'analytics' }: SupportTicketsProps) => {
+    const [activeView, setActiveView] = useState<string>(initialView);
     const [tickets, setTickets] = useState<SupportTicketType[]>([]);
     const [deletedTickets, setDeletedTickets] = useState<SupportTicketType[]>([]);
     const [loading, setLoading] = useState(true);

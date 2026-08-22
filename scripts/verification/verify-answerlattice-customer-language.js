@@ -117,6 +117,7 @@ excludes(activation, 'machine-checkable', 'Get Live owner surface');
 excludes(activation, 'factual launch checks', 'Get Live owner surface');
 includes(activation, "We could not read this workspace's saved setup.", 'Get Live recovery guidance');
 includes(setupStatus, 'Open Get Live', 'Setup Status recovery guidance');
+excludes(setupStatus, 'factual launch checks', 'Setup Status owner surface');
 includes(installCenter, 'open Get Live to confirm the workspace is ready', 'Install Support recovery guidance');
 includes(ownerSupportAssistant, "label: 'Trusted answer coverage'", 'Daily Brief evidence language');
 includes(ownerSupportAssistant, "label: 'Open Setup Status'", 'Daily Brief readiness action');

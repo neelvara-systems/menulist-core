@@ -183,8 +183,8 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
         return (
             <Card>
                 <Flex vertical align="center" gap={16} style={{ padding: '60px 20px' }}>
-                    <Typography.Title level={4} type="secondary">No Analytics Data Available</Typography.Title>
-                    <Typography.Text type="secondary">Create some tickets to see analytics and insights.</Typography.Text>
+                    <Typography.Title level={4} type="secondary">No ticket activity yet</Typography.Title>
+                    <Typography.Text type="secondary">Analytics will appear after customers contact support.</Typography.Text>
                 </Flex>
             </Card>
         );

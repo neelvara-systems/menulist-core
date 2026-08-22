@@ -276,7 +276,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     message: result.message,
                 });
             } else if (result.passwordResetEmailError) {
-                message.warning('Team member added, but the setup email was not sent. Use Login to create new login details.');
+                message.warning('Team member added, but the setup email was not sent. Use Reset login to create new login details.');
             } else if (result.passwordResetEmailSent) {
                 message.success('Password setup email sent');
             } else {
@@ -465,6 +465,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     };
 
     const renderUserActions = (user: AnswerlatticeStaffUserSummary) => {
+        const isCurrentUser = user.id === access?.user.id;
         const ownerActionBlocked = user.roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER && !canManageOwners;
         const authActionBlocked = ownerActionBlocked || (user.storeIds.length > 1 && !access?.isPlatformAdmin);
         const authActionTooltip = authActionBlocked
@@ -484,42 +485,46 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             <Tooltip title={authActionTooltip}>
                 <span>
                     <Button disabled={authActionBlocked} icon={<LuKeyRound />} onClick={() => handleResetLogin(user)} size={memberActionSize} style={mobileActionStyle}>
-                        Login
+                        Reset login
                     </Button>
                 </span>
             </Tooltip>
-            <Tooltip title={authActionTooltip}>
-                <span>
-                    <Button disabled={authActionBlocked || user.active === false} icon={<LuLogOut />} onClick={() => handleForceSignOut(user)} size={memberActionSize} style={mobileActionStyle}>
-                        Sign out
-                    </Button>
-                </span>
-            </Tooltip>
-            <Tooltip title={ownerActionBlocked
-                ? 'Only an Owner can change Owner access.'
-                : user.storeIds.length > 1 && !access?.isPlatformAdmin
-                    ? 'Remove access from this workspace instead.'
-                    : undefined}
-            >
-                <span>
-                    <Button
-                        disabled={ownerActionBlocked || (user.storeIds.length > 1 && !access?.isPlatformAdmin)}
-                        icon={user.active === false ? <LuUserCheck /> : <LuUserX />}
-                        onClick={() => handleToggleActive(user, user.active === false)}
-                        size={memberActionSize}
-                        style={mobileActionStyle}
+            {!isCurrentUser ? (
+                <>
+                    <Tooltip title={authActionTooltip}>
+                        <span>
+                            <Button disabled={authActionBlocked || user.active === false} icon={<LuLogOut />} onClick={() => handleForceSignOut(user)} size={memberActionSize} style={mobileActionStyle}>
+                                Sign out
+                            </Button>
+                        </span>
+                    </Tooltip>
+                    <Tooltip title={ownerActionBlocked
+                        ? 'Only an Owner can change Owner access.'
+                        : user.storeIds.length > 1 && !access?.isPlatformAdmin
+                            ? 'Remove access from this workspace instead.'
+                            : undefined}
                     >
-                        {user.active === false ? 'Activate' : 'Deactivate'}
-                    </Button>
-                </span>
-            </Tooltip>
-            <Tooltip title={ownerActionBlocked ? 'Only an Owner can remove Owner access.' : undefined}>
-                <span>
-                    <Button danger disabled={ownerActionBlocked} icon={<LuTrash2 />} onClick={() => handleRemoveStaff(user)} size={memberActionSize} style={mobileActionStyle}>
-                        Remove
-                    </Button>
-                </span>
-            </Tooltip>
+                        <span>
+                            <Button
+                                disabled={ownerActionBlocked || (user.storeIds.length > 1 && !access?.isPlatformAdmin)}
+                                icon={user.active === false ? <LuUserCheck /> : <LuUserX />}
+                                onClick={() => handleToggleActive(user, user.active === false)}
+                                size={memberActionSize}
+                                style={mobileActionStyle}
+                            >
+                                {user.active === false ? 'Activate' : 'Deactivate'}
+                            </Button>
+                        </span>
+                    </Tooltip>
+                    <Tooltip title={ownerActionBlocked ? 'Only an Owner can remove Owner access.' : undefined}>
+                        <span>
+                            <Button danger disabled={ownerActionBlocked} icon={<LuTrash2 />} onClick={() => handleRemoveStaff(user)} size={memberActionSize} style={mobileActionStyle}>
+                                Remove
+                            </Button>
+                        </span>
+                    </Tooltip>
+                </>
+            ) : <Tag color="blue">You</Tag>}
         </Space>
         );
     };
@@ -640,7 +645,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                                     {isLocked ? <Tag color="gold">Locked</Tag> : null}
                                 </Space>
                                 <Text type="secondary">{role.description || 'No description'}</Text>
-                                <Text type="secondary">{enabledCount} permissions enabled</Text>
+                                <Text type="secondary">{enabledCount} {enabledCount === 1 ? 'permission' : 'permissions'} enabled</Text>
                             </Flex>
                             <Space wrap>
                                 <Button disabled={!canAssignRoles || isLocked} icon={<LuPencil />} onClick={() => openEditRole(role)} style={mobileActionStyle}>

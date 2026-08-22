@@ -40,7 +40,8 @@ An Answerlattice workspace owner can add team members, assign roles, create cust
 - A delayed replay of a create request that was already removed fails with `IDEMPOTENCY_CONFLICT`; only a new owner action with a new request ID can restore membership.
 - An explicit re-add clears `deleted` and `deletedAt` together so lifecycle state cannot remain half-reactivated.
 - Team list overflow is explicit. The server reads one sentinel row beyond the 500-member safety cap and rejects the response instead of silently hiding a member.
-- Initial password-setup email is a one-time create side effect. An exact create replay does not resend it; the owner uses the explicit Login reset action when recovery is needed.
+- Initial password-setup email is a one-time create side effect. An exact create replay does not resend it; the owner uses the explicit **Reset login** action when recovery is needed.
+- The current member row must not present self sign-out, deactivate, or remove controls. Server-side self-mutation guards remain mandatory.
 - Saving a custom role transactionally captures every retained assignment, including inactive accounts, then refreshes and revokes Answerlattice Auth claims. A role cannot be disabled or removed while any membership still references it.
 - After writing Auth claims, repair rereads the selected store and user and compares the complete account, workspace, role, and permission projection. A concurrent role edit that changes that projection retries instead of certifying stale permissions.
 - Product, tenant, store, and membership aliases are compatibility inputs only when they agree exactly. Contradictory aliases, duplicate workspace mappings, malformed IDs, and a Firestore document ID that disagrees with embedded scope all fail closed.

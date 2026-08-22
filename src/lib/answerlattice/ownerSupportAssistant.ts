@@ -577,8 +577,8 @@ const buildFounderDailyBrief = (
                     : 'The current summaries contain support evidence, but no permitted action path is available in this brief.',
         focus,
         actions,
-        costNote: 'This brief is computed from existing summaries. It adds no model call, no new Firestore scan, and no support-credit debit.',
-        sourceNote: 'Uses admitted coverage, answer-evidence, support-board, friction, knowledge-intake, and activation summaries only.',
+        costNote: 'This brief uses saved support summaries and does not spend support credits.',
+        sourceNote: 'It only uses setup and support status already available in this workspace.',
     };
 };
 

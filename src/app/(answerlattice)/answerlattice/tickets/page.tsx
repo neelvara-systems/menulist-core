@@ -13,5 +13,5 @@ const SupportTickets = dynamic(
 );
 
 export default function AnswerlatticeTicketsPage() {
-    return <SupportTickets />;
+    return <SupportTickets initialView="queue" />;
 }

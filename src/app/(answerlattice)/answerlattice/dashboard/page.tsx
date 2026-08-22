@@ -224,7 +224,7 @@ export default function AnswerlatticeDashboardPage() {
                 type={attentionSteps.length ? 'warning' : launchReady ? 'success' : 'info'}
                 showIcon
                 message={launchReady ? 'Launch proof is ready for controlled customer testing' : 'Support readiness is still building'}
-                description={`${summary.readinessScore}% setup readiness from ${requiredSteps.length} required checks. ${summary.launchProof.completeCount}/${summary.launchProof.totalCount} factual launch checks are complete.`}
+                description={`${summary.readinessScore}% setup readiness from ${requiredSteps.length} required checks. ${summary.launchProof.completeCount}/${summary.launchProof.totalCount} launch checks are complete.`}
             />
 
             <Row gutter={[12, 12]}>

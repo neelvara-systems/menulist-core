@@ -1436,6 +1436,8 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   const faqManagement = read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx');
   const productSurfaces = read('src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx');
   const teamAccess = read('src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx');
+  const ticketsPage = read('src/app/(answerlattice)/answerlattice/tickets/page.tsx');
+  const supportTickets = read('src/components/templates/platform/supportTickets/index.tsx');
   const staffAccessClient = read('src/lib/answerlattice/staffAccessClient.ts');
   const staffAccessServer = read('src/lib/answerlattice/staffAccessServer.ts');
   const staffAccessContracts = read('src/lib/answerlattice/staffAccessContracts.ts');
@@ -1455,6 +1457,12 @@ function verifyAnswerlatticeDashboardFailureCopy() {
 
   assertIncludes(dashboard, 'ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED', 'Answerlattice dashboard fixed readiness-load copy');
   assertIncludes(accessProvider, 'ANSWERLATTICE_ACCESS_LOAD_FAILED', 'Answerlattice access provider fixed failure copy');
+  assertIncludes(teamAccess, 'const isCurrentUser = user.id === access?.user.id;', 'Answerlattice team access identifies the current owner');
+  assertIncludes(teamAccess, '!isCurrentUser ? (', 'Answerlattice team access hides self-destructive actions');
+  assertIncludes(teamAccess, 'Reset login', 'Answerlattice team access names login recovery clearly');
+  assertIncludes(teamAccess, "enabledCount === 1 ? 'permission' : 'permissions'", 'Answerlattice team access uses readable permission counts');
+  assertIncludes(ticketsPage, '<SupportTickets initialView="queue" />', 'Answerlattice Ticket Inbox opens on the owner action queue');
+  assertIncludes(supportTickets, "initialView = 'analytics'", 'Shared support tickets preserve their existing default view');
   assertIncludes(accessProvider, 'ANSWERLATTICE_ACCESS_RESPONSE_JSON_MAX_BYTES', 'Answerlattice access provider response cap');
   assertIncludes(accessProvider, 'ANSWERLATTICE_ACCESS_REQUEST_POLICY', 'Answerlattice access provider shared request policy');
   assertIncludes(accessProvider, "cache: 'no-store'", 'Answerlattice access provider requests bypass browser cache');
