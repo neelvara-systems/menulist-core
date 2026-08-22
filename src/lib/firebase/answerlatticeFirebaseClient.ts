@@ -13,6 +13,7 @@ import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
+import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import answerlatticeFirebaseConfig, {
     answerlatticeFirebaseMode,
     answerlatticeFirestoreDatabaseId,
@@ -102,6 +103,7 @@ if (
     answerlatticeApp &&
     !shouldUseSharedAnswerlatticeFirebase &&
     typeof window !== 'undefined' &&
+    isAnswerlatticeProductHostname(window.location.hostname) &&
     !(process.env.NODE_ENV === 'development' && useFirebaseEmulators)
 ) {
     import('./answerlatticeAppCheck')

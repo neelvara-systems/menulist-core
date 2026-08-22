@@ -5,6 +5,7 @@ import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
 import { getExpectedFirebaseProjectId } from "@constant/deploymentTargets";
+import { isAnswerlatticeProductHostname } from "@constant/answerlattice/domains";
 import firebaseConfig from "./config";
 import { logFirebaseBootstrapFailure } from "./firebaseDiagnostics";
 import { resolveMenuListFirebaseClientBoundary } from "./menuListFirebaseClientBoundary";
@@ -99,7 +100,9 @@ const connectMenuListEmulator = (connect: () => void, service: string): void => 
 // Initialize App Check (bot protection)
 // Call this after firebaseApp is initialized
 if (firebaseApp && typeof window !== 'undefined') {
-    const shouldLoadAppCheck = !isLocalAppCheckHost(window.location.hostname) || Boolean(appCheckDebugToken);
+    const isAnswerlatticeHost = isAnswerlatticeProductHostname(window.location.hostname);
+    const shouldLoadAppCheck = !isAnswerlatticeHost
+        && (!isLocalAppCheckHost(window.location.hostname) || Boolean(appCheckDebugToken));
 
     if (shouldLoadAppCheck) {
         import('./appCheck')
@@ -109,6 +112,7 @@ if (firebaseApp && typeof window !== 'undefined') {
             .catch((error) => {
                 logFirebaseBootstrapFailure('app_check_module_load_failed', error, {
                     isLocalHost: isLocalAppCheckHost(window.location.hostname),
+                    isAnswerlatticeHost,
                     hasDebugToken: Boolean(appCheckDebugToken),
                 });
             });

@@ -3438,14 +3438,16 @@ assert(
 });
 assert(!/\bconsole\.(?:error|warn|log|info|debug|trace)\s*\(/.test(firebaseAuthSyncHelper), 'Firebase Auth sync helper must not direct-console bootstrap diagnostics.');
 assertIncludes(firebaseClient, 'initAppCheck(firebaseApp)', 'Firebase client must initialize App Check with the explicit initialized app.');
+assertIncludes(firebaseClient, '!isAnswerlatticeHost', 'MenuList App Check must not initialize on Answerlattice product hosts.');
 assertIncludes(firebaseClient, 'resolveMenuListFirebaseClientBoundary', 'Firebase client must validate complete configuration and existing default-app authority before bootstrap.');
 assertIncludes(firebaseClient, "const expectedMenuListProjectId = getExpectedFirebaseProjectId('menulist');", 'Firebase client must bind its project to the active MenuList deployment target.');
 assertIncludes(firebaseClient, 'menulist_client_configuration_rejected', 'Firebase client must report rejected project or existing-app authority without exposing credentials.');
 assertIncludes(firebaseClient, 'app_check_module_load_failed', 'Firebase client must securely log App Check module load failures.');
-assertIncludes(firebaseClient, 'firebase_functions_emulator_connect_failed', 'Firebase client must securely log emulator connection failures.');
+assertIncludes(firebaseClient, 'firebase_emulator_connect_failed', 'Firebase client must securely log emulator connection failures.');
 assertIncludes(appCheck, 'app_check_site_key_missing', 'App Check must securely log missing site-key configuration.');
 assertIncludes(appCheck, 'app_check_initialize_failed', 'App Check must securely log initialization failures.');
 assertIncludes(appCheck, 'app_check_custom_provider_failed', 'App Check custom provider must securely log initialization failures.');
+assertIncludes(appCheck, 'isAnswerlatticeProductHostname(hostname)', 'MenuList App Check must reject Answerlattice product hosts at the module boundary.');
 assert(!appCheck.includes('APP_CHECK_BADGE'), 'App Check must not keep console styling constants.');
 assert(!appCheck.includes('window.location.hostname}. This is expected'), 'App Check must not log raw hostnames on local skip.');
 assert(!firebaseAuthSyncHook.includes('maskDebugEmail'), 'Firebase Auth sync hook must not log masked emails.');

@@ -265,6 +265,11 @@ async function run(): Promise<void> {
         assert.equal(data.onboardingProviderRecoveryAvailableAt, null);
         assert.equal(data.onboardingProviderSubscriptionId, subscriptionId);
     }
+    assert.equal(tenantFinal.data()?.tId, scope.tenantId);
+    assert.equal(storeFinal.data()?.tId, scope.tenantId);
+    assert.equal(storeFinal.data()?.sId, scope.storeId);
+    assert.equal(userFinal.data()?.tId, scope.tenantId);
+    assert.equal(userFinal.data()?.sId, scope.storeId);
     assert.equal(subscriptionFinal.data()?.providerStatus, 'created');
     assert.equal(subscriptionFinal.data()?.pId, PRODUCT_IDS.ANSWERLATTICE);
     assert.equal(subscriptionFinal.data()?.productId, PRODUCT_IDS.ANSWERLATTICE);

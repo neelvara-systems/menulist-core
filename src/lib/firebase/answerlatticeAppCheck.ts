@@ -7,6 +7,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import type { FirebaseApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { logFirebaseBootstrapFailure } from './firebaseDiagnostics';
@@ -39,6 +40,8 @@ export const initAnswerlatticeAppCheck = (firebaseApp: FirebaseApp | null) => {
 
     const siteKey = process.env.NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY;
     const hostname = window.location.hostname;
+
+    if (!isAnswerlatticeProductHostname(hostname)) return null;
 
     if (!siteKey) {
         logFirebaseBootstrapFailure('answerlattice_app_check_site_key_missing', undefined, {

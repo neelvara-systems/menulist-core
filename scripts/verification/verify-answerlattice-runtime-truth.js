@@ -771,12 +771,14 @@ function verifyDedicatedAnswerlatticeFirebase() {
   assertIncludes(client, 'answerlatticeFirebaseClient', 'Answerlattice client Firebase app name');
   assertIncludes(client, "import('./answerlatticeAppCheck')", 'Answerlattice dedicated App Check module loading');
   assertIncludes(client, '!shouldUseSharedAnswerlatticeFirebase', 'Answerlattice App Check stays on the dedicated Firebase app');
+  assertIncludes(client, 'isAnswerlatticeProductHostname(window.location.hostname)', 'Answerlattice App Check initializes only on Answerlattice product hosts');
   assertIncludes(client, 'answerlattice_app_check_module_load_failed', 'Answerlattice App Check module diagnostics');
   assertIncludes(config, 'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID', 'Answerlattice client Firebase project');
   assertIncludes(config, 'answerlatticeFirebaseModeOverride', 'Answerlattice Firebase shared-mode override');
   assertNotIncludes(config, 'isSameFirebaseProject', 'Answerlattice client shared mode must not be inferred from matching project IDs');
   assertIncludes(appCheck, 'ReCaptchaV3Provider', 'Answerlattice App Check matches the MenuList reCAPTCHA v3 provider contract');
   assertIncludes(appCheck, 'NEXT_PUBLIC_ANSWERLATTICE_RECAPTCHA_SITE_KEY', 'Answerlattice App Check product-scoped public site key');
+  assertIncludes(appCheck, 'if (!isAnswerlatticeProductHostname(hostname)) return null;', 'Answerlattice App Check rejects non-Answerlattice product hosts');
   assertIncludes(appCheck, 'answerlattice_app_check_site_key_missing', 'Answerlattice missing App Check key diagnostics');
   assertIncludes(appCheck, 'answerlattice_app_check_initialize_failed', 'Answerlattice App Check initialization diagnostics');
   assertNotIncludes(appCheck, 'ReCaptchaEnterpriseProvider', 'Answerlattice must not use reCAPTCHA Enterprise');
@@ -3716,6 +3718,12 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboard, 'isCurrentUserRecordEligible({', 'Answerlattice onboarding bridge transaction revalidates current authority');
   assertIncludes(onboard, 'const userSnapshot = await transaction.get(userRef);', 'Answerlattice onboarding bridge transaction locks the current auth user');
   assertIncludes(onboard, "throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');", 'Answerlattice onboarding bridge rejects a conflicting current product account');
+  assertIncludes(onboard, 'const syncAnswerlatticeOnboardingAccess = async (params:', 'Answerlattice onboarding finalization owns a dedicated access synchronization boundary');
+  assertIncludes(onboard, 'repairAnswerlatticeStaffAccessProjections({', 'Answerlattice onboarding reuses canonical staff claim projection synchronization');
+  assertIncludes(onboard, "operation: 'answerlattice_onboarding_finalization'", 'Answerlattice onboarding claim repair uses a bounded operation identifier');
+  assertIncludes(onboard, 'syncClaims: true,', 'Answerlattice onboarding synchronizes dedicated Firebase Auth claims before success');
+  assertIncludes(onboard, 'await syncAnswerlatticeOnboardingAccess({', 'Answerlattice onboarding invokes access synchronization for new and recovered finalization');
+  assertNotIncludes(onboard, 'setCustomUserClaims(', 'Answerlattice onboarding does not duplicate the canonical custom-claims builder');
   assertIncludes(onboardingProvisioningServer, 'const userId = requireAnswerlatticeOnboardingUserId(params.scope.userId);', 'Answerlattice onboarding server helpers re-normalize scope user IDs');
   assertIncludes(onboard, '.doc(userId)', 'Answerlattice onboarding normalized user document refs');
   assertIncludes(onboardingProvisioning, 'buildAnswerlatticeOnboardingRequestFingerprint', 'Answerlattice onboarding deterministic request fingerprint');
@@ -3732,6 +3740,8 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboardingProvisioning, 'isAnswerlatticeTerminalProviderSubscriptionStatus', 'Answerlattice onboarding terminal provider checkout classifier');
   assertIncludes(onboardingProvisioning, 'shouldHoldAnswerlatticeOnboardingProviderRecovery', 'Answerlattice onboarding unknown-provider recovery hold');
   assertIncludes(onboardingProvisioningServer, 'persistAnswerlatticePendingSubscription', 'Answerlattice onboarding atomic pending subscription persistence');
+  assertIncludes(onboardingProvisioningServer, 'sId: storeId,', 'Answerlattice onboarding finalization repairs compact store scope aliases');
+  assertIncludes(onboardingProvisioningServer, 'tId: tenantId,', 'Answerlattice onboarding finalization repairs compact tenant scope aliases');
   assertIncludes(onboardingProvisioningServer, 'compensateAnswerlatticeOnboardingProvisioning', 'Answerlattice onboarding failure compensation');
   assertIncludes(onboardingProvisioningServer, 'markAnswerlatticeOnboardingProviderRecoveryPending', 'Answerlattice onboarding durable provider recovery state');
   assertIncludes(onboard, 'ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING', 'Answerlattice onboarding provider recovery resume path');
@@ -3761,7 +3771,7 @@ function verifyAnswerlatticeOnboardRouteGuards() {
     [
       'await persistAnswerlatticePendingSubscription({',
       'localFinalizationComplete = true;',
-      'await syncDefaultAuthProductAccount({',
+      'await syncAnswerlatticeOnboardingAccess({',
     ],
     'Answerlattice onboarding finalizes product state before the cross-project auth bridge',
   );

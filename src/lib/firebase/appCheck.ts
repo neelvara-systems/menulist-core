@@ -12,6 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import type { FirebaseApp } from 'firebase/app';
 import { CustomProvider, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
@@ -87,6 +88,9 @@ export function initAppCheck(firebaseApp: FirebaseApp | null) {
 
     const hostname = window.location.hostname;
     const hasDebugToken = Boolean(appCheckDebugToken);
+    if (isAnswerlatticeProductHostname(hostname)) {
+        return null;
+    }
     if (isLocalOrPreviewHost(hostname) && !hasDebugToken) {
         return null;
     }

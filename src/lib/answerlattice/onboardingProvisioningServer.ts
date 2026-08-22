@@ -173,6 +173,8 @@ export async function persistAnswerlatticePendingSubscription(params: {
             onboardingProviderRecoveryReason: null,
             onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
+            sId: storeId,
+            tId: tenantId,
             modifiedOn: now,
         }, { merge: true });
         transaction.set(tenantRef, {
@@ -182,6 +184,7 @@ export async function persistAnswerlatticePendingSubscription(params: {
             onboardingProviderRecoveryReason: null,
             onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
+            tId: tenantId,
             modifiedOn: now,
         }, { merge: true });
         transaction.set(userRef, {
@@ -191,6 +194,8 @@ export async function persistAnswerlatticePendingSubscription(params: {
             onboardingProviderRecoveryReason: null,
             onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
+            sId: storeId,
+            tId: tenantId,
             modifiedOn: now,
         }, { merge: true });
     });
