@@ -98,7 +98,7 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
         <AntdRegistry>
             <LocalisationProvider locale={locale}>
                 <ReduxStoreProvider>
-                    <SessionProvider session={session}>
+                    <SessionProvider session={session} productContext="answerlattice">
                         <NoSSRProvider>
                             <AnswerlatticeDashboardLayout globalOverlays={<SessionExpiryMonitor />}>
                                 <Suspense fallback={<ServerSidePageLoader page="Answerlattice Dashboard" brand="answerlattice" />}>

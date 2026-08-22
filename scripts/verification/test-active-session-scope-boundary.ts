@@ -187,6 +187,21 @@ assert.doesNotMatch(
     /firebaseAuthRequiredScopeKey\s*=\s*requiresFirebaseAuth\s*\?\s*getSessionProviderScopeKey\(effectiveSession\)/,
     'the provider must not reuse the MenuList data scope key for Answerlattice Help Center auth readiness',
 );
+assert.match(
+    sessionProviderSource,
+    /productContext === 'answerlattice'[\s\S]*isAnswerlatticeRuntimeRoute\(normalizedPathname, currentHostname\)/,
+    'the provider must accept a server-stable Answerlattice product context before consulting browser hostname',
+);
+
+const answerlatticeLayoutSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/app/(answerlattice)/layout.tsx'),
+    'utf8',
+);
+assert.match(
+    answerlatticeLayoutSource,
+    /<SessionProvider session=\{session\} productContext="answerlattice">/,
+    'the Answerlattice server layout must pin product context so rewritten clean-domain routes hydrate consistently',
+);
 
 const firebaseAuthSyncSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/lib/auth/firebaseAuthSync.ts'),

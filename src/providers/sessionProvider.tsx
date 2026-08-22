@@ -72,6 +72,7 @@ import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataPr
 type Props = {
     children: React.ReactNode;
     session: Session | null;
+    productContext?: 'answerlattice';
 }
 
 const FIREBASE_AUTH_BOOTSTRAP_SETTLE_MS = 250;
@@ -87,7 +88,7 @@ const maskDebugEmail = (email: unknown) => {
     return `${local.slice(0, 2)}***@${domain}`;
 };
 
-export default function SessionProvider({ children, session }: Props) {
+export default function SessionProvider({ children, session, productContext }: Props) {
     const pathname = usePathname();
 
     // Define the initial state for tenant details
@@ -146,7 +147,8 @@ export default function SessionProvider({ children, session }: Props) {
     const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : (pathname || '').replace(/\/+$/, '');
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
+    const isAnswerlatticeRoute = productContext === 'answerlattice'
+        || isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
     const authenticatedSession = clientProviderSession ?? session;
     const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(authenticatedSession) : null;
     const effectiveSession = isAnswerlatticeRoute
